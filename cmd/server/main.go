@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"french-learning-app/internal/analyzer"
 	"french-learning-app/internal/application"
 	"french-learning-app/internal/config"
 	"french-learning-app/internal/storage/sqlite"
@@ -40,9 +41,13 @@ func run() error {
 	}
 	defer db.Close()
 
-	repo := sqlite.NewEntryRepository(db)
-	svc := application.NewEntryService(repo)
-	handler := transporthttp.NewHandler(svc)
+	entryRepo := sqlite.NewEntryRepository(db)
+	analysisRepo := sqlite.NewAnalysisRepository(db)
+
+	entrySvc := application.NewEntryService(entryRepo)
+	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, analyzer.NewRuleBased())
+
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc)
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,

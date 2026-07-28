@@ -30,7 +30,7 @@ func (f *fakeService) ListEntries(ctx context.Context, limit int) ([]*domain.Ent
 }
 
 func newServer(svc EntryService) http.Handler {
-	return NewHandler(svc).Routes()
+	return NewHandler(svc, nil).Routes()
 }
 
 func TestCreateEntry_Success(t *testing.T) {

@@ -20,14 +20,21 @@ type EntryService interface {
 	ListEntries(ctx context.Context, limit int) ([]*domain.Entry, error)
 }
 
-// Handler holds dependencies for the HTTP layer.
-type Handler struct {
-	svc EntryService
+// AnalysisService is the subset of analysis behavior the handlers depend on.
+type AnalysisService interface {
+	AnalyzeEntry(ctx context.Context, entryID int64) (*domain.Analysis, error)
+	ListAnalyses(ctx context.Context, entryID int64) ([]*domain.Analysis, error)
 }
 
-// NewHandler builds a Handler over the given service.
-func NewHandler(svc EntryService) *Handler {
-	return &Handler{svc: svc}
+// Handler holds dependencies for the HTTP layer.
+type Handler struct {
+	svc      EntryService
+	analysis AnalysisService
+}
+
+// NewHandler builds a Handler over the given services.
+func NewHandler(svc EntryService, analysis AnalysisService) *Handler {
+	return &Handler{svc: svc, analysis: analysis}
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -37,6 +44,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /entries", h.handleCreateEntry)
 	mux.HandleFunc("GET /entries", h.handleListEntries)
 	mux.HandleFunc("GET /entries/{id}", h.handleGetEntry)
+	mux.HandleFunc("POST /entries/{id}/analysis", h.handleCreateAnalysis)
+	mux.HandleFunc("GET /entries/{id}/analyses", h.handleListAnalyses)
 	return mux
 }
 
@@ -71,6 +80,32 @@ func toResponse(e *domain.Entry) entryResponse {
 	}
 }
 
+type analysisResponse struct {
+	ID          int64   `json:"id"`
+	EntryID     int64   `json:"entry_id"`
+	Version     int64   `json:"version"`
+	Category    string  `json:"category"`
+	Explanation string  `json:"explanation"`
+	Confidence  float64 `json:"confidence"`
+	Uncertainty string  `json:"uncertainty"`
+	Analyzer    string  `json:"analyzer"`
+	CreatedAt   string  `json:"created_at"`
+}
+
+func toAnalysisResponse(a *domain.Analysis) analysisResponse {
+	return analysisResponse{
+		ID:          a.ID,
+		EntryID:     a.EntryID,
+		Version:     a.Version,
+		Category:    a.Category,
+		Explanation: a.Explanation,
+		Confidence:  a.Confidence,
+		Uncertainty: a.Uncertainty,
+		Analyzer:    a.Analyzer,
+		CreatedAt:   a.CreatedAt.Format(time.RFC3339Nano),
+	}
+}
+
 // ---- handlers ----
 
 func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -102,9 +137,8 @@ func (h *Handler) handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetEntry(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil || id <= 0 {
-		writeError(w, http.StatusBadRequest, "invalid id")
+	id, ok := parseID(w, r)
+	if !ok {
 		return
 	}
 
@@ -141,7 +175,63 @@ func (h *Handler) handleListEntries(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"entries": resp})
 }
 
+func (h *Handler) handleCreateAnalysis(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	analysis, err := h.analysis.AnalyzeEntry(r.Context(), id)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "entry not found")
+		return
+	}
+	if errors.Is(err, domain.ErrValidation) {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not analyze entry")
+		return
+	}
+	writeJSON(w, http.StatusCreated, toAnalysisResponse(analysis))
+}
+
+func (h *Handler) handleListAnalyses(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	analyses, err := h.analysis.ListAnalyses(r.Context(), id)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "entry not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not list analyses")
+		return
+	}
+
+	resp := make([]analysisResponse, 0, len(analyses))
+	for _, a := range analyses {
+		resp = append(resp, toAnalysisResponse(a))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"analyses": resp})
+}
+
 // ---- helpers ----
+
+// parseID reads and validates the {id} path value, writing a 400 response and
+// returning ok=false when it is missing or malformed.
+func parseID(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return 0, false
+	}
+	return id, true
+}
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
