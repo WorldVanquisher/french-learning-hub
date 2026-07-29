@@ -26,15 +26,22 @@ type AnalysisService interface {
 	ListAnalyses(ctx context.Context, entryID int64) ([]*domain.Analysis, error)
 }
 
+// FeedbackService is the subset of feedback behavior the handlers depend on.
+type FeedbackService interface {
+	AddFeedback(ctx context.Context, analysisID int64, in domain.NewFeedbackInput) (*domain.Feedback, error)
+	ListFeedback(ctx context.Context, analysisID int64) ([]*domain.Feedback, error)
+}
+
 // Handler holds dependencies for the HTTP layer.
 type Handler struct {
 	svc      EntryService
 	analysis AnalysisService
+	feedback FeedbackService
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService) *Handler {
-	return &Handler{svc: svc, analysis: analysis}
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService) *Handler {
+	return &Handler{svc: svc, analysis: analysis, feedback: feedback}
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -46,6 +53,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /entries/{id}", h.handleGetEntry)
 	mux.HandleFunc("POST /entries/{id}/analysis", h.handleCreateAnalysis)
 	mux.HandleFunc("GET /entries/{id}/analyses", h.handleListAnalyses)
+	mux.HandleFunc("POST /analyses/{id}/feedback", h.handleCreateFeedback)
+	mux.HandleFunc("GET /analyses/{id}/feedback", h.handleListFeedback)
 	return mux
 }
 
@@ -103,6 +112,35 @@ func toAnalysisResponse(a *domain.Analysis) analysisResponse {
 		Uncertainty: a.Uncertainty,
 		Analyzer:    a.Analyzer,
 		CreatedAt:   a.CreatedAt.Format(time.RFC3339Nano),
+	}
+}
+
+type createFeedbackRequest struct {
+	Status               string  `json:"status"`
+	CorrectedCategory    *string `json:"corrected_category"`
+	CorrectedExplanation *string `json:"corrected_explanation"`
+	UserNote             string  `json:"user_note"`
+}
+
+type feedbackResponse struct {
+	ID                   int64   `json:"id"`
+	AnalysisID           int64   `json:"analysis_id"`
+	Status               string  `json:"status"`
+	CorrectedCategory    *string `json:"corrected_category,omitempty"`
+	CorrectedExplanation *string `json:"corrected_explanation,omitempty"`
+	UserNote             string  `json:"user_note"`
+	CreatedAt            string  `json:"created_at"`
+}
+
+func toFeedbackResponse(f *domain.Feedback) feedbackResponse {
+	return feedbackResponse{
+		ID:                   f.ID,
+		AnalysisID:           f.AnalysisID,
+		Status:               string(f.Status),
+		CorrectedCategory:    f.CorrectedCategory,
+		CorrectedExplanation: f.CorrectedExplanation,
+		UserNote:             f.UserNote,
+		CreatedAt:            f.CreatedAt.Format(time.RFC3339Nano),
 	}
 }
 
@@ -218,6 +256,64 @@ func (h *Handler) handleListAnalyses(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, toAnalysisResponse(a))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"analyses": resp})
+}
+
+func (h *Handler) handleCreateFeedback(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	var req createFeedbackRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	feedback, err := h.feedback.AddFeedback(r.Context(), id, domain.NewFeedbackInput{
+		Status:               domain.FeedbackStatus(req.Status),
+		CorrectedCategory:    req.CorrectedCategory,
+		CorrectedExplanation: req.CorrectedExplanation,
+		UserNote:             req.UserNote,
+	})
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "analysis not found")
+		return
+	}
+	if errors.Is(err, domain.ErrValidation) {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not create feedback")
+		return
+	}
+	writeJSON(w, http.StatusCreated, toFeedbackResponse(feedback))
+}
+
+func (h *Handler) handleListFeedback(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	feedback, err := h.feedback.ListFeedback(r.Context(), id)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "analysis not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not list feedback")
+		return
+	}
+
+	resp := make([]feedbackResponse, 0, len(feedback))
+	for _, f := range feedback {
+		resp = append(resp, toFeedbackResponse(f))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"feedback": resp})
 }
 
 // ---- helpers ----

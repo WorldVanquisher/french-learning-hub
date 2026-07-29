@@ -50,6 +50,35 @@ Endpoints:
 - `POST /entries/{id}/analysis` — analyze an entry, append a new version.
 - `GET  /entries/{id}/analyses` — list an entry's analyses, oldest first.
 
+## Human feedback (milestone 3)
+
+Human judgment about an analysis is stored as immutable `analysis_feedback`
+rows. Each row references exactly one `entry_analyses` row. Feedback is
+append-only, so the full history of decisions is preserved, and neither the
+original `learning_entries` row nor the `entry_analyses` row is ever modified
+when feedback is added. A correction proposes better metadata alongside the
+analysis; it does not overwrite it.
+
+Feedback flow:
+
+HTTP request (POST /analyses/{id}/feedback)
+    -> transport layer
+    -> application FeedbackService
+        -> NewFeedbackInput.Validate (reject invalid feedback)
+        -> domain FeedbackRepository (verify analysis exists, append record)
+
+Statuses: `accepted`, `corrected`, `rejected`. Validation before storage:
+status must be one of the three; when status is `corrected`, both
+`corrected_category` and `corrected_explanation` are required and length
+bounded; for `accepted`/`rejected` corrected content must be absent; `user_note`
+is optional and bounded. Invalid feedback is rejected with HTTP `422`. A
+reference to a non-existent analysis returns HTTP `404`.
+
+Endpoints:
+
+- `POST /analyses/{id}/feedback` — append an immutable feedback record.
+- `GET  /analyses/{id}/feedback` — list an analysis's feedback, oldest first.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.

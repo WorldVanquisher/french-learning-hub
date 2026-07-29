@@ -43,11 +43,13 @@ func run() error {
 
 	entryRepo := sqlite.NewEntryRepository(db)
 	analysisRepo := sqlite.NewAnalysisRepository(db)
+	feedbackRepo := sqlite.NewFeedbackRepository(db)
 
 	entrySvc := application.NewEntryService(entryRepo)
 	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, analyzer.NewRuleBased())
+	feedbackSvc := application.NewFeedbackService(feedbackRepo)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc)
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc)
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,

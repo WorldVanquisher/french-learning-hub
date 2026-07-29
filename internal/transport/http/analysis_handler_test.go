@@ -25,7 +25,7 @@ func (f *fakeAnalysisService) ListAnalyses(ctx context.Context, entryID int64) (
 }
 
 func newAnalysisServer(a AnalysisService) http.Handler {
-	return NewHandler(&fakeService{}, a).Routes()
+	return NewHandler(&fakeService{}, a, nil).Routes()
 }
 
 func TestCreateAnalysis_Success(t *testing.T) {

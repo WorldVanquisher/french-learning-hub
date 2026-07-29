@@ -9,8 +9,11 @@ Milestone 1 delivered persistence: a single backend, SQLite storage, and the
 workflow from question input to storage. Milestone 2 adds validated, versioned
 AI-generated metadata: each entry can be analyzed repeatedly, and every analysis
 is appended as an immutable versioned record. A deterministic rule-based
-analyzer runs locally — no external AI API is called yet. See
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles.
+analyzer runs locally — no external AI API is called yet. Milestone 3 adds
+immutable human feedback: a person can accept, correct, or reject an analysis,
+and every feedback record is appended without ever modifying the entry or the
+analysis it refers to. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for
+design principles.
 
 ## Requirements
 
@@ -21,8 +24,8 @@ analyzer runs locally — no external AI API is called yet. See
 
 ```
 cmd/server            program entry point + graceful shutdown
-internal/domain       Entry/Analysis entities, repository + Analyzer interfaces, validation
-internal/application  use cases (entry create/get/list; entry analysis)
+internal/domain       Entry/Analysis/Feedback entities, repository + Analyzer interfaces, validation
+internal/application  use cases (entry create/get/list; entry analysis; analysis feedback)
 internal/analyzer     local rule-based Analyzer implementation
 internal/storage/sqlite  SQLite repositories + migration runner
 internal/transport/http  HTTP handlers and routing
@@ -34,6 +37,9 @@ Layers are kept separate: HTTP handlers hold no database logic, and the
 application layer depends only on the domain repository and `Analyzer`
 interfaces. The analyzer is pluggable — the rule-based one can later be replaced
 by an external AI provider without touching the transport or storage layers.
+
+Data is append-only where history matters: analyses are versioned per entry, and
+feedback records are immutable. Original entries and analyses are never mutated.
 
 ## Configuration
 
@@ -134,6 +140,51 @@ returns `404`; metadata that fails validation returns `422`.
 ```bash
 curl localhost:8080/entries/1/analyses
 # {"analyses":[ ... ]}
+```
+
+### Add feedback to an analysis
+
+Records immutable human judgment about an analysis. `status` is one of
+`accepted`, `corrected`, or `rejected`. When `status` is `corrected`, both
+`corrected_category` and `corrected_explanation` are required; for the other
+statuses they must be omitted. `user_note` is optional. Adding feedback never
+modifies the entry or the analysis.
+
+```bash
+# Accept
+curl -X POST localhost:8080/analyses/1/feedback \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"accepted","user_note":"looks right"}'
+
+# Correct
+curl -X POST localhost:8080/analyses/1/feedback \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"corrected","corrected_category":"grammar","corrected_explanation":"present tense of manger"}'
+```
+
+Response `201 Created`:
+
+```json
+{
+  "id": 1,
+  "analysis_id": 1,
+  "status": "corrected",
+  "corrected_category": "grammar",
+  "corrected_explanation": "present tense of manger",
+  "user_note": "",
+  "created_at": "2026-07-28T12:00:00Z"
+}
+```
+
+A missing analysis returns `404`; input that fails validation (unknown status,
+missing corrected content, over-length fields, or corrected content on a
+non-corrected status) returns `422`.
+
+### List feedback for an analysis (oldest first)
+
+```bash
+curl localhost:8080/analyses/1/feedback
+# {"feedback":[ ... ]}
 ```
 
 ## Development
