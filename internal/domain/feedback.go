@@ -56,9 +56,12 @@ type NewFeedbackInput struct {
 }
 
 // Validate normalizes and checks feedback input, returning a wrapped
-// ErrValidation on failure. Corrected content is required when the status is
-// "corrected" and rejected otherwise, so a correction always carries the
-// improved metadata and non-corrections never smuggle stray content.
+// ErrValidation on failure. When the status is "corrected", at least one of
+// corrected_category or corrected_explanation must be present (either or both
+// is allowed), so a correction always carries some improved metadata.
+// Blank or whitespace-only corrected values count as absent. For "accepted" and
+// "rejected", corrected content must be absent so non-corrections never smuggle
+// stray metadata.
 func (in *NewFeedbackInput) Validate() error {
 	if !in.Status.valid() {
 		return errWrap("status must be one of: accepted, corrected, rejected")
@@ -73,16 +76,14 @@ func (in *NewFeedbackInput) Validate() error {
 	}
 
 	if in.Status == FeedbackCorrected {
-		if in.CorrectedCategory == nil {
-			return errWrap("corrected_category is required when status is corrected")
+		if in.CorrectedCategory == nil && in.CorrectedExplanation == nil {
+			return errWrap("at least one of corrected_category or corrected_explanation is required when status is corrected")
 		}
-		if in.CorrectedExplanation == nil {
-			return errWrap("corrected_explanation is required when status is corrected")
-		}
-		if len(*in.CorrectedCategory) > 100 {
+		// Length checks apply to whichever field is present.
+		if in.CorrectedCategory != nil && len(*in.CorrectedCategory) > 100 {
 			return errWrap("corrected_category exceeds maximum length")
 		}
-		if len(*in.CorrectedExplanation) > maxExplanationLen {
+		if in.CorrectedExplanation != nil && len(*in.CorrectedExplanation) > maxExplanationLen {
 			return errWrap("corrected_explanation exceeds maximum length")
 		}
 	} else {

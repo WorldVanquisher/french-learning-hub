@@ -80,6 +80,89 @@ func TestFeedbackRepository_Create_AnalysisNotFound(t *testing.T) {
 	}
 }
 
+// countFeedback returns the number of analysis_feedback rows.
+func countFeedback(t *testing.T, r *FeedbackRepository) int {
+	t.Helper()
+	var n int
+	if err := r.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM analysis_feedback`).Scan(&n); err != nil {
+		t.Fatalf("count feedback: %v", err)
+	}
+	return n
+}
+
+// TestFeedbackRepository_Create_RejectsInvalidWithoutInsert proves the
+// repository validates input directly (not only via the service) and writes no
+// row when validation fails.
+func TestFeedbackRepository_Create_RejectsInvalidWithoutInsert(t *testing.T) {
+	entries, analyses, feedback := newTestFeedbackRepos(t)
+	analysis := seedAnalysis(t, entries, analyses)
+	ctx := context.Background()
+
+	invalid := []struct {
+		name string
+		in   domain.NewFeedbackInput
+	}{
+		{"corrected with neither field", domain.NewFeedbackInput{Status: domain.FeedbackCorrected}},
+		{"corrected with both blank", domain.NewFeedbackInput{Status: domain.FeedbackCorrected, CorrectedCategory: sptr("  "), CorrectedExplanation: sptr("  ")}},
+		{"unknown status", domain.NewFeedbackInput{Status: domain.FeedbackStatus("maybe")}},
+		{"accepted with corrected category", domain.NewFeedbackInput{Status: domain.FeedbackAccepted, CorrectedCategory: sptr("grammar")}},
+		{"rejected with corrected explanation", domain.NewFeedbackInput{Status: domain.FeedbackRejected, CorrectedExplanation: sptr("x")}},
+	}
+
+	for _, tc := range invalid {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := feedback.Create(ctx, analysis.ID, tc.in)
+			if !errors.Is(err, domain.ErrValidation) {
+				t.Fatalf("expected ErrValidation, got %v", err)
+			}
+		})
+	}
+
+	if got := countFeedback(t, feedback); got != 0 {
+		t.Fatalf("expected no feedback rows after validation failures, got %d", got)
+	}
+}
+
+func TestFeedbackRepository_Create_CorrectedSingleField(t *testing.T) {
+	entries, analyses, feedback := newTestFeedbackRepos(t)
+	analysis := seedAnalysis(t, entries, analyses)
+	ctx := context.Background()
+
+	// Only corrected_category.
+	catOnly, err := feedback.Create(ctx, analysis.ID, domain.NewFeedbackInput{
+		Status:            domain.FeedbackCorrected,
+		CorrectedCategory: sptr("grammar"),
+	})
+	if err != nil {
+		t.Fatalf("create corrected (category only): %v", err)
+	}
+	if catOnly.CorrectedCategory == nil || *catOnly.CorrectedCategory != "grammar" {
+		t.Fatalf("category not stored: %v", catOnly.CorrectedCategory)
+	}
+	if catOnly.CorrectedExplanation != nil {
+		t.Fatalf("explanation should be absent: %v", catOnly.CorrectedExplanation)
+	}
+
+	// Only corrected_explanation.
+	explOnly, err := feedback.Create(ctx, analysis.ID, domain.NewFeedbackInput{
+		Status:               domain.FeedbackCorrected,
+		CorrectedExplanation: sptr("present tense"),
+	})
+	if err != nil {
+		t.Fatalf("create corrected (explanation only): %v", err)
+	}
+	if explOnly.CorrectedExplanation == nil || *explOnly.CorrectedExplanation != "present tense" {
+		t.Fatalf("explanation not stored: %v", explOnly.CorrectedExplanation)
+	}
+	if explOnly.CorrectedCategory != nil {
+		t.Fatalf("category should be absent: %v", explOnly.CorrectedCategory)
+	}
+
+	if got := countFeedback(t, feedback); got != 2 {
+		t.Fatalf("expected 2 feedback rows, got %d", got)
+	}
+}
+
 func TestFeedbackRepository_ListByAnalysis_PreservesHistory(t *testing.T) {
 	entries, analyses, feedback := newTestFeedbackRepos(t)
 	analysis := seedAnalysis(t, entries, analyses)

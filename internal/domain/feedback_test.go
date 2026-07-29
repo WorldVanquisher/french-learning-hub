@@ -37,18 +37,25 @@ func TestNewFeedbackInput_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "corrected without category",
-			in:      NewFeedbackInput{Status: FeedbackCorrected, CorrectedExplanation: strptr("verb tense")},
+			name: "corrected with only explanation",
+			in:   NewFeedbackInput{Status: FeedbackCorrected, CorrectedExplanation: strptr("verb tense")},
+		},
+		{
+			name: "corrected with only category",
+			in:   NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr("grammar")},
+		},
+		{
+			name: "corrected with blank category but real explanation",
+			in:   NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr("   "), CorrectedExplanation: strptr("x")},
+		},
+		{
+			name:    "corrected with neither field",
+			in:      NewFeedbackInput{Status: FeedbackCorrected},
 			wantErr: true,
 		},
 		{
-			name:    "corrected without explanation",
-			in:      NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr("grammar")},
-			wantErr: true,
-		},
-		{
-			name:    "corrected with blank category (trims to empty)",
-			in:      NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr("   "), CorrectedExplanation: strptr("x")},
+			name:    "corrected with both fields blank",
+			in:      NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr("   "), CorrectedExplanation: strptr("  ")},
 			wantErr: true,
 		},
 		{

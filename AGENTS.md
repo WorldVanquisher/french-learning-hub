@@ -96,7 +96,7 @@ For small and obvious fixes, proceed after inspecting the affected files.
 Use:
 
 * `README.md` for setup and user-facing project information
-* `docs/architecture/` for architectural decisions
+* `docs/ARCHITECTURE.md` for architectural decisions
 * `docs/plans/` for temporary implementation plans when useful
 * `AGENTS.md` for durable instructions to coding agents
 

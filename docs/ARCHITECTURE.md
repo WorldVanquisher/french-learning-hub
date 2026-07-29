@@ -68,11 +68,15 @@ HTTP request (POST /analyses/{id}/feedback)
         -> domain FeedbackRepository (verify analysis exists, append record)
 
 Statuses: `accepted`, `corrected`, `rejected`. Validation before storage:
-status must be one of the three; when status is `corrected`, both
-`corrected_category` and `corrected_explanation` are required and length
-bounded; for `accepted`/`rejected` corrected content must be absent; `user_note`
-is optional and bounded. Invalid feedback is rejected with HTTP `422`. A
-reference to a non-existent analysis returns HTTP `404`.
+status must be one of the three; when status is `corrected`, at least one of
+`corrected_category` or `corrected_explanation` must be present (either or both)
+and any present field is length bounded; for `accepted`/`rejected` corrected
+content must be absent; `user_note` is optional and bounded. Validation runs in
+the application service and again in the SQLite repository (which calls the same
+domain validation method before opening a transaction), so invalid input never
+reaches the database even if the repository is used directly. Invalid feedback
+is rejected with HTTP `422`. A reference to a non-existent analysis returns HTTP
+`404`.
 
 Endpoints:
 

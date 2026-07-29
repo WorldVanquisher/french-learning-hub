@@ -145,10 +145,10 @@ curl localhost:8080/entries/1/analyses
 ### Add feedback to an analysis
 
 Records immutable human judgment about an analysis. `status` is one of
-`accepted`, `corrected`, or `rejected`. When `status` is `corrected`, both
-`corrected_category` and `corrected_explanation` are required; for the other
-statuses they must be omitted. `user_note` is optional. Adding feedback never
-modifies the entry or the analysis.
+`accepted`, `corrected`, or `rejected`. When `status` is `corrected`, at least
+one of `corrected_category` or `corrected_explanation` is required (either or
+both); for the other statuses they must be omitted. `user_note` is optional.
+Adding feedback never modifies the entry or the analysis.
 
 ```bash
 # Accept
@@ -177,8 +177,8 @@ Response `201 Created`:
 ```
 
 A missing analysis returns `404`; input that fails validation (unknown status,
-missing corrected content, over-length fields, or corrected content on a
-non-corrected status) returns `422`.
+a `corrected` status with neither corrected field, over-length fields, or
+corrected content on a non-corrected status) returns `422`.
 
 ### List feedback for an analysis (oldest first)
 

@@ -27,10 +27,18 @@ func NewFeedbackRepository(db *sql.DB) *FeedbackRepository {
 	}
 }
 
-// Create appends a feedback record for analysisID. The analysis existence check
-// and insert run in one transaction. Returns domain.ErrNotFound if the analysis
-// does not exist. The referenced analysis is never modified.
+// Create appends a feedback record for analysisID. Input is validated before
+// any transaction is opened or row written, so invalid input returns a wrapped
+// domain.ErrValidation and never touches the database. The analysis existence
+// check and insert run in one transaction. Returns domain.ErrNotFound if the
+// analysis does not exist. The referenced analysis is never modified.
 func (r *FeedbackRepository) Create(ctx context.Context, analysisID int64, in domain.NewFeedbackInput) (*domain.Feedback, error) {
+	// Validate before touching the database. Uses the domain validation method
+	// so rules are not duplicated here; also normalizes the input in place.
+	if err := in.Validate(); err != nil {
+		return nil, err
+	}
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)

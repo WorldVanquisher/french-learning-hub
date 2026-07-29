@@ -236,6 +236,56 @@ func TestIntegration_FeedbackMissingAnalysis(t *testing.T) {
 	resp.Body.Close()
 }
 
+// TestIntegration_FeedbackCorrectedSingleField proves that, over the full HTTP
+// stack with real validation, a "corrected" feedback carrying only one of the
+// two corrected fields is accepted and stored.
+func TestIntegration_FeedbackCorrectedSingleField(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+"/entries",
+		bytes.NewBufferString(`{"original_input":"Je mange","original_context":"lunch"}`))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("create entry: %v", err)
+	}
+	var entry struct {
+		ID int64 `json:"id"`
+	}
+	decodeBody(t, resp, &entry)
+
+	analysis := postAnalysisFull(t, ctx, srv.URL, entry.ID)
+
+	// Category only: accepted (201).
+	req, _ = http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+"/analyses/"+itoa(analysis.ID)+"/feedback",
+		bytes.NewBufferString(`{"status":"corrected","corrected_category":"grammar"}`))
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post feedback: %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("category-only correction status = %d, want 201", resp.StatusCode)
+	}
+	var created struct {
+		Status               string  `json:"status"`
+		CorrectedCategory    *string `json:"corrected_category"`
+		CorrectedExplanation *string `json:"corrected_explanation"`
+	}
+	decodeBody(t, resp, &created)
+	if created.Status != "corrected" {
+		t.Fatalf("status = %q, want corrected", created.Status)
+	}
+	if created.CorrectedCategory == nil || *created.CorrectedCategory != "grammar" {
+		t.Fatalf("corrected_category not stored: %v", created.CorrectedCategory)
+	}
+	if created.CorrectedExplanation != nil {
+		t.Fatalf("corrected_explanation should be absent, got %v", created.CorrectedExplanation)
+	}
+
+	// Explanation only: also accepted (201).
+	postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"corrected","corrected_explanation":"present tense"}`, http.StatusCreated)
+}
+
 // ---- helpers ----
 
 type analysisBody struct {
