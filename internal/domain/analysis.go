@@ -26,6 +26,63 @@ const maxExplanationLen = 20000
 // maxUncertaintyLen bounds the stored uncertainty note.
 const maxUncertaintyLen = 5000
 
+// TaxonomyVersion identifies the pedagogical category taxonomy every persisted
+// analysis must use. It is a domain concept, not a provider detail: the database
+// stores only these categories regardless of which analyzer produced them.
+const TaxonomyVersion = "fr_l2_taxonomy_v1"
+
+// Category is a pedagogical classification for a learning entry. Only the
+// members of the fr_l2_taxonomy_v1 taxonomy below are valid.
+type Category = string
+
+// The fr_l2_taxonomy_v1 categories. Analyzers (rule-based or provider-backed)
+// must map their output onto exactly these values before storage.
+const (
+	CategoryVocabulary    Category = "vocabulary"
+	CategoryGrammar       Category = "grammar"
+	CategoryMorphology    Category = "morphology"
+	CategoryOrthography   Category = "orthography"
+	CategoryPronunciation Category = "pronunciation"
+	CategoryPragmatics    Category = "pragmatics"
+	CategoryDiscourse     Category = "discourse"
+	CategoryComprehension Category = "comprehension"
+	CategoryTranslation   Category = "translation"
+	CategoryMixed         Category = "mixed"
+	CategoryOther         Category = "other"
+)
+
+// categorySet is the membership set used to validate categories.
+var categorySet = map[Category]struct{}{
+	CategoryVocabulary:    {},
+	CategoryGrammar:       {},
+	CategoryMorphology:    {},
+	CategoryOrthography:   {},
+	CategoryPronunciation: {},
+	CategoryPragmatics:    {},
+	CategoryDiscourse:     {},
+	CategoryComprehension: {},
+	CategoryTranslation:   {},
+	CategoryMixed:         {},
+	CategoryOther:         {},
+}
+
+// Categories returns the taxonomy in a stable order. It is the single source of
+// truth for callers that need the list (e.g. an analyzer building a JSON-schema
+// enum), so the taxonomy is never duplicated per provider.
+func Categories() []Category {
+	return []Category{
+		CategoryVocabulary, CategoryGrammar, CategoryMorphology, CategoryOrthography,
+		CategoryPronunciation, CategoryPragmatics, CategoryDiscourse, CategoryComprehension,
+		CategoryTranslation, CategoryMixed, CategoryOther,
+	}
+}
+
+// ValidCategory reports whether c is a member of the taxonomy.
+func ValidCategory(c Category) bool {
+	_, ok := categorySet[c]
+	return ok
+}
+
 // Analysis is a versioned, immutable record of AI-generated metadata for a
 // single learning entry. Multiple analyses may exist per entry; each new one
 // is appended with an incrementing version and never overwrites the original
@@ -55,15 +112,17 @@ type AnalysisResult struct {
 // ErrValidation on failure. It must be called before storage so invalid or
 // unbounded AI output never reaches the database.
 func (r *AnalysisResult) Validate() error {
-	r.Category = strings.TrimSpace(r.Category)
+	// Normalize the category to the canonical lowercase taxonomy form before
+	// checking membership, so "Grammar" or "  grammar " are accepted as grammar.
+	r.Category = strings.ToLower(strings.TrimSpace(r.Category))
 	r.Explanation = strings.TrimSpace(r.Explanation)
 	r.Uncertainty = strings.TrimSpace(r.Uncertainty)
 
 	if r.Category == "" {
 		return errWrap("category is required")
 	}
-	if len(r.Category) > 100 {
-		return errWrap("category exceeds maximum length")
+	if !ValidCategory(r.Category) {
+		return errWrap("category must be one of the " + TaxonomyVersion + " taxonomy values")
 	}
 	if r.Explanation == "" {
 		return errWrap("explanation is required")

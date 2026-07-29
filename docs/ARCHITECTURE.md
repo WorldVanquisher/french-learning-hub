@@ -97,14 +97,30 @@ the flow is unchanged:
   no cost. Provenance `rule-based` (unchanged).
 - **openai** (opt-in): `analyzer.OpenAI` calls the OpenAI Responses API using
   the standard-library HTTP client (no SDK dependency). It sends `POST
-  /responses` with `store: false`, no tools and no conversation state, a concise
-  developer instruction, and the entry's original input/context as untrusted
-  **data** (never merged into the instruction). It requests strict JSON-schema
-  structured output with `additionalProperties: false`, mapping exactly onto
-  `AnalysisResult`. The model is instructed not to rewrite or normalize the
-  original entry. Provenance is `openai:<model>:french-analysis-v1`, where the
-  prompt version is a code constant. No database columns or migrations were
+  /responses` with `store: false` and no tools or conversation state. The
+  request uses a two-message `input` array: a trusted `developer` message
+  carrying the taxonomy instruction, and a `user` message carrying the entry as
+  a serialized JSON payload (`entry_id`, `entry_content`, `original_context`,
+  …), each as an `input_text` content part. Keeping the entry in its own user
+  message — never merged into the developer instruction — is a deliberate
+  separation of trusted instructions from untrusted entry data, not just a
+  match of the documented example. It requests strict JSON-schema structured
+  output with `additionalProperties: false` and a `category` `enum` derived from
+  the domain taxonomy, mapping exactly onto `AnalysisResult`. The model is
+  instructed not to rewrite or normalize the original entry. Provenance is
+  `openai:<model>:fr_l2_taxonomy_v1`, where the prompt version is a code
+  constant tracking the taxonomy version. No database columns or migrations were
   added — the existing `entry_analyses.analyzer` TEXT column carries provenance.
+
+Categories are a shared domain concept, not a provider detail. The
+`fr_l2_taxonomy_v1` taxonomy (vocabulary, grammar, morphology, orthography,
+pronunciation, pragmatics, discourse, comprehension, translation, mixed, other)
+lives in `domain` as the single source of truth. `AnalysisResult.Validate`
+normalizes the category (trim + lowercase) and rejects any value outside the
+taxonomy, so the database never stores provider-specific category systems. Both
+analyzers map onto it: the rule-based analyzer emits taxonomy values directly
+(e.g. `comprehension`/`grammar`/`vocabulary`/`other`), and the OpenAI analyzer
+constrains output via the schema enum and is validated again before storage.
 
 Configuration is validated at startup (`config.Load`): an unknown `AI_PROVIDER`,
 or `openai` without `OPENAI_API_KEY`/`OPENAI_MODEL`, is a fatal startup error
@@ -145,3 +161,7 @@ These are not part of the first milestone:
 - listening and speaking records
 - Telegram integration
 - adaptive database restructuring
+- automatic retries for transient provider failures (a bounded, validator-aware
+  retry path, e.g. reclassifying when output fails schema/taxonomy validation).
+  Deliberately not implemented in this milestone: a failed OpenAI request
+  currently surfaces `502`/`504` and stores nothing, with no retry.

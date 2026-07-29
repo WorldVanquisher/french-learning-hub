@@ -76,8 +76,8 @@ func TestIntegration_EntryAnalysisWorkflow(t *testing.T) {
 	if first.Version != 1 {
 		t.Fatalf("first analysis version = %d, want 1", first.Version)
 	}
-	if first.Category != "question" {
-		t.Fatalf("expected category 'question', got %q", first.Category)
+	if first.Category != "comprehension" {
+		t.Fatalf("expected category 'comprehension', got %q", first.Category)
 	}
 	if first.Analyzer != "rule-based" {
 		t.Fatalf("expected analyzer 'rule-based', got %q", first.Analyzer)
@@ -358,7 +358,7 @@ func TestIntegration_OpenAISuccessCreatesOneAnalysis(t *testing.T) {
 	if a.Category != "grammar" {
 		t.Fatalf("category = %q, want grammar", a.Category)
 	}
-	wantProvenance := "openai:gpt-test:french-analysis-v1"
+	wantProvenance := "openai:gpt-test:fr_l2_taxonomy_v1"
 	if a.Analyzer != wantProvenance {
 		t.Fatalf("provenance = %q, want %q", a.Analyzer, wantProvenance)
 	}

@@ -20,7 +20,9 @@ incremental milestones. Implemented so far:
   the original entry, produced by a pluggable `Analyzer`. Two implementations
   exist: a local deterministic rule-based analyzer (the default, no cost) and an
   opt-in OpenAI-backed analyzer selected by `AI_PROVIDER`. Provenance is stored
-  in the existing `analyzer` field (e.g. `openai:<model>:french-analysis-v1`).
+  in the existing `analyzer` field (e.g. `openai:<model>:fr_l2_taxonomy_v1`).
+  Persisted categories use the shared `fr_l2_taxonomy_v1` domain taxonomy; the
+  database never stores provider-specific category systems.
 * Immutable human feedback and corrections attached to analyses.
 
 Inspect the repository before proposing changes; do not assume planned

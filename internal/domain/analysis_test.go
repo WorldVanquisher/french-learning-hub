@@ -23,8 +23,11 @@ func TestAnalysisResult_Validate(t *testing.T) {
 	}{
 		{name: "valid", mutate: func(*AnalysisResult) {}, wantErr: false},
 		{name: "trims and keeps valid", mutate: func(r *AnalysisResult) { r.Category = "  grammar  " }, wantErr: false},
+		{name: "normalizes case", mutate: func(r *AnalysisResult) { r.Category = "Grammar" }, wantErr: false},
 		{name: "empty category", mutate: func(r *AnalysisResult) { r.Category = "  " }, wantErr: true},
-		{name: "category too long", mutate: func(r *AnalysisResult) { r.Category = strings.Repeat("a", 101) }, wantErr: true},
+		{name: "out-of-taxonomy category", mutate: func(r *AnalysisResult) { r.Category = "conjugation" }, wantErr: true},
+		{name: "legacy question category rejected", mutate: func(r *AnalysisResult) { r.Category = "question" }, wantErr: true},
+		{name: "legacy phrase category rejected", mutate: func(r *AnalysisResult) { r.Category = "phrase" }, wantErr: true},
 		{name: "empty explanation", mutate: func(r *AnalysisResult) { r.Explanation = "" }, wantErr: true},
 		{name: "explanation too long", mutate: func(r *AnalysisResult) { r.Explanation = strings.Repeat("a", maxExplanationLen+1) }, wantErr: true},
 		{name: "confidence below zero", mutate: func(r *AnalysisResult) { r.Confidence = -0.1 }, wantErr: true},
@@ -54,12 +57,27 @@ func TestAnalysisResult_Validate(t *testing.T) {
 	}
 }
 
-func TestAnalysisResult_Validate_TrimsCategory(t *testing.T) {
-	r := AnalysisResult{Category: "  grammar  ", Explanation: "  note  ", Confidence: 0.5, Uncertainty: "  caveat  "}
+func TestAnalysisResult_Validate_TrimsAndLowercasesCategory(t *testing.T) {
+	r := AnalysisResult{Category: "  Grammar  ", Explanation: "  note  ", Confidence: 0.5, Uncertainty: "  caveat  "}
 	if err := r.Validate(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if r.Category != "grammar" || r.Explanation != "note" || r.Uncertainty != "caveat" {
-		t.Fatalf("fields not trimmed: %+v", r)
+		t.Fatalf("fields not normalized: %+v", r)
+	}
+}
+
+func TestTaxonomy_CategoriesAllValid(t *testing.T) {
+	cats := Categories()
+	if len(cats) != 11 {
+		t.Fatalf("expected 11 taxonomy categories, got %d", len(cats))
+	}
+	for _, c := range cats {
+		if !ValidCategory(c) {
+			t.Errorf("Categories() returned %q which ValidCategory rejects", c)
+		}
+	}
+	if ValidCategory("question") || ValidCategory("phrase") {
+		t.Error("legacy categories must not be valid under fr_l2_taxonomy_v1")
 	}
 }

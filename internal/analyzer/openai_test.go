@@ -67,7 +67,7 @@ func TestOpenAI_SendsCorrectPathMethodAndAuth(t *testing.T) {
 		gotAuth = r.Header.Get("Authorization")
 		gotContentType = r.Header.Get("Content-Type")
 		io.WriteString(w, okResponseBody(t, analysisPayload{
-			Category: "phrase", Explanation: "ok", Confidence: 0.7,
+			Category: "grammar", Explanation: "ok", Confidence: 0.7,
 		}))
 	})
 
@@ -95,7 +95,7 @@ func TestOpenAI_RequestBodyContract(t *testing.T) {
 		rawBody, _ = io.ReadAll(r.Body)
 		_ = json.Unmarshal(rawBody, &body)
 		io.WriteString(w, okResponseBody(t, analysisPayload{
-			Category: "phrase", Explanation: "ok", Confidence: 0.7,
+			Category: "grammar", Explanation: "ok", Confidence: 0.7,
 		}))
 	})
 
@@ -119,13 +119,44 @@ func TestOpenAI_RequestBodyContract(t *testing.T) {
 	if body.ToolChoice != "none" {
 		t.Errorf("tool_choice = %q, want none", body.ToolChoice)
 	}
-	// Original input and context must be present as data.
-	raw := string(rawBody)
-	if !strings.Contains(raw, entry.OriginalInput) {
-		t.Errorf("request body missing original input")
+
+	// Request must use the developer + user content-array shape, keeping the
+	// trusted instruction and untrusted entry payload in separate messages.
+	if len(body.Input) != 2 {
+		t.Fatalf("expected 2 input messages (developer, user), got %d", len(body.Input))
 	}
-	if !strings.Contains(raw, entry.OriginalContext) {
-		t.Errorf("request body missing original context")
+	dev, usr := body.Input[0], body.Input[1]
+	if dev.Role != "developer" {
+		t.Errorf("first message role = %q, want developer", dev.Role)
+	}
+	if usr.Role != "user" {
+		t.Errorf("second message role = %q, want user", usr.Role)
+	}
+	if len(dev.Content) != 1 || dev.Content[0].Type != "input_text" {
+		t.Errorf("developer content must be a single input_text part, got %+v", dev.Content)
+	}
+	if len(usr.Content) != 1 || usr.Content[0].Type != "input_text" {
+		t.Errorf("user content must be a single input_text part, got %+v", usr.Content)
+	}
+	// The entry must live only in the user message, never in the developer one.
+	if strings.Contains(dev.Content[0].Text, entry.OriginalInput) {
+		t.Errorf("developer instruction must not contain the untrusted entry input")
+	}
+	if !strings.Contains(usr.Content[0].Text, entry.OriginalInput) {
+		t.Errorf("user payload missing original input")
+	}
+	if !strings.Contains(usr.Content[0].Text, entry.OriginalContext) {
+		t.Errorf("user payload missing original context")
+	}
+
+	// Category must be constrained to the shared domain taxonomy via enum.
+	enum, ok := body.Text.Format.Schema["properties"].(map[string]any)["category"].(map[string]any)["enum"]
+	if !ok {
+		t.Fatalf("schema category is missing an enum: %+v", body.Text.Format.Schema["properties"])
+	}
+	enumVals, ok := enum.([]any)
+	if !ok || len(enumVals) != len(domain.Categories()) {
+		t.Fatalf("category enum should list all %d taxonomy values, got %v", len(domain.Categories()), enum)
 	}
 }
 
@@ -153,7 +184,7 @@ func TestOpenAI_ParsesValidResponse(t *testing.T) {
 
 func TestOpenAI_ProvenanceName(t *testing.T) {
 	an := NewOpenAI(testAPIKey, "gpt-4o-mini", "https://api.openai.com/v1", time.Second)
-	want := "openai:gpt-4o-mini:french-analysis-v1"
+	want := "openai:gpt-4o-mini:fr_l2_taxonomy_v1"
 	if got := an.Name(); got != want {
 		t.Fatalf("Name() = %q, want %q", got, want)
 	}
@@ -278,6 +309,20 @@ func TestOpenAI_MissingRequiredFieldFailsValidation(t *testing.T) {
 	_, err := an.Analyze(context.Background(), testEntry())
 	if !errors.Is(err, domain.ErrValidation) {
 		t.Fatalf("expected ErrValidation for missing category, got %v", err)
+	}
+}
+
+func TestOpenAI_OutOfTaxonomyCategoryFailsValidation(t *testing.T) {
+	_, an := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		// A plausible-looking but non-taxonomy category must be rejected, so no
+		// provider-specific category system can reach storage.
+		io.WriteString(w, okResponseBody(t, analysisPayload{
+			Category: "conjugation", Explanation: "ok", Confidence: 0.5,
+		}))
+	})
+	_, err := an.Analyze(context.Background(), testEntry())
+	if !errors.Is(err, domain.ErrValidation) {
+		t.Fatalf("expected ErrValidation for out-of-taxonomy category, got %v", err)
 	}
 }
 

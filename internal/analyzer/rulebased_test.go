@@ -16,9 +16,9 @@ func TestRuleBased_Analyze_Classification(t *testing.T) {
 		input        string
 		wantCategory string
 	}{
-		{name: "question", input: "Qu'est-ce que c'est?", wantCategory: "question"},
-		{name: "phrase", input: "Je suis fatigué", wantCategory: "phrase"},
-		{name: "vocabulary", input: "bonjour", wantCategory: "vocabulary"},
+		{name: "comprehension", input: "Qu'est-ce que c'est?", wantCategory: domain.CategoryComprehension},
+		{name: "grammar", input: "Je suis fatigué", wantCategory: domain.CategoryGrammar},
+		{name: "vocabulary", input: "bonjour", wantCategory: domain.CategoryVocabulary},
 	}
 
 	for _, tc := range tests {
@@ -60,6 +60,9 @@ func TestRuleBased_Analyze_NonAlphabetic(t *testing.T) {
 	res, err := a.Analyze(context.Background(), &domain.Entry{OriginalInput: "123 456"})
 	if err != nil {
 		t.Fatalf("Analyze: %v", err)
+	}
+	if res.Category != domain.CategoryOther {
+		t.Fatalf("expected category %q for non-alphabetic input, got %q", domain.CategoryOther, res.Category)
 	}
 	if res.Confidence != 0.3 {
 		t.Fatalf("expected low confidence 0.3 for non-alphabetic input, got %v", res.Confidence)
