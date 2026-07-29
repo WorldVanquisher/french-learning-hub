@@ -26,7 +26,10 @@ func main() {
 }
 
 func run() error {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
 
 	// Ensure the database directory exists.
 	if dir := filepath.Dir(cfg.DBPath); dir != "" && dir != "." {
@@ -45,9 +48,16 @@ func run() error {
 	analysisRepo := sqlite.NewAnalysisRepository(db)
 	feedbackRepo := sqlite.NewFeedbackRepository(db)
 
+	selectedAnalyzer, err := analyzer.New(cfg.AI)
+	if err != nil {
+		return err
+	}
+
 	entrySvc := application.NewEntryService(entryRepo)
-	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, analyzer.NewRuleBased())
+	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, selectedAnalyzer)
 	feedbackSvc := application.NewFeedbackService(feedbackRepo)
+
+	log.Printf("analyzer provider: %s", cfg.AI.Provider)
 
 	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc)
 

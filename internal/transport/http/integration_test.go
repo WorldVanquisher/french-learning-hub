@@ -4,21 +4,31 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"french-learning-app/internal/analyzer"
 	"french-learning-app/internal/application"
+	"french-learning-app/internal/domain"
 	"french-learning-app/internal/storage/sqlite"
 	transporthttp "french-learning-app/internal/transport/http"
 )
 
-// setupServer wires the real layers (sqlite + analyzer + services + handlers)
-// over a temporary database and returns a running test server.
+// setupServer wires the real layers over a temporary database using the default
+// rule-based analyzer, and returns a running test server.
 func setupServer(t *testing.T) *httptest.Server {
+	return setupServerWithAnalyzer(t, analyzer.NewRuleBased())
+}
+
+// setupServerWithAnalyzer is like setupServer but lets a test inject any
+// domain.Analyzer (e.g. an OpenAI analyzer pointed at a fake provider), so the
+// full HTTP -> service -> analyzer -> storage path can be exercised.
+func setupServerWithAnalyzer(t *testing.T, an domain.Analyzer) *httptest.Server {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "it.db")
 	db, err := sqlite.Open(dbPath)
@@ -31,7 +41,7 @@ func setupServer(t *testing.T) *httptest.Server {
 	analysisRepo := sqlite.NewAnalysisRepository(db)
 	feedbackRepo := sqlite.NewFeedbackRepository(db)
 	entrySvc := application.NewEntryService(entryRepo)
-	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, analyzer.NewRuleBased())
+	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, an)
 	feedbackSvc := application.NewFeedbackService(feedbackRepo)
 
 	srv := httptest.NewServer(transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc).Routes())
@@ -286,6 +296,177 @@ func TestIntegration_FeedbackCorrectedSingleField(t *testing.T) {
 	postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"corrected","corrected_explanation":"present tense"}`, http.StatusCreated)
 }
 
+// fakeProviderResponse builds a well-formed OpenAI Responses API body whose
+// structured output encodes the given analysis fields.
+func fakeProviderResponse(t *testing.T, category, explanation string, confidence float64) string {
+	t.Helper()
+	inner, err := json.Marshal(map[string]any{
+		"category":    category,
+		"explanation": explanation,
+		"confidence":  confidence,
+		"uncertainty": "",
+	})
+	if err != nil {
+		t.Fatalf("marshal inner payload: %v", err)
+	}
+	outer, err := json.Marshal(map[string]any{
+		"status": "completed",
+		"output": []map[string]any{{
+			"type": "message",
+			"content": []map[string]any{{
+				"type": "output_text",
+				"text": string(inner),
+			}},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("marshal outer response: %v", err)
+	}
+	return string(outer)
+}
+
+// TestIntegration_DefaultProviderRuleBased confirms the default wiring uses the
+// rule-based analyzer (provenance "rule-based"), the safe no-cost default.
+func TestIntegration_DefaultProviderRuleBased(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Bonjour","original_context":""}`)
+	a := postAnalysis(t, ctx, srv.URL, entryID)
+	if a.Analyzer != "rule-based" {
+		t.Fatalf("default analyzer = %q, want rule-based", a.Analyzer)
+	}
+}
+
+// TestIntegration_OpenAISuccessCreatesOneAnalysis exercises the full stack with
+// an OpenAI analyzer pointed at a fake provider: one analysis is created and the
+// stored provenance carries provider/model/prompt version.
+func TestIntegration_OpenAISuccessCreatesOneAnalysis(t *testing.T) {
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, fakeProviderResponse(t, "grammar", "present tense", 0.85))
+	}))
+	t.Cleanup(provider.Close)
+
+	an := analyzer.NewOpenAIWithClient("sk-test", "gpt-test", provider.URL, provider.Client())
+	srv := setupServerWithAnalyzer(t, an)
+	ctx := context.Background()
+
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange","original_context":"lunch"}`)
+
+	// Create one analysis; provenance should identify the OpenAI provider.
+	a := postAnalysis(t, ctx, srv.URL, entryID)
+	if a.Category != "grammar" {
+		t.Fatalf("category = %q, want grammar", a.Category)
+	}
+	wantProvenance := "openai:gpt-test:french-analysis-v1"
+	if a.Analyzer != wantProvenance {
+		t.Fatalf("provenance = %q, want %q", a.Analyzer, wantProvenance)
+	}
+
+	// Exactly one analysis stored.
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/entries/"+itoa(entryID)+"/analyses", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("list analyses: %v", err)
+	}
+	var listed struct {
+		Analyses []struct {
+			Analyzer string `json:"analyzer"`
+		} `json:"analyses"`
+	}
+	decodeBody(t, resp, &listed)
+	if len(listed.Analyses) != 1 {
+		t.Fatalf("expected 1 analysis, got %d", len(listed.Analyses))
+	}
+
+	// Original entry data is unchanged after an OpenAI analysis.
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/entries/"+itoa(entryID), nil)
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("get entry: %v", err)
+	}
+	var reloaded struct {
+		OriginalInput   string `json:"original_input"`
+		OriginalContext string `json:"original_context"`
+	}
+	decodeBody(t, resp, &reloaded)
+	if reloaded.OriginalInput != "Je mange" || reloaded.OriginalContext != "lunch" {
+		t.Fatalf("original entry changed: %+v", reloaded)
+	}
+}
+
+// TestIntegration_OpenAIProviderFailureCreatesNoAnalysis proves a provider 500
+// yields HTTP 502 and stores no analysis row.
+func TestIntegration_OpenAIProviderFailureCreatesNoAnalysis(t *testing.T) {
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		io.WriteString(w, `{"error":{"message":"boom"}}`)
+	}))
+	t.Cleanup(provider.Close)
+
+	an := analyzer.NewOpenAIWithClient("sk-test", "gpt-test", provider.URL, provider.Client())
+	srv := setupServerWithAnalyzer(t, an)
+	ctx := context.Background()
+
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange","original_context":"lunch"}`)
+
+	// Provider 5xx -> 502.
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+"/entries/"+itoa(entryID)+"/analysis", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post analysis: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// No analysis stored.
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/entries/"+itoa(entryID)+"/analyses", nil)
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("list analyses: %v", err)
+	}
+	var listed struct {
+		Analyses []json.RawMessage `json:"analyses"`
+	}
+	decodeBody(t, resp, &listed)
+	if len(listed.Analyses) != 0 {
+		t.Fatalf("expected 0 analyses after provider failure, got %d", len(listed.Analyses))
+	}
+}
+
+// TestIntegration_OpenAITimeoutMapsTo504 proves a provider timeout maps to 504.
+func TestIntegration_OpenAITimeoutMapsTo504(t *testing.T) {
+	// The handler stalls longer than the client's timeout so the client aborts
+	// first (producing the 504). It returns on context cancellation or a bounded
+	// timer, whichever comes first, so provider.Close() never deadlocks.
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-time.After(2 * time.Second):
+		}
+	}))
+	t.Cleanup(provider.Close)
+
+	an := analyzer.NewOpenAIWithClient("sk-test", "gpt-test", provider.URL,
+		&http.Client{Timeout: 50 * time.Millisecond})
+	srv := setupServerWithAnalyzer(t, an)
+	ctx := context.Background()
+
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange","original_context":"lunch"}`)
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+"/entries/"+itoa(entryID)+"/analysis", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post analysis: %v", err)
+	}
+	if resp.StatusCode != http.StatusGatewayTimeout {
+		t.Fatalf("status = %d, want 504", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
 // ---- helpers ----
 
 type analysisBody struct {
@@ -343,6 +524,27 @@ func postFeedback(t *testing.T, ctx context.Context, baseURL string, analysisID 
 	if resp.StatusCode != wantStatus {
 		t.Fatalf("post feedback status = %d, want %d", resp.StatusCode, wantStatus)
 	}
+}
+
+// createEntry posts a new entry and returns its id.
+func createEntry(t *testing.T, ctx context.Context, baseURL, body string) int64 {
+	t.Helper()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/entries", bytes.NewBufferString(body))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("create entry: %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create entry status = %d, want 201", resp.StatusCode)
+	}
+	var entry struct {
+		ID int64 `json:"id"`
+	}
+	decodeBody(t, resp, &entry)
+	if entry.ID == 0 {
+		t.Fatal("expected non-zero entry id")
+	}
+	return entry.ID
 }
 
 func decodeBody(t *testing.T, resp *http.Response, v any) {

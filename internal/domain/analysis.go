@@ -2,9 +2,23 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 )
+
+// ErrProviderTimeout is returned when an external analyzer provider does not
+// respond within its configured timeout (or the request context is canceled by
+// a deadline). It maps to HTTP 504 at the transport boundary.
+var ErrProviderTimeout = errors.New("analyzer provider timeout")
+
+// ErrProviderUnavailable is returned when an external analyzer provider fails
+// in a way that is not the caller's fault: network failure, an upstream HTTP
+// error (401/403/429/5xx), or a structurally unusable response (malformed JSON,
+// missing/refused/incomplete output). It maps to HTTP 502 at the transport
+// boundary. Output that is well-formed but fails domain validation is reported
+// as ErrValidation instead, not as this error.
+var ErrProviderUnavailable = errors.New("analyzer provider unavailable")
 
 // maxExplanationLen bounds a stored explanation.
 const maxExplanationLen = 20000

@@ -17,8 +17,10 @@ incremental milestones. Implemented so far:
 * Persistence of learning entries (original input + context), with validation,
   timestamps, and a create/get/list workflow.
 * Validated, versioned AI-generated metadata (analyses) stored separately from
-  the original entry, produced by a pluggable `Analyzer` (currently a local,
-  deterministic rule-based implementation; no external AI provider yet).
+  the original entry, produced by a pluggable `Analyzer`. Two implementations
+  exist: a local deterministic rule-based analyzer (the default, no cost) and an
+  opt-in OpenAI-backed analyzer selected by `AI_PROVIDER`. Provenance is stored
+  in the existing `analyzer` field (e.g. `openai:<model>:french-analysis-v1`).
 * Immutable human feedback and corrections attached to analyses.
 
 Inspect the repository before proposing changes; do not assume planned
@@ -117,5 +119,8 @@ Before declaring a task complete:
 ## Scope Discipline
 
 Do not implement advanced agents, automatic schema rewriting, recommendation
-systems, embeddings, review scheduling, speech processing, an external AI
-provider, or a frontend unless the user explicitly changes the scope.
+systems, embeddings, review scheduling, speech processing, or a frontend unless
+the user explicitly changes the scope. The OpenAI analyzer is the only external
+AI provider integration in scope; do not add automatic fallback, retries,
+streaming, batch analysis, additional providers, or usage/billing dashboards
+without an explicit scope change.

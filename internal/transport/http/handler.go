@@ -228,6 +228,18 @@ func (h *Handler) handleCreateAnalysis(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
+	// Provider failures map to gateway statuses. The message is generic on
+	// purpose: the underlying error may reference the provider, but never the
+	// API key, Authorization header, full provider response, or original
+	// learning content. Detail stays in the wrapped error for server logs.
+	if errors.Is(err, domain.ErrProviderTimeout) {
+		writeError(w, http.StatusGatewayTimeout, "analysis provider timed out")
+		return
+	}
+	if errors.Is(err, domain.ErrProviderUnavailable) {
+		writeError(w, http.StatusBadGateway, "analysis provider unavailable")
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not analyze entry")
 		return

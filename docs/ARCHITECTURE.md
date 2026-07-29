@@ -34,11 +34,11 @@ HTTP request (POST /entries/{id}/analysis)
         -> AnalysisResult.Validate (reject invalid metadata)
         -> domain AnalysisRepository (append versioned record)
 
-The `Analyzer` interface lives at the domain boundary. Milestone 2 ships one
-implementation, a deterministic rule-based analyzer (`internal/analyzer`), so
-the full workflow runs and is testable without any external AI provider. A real
-provider can be added later as another `Analyzer` implementation without
-changing the transport, application, or storage layers.
+The `Analyzer` interface lives at the domain boundary. Milestone 2 ships a
+deterministic rule-based analyzer (`internal/analyzer`) so the full workflow
+runs and is testable without any external AI provider; milestone 4 adds an
+OpenAI-backed implementation behind the same interface (see below), chosen at
+startup without touching the transport, application, or storage layers.
 
 Validation before storage: `category` and `explanation` are required and length
 bounded, `confidence` must be in `[0, 1]`, and `uncertainty` is bounded
@@ -82,6 +82,48 @@ Endpoints:
 
 - `POST /analyses/{id}/feedback` — append an immutable feedback record.
 - `GET  /analyses/{id}/feedback` — list an analysis's feedback, oldest first.
+
+## Pluggable analyzer provider (milestone 4)
+
+The analyzer is selected at startup by `AI_PROVIDER`, with no change to the
+`POST /entries/{id}/analysis` endpoint or its response shape. Provider selection
+lives in a small factory (`analyzer.New`) rather than being spread through
+`main.go`; the chosen `Analyzer` is passed to the existing `AnalysisService`, so
+the flow is unchanged:
+
+    HTTP handler -> AnalysisService -> domain.Analyzer -> AnalysisResult.Validate -> append entry_analyses
+
+- **rule-based** (default): the local deterministic analyzer. No external calls,
+  no cost. Provenance `rule-based` (unchanged).
+- **openai** (opt-in): `analyzer.OpenAI` calls the OpenAI Responses API using
+  the standard-library HTTP client (no SDK dependency). It sends `POST
+  /responses` with `store: false`, no tools and no conversation state, a concise
+  developer instruction, and the entry's original input/context as untrusted
+  **data** (never merged into the instruction). It requests strict JSON-schema
+  structured output with `additionalProperties: false`, mapping exactly onto
+  `AnalysisResult`. The model is instructed not to rewrite or normalize the
+  original entry. Provenance is `openai:<model>:french-analysis-v1`, where the
+  prompt version is a code constant. No database columns or migrations were
+  added — the existing `entry_analyses.analyzer` TEXT column carries provenance.
+
+Configuration is validated at startup (`config.Load`): an unknown `AI_PROVIDER`,
+or `openai` without `OPENAI_API_KEY`/`OPENAI_MODEL`, is a fatal startup error
+rather than a silent fallback. The API key is never logged or placed in error
+messages. `OPENAI_TIMEOUT` (default 8s) is kept below `HTTP_WRITE_TIMEOUT`
+(default 10s) so a provider request cannot normally outlive the response
+deadline.
+
+Error model: provider failures never create an analysis and never fall back to
+rule-based mid-request. A fired timeout (or deadline-exceeded context) wraps
+`ErrProviderTimeout` → HTTP `504`; network failures, upstream HTTP errors
+(401/403/429/5xx), and structurally unusable responses (malformed JSON,
+missing/refused/incomplete output) wrap `ErrProviderUnavailable` → HTTP `502`.
+Well-formed output that fails domain validation stays `ErrValidation` → `422`,
+consistent with the rule-based path. Public error messages are generic; detail
+is preserved through error wrapping for logs and tests but never leaks the API
+key, Authorization header, full provider response, or original learning content.
+Provider error bodies are read through a bounded reader. No retries are
+performed.
 
 ## Design principles
 

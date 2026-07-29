@@ -12,8 +12,10 @@ is appended as an immutable versioned record. A deterministic rule-based
 analyzer runs locally — no external AI API is called yet. Milestone 3 adds
 immutable human feedback: a person can accept, correct, or reject an analysis,
 and every feedback record is appended without ever modifying the entry or the
-analysis it refers to. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for
-design principles.
+analysis it refers to. Milestone 4 makes the analyzer pluggable at runtime: the
+rule-based analyzer remains the default and costs nothing, and an OpenAI-backed
+analyzer can be enabled through configuration without changing any endpoint. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles.
 
 ## Requirements
 
@@ -46,12 +48,54 @@ feedback records are immutable. Original entries and analyses are never mutated.
 Configuration comes from the environment (see [.env.example](.env.example)).
 Defaults work out of the box:
 
-| Variable             | Default        | Description                     |
-| -------------------- | -------------- | ------------------------------- |
-| `PORT`               | `8080`         | HTTP listen port                |
-| `DB_PATH`            | `data/app.db`  | SQLite database file path       |
-| `HTTP_READ_TIMEOUT`  | `10`           | Read timeout (seconds)          |
-| `HTTP_WRITE_TIMEOUT` | `10`           | Write timeout (seconds)         |
+| Variable             | Default                     | Description                                   |
+| -------------------- | --------------------------- | --------------------------------------------- |
+| `PORT`               | `8080`                      | HTTP listen port                              |
+| `DB_PATH`            | `data/app.db`               | SQLite database file path                     |
+| `HTTP_READ_TIMEOUT`  | `10`                        | Read timeout (seconds)                        |
+| `HTTP_WRITE_TIMEOUT` | `10`                        | Write timeout (seconds)                       |
+| `AI_PROVIDER`        | `rule-based`                | Analyzer provider: `rule-based` or `openai`   |
+| `OPENAI_API_KEY`     | _(none)_                    | Required for `openai`; never logged           |
+| `OPENAI_MODEL`       | _(none)_                    | Required for `openai`; the model to use       |
+| `OPENAI_BASE_URL`    | `https://api.openai.com/v1` | API base URL (override for gateways/testing)  |
+| `OPENAI_TIMEOUT`     | `8`                         | Per-request provider timeout (seconds)        |
+
+### Analyzer providers
+
+The analyzer that produces metadata for `POST /entries/{id}/analysis` is
+selected at startup by `AI_PROVIDER`:
+
+- **`rule-based`** (default): a local, deterministic analyzer. It calls no
+  external service and costs nothing. Provenance is stored as `rule-based`.
+- **`openai`** (opt-in): calls the OpenAI Responses API. **API usage is billed
+  by OpenAI and is separate from any ChatGPT subscription.** Provenance is
+  stored as `openai:<model>:french-analysis-v1` so every analysis records which
+  provider, model, and prompt version produced it.
+
+Enable OpenAI through the environment — never place credentials in Git. Provide
+them via your shell or an untracked `.env` file (see [.env.example](.env.example)):
+
+```bash
+# Rule-based (default): no configuration needed.
+go run ./cmd/server
+
+# OpenAI mode: set environment variables (placeholders shown; use your own).
+export AI_PROVIDER=openai
+export OPENAI_API_KEY=sk-your-key-here
+export OPENAI_MODEL=gpt-4o-mini
+go run ./cmd/server
+```
+
+Invalid configuration (unknown `AI_PROVIDER`, or `openai` without an API key or
+model) stops startup with a clear error rather than silently falling back.
+
+If an OpenAI request fails (network error, timeout, upstream 4xx/5xx, malformed
+or refused output), **no analysis record is created**: a provider timeout
+returns `504`, other provider failures return `502`, and the entry and its prior
+analyses are left untouched. There is no automatic fallback to the rule-based
+analyzer during an OpenAI request. `OPENAI_TIMEOUT` defaults below
+`HTTP_WRITE_TIMEOUT` so a provider call cannot normally outlive the HTTP
+response deadline.
 
 ## Running
 
@@ -132,8 +176,13 @@ Response `201 Created`:
 }
 ```
 
+The `analyzer` field records provenance: `rule-based` for the default analyzer,
+or `openai:<model>:french-analysis-v1` when the OpenAI provider is enabled.
+
 Analyzing the same entry again appends `version: 2`, and so on. A missing entry
-returns `404`; metadata that fails validation returns `422`.
+returns `404`; metadata that fails validation returns `422`. When the OpenAI
+provider is enabled, a provider timeout returns `504` and other provider
+failures return `502`; in both cases no analysis is stored.
 
 ### List analyses for an entry (oldest version first)
 
