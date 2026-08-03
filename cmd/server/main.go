@@ -56,10 +56,11 @@ func run() error {
 	entrySvc := application.NewEntryService(entryRepo)
 	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, selectedAnalyzer)
 	feedbackSvc := application.NewFeedbackService(feedbackRepo)
+	effectiveSvc := application.NewEffectiveAnalysisService(analysisRepo, feedbackRepo)
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc)
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc)
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,

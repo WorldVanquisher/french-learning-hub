@@ -26,7 +26,7 @@ func (f *fakeFeedbackService) ListFeedback(ctx context.Context, analysisID int64
 }
 
 func newFeedbackServer(f FeedbackService) http.Handler {
-	return NewHandler(&fakeService{}, nil, f).Routes()
+	return NewHandler(&fakeService{}, nil, f, nil).Routes()
 }
 
 func TestCreateFeedback_Success(t *testing.T) {

@@ -141,6 +141,69 @@ key, Authorization header, full provider response, or original learning content.
 Provider error bodies are read through a bounded reader. No retries are
 performed.
 
+## Effective analysis resolution (milestone 5)
+
+An analysis is immutable and its feedback is append-only, so the *current
+interpretation* of an analysis is not a stored row — it is derived on demand by
+combining the analysis with its latest feedback. Milestone 5 exposes that
+derivation as a strictly read-only projection. Nothing new is persisted; no
+analysis or feedback record is mutated; no table or migration is added.
+
+Resolution flow:
+
+    HTTP request (GET /analyses/{id}/effective)
+        -> transport layer
+        -> application EffectiveAnalysisService
+            -> domain AnalysisRepository.GetByID       (load the analysis)
+            -> domain FeedbackRepository.GetLatestByAnalysis  (load latest feedback only)
+            -> domain.ResolveEffective                 (pure function, no I/O)
+
+`ResolveEffective` is a pure domain function over `(analysis, latestFeedback)`;
+it holds the resolution rules and performs no I/O and no mutation. The
+`EffectiveAnalysis` read-model (`internal/domain/effective.go`) is never stored.
+It carries identity (`AnalysisID`, `EntryID`, `Version`), the original values,
+the effective values (a pointer so it can be absent), a typed `Resolution`, and
+the resolving `FeedbackID` (a pointer so it can be absent).
+
+Only the **latest** feedback decides the outcome. "Latest" is defined
+deterministically as the most recent by `created_at`, breaking ties by `id`
+(`ORDER BY created_at DESC, id DESC LIMIT 1`), computed in the SQLite layer so no
+full history is loaded. `GetLatestByAnalysis` returns `ErrNotFound` when the
+analysis does not exist, and `(nil, nil)` when the analysis exists but has no
+feedback — distinguishing "missing" from "unreviewed".
+
+Resolution is one of four typed states (`domain.Resolution`):
+
+- **`unreviewed`** — no feedback. Effective values equal the original;
+  `FeedbackID` is absent.
+- **`accepted`** — latest feedback accepted. Effective values equal the
+  original; `FeedbackID` set.
+- **`corrected`** — latest feedback corrected. Present corrected fields override
+  the original; absent corrected fields retain the original value; `FeedbackID`
+  set. Corrected categories are constrained to `fr_l2_taxonomy_v1` at feedback
+  validation time.
+- **`rejected`** — latest feedback rejected. There is no effective
+  interpretation, so the effective values are absent (not copied from the
+  original); the original is still reported for reference; `FeedbackID` set.
+
+There is no fallback to older feedback or to a different version: an earlier
+accepted or corrected record never resurfaces after a later rejection. Because
+the projection is recomputed per request, it always reflects the current
+feedback state.
+
+Endpoint:
+
+- `GET /analyses/{id}/effective` — resolve and return the effective analysis. A
+  non-numeric id returns `400`; a missing analysis returns `404`; an unexpected
+  failure returns `500` with a generic message (internal storage errors are not
+  exposed). A `rejected` analysis serializes `"effective": null`.
+
+Corrected-category validation was tightened in this milestone: when
+`corrected_category` is present it is trimmed, lowercased, and rejected unless it
+is a `fr_l2_taxonomy_v1` value (reusing `domain.ValidCategory`, so the taxonomy
+list is not duplicated). This keeps corrected categories consistent with the
+categories analyses themselves must use.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.

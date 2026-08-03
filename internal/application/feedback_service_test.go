@@ -38,6 +38,12 @@ func (f *fakeFeedbackRepo) ListByAnalysis(_ context.Context, analysisID int64) (
 	return f.listResult, f.listErr
 }
 
+// GetLatestByAnalysis satisfies the interface; FeedbackService tests do not
+// exercise it (it is used by the effective-analysis service, tested separately).
+func (f *fakeFeedbackRepo) GetLatestByAnalysis(_ context.Context, _ int64) (*domain.Feedback, error) {
+	return nil, nil
+}
+
 func strptr(s string) *string { return &s }
 
 func TestFeedbackService_AddFeedback_ValidPassedToRepository(t *testing.T) {

@@ -156,4 +156,6 @@ type AnalysisRepository interface {
 	Create(ctx context.Context, entryID int64, result AnalysisResult, analyzer string) (*Analysis, error)
 	// ListByEntry returns all analyses for entryID, oldest version first.
 	ListByEntry(ctx context.Context, entryID int64) ([]*Analysis, error)
+	// GetByID returns the single analysis with the given id, or ErrNotFound.
+	GetByID(ctx context.Context, id int64) (*Analysis, error)
 }

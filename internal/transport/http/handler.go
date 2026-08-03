@@ -32,16 +32,23 @@ type FeedbackService interface {
 	ListFeedback(ctx context.Context, analysisID int64) ([]*domain.Feedback, error)
 }
 
+// EffectiveService is the subset of effective-analysis behavior the handlers
+// depend on.
+type EffectiveService interface {
+	Resolve(ctx context.Context, analysisID int64) (domain.EffectiveAnalysis, error)
+}
+
 // Handler holds dependencies for the HTTP layer.
 type Handler struct {
-	svc      EntryService
-	analysis AnalysisService
-	feedback FeedbackService
+	svc       EntryService
+	analysis  AnalysisService
+	feedback  FeedbackService
+	effective EffectiveService
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService) *Handler {
-	return &Handler{svc: svc, analysis: analysis, feedback: feedback}
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService) *Handler {
+	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective}
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -55,6 +62,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /entries/{id}/analyses", h.handleListAnalyses)
 	mux.HandleFunc("POST /analyses/{id}/feedback", h.handleCreateFeedback)
 	mux.HandleFunc("GET /analyses/{id}/feedback", h.handleListFeedback)
+	mux.HandleFunc("GET /analyses/{id}/effective", h.handleEffectiveAnalysis)
 	return mux
 }
 
@@ -142,6 +150,40 @@ func toFeedbackResponse(f *domain.Feedback) feedbackResponse {
 		UserNote:             f.UserNote,
 		CreatedAt:            f.CreatedAt.Format(time.RFC3339Nano),
 	}
+}
+
+// analysisValues is the category/explanation pair shared by the original and
+// effective views in the effective-analysis response.
+type analysisValues struct {
+	Category    string `json:"category"`
+	Explanation string `json:"explanation"`
+}
+
+type effectiveAnalysisResponse struct {
+	AnalysisID int64          `json:"analysis_id"`
+	EntryID    int64          `json:"entry_id"`
+	Version    int64          `json:"version"`
+	Original   analysisValues `json:"original"`
+	// Effective is null for a rejected analysis (no current interpretation).
+	Effective  *analysisValues `json:"effective"`
+	Resolution string          `json:"resolution"`
+	// FeedbackID is null for an unreviewed analysis.
+	FeedbackID *int64 `json:"feedback_id"`
+}
+
+func toEffectiveResponse(e domain.EffectiveAnalysis) effectiveAnalysisResponse {
+	resp := effectiveAnalysisResponse{
+		AnalysisID: e.AnalysisID,
+		EntryID:    e.EntryID,
+		Version:    e.Version,
+		Original:   analysisValues{Category: e.Original.Category, Explanation: e.Original.Explanation},
+		Resolution: string(e.Resolution),
+		FeedbackID: e.FeedbackID,
+	}
+	if e.Effective != nil {
+		resp.Effective = &analysisValues{Category: e.Effective.Category, Explanation: e.Effective.Explanation}
+	}
+	return resp
 }
 
 // ---- handlers ----
@@ -326,6 +368,27 @@ func (h *Handler) handleListFeedback(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, toFeedbackResponse(f))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"feedback": resp})
+}
+
+// handleEffectiveAnalysis resolves and returns the current effective
+// interpretation of one analysis. It is read-only and never writes.
+func (h *Handler) handleEffectiveAnalysis(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	eff, err := h.effective.Resolve(r.Context(), id)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "analysis not found")
+		return
+	}
+	if err != nil {
+		// Do not expose internal database errors.
+		writeError(w, http.StatusInternalServerError, "could not resolve effective analysis")
+		return
+	}
+	writeJSON(w, http.StatusOK, toEffectiveResponse(eff))
 }
 
 // ---- helpers ----

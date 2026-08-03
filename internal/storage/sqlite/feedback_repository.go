@@ -114,6 +114,33 @@ func (r *FeedbackRepository) ListByAnalysis(ctx context.Context, analysisID int6
 	return out, nil
 }
 
+// GetLatestByAnalysis returns the single most recent feedback for analysisID,
+// selected deterministically by created_at DESC, id DESC (so identical
+// timestamps are broken by the higher id). It loads only that one row rather
+// than the full history. Returns domain.ErrNotFound when the analysis does not
+// exist, and (nil, nil) when the analysis exists but has no feedback yet.
+func (r *FeedbackRepository) GetLatestByAnalysis(ctx context.Context, analysisID int64) (*domain.Feedback, error) {
+	if err := analysisExists(ctx, r.db, analysisID); err != nil {
+		return nil, err
+	}
+
+	row := r.db.QueryRowContext(ctx,
+		`SELECT id, analysis_id, status, corrected_category, corrected_explanation, user_note, created_at
+		 FROM analysis_feedback
+		 WHERE analysis_id = ?
+		 ORDER BY created_at DESC, id DESC
+		 LIMIT 1`, analysisID)
+	f, err := scanFeedback(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Existing analysis, no feedback yet: distinct from a missing analysis.
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get latest feedback: %w", err)
+	}
+	return f, nil
+}
+
 // querier is satisfied by both *sql.DB and *sql.Tx.
 type querier interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row

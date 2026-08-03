@@ -118,6 +118,22 @@ func (r *AnalysisRepository) ListByEntry(ctx context.Context, entryID int64) ([]
 	return out, nil
 }
 
+// GetByID returns the single analysis with the given id, or domain.ErrNotFound.
+func (r *AnalysisRepository) GetByID(ctx context.Context, id int64) (*domain.Analysis, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT id, entry_id, version, category, explanation, confidence, uncertainty, analyzer, created_at
+		 FROM entry_analyses
+		 WHERE id = ?`, id)
+	a, err := scanAnalysis(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get analysis: %w", err)
+	}
+	return a, nil
+}
+
 func scanAnalysis(s scanner) (*domain.Analysis, error) {
 	var (
 		a          domain.Analysis

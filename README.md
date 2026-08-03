@@ -14,7 +14,10 @@ immutable human feedback: a person can accept, correct, or reject an analysis,
 and every feedback record is appended without ever modifying the entry or the
 analysis it refers to. Milestone 4 makes the analyzer pluggable at runtime: the
 rule-based analyzer remains the default and costs nothing, and an OpenAI-backed
-analyzer can be enabled through configuration without changing any endpoint. See
+analyzer can be enabled through configuration without changing any endpoint.
+Milestone 5 adds effective analysis resolution: a read-only endpoint that
+computes the current interpretation of an analysis by combining it with its
+latest feedback, without storing anything new or mutating any record. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles.
 
 ## Requirements
@@ -27,7 +30,7 @@ analyzer can be enabled through configuration without changing any endpoint. See
 ```
 cmd/server            program entry point + graceful shutdown
 internal/domain       Entry/Analysis/Feedback entities, repository + Analyzer interfaces, validation
-internal/application  use cases (entry create/get/list; entry analysis; analysis feedback)
+internal/application  use cases (entry create/get/list; entry analysis; analysis feedback; effective analysis resolution)
 internal/analyzer     local rule-based Analyzer implementation
 internal/storage/sqlite  SQLite repositories + migration runner
 internal/transport/http  HTTP handlers and routing
@@ -233,8 +236,11 @@ Response `201 Created`:
 ```
 
 A missing analysis returns `404`; input that fails validation (unknown status,
-a `corrected` status with neither corrected field, over-length fields, or
-corrected content on a non-corrected status) returns `422`.
+a `corrected` status with neither corrected field, a `corrected_category`
+outside the `fr_l2_taxonomy_v1` taxonomy, over-length fields, or corrected
+content on a non-corrected status) returns `422`. A `corrected_category` is
+trimmed and lowercased before validation, so `" Grammar "` is accepted and
+stored as `grammar`.
 
 ### List feedback for an analysis (oldest first)
 
@@ -242,6 +248,67 @@ corrected content on a non-corrected status) returns `422`.
 curl localhost:8080/analyses/1/feedback
 # {"feedback":[ ... ]}
 ```
+
+### Get the effective analysis
+
+Computes the *current interpretation* of an analysis by combining the immutable
+analysis with its feedback history, and returns it. This is a read-only
+projection: nothing is stored, and neither the analysis nor its feedback is
+modified. The result is recalculated on every request, so it always reflects the
+latest feedback.
+
+```bash
+curl localhost:8080/analyses/1/effective
+```
+
+Only the **latest** feedback (by `created_at`, then `id`) decides the outcome.
+The response `resolution` is one of four states:
+
+- **`unreviewed`** — no feedback exists. The effective values equal the original
+  analysis and `feedback_id` is `null`.
+- **`accepted`** — the latest feedback accepted the analysis. The effective
+  values equal the original.
+- **`corrected`** — the latest feedback corrected the analysis. Present
+  corrected fields override the original; absent corrected fields retain the
+  original value. Corrected categories use the shared `fr_l2_taxonomy_v1`
+  taxonomy.
+- **`rejected`** — the latest feedback rejected the analysis. There is no
+  effective interpretation, so `effective` is `null` (the original is still
+  returned for reference).
+
+An earlier accepted or corrected record does not resurface after a later
+rejection: resolution never falls back to older feedback.
+
+Response `200 OK` for a `corrected` analysis (category corrected, explanation
+retained):
+
+```json
+{
+  "analysis_id": 1,
+  "entry_id": 5,
+  "version": 2,
+  "original": { "category": "grammar", "explanation": "Original explanation" },
+  "effective": { "category": "morphology", "explanation": "Original explanation" },
+  "resolution": "corrected",
+  "feedback_id": 19
+}
+```
+
+Response `200 OK` for a `rejected` analysis (`effective` is `null`):
+
+```json
+{
+  "analysis_id": 1,
+  "entry_id": 5,
+  "version": 2,
+  "original": { "category": "grammar", "explanation": "Original explanation" },
+  "effective": null,
+  "resolution": "rejected",
+  "feedback_id": 21
+}
+```
+
+A non-numeric id returns `400`; a missing analysis returns `404`.
 
 ## Development
 

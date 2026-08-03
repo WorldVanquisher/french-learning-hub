@@ -5,9 +5,20 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"french-learning-app/internal/domain"
 )
+
+// timeMustParse parses an RFC3339 timestamp for tests, failing on error.
+func timeMustParse(t *testing.T, s string) time.Time {
+	t.Helper()
+	ts, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		t.Fatalf("parse time %q: %v", s, err)
+	}
+	return ts.UTC()
+}
 
 func newTestFeedbackRepos(t *testing.T) (*EntryRepository, *AnalysisRepository, *FeedbackRepository) {
 	t.Helper()
@@ -206,6 +217,122 @@ func TestFeedbackRepository_ListByAnalysis_NotFound(t *testing.T) {
 	_, err := feedback.ListByAnalysis(context.Background(), 9999)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestFeedbackRepository_GetLatestByAnalysis_MissingAnalysis(t *testing.T) {
+	_, _, feedback := newTestFeedbackRepos(t)
+	_, err := feedback.GetLatestByAnalysis(context.Background(), 9999)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for missing analysis, got %v", err)
+	}
+}
+
+func TestFeedbackRepository_GetLatestByAnalysis_NoFeedback(t *testing.T) {
+	entries, analyses, feedback := newTestFeedbackRepos(t)
+	analysis := seedAnalysis(t, entries, analyses)
+
+	// Existing analysis, no feedback: (nil, nil), distinct from ErrNotFound.
+	latest, err := feedback.GetLatestByAnalysis(context.Background(), analysis.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if latest != nil {
+		t.Fatalf("expected nil feedback for analysis with no feedback, got %+v", latest)
+	}
+}
+
+func TestFeedbackRepository_GetLatestByAnalysis_MultipleRecords(t *testing.T) {
+	entries, analyses, feedback := newTestFeedbackRepos(t)
+	analysis := seedAnalysis(t, entries, analyses)
+	ctx := context.Background()
+
+	// created_at increments with each Create (real clock); the last one wins.
+	for _, in := range []domain.NewFeedbackInput{
+		{Status: domain.FeedbackRejected, UserNote: "first"},
+		{Status: domain.FeedbackCorrected, CorrectedCategory: sptr("grammar")},
+		{Status: domain.FeedbackAccepted, UserNote: "last"},
+	} {
+		if _, err := feedback.Create(ctx, analysis.ID, in); err != nil {
+			t.Fatalf("create feedback: %v", err)
+		}
+	}
+
+	latest, err := feedback.GetLatestByAnalysis(ctx, analysis.ID)
+	if err != nil {
+		t.Fatalf("get latest: %v", err)
+	}
+	if latest == nil || latest.Status != domain.FeedbackAccepted {
+		t.Fatalf("expected latest to be the accepted record, got %+v", latest)
+	}
+}
+
+func TestFeedbackRepository_GetLatestByAnalysis_IdenticalTimestampsTieByID(t *testing.T) {
+	entries, analyses, feedback := newTestFeedbackRepos(t)
+	analysis := seedAnalysis(t, entries, analyses)
+	ctx := context.Background()
+
+	// Force identical created_at for every record so ordering must fall back to
+	// id DESC. The repository's now hook is settable within the sqlite package.
+	fixed := timeMustParse(t, "2026-07-29T12:00:00Z")
+	feedback.now = func() time.Time { return fixed }
+
+	// Insert three; the highest id (last inserted) must win despite equal times.
+	first, err := feedback.Create(ctx, analysis.ID, domain.NewFeedbackInput{Status: domain.FeedbackRejected})
+	if err != nil {
+		t.Fatalf("create first: %v", err)
+	}
+	if _, err := feedback.Create(ctx, analysis.ID, domain.NewFeedbackInput{Status: domain.FeedbackCorrected, CorrectedCategory: sptr("grammar")}); err != nil {
+		t.Fatalf("create second: %v", err)
+	}
+	last, err := feedback.Create(ctx, analysis.ID, domain.NewFeedbackInput{Status: domain.FeedbackAccepted})
+	if err != nil {
+		t.Fatalf("create last: %v", err)
+	}
+
+	latest, err := feedback.GetLatestByAnalysis(ctx, analysis.ID)
+	if err != nil {
+		t.Fatalf("get latest: %v", err)
+	}
+	if latest.ID != last.ID {
+		t.Fatalf("tiebreak should pick highest id %d, got %d", last.ID, latest.ID)
+	}
+	if latest.ID == first.ID {
+		t.Fatal("tiebreak picked the oldest row")
+	}
+	if latest.Status != domain.FeedbackAccepted {
+		t.Fatalf("expected accepted (highest id), got %q", latest.Status)
+	}
+}
+
+func TestFeedbackRepository_GetLatestByAnalysis_ByStatus(t *testing.T) {
+	// Each subtest seeds a fresh analysis whose latest feedback has the target
+	// status, confirming that status is surfaced correctly.
+	cases := []struct {
+		name string
+		in   domain.NewFeedbackInput
+		want domain.FeedbackStatus
+	}{
+		{"accepted", domain.NewFeedbackInput{Status: domain.FeedbackAccepted}, domain.FeedbackAccepted},
+		{"corrected", domain.NewFeedbackInput{Status: domain.FeedbackCorrected, CorrectedCategory: sptr("morphology")}, domain.FeedbackCorrected},
+		{"rejected", domain.NewFeedbackInput{Status: domain.FeedbackRejected}, domain.FeedbackRejected},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			entries, analyses, feedback := newTestFeedbackRepos(t)
+			analysis := seedAnalysis(t, entries, analyses)
+			ctx := context.Background()
+			if _, err := feedback.Create(ctx, analysis.ID, tc.in); err != nil {
+				t.Fatalf("create: %v", err)
+			}
+			latest, err := feedback.GetLatestByAnalysis(ctx, analysis.ID)
+			if err != nil {
+				t.Fatalf("get latest: %v", err)
+			}
+			if latest == nil || latest.Status != tc.want {
+				t.Fatalf("latest status = %v, want %v", latest, tc.want)
+			}
+		})
 	}
 }
 

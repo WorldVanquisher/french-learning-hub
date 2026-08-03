@@ -129,3 +129,36 @@ func TestAnalysisRepository_DoesNotMutateEntry(t *testing.T) {
 		t.Fatalf("original entry data changed: %+v", reloaded)
 	}
 }
+
+func TestAnalysisRepository_GetByID(t *testing.T) {
+	entries, analyses := newTestDBRepos(t)
+	ctx := context.Background()
+
+	entry, err := entries.Create(ctx, domain.NewEntryInput{OriginalInput: "bonjour"})
+	if err != nil {
+		t.Fatalf("create entry: %v", err)
+	}
+	created, err := analyses.Create(ctx, entry.ID, sampleResult(), "rule-based")
+	if err != nil {
+		t.Fatalf("create analysis: %v", err)
+	}
+
+	got, err := analyses.GetByID(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.ID != created.ID || got.EntryID != entry.ID || got.Version != created.Version {
+		t.Fatalf("identity mismatch: got %+v, want %+v", got, created)
+	}
+	if got.Category != created.Category || got.Explanation != created.Explanation {
+		t.Fatalf("content mismatch: got %+v", got)
+	}
+}
+
+func TestAnalysisRepository_GetByID_NotFound(t *testing.T) {
+	_, analyses := newTestDBRepos(t)
+	_, err := analyses.GetByID(context.Background(), 9999)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}

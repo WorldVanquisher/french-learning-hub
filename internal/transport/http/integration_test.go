@@ -43,8 +43,9 @@ func setupServerWithAnalyzer(t *testing.T, an domain.Analyzer) *httptest.Server 
 	entrySvc := application.NewEntryService(entryRepo)
 	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, an)
 	feedbackSvc := application.NewFeedbackService(feedbackRepo)
+	effectiveSvc := application.NewEffectiveAnalysisService(analysisRepo, feedbackRepo)
 
-	srv := httptest.NewServer(transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc).Routes())
+	srv := httptest.NewServer(transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc).Routes())
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -467,6 +468,306 @@ func TestIntegration_OpenAITimeoutMapsTo504(t *testing.T) {
 	resp.Body.Close()
 }
 
+// effectiveBody mirrors the effective-analysis response shape.
+type effectiveBody struct {
+	AnalysisID int64 `json:"analysis_id"`
+	EntryID    int64 `json:"entry_id"`
+	Version    int64 `json:"version"`
+	Original   struct {
+		Category    string `json:"category"`
+		Explanation string `json:"explanation"`
+	} `json:"original"`
+	Effective *struct {
+		Category    string `json:"category"`
+		Explanation string `json:"explanation"`
+	} `json:"effective"`
+	Resolution string `json:"resolution"`
+	FeedbackID *int64 `json:"feedback_id"`
+}
+
+// getEffective fetches and decodes the effective analysis for an analysis id.
+func getEffective(t *testing.T, ctx context.Context, baseURL string, analysisID int64) effectiveBody {
+	t.Helper()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/analyses/"+itoa(analysisID)+"/effective", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("get effective: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("effective status = %d, want 200", resp.StatusCode)
+	}
+	var body effectiveBody
+	decodeBody(t, resp, &body)
+	return body
+}
+
+func TestIntegration_Effective_Unreviewed(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange une pomme","original_context":"lunch"}`)
+	analysis := postAnalysisFull(t, ctx, srv.URL, entryID)
+
+	eff := getEffective(t, ctx, srv.URL, analysis.ID)
+	if eff.Resolution != "unreviewed" {
+		t.Fatalf("resolution = %q, want unreviewed", eff.Resolution)
+	}
+	if eff.Effective == nil {
+		t.Fatal("effective should be present for unreviewed")
+	}
+	if eff.Effective.Category != analysis.Category || eff.Effective.Explanation != analysis.Explanation {
+		t.Fatalf("effective should equal original: got %+v, orig cat=%q expl=%q", eff.Effective, analysis.Category, analysis.Explanation)
+	}
+	if eff.FeedbackID != nil {
+		t.Fatalf("feedback id should be null, got %d", *eff.FeedbackID)
+	}
+}
+
+func TestIntegration_Effective_Accepted(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange une pomme","original_context":"lunch"}`)
+	analysis := postAnalysisFull(t, ctx, srv.URL, entryID)
+
+	fbID := postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"accepted"}`, http.StatusCreated)
+
+	eff := getEffective(t, ctx, srv.URL, analysis.ID)
+	if eff.Resolution != "accepted" {
+		t.Fatalf("resolution = %q, want accepted", eff.Resolution)
+	}
+	if eff.Effective == nil || eff.Effective.Category != analysis.Category || eff.Effective.Explanation != analysis.Explanation {
+		t.Fatalf("accepted effective should equal original, got %+v", eff.Effective)
+	}
+	if eff.FeedbackID == nil || *eff.FeedbackID != fbID {
+		t.Fatalf("feedback id = %v, want %d (the accepted feedback)", eff.FeedbackID, fbID)
+	}
+}
+
+func TestIntegration_Effective_CorrectedCategoryOnly(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange une pomme","original_context":"lunch"}`)
+	analysis := postAnalysisFull(t, ctx, srv.URL, entryID)
+
+	fbID := postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"corrected","corrected_category":"morphology"}`, http.StatusCreated)
+
+	eff := getEffective(t, ctx, srv.URL, analysis.ID)
+	if eff.Resolution != "corrected" {
+		t.Fatalf("resolution = %q, want corrected", eff.Resolution)
+	}
+	if eff.Effective.Category != "morphology" {
+		t.Fatalf("effective category = %q, want morphology", eff.Effective.Category)
+	}
+	if eff.Effective.Explanation != analysis.Explanation {
+		t.Fatalf("effective explanation should retain original %q, got %q", analysis.Explanation, eff.Effective.Explanation)
+	}
+	// Original must still reflect the stored analysis.
+	if eff.Original.Category != analysis.Category || eff.Original.Explanation != analysis.Explanation {
+		t.Fatalf("original mutated: got %+v, want cat=%q expl=%q", eff.Original, analysis.Category, analysis.Explanation)
+	}
+	if eff.FeedbackID == nil || *eff.FeedbackID != fbID {
+		t.Fatalf("feedback id = %v, want %d", eff.FeedbackID, fbID)
+	}
+}
+
+func TestIntegration_Effective_CorrectedBothFields(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange une pomme","original_context":"lunch"}`)
+	analysis := postAnalysisFull(t, ctx, srv.URL, entryID)
+
+	fbID := postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"corrected","corrected_category":"morphology","corrected_explanation":"present tense of manger"}`, http.StatusCreated)
+
+	eff := getEffective(t, ctx, srv.URL, analysis.ID)
+	if eff.Resolution != "corrected" {
+		t.Fatalf("resolution = %q, want corrected", eff.Resolution)
+	}
+	// Both supplied corrected fields must override their originals.
+	if eff.Effective.Category != "morphology" || eff.Effective.Explanation != "present tense of manger" {
+		t.Fatalf("both corrected fields should override, got %+v", eff.Effective)
+	}
+	// The original pair must be preserved and must differ from the effective one.
+	if eff.Original.Category != analysis.Category || eff.Original.Explanation != analysis.Explanation {
+		t.Fatalf("original mutated: got %+v", eff.Original)
+	}
+	if eff.FeedbackID == nil || *eff.FeedbackID != fbID {
+		t.Fatalf("feedback id = %v, want %d", eff.FeedbackID, fbID)
+	}
+}
+
+func TestIntegration_Effective_CorrectedExplanationOnly(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange une pomme","original_context":"lunch"}`)
+	analysis := postAnalysisFull(t, ctx, srv.URL, entryID)
+
+	fbID := postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"corrected","corrected_explanation":"present tense of manger"}`, http.StatusCreated)
+
+	eff := getEffective(t, ctx, srv.URL, analysis.ID)
+	if eff.Resolution != "corrected" {
+		t.Fatalf("resolution = %q, want corrected", eff.Resolution)
+	}
+	if eff.Effective.Explanation != "present tense of manger" {
+		t.Fatalf("effective explanation = %q, want corrected", eff.Effective.Explanation)
+	}
+	if eff.Effective.Category != analysis.Category {
+		t.Fatalf("effective category should retain original %q, got %q", analysis.Category, eff.Effective.Category)
+	}
+	// Original unchanged.
+	if eff.Original.Category != analysis.Category || eff.Original.Explanation != analysis.Explanation {
+		t.Fatalf("original mutated: got %+v", eff.Original)
+	}
+	if eff.FeedbackID == nil || *eff.FeedbackID != fbID {
+		t.Fatalf("feedback id = %v, want %d", eff.FeedbackID, fbID)
+	}
+}
+
+func TestIntegration_Effective_Rejected(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange une pomme","original_context":"lunch"}`)
+	analysis := postAnalysisFull(t, ctx, srv.URL, entryID)
+
+	fbID := postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"rejected","user_note":"not a phrase"}`, http.StatusCreated)
+
+	eff := getEffective(t, ctx, srv.URL, analysis.ID)
+	if eff.Resolution != "rejected" {
+		t.Fatalf("resolution = %q, want rejected", eff.Resolution)
+	}
+	if eff.Effective != nil {
+		t.Fatalf("rejected effective must be null, got %+v", eff.Effective)
+	}
+	// Original analysis must still be returned.
+	if eff.Original.Category != analysis.Category || eff.Original.Explanation != analysis.Explanation {
+		t.Fatalf("original should be preserved for rejected, got %+v", eff.Original)
+	}
+	if eff.FeedbackID == nil || *eff.FeedbackID != fbID {
+		t.Fatalf("feedback id = %v, want %d (the rejected feedback)", eff.FeedbackID, fbID)
+	}
+}
+
+// TestIntegration_Effective_LatestWins proves only the latest feedback decides
+// the result: an older accepted/corrected record is ignored after a later
+// rejection.
+func TestIntegration_Effective_LatestWins(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange une pomme","original_context":"lunch"}`)
+	analysis := postAnalysisFull(t, ctx, srv.URL, entryID)
+
+	// Order matters: accepted, then corrected, then rejected last.
+	postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"accepted"}`, http.StatusCreated)
+	postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"corrected","corrected_category":"morphology"}`, http.StatusCreated)
+	rejectedID := postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"rejected"}`, http.StatusCreated)
+
+	eff := getEffective(t, ctx, srv.URL, analysis.ID)
+	if eff.Resolution != "rejected" {
+		t.Fatalf("latest feedback should win: resolution = %q, want rejected", eff.Resolution)
+	}
+	if eff.Effective != nil {
+		t.Fatalf("no older accepted/corrected record should be used after rejection, got %+v", eff.Effective)
+	}
+	// The resolving feedback must be the final rejected record, not an older one.
+	if eff.FeedbackID == nil || *eff.FeedbackID != rejectedID {
+		t.Fatalf("resolving feedback id = %v, want the final rejected feedback %d", eff.FeedbackID, rejectedID)
+	}
+}
+
+// TestIntegration_Effective_Immutability proves resolving the effective analysis
+// changes neither the entry, the analysis, nor the feedback history.
+func TestIntegration_Effective_Immutability(t *testing.T) {
+	srv := setupServer(t)
+	ctx := context.Background()
+	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Je mange une pomme","original_context":"lunch"}`)
+	analysis := postAnalysisFull(t, ctx, srv.URL, entryID)
+
+	postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"corrected","corrected_category":"morphology","corrected_explanation":"changed"}`, http.StatusCreated)
+	postFeedback(t, ctx, srv.URL, analysis.ID, `{"status":"rejected"}`, http.StatusCreated)
+
+	// Resolve twice to be sure repeated reads don't mutate anything.
+	_ = getEffective(t, ctx, srv.URL, analysis.ID)
+	_ = getEffective(t, ctx, srv.URL, analysis.ID)
+
+	// Entry unchanged.
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/entries/"+itoa(entryID), nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("get entry: %v", err)
+	}
+	var entry struct {
+		OriginalInput   string `json:"original_input"`
+		OriginalContext string `json:"original_context"`
+	}
+	decodeBody(t, resp, &entry)
+	if entry.OriginalInput != "Je mange une pomme" || entry.OriginalContext != "lunch" {
+		t.Fatalf("entry mutated: %+v", entry)
+	}
+
+	// Analysis unchanged (still one row, original category/explanation).
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/entries/"+itoa(entryID)+"/analyses", nil)
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("list analyses: %v", err)
+	}
+	var analyses struct {
+		Analyses []struct {
+			Category    string `json:"category"`
+			Explanation string `json:"explanation"`
+		} `json:"analyses"`
+	}
+	decodeBody(t, resp, &analyses)
+	if len(analyses.Analyses) != 1 {
+		t.Fatalf("expected 1 analysis, got %d", len(analyses.Analyses))
+	}
+	if analyses.Analyses[0].Category != analysis.Category || analyses.Analyses[0].Explanation != analysis.Explanation {
+		t.Fatalf("analysis mutated: got %+v", analyses.Analyses[0])
+	}
+
+	// Feedback history unchanged (still two records, oldest first).
+	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/analyses/"+itoa(analysis.ID)+"/feedback", nil)
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("list feedback: %v", err)
+	}
+	var fb struct {
+		Feedback []struct {
+			Status string `json:"status"`
+		} `json:"feedback"`
+	}
+	decodeBody(t, resp, &fb)
+	if len(fb.Feedback) != 2 {
+		t.Fatalf("expected 2 feedback records preserved, got %d", len(fb.Feedback))
+	}
+	if fb.Feedback[0].Status != "corrected" || fb.Feedback[1].Status != "rejected" {
+		t.Fatalf("feedback history changed: %+v", fb.Feedback)
+	}
+}
+
+func TestIntegration_Effective_MissingAnalysis(t *testing.T) {
+	srv := setupServer(t)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL+"/analyses/9999/effective", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
+func TestIntegration_Effective_InvalidID(t *testing.T) {
+	srv := setupServer(t)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL+"/analyses/abc/effective", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
+	}
+	resp.Body.Close()
+}
+
 // ---- helpers ----
 
 type analysisBody struct {
@@ -512,18 +813,25 @@ func postAnalysisFull(t *testing.T, ctx context.Context, baseURL string, entryID
 	return body
 }
 
-// postFeedback posts a feedback body to an analysis and asserts the status.
-func postFeedback(t *testing.T, ctx context.Context, baseURL string, analysisID int64, body string, wantStatus int) {
+// postFeedback posts a feedback body to an analysis, asserts the status, and
+// returns the created feedback id (0 for non-201 responses). Callers that only
+// need the status may ignore the return value.
+func postFeedback(t *testing.T, ctx context.Context, baseURL string, analysisID int64, body string, wantStatus int) int64 {
 	t.Helper()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/analyses/"+itoa(analysisID)+"/feedback", bytes.NewBufferString(body))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("post feedback: %v", err)
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != wantStatus {
+		resp.Body.Close()
 		t.Fatalf("post feedback status = %d, want %d", resp.StatusCode, wantStatus)
 	}
+	var fb struct {
+		ID int64 `json:"id"`
+	}
+	decodeBody(t, resp, &fb)
+	return fb.ID
 }
 
 // createEntry posts a new entry and returns its id.

@@ -78,6 +78,21 @@ func TestNewFeedbackInput_Validate(t *testing.T) {
 			in:      NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr(strings.Repeat("a", 101)), CorrectedExplanation: strptr("x")},
 			wantErr: true,
 		},
+		{
+			name:    "corrected_category legacy question rejected",
+			in:      NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr("question")},
+			wantErr: true,
+		},
+		{
+			name:    "corrected_category legacy phrase rejected",
+			in:      NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr("phrase")},
+			wantErr: true,
+		},
+		{
+			name:    "corrected_category arbitrary value rejected",
+			in:      NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr("conjugation")},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -99,10 +114,29 @@ func TestNewFeedbackInput_Validate(t *testing.T) {
 	}
 }
 
+func TestNewFeedbackInput_Validate_CorrectedCategoryTaxonomy(t *testing.T) {
+	// Every valid taxonomy category must be accepted as a corrected_category.
+	for _, c := range Categories() {
+		in := NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr(c)}
+		if err := in.Validate(); err != nil {
+			t.Fatalf("taxonomy category %q should be accepted, got %v", c, err)
+		}
+	}
+
+	// " Grammar " normalizes (trim + lowercase) to "grammar".
+	in := NewFeedbackInput{Status: FeedbackCorrected, CorrectedCategory: strptr(" Grammar ")}
+	if err := in.Validate(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if in.CorrectedCategory == nil || *in.CorrectedCategory != "grammar" {
+		t.Fatalf("expected normalized 'grammar', got %v", in.CorrectedCategory)
+	}
+}
+
 func TestNewFeedbackInput_Validate_TrimsAndNormalizes(t *testing.T) {
 	in := NewFeedbackInput{
 		Status:               FeedbackCorrected,
-		CorrectedCategory:    strptr("  grammar  "),
+		CorrectedCategory:    strptr("  Grammar  "),
 		CorrectedExplanation: strptr("  wrong tense  "),
 		UserNote:             "  see note  ",
 	}
@@ -110,7 +144,7 @@ func TestNewFeedbackInput_Validate_TrimsAndNormalizes(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if in.CorrectedCategory == nil || *in.CorrectedCategory != "grammar" {
-		t.Fatalf("CorrectedCategory not trimmed: %v", in.CorrectedCategory)
+		t.Fatalf("CorrectedCategory not normalized: %v", in.CorrectedCategory)
 	}
 	if in.CorrectedExplanation == nil || *in.CorrectedExplanation != "wrong tense" {
 		t.Fatalf("CorrectedExplanation not trimmed: %v", in.CorrectedExplanation)

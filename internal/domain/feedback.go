@@ -79,9 +79,16 @@ func (in *NewFeedbackInput) Validate() error {
 		if in.CorrectedCategory == nil && in.CorrectedExplanation == nil {
 			return errWrap("at least one of corrected_category or corrected_explanation is required when status is corrected")
 		}
-		// Length checks apply to whichever field is present.
-		if in.CorrectedCategory != nil && len(*in.CorrectedCategory) > 100 {
-			return errWrap("corrected_category exceeds maximum length")
+		// A corrected category is a persisted category, so it must use the shared
+		// fr_l2_taxonomy_v1 taxonomy. Normalize to lowercase (trimOptional already
+		// trimmed) and validate against the single source of truth, not a copy of
+		// the list. Store the normalized value.
+		if in.CorrectedCategory != nil {
+			normalized := strings.ToLower(*in.CorrectedCategory)
+			if !ValidCategory(normalized) {
+				return errWrap("corrected_category must be one of the " + TaxonomyVersion + " taxonomy values")
+			}
+			in.CorrectedCategory = &normalized
 		}
 		if in.CorrectedExplanation != nil && len(*in.CorrectedExplanation) > maxExplanationLen {
 			return errWrap("corrected_explanation exceeds maximum length")
@@ -117,4 +124,9 @@ type FeedbackRepository interface {
 	// Returns ErrNotFound if the analysis does not exist (distinct from an
 	// existing analysis that simply has no feedback yet).
 	ListByAnalysis(ctx context.Context, analysisID int64) ([]*Feedback, error)
+	// GetLatestByAnalysis returns the single most recent feedback for analysisID,
+	// selected deterministically by created_at DESC, id DESC. Returns
+	// ErrNotFound if the analysis does not exist, and (nil, nil) when the
+	// analysis exists but has no feedback yet.
+	GetLatestByAnalysis(ctx context.Context, analysisID int64) (*Feedback, error)
 }
