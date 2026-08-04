@@ -18,11 +18,15 @@ incremental milestones. Implemented so far:
   timestamps, and a create/get/list workflow.
 * Validated, versioned AI-generated metadata (analyses) stored separately from
   the original entry, produced by a pluggable `Analyzer`. Two implementations
-  exist: a local deterministic rule-based analyzer (the default, no cost) and an
-  opt-in OpenAI-backed analyzer selected by `AI_PROVIDER`. Provenance is stored
-  in the existing `analyzer` field (e.g. `openai:<model>:fr_l2_taxonomy_v1`).
-  Persisted categories use the shared `fr_l2_taxonomy_v1` domain taxonomy; the
-  database never stores provider-specific category systems.
+  exist: a local deterministic rule-based analyzer (the default, no cost) — an
+  explainable, uncertainty-aware named rule engine that reports matched rules,
+  a heuristic confidence score, and an advisory `NeedsAI` signal (which never
+  triggers an API call) — and an opt-in OpenAI-backed analyzer selected by
+  `AI_PROVIDER`. Provenance is stored in the existing `analyzer` field, versioned
+  per implementation (e.g. `rule-based:v2:fr_l2_taxonomy_v1`,
+  `openai:<model>:fr_l2_taxonomy_v1`). Persisted categories use the shared
+  `fr_l2_taxonomy_v1` domain taxonomy; the database never stores
+  provider-specific category systems.
 * Immutable human feedback and corrections attached to analyses.
 
 Inspect the repository before proposing changes; do not assume planned

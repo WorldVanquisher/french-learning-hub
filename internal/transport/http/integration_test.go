@@ -54,8 +54,9 @@ func TestIntegration_EntryAnalysisWorkflow(t *testing.T) {
 	srv := setupServer(t)
 	ctx := context.Background()
 
-	// 1. Create an entry.
-	createBody := `{"original_input":"Qu'est-ce que c'est?","original_context":"overheard"}`
+	// 1. Create an entry. An explicit whole-utterance comprehension request:
+	// a bare "?" no longer forces the comprehension category (milestone 6).
+	createBody := `{"original_input":"What does this sentence mean?","original_context":"overheard"}`
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+"/entries", bytes.NewBufferString(createBody))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -80,8 +81,8 @@ func TestIntegration_EntryAnalysisWorkflow(t *testing.T) {
 	if first.Category != "comprehension" {
 		t.Fatalf("expected category 'comprehension', got %q", first.Category)
 	}
-	if first.Analyzer != "rule-based" {
-		t.Fatalf("expected analyzer 'rule-based', got %q", first.Analyzer)
+	if first.Analyzer != wantRuleBasedProvenance {
+		t.Fatalf("expected analyzer %q, got %q", wantRuleBasedProvenance, first.Analyzer)
 	}
 
 	second := postAnalysis(t, ctx, srv.URL, entry.ID)
@@ -122,7 +123,7 @@ func TestIntegration_EntryAnalysisWorkflow(t *testing.T) {
 		OriginalContext string `json:"original_context"`
 	}
 	decodeBody(t, resp, &reloaded)
-	if reloaded.OriginalInput != "Qu'est-ce que c'est?" || reloaded.OriginalContext != "overheard" {
+	if reloaded.OriginalInput != "What does this sentence mean?" || reloaded.OriginalContext != "overheard" {
 		t.Fatalf("original entry data changed: %+v", reloaded)
 	}
 }
@@ -326,16 +327,21 @@ func fakeProviderResponse(t *testing.T, category, explanation string, confidence
 	return string(outer)
 }
 
+// wantRuleBasedProvenance is the versioned provenance the local rule engine
+// stores (milestone 6): "rule-based:<ruleset>:<taxonomy>".
+const wantRuleBasedProvenance = "rule-based:v2:fr_l2_taxonomy_v1"
+
 // TestIntegration_DefaultProviderRuleBased confirms the default wiring uses the
-// rule-based analyzer (provenance "rule-based"), the safe no-cost default.
+// local rule-based analyzer, the safe no-cost default, and records its versioned
+// provenance.
 func TestIntegration_DefaultProviderRuleBased(t *testing.T) {
 	srv := setupServer(t)
 	ctx := context.Background()
 
 	entryID := createEntry(t, ctx, srv.URL, `{"original_input":"Bonjour","original_context":""}`)
 	a := postAnalysis(t, ctx, srv.URL, entryID)
-	if a.Analyzer != "rule-based" {
-		t.Fatalf("default analyzer = %q, want rule-based", a.Analyzer)
+	if a.Analyzer != wantRuleBasedProvenance {
+		t.Fatalf("default analyzer = %q, want %q", a.Analyzer, wantRuleBasedProvenance)
 	}
 }
 

@@ -204,6 +204,71 @@ is a `fr_l2_taxonomy_v1` value (reusing `domain.ValidCategory`, so the taxonomy
 list is not duplicated). This keeps corrected categories consistent with the
 categories analyses themselves must use.
 
+## Explainable, uncertainty-aware rule engine (milestone 6)
+
+The local rule-based analyzer's original four-branch `switch` (contains `?`,
+word count) is replaced by a deterministic, explainable rule engine that lives
+entirely in `internal/analyzer` (`assessment.go`). The engine is implementation
+detail: the core domain still knows only `AnalysisResult`. It performs no I/O,
+no network call, uses no clock and no randomness, so the same entry always
+yields byte-identical output.
+
+Read flow:
+
+    Entry
+      -> RuleBased.Assess
+          -> feature extraction        (lowercased input/context, token count, letters, has-context)
+          -> named rule evaluation     (explicit cue rules over input AND context; weak fallbacks only if none fire)
+          -> category score aggregation (strongest match + bounded support; taxonomy-order tie-break)
+          -> confidence and conflict calculation (heuristic score, top-vs-runner-up margin)
+          -> NeedsAI recommendation     (advisory only)
+      -> RuleBased.Analyze              (converts the assessment into AnalysisResult)
+      -> shared AnalysisResult.Validate (same validation as every analyzer)
+      -> immutable analysis storage     (append-only, unchanged)
+
+`Analyze` delegates to `Assess`, so the classification algorithm exists in one
+place and the two can never diverge. The structured `LocalAssessment`
+(category, heuristic confidence, `NeedsAI`, matched rules in deterministic
+order, specific uncertainty reasons) is internal; only the derived
+`AnalysisResult` (category, explanation, confidence, uncertainty) is persisted.
+
+Rules are named and weighted. Explicit cue rules (`explicit_translation_request`,
+`explicit_pronunciation_request`, `explicit_orthography_request`,
+`explicit_morphology_request`, `explicit_grammar_request`,
+`explicit_vocabulary_request`, `explicit_pragmatics_request`,
+`whole_utterance_comprehension`) match specific ASCII/French/CJK cues and are
+strong. Weak fallbacks (`single_token_fallback` → vocabulary,
+`multi_token_fallback` → grammar, `no_linguistic_content` → other) apply only
+when no explicit rule fires, so token counts never dilute or override a specific
+cue. A bare `?` no longer forces `comprehension`. Both input and context are
+inspected (context can strengthen or introduce a match); neither is mutated.
+
+Score aggregation is `strongest match + a bounded, capped contribution from
+supporting matches`, so ten weak substring hits cannot outweigh one specific
+rule. Confidence is a documented **heuristic decision score, not a calibrated
+probability**, derived from strength, compatible support, the top-vs-runner-up
+margin, presence of context, input length, and whether only fallbacks matched;
+all weights and thresholds are named constants.
+
+Key decisions, explicitly:
+
+- `NeedsAI` is **advisory only** — it never triggers an API call in this
+  milestone. It is set when confidence is low, only fallbacks matched, top
+  categories conflict within a small margin, input is very short with no
+  context, no meaningful rule matched, or the category needs semantic judgment
+  (`pragmatics`/`discourse`/`mixed`).
+- No API call occurs inside `RuleBased`.
+- No automatic fallback occurs between providers in either direction.
+- No rules are automatically rewritten, and human feedback does not yet update
+  weights.
+- Provenance is versioned to `rule-based:v2:fr_l2_taxonomy_v1`
+  (`rule-based:<ruleset-version>:<taxonomy-version>`) so records from different
+  rulesets are distinguishable. Historical analyses are not rewritten and no
+  migration is added. The shared taxonomy is unchanged.
+
+This structured assessment is deliberate groundwork for a future hybrid policy
+and evaluation loop; the routing/escalation itself is out of scope here.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.

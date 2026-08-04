@@ -16,9 +16,13 @@ func TestRuleBased_Analyze_Classification(t *testing.T) {
 		input        string
 		wantCategory string
 	}{
-		{name: "comprehension", input: "Qu'est-ce que c'est?", wantCategory: domain.CategoryComprehension},
-		{name: "grammar", input: "Je suis fatigué", wantCategory: domain.CategoryGrammar},
-		{name: "vocabulary", input: "bonjour", wantCategory: domain.CategoryVocabulary},
+		// Explicit whole-utterance comprehension request (a bare "?" no longer
+		// forces comprehension).
+		{name: "comprehension", input: "What does this sentence mean?", wantCategory: domain.CategoryComprehension},
+		// No explicit cue, multiple tokens -> weak grammar fallback.
+		{name: "grammar fallback", input: "Je suis fatigué", wantCategory: domain.CategoryGrammar},
+		// No explicit cue, single token -> weak vocabulary fallback.
+		{name: "vocabulary fallback", input: "bonjour", wantCategory: domain.CategoryVocabulary},
 	}
 
 	for _, tc := range tests {
@@ -64,8 +68,9 @@ func TestRuleBased_Analyze_NonAlphabetic(t *testing.T) {
 	if res.Category != domain.CategoryOther {
 		t.Fatalf("expected category %q for non-alphabetic input, got %q", domain.CategoryOther, res.Category)
 	}
-	if res.Confidence != 0.3 {
-		t.Fatalf("expected low confidence 0.3 for non-alphabetic input, got %v", res.Confidence)
+	// No linguistic content: low heuristic confidence.
+	if res.Confidence < 0 || res.Confidence > 0.30 {
+		t.Fatalf("expected low confidence (<=0.30) for non-alphabetic input, got %v", res.Confidence)
 	}
 	if err := res.Validate(); err != nil {
 		t.Fatalf("result failed validation: %v", err)
@@ -73,7 +78,8 @@ func TestRuleBased_Analyze_NonAlphabetic(t *testing.T) {
 }
 
 func TestRuleBased_Name(t *testing.T) {
-	if got := NewRuleBased().Name(); got != "rule-based" {
-		t.Fatalf("Name() = %q, want %q", got, "rule-based")
+	want := "rule-based:v2:fr_l2_taxonomy_v1"
+	if got := NewRuleBased().Name(); got != want {
+		t.Fatalf("Name() = %q, want %q", got, want)
 	}
 }
