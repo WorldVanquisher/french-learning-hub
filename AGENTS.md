@@ -28,6 +28,11 @@ incremental milestones. Implemented so far:
   `fr_l2_taxonomy_v1` domain taxonomy; the database never stores
   provider-specific category systems.
 * Immutable human feedback and corrections attached to analyses.
+* Read-only projections derived on demand from the stored records: the effective
+  interpretation of a single analysis, and a cross-entry **learning inventory**
+  (latest analysis + latest feedback per entry) with filtering, cursor
+  pagination, an aggregate summary, and a JSONL export. These add no table or
+  migration, mutate nothing, and make no AI call.
 
 Inspect the repository before proposing changes; do not assume planned
 directories, frameworks, services, or database schemas exist until confirmed.

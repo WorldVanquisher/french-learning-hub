@@ -38,17 +38,32 @@ type EffectiveService interface {
 	Resolve(ctx context.Context, analysisID int64) (domain.EffectiveAnalysis, error)
 }
 
+// InventoryService is the subset of learning-inventory behavior the handlers
+// depend on. The transport layer depends only on this narrow interface, not on
+// the concrete application service.
+type InventoryService interface {
+	// ListRecords returns the matching records and the applied (bounded) limit,
+	// so the handler can decide whether a next-page cursor exists.
+	ListRecords(ctx context.Context, q domain.LearningRecordQuery) ([]*domain.LearningRecord, int, error)
+	// ExportRecords returns the matching records for a JSONL export (larger
+	// bound than the list endpoint).
+	ExportRecords(ctx context.Context, q domain.LearningRecordQuery) ([]*domain.LearningRecord, error)
+	// Summary returns aggregate counts across all learning entries.
+	Summary(ctx context.Context) (*domain.LearningInventorySummary, error)
+}
+
 // Handler holds dependencies for the HTTP layer.
 type Handler struct {
 	svc       EntryService
 	analysis  AnalysisService
 	feedback  FeedbackService
 	effective EffectiveService
+	inventory InventoryService
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService) *Handler {
-	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective}
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService) *Handler {
+	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory}
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -63,6 +78,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /analyses/{id}/feedback", h.handleCreateFeedback)
 	mux.HandleFunc("GET /analyses/{id}/feedback", h.handleListFeedback)
 	mux.HandleFunc("GET /analyses/{id}/effective", h.handleEffectiveAnalysis)
+	mux.HandleFunc("GET /learning-records", h.handleListLearningRecords)
+	mux.HandleFunc("GET /learning-records/summary", h.handleLearningRecordsSummary)
+	mux.HandleFunc("GET /learning-records/export", h.handleExportLearningRecords)
 	return mux
 }
 
@@ -184,6 +202,94 @@ func toEffectiveResponse(e domain.EffectiveAnalysis) effectiveAnalysisResponse {
 		resp.Effective = &analysisValues{Category: e.Effective.Category, Explanation: e.Effective.Explanation}
 	}
 	return resp
+}
+
+// learningRecordResponse is the wire shape of one inventory record. It is a
+// read-only projection combining an entry, its latest analysis, and that
+// analysis's latest feedback. Analysis-related fields and effective/original are
+// null for an unanalyzed entry; effective is null for a rejected record. It
+// never carries API keys, environment values, or other internal data.
+type learningRecordResponse struct {
+	EntryID         int64  `json:"entry_id"`
+	OriginalInput   string `json:"original_input"`
+	OriginalContext string `json:"original_context"`
+	EntryCreatedAt  string `json:"entry_created_at"`
+	State           string `json:"state"`
+
+	AnalysisID        *int64   `json:"analysis_id"`
+	AnalysisVersion   *int64   `json:"analysis_version"`
+	Analyzer          *string  `json:"analyzer"`
+	Confidence        *float64 `json:"confidence"`
+	Uncertainty       *string  `json:"uncertainty"`
+	AnalysisCreatedAt *string  `json:"analysis_created_at"`
+
+	Original   *analysisValues `json:"original"`
+	Effective  *analysisValues `json:"effective"`
+	FeedbackID *int64          `json:"feedback_id"`
+}
+
+func toLearningRecordResponse(r *domain.LearningRecord) learningRecordResponse {
+	resp := learningRecordResponse{
+		EntryID:         r.EntryID,
+		OriginalInput:   r.OriginalInput,
+		OriginalContext: r.OriginalContext,
+		EntryCreatedAt:  r.EntryCreatedAt.Format(time.RFC3339Nano),
+		State:           string(r.State),
+		AnalysisID:      r.AnalysisID,
+		AnalysisVersion: r.AnalysisVersion,
+		Analyzer:        r.Analyzer,
+		Confidence:      r.Confidence,
+		Uncertainty:     r.Uncertainty,
+		FeedbackID:      r.FeedbackID,
+	}
+	if r.AnalysisCreatedAt != nil {
+		s := r.AnalysisCreatedAt.Format(time.RFC3339Nano)
+		resp.AnalysisCreatedAt = &s
+	}
+	if r.Original != nil {
+		resp.Original = &analysisValues{Category: r.Original.Category, Explanation: r.Original.Explanation}
+	}
+	if r.Effective != nil {
+		resp.Effective = &analysisValues{Category: r.Effective.Category, Explanation: r.Effective.Explanation}
+	}
+	return resp
+}
+
+// learningInventorySummaryResponse is the wire shape of the aggregate summary.
+// State counts sum to total_entries; analyzed_entries + unanalyzed_entries ==
+// total_entries. by_effective_category excludes rejected and unanalyzed records
+// (they have no effective category); by_analyzer counts the latest analysis per
+// analyzed entry.
+type learningInventorySummaryResponse struct {
+	TotalEntries        int64            `json:"total_entries"`
+	AnalyzedEntries     int64            `json:"analyzed_entries"`
+	UnanalyzedEntries   int64            `json:"unanalyzed_entries"`
+	ByState             map[string]int64 `json:"by_state"`
+	ByEffectiveCategory map[string]int64 `json:"by_effective_category"`
+	ByAnalyzer          map[string]int64 `json:"by_analyzer"`
+}
+
+func toSummaryResponse(s *domain.LearningInventorySummary) learningInventorySummaryResponse {
+	byState := make(map[string]int64, len(s.ByState))
+	for k, v := range s.ByState {
+		byState[string(k)] = v
+	}
+	byCategory := make(map[string]int64, len(s.ByEffectiveCategory))
+	for k, v := range s.ByEffectiveCategory {
+		byCategory[string(k)] = v
+	}
+	byAnalyzer := make(map[string]int64, len(s.ByAnalyzer))
+	for k, v := range s.ByAnalyzer {
+		byAnalyzer[k] = v
+	}
+	return learningInventorySummaryResponse{
+		TotalEntries:        s.TotalEntries,
+		AnalyzedEntries:     s.AnalyzedEntries,
+		UnanalyzedEntries:   s.UnanalyzedEntries,
+		ByState:             byState,
+		ByEffectiveCategory: byCategory,
+		ByAnalyzer:          byAnalyzer,
+	}
 }
 
 // ---- handlers ----
@@ -389,6 +495,134 @@ func (h *Handler) handleEffectiveAnalysis(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeJSON(w, http.StatusOK, toEffectiveResponse(eff))
+}
+
+// parseLearningRecordQuery reads the shared inventory filters from the query
+// string into a domain.LearningRecordQuery. It only parses; validation and
+// normalization (including the limit bounds) happen in the application service.
+// A malformed limit or before_entry_id is reported as a wrapped
+// domain.ErrValidation so the handler maps it to 400. Empty filter params are
+// treated as "no filter".
+func parseLearningRecordQuery(r *http.Request) (domain.LearningRecordQuery, error) {
+	q := r.URL.Query()
+	var out domain.LearningRecordQuery
+
+	if v := q.Get("state"); v != "" {
+		state := domain.LearningRecordState(v)
+		out.State = &state
+	}
+	if v := q.Get("category"); v != "" {
+		cat := domain.Category(v)
+		out.Category = &cat
+	}
+	if v := q.Get("analyzer"); v != "" {
+		out.Analyzer = &v
+	}
+	if v := q.Get("limit"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return domain.LearningRecordQuery{}, domain.NewValidationError("limit must be an integer")
+		}
+		out.Limit = n
+	}
+	if v := q.Get("before_entry_id"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return domain.LearningRecordQuery{}, domain.NewValidationError("before_entry_id must be an integer")
+		}
+		out.BeforeEntryID = &n
+	}
+	return out, nil
+}
+
+// handleListLearningRecords lists inventory records (one per entry) with
+// optional filters and descending cursor pagination. It is read-only and
+// performs no AI call. The response carries the page and a next_before_entry_id
+// cursor (null when there is no further page).
+func (h *Handler) handleListLearningRecords(w http.ResponseWriter, r *http.Request) {
+	q, err := parseLearningRecordQuery(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	records, limit, err := h.inventory.ListRecords(r.Context(), q)
+	if errors.Is(err, domain.ErrValidation) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not list learning records")
+		return
+	}
+
+	resp := make([]learningRecordResponse, 0, len(records))
+	for _, rec := range records {
+		resp = append(resp, toLearningRecordResponse(rec))
+	}
+
+	// A full page implies there may be more; the cursor is the last (smallest,
+	// since order is descending) entry id. A short page means we reached the end.
+	var nextCursor *int64
+	if len(records) == limit && limit > 0 {
+		last := records[len(records)-1].EntryID
+		nextCursor = &last
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"records":              resp,
+		"next_before_entry_id": nextCursor,
+	})
+}
+
+// handleLearningRecordsSummary returns aggregate counts across all entries. It
+// is read-only and performs no AI call.
+func (h *Handler) handleLearningRecordsSummary(w http.ResponseWriter, r *http.Request) {
+	summary, err := h.inventory.Summary(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not summarize learning records")
+		return
+	}
+	writeJSON(w, http.StatusOK, toSummaryResponse(summary))
+}
+
+// handleExportLearningRecords streams the inventory as JSONL (newline-delimited
+// JSON): one record object per line, no enclosing array. It is read-only and
+// performs no AI call. Records are written one at a time so the whole export is
+// not buffered in memory; on a write/encode failure it stops (a partial stream
+// with a broken connection, not a silent truncation dressed up as success).
+func (h *Handler) handleExportLearningRecords(w http.ResponseWriter, r *http.Request) {
+	q, err := parseLearningRecordQuery(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	records, err := h.inventory.ExportRecords(r.Context(), q)
+	if errors.Is(err, domain.ErrValidation) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not export learning records")
+		return
+	}
+
+	// Headers are committed before the body; any error mid-stream can no longer
+	// change the status code, so validation/retrieval must finish above first.
+	w.Header().Set("Content-Type", "application/x-ndjson; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+
+	enc := json.NewEncoder(w)
+	for _, rec := range records {
+		// Encode writes the object followed by a newline, giving one JSON object
+		// per line with no outer array.
+		if err := enc.Encode(toLearningRecordResponse(rec)); err != nil {
+			// The connection is broken; stop rather than spin writing to a dead
+			// stream. Nothing further can be signaled to the client.
+			return
+		}
+	}
 }
 
 // ---- helpers ----

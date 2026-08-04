@@ -269,6 +269,95 @@ Key decisions, explicitly:
 This structured assessment is deliberate groundwork for a future hybrid policy
 and evaluation loop; the routing/escalation itself is out of scope here.
 
+## Queryable learning inventory (milestone 7)
+
+The individual records (entries, versioned analyses, append-only feedback) are
+already stored; what was missing was a way to *see the whole collection at once*.
+Milestone 7 adds a read-only **learning inventory**: a cross-entry projection
+that, for each entry, combines its latest analysis and that analysis's latest
+feedback into one current row. Like effective-analysis resolution, it is derived
+on demand — no new table, no migration, no mutation, and no AI call. It is the
+first feature that reads *across* entries rather than operating on one.
+
+Read flow:
+
+    HTTP request (GET /learning-records | /summary | /export)
+        -> transport layer            (parse filters/pagination only)
+        -> application InventoryService (validate + normalize query, bound limit)
+        -> domain InventoryRepository   (single projection query)
+            -> SQLite: latest-analysis + latest-feedback via window functions
+        -> domain.ResolveEffective      (per row, reused unchanged)
+
+The read model is `domain.LearningRecord`: the original entry fields, nilable
+latest-analysis metadata, a `LearningRecordState`, the `original` analysis
+values, the `effective` interpretation, and the resolving `feedback_id`. It is
+never persisted. State is derived, not stored:
+
+- **`unanalyzed`** — no analysis exists. Analysis metadata, `original`, and
+  `effective` are all absent. This is an *inventory* concept and is deliberately
+  **not** a `domain.Resolution` value; the other four states map one-to-one onto
+  the existing resolutions via `StateFromResolution`.
+- **`unreviewed` / `accepted` / `corrected` / `rejected`** — the state of the
+  latest analysis under its latest feedback, exactly as
+  `domain.ResolveEffective` already defines it. `effective` is absent for
+  `rejected` (a rejected analysis has no current interpretation); `original` is
+  always preserved.
+
+### Deterministic latest selection, in one query
+
+All SQL lives in `internal/storage/sqlite`. A single projection built from CTEs
+and window functions avoids an N+1 query per entry:
+
+    WITH la AS (  -- latest analysis per entry
+      ... ROW_NUMBER() OVER (PARTITION BY entry_id ORDER BY version DESC, id DESC) ...
+      WHERE rn = 1
+    ),
+    lf AS (       -- latest feedback per (latest) analysis
+      ... ROW_NUMBER() OVER (PARTITION BY analysis_id ORDER BY created_at DESC, id DESC) ...
+      WHERE rn = 1
+    ),
+    proj AS ( learning_entries LEFT JOIN la LEFT JOIN lf, plus derived state/effective_category )
+
+"Latest" is fully deterministic: analyses by `version DESC, id DESC`, feedback by
+`created_at DESC, id DESC` — the same tie-break rule (`id` breaks equal
+timestamps) that effective-analysis resolution uses, so an inventory row and the
+`/analyses/{id}/effective` endpoint never disagree. Older analysis versions and
+superseded feedback contribute nothing, and every entry yields exactly one row.
+
+The projection computes `state` and `effective_category` in SQL so that
+filtering and cursor pagination happen in the database — a `LIMIT`ed page is
+therefore accurate rather than short after in-memory filtering. The actual
+returned values are still resolved in Go through `domain.ResolveEffective`, so
+the resolution rules live in exactly one place; the SQL expressions exist only
+for correct server-side filtering and aggregation and mirror those rules.
+
+### Filtering, pagination, and the summary
+
+`LearningRecordQuery` (state, effective category, analyzer, limit,
+`before_entry_id`) is validated and normalized in the application service:
+`state` and `category` are trimmed/lowercased and checked against the shared
+vocabularies; `analyzer` is matched **exactly** (provenance strings are
+case-sensitive), never as a substring; a non-positive `before_entry_id` is
+rejected. Limit handling is *normalizing, not rejecting*: a non-positive limit
+falls back to the default and an over-large one is clamped to the max (50/200 for
+the list endpoint, 500/5000 for export). Category filtering uses the **effective**
+category, so **rejected and unanalyzed records — which have no effective
+category — never match a category filter**. Records are ordered by entry id
+descending; `before_entry_id` is a descending cursor, and the list response
+returns `next_before_entry_id` (null at the end) instead of a fabricated total.
+
+The summary uses aggregate SQL over the same projection rather than loading every
+row. State counts sum to the total and every state key is always present (zero
+when none match); `analyzed + unanalyzed == total`; `by_effective_category`
+excludes rejected/unanalyzed (NULL effective category); `by_analyzer` counts the
+latest analysis's provenance per analyzed entry. Summary maps are assembled
+without relying on Go map iteration order, so results are deterministic.
+
+Export streams the same records as JSONL (`application/x-ndjson`), one object per
+line with no enclosing array, written incrementally rather than buffered, and
+stops on a write/encode failure. It never emits API keys, environment values, or
+other internal data, and — like every inventory endpoint — performs no AI call.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.

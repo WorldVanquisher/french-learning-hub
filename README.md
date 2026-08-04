@@ -22,7 +22,12 @@ Milestone 6 replaces the local analyzer's simplistic `switch` with an
 explainable, uncertainty-aware **named rule engine**: it reports which rules
 matched, detects weak or conflicting evidence, produces a heuristic confidence
 score, and computes an advisory `NeedsAI` signal — while remaining fully local,
-deterministic, and free of API calls (no automatic AI escalation). See
+deterministic, and free of API calls (no automatic AI escalation).
+Milestone 7 adds a queryable **learning inventory**: read-only endpoints that
+combine each entry's latest analysis and that analysis's latest feedback into
+one current row per entry, with filtering, cursor pagination, an aggregate
+summary, and a JSONL export. It is a derived projection — nothing new is stored,
+no record is mutated, and no AI call is made. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles.
 
 ## Requirements
@@ -35,7 +40,7 @@ deterministic, and free of API calls (no automatic AI escalation). See
 ```
 cmd/server            program entry point + graceful shutdown
 internal/domain       Entry/Analysis/Feedback entities, repository + Analyzer interfaces, validation
-internal/application  use cases (entry create/get/list; entry analysis; analysis feedback; effective analysis resolution)
+internal/application  use cases (entry create/get/list; entry analysis; analysis feedback; effective analysis resolution; learning inventory)
 internal/analyzer     local rule-based Analyzer + OpenAI Analyzer + named rule engine (assessment)
 internal/storage/sqlite  SQLite repositories + migration runner
 internal/transport/http  HTTP handlers and routing
@@ -340,6 +345,125 @@ Response `200 OK` for a `rejected` analysis (`effective` is `null`):
 ```
 
 A non-numeric id returns `400`; a missing analysis returns `404`.
+
+### Learning inventory
+
+The inventory is a **read-only, cross-entry view**. For each learning entry it
+selects that entry's latest analysis (highest `version`, then highest `id`) and
+that analysis's latest feedback (latest `created_at`, then highest `id`), then
+derives a single current row. It stores nothing new, mutates no record, and
+performs **no AI call**. It is a queryable inventory, not a chatbot, a learning
+map, or a review scheduler.
+
+Each record carries the original entry data, the latest-analysis metadata
+(`null` for an unanalyzed entry), a `state`, the `original` analysis values, the
+`effective` interpretation (which includes human corrections), and the resolving
+`feedback_id`. The `state` is one of:
+
+- **`unanalyzed`** — the entry has no analysis. Analysis fields, `original`, and
+  `effective` are all `null`.
+- **`unreviewed`** — the latest analysis has no feedback. `effective` equals
+  `original`.
+- **`accepted`** — the latest feedback accepted the analysis. `effective` equals
+  `original`.
+- **`corrected`** — the latest feedback corrected it. `effective` reflects the
+  human corrections; `original` is preserved unchanged.
+- **`rejected`** — the latest feedback rejected it. `effective` is `null` (the
+  original is still shown for reference).
+
+`effective` reflects the current interpretation *including human corrections*,
+while `original` always shows the analysis exactly as the analyzer produced it.
+
+#### List learning records
+
+```bash
+curl 'localhost:8080/learning-records?state=corrected&limit=50'
+```
+
+Filters (all optional): `state` (one of the five states above), `category`
+(matches the **effective** category, so rejected and unanalyzed records — which
+have no effective category — never match), `analyzer` (exact match on the latest
+analysis's provenance, not a substring). Pagination: `limit` (default `50`, max
+`200`; out-of-range values are clamped) and `before_entry_id` for descending
+cursor pagination. Records are ordered by entry id descending.
+
+Response `200 OK`:
+
+```json
+{
+  "records": [
+    {
+      "entry_id": 42,
+      "original_input": "Je mange une pomme",
+      "original_context": "describing lunch",
+      "entry_created_at": "2026-08-01T09:00:00Z",
+      "state": "corrected",
+      "analysis_id": 7,
+      "analysis_version": 2,
+      "analyzer": "rule-based:v2:fr_l2_taxonomy_v1",
+      "confidence": 0.5,
+      "uncertainty": "",
+      "analysis_created_at": "2026-08-01T09:05:00Z",
+      "original": { "category": "grammar", "explanation": "present tense" },
+      "effective": { "category": "morphology", "explanation": "present tense" },
+      "feedback_id": 11
+    }
+  ],
+  "next_before_entry_id": 42
+}
+```
+
+`next_before_entry_id` is the cursor for the next page (pass it back as
+`before_entry_id`); it is `null` when there are no more records. This is a
+paginated view, so no total count is included — use the summary for totals. An
+invalid `state`, `category`, or `before_entry_id` returns `400`.
+
+#### Summary
+
+```bash
+curl localhost:8080/learning-records/summary
+```
+
+Aggregate counts across all entries. State counts sum to `total_entries`;
+`analyzed_entries + unanalyzed_entries == total_entries`. `by_effective_category`
+excludes rejected and unanalyzed records (they have no effective category);
+`by_analyzer` counts the latest analysis's provenance per analyzed entry.
+
+```json
+{
+  "total_entries": 6,
+  "analyzed_entries": 4,
+  "unanalyzed_entries": 2,
+  "by_state": {
+    "unanalyzed": 2,
+    "unreviewed": 1,
+    "accepted": 1,
+    "corrected": 1,
+    "rejected": 1
+  },
+  "by_effective_category": { "grammar": 1, "vocabulary": 1, "morphology": 1 },
+  "by_analyzer": { "rule-based:v2:fr_l2_taxonomy_v1": 4 }
+}
+```
+
+#### Export (JSONL)
+
+```bash
+curl localhost:8080/learning-records/export?state=accepted
+```
+
+Streams the inventory as **JSONL / NDJSON**: `Content-Type:
+application/x-ndjson; charset=utf-8`, one record object per line, no enclosing
+array. Each line has the same shape as a list record. It accepts the same
+filters as the list endpoint, uses a larger bound (default `500`, max `5000`),
+and streams line by line rather than buffering the whole export. Records are
+emitted in descending entry-id order. The export never includes API keys,
+environment values, or other internal data, and performs no AI call.
+
+```
+{"entry_id":42,"original_input":"Je mange une pomme","state":"accepted", ...}
+{"entry_id":41,"original_input":"Bonjour","state":"unreviewed", ...}
+```
 
 ## Development
 
