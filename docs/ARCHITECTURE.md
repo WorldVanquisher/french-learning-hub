@@ -358,6 +358,151 @@ line with no enclosing array, written incrementally rather than buffered, and
 stops on a write/encode failure. It never emits API keys, environment values, or
 other internal data, and — like every inventory endpoint — performs no AI call.
 
+## Structured learning capture import (milestone 8)
+
+The learning that happens in an external French discussion (for example in
+ChatGPT) previously had no stable way into this system. Milestone 8 adds one:
+`POST /captures` accepts a versioned `learning_capture_v1` document and turns it
+into a normal learning entry plus, optionally, a version-1 analysis. It is a
+deliberate, narrow contract — **not** a chatbot. The backend makes **no AI
+call**, never contacts ChatGPT or any model, never scrapes or stores a
+conversation transcript, and parses no HTML or Markdown. It ingests only the
+structured fields the client sends.
+
+Import flow:
+
+    HTTP request (POST /captures)
+        -> transport layer            (strict JSON decode; reject unknown/trailing fields)
+        -> application CaptureService
+            -> NewLearningCaptureInput.Validate  (schema version, capture id, source,
+                                                   entry data + analysis via REUSED validation)
+            -> ImportedAnalysisProvenance(source) (server-constructed provenance, one place)
+            -> CaptureFingerprint(prepared)       (deterministic content hash)
+            -> domain CaptureRepository.Create
+        -> SQLite: single transaction
+             check capture_id -> insert entry -> (insert version-1 analysis) -> insert receipt -> commit
+
+    HTTP request (GET /captures/{capture_id})
+        -> transport layer            (router URL-decodes the id)
+        -> application CaptureService.GetCapture (validate/normalize id)
+            -> domain CaptureRepository.GetByCaptureID
+
+### What the client may and may not supply
+
+The public contract is content-only. The client supplies `schema_version`,
+`capture_id`, `source`, `original_input`, `original_context`, optional `analysis`
+(category/explanation/confidence/uncertainty), and optional `discussion_summary`.
+It never supplies database ids, analysis version, timestamps, analyzer
+provenance, feedback status, or effective resolution — those are all derived by
+the server. Strict decoding (`DisallowUnknownFields` plus a trailing-token check)
+rejects unknown fields at the top level and inside `analysis`, and rejects a
+second JSON object after the first.
+
+`schema_version` must be exactly `learning_capture_v1` (a single domain constant,
+not scattered string literals); any other value is a validation error. `source`
+is a typed vocabulary (`chatgpt-web`, `manual`); an unknown source is rejected,
+and there is no free-form source. Crucially, **source is descriptive metadata and
+does not confer trust** — it never changes how the capture is validated or
+stored.
+
+### Reuse, not a second taxonomy
+
+The capture domain does not introduce a parallel validator or category system. An
+imported `analysis` is carried as `ImportedAnalysisInput`, converted to the
+existing `domain.AnalysisResult`, and validated by the **same**
+`AnalysisResult.Validate` every analyzer already uses — so the `fr_l2_taxonomy_v1`
+taxonomy and all bounds are enforced in exactly one place. Entry input and
+context reuse the existing entry validation. If a present analysis is invalid,
+the whole capture fails and nothing is stored.
+
+Analyzer provenance for an imported analysis is server-constructed as
+`imported:<source>:learning_capture_v1` (e.g.
+`imported:chatgpt-web:learning_capture_v1`) by a single domain function, never
+supplied by the client. The imported analysis is stored as an ordinary version-1
+row through the existing `entry_analyses` shape, so it is not special-cased
+anywhere downstream — later analyses of the same entry continue at version 2, 3,
+… and list, feedback, effective-resolution, and inventory all treat it as any
+other analysis.
+
+### Persistence: one receipt table, one transaction
+
+Migration `004_create_learning_captures.sql` adds a `learning_captures` receipt
+table: `capture_id` (UNIQUE — the idempotency key), `entry_id` (UNIQUE, FK to
+`learning_entries` `ON DELETE RESTRICT`), nullable `analysis_id` (UNIQUE, FK to
+`entry_analyses`), `source`, `schema_version`, `discussion_summary`,
+`content_fingerprint`, and `created_at` (RFC3339 text, matching the existing
+convention). It deliberately does **not** duplicate the original input, context,
+category, or explanation — those live in their own tables and the receipt only
+references them. The migration is additive and idempotent
+(`CREATE TABLE IF NOT EXISTS`), so applying it to a milestone-7 database leaves
+existing rows untouched (verified by `TestMigration_UpgradeFromPreM8`).
+
+Creation is atomic in a single SQLite transaction: check whether the `capture_id`
+already exists, insert the entry, insert the version-1 analysis if one is present
+(with server provenance), insert the receipt, and commit. Any failure rolls the
+whole transaction back, so a partial import can never persist (verified by
+forcing failures at the analysis and receipt steps). All capture SQL lives in
+`internal/storage/sqlite`; the domain exposes only a narrow
+`CaptureRepository{Create, GetByCaptureID}` interface, and the SQLite-specific
+uniqueness error is translated to a domain `ErrConflict` before leaving the
+package.
+
+### Idempotency by content fingerprint
+
+Idempotency is keyed on `capture_id` and decided by a deterministic SHA-256
+**content fingerprint** computed over the *normalized* capture content — schema
+version, capture id, source, normalized input/context/summary, whether an
+analysis is present, and the normalized analysis fields. It is computed with
+stdlib crypto only, uses length-prefixed field encoding so field boundaries can't
+collide, and deliberately excludes ids, timestamps, and raw JSON bytes, so
+whitespace or key ordering never affects the decision. The fingerprint never
+leaves the storage layer except as an equality decision and is never logged or
+returned to clients.
+
+- New `capture_id` → insert, `Created=true` (HTTP `201`).
+- Same `capture_id`, same fingerprint → return the existing result,
+  `Created=false`, no new rows (HTTP `200`).
+- Same `capture_id`, different fingerprint → `domain.ErrConflict`, existing
+  capture untouched (HTTP `409`).
+
+Concurrency does not rely on the read alone: the `capture_id` UNIQUE constraint
+is the source of truth. If a concurrent writer wins the race between the
+in-transaction existence check and the receipt insert, the insert fails on the
+constraint; the repository rolls back and re-resolves against the now-committed
+row, returning a replay or a conflict. Concurrent identical submissions therefore
+yield exactly one entry, and concurrent conflicting ones yield one entry and one
+conflict (both verified).
+
+### Result, lookup, and status mapping
+
+`LearningCaptureResult{CaptureID, EntryID, AnalysisID *int64, Created bool}` is
+the creation result; `analysis_id` serializes as explicit JSON `null` when the
+capture carried no analysis. `GET /captures/{capture_id}` returns metadata and
+references only (capture id, schema version, source, entry id, analysis id,
+discussion summary, created-at) — never the fingerprint, and never a duplicate of
+the full entry/analysis content, which is fetched through the existing endpoints.
+
+The transport layer maps outcomes to status codes: `201` new, `200` exact replay,
+`400` invalid/unknown-field/trailing JSON and malformed lookup id, `422`
+unsupported schema and invalid content, `409` changed content, `404` missing
+lookup, `500` unexpected storage failure. Errors use the shared `{"error":"..."}`
+shape with concise messages that never expose SQL, the fingerprint, API keys,
+environment variables, internal error chains, or authorization headers.
+
+### Guarantees
+
+- No AI call, no external request, no conversation scraping, no transcript
+  storage — the backend is not a chatbot and never becomes one here.
+- Original learning input and context are preserved verbatim as a normal entry;
+  imported analyses are separate, versioned metadata, exactly like every other
+  analysis.
+- Imports are idempotent and safe to retry; a differing resubmission conflicts
+  rather than overwriting.
+- Every write is atomic; a partial import never persists.
+- The migration is additive and safe for existing databases.
+- Validation, taxonomy, provenance format, and effective resolution each live in
+  a single place and are reused, not reimplemented.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.

@@ -33,6 +33,18 @@ incremental milestones. Implemented so far:
   (latest analysis + latest feedback per entry) with filtering, cursor
   pagination, an aggregate summary, and a JSONL export. These add no table or
   migration, mutate nothing, and make no AI call.
+* A **structured learning capture import** (`POST /captures`, `GET
+  /captures/{capture_id}`) that ingests a versioned `learning_capture_v1`
+  document — a French discussion the user already had elsewhere — as a normal
+  entry plus an optional version-1 analysis, in one atomic transaction. It is
+  **not a chatbot** and makes **no AI call**: no model is contacted, no
+  conversation is scraped, and only the structured fields are ingested. Imports
+  are idempotent by a client-supplied `capture_id` (decided by a content
+  fingerprint over the receipt table `learning_captures`); a differing
+  resubmission conflicts rather than overwriting. Imported analyses reuse the
+  shared taxonomy, the existing analysis validation, and server-constructed
+  `imported:<source>:learning_capture_v1` provenance, and flow through the
+  feedback, effective-resolution, and inventory features unchanged.
 
 Inspect the repository before proposing changes; do not assume planned
 directories, frameworks, services, or database schemas exist until confirmed.

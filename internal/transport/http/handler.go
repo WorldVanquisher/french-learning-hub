@@ -52,6 +52,17 @@ type InventoryService interface {
 	Summary(ctx context.Context) (*domain.LearningInventorySummary, error)
 }
 
+// CaptureService is the subset of structured-capture behavior the handlers
+// depend on. The transport layer depends only on this narrow interface.
+type CaptureService interface {
+	// ImportCapture validates and atomically persists a capture, returning the
+	// result (Created distinguishes a new capture from an idempotent replay) or
+	// domain.ErrConflict / domain.ErrValidation.
+	ImportCapture(ctx context.Context, in domain.NewLearningCaptureInput) (domain.LearningCaptureResult, error)
+	// GetCapture returns the stored capture receipt for captureID.
+	GetCapture(ctx context.Context, captureID string) (*domain.LearningCapture, error)
+}
+
 // Handler holds dependencies for the HTTP layer.
 type Handler struct {
 	svc       EntryService
@@ -59,11 +70,12 @@ type Handler struct {
 	feedback  FeedbackService
 	effective EffectiveService
 	inventory InventoryService
+	capture   CaptureService
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService) *Handler {
-	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory}
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService) *Handler {
+	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture}
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -81,6 +93,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /learning-records", h.handleListLearningRecords)
 	mux.HandleFunc("GET /learning-records/summary", h.handleLearningRecordsSummary)
 	mux.HandleFunc("GET /learning-records/export", h.handleExportLearningRecords)
+	mux.HandleFunc("POST /captures", h.handleCreateCapture)
+	mux.HandleFunc("GET /captures/{capture_id}", h.handleGetCapture)
 	return mux
 }
 
@@ -292,6 +306,72 @@ func toSummaryResponse(s *domain.LearningInventorySummary) learningInventorySumm
 	}
 }
 
+// captureAnalysisRequest is the optional analysis object inside a capture. It is
+// a typed struct, so strict decoding rejects unknown nested fields too.
+type captureAnalysisRequest struct {
+	Category    string  `json:"category"`
+	Explanation string  `json:"explanation"`
+	Confidence  float64 `json:"confidence"`
+	Uncertainty string  `json:"uncertainty"`
+}
+
+// createCaptureRequest is the learning_capture_v1 request body. Clients supply
+// only the fields below; database ids, analysis version, timestamps, analyzer
+// provenance, feedback status, and effective resolution are never accepted.
+type createCaptureRequest struct {
+	SchemaVersion     string                  `json:"schema_version"`
+	CaptureID         string                  `json:"capture_id"`
+	Source            string                  `json:"source"`
+	OriginalInput     string                  `json:"original_input"`
+	OriginalContext   string                  `json:"original_context"`
+	Analysis          *captureAnalysisRequest `json:"analysis"`
+	DiscussionSummary string                  `json:"discussion_summary"`
+}
+
+// captureResultResponse is the POST /captures response. analysis_id is an
+// explicit JSON null when the capture carried no analysis.
+type captureResultResponse struct {
+	CaptureID  string `json:"capture_id"`
+	EntryID    int64  `json:"entry_id"`
+	AnalysisID *int64 `json:"analysis_id"`
+	Created    bool   `json:"created"`
+}
+
+func toCaptureResultResponse(r domain.LearningCaptureResult) captureResultResponse {
+	return captureResultResponse{
+		CaptureID:  r.CaptureID,
+		EntryID:    r.EntryID,
+		AnalysisID: r.AnalysisID,
+		Created:    r.Created,
+	}
+}
+
+// captureLookupResponse is the GET /captures/{capture_id} response. It returns
+// metadata and references only; it never returns the content fingerprint and
+// never duplicates the full entry or analysis content (available via the
+// existing entry/analysis/inventory endpoints).
+type captureLookupResponse struct {
+	CaptureID         string `json:"capture_id"`
+	SchemaVersion     string `json:"schema_version"`
+	Source            string `json:"source"`
+	EntryID           int64  `json:"entry_id"`
+	AnalysisID        *int64 `json:"analysis_id"`
+	DiscussionSummary string `json:"discussion_summary"`
+	CreatedAt         string `json:"created_at"`
+}
+
+func toCaptureLookupResponse(c *domain.LearningCapture) captureLookupResponse {
+	return captureLookupResponse{
+		CaptureID:         c.CaptureID,
+		SchemaVersion:     c.SchemaVersion,
+		Source:            string(c.Source),
+		EntryID:           c.EntryID,
+		AnalysisID:        c.AnalysisID,
+		DiscussionSummary: c.DiscussionSummary,
+		CreatedAt:         c.CreatedAt.Format(time.RFC3339Nano),
+	}
+}
+
 // ---- handlers ----
 
 func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -495,6 +575,88 @@ func (h *Handler) handleEffectiveAnalysis(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeJSON(w, http.StatusOK, toEffectiveResponse(eff))
+}
+
+// handleCreateCapture accepts one structured learning_capture_v1 capture,
+// validates it, and atomically persists it. It performs no AI call. Status
+// mapping: 201 new capture, 200 exact idempotent replay, 400 invalid JSON, 422
+// unsupported schema / invalid content, 409 same id with changed content, 500
+// unexpected storage failure.
+func (h *Handler) handleCreateCapture(w http.ResponseWriter, r *http.Request) {
+	var req createCaptureRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	// Reject trailing JSON after the first complete object (e.g. two objects, or
+	// junk after the body). io.EOF is the only acceptable next token.
+	if dec.More() {
+		writeError(w, http.StatusBadRequest, "unexpected trailing JSON content")
+		return
+	}
+
+	in := domain.NewLearningCaptureInput{
+		SchemaVersion:     req.SchemaVersion,
+		CaptureID:         req.CaptureID,
+		Source:            domain.CaptureSource(req.Source),
+		OriginalInput:     req.OriginalInput,
+		OriginalContext:   req.OriginalContext,
+		DiscussionSummary: req.DiscussionSummary,
+	}
+	if req.Analysis != nil {
+		in.Analysis = &domain.ImportedAnalysisInput{
+			Category:    req.Analysis.Category,
+			Explanation: req.Analysis.Explanation,
+			Confidence:  req.Analysis.Confidence,
+			Uncertainty: req.Analysis.Uncertainty,
+		}
+	}
+
+	result, err := h.capture.ImportCapture(r.Context(), in)
+	if errors.Is(err, domain.ErrValidation) {
+		// Unsupported schema version and invalid content both surface as 422.
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if errors.Is(err, domain.ErrConflict) {
+		writeError(w, http.StatusConflict, "capture_id already exists with different content")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not import capture")
+		return
+	}
+
+	status := http.StatusCreated
+	if !result.Created {
+		status = http.StatusOK
+	}
+	writeJSON(w, status, toCaptureResultResponse(result))
+}
+
+// handleGetCapture returns a capture receipt by its capture_id. The id is
+// URL-decoded by the router (net/http PathValue) and validated. A malformed id
+// returns 400; a missing capture returns 404. The content fingerprint is never
+// returned.
+func (h *Handler) handleGetCapture(w http.ResponseWriter, r *http.Request) {
+	captureID := r.PathValue("capture_id")
+
+	c, err := h.capture.GetCapture(r.Context(), captureID)
+	if errors.Is(err, domain.ErrValidation) {
+		writeError(w, http.StatusBadRequest, "invalid capture_id")
+		return
+	}
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "capture not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not fetch capture")
+		return
+	}
+	writeJSON(w, http.StatusOK, toCaptureLookupResponse(c))
 }
 
 // parseLearningRecordQuery reads the shared inventory filters from the query

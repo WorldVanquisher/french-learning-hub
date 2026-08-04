@@ -27,7 +27,16 @@ Milestone 7 adds a queryable **learning inventory**: read-only endpoints that
 combine each entry's latest analysis and that analysis's latest feedback into
 one current row per entry, with filtering, cursor pagination, an aggregate
 summary, and a JSONL export. It is a derived projection — nothing new is stored,
-no record is mutated, and no AI call is made. See
+no record is mutated, and no AI call is made.
+Milestone 8 adds a **structured learning capture import**: a single stable
+endpoint that accepts a `learning_capture_v1` JSON document — a French
+discussion the user already had elsewhere (for example in ChatGPT) — and turns
+it into a normal learning entry plus, optionally, a version-1 analysis, in one
+atomic transaction. It is **not a chatbot** and makes **no AI call**: the
+backend never talks to ChatGPT or any model, never scrapes a conversation, and
+only ingests the structured fields the client sends. Imports are idempotent by a
+client-supplied `capture_id`, and imported records flow through the existing
+analysis, feedback, effective-resolution, and inventory features unchanged. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles.
 
 ## Requirements
@@ -464,6 +473,192 @@ environment values, or other internal data, and performs no AI call.
 {"entry_id":42,"original_input":"Je mange une pomme","state":"accepted", ...}
 {"entry_id":41,"original_input":"Bonjour","state":"unreviewed", ...}
 ```
+
+### Structured learning capture import
+
+`POST /captures` ingests one **`learning_capture_v1`** document: a structured
+handoff of a French discussion the user already had elsewhere. It is the stable
+public contract for getting an external discussion into the learning inventory
+without the backend acting as a chatbot.
+
+**This endpoint makes no AI call.** It does not contact ChatGPT or any model,
+does not scrape or store a conversation transcript, and does not parse HTML or
+Markdown. It only accepts the structured fields below and persists them.
+
+The client supplies **only** learning content. Database ids, analysis version,
+timestamps, analyzer provenance, feedback status, and effective resolution are
+never accepted from the client — they are derived by the server. Unknown JSON
+fields are rejected at every level (top level and inside `analysis`).
+
+Request fields:
+
+| Field                | Required | Notes                                                                 |
+| -------------------- | -------- | --------------------------------------------------------------------- |
+| `schema_version`     | yes      | Must be exactly `learning_capture_v1`; any other value returns `422`. |
+| `capture_id`         | yes      | Client-generated idempotency id. Trimmed; portable charset `[A-Za-z0-9][A-Za-z0-9._:-]*` (e.g. a UUID or `manual-2026-08-04-001`). |
+| `source`             | yes      | Typed vocabulary: `chatgpt-web` or `manual`. Unknown sources return `422`. Metadata only — it does **not** confer trust. |
+| `original_input`     | yes      | The learner's original question. Validated like a normal entry.       |
+| `original_context`   | yes      | Surrounding context. Validated like a normal entry.                   |
+| `analysis`           | no       | Optional imported classification (see below).                         |
+| `discussion_summary` | no       | Optional short summary of the discussion. Trimmed, bounded.           |
+
+The optional `analysis` object uses the shared `fr_l2_taxonomy_v1` taxonomy and
+reuses the same validation as any other analysis: `category` (in the taxonomy),
+`explanation` (required, bounded), `confidence` (in `[0, 1]`), and optional
+`uncertainty` (bounded). If the analysis is present but invalid, the **whole
+capture fails and nothing is stored**.
+
+#### Import with an analysis
+
+```bash
+curl -X POST localhost:8080/captures \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "schema_version": "learning_capture_v1",
+    "capture_id": "b1f0c3a2-1e8c-4b0a-9f0e-2a7d6c5b4a30",
+    "source": "chatgpt-web",
+    "original_input": "Je parle japonais ou je parle le japonais ?",
+    "original_context": "Whether language names take an article after parler.",
+    "analysis": {
+      "category": "grammar",
+      "explanation": "After parler a language name is normally used without an article.",
+      "confidence": 0.9,
+      "uncertainty": "Usage may vary when the language is the object."
+    },
+    "discussion_summary": "Compared parler japonais with apprendre le japonais."
+  }'
+```
+
+Response `201 Created`:
+
+```json
+{
+  "capture_id": "b1f0c3a2-1e8c-4b0a-9f0e-2a7d6c5b4a30",
+  "entry_id": 42,
+  "analysis_id": 7,
+  "created": true
+}
+```
+
+The server creates the entry, a **version-1** analysis with server-constructed
+provenance `imported:chatgpt-web:learning_capture_v1`, and a capture receipt —
+all atomically. The entry is then readable at `GET /entries/42`, the analysis at
+`GET /entries/42/analyses`, and the record appears in the learning inventory.
+
+#### Import without an analysis
+
+```bash
+curl -X POST localhost:8080/captures \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "schema_version": "learning_capture_v1",
+    "capture_id": "manual-2026-08-04-001",
+    "source": "manual",
+    "original_input": "Comment dit-on \"apple\" ?",
+    "original_context": "vocabulary lookup",
+    "discussion_summary": "Asked for the French word for apple."
+  }'
+```
+
+Response `201 Created` (note the explicit `null` analysis id):
+
+```json
+{
+  "capture_id": "manual-2026-08-04-001",
+  "entry_id": 43,
+  "analysis_id": null,
+  "created": true
+}
+```
+
+The entry is created with no analysis, so it appears in the inventory as
+`unanalyzed`. It can still be analyzed later through the ordinary
+`POST /entries/{id}/analysis` endpoint, which appends version 1 as usual.
+
+#### Idempotency and conflicts
+
+Imports are idempotent by `capture_id`, decided by a deterministic fingerprint
+over the **normalized** capture content (never over the raw JSON bytes, and
+never including ids or timestamps):
+
+- **New `capture_id`** → `201 Created`, `created: true`.
+- **Same `capture_id`, same content** → `200 OK`, `created: false`, returning the
+  existing ids. No new rows are written, so a retried or duplicated submission is
+  safe.
+- **Same `capture_id`, different content** → `409 Conflict`. The existing capture
+  is never modified.
+
+Concurrent submissions of the same `capture_id` resolve to exactly one stored
+entry; the uniqueness constraint is the source of truth, so a race cannot create
+duplicates.
+
+#### Look up a capture
+
+```bash
+curl localhost:8080/captures/manual-2026-08-04-001
+```
+
+Response `200 OK`:
+
+```json
+{
+  "capture_id": "manual-2026-08-04-001",
+  "schema_version": "learning_capture_v1",
+  "source": "manual",
+  "entry_id": 43,
+  "analysis_id": null,
+  "discussion_summary": "Asked for the French word for apple.",
+  "created_at": "2026-08-04T09:00:00Z"
+}
+```
+
+The lookup returns metadata and references only. It never returns the content
+fingerprint and never duplicates the full entry or analysis content — fetch those
+through the existing entry, analysis, and inventory endpoints. A malformed
+`capture_id` returns `400`; an unknown one returns `404`.
+
+#### How imported records behave in the rest of the system
+
+An imported analysis is an ordinary version-1 analysis, distinguished only by its
+provenance string. It participates in every existing feature with no special
+casing:
+
+- It appears in the learning inventory. With an analysis the state is
+  `unreviewed` and `effective` equals `original`; without one it is
+  `unanalyzed`.
+- Human feedback works normally: accepting keeps it, correcting changes the
+  effective category/explanation, rejecting removes the effective interpretation.
+- The inventory `category` filter matches the **effective** category, so a
+  corrected import is found under its new category and a rejected import matches
+  none.
+- Later analyses of the same entry continue as version 2, 3, and so on.
+
+#### Status codes and error format
+
+| Situation                                   | Status |
+| ------------------------------------------- | ------ |
+| New capture created                         | `201`  |
+| Exact idempotent replay                     | `200`  |
+| Invalid JSON / unknown field / trailing JSON | `400` |
+| Unsupported `schema_version`                | `422`  |
+| Invalid content (source, entry data, analysis) | `422` |
+| Same `capture_id` with changed content      | `409`  |
+| Lookup of a missing capture                 | `404`  |
+| Malformed `capture_id` on lookup            | `400`  |
+| Unexpected storage failure                  | `500`  |
+
+Errors use the shared `{"error":"..."}` shape. Messages are concise and never
+expose SQL, the content fingerprint, API keys, environment variables, internal
+error chains, or authorization headers.
+
+#### Security notes
+
+`source` is descriptive metadata, not an authorization signal: a `chatgpt-web`
+capture is not trusted more than a `manual` one, and the analyzer provenance is
+always constructed on the server. The endpoint is unauthenticated, like the rest
+of this service — do not expose it directly to untrusted networks without putting
+authentication in front of it. It performs no outbound request and reads no
+secret material.
 
 ## Development
 

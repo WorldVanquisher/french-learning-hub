@@ -48,6 +48,7 @@ func run() error {
 	analysisRepo := sqlite.NewAnalysisRepository(db)
 	feedbackRepo := sqlite.NewFeedbackRepository(db)
 	inventoryRepo := sqlite.NewInventoryRepository(db)
+	captureRepo := sqlite.NewCaptureRepository(db)
 
 	selectedAnalyzer, err := analyzer.New(cfg.AI)
 	if err != nil {
@@ -59,10 +60,11 @@ func run() error {
 	feedbackSvc := application.NewFeedbackService(feedbackRepo)
 	effectiveSvc := application.NewEffectiveAnalysisService(analysisRepo, feedbackRepo)
 	inventorySvc := application.NewInventoryService(inventoryRepo)
+	captureSvc := application.NewCaptureService(captureRepo)
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc)
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc)
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,

@@ -41,13 +41,15 @@ func setupServerWithAnalyzer(t *testing.T, an domain.Analyzer) *httptest.Server 
 	analysisRepo := sqlite.NewAnalysisRepository(db)
 	feedbackRepo := sqlite.NewFeedbackRepository(db)
 	inventoryRepo := sqlite.NewInventoryRepository(db)
+	captureRepo := sqlite.NewCaptureRepository(db)
 	entrySvc := application.NewEntryService(entryRepo)
 	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, an)
 	feedbackSvc := application.NewFeedbackService(feedbackRepo)
 	effectiveSvc := application.NewEffectiveAnalysisService(analysisRepo, feedbackRepo)
 	inventorySvc := application.NewInventoryService(inventoryRepo)
+	captureSvc := application.NewCaptureService(captureRepo)
 
-	srv := httptest.NewServer(transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc).Routes())
+	srv := httptest.NewServer(transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc).Routes())
 	t.Cleanup(srv.Close)
 	return srv
 }
