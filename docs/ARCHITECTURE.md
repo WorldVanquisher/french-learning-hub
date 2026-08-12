@@ -580,6 +580,134 @@ The backend URL is resolved with the precedence `-url` flag → `FRENCH_HUB_URL`
 convention without adding a configuration framework or reading `.env` files, in
 keeping with the project's dependency and configuration discipline.
 
+## Knowledge extraction (milestone 10)
+
+Milestones 2–9 built up per-entry AI metadata (analyses), human feedback, an
+effective interpretation, and structured import. Milestone 10 adds the first
+step that turns an interaction into durable, reviewable learning material:
+converting one interaction into zero or more atomic **knowledge units**.
+
+    learning entry (immutable) + current effective analysis
+        -> ExtractionSource        (both original data AND effective interpretation)
+        -> Extractor               (one real implementation: OpenAI)
+        -> validated ExtractionResult (zero or more units; empty is valid)
+        -> knowledge_admission_v1  (one machine recommendation per unit)
+        -> atomic persistence      (extraction + units + recommendations, versioned)
+        -> human admission overrides (append-only, human wins)
+
+A knowledge unit is *a learning objective that actually arose from this
+interaction and can later be independently judged or reviewed* — deliberately not
+every linguistic fact present in the text, and deliberately the smallest **useful
+reviewable** objective rather than the smallest linguistic token (so
+`vouloir — présent` is one unit, not one per person/number). Zero units is a
+valid, expected outcome.
+
+### Extraction source: both original and effective
+
+The source combines the immutable entry (original input/context) with its current
+effective interpretation, reusing the milestone-5 `ResolveEffective` rules rather
+than building a second projection. This is why extraction is gated on eligibility
+(below): the effective interpretation must exist and be current.
+
+### Eligibility is explicit, never automatic
+
+Extraction runs only on an explicit `POST /entries/{id}/extractions`. It is never
+triggered as a side effect of entry creation, analysis, feedback, or capture
+import. Eligibility maps directly onto the existing resolution states: an entry
+is eligible when its current analysis resolves to `unreviewed`, `accepted`, or
+`corrected`; an `unanalyzed` entry or a `rejected` current analysis is not
+eligible and yields `domain.ErrNotEligible` (`409`). A `corrected` analysis
+extracts from the corrected effective values; `accepted`/`unreviewed` use the
+current effective values.
+
+### Immutable, versioned provenance — staleness is derived
+
+Each run is a `KnowledgeExtraction{EntryID, Version, SourceAnalysisID,
+SourceFeedbackID, Extractor, CreatedAt}`, versioned per entry exactly like
+analyses (`MAX(version)+1` inside the insert transaction). It records the precise
+analysis and feedback it was derived from. A later analysis or feedback never
+mutates an existing extraction — a new run appends a new version. There is no
+stored `stale` boolean: staleness is derived by comparing an extraction's
+recorded provenance against the entry's current effective interpretation, so the
+audit trail cannot silently drift.
+
+### Knowledge kinds are a separate vocabulary
+
+Kinds use a dedicated `fr_l2_knowledge_v1` vocabulary (`vocabulary`, `grammar`,
+`morphology`, `orthography`, `pronunciation`, `usage`, `expression`), separate
+from the interaction taxonomy `fr_l2_taxonomy_v1`. The two answer different
+questions ("what objective arose" vs. "what kind of interaction was this"), so
+they are modeled as distinct types with distinct validation.
+
+### One real extractor, decoupled configuration
+
+Only a semantic OpenAI extractor ships; there is no rule-based extractor by
+design. It closely mirrors the milestone-4 OpenAI analyzer: standard-library
+HTTP, explicit timeout via context, no retries, `store:false`, no tools, no
+conversation state, strict JSON-schema structured output, bounded error-body
+reads, and validation of the parsed result before it is returned. Provenance is
+`openai:<model>:knowledge_extraction_v1`.
+
+Extractor selection is a separate `EXTRACTOR_PROVIDER` knob (`disabled` default,
+or `openai`), independent of `AI_PROVIDER`, so a deployment may run the
+rule-based analyzer and the OpenAI extractor together. When disabled, the factory
+returns a nil extractor: the server runs normally and the extraction endpoint
+returns `503` — never a silent fallback to another provider.
+
+### Fixed admission ruleset (`knowledge_admission_v1`)
+
+Admission answers "should this unit currently enter the active learning pool?".
+The v1 ruleset is fixed and conservative: it does not learn, generate rulesets,
+or change its own thresholds. In output order it emits one recommendation per
+unit — `active` (the default for a valid unit), `suppressed` (an **exact
+duplicate**: same kind + normalized canonical of an earlier unit in the same
+extraction, where normalization is trim + lowercase + collapse-whitespace with
+accents preserved — no embeddings, stemming, or semantic similarity), or
+`needs_review` (confidence below a single named, documented, non-calibrated
+threshold — uncertain cases defer to a human rather than being suppressed). A
+suppressed duplicate is still persisted; suppression is a recommendation, not a
+deletion.
+
+The extractor's own result validation is stricter still: it *rejects* a result
+containing exact-duplicate units (same kind + canonical + statement + example)
+rather than silently de-duplicating, so provider output is never quietly
+rewritten before storage. The admission ruleset's looser kind+canonical rule then
+operates across genuinely distinct units.
+
+### Human authority, append-only
+
+The machine recommendation is immutable and non-authoritative. A human may append
+an `AdmissionOverride` (`active` or `suppressed` with a reason of `mastered`,
+`ignored`, or `other`). Overrides never mutate or delete the recommendation; the
+full history is preserved (machine recommendation, every override, and the
+derived effective state stay distinguishable). The effective state is computed on
+read via `ResolveAdmission`, where the latest human override wins. This preserves
+exactly the provenance a future milestone would need to analyze machine-vs-human
+agreement — though ruleset evolution itself is out of scope here.
+
+### Persistence and atomicity
+
+Migration `005` adds four tables: `knowledge_extractions`, `knowledge_units`
+(`UNIQUE(extraction_id, ordinal)`, `canonical` intentionally **not** unique),
+`knowledge_admission_recommendations` (one per unit), and
+`knowledge_admission_overrides` (append-only). An extraction, all its units, and
+all initial recommendations commit in a single transaction — any failure rolls
+back the whole run, so there is never a partially-persisted extraction. Because
+both boundary interfaces declare a `Create`, the storage layer splits them into
+`KnowledgeRepository` (extraction/units/recommendations) and `AdmissionRepository`
+(overrides), sharing the admission-resolution read path.
+
+### Out of scope (deliberately not built)
+
+Automatic extraction on capture/analysis/feedback; a rule-based semantic
+extractor; local models; model routing or cost optimization; ruleset
+evolution/proposal/replay/activation; spaced repetition or review scheduling;
+mastery probability or automatic mastery detection; CEFR or difficulty scoring;
+embeddings, vector search, or semantic duplicate detection; a knowledge or
+prerequisite graph; a `KnowledgeConcept` aggregation layer; and cross-interaction
+normalization. The history and provenance are preserved so these remain possible
+later.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.

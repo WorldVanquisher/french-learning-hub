@@ -55,6 +55,29 @@ incremental milestones. Implemented so far:
   server outcomes (201 new, 200 idempotent replay as success, 409 conflict,
   400/422 validation, 500) and never leaks learning content or credentials into
   errors.
+* **Knowledge extraction** (`POST /entries/{id}/extractions`, `GET
+  /entries/{id}/extractions`, `GET /extractions/{id}`, plus admission endpoints
+  under `/knowledge-units/{id}`) that turns one interaction into zero or more
+  durable, atomic **knowledge units**. The extraction source combines BOTH the
+  immutable entry and its current effective interpretation (reusing the
+  effective-analysis rules); zero units is a valid result. Extraction is
+  **explicit only** — never automatic — and eligible only when the current
+  analysis resolves to `unreviewed`, `accepted`, or `corrected` (`unanalyzed` and
+  `rejected` are not eligible). Each run is an immutable, per-entry versioned
+  `KnowledgeExtraction` recording the exact analysis/feedback provenance; later
+  analyses/feedback never mutate it, and staleness is derived, not stored. Kinds
+  use a dedicated `fr_l2_knowledge_v1` vocabulary, separate from the interaction
+  taxonomy. The only extractor is an opt-in OpenAI one selected by
+  `EXTRACTOR_PROVIDER` (default `disabled`; independent of `AI_PROVIDER`; no
+  rule-based extractor, no silent fallback — disabled returns `503`); provenance
+  is `openai:<model>:knowledge_extraction_v1`. A fixed, conservative
+  `knowledge_admission_v1` ruleset recommends `active`/`suppressed`/`needs_review`
+  per unit (exact duplicate = same kind + normalized canonical → suppressed, not
+  deleted; low confidence → needs_review; no embeddings or semantic similarity).
+  Humans append immutable admission overrides that win over the machine
+  recommendation. Extraction, units, and recommendations persist atomically
+  (migration 005); public errors never leak keys, headers, provider bodies, or
+  original content.
 
 Inspect the repository before proposing changes; do not assume planned
 directories, frameworks, services, or database schemas exist until confirmed.

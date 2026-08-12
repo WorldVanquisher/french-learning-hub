@@ -59,6 +59,7 @@ cmd/capture           thin CLI that posts a learning_capture_v1 file/stdin to PO
 internal/domain       Entry/Analysis/Feedback entities, repository + Analyzer interfaces, validation
 internal/application  use cases (entry create/get/list; entry analysis; analysis feedback; effective analysis resolution; learning inventory)
 internal/analyzer     local rule-based Analyzer + OpenAI Analyzer + named rule engine (assessment)
+internal/extractor    OpenAI knowledge Extractor (opt-in) selected by EXTRACTOR_PROVIDER
 internal/captureclient   thin HTTP client for POST /captures (used by cmd/capture)
 internal/storage/sqlite  SQLite repositories + migration runner
 internal/transport/http  HTTP handlers and routing
@@ -87,10 +88,18 @@ Defaults work out of the box:
 | `HTTP_READ_TIMEOUT`  | `10`                        | Read timeout (seconds)                        |
 | `HTTP_WRITE_TIMEOUT` | `10`                        | Write timeout (seconds)                       |
 | `AI_PROVIDER`        | `rule-based`                | Analyzer provider: `rule-based` or `openai`   |
+| `EXTRACTOR_PROVIDER` | `disabled`                  | Knowledge extractor: `disabled` or `openai`   |
 | `OPENAI_API_KEY`     | _(none)_                    | Required for `openai`; never logged           |
 | `OPENAI_MODEL`       | _(none)_                    | Required for `openai`; the model to use       |
 | `OPENAI_BASE_URL`    | `https://api.openai.com/v1` | API base URL (override for gateways/testing)  |
 | `OPENAI_TIMEOUT`     | `8`                         | Per-request provider timeout (seconds)        |
+
+`EXTRACTOR_PROVIDER` is independent of `AI_PROVIDER`: knowledge extraction is a
+separate, opt-in capability, so `AI_PROVIDER=rule-based` together with
+`EXTRACTOR_PROVIDER=openai` is a valid combination (and so is enabling the
+analyzer but not the extractor). When `EXTRACTOR_PROVIDER=openai`, the extractor
+reuses the same `OPENAI_*` settings above. See
+[Knowledge extraction](#knowledge-extraction-milestone-10) for details.
 
 ### Analyzer providers
 
@@ -669,6 +678,140 @@ always constructed on the server. The endpoint is unauthenticated, like the rest
 of this service — do not expose it directly to untrusted networks without putting
 authentication in front of it. It performs no outbound request and reads no
 secret material.
+
+### Knowledge extraction (milestone 10)
+
+Knowledge extraction turns one learning interaction into zero or more durable,
+atomic **knowledge units**. A knowledge unit is *a learning objective that
+actually arose from this interaction and can later be independently judged or
+reviewed* — not every linguistic fact discoverable in the text. **Zero units is
+a valid result**: the extractor answers "what did the learner actually learn,
+ask about, correct, or reveal uncertainty about?", and is instructed never to
+manufacture units just to avoid an empty answer.
+
+**Extraction source.** Each extraction reads BOTH the immutable original entry
+and its current *effective* interpretation (the latest analysis combined with its
+latest feedback). It never extracts from the entry alone or the analysis alone.
+
+**Eligibility is explicit** and never automatic. Extraction runs only when you
+call the endpoint below — never as a side effect of creating an entry, an
+analysis, feedback, or a capture. An entry is eligible only when its current
+analysis resolves to `unreviewed`, `accepted`, or `corrected`. An `unanalyzed`
+entry, or one whose current analysis is `rejected`, is **not eligible** (`409`).
+For a `corrected` analysis the corrected effective values are used; for
+`accepted`/`unreviewed` the current effective values are used.
+
+**Versioning and provenance.** Each run is an immutable, per-entry versioned
+`KnowledgeExtraction` recording the exact analysis (and feedback, if any) it was
+derived from. A later analysis or feedback never mutates an existing extraction;
+re-running appends a new version. Staleness is **derived** by comparing recorded
+provenance to the entry's current effective interpretation — it is never stored
+as a mutable flag.
+
+**Knowledge kinds** use a dedicated v1 vocabulary (`fr_l2_knowledge_v1`),
+distinct from the interaction taxonomy: `vocabulary`, `grammar`, `morphology`,
+`orthography`, `pronunciation`, `usage`, `expression`.
+
+**Extractor configuration.** Only one real, semantic extractor ships: the OpenAI
+extractor. It is opt-in and off by default (`EXTRACTOR_PROVIDER=disabled`). When
+disabled, the server runs normally and the extraction endpoint returns `503`
+(no silent fallback). There is no rule-based extractor.
+
+```bash
+# Enable knowledge extraction (independent of AI_PROVIDER):
+export EXTRACTOR_PROVIDER=openai
+export OPENAI_API_KEY=sk-your-key-here
+export OPENAI_MODEL=gpt-4o-mini
+go run ./cmd/server
+```
+
+Provenance is stored as `openai:<model>:knowledge_extraction_v1`.
+
+**Fixed admission ruleset (`knowledge_admission_v1`).** When units are persisted,
+a fixed, conservative ruleset produces one machine recommendation per unit —
+`active`, `suppressed`, or `needs_review`. It does not learn or rewrite itself.
+A valid unit defaults to `active`. An **exact duplicate** (same kind + normalized
+canonical, where normalization is trim + lowercase + collapse-whitespace, accents
+preserved — no embeddings, stemming, or semantic similarity) of an earlier unit
+in the same extraction is `suppressed` with reason `exact_duplicate`; the unit
+still exists historically. A unit below the conservative confidence threshold is
+routed to `needs_review` rather than suppressed. The threshold is a documented
+heuristic, not a calibrated probability.
+
+**Human authority over admission.** The ruleset only *recommends*. A human may
+append an admission override (`active` or `suppressed`, with a suppression reason
+of `mastered`, `ignored`, or `other`). Overrides are **append-only** and never
+mutate or delete the machine recommendation; the full history is preserved. When
+deriving the effective admission state, the latest human override wins.
+
+#### Run an extraction
+
+```bash
+curl -sS -X POST http://localhost:8080/entries/1/extractions
+# 201 -> {"id":10,"entry_id":1,"version":1,"source_analysis_id":3,
+#         "source_feedback_id":null,"extractor":"openai:...:knowledge_extraction_v1",
+#         "created_at":"...","units":[{"id":100,"ordinal":1,"kind":"grammar",
+#         "canonical":"vouloir + infinitif","statement":"...","example":null,
+#         "confidence":0.9,"admission":{"ruleset":"knowledge_admission_v1",
+#         "machine_state":"active","machine_reason":"default_active",
+#         "effective_state":"active","latest_override":null}}]}
+```
+
+#### List an entry's extractions (newest version first)
+
+```bash
+curl -sS http://localhost:8080/entries/1/extractions
+# {"extractions":[ ... ]}
+```
+
+#### Get one extraction
+
+```bash
+curl -sS http://localhost:8080/extractions/10
+```
+
+#### Admission: override, read state, and history
+
+```bash
+# Suppress a unit the learner has already mastered (append-only).
+curl -sS -X POST http://localhost:8080/knowledge-units/100/admission-overrides \
+  -H 'Content-Type: application/json' \
+  -d '{"decision":"suppressed","reason":"mastered","note":"already know this"}'
+
+# Effective admission state (machine recommendation + latest override).
+curl -sS http://localhost:8080/knowledge-units/100/admission
+
+# Full append-only override history (oldest first).
+curl -sS http://localhost:8080/knowledge-units/100/admission-overrides
+```
+
+The `GET` endpoints never call the extractor. Only `POST
+/entries/{id}/extractions` invokes AI.
+
+| Situation                                       | Status |
+| ----------------------------------------------- | ------ |
+| Extraction created                              | `201`  |
+| Override created / admission read               | `201` / `200` |
+| Invalid path id / invalid JSON                  | `400`  |
+| Entry / extraction / knowledge unit not found   | `404`  |
+| Entry not eligible (unanalyzed / rejected)      | `409`  |
+| Invalid extractor output / invalid override     | `422`  |
+| Extractor disabled                              | `503`  |
+| Provider timeout                                | `504`  |
+| Provider unavailable / invalid provider output  | `502`  |
+| Unexpected storage failure                      | `500`  |
+
+On any failure, no partial extraction is persisted (extraction, all units, and
+their machine recommendations commit atomically or not at all). Errors use the
+shared `{"error":"..."}` shape and never expose API keys, authorization headers,
+full provider bodies, or original learning content.
+
+**Out of scope for this milestone** (not implemented): automatic extraction on
+capture/analysis/feedback, a rule-based semantic extractor, local models, model
+routing or cost optimization, ruleset evolution/proposal/replay, spaced
+repetition or review scheduling, mastery probability or automatic mastery
+detection, CEFR or difficulty scoring, embeddings/vector search/semantic dedup,
+knowledge or prerequisite graphs, and cross-interaction normalization.
 
 ## Capture CLI (`cmd/capture`)
 
