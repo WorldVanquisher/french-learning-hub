@@ -503,6 +503,83 @@ environment variables, internal error chains, or authorization headers.
 - Validation, taxonomy, provenance format, and effective resolution each live in
   a single place and are reused, not reimplemented.
 
+## Capture workflow client (milestone 9)
+
+Milestone 8 built the `POST /captures` server contract; milestone 9 makes it
+usable in everyday learning by adding a small external client. Nothing on the
+server changes. The new piece is purely a transport adapter that turns a prepared
+`learning_capture_v1` document into an HTTP request against the existing
+endpoint:
+
+    external learning_capture_v1 JSON (file or stdin)
+        -> cmd/capture            (flags, input selection, exit code)
+        -> internal/captureclient (POST {baseURL}/captures, decode result)
+        -> existing server: HTTP transport -> application -> domain -> SQLite
+        -> learning inventory
+
+The client deliberately enters through the same public HTTP API an external tool
+would use. It does **not** import the SQLite repository or the application
+service, so milestone 9 genuinely exercises the real
+`external client -> HTTP -> storage` path rather than shortcutting it.
+
+### Layering
+
+`cmd/capture/main.go` is intentionally thin: it parses flags, chooses the input
+source (file or stdin), resolves the backend URL, builds the client, invokes it,
+prints a stable summary, and sets the process exit code. All testable behavior
+lives in `internal/captureclient`, which is unit-tested against an
+`httptest.Server` and integration-tested against the real handler and a real
+temporary SQLite database. This keeps the CLI's own logic trivial and the HTTP
+behavior fully covered, and it means the capture client is **not** a second
+application layer — it is a client of the one that already exists.
+
+### The client does not duplicate domain rules
+
+The server owns every capture rule: schema version, source vocabulary, entry
+validation, `fr_l2_taxonomy_v1`, analysis validation, SHA-256 fingerprinting,
+idempotency, and conflict detection. The client reimplements none of them. It
+sends the caller's payload byte-for-byte — it never rewrites `original_input`,
+normalizes content, generates an analysis, reclassifies a category, adjusts
+confidence, rewrites `discussion_summary`, or computes a fingerprint. The only
+checks it makes are transport-level: the payload is non-empty, the base URL is a
+valid absolute HTTP(S) URL, and the response decodes into the expected shape. The
+server decides whether a non-empty payload is actually valid.
+
+### Response mapping
+
+The client mirrors the server's existing outcomes onto typed results and errors:
+
+- `201` / `200` → a decoded `Result{CaptureID, EntryID, AnalysisID, Created}`.
+  `Created` distinguishes a new capture from an idempotent replay; a replay is a
+  success, not an error, so the CLI exits `0`.
+- non-2xx → an `*APIError{StatusCode, Message}` carrying the server's safe public
+  message from the shared `{"error":"..."}` body. `409` conflict is surfaced via
+  `APIError.IsConflict()`; `400`/`422`/`500` propagate their status and message.
+
+### Safety properties
+
+- **Standard library only.** `net/http`, `context`, `encoding/json`, `io` — no
+  new dependency for a single POST client, and `go.mod` is unchanged.
+- **No leakage.** Errors contain only the status code and the server's own
+  message. The learning payload (`original_input`, `original_context`,
+  `discussion_summary`), credentials, authorization headers, and environment
+  values are never folded into an error, even on a network or decode failure.
+- **Bounded reads.** The request payload is capped when read from file/stdin, and
+  error/response bodies are read through a bounded `io.LimitReader`, so a large
+  or hostile response cannot make the client buffer without limit. The error
+  message is decoded from the leading JSON object, so a truncated or
+  junk-suffixed body still yields the intended message.
+- **No retries, no fallback, no AI.** A single request per invocation with a
+  bounded timeout and request context (cancelled on SIGINT/SIGTERM); no automatic
+  retry, no provider fallback, and no model call anywhere in the path.
+
+### Configuration
+
+The backend URL is resolved with the precedence `-url` flag → `FRENCH_HUB_URL`
+→ `http://localhost:8080`. This mirrors the server's environment-first
+convention without adding a configuration framework or reading `.env` files, in
+keeping with the project's dependency and configuration discipline.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.

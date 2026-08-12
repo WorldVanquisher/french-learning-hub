@@ -36,8 +36,15 @@ atomic transaction. It is **not a chatbot** and makes **no AI call**: the
 backend never talks to ChatGPT or any model, never scrapes a conversation, and
 only ingests the structured fields the client sends. Imports are idempotent by a
 client-supplied `capture_id`, and imported records flow through the existing
-analysis, feedback, effective-resolution, and inventory features unchanged. See
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles.
+analysis, feedback, effective-resolution, and inventory features unchanged.
+Milestone 9 makes that workflow usable day to day with a tiny **capture CLI**
+(`cmd/capture`): it reads a prepared `learning_capture_v1` document from a file
+or stdin and posts it to the backend's `POST /captures` endpoint over HTTP. It
+is a thin transport client — **not a chatbot, not an analyzer, and not an
+importer that rewrites data**: it never contacts a model and sends the payload
+to the server unchanged, so the server stays the single source of truth for all
+capture rules. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design
+principles.
 
 ## Requirements
 
@@ -48,13 +55,16 @@ analysis, feedback, effective-resolution, and inventory features unchanged. See
 
 ```
 cmd/server            program entry point + graceful shutdown
+cmd/capture           thin CLI that posts a learning_capture_v1 file/stdin to POST /captures
 internal/domain       Entry/Analysis/Feedback entities, repository + Analyzer interfaces, validation
 internal/application  use cases (entry create/get/list; entry analysis; analysis feedback; effective analysis resolution; learning inventory)
 internal/analyzer     local rule-based Analyzer + OpenAI Analyzer + named rule engine (assessment)
+internal/captureclient   thin HTTP client for POST /captures (used by cmd/capture)
 internal/storage/sqlite  SQLite repositories + migration runner
 internal/transport/http  HTTP handlers and routing
 internal/config       environment-based configuration
 migrations            embedded .sql migrations
+examples/captures     example learning_capture_v1 documents
 ```
 
 Layers are kept separate: HTTP handlers hold no database logic, and the
@@ -660,11 +670,101 @@ of this service — do not expose it directly to untrusted networks without putt
 authentication in front of it. It performs no outbound request and reads no
 secret material.
 
+## Capture CLI (`cmd/capture`)
+
+`cmd/capture` is a thin command-line client for `POST /captures`. It reads a
+prepared `learning_capture_v1` JSON document from a file or stdin and posts it,
+**unchanged**, to a running backend. It is only a transport client:
+
+```
+capture CLI  ≠ chatbot
+             ≠ analyzer
+             ≠ importer that rewrites data
+```
+
+It contacts no AI model, does not scrape ChatGPT, and never rewrites, normalizes,
+reclassifies, or fingerprints your payload. The server remains the single source
+of truth for every capture rule (schema, source, entry, taxonomy, and analysis
+validation, fingerprinting, idempotency, and conflict detection). The CLI only
+performs transport-level sanity checks (non-empty payload, valid URL, decodable
+response).
+
+### Usage
+
+Start the server in one terminal:
+
+```bash
+make run
+```
+
+Then submit a capture in another terminal — by file:
+
+```bash
+go run ./cmd/capture -file examples/captures/manual-example.json
+```
+
+or from stdin (both forms work):
+
+```bash
+cat examples/captures/manual-example.json | go run ./cmd/capture
+go run ./cmd/capture < examples/captures/manual-example.json
+```
+
+On success it prints a stable summary:
+
+```
+capture stored (new)
+capture_id:  manual-example-001
+entry_id:    1
+analysis_id: null
+created:     true
+```
+
+Verify the capture landed by listing the learning inventory:
+
+```bash
+curl 'localhost:8080/learning-records?limit=20'
+```
+
+The new entry appears as an `unanalyzed` record (or `unreviewed` when the capture
+included an analysis). A capture with an analysis instead prints its
+`analysis_id` and shows the imported analysis in the inventory.
+
+### Backend URL
+
+The backend base URL is resolved with this precedence:
+
+```
+-url flag  ->  FRENCH_HUB_URL  ->  http://localhost:8080
+```
+
+```bash
+# Explicit flag (highest precedence)
+go run ./cmd/capture -url http://localhost:8080 -file examples/captures/manual-example.json
+
+# Environment variable
+export FRENCH_HUB_URL=http://localhost:8080
+go run ./cmd/capture -file examples/captures/manual-example.json
+```
+
+### Exit status and error handling
+
+The CLI exits `0` on success, including an **idempotent replay**: resubmitting
+the same capture prints `capture already existed (idempotent replay)` with
+`created: false` and still exits `0`. It exits non-zero and prints a concise
+message to stderr for a conflict (`409`, same `capture_id` with different
+content — the existing capture is left untouched), a validation error
+(`400`/`422`, showing the server's safe public message), or an unexpected server
+error (`500`). Errors carry only the status code and the server's own message —
+never your learning content, credentials, or authorization headers. The client
+uses a bounded request timeout, performs no retries, and makes no AI call.
+
 ## Development
 
 ```bash
-make test    # run all tests
-make vet     # go vet
-make fmt     # gofmt -w .
-make build   # compile to bin/server
+make test          # run all tests
+make vet           # go vet
+make fmt           # gofmt -w .
+make build         # compile the server to bin/server
+make build-capture # compile the capture CLI to bin/capture
 ```

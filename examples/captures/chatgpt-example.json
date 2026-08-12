@@ -1,0 +1,14 @@
+{
+  "schema_version": "learning_capture_v1",
+  "capture_id": "chatgpt-example-001",
+  "source": "chatgpt-web",
+  "original_input": "Je parle japonais ou je parle le japonais ?",
+  "original_context": "Whether French language names require an article after parler.",
+  "analysis": {
+    "category": "grammar",
+    "explanation": "After parler, a language name is normally used without an article.",
+    "confidence": 0.9,
+    "uncertainty": "Usage may vary when the language is treated as an object."
+  },
+  "discussion_summary": "Compared parler japonais with apprendre le japonais."
+}

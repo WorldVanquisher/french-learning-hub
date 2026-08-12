@@ -45,6 +45,16 @@ incremental milestones. Implemented so far:
   shared taxonomy, the existing analysis validation, and server-constructed
   `imported:<source>:learning_capture_v1` provenance, and flow through the
   feedback, effective-resolution, and inventory features unchanged.
+* A thin **capture CLI** (`cmd/capture`, backed by `internal/captureclient`)
+  that reads a prepared `learning_capture_v1` document from a file or stdin and
+  posts it, unchanged, to the backend's `POST /captures` endpoint over HTTP. It
+  is a transport client only — **not a chatbot, analyzer, or importer that
+  rewrites data**: it contacts no model, duplicates no server-side domain
+  validation, and never modifies the payload. The backend URL resolves as `-url`
+  flag → `FRENCH_HUB_URL` → `http://localhost:8080`. It handles the existing
+  server outcomes (201 new, 200 idempotent replay as success, 409 conflict,
+  400/422 validation, 500) and never leaks learning content or credentials into
+  errors.
 
 Inspect the repository before proposing changes; do not assume planned
 directories, frameworks, services, or database schemas exist until confirmed.
