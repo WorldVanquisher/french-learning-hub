@@ -21,6 +21,22 @@ const (
 	ProviderOpenAI AIProvider = "openai"
 )
 
+// ExtractorProvider selects which knowledge extractor the server wires in. It is
+// deliberately decoupled from AIProvider: knowledge extraction is a separate,
+// opt-in capability with its own on/off switch, so a deployment may run the
+// rule-based analyzer and the OpenAI extractor at the same time (or neither).
+type ExtractorProvider string
+
+const (
+	// ExtractorDisabled is the default. No extractor is wired in; the extraction
+	// endpoints return a safe service-unavailable error rather than silently
+	// falling back to another provider.
+	ExtractorDisabled ExtractorProvider = "disabled"
+	// ExtractorOpenAI selects the OpenAI-backed knowledge extractor (opt-in). It
+	// reuses the OPENAI_* settings below.
+	ExtractorOpenAI ExtractorProvider = "openai"
+)
+
 // Config holds the server's runtime settings.
 type Config struct {
 	// Addr is the TCP address the HTTP server listens on (e.g. ":8080").
@@ -33,6 +49,9 @@ type Config struct {
 
 	// AI holds analyzer-provider configuration.
 	AI AIConfig
+
+	// Extractor holds knowledge-extractor configuration, independent of AI.
+	Extractor ExtractorConfig
 }
 
 // AIConfig holds analyzer-provider selection and OpenAI settings. Secrets in
@@ -52,6 +71,25 @@ type AIConfig struct {
 	// OpenAITimeout bounds a single provider request. Kept below the HTTP
 	// write timeout so a provider call cannot normally outlive the response
 	// deadline.
+	OpenAITimeout time.Duration
+}
+
+// ExtractorConfig holds knowledge-extractor selection and its OpenAI settings.
+// When Provider is openai it reuses the same OPENAI_* environment variables the
+// analyzer reads, but it resolves and validates them independently so extractor
+// wiring never depends on the analyzer's configuration. Secrets in this struct
+// (OpenAIAPIKey) must never be logged or placed in error messages.
+type ExtractorConfig struct {
+	// Provider selects the extractor implementation. Defaults to disabled.
+	Provider ExtractorProvider
+	// OpenAIAPIKey authenticates OpenAI requests. Required only when Provider is
+	// openai. Never has a default and must never be logged.
+	OpenAIAPIKey string
+	// OpenAIModel is the model identifier. Required when Provider is openai.
+	OpenAIModel string
+	// OpenAIBaseURL is the API base (default https://api.openai.com/v1).
+	OpenAIBaseURL string
+	// OpenAITimeout bounds a single provider request.
 	OpenAITimeout time.Duration
 }
 
@@ -87,9 +125,19 @@ func Load() (Config, error) {
 			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
+		Extractor: ExtractorConfig{
+			Provider:      ExtractorProvider(getenv("EXTRACTOR_PROVIDER", string(ExtractorDisabled))),
+			OpenAIAPIKey:  os.Getenv("OPENAI_API_KEY"),
+			OpenAIModel:   strings.TrimSpace(os.Getenv("OPENAI_MODEL")),
+			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
+			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
+		},
 	}
 
 	if err := cfg.AI.validate(); err != nil {
+		return Config{}, err
+	}
+	if err := cfg.Extractor.validate(); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
@@ -114,6 +162,31 @@ func (c *AIConfig) validate() error {
 		return nil
 	default:
 		return fmt.Errorf("unknown AI_PROVIDER %q (supported: rule-based, openai)", string(c.Provider))
+	}
+}
+
+// validate checks extractor selection and required OpenAI settings. It is
+// independent of the analyzer configuration, so EXTRACTOR_PROVIDER=openai is
+// valid regardless of AI_PROVIDER. Error messages never include the API key
+// value. The default (disabled) requires nothing: the server runs normally and
+// the extraction endpoints report the feature as unavailable.
+func (c *ExtractorConfig) validate() error {
+	switch c.Provider {
+	case ExtractorDisabled:
+		return nil
+	case ExtractorOpenAI:
+		if strings.TrimSpace(c.OpenAIAPIKey) == "" {
+			return fmt.Errorf("EXTRACTOR_PROVIDER=openai requires OPENAI_API_KEY to be set")
+		}
+		if c.OpenAIModel == "" {
+			return fmt.Errorf("EXTRACTOR_PROVIDER=openai requires OPENAI_MODEL to be set")
+		}
+		if strings.TrimSpace(c.OpenAIBaseURL) == "" {
+			return fmt.Errorf("OPENAI_BASE_URL must not be empty")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown EXTRACTOR_PROVIDER %q (supported: disabled, openai)", string(c.Provider))
 	}
 }
 

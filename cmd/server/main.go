@@ -15,6 +15,7 @@ import (
 	"french-learning-app/internal/analyzer"
 	"french-learning-app/internal/application"
 	"french-learning-app/internal/config"
+	"french-learning-app/internal/extractor"
 	"french-learning-app/internal/storage/sqlite"
 	transporthttp "french-learning-app/internal/transport/http"
 )
@@ -49,8 +50,18 @@ func run() error {
 	feedbackRepo := sqlite.NewFeedbackRepository(db)
 	inventoryRepo := sqlite.NewInventoryRepository(db)
 	captureRepo := sqlite.NewCaptureRepository(db)
+	knowledgeRepo := sqlite.NewKnowledgeRepository(db)
+	admissionRepo := sqlite.NewAdmissionRepository(db)
 
 	selectedAnalyzer, err := analyzer.New(cfg.AI)
+	if err != nil {
+		return err
+	}
+
+	// The extractor is opt-in and decoupled from the analyzer. A nil extractor
+	// (EXTRACTOR_PROVIDER=disabled, the default) is valid: the server runs
+	// normally and the extraction endpoints report the feature as unavailable.
+	selectedExtractor, err := extractor.New(cfg.Extractor)
 	if err != nil {
 		return err
 	}
@@ -61,10 +72,12 @@ func run() error {
 	effectiveSvc := application.NewEffectiveAnalysisService(analysisRepo, feedbackRepo)
 	inventorySvc := application.NewInventoryService(inventoryRepo)
 	captureSvc := application.NewCaptureService(captureRepo)
+	knowledgeSvc := application.NewKnowledgeService(entryRepo, analysisRepo, feedbackRepo, knowledgeRepo, admissionRepo, selectedExtractor)
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)
+	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc)
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc)
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,

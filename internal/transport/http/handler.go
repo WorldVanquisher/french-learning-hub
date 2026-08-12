@@ -71,11 +71,12 @@ type Handler struct {
 	effective EffectiveService
 	inventory InventoryService
 	capture   CaptureService
+	knowledge KnowledgeService
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService) *Handler {
-	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture}
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService) *Handler {
+	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge}
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -95,6 +96,12 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /learning-records/export", h.handleExportLearningRecords)
 	mux.HandleFunc("POST /captures", h.handleCreateCapture)
 	mux.HandleFunc("GET /captures/{capture_id}", h.handleGetCapture)
+	mux.HandleFunc("POST /entries/{id}/extractions", h.handleCreateExtraction)
+	mux.HandleFunc("GET /entries/{id}/extractions", h.handleListExtractions)
+	mux.HandleFunc("GET /extractions/{id}", h.handleGetExtraction)
+	mux.HandleFunc("POST /knowledge-units/{id}/admission-overrides", h.handleCreateOverride)
+	mux.HandleFunc("GET /knowledge-units/{id}/admission-overrides", h.handleListOverrides)
+	mux.HandleFunc("GET /knowledge-units/{id}/admission", h.handleGetAdmission)
 	return mux
 }
 

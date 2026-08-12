@@ -49,7 +49,7 @@ func setupServerWithAnalyzer(t *testing.T, an domain.Analyzer) *httptest.Server 
 	inventorySvc := application.NewInventoryService(inventoryRepo)
 	captureSvc := application.NewCaptureService(captureRepo)
 
-	srv := httptest.NewServer(transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc).Routes())
+	srv := httptest.NewServer(transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, nil).Routes())
 	t.Cleanup(srv.Close)
 	return srv
 }
