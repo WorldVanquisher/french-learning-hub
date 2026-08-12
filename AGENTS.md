@@ -157,3 +157,14 @@ the user explicitly changes the scope. The OpenAI analyzer is the only external
 AI provider integration in scope; do not add automatic fallback, retries,
 streaming, batch analysis, additional providers, or usage/billing dashboards
 without an explicit scope change.
+
+## Git Workflow
+
+For non-trivial milestone work:
+
+1. Start from an up-to-date `main` and create or use a feature branch.
+2. Do not implement non-trivial milestones directly on `main`.
+3. Open a pull request targeting `main`.
+4. Ensure CI passes and review the final diff before merge.
+5. Prefer a squash merge, then delete the feature branch.
+6. Coding agents must not merge their own pull requests unless explicitly instructed.
