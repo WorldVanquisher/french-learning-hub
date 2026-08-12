@@ -166,6 +166,78 @@ func TestKnowledgeRepository_CreateEntryNotFound(t *testing.T) {
 	}
 }
 
+// TestKnowledgeRepository_RejectsAnalysisFromAnotherEntry proves the repository
+// rejects an extraction whose source analysis belongs to a different entry: the
+// FK alone would happily accept it, but the provenance would be a lie.
+func TestKnowledgeRepository_RejectsAnalysisFromAnotherEntry(t *testing.T) {
+	entries, knowledge, _ := newKnowledgeTestRepos(t)
+	ctx := context.Background()
+
+	// Two independent entries, each with its own analysis.
+	entryA, analysisA := seedEntryWithAnalysis(t, entries, knowledge)
+	_, analysisB := seedEntryWithAnalysis(t, entries, knowledge)
+	if analysisA == analysisB {
+		t.Fatal("expected distinct analyses for distinct entries")
+	}
+
+	// Extraction for entry A that (incorrectly) points at entry B's analysis.
+	_, err := knowledge.Create(ctx, domain.NewExtractionInput{
+		EntryID:          entryA,
+		SourceAnalysisID: analysisB,
+		Extractor:        "openai:test:knowledge_extraction_v1",
+	})
+	if !errors.Is(err, domain.ErrValidation) {
+		t.Fatalf("expected ErrValidation for cross-entry analysis, got %v", err)
+	}
+
+	// Nothing was persisted.
+	list, err := knowledge.ListByEntry(ctx, entryA)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected no extractions after rejected create, got %d", len(list))
+	}
+}
+
+// TestKnowledgeRepository_RejectsFeedbackFromAnotherAnalysis proves the repository
+// rejects an extraction whose source feedback belongs to a different analysis
+// than the source analysis it claims to derive from.
+func TestKnowledgeRepository_RejectsFeedbackFromAnotherAnalysis(t *testing.T) {
+	entries, knowledge, _ := newKnowledgeTestRepos(t)
+	ctx := context.Background()
+
+	entryA, analysisA := seedEntryWithAnalysis(t, entries, knowledge)
+	_, analysisB := seedEntryWithAnalysis(t, entries, knowledge)
+
+	// Feedback attached to analysis B, not to analysis A.
+	fbRepo := NewFeedbackRepository(knowledge.db)
+	fbB, err := fbRepo.Create(ctx, analysisB, domain.NewFeedbackInput{Status: domain.FeedbackAccepted})
+	if err != nil {
+		t.Fatalf("create feedback on analysis B: %v", err)
+	}
+
+	// Extraction for entry A with a consistent source analysis (A) but feedback
+	// that belongs to analysis B.
+	_, err = knowledge.Create(ctx, domain.NewExtractionInput{
+		EntryID:          entryA,
+		SourceAnalysisID: analysisA,
+		SourceFeedbackID: &fbB.ID,
+		Extractor:        "openai:test:knowledge_extraction_v1",
+	})
+	if !errors.Is(err, domain.ErrValidation) {
+		t.Fatalf("expected ErrValidation for cross-analysis feedback, got %v", err)
+	}
+
+	list, err := knowledge.ListByEntry(ctx, entryA)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected no extractions after rejected create, got %d", len(list))
+	}
+}
+
 func TestKnowledgeRepository_AtomicRollbackOnBadRecommendationCount(t *testing.T) {
 	entries, knowledge, _ := newKnowledgeTestRepos(t)
 	entryID, analysisID := seedEntryWithAnalysis(t, entries, knowledge)
@@ -307,6 +379,34 @@ func TestAdmissionRepository_OverrideUnitNotFound(t *testing.T) {
 	_, err := admission.Create(context.Background(), 9999, domain.NewAdmissionOverrideInput{Decision: domain.HumanAdmitActive})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+// TestAdmissionRepository_RejectsInvalidOverride proves the repository enforces
+// the domain override invariants at the persistence boundary: an invalid input
+// (here, a suppression missing its required reason) is rejected with
+// ErrValidation and nothing is written, even though the target unit exists and
+// the call bypasses the application service entirely.
+func TestAdmissionRepository_RejectsInvalidOverride(t *testing.T) {
+	entries, knowledge, admission := newKnowledgeTestRepos(t)
+	ctx := context.Background()
+	unitID := seedUnit(t, entries, knowledge)
+
+	// A suppression with no reason is invalid per domain.NewAdmissionOverrideInput.Validate.
+	_, err := admission.Create(ctx, unitID, domain.NewAdmissionOverrideInput{
+		Decision: domain.HumanAdmitSuppressed,
+	})
+	if !errors.Is(err, domain.ErrValidation) {
+		t.Fatalf("expected ErrValidation for invalid override, got %v", err)
+	}
+
+	// The invalid override must not have been persisted.
+	history, err := admission.ListByUnit(ctx, unitID)
+	if err != nil {
+		t.Fatalf("list overrides: %v", err)
+	}
+	if len(history) != 0 {
+		t.Fatalf("expected no overrides after rejected create, got %d", len(history))
 	}
 }
 

@@ -620,16 +620,20 @@ eligible and yields `domain.ErrNotEligible` (`409`). A `corrected` analysis
 extracts from the corrected effective values; `accepted`/`unreviewed` use the
 current effective values.
 
-### Immutable, versioned provenance — staleness is derived
+### Immutable, versioned provenance — sufficient to derive staleness later
 
 Each run is a `KnowledgeExtraction{EntryID, Version, SourceAnalysisID,
 SourceFeedbackID, Extractor, CreatedAt}`, versioned per entry exactly like
 analyses (`MAX(version)+1` inside the insert transaction). It records the precise
-analysis and feedback it was derived from. A later analysis or feedback never
-mutates an existing extraction — a new run appends a new version. There is no
-stored `stale` boolean: staleness is derived by comparing an extraction's
-recorded provenance against the entry's current effective interpretation, so the
-audit trail cannot silently drift.
+analysis and feedback it was derived from, and the repository rejects an
+extraction whose provenance is inconsistent (a source analysis from another
+entry, or source feedback from another analysis) so a recorded provenance is
+always trustworthy. A later analysis or feedback never mutates an existing
+extraction — a new run appends a new version. There is deliberately no stored
+`stale` boolean and no staleness feature in this milestone; the recorded
+provenance is *sufficient to derive staleness later* by comparing it against the
+entry's current effective interpretation, but nothing here computes or exposes
+that signal yet.
 
 ### Knowledge kinds are a separate vocabulary
 

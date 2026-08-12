@@ -59,6 +59,43 @@ func (r *KnowledgeRepository) Create(ctx context.Context, in domain.NewExtractio
 		return nil, fmt.Errorf("check entry: %w", err)
 	}
 
+	// Provenance integrity. The foreign keys only guarantee the referenced rows
+	// exist; they do not guarantee the referenced rows are consistent with each
+	// other or with this entry. An extraction claims to be derived from the
+	// entry's own effective interpretation, so its provenance must line up:
+	//   * the source analysis must belong to THIS entry, and
+	//   * any source feedback must belong to THAT analysis.
+	// Reject inconsistent provenance before writing anything, so a mislabeled
+	// extraction can never be persisted (which would corrupt later
+	// staleness-by-provenance comparisons).
+	var analysisEntryID int64
+	err = tx.QueryRowContext(ctx,
+		`SELECT entry_id FROM entry_analyses WHERE id = ?`, in.SourceAnalysisID).Scan(&analysisEntryID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("%w: source analysis does not exist", domain.ErrValidation)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("check source analysis: %w", err)
+	}
+	if analysisEntryID != in.EntryID {
+		return nil, fmt.Errorf("%w: source analysis belongs to a different entry", domain.ErrValidation)
+	}
+
+	if in.SourceFeedbackID != nil {
+		var feedbackAnalysisID int64
+		err = tx.QueryRowContext(ctx,
+			`SELECT analysis_id FROM analysis_feedback WHERE id = ?`, *in.SourceFeedbackID).Scan(&feedbackAnalysisID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: source feedback does not exist", domain.ErrValidation)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("check source feedback: %w", err)
+		}
+		if feedbackAnalysisID != in.SourceAnalysisID {
+			return nil, fmt.Errorf("%w: source feedback belongs to a different analysis", domain.ErrValidation)
+		}
+	}
+
 	// Next version = current max for this entry + 1 (starts at 1).
 	var maxVersion sql.NullInt64
 	if err := tx.QueryRowContext(ctx,
@@ -284,6 +321,15 @@ func NewAdmissionRepository(db *sql.DB) *AdmissionRepository {
 // Create appends a human admission override for unitID. Returns
 // domain.ErrNotFound if the unit does not exist.
 func (r *AdmissionRepository) Create(ctx context.Context, unitID int64, in domain.NewAdmissionOverrideInput) (*domain.AdmissionOverride, error) {
+	// Enforce the domain invariants at the persistence boundary too, so an
+	// invalid override can never be written even if a caller reaches the
+	// repository without going through the application service. Validate
+	// normalizes in place (trims/lowercases the reason and note); the normalized
+	// values are what we persist below.
+	if err := in.Validate(); err != nil {
+		return nil, err
+	}
+
 	var exists int
 	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM knowledge_units WHERE id = ?`, unitID).Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) {

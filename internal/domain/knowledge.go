@@ -244,8 +244,9 @@ type KnowledgeUnit struct {
 // extraction run. It records the exact effective-analysis provenance that was
 // used (SourceAnalysisID, SourceFeedbackID). A later analysis or feedback never
 // mutates an existing extraction; re-running extraction appends a new version.
-// Staleness is not stored: it is derived by comparing this provenance against the
-// entry's current effective interpretation.
+// No staleness is stored and none is computed here: this provenance is merely
+// sufficient to derive staleness later by comparing it against the entry's
+// current effective interpretation.
 type KnowledgeExtraction struct {
 	ID               int64
 	EntryID          int64

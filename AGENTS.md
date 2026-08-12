@@ -64,10 +64,13 @@ incremental milestones. Implemented so far:
   **explicit only** — never automatic — and eligible only when the current
   analysis resolves to `unreviewed`, `accepted`, or `corrected` (`unanalyzed` and
   `rejected` are not eligible). Each run is an immutable, per-entry versioned
-  `KnowledgeExtraction` recording the exact analysis/feedback provenance; later
-  analyses/feedback never mutate it, and staleness is derived, not stored. Kinds
-  use a dedicated `fr_l2_knowledge_v1` vocabulary, separate from the interaction
-  taxonomy. The only extractor is an opt-in OpenAI one selected by
+  `KnowledgeExtraction` recording the exact analysis/feedback provenance
+  (rejected before persistence if that provenance is inconsistent — a source
+  analysis from another entry or feedback from another analysis); later
+  analyses/feedback never mutate it. There is no `stale` flag and no staleness
+  feature yet — the provenance is merely sufficient to derive staleness later.
+  Kinds use a dedicated `fr_l2_knowledge_v1` vocabulary, separate from the
+  interaction taxonomy. The only extractor is an opt-in OpenAI one selected by
   `EXTRACTOR_PROVIDER` (default `disabled`; independent of `AI_PROVIDER`; no
   rule-based extractor, no silent fallback — disabled returns `503`); provenance
   is `openai:<model>:knowledge_extraction_v1`. A fixed, conservative

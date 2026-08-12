@@ -704,9 +704,10 @@ For a `corrected` analysis the corrected effective values are used; for
 **Versioning and provenance.** Each run is an immutable, per-entry versioned
 `KnowledgeExtraction` recording the exact analysis (and feedback, if any) it was
 derived from. A later analysis or feedback never mutates an existing extraction;
-re-running appends a new version. Staleness is **derived** by comparing recorded
-provenance to the entry's current effective interpretation — it is never stored
-as a mutable flag.
+re-running appends a new version. There is no staleness feature in this
+milestone and no mutable `stale` flag; the recorded provenance is **sufficient
+to derive staleness later** by comparing it to the entry's current effective
+interpretation, but nothing here computes or exposes such a signal yet.
 
 **Knowledge kinds** use a dedicated v1 vocabulary (`fr_l2_knowledge_v1`),
 distinct from the interaction taxonomy: `vocabulary`, `grammar`, `morphology`,
