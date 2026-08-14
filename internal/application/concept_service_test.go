@@ -13,11 +13,16 @@ import (
 // LinkSame calls so tests can assert whether the auto-resolver created a
 // membership.
 type fakeConceptRepo struct {
-	unit         *domain.KnowledgeUnit
-	unitErr      error
-	bySignature  []domain.KnowledgeConcept
-	linkSameCall int
-	lastLinkedTo int64
+	unit            *domain.KnowledgeUnit
+	unitErr         error
+	bySignature     []domain.KnowledgeConcept
+	linkSameCall    int
+	lastLinkedTo    int64
+	reassignCall    int
+	lastReassignTo  int64
+	createSeedError error // when set, atomic create+attach fails after the concept insert
+	createCall      int
+	seedLinked      int
 }
 
 func (f *fakeConceptRepo) UnitByID(context.Context, int64) (*domain.KnowledgeUnit, error) {
@@ -29,8 +34,21 @@ func (f *fakeConceptRepo) UnitByID(context.Context, int64) (*domain.KnowledgeUni
 func (f *fakeConceptRepo) FindActiveBySignature(context.Context, string) ([]domain.KnowledgeConcept, error) {
 	return f.bySignature, nil
 }
-func (f *fakeConceptRepo) CreateConcept(context.Context, domain.NewConceptInput) (*domain.KnowledgeConcept, error) {
-	return &domain.KnowledgeConcept{ID: 1, State: domain.ConceptActive}, nil
+
+// CreateConcept models the repository's atomic create-and-attach: if a seed SAME
+// is requested and createSeedError is set, the whole operation fails and no
+// concept is returned (mirroring the transaction rolling back).
+func (f *fakeConceptRepo) CreateConcept(_ context.Context, in domain.NewConceptInput) (*domain.KnowledgeConcept, *domain.UnitConceptLink, error) {
+	f.createCall++
+	if in.LinkSeedAsSame {
+		if f.createSeedError != nil {
+			return nil, nil, f.createSeedError
+		}
+		f.seedLinked++
+		link := &domain.UnitConceptLink{ID: 10, UnitID: *in.SeedUnitID, ConceptID: 1, Relation: domain.RelationSame, Status: domain.LinkAccepted}
+		return &domain.KnowledgeConcept{ID: 1, State: domain.ConceptActive}, link, nil
+	}
+	return &domain.KnowledgeConcept{ID: 1, State: domain.ConceptActive}, nil, nil
 }
 func (f *fakeConceptRepo) GetConcept(context.Context, int64) (*domain.ConceptView, error) {
 	return &domain.ConceptView{}, nil
@@ -42,6 +60,11 @@ func (f *fakeConceptRepo) LinkSame(_ context.Context, unitID, conceptID int64, _
 	f.linkSameCall++
 	f.lastLinkedTo = conceptID
 	return &domain.UnitConceptLink{ID: 10, UnitID: unitID, ConceptID: conceptID, Relation: domain.RelationSame, Status: domain.LinkAccepted, Score: score}, nil
+}
+func (f *fakeConceptRepo) ReassignSame(_ context.Context, unitID, conceptID int64, _ domain.DecisionSource, _ string) (*domain.UnitConceptLink, error) {
+	f.reassignCall++
+	f.lastReassignTo = conceptID
+	return &domain.UnitConceptLink{ID: 11, UnitID: unitID, ConceptID: conceptID, Relation: domain.RelationSame, Status: domain.LinkAccepted}, nil
 }
 func (f *fakeConceptRepo) LinkRelation(context.Context, int64, int64, domain.ConceptRelation, domain.DecisionSource, string) (*domain.UnitConceptLink, error) {
 	return &domain.UnitConceptLink{}, nil
@@ -133,5 +156,57 @@ func TestListConcepts_RejectsUnknownState(t *testing.T) {
 	bad := domain.ConceptState("bogus")
 	if _, err := svc.ListConcepts(context.Background(), &bad); !errors.Is(err, domain.ErrValidation) {
 		t.Fatalf("expected ErrValidation for unknown state, got %v", err)
+	}
+}
+
+// ReassignSame routes to the repository's reassignment operation (human correction),
+// not to LinkSame.
+func TestReassignSame_RoutesToReassign(t *testing.T) {
+	repo := &fakeConceptRepo{}
+	svc := NewConceptService(nil, repo, repo)
+	if _, err := svc.ReassignSame(context.Background(), 7, 42); err != nil {
+		t.Fatalf("reassign: %v", err)
+	}
+	if repo.reassignCall != 1 || repo.lastReassignTo != 42 {
+		t.Fatalf("expected one reassignment to concept 42, got calls=%d to=%d", repo.reassignCall, repo.lastReassignTo)
+	}
+	if repo.linkSameCall != 0 {
+		t.Fatalf("reassignment must not go through LinkSame")
+	}
+}
+
+// Create-and-attach is delegated to the repository as one atomic operation: the
+// service passes LinkSeedAsSame through and does not make a second LinkSame call.
+func TestCreateConcept_AtomicSeedLink(t *testing.T) {
+	repo := &fakeConceptRepo{}
+	svc := NewConceptService(nil, repo, repo)
+	seed := int64(7)
+	concept, link, err := svc.CreateConcept(context.Background(), domain.ConceptIdentity{Target: "t", PedagogicalIntent: "grammar"}, &seed, true)
+	if err != nil {
+		t.Fatalf("create+attach: %v", err)
+	}
+	if concept == nil || link == nil {
+		t.Fatalf("expected concept and seed link, got %v %v", concept, link)
+	}
+	if repo.seedLinked != 1 || repo.createCall != 1 {
+		t.Fatalf("seed link must be created inside the single CreateConcept call, got create=%d seed=%d", repo.createCall, repo.seedLinked)
+	}
+	if repo.linkSameCall != 0 {
+		t.Fatalf("create+attach must not issue a separate LinkSame call (non-atomic), got %d", repo.linkSameCall)
+	}
+}
+
+// When the atomic seed link fails, CreateConcept returns the error and no concept:
+// the repository transaction rolls the concept back too.
+func TestCreateConcept_SeedLinkFailureLeavesNothing(t *testing.T) {
+	repo := &fakeConceptRepo{createSeedError: domain.ErrConceptConflict}
+	svc := NewConceptService(nil, repo, repo)
+	seed := int64(7)
+	concept, link, err := svc.CreateConcept(context.Background(), domain.ConceptIdentity{Target: "t", PedagogicalIntent: "grammar"}, &seed, true)
+	if !errors.Is(err, domain.ErrConceptConflict) {
+		t.Fatalf("expected the seed-link error to propagate, got %v", err)
+	}
+	if concept != nil || link != nil {
+		t.Fatalf("no concept or link must be returned on atomic failure, got %v %v", concept, link)
 	}
 }

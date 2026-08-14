@@ -110,6 +110,10 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /concepts/{id}/preferred-unit", h.handleSetPreferredUnit)
 	mux.HandleFunc("GET /knowledge-units/{id}/concept-resolution", h.handleResolveUnit)
 	mux.HandleFunc("POST /knowledge-units/{id}/concept-links/same", h.handleResolveSame)
+	// Explicit human correction of a wrong SAME membership (milestone 10.5.1): moves
+	// the unit to a different concept even when it already has one, preserving the
+	// prior decision as history.
+	mux.HandleFunc("PUT /knowledge-units/{id}/concept-membership", h.handleReassignSame)
 	mux.HandleFunc("POST /knowledge-units/{id}/concept-links/relation", h.handleRecordRelation)
 	mux.HandleFunc("GET /reviewable-units", h.handleListReviewableUnits)
 	mux.HandleFunc("GET /entries/{id}/current-extraction", h.handleGetCurrentExtraction)

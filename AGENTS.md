@@ -84,6 +84,7 @@ incremental milestones. Implemented so far:
 * **Knowledge concept resolution** (`/concepts`, `/concepts/{id}`,
   `/concepts/{id}/preferred-unit`, `/knowledge-units/{id}/concept-resolution`,
   `/knowledge-units/{id}/concept-links/same`,
+  `/knowledge-units/{id}/concept-membership`,
   `/knowledge-units/{id}/concept-links/relation`, `/reviewable-units`,
   `/entries/{id}/current-extraction`) that introduces the durable learning
   identity. A **`KnowledgeUnit` is now immutable extraction evidence/candidate**
@@ -97,19 +98,35 @@ incremental milestones. Implemented so far:
   `ambiguous` (reviewable, never force-merged) when many — **no embeddings,
   vectors, transformers, LLM fuzzy matching, semantic similarity, or learned
   P(SAME), and no automatic broader/narrower inference** (all deferred until real
-  human resolution labels exist). Membership (`same`, at most one accepted per
-  unit), relations (`broader`/`narrower`/`related`, which are **not** membership
-  and carry no support), and preferred representation (explicit, must be a SAME
-  member, never auto-set by accepting SAME) are independent decisions; links are
-  append-only/superseding with full audit provenance. A concept gets automatic
-  current support only from a unit that belongs to the entry's current successful
-  extraction, is effectively `active` in admission, and has an accepted SAME link;
-  current extraction defaults to latest successful (a zero-unit success is still
-  current; a failed run can't displace it) with an explicit human rollback row.
-  Losing all support makes a concept `orphaned` (not deleted); `retired` is a
-  sticky human decision. Migration 006 adds `knowledge_concepts`,
-  `unit_concept_links`, `entry_current_extractions` with partial unique indexes
-  enforcing one-active-concept-per-signature and one-accepted-SAME-per-unit; no ML
+  human resolution labels exist). Membership (`same`), relations
+  (`broader`/`narrower`/`related`, which are **not** membership and carry no
+  support), and preferred representation (explicit, must be a SAME member, never
+  auto-set by accepting SAME) are independent decisions.
+  **Milestone 10.5.1 (correctness patch, migration `007`)** sharpened the model:
+  resolution history is a strictly **append-only event log** (a replacement is a
+  *new* row with a `supersedes_link_id` back-pointer; no row is ever mutated to
+  `superseded`). Each unit's single **current** SAME membership lives in a small
+  mutable projection `unit_concept_memberships` (`unit_id` PK) — the current
+  authority, separate from the immutable history. A human can **correct** a wrong
+  SAME with `PUT /knowledge-units/{id}/concept-membership` (`ReassignSame`), moving
+  the membership to another concept even when one already exists, superseding any
+  prior automatic or human decision without deleting history and atomically
+  clearing a now-invalid `preferred_unit_id`. **Concept support is derived at read
+  time, never persisted**: computed live from current successful extraction +
+  effective `active` admission + current SAME membership, so a newer extraction,
+  an admission override, or a reassignment changes it immediately with no recompute
+  call. Persisted `lifecycle_state` (`normal`/`retired`) is separate from derived
+  support (`supported`/`orphaned`); the **effective** state is retired-wins, else
+  supported→`active`, else `orphaned` (orphaned is never deleted and recovers if
+  support returns). Concept **identity is not released by orphaning**: durable
+  uniqueness is `(identity_schema_version, signature)` across non-retired concepts,
+  so an unsupported concept still owns its signature. Create-concept + seed SAME is
+  **atomic** in one repository transaction. Current extraction defaults to latest
+  successful (a zero-unit success is still current; a failed run can't displace it)
+  with an explicit human rollback row. Migration `006` adds `knowledge_concepts`,
+  `unit_concept_links`, `entry_current_extractions`; migration `007` adds
+  `unit_concept_memberships` + `supersedes_link_id`, replaces `state` with
+  `lifecycle_state`, and switches the unique index to durable identity. No ML
   tables.
 
 Inspect the repository before proposing changes; do not assume planned
