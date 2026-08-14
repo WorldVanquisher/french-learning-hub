@@ -52,6 +52,7 @@ func run() error {
 	captureRepo := sqlite.NewCaptureRepository(db)
 	knowledgeRepo := sqlite.NewKnowledgeRepository(db)
 	admissionRepo := sqlite.NewAdmissionRepository(db)
+	conceptRepo := sqlite.NewConceptRepository(db)
 
 	selectedAnalyzer, err := analyzer.New(cfg.AI)
 	if err != nil {
@@ -73,11 +74,12 @@ func run() error {
 	inventorySvc := application.NewInventoryService(inventoryRepo)
 	captureSvc := application.NewCaptureService(captureRepo)
 	knowledgeSvc := application.NewKnowledgeService(entryRepo, analysisRepo, feedbackRepo, knowledgeRepo, admissionRepo, selectedExtractor)
+	conceptSvc := application.NewConceptService(knowledgeRepo, conceptRepo, conceptRepo)
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)
 	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc)
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, conceptSvc)
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,
