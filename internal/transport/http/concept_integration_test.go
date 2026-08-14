@@ -229,6 +229,107 @@ func TestIntegration_ConceptSecondSameConflicts(t *testing.T) {
 	}
 }
 
+// TestIntegration_ReassignSameCorrectsMembership drives the human-correction
+// endpoint end to end: a unit wrongly resolved SAME to concept A is moved to
+// concept B via PUT /knowledge-units/{id}/concept-membership. The move must
+// succeed (not 409) even though a prior SAME exists, the new link must supersede
+// the old one, B must gain support, and A must lose it while keeping the original
+// decision as queryable history.
+func TestIntegration_ReassignSameCorrectsMembership(t *testing.T) {
+	srv, entryID := setupConceptServer(t, []domain.ExtractedUnit{
+		{Kind: domain.KindGrammar, Canonical: "x", Statement: "s", Confidence: 0.9},
+	})
+	unitID := extractUnits(t, srv, entryID)[0]
+
+	mkConcept := func(target string) int64 {
+		body := `{"identity":{"target":"` + target + `","pedagogical_intent":"grammar"}}`
+		resp, err := http.Post(srv.URL+"/concepts", "application/json", bytes.NewReader([]byte(body)))
+		if err != nil {
+			t.Fatalf("POST concept: %v", err)
+		}
+		defer resp.Body.Close()
+		var created struct {
+			Concept struct {
+				ID int64 `json:"id"`
+			} `json:"concept"`
+		}
+		json.NewDecoder(resp.Body).Decode(&created)
+		return created.Concept.ID
+	}
+	conceptA := mkConcept("alpha")
+	conceptB := mkConcept("beta")
+
+	// Wrongly resolve the unit SAME to A.
+	sameBody := `{"concept_id":` + itoa(conceptA) + `}`
+	sResp, err := http.Post(srv.URL+"/knowledge-units/"+itoa(unitID)+"/concept-links/same", "application/json", bytes.NewReader([]byte(sameBody)))
+	if err != nil {
+		t.Fatalf("POST same: %v", err)
+	}
+	if sResp.StatusCode != http.StatusCreated {
+		t.Fatalf("same status = %d, want 201", sResp.StatusCode)
+	}
+	var firstLink struct {
+		ID int64 `json:"id"`
+	}
+	json.NewDecoder(sResp.Body).Decode(&firstLink)
+	sResp.Body.Close()
+
+	// Human correction: move the membership to B. This must succeed with 200 even
+	// though a prior SAME exists.
+	body := `{"concept_id":` + itoa(conceptB) + `}`
+	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/knowledge-units/"+itoa(unitID)+"/concept-membership", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT concept-membership: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("reassign status = %d, want 200", resp.StatusCode)
+	}
+	var moved struct {
+		ConceptID        int64  `json:"concept_id"`
+		Relation         string `json:"relation"`
+		Status           string `json:"status"`
+		SupersedesLinkID *int64 `json:"supersedes_link_id"`
+	}
+	json.NewDecoder(resp.Body).Decode(&moved)
+	resp.Body.Close()
+	if moved.ConceptID != conceptB || moved.Relation != "same" || moved.Status != "accepted" {
+		t.Fatalf("moved link should be an accepted SAME to B, got %+v", moved)
+	}
+	if moved.SupersedesLinkID == nil || *moved.SupersedesLinkID != firstLink.ID {
+		t.Fatalf("moved link must supersede the original link %d, got %v", firstLink.ID, moved.SupersedesLinkID)
+	}
+
+	// B is now the current membership; A retains the original decision as history.
+	assertConceptState := func(conceptID int64, wantState string, wantLinks int) {
+		gResp, err := http.Get(srv.URL + "/concepts/" + itoa(conceptID))
+		if err != nil {
+			t.Fatalf("GET concept %d: %v", conceptID, err)
+		}
+		defer gResp.Body.Close()
+		var view struct {
+			Concept struct {
+				State string `json:"state"`
+			} `json:"concept"`
+			Links []struct {
+				Status string `json:"status"`
+			} `json:"links"`
+		}
+		json.NewDecoder(gResp.Body).Decode(&view)
+		if view.Concept.State != wantState {
+			t.Fatalf("concept %d state = %q, want %q", conceptID, view.Concept.State, wantState)
+		}
+		if len(view.Links) != wantLinks {
+			t.Fatalf("concept %d links = %d, want %d", conceptID, len(view.Links), wantLinks)
+		}
+	}
+	// B is supported (active) with its accepted SAME event; A is orphaned but keeps
+	// the historical decision queryable.
+	assertConceptState(conceptB, "active", 1)
+	assertConceptState(conceptA, "orphaned", 1)
+}
+
 func TestIntegration_ConceptDuplicateActiveIdentityConflicts(t *testing.T) {
 	srv, _ := setupConceptServer(t, nil)
 	body := `{"identity":{"target":"vouloir","pedagogical_intent":"grammar"}}`

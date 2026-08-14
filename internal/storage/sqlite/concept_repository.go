@@ -12,10 +12,20 @@ import (
 )
 
 // ConceptRepository is a SQLite-backed domain.ConceptRepository and
-// domain.CurrentExtractionRepository. It owns all concept, resolution-link, and
-// current-extraction SQL, and enforces the invariants SQLite cannot express on
-// its own (at-most-one accepted SAME per unit, deterministic support recompute)
-// inside transactions.
+// domain.CurrentExtractionRepository. It owns all concept, resolution-event, and
+// current-extraction SQL.
+//
+// Correctness model (milestone 10.5.1):
+//   - unit_concept_links is a pure append-only EVENT LOG. Rows are inserted once
+//     and never updated or deleted. A correcting decision inserts a new row whose
+//     supersedes_link_id points at the row it replaces.
+//   - unit_concept_memberships is the single mutable CURRENT SAME projection: at
+//     most one row per unit names its current concept and the event that
+//     established it. It is the authority for "which SAME is in force".
+//   - Concept SUPPORT (supported/orphaned) is DERIVED at read time from current
+//     extraction + effective admission + current SAME membership; it is never
+//     stored, so it cannot go stale. Only the human LIFECYCLE (normal/retired) is
+//     persisted (knowledge_concepts.lifecycle_state).
 type ConceptRepository struct {
 	db  *sql.DB
 	now func() time.Time
@@ -117,10 +127,10 @@ func (r *ConceptRepository) GetCurrentExtractionID(ctx context.Context, entryID 
 }
 
 // SetCurrentExtraction explicitly points the entry at one of its successful
-// extractions (human rollback). The extraction must belong to the entry. Concept
-// support is recomputed for every concept that could gain or lose support as a
-// result (all concepts with accepted SAME links to units of either the old or new
-// current extraction).
+// extractions (human rollback). The extraction must belong to the entry. It only
+// updates the pointer: because concept support is derived at read time, the next
+// read of any affected concept immediately reflects the change — there is no stale
+// per-concept state to recompute.
 func (r *ConceptRepository) SetCurrentExtraction(ctx context.Context, entryID, extractionID int64) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -146,15 +156,6 @@ func (r *ConceptRepository) SetCurrentExtraction(ctx context.Context, entryID, e
 		return fmt.Errorf("%w: extraction does not belong to this entry", domain.ErrValidation)
 	}
 
-	// Concepts whose support may change: any concept with an accepted SAME link to
-	// any unit of ANY of this entry's extractions. Changing which extraction is
-	// current can move support onto or off of any of them, so this is the correct
-	// blast radius (not just the two extractions being swapped).
-	affectedIDs, err := conceptsLinkedToEntry(ctx, tx, entryID)
-	if err != nil {
-		return err
-	}
-
 	ts := r.now().Format(rfc3339)
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO entry_current_extractions (entry_id, extraction_id, updated_at)
@@ -163,47 +164,16 @@ func (r *ConceptRepository) SetCurrentExtraction(ctx context.Context, entryID, e
 		entryID, extractionID, ts); err != nil {
 		return fmt.Errorf("set current extraction: %w", err)
 	}
-
-	for _, id := range affectedIDs {
-		if err := recomputeConceptState(ctx, tx, id, r.now); err != nil {
-			return err
-		}
-	}
 	return tx.Commit()
 }
 
-// conceptsLinkedToEntry returns distinct concept ids with an accepted SAME link to
-// any unit of any extraction belonging to the entry.
-func conceptsLinkedToEntry(ctx context.Context, q txQuerier, entryID int64) ([]int64, error) {
-	rows, err := q.QueryContext(ctx,
-		`SELECT DISTINCT l.concept_id
-		 FROM unit_concept_links l
-		 JOIN knowledge_units u ON u.id = l.unit_id
-		 JOIN knowledge_extractions e ON e.id = u.extraction_id
-		 WHERE e.entry_id = ? AND l.relation = 'same' AND l.status = 'accepted'`, entryID)
-	if err != nil {
-		return nil, fmt.Errorf("concepts linked to entry: %w", err)
-	}
-	defer rows.Close()
-	var out []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		out = append(out, id)
-	}
-	return out, rows.Err()
-}
-
-// ---- support recompute ----
+// ---- derived support ----
 
 // unitHasActiveSupport reports whether a unit currently provides automatic
 // support: it belongs to its entry's current extraction AND its effective
-// admission state is active. The caller guarantees the unit has an accepted SAME
-// link to the concept in question.
+// admission state is active. The caller guarantees the unit currently holds the
+// SAME membership to the concept in question (via unit_concept_memberships).
 func unitHasActiveSupport(ctx context.Context, q txQuerier, unitID int64) (bool, error) {
-	// Resolve the unit's extraction and entry.
 	var extractionID, entryID int64
 	err := q.QueryRowContext(ctx,
 		`SELECT u.extraction_id, e.entry_id
@@ -222,8 +192,6 @@ func unitHasActiveSupport(ctx context.Context, q txQuerier, unitID int64) (bool,
 		return false, nil
 	}
 
-	// Effective admission must be active. Reuse the same recommendation + latest
-	// override resolution the admission repository uses.
 	eff, err := effectiveAdmissionState(ctx, q, unitID)
 	if err != nil {
 		return false, err
@@ -278,70 +246,53 @@ func effectiveAdmissionState(ctx context.Context, q txQuerier, unitID int64) (do
 	return domain.ResolveAdmission(rec, latest).Effective, nil
 }
 
-// recomputeConceptState deterministically recomputes one concept's state from its
-// current support. Retired is sticky (never auto-changed). Otherwise: if any unit
-// with an accepted SAME link currently provides active support, the concept is
-// active; if none does, it becomes orphaned (never deleted). Only the state and
-// updated_at change; identity and id are stable.
-func recomputeConceptState(ctx context.Context, q txQuerier, conceptID int64, now func() time.Time) error {
-	var state string
-	err := q.QueryRowContext(ctx,
-		`SELECT state FROM knowledge_concepts WHERE id = ?`, conceptID).Scan(&state)
-	if errors.Is(err, sql.ErrNoRows) {
-		return domain.ErrNotFound
-	}
-	if err != nil {
-		return fmt.Errorf("read concept state: %w", err)
-	}
-	if domain.ConceptState(state) == domain.ConceptRetired {
-		return nil // sticky
-	}
-
+// supportingUnitIDs returns the ids of units that currently provide automatic
+// support to a concept: they hold the current SAME membership to it (from the
+// projection) AND satisfy unitHasActiveSupport. This is the single derivation used
+// by both the support state and ActiveSupportUnitIDs.
+func supportingUnitIDs(ctx context.Context, q txQuerier, conceptID int64) ([]int64, error) {
 	rows, err := q.QueryContext(ctx,
-		`SELECT unit_id FROM unit_concept_links
-		 WHERE concept_id = ? AND relation = 'same' AND status = 'accepted'`, conceptID)
+		`SELECT unit_id FROM unit_concept_memberships WHERE concept_id = ?`, conceptID)
 	if err != nil {
-		return fmt.Errorf("list same members: %w", err)
+		return nil, fmt.Errorf("list current members: %w", err)
 	}
-	var unitIDs []int64
+	var members []int64
 	for rows.Next() {
 		var uid int64
 		if err := rows.Scan(&uid); err != nil {
 			rows.Close()
-			return err
+			return nil, err
 		}
-		unitIDs = append(unitIDs, uid)
+		members = append(members, uid)
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return err
+		return nil, err
 	}
 
-	supported := false
-	for _, uid := range unitIDs {
+	var out []int64
+	for _, uid := range members {
 		ok, err := unitHasActiveSupport(ctx, q, uid)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if ok {
-			supported = true
-			break
+			out = append(out, uid)
 		}
 	}
+	return out, nil
+}
 
-	next := domain.ConceptOrphaned
-	if supported {
-		next = domain.ConceptActive
+// deriveSupportState computes a concept's support state from current data.
+func deriveSupportState(ctx context.Context, q txQuerier, conceptID int64) (domain.ConceptSupportState, error) {
+	ids, err := supportingUnitIDs(ctx, q, conceptID)
+	if err != nil {
+		return "", err
 	}
-	if domain.ConceptState(state) == next {
-		return nil
+	if len(ids) > 0 {
+		return domain.SupportSupported, nil
 	}
-	if _, err := q.ExecContext(ctx,
-		`UPDATE knowledge_concepts SET state = ?, updated_at = ? WHERE id = ?`,
-		string(next), now().Format(rfc3339), conceptID); err != nil {
-		return fmt.Errorf("update concept state: %w", err)
-	}
-	return nil
+	return domain.SupportOrphaned, nil
 }
 
 // ---- concept CRUD ----
@@ -361,50 +312,64 @@ func (r *ConceptRepository) UnitByID(ctx context.Context, unitID int64) (*domain
 	return u, nil
 }
 
-// FindActiveBySignature returns active concepts with the given signature (zero or
-// one under the active-signature unique index).
+// FindActiveBySignature returns the non-retired concept(s) that own the given
+// durable identity signature. Support is NOT a filter: an orphaned (currently
+// unsupported) concept still owns its identity, so a new unit with that signature
+// resolves SAME to it rather than spawning a duplicate. Under the durable-identity
+// index there is at most one non-retired concept per signature, so this returns
+// zero or one row.
 func (r *ConceptRepository) FindActiveBySignature(ctx context.Context, sig string) ([]domain.KnowledgeConcept, error) {
 	rows, err := r.db.QueryContext(ctx,
-		conceptSelect+` WHERE signature = ? AND state = 'active' ORDER BY id ASC`, sig)
+		conceptSelect+` WHERE signature = ? AND lifecycle_state != 'retired' ORDER BY id ASC`, sig)
 	if err != nil {
 		return nil, fmt.Errorf("find by signature: %w", err)
 	}
-	defer rows.Close()
-	return scanConcepts(rows)
+	concepts, err := r.scanConceptsWithSupport(ctx, rows)
+	if err != nil {
+		return nil, err
+	}
+	return concepts, nil
 }
 
-// CreateConcept inserts a new active concept from a validated identity, refusing a
-// duplicate active signature.
-func (r *ConceptRepository) CreateConcept(ctx context.Context, in domain.NewConceptInput) (*domain.KnowledgeConcept, error) {
+// CreateConcept inserts a new concept from a validated identity, refusing a
+// duplicate DURABLE identity (non-retired). When in.LinkSeedAsSame is set it also
+// records the seed unit's SAME membership in the same transaction, so create and
+// attach are atomic.
+func (r *ConceptRepository) CreateConcept(ctx context.Context, in domain.NewConceptInput) (*domain.KnowledgeConcept, *domain.UnitConceptLink, error) {
 	if err := in.Identity.Validate(); err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	if in.LinkSeedAsSame && in.SeedUnitID == nil {
+		return nil, nil, fmt.Errorf("%w: seed membership requested without a seed unit", domain.ErrValidation)
 	}
 	sig := in.Identity.Signature()
 	features, err := encodeFeatures(in.Identity.Normalized().IdentityFeatures)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
+		return nil, nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// An active concept with this signature must not already exist.
+	// A non-retired concept with this durable identity must not already exist.
 	var existing int64
 	err = tx.QueryRowContext(ctx,
-		`SELECT id FROM knowledge_concepts WHERE signature = ? AND state = 'active' LIMIT 1`, sig).Scan(&existing)
+		`SELECT id FROM knowledge_concepts
+		 WHERE identity_schema_version = ? AND signature = ? AND lifecycle_state != 'retired'
+		 LIMIT 1`, domain.ConceptIdentitySchemaVersion, sig).Scan(&existing)
 	if err == nil {
-		return nil, fmt.Errorf("%w: an active concept with this identity already exists", domain.ErrConceptConflict)
+		return nil, nil, fmt.Errorf("%w: a concept with this identity already exists", domain.ErrConceptConflict)
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("check existing concept: %w", err)
+		return nil, nil, fmt.Errorf("check existing concept: %w", err)
 	}
 
 	if in.SeedUnitID != nil {
 		if err := unitExists(ctx, tx, *in.SeedUnitID); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -412,23 +377,43 @@ func (r *ConceptRepository) CreateConcept(ctx context.Context, in domain.NewConc
 	ts := now.Format(rfc3339)
 	res, err := tx.ExecContext(ctx,
 		`INSERT INTO knowledge_concepts
-		   (identity_schema_version, target, pedagogical_intent, scope, identity_features, signature, preferred_unit_id, state, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, NULL, 'active', ?, ?)`,
+		   (identity_schema_version, target, pedagogical_intent, scope, identity_features, signature, preferred_unit_id, lifecycle_state, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, NULL, 'normal', ?, ?)`,
 		domain.ConceptIdentitySchemaVersion, in.Identity.Target, in.Identity.PedagogicalIntent,
 		in.Identity.Scope, features, sig, ts, ts)
 	if err != nil {
-		return nil, fmt.Errorf("insert concept: %w", err)
+		return nil, nil, fmt.Errorf("insert concept: %w", err)
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
-		return nil, fmt.Errorf("concept last insert id: %w", err)
+		return nil, nil, fmt.Errorf("concept last insert id: %w", err)
 	}
+
+	// Atomic create-and-attach: record the seed SAME membership in this same
+	// transaction so a link failure rolls back the concept too.
+	var seedLink *domain.UnitConceptLink
+	if in.LinkSeedAsSame {
+		source := in.SeedSource
+		if source == "" {
+			source = domain.SourceHuman
+		}
+		evidence := in.SeedEvidence
+		if evidence == "" {
+			evidence = "{}"
+		}
+		link, err := r.applySame(ctx, tx, *in.SeedUnitID, id, source, nil, evidence, now)
+		if err != nil {
+			return nil, nil, err
+		}
+		seedLink = link
+	}
+
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
+		return nil, nil, fmt.Errorf("commit tx: %w", err)
 	}
 
 	norm := in.Identity.Normalized()
-	return &domain.KnowledgeConcept{
+	concept := &domain.KnowledgeConcept{
 		ID:                    id,
 		IdentitySchemaVersion: domain.ConceptIdentitySchemaVersion,
 		Target:                in.Identity.Target,
@@ -436,13 +421,22 @@ func (r *ConceptRepository) CreateConcept(ctx context.Context, in domain.NewConc
 		Scope:                 in.Identity.Scope,
 		IdentityFeatures:      norm.IdentityFeatures,
 		Signature:             sig,
-		State:                 domain.ConceptActive,
+		Lifecycle:             domain.LifecycleNormal,
 		CreatedAt:             now,
 		UpdatedAt:             now,
-	}, nil
+	}
+	// Fill derived support/effective state from current data.
+	support, err := deriveSupportState(ctx, r.db, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	concept.Support = support
+	concept.State = domain.EffectiveConceptState(concept.Lifecycle, support)
+	return concept, seedLink, nil
 }
 
-// GetConcept returns one concept and its links (newest first).
+// GetConcept returns one concept (with derived support) and its full append-only
+// event history (newest first).
 func (r *ConceptRepository) GetConcept(ctx context.Context, conceptID int64) (*domain.ConceptView, error) {
 	row := r.db.QueryRowContext(ctx, conceptSelect+` WHERE id = ?`, conceptID)
 	c, err := scanConcept(row)
@@ -452,6 +446,9 @@ func (r *ConceptRepository) GetConcept(ctx context.Context, conceptID int64) (*d
 	if err != nil {
 		return nil, fmt.Errorf("get concept: %w", err)
 	}
+	if err := r.fillSupport(ctx, r.db, c); err != nil {
+		return nil, err
+	}
 	links, err := r.linksByConcept(ctx, conceptID)
 	if err != nil {
 		return nil, err
@@ -459,27 +456,36 @@ func (r *ConceptRepository) GetConcept(ctx context.Context, conceptID int64) (*d
 	return &domain.ConceptView{Concept: *c, Links: links}, nil
 }
 
-// ListConcepts returns concepts filtered by optional state, newest first.
+// ListConcepts returns concepts filtered by effective state (nil = all), newest
+// first. Support is derived per concept; a state filter is applied after
+// derivation so active/orphaned reflect current data.
 func (r *ConceptRepository) ListConcepts(ctx context.Context, state *domain.ConceptState) ([]domain.KnowledgeConcept, error) {
-	q := conceptSelect
-	var args []any
-	if state != nil {
-		q += ` WHERE state = ?`
-		args = append(args, string(*state))
-	}
-	q += ` ORDER BY id DESC`
-	rows, err := r.db.QueryContext(ctx, q, args...)
+	rows, err := r.db.QueryContext(ctx, conceptSelect+` ORDER BY id DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list concepts: %w", err)
 	}
-	defer rows.Close()
-	return scanConcepts(rows)
+	all, err := r.scanConceptsWithSupport(ctx, rows)
+	if err != nil {
+		return nil, err
+	}
+	if state == nil {
+		return all, nil
+	}
+	out := make([]domain.KnowledgeConcept, 0, len(all))
+	for _, c := range all {
+		if c.State == *state {
+			out = append(out, c)
+		}
+	}
+	return out, nil
 }
 
-// ---- resolution links ----
+// ---- resolution events / membership ----
 
-// LinkSame records an accepted SAME membership, enforcing at-most-one accepted
-// SAME per unit, then recomputes the concept's support.
+// LinkSame records an accepted SAME membership and sets it as the unit's current
+// membership. It enforces at-most-one CURRENT SAME per unit: re-affirming the same
+// concept is idempotent; a SAME to a different concept while one is current is a
+// conflict (use ReassignSame). Appends an immutable event.
 func (r *ConceptRepository) LinkSame(ctx context.Context, unitID, conceptID int64, source domain.DecisionSource, score *float64, evidence string) (*domain.UnitConceptLink, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -494,19 +500,14 @@ func (r *ConceptRepository) LinkSame(ctx context.Context, unitID, conceptID int6
 		return nil, err
 	}
 
-	// At most one currently accepted SAME per unit.
-	var existingConcept sql.NullInt64
-	err = tx.QueryRowContext(ctx,
-		`SELECT concept_id FROM unit_concept_links
-		 WHERE unit_id = ? AND relation = 'same' AND status = 'accepted'
-		 LIMIT 1`, unitID).Scan(&existingConcept)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("check existing same: %w", err)
+	current, err := currentMembership(ctx, tx, unitID)
+	if err != nil {
+		return nil, err
 	}
-	if err == nil {
-		if existingConcept.Int64 == conceptID {
-			// Idempotent re-affirmation: return the existing accepted link.
-			link, lerr := r.acceptedSameLink(ctx, tx, unitID, conceptID)
+	if current != nil {
+		if current.conceptID == conceptID {
+			// Idempotent re-affirmation: return the in-force event.
+			link, lerr := r.linkByID(ctx, tx, current.linkID)
 			if lerr != nil {
 				return nil, lerr
 			}
@@ -515,18 +516,14 @@ func (r *ConceptRepository) LinkSame(ctx context.Context, unitID, conceptID int6
 			}
 			return link, nil
 		}
-		return nil, fmt.Errorf("%w: unit already has an accepted SAME membership to another concept", domain.ErrConceptConflict)
+		return nil, fmt.Errorf("%w: unit already has a current SAME membership to another concept", domain.ErrConceptConflict)
 	}
 
 	if evidence == "" {
 		evidence = "{}"
 	}
-	now := r.now()
-	link, err := insertLink(ctx, tx, unitID, conceptID, domain.RelationSame, domain.LinkAccepted, source, domain.ConceptResolverVersion, score, evidence, now)
+	link, err := r.applySame(ctx, tx, unitID, conceptID, source, score, evidence, r.now())
 	if err != nil {
-		return nil, err
-	}
-	if err := recomputeConceptState(ctx, tx, conceptID, r.now); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -535,9 +532,73 @@ func (r *ConceptRepository) LinkSame(ctx context.Context, unitID, conceptID int6
 	return link, nil
 }
 
-// LinkRelation records a non-membership BROADER/NARROWER/RELATED decision,
-// superseding any prior identical (unit, concept, relation) accepted row. It never
-// touches SAME membership or support.
+// ReassignSame moves a unit's current SAME membership to a different concept as an
+// explicit human correction. It appends a superseding event, updates the current
+// projection, and clears the old concept's preferred unit if it pointed at this
+// unit — all atomically. History is preserved: the prior event row is untouched.
+func (r *ConceptRepository) ReassignSame(ctx context.Context, unitID, conceptID int64, source domain.DecisionSource, evidence string) (*domain.UnitConceptLink, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := unitExists(ctx, tx, unitID); err != nil {
+		return nil, err
+	}
+	if err := conceptExists(ctx, tx, conceptID); err != nil {
+		return nil, err
+	}
+
+	current, err := currentMembership(ctx, tx, unitID)
+	if err != nil {
+		return nil, err
+	}
+	if current != nil && current.conceptID == conceptID {
+		// Already the current concept: idempotent.
+		link, lerr := r.linkByID(ctx, tx, current.linkID)
+		if lerr != nil {
+			return nil, lerr
+		}
+		if cerr := tx.Commit(); cerr != nil {
+			return nil, fmt.Errorf("commit tx: %w", cerr)
+		}
+		return link, nil
+	}
+
+	if evidence == "" {
+		evidence = "{}"
+	}
+	now := r.now()
+
+	var supersedes *int64
+	if current != nil {
+		id := current.linkID
+		supersedes = &id
+		// If the OLD concept's preferred unit is this unit, clear it: the unit is no
+		// longer a member there, so an invalid preferred_unit_id must not remain.
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE knowledge_concepts SET preferred_unit_id = NULL, updated_at = ?
+			 WHERE id = ? AND preferred_unit_id = ?`,
+			now.Format(rfc3339), current.conceptID, unitID); err != nil {
+			return nil, fmt.Errorf("clear stale preferred unit: %w", err)
+		}
+	}
+
+	link, err := r.applySameEvent(ctx, tx, unitID, conceptID, source, nil, evidence, supersedes, now)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	return link, nil
+}
+
+// LinkRelation records a non-membership BROADER/NARROWER/RELATED decision as an
+// immutable event. A repeated identical (unit, concept, relation) appends a new
+// event that supersedes the prior current one via supersedes_link_id (the old row
+// is never rewritten). It never touches SAME membership or support.
 func (r *ConceptRepository) LinkRelation(ctx context.Context, unitID, conceptID int64, relation domain.ConceptRelation, source domain.DecisionSource, evidence string) (*domain.UnitConceptLink, error) {
 	if relation == domain.RelationSame {
 		return nil, fmt.Errorf("%w: use LinkSame for SAME memberships", domain.ErrValidation)
@@ -559,19 +620,28 @@ func (r *ConceptRepository) LinkRelation(ctx context.Context, unitID, conceptID 
 		return nil, err
 	}
 
-	// Supersede a prior accepted identical relation (append-only history).
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE unit_concept_links SET status = 'superseded'
-		 WHERE unit_id = ? AND concept_id = ? AND relation = ? AND status = 'accepted'`,
-		unitID, conceptID, string(relation)); err != nil {
-		return nil, fmt.Errorf("supersede prior relation: %w", err)
+	// Find the current (newest, not-yet-superseded) event for this exact triple to
+	// record as the one being superseded. We never rewrite it.
+	var prior sql.NullInt64
+	err = tx.QueryRowContext(ctx,
+		`SELECT id FROM unit_concept_links
+		 WHERE unit_id = ? AND concept_id = ? AND relation = ? AND status = 'accepted'
+		   AND id NOT IN (SELECT supersedes_link_id FROM unit_concept_links WHERE supersedes_link_id IS NOT NULL)
+		 ORDER BY id DESC LIMIT 1`,
+		unitID, conceptID, string(relation)).Scan(&prior)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("find prior relation: %w", err)
+	}
+	var supersedes *int64
+	if prior.Valid {
+		id := prior.Int64
+		supersedes = &id
 	}
 
 	if evidence == "" {
 		evidence = "{}"
 	}
-	now := r.now()
-	link, err := insertLink(ctx, tx, unitID, conceptID, relation, domain.LinkAccepted, source, domain.ConceptResolverVersion, nil, evidence, now)
+	link, err := insertLink(ctx, tx, unitID, conceptID, relation, domain.LinkAccepted, source, domain.ConceptResolverVersion, nil, evidence, supersedes, r.now())
 	if err != nil {
 		return nil, err
 	}
@@ -581,8 +651,8 @@ func (r *ConceptRepository) LinkRelation(ctx context.Context, unitID, conceptID 
 	return link, nil
 }
 
-// SetPreferredUnit sets the preferred representation, validating that the unit has
-// an accepted SAME membership to this concept. It leaves membership and id
+// SetPreferredUnit sets the preferred representation, validating that the unit
+// currently holds the SAME membership to this concept. It leaves membership and id
 // untouched.
 func (r *ConceptRepository) SetPreferredUnit(ctx context.Context, conceptID, unitID int64) (*domain.KnowledgeConcept, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -597,11 +667,10 @@ func (r *ConceptRepository) SetPreferredUnit(ctx context.Context, conceptID, uni
 
 	var one int
 	err = tx.QueryRowContext(ctx,
-		`SELECT 1 FROM unit_concept_links
-		 WHERE unit_id = ? AND concept_id = ? AND relation = 'same' AND status = 'accepted'
-		 LIMIT 1`, unitID, conceptID).Scan(&one)
+		`SELECT 1 FROM unit_concept_memberships WHERE unit_id = ? AND concept_id = ?`,
+		unitID, conceptID).Scan(&one)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("%w: preferred unit must have an accepted SAME membership to this concept", domain.ErrValidation)
+		return nil, fmt.Errorf("%w: preferred unit must currently hold the SAME membership to this concept", domain.ErrValidation)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("check membership: %w", err)
@@ -617,10 +686,17 @@ func (r *ConceptRepository) SetPreferredUnit(ctx context.Context, conceptID, uni
 	}
 
 	row := r.db.QueryRowContext(ctx, conceptSelect+` WHERE id = ?`, conceptID)
-	return scanConcept(row)
+	c, err := scanConcept(row)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.fillSupport(ctx, r.db, c); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
-// ListReviewableUnits returns current-extraction units with no accepted SAME
+// ListReviewableUnits returns current-extraction units with no current SAME
 // membership, seeded with their default candidate identity.
 func (r *ConceptRepository) ListReviewableUnits(ctx context.Context, entryID *int64) ([]domain.ReviewableUnit, error) {
 	if entryID != nil {
@@ -629,7 +705,6 @@ func (r *ConceptRepository) ListReviewableUnits(ctx context.Context, entryID *in
 		}
 	}
 
-	// Gather the set of current extraction ids to consider.
 	var entryIDs []int64
 	if entryID != nil {
 		entryIDs = []int64{*entryID}
@@ -665,10 +740,7 @@ func (r *ConceptRepository) ListReviewableUnits(ctx context.Context, entryID *in
 			`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at
 			 FROM knowledge_units
 			 WHERE extraction_id = ?
-			   AND id NOT IN (
-			     SELECT unit_id FROM unit_concept_links
-			     WHERE relation = 'same' AND status = 'accepted'
-			   )
+			   AND id NOT IN (SELECT unit_id FROM unit_concept_memberships)
 			 ORDER BY ordinal ASC`, *current)
 		if err != nil {
 			return nil, fmt.Errorf("list reviewable units: %w", err)
@@ -694,52 +766,72 @@ func (r *ConceptRepository) ActiveSupportUnitIDs(ctx context.Context, conceptID 
 	if err := conceptExists(ctx, r.db, conceptID); err != nil {
 		return nil, err
 	}
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT unit_id FROM unit_concept_links
-		 WHERE concept_id = ? AND relation = 'same' AND status = 'accepted'`, conceptID)
+	return supportingUnitIDs(ctx, r.db, conceptID)
+}
+
+// ---- membership projection helpers ----
+
+// membership is the current SAME projection row for a unit.
+type membership struct {
+	conceptID int64
+	linkID    int64
+}
+
+// currentMembership returns the unit's current SAME membership, or nil.
+func currentMembership(ctx context.Context, q txQuerier, unitID int64) (*membership, error) {
+	var m membership
+	err := q.QueryRowContext(ctx,
+		`SELECT concept_id, link_id FROM unit_concept_memberships WHERE unit_id = ?`, unitID).
+		Scan(&m.conceptID, &m.linkID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("list same members: %w", err)
+		return nil, fmt.Errorf("read current membership: %w", err)
 	}
-	var candidates []int64
-	for rows.Next() {
-		var uid int64
-		if err := rows.Scan(&uid); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		candidates = append(candidates, uid)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+	return &m, nil
+}
+
+// applySame appends an original (non-superseding) accepted SAME event and points
+// the current-membership projection at it.
+func (r *ConceptRepository) applySame(ctx context.Context, tx *sql.Tx, unitID, conceptID int64, source domain.DecisionSource, score *float64, evidence string, now time.Time) (*domain.UnitConceptLink, error) {
+	return r.applySameEvent(ctx, tx, unitID, conceptID, source, score, evidence, nil, now)
+}
+
+// applySameEvent appends an accepted SAME event (optionally superseding another)
+// and upserts the current-membership projection to point at the new event.
+func (r *ConceptRepository) applySameEvent(ctx context.Context, tx *sql.Tx, unitID, conceptID int64, source domain.DecisionSource, score *float64, evidence string, supersedes *int64, now time.Time) (*domain.UnitConceptLink, error) {
+	link, err := insertLink(ctx, tx, unitID, conceptID, domain.RelationSame, domain.LinkAccepted, source, domain.ConceptResolverVersion, score, evidence, supersedes, now)
+	if err != nil {
 		return nil, err
 	}
-
-	var out []int64
-	for _, uid := range candidates {
-		ok, err := unitHasActiveSupport(ctx, r.db, uid)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			out = append(out, uid)
-		}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO unit_concept_memberships (unit_id, concept_id, link_id, updated_at)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(unit_id) DO UPDATE SET concept_id = excluded.concept_id, link_id = excluded.link_id, updated_at = excluded.updated_at`,
+		unitID, conceptID, link.ID, now.Format(rfc3339)); err != nil {
+		return nil, fmt.Errorf("update current membership: %w", err)
 	}
-	return out, nil
+	return link, nil
 }
 
 // ---- link helpers / scanners ----
 
-func insertLink(ctx context.Context, q txQuerier, unitID, conceptID int64, relation domain.ConceptRelation, status domain.LinkStatus, source domain.DecisionSource, resolverVersion string, score *float64, evidence string, now time.Time) (*domain.UnitConceptLink, error) {
+func insertLink(ctx context.Context, q txQuerier, unitID, conceptID int64, relation domain.ConceptRelation, status domain.LinkStatus, source domain.DecisionSource, resolverVersion string, score *float64, evidence string, supersedes *int64, now time.Time) (*domain.UnitConceptLink, error) {
 	var scoreArg any
 	if score != nil {
 		scoreArg = *score
 	}
+	var supersedesArg any
+	if supersedes != nil {
+		supersedesArg = *supersedes
+	}
 	ts := now.Format(rfc3339)
 	res, err := q.ExecContext(ctx,
 		`INSERT INTO unit_concept_links
-		   (unit_id, concept_id, relation, status, decision_source, resolver_version, score, evidence, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		unitID, conceptID, string(relation), string(status), string(source), resolverVersion, scoreArg, evidence, ts)
+		   (unit_id, concept_id, relation, status, decision_source, resolver_version, score, evidence, supersedes_link_id, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		unitID, conceptID, string(relation), string(status), string(source), resolverVersion, scoreArg, evidence, supersedesArg, ts)
 	if err != nil {
 		return nil, fmt.Errorf("insert link: %w", err)
 	}
@@ -749,14 +841,13 @@ func insertLink(ctx context.Context, q txQuerier, unitID, conceptID int64, relat
 	}
 	return &domain.UnitConceptLink{
 		ID: id, UnitID: unitID, ConceptID: conceptID, Relation: relation, Status: status,
-		DecisionSource: source, ResolverVersion: resolverVersion, Score: score, Evidence: evidence, CreatedAt: now,
+		DecisionSource: source, ResolverVersion: resolverVersion, Score: score, Evidence: evidence,
+		SupersedesLinkID: supersedes, CreatedAt: now,
 	}, nil
 }
 
-func (r *ConceptRepository) acceptedSameLink(ctx context.Context, q txQuerier, unitID, conceptID int64) (*domain.UnitConceptLink, error) {
-	row := q.QueryRowContext(ctx,
-		linkSelect+` WHERE unit_id = ? AND concept_id = ? AND relation = 'same' AND status = 'accepted' ORDER BY id DESC LIMIT 1`,
-		unitID, conceptID)
+func (r *ConceptRepository) linkByID(ctx context.Context, q txQuerier, linkID int64) (*domain.UnitConceptLink, error) {
+	row := q.QueryRowContext(ctx, linkSelect+` WHERE id = ?`, linkID)
 	return scanLink(row)
 }
 
@@ -777,19 +868,21 @@ func (r *ConceptRepository) linksByConcept(ctx context.Context, conceptID int64)
 	return out, rows.Err()
 }
 
-const conceptSelect = `SELECT id, identity_schema_version, target, pedagogical_intent, scope, identity_features, signature, preferred_unit_id, state, created_at, updated_at FROM knowledge_concepts`
+const conceptSelect = `SELECT id, identity_schema_version, target, pedagogical_intent, scope, identity_features, signature, preferred_unit_id, lifecycle_state, created_at, updated_at FROM knowledge_concepts`
 
+// scanConcept reads the persisted columns (including lifecycle) but leaves derived
+// Support/State unset; callers fill them via fillSupport.
 func scanConcept(s scanner) (*domain.KnowledgeConcept, error) {
 	var (
 		c          domain.KnowledgeConcept
 		features   string
 		preferred  sql.NullInt64
-		state      string
+		lifecycle  string
 		createdStr string
 		updatedStr string
 	)
 	if err := s.Scan(&c.ID, &c.IdentitySchemaVersion, &c.Target, &c.PedagogicalIntent, &c.Scope,
-		&features, &c.Signature, &preferred, &state, &createdStr, &updatedStr); err != nil {
+		&features, &c.Signature, &preferred, &lifecycle, &createdStr, &updatedStr); err != nil {
 		return nil, err
 	}
 	f, err := decodeFeatures(features)
@@ -800,7 +893,7 @@ func scanConcept(s scanner) (*domain.KnowledgeConcept, error) {
 	if preferred.Valid {
 		c.PreferredUnitID = &preferred.Int64
 	}
-	c.State = domain.ConceptState(state)
+	c.Lifecycle = domain.ConceptLifecycleState(lifecycle)
 	if c.CreatedAt, err = time.Parse(rfc3339, createdStr); err != nil {
 		return nil, fmt.Errorf("parse created_at: %w", err)
 	}
@@ -810,19 +903,45 @@ func scanConcept(s scanner) (*domain.KnowledgeConcept, error) {
 	return &c, nil
 }
 
-func scanConcepts(rows *sql.Rows) ([]domain.KnowledgeConcept, error) {
+// fillSupport computes and sets the derived Support and effective State on c.
+func (r *ConceptRepository) fillSupport(ctx context.Context, q txQuerier, c *domain.KnowledgeConcept) error {
+	support, err := deriveSupportState(ctx, q, c.ID)
+	if err != nil {
+		return err
+	}
+	c.Support = support
+	c.State = domain.EffectiveConceptState(c.Lifecycle, support)
+	return nil
+}
+
+// scanConceptsWithSupport scans all rows and fills derived support for each. It
+// closes rows before deriving support (support derivation issues its own queries,
+// and the single-connection pool cannot serve a second query while rows are open).
+func (r *ConceptRepository) scanConceptsWithSupport(ctx context.Context, rows *sql.Rows) ([]domain.KnowledgeConcept, error) {
 	var out []domain.KnowledgeConcept
 	for rows.Next() {
 		c, err := scanConcept(rows)
 		if err != nil {
+			rows.Close()
 			return nil, fmt.Errorf("scan concept: %w", err)
 		}
 		out = append(out, *c)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+
+	for i := range out {
+		if err := r.fillSupport(ctx, r.db, &out[i]); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
-const linkSelect = `SELECT id, unit_id, concept_id, relation, status, decision_source, resolver_version, score, evidence, created_at FROM unit_concept_links`
+const linkSelect = `SELECT id, unit_id, concept_id, relation, status, decision_source, resolver_version, score, evidence, supersedes_link_id, created_at FROM unit_concept_links`
 
 func scanLink(s scanner) (*domain.UnitConceptLink, error) {
 	var (
@@ -831,10 +950,11 @@ func scanLink(s scanner) (*domain.UnitConceptLink, error) {
 		status     string
 		source     string
 		score      sql.NullFloat64
+		supersedes sql.NullInt64
 		createdStr string
 	)
 	if err := s.Scan(&l.ID, &l.UnitID, &l.ConceptID, &relation, &status, &source,
-		&l.ResolverVersion, &score, &l.Evidence, &createdStr); err != nil {
+		&l.ResolverVersion, &score, &l.Evidence, &supersedes, &createdStr); err != nil {
 		return nil, err
 	}
 	l.Relation = domain.ConceptRelation(relation)
@@ -842,6 +962,9 @@ func scanLink(s scanner) (*domain.UnitConceptLink, error) {
 	l.DecisionSource = domain.DecisionSource(source)
 	if score.Valid {
 		l.Score = &score.Float64
+	}
+	if supersedes.Valid {
+		l.SupersedesLinkID = &supersedes.Int64
 	}
 	var err error
 	if l.CreatedAt, err = time.Parse(rfc3339, createdStr); err != nil {

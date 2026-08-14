@@ -97,34 +97,42 @@ func (s *ConceptService) AutoResolve(ctx context.Context, unitID int64) (*Resolu
 }
 
 // ResolveSame records an explicit human accepted SAME membership from a unit to an
-// existing concept. It enforces the at-most-one-accepted-SAME invariant in the
-// repository. Returns domain.ErrConceptConflict when the unit already has an
-// accepted SAME to a different concept.
+// existing concept when the unit has NO current SAME membership. It enforces the
+// at-most-one-current-SAME invariant in the repository. Returns
+// domain.ErrConceptConflict when the unit already has a current SAME to a different
+// concept — the caller should use ReassignSame to correct an existing membership.
 func (s *ConceptService) ResolveSame(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptLink, error) {
 	evidence := mustEvidence(map[string]any{"reason": "human_same", "resolver": domain.ConceptResolverVersion})
 	return s.concepts.LinkSame(ctx, unitID, conceptID, domain.SourceHuman, nil, evidence)
 }
 
+// ReassignSame moves a unit's CURRENT SAME membership to a different concept as an
+// explicit human correction, even when the unit already belongs SAME to another
+// concept. The prior decision is preserved as immutable history; the new decision
+// supersedes it and becomes current. This is the human-final-authority operation:
+// it may override an automatic or a previous human SAME. It is idempotent when the
+// unit already belongs to the target concept.
+func (s *ConceptService) ReassignSame(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptLink, error) {
+	evidence := mustEvidence(map[string]any{"reason": "human_same_correction", "resolver": domain.ConceptResolverVersion})
+	return s.concepts.ReassignSame(ctx, unitID, conceptID, domain.SourceHuman, evidence)
+}
+
 // CreateConcept creates a new durable concept from an explicit identity (and an
-// optional seed unit). It first checks — inside the repository transaction — that
-// no active concept already has the same normalized v1 signature, returning
-// domain.ErrConceptConflict if one does. When SeedUnitID is set and
-// LinkSeedAsSame is true, it also records an accepted SAME membership for that
-// unit, so a reviewer can create-and-attach in one call.
+// optional seed unit). The repository checks — inside one transaction — that no
+// non-retired concept already owns the same durable identity signature, returning
+// domain.ErrConceptConflict if one does. When SeedUnitID is set and linkSeedAsSame
+// is true, the SAME repository transaction also records the seed unit's accepted
+// SAME membership, so create-and-attach is atomic: if the seed link fails, no
+// concept persists either.
 func (s *ConceptService) CreateConcept(ctx context.Context, identity domain.ConceptIdentity, seedUnitID *int64, linkSeedAsSame bool) (*domain.KnowledgeConcept, *domain.UnitConceptLink, error) {
-	concept, err := s.concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: identity, SeedUnitID: seedUnitID})
-	if err != nil {
-		return nil, nil, err
+	in := domain.NewConceptInput{
+		Identity:       identity,
+		SeedUnitID:     seedUnitID,
+		LinkSeedAsSame: seedUnitID != nil && linkSeedAsSame,
+		SeedSource:     domain.SourceHuman,
+		SeedEvidence:   mustEvidence(map[string]any{"reason": "seed_unit_same", "resolver": domain.ConceptResolverVersion}),
 	}
-	if seedUnitID == nil || !linkSeedAsSame {
-		return concept, nil, nil
-	}
-	evidence := mustEvidence(map[string]any{"reason": "seed_unit_same", "resolver": domain.ConceptResolverVersion})
-	link, err := s.concepts.LinkSame(ctx, *seedUnitID, concept.ID, domain.SourceHuman, nil, evidence)
-	if err != nil {
-		return concept, nil, err
-	}
-	return concept, link, nil
+	return s.concepts.CreateConcept(ctx, in)
 }
 
 // RecordRelation records a non-membership BROADER/NARROWER/RELATED decision. It

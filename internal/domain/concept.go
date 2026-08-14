@@ -44,30 +44,77 @@ const (
 	maxConceptEvidenceLen = 4000
 )
 
-// ConceptState is the lifecycle state of a durable KnowledgeConcept.
+// ConceptLifecycleState is the PERSISTED human-owned lifecycle of a concept. It is
+// deliberately small and never derived: only an explicit human decision changes
+// it. Support (supported/orphaned) is NOT stored here — see ConceptSupportState —
+// because it depends on the current extraction, effective admission, and current
+// SAME membership, all of which change without any write to the concept.
+type ConceptLifecycleState string
+
+const (
+	// LifecycleNormal means the concept participates in the live pool; its support
+	// is derived from current data at read time.
+	LifecycleNormal ConceptLifecycleState = "normal"
+	// LifecycleRetired means a human has retired the concept. It is sticky (support
+	// recompute never revives it) and it releases the concept's durable-identity
+	// claim so a fresh concept may reuse the signature.
+	LifecycleRetired ConceptLifecycleState = "retired"
+)
+
+// ValidConceptLifecycleState reports whether s is a known lifecycle state.
+func ValidConceptLifecycleState(s ConceptLifecycleState) bool {
+	return s == LifecycleNormal || s == LifecycleRetired
+}
+
+// ConceptSupportState is the DERIVED support state of a concept. It is never
+// persisted: it is computed at read time from whether any unit currently provides
+// automatic support (belongs to its entry's current extraction + effective
+// admission active + holds the current SAME membership to the concept).
+type ConceptSupportState string
+
+const (
+	// SupportSupported means at least one unit currently provides automatic support.
+	SupportSupported ConceptSupportState = "supported"
+	// SupportOrphaned means no unit currently provides support. The concept is kept
+	// (never deleted) and can regain support later.
+	SupportOrphaned ConceptSupportState = "orphaned"
+)
+
+// ConceptState is the effective, human-facing state of a concept, combining the
+// persisted lifecycle with derived support. It is kept for API compatibility (the
+// wire "state" field) but is always COMPUTED from current data, never stored, so
+// it can never go stale. Retired wins; otherwise support decides.
 type ConceptState string
 
 const (
-	// ConceptActive means the Concept currently has (or may receive) automatic
-	// current support from a live knowledge unit.
+	// ConceptActive means normal lifecycle and currently supported.
 	ConceptActive ConceptState = "active"
-	// ConceptOrphaned means the Concept has lost all current support but is
-	// deliberately kept (never deleted), so its identity and history survive and
-	// it can regain support later.
+	// ConceptOrphaned means normal lifecycle but currently unsupported.
 	ConceptOrphaned ConceptState = "orphaned"
-	// ConceptRetired means a human has retired the Concept. It is sticky: the
-	// automatic support recompute never flips a retired Concept back to active or
-	// orphaned.
+	// ConceptRetired means the human lifecycle is retired (regardless of support).
 	ConceptRetired ConceptState = "retired"
 )
 
-// ValidConceptState reports whether s is a known concept state.
+// ValidConceptState reports whether s is a known effective concept state.
 func ValidConceptState(s ConceptState) bool {
 	switch s {
 	case ConceptActive, ConceptOrphaned, ConceptRetired:
 		return true
 	}
 	return false
+}
+
+// EffectiveConceptState maps a persisted lifecycle plus a derived support state
+// onto the effective, human-facing ConceptState. Retired is sticky and wins over
+// support; otherwise supported => active, unsupported => orphaned.
+func EffectiveConceptState(lifecycle ConceptLifecycleState, support ConceptSupportState) ConceptState {
+	if lifecycle == LifecycleRetired {
+		return ConceptRetired
+	}
+	if support == SupportSupported {
+		return ConceptActive
+	}
+	return ConceptOrphaned
 }
 
 // ConceptRelation is the relation a resolution decision asserts between a
@@ -100,16 +147,25 @@ func ValidConceptRelation(r ConceptRelation) bool {
 	return false
 }
 
-// LinkStatus is the lifecycle of a single resolution decision. History is
-// append-only: a superseding decision inserts a new row and marks the prior
-// accepted row superseded rather than rewriting it, so the full machine-and-human
-// resolution audit trail is preserved.
+// LinkStatus is the kind of decision one append-only event row records, captured
+// at the moment the decision was made. History is truly append-only: an event row
+// is written once and NEVER updated. A superseding decision inserts a NEW event
+// that references the one it replaces via SupersedesLinkID; the earlier row keeps
+// its original data forever. "Which SAME decision is currently in force" is a
+// derived fact held by the current-membership projection, not by mutating an event
+// row's status. LinkSuperseded is retained only to read legacy migration-006 rows;
+// this milestone never writes it.
 type LinkStatus string
 
 const (
-	// LinkAccepted is a currently in-force decision.
+	// LinkAccepted is a decision that accepted a relation/membership at the time it
+	// was recorded. It does not by itself mean "still current": currency is decided
+	// by the membership projection (SAME) or by being the newest un-superseded event
+	// (relations).
 	LinkAccepted LinkStatus = "accepted"
-	// LinkSuperseded is a previously accepted decision replaced by a later one.
+	// LinkSuperseded is a legacy status written by migration 006. It is never written
+	// by this milestone (supersession is expressed structurally via SupersedesLinkID)
+	// but may appear on historical rows.
 	LinkSuperseded LinkStatus = "superseded"
 	// LinkRejected is a decision a human explicitly rejected.
 	LinkRejected LinkStatus = "rejected"
@@ -290,14 +346,22 @@ type KnowledgeConcept struct {
 	Scope                 string
 	IdentityFeatures      map[string]string
 	// Signature is the deterministic canonical form used for exact identity
-	// matching and uniqueness among non-retired concepts.
+	// matching and durable-identity uniqueness among non-retired concepts.
 	Signature string
 	// PreferredUnitID is the unit chosen to represent the concept. It is a
 	// separate decision from membership and may be nil.
 	PreferredUnitID *int64
-	State           ConceptState
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	// Lifecycle is the PERSISTED, human-owned state (normal | retired). It is the
+	// only concept state that is stored.
+	Lifecycle ConceptLifecycleState
+	// Support is the DERIVED support state (supported | orphaned), computed at read
+	// time from current data. It is never persisted, so it cannot go stale.
+	Support ConceptSupportState
+	// State is the effective, human-facing state (active | orphaned | retired),
+	// derived from Lifecycle + Support. Kept for API compatibility; always computed.
+	State     ConceptState
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Identity returns the concept's identity value (without database fields).
@@ -310,11 +374,14 @@ func (c KnowledgeConcept) Identity() ConceptIdentity {
 	}
 }
 
-// UnitConceptLink is one append-only resolution decision relating a unit to a
-// concept. The full set of fields is auditable: which unit and concept, the
-// asserted relation, the decision status, who decided, the resolver version, an
-// optional score, structured evidence, and when. A superseding decision adds a
-// new row; earlier rows are marked superseded, never rewritten or deleted.
+// UnitConceptLink is one immutable resolution EVENT relating a unit to a concept.
+// It is written exactly once and never updated or deleted. The full set of fields
+// is auditable: which unit and concept, the asserted relation, the decision kind
+// at recording time, who decided, the resolver version, an optional score,
+// structured evidence, when, and — for a correcting decision — the id of the event
+// it supersedes. Currency is NOT read from this row: the current SAME membership
+// lives in a separate projection, and the current relation is the newest event not
+// yet superseded.
 type UnitConceptLink struct {
 	ID              int64
 	UnitID          int64
@@ -329,8 +396,12 @@ type UnitConceptLink struct {
 	Score *float64
 	// Evidence is a structured, auditable JSON string (e.g. the matched
 	// signature). It never contains secrets or raw provider payloads.
-	Evidence  string
-	CreatedAt time.Time
+	Evidence string
+	// SupersedesLinkID, when set, is the id of the earlier event this decision
+	// replaces (e.g. a human correction pointing back at the machine SAME it
+	// overrides). nil for an original decision. The referenced row is never mutated.
+	SupersedesLinkID *int64
+	CreatedAt        time.Time
 }
 
 // ResolutionKind is the deterministic outcome the resolver reports for a
@@ -366,9 +437,11 @@ func ResolveConcept(candidate ConceptIdentity, matches []KnowledgeConcept) Resol
 	}
 }
 
-// ConceptView is the read model for one concept together with the units that
-// currently link to it (any relation/status) so a review UI can show the full
-// picture. Links are ordered newest-first.
+// ConceptView is the read model for one concept together with its FULL append-only
+// resolution event history (every event ever recorded for the concept — accepted,
+// superseding, relations, and legacy rows), so a review UI can show provenance,
+// not just the currently-in-force decisions. Events are ordered newest-first. The
+// embedded Concept carries the derived support/effective state.
 type ConceptView struct {
 	Concept KnowledgeConcept
 	Links   []UnitConceptLink
@@ -384,11 +457,18 @@ type ReviewableUnit struct {
 
 // NewConceptInput is the validated bundle for creating a concept from a
 // unit/signature. Identity is validated and normalized; SeedUnitID optionally
-// records which unit motivated the concept (it does not by itself create a SAME
-// membership).
+// records which unit motivated the concept. When LinkSeedAsSame is true, the
+// repository ALSO records an accepted SAME membership for the seed unit in the
+// SAME transaction as the concept insert, so create-and-attach is atomic (either
+// both persist or neither does). LinkSeedAsSame requires SeedUnitID.
 type NewConceptInput struct {
-	Identity   ConceptIdentity
-	SeedUnitID *int64
+	Identity       ConceptIdentity
+	SeedUnitID     *int64
+	LinkSeedAsSame bool
+	// SeedSource records who requested the seed membership (defaults to human at
+	// the service boundary). SeedEvidence is the structured evidence JSON for it.
+	SeedSource   DecisionSource
+	SeedEvidence string
 }
 
 // ConceptRepository is the persistence boundary for concepts, their append-only
@@ -405,39 +485,57 @@ type ConceptRepository interface {
 	// sig (normally zero or one, since active signatures are unique). Used by the
 	// resolver and by concept creation to avoid duplicate identities.
 	FindActiveBySignature(ctx context.Context, sig string) ([]KnowledgeConcept, error)
-	// CreateConcept inserts a new active concept from a validated identity. It
-	// refuses to create a second active concept with the same signature, returning
-	// ErrConceptConflict. SeedUnitID, when set, must reference an existing unit.
-	CreateConcept(ctx context.Context, in NewConceptInput) (*KnowledgeConcept, error)
-	// GetConcept returns one concept with its links, or ErrNotFound.
+	// CreateConcept inserts a new concept from a validated identity. It refuses to
+	// create a second non-retired concept with the same durable identity
+	// (identity_schema_version + signature), returning ErrConceptConflict — an
+	// orphaned (unsupported) concept still owns its identity, so orphaning never
+	// releases it. When in.LinkSeedAsSame is true it ALSO records an accepted SAME
+	// membership for in.SeedUnitID in the same transaction, so create-and-attach is
+	// atomic: if the seed link fails, the concept is not persisted either. SeedUnitID,
+	// when set, must reference an existing unit; LinkSeedAsSame requires SeedUnitID.
+	// The returned link is non-nil only when a seed membership was created.
+	CreateConcept(ctx context.Context, in NewConceptInput) (*KnowledgeConcept, *UnitConceptLink, error)
+	// GetConcept returns one concept (with derived support state) and its full
+	// append-only event history, or ErrNotFound.
 	GetConcept(ctx context.Context, conceptID int64) (*ConceptView, error)
-	// ListConcepts returns concepts filtered by state (nil = all), newest first.
+	// ListConcepts returns concepts filtered by effective state (nil = all), newest
+	// first. Because support is derived, filtering by active/orphaned computes each
+	// concept's current support; retired filters on the persisted lifecycle.
 	ListConcepts(ctx context.Context, state *ConceptState) ([]KnowledgeConcept, error)
-	// LinkSame records an accepted SAME membership from unit to concept. It
-	// enforces at-most-one currently accepted SAME per unit: an accepted SAME to a
-	// different concept is a conflict (ErrConceptConflict); re-affirming the same
-	// concept is idempotent. After linking, the concept's support state is
-	// recomputed. Returns ErrNotFound if the unit or concept does not exist.
+	// LinkSame records an accepted SAME membership from unit to concept and sets it
+	// as the unit's current membership. It enforces at-most-one CURRENT SAME per
+	// unit: re-affirming the same concept is idempotent; a SAME to a DIFFERENT
+	// concept while one is already current is a conflict (ErrConceptConflict) — use
+	// ReassignSame for an explicit human correction. Appends an immutable event.
+	// Returns ErrNotFound if the unit or concept does not exist.
 	LinkSame(ctx context.Context, unitID, conceptID int64, source DecisionSource, score *float64, evidence string) (*UnitConceptLink, error)
-	// LinkRelation records a non-membership BROADER/NARROWER/RELATED decision. It
-	// never affects SAME membership or automatic support. A repeated identical
-	// (unit, concept, relation) supersedes the prior one. Rejects RelationSame
-	// (use LinkSame) with ErrValidation.
+	// ReassignSame moves a unit's CURRENT SAME membership to a different concept as
+	// an explicit human correction, even when the unit already has a current SAME
+	// membership. It appends a new immutable event that supersedes the prior one
+	// (via SupersedesLinkID), updates the current-membership projection, and — if
+	// the OLD concept's preferred_unit_id pointed at this unit — clears it, since
+	// the unit is no longer a member there. All in one transaction. Re-affirming the
+	// unit's existing current concept is idempotent. Returns ErrNotFound if the unit
+	// or concept does not exist.
+	ReassignSame(ctx context.Context, unitID, conceptID int64, source DecisionSource, evidence string) (*UnitConceptLink, error)
+	// LinkRelation records a non-membership BROADER/NARROWER/RELATED decision as an
+	// immutable event. It never affects SAME membership or automatic support. A
+	// repeated identical (unit, concept, relation) appends a new event that
+	// supersedes the prior one via SupersedesLinkID (the old row is not rewritten).
+	// Rejects RelationSame (use LinkSame) with ErrValidation.
 	LinkRelation(ctx context.Context, unitID, conceptID int64, relation ConceptRelation, source DecisionSource, evidence string) (*UnitConceptLink, error)
 	// SetPreferredUnit sets the concept's preferred unit. The unit must currently
-	// have an accepted SAME membership to this concept, else ErrValidation. It does
+	// hold the CURRENT SAME membership to this concept, else ErrValidation. It does
 	// not change the concept ID or any membership.
 	SetPreferredUnit(ctx context.Context, conceptID, unitID int64) (*KnowledgeConcept, error)
 	// ListReviewableUnits returns units from the given entry's current extraction
-	// that have no currently accepted SAME membership. If entryID is nil, it spans
-	// all entries' current extractions. Only current-extraction units are
-	// considered (historical units are queryable elsewhere but are not part of the
-	// live review queue).
+	// that have no current SAME membership. If entryID is nil, it spans all entries'
+	// current extractions. Only current-extraction units are considered (historical
+	// units are queryable elsewhere but are not part of the live review queue).
 	ListReviewableUnits(ctx context.Context, entryID *int64) ([]ReviewableUnit, error)
-	// ActiveSupportUnitIDs returns the ids of units that currently provide
-	// automatic support to conceptID (accepted SAME + belongs to their entry's
-	// current extraction + effective admission active). Used for tests and
-	// introspection.
+	// ActiveSupportUnitIDs returns the ids of units that currently provide automatic
+	// support to conceptID (current SAME membership + belongs to their entry's
+	// current extraction + effective admission active). Computed from current data.
 	ActiveSupportUnitIDs(ctx context.Context, conceptID int64) ([]int64, error)
 }
 
@@ -452,7 +550,8 @@ type CurrentExtractionRepository interface {
 	GetCurrentExtractionID(ctx context.Context, entryID int64) (*int64, error)
 	// SetCurrentExtraction explicitly points the entry at an existing successful
 	// extraction (e.g. a human rollback to an older version). The extraction must
-	// belong to the entry, else ErrValidation. Concept support for affected
-	// concepts is recomputed.
+	// belong to the entry, else ErrValidation. It only updates the pointer: concept
+	// support is DERIVED at read time, so no per-concept recompute is needed and the
+	// next read of any affected concept reflects the change immediately.
 	SetCurrentExtraction(ctx context.Context, entryID, extractionID int64) error
 }

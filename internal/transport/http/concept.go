@@ -17,6 +17,7 @@ import (
 type ConceptService interface {
 	ResolveCandidate(ctx context.Context, unitID int64) (*application.ResolutionOutcome, error)
 	ResolveSame(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptLink, error)
+	ReassignSame(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptLink, error)
 	CreateConcept(ctx context.Context, identity domain.ConceptIdentity, seedUnitID *int64, linkSeedAsSame bool) (*domain.KnowledgeConcept, *domain.UnitConceptLink, error)
 	RecordRelation(ctx context.Context, unitID, conceptID int64, relation domain.ConceptRelation) (*domain.UnitConceptLink, error)
 	SetPreferredUnit(ctx context.Context, conceptID, unitID int64) (*domain.KnowledgeConcept, error)
@@ -41,9 +42,15 @@ type conceptResponse struct {
 	IdentityFeatures      map[string]string `json:"identity_features"`
 	Signature             string            `json:"signature"`
 	PreferredUnitID       *int64            `json:"preferred_unit_id"`
-	State                 string            `json:"state"`
-	CreatedAt             string            `json:"created_at"`
-	UpdatedAt             string            `json:"updated_at"`
+	// State is the effective, derived state (active|orphaned|retired), kept for
+	// compatibility. Lifecycle is the persisted human-owned state (normal|retired)
+	// and Support is the derived support state (supported|orphaned); together they
+	// make the derivation explicit for a review UI.
+	State     string `json:"state"`
+	Lifecycle string `json:"lifecycle_state"`
+	Support   string `json:"support_state"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 func toConceptResponse(c domain.KnowledgeConcept) conceptResponse {
@@ -61,6 +68,8 @@ func toConceptResponse(c domain.KnowledgeConcept) conceptResponse {
 		Signature:             c.Signature,
 		PreferredUnitID:       c.PreferredUnitID,
 		State:                 string(c.State),
+		Lifecycle:             string(c.Lifecycle),
+		Support:               string(c.Support),
 		CreatedAt:             c.CreatedAt.Format(time.RFC3339Nano),
 		UpdatedAt:             c.UpdatedAt.Format(time.RFC3339Nano),
 	}
@@ -78,21 +87,26 @@ type unitConceptLinkResponse struct {
 	ResolverVersion string   `json:"resolver_version"`
 	Score           *float64 `json:"score"`
 	Evidence        string   `json:"evidence"`
-	CreatedAt       string   `json:"created_at"`
+	// SupersedesLinkID is the id of the earlier immutable event this decision
+	// replaced (null for an original decision). It exposes the append-only
+	// correction chain to a review UI without mutating any historical row.
+	SupersedesLinkID *int64 `json:"supersedes_link_id"`
+	CreatedAt        string `json:"created_at"`
 }
 
 func toLinkResponse(l domain.UnitConceptLink) unitConceptLinkResponse {
 	return unitConceptLinkResponse{
-		ID:              l.ID,
-		UnitID:          l.UnitID,
-		ConceptID:       l.ConceptID,
-		Relation:        string(l.Relation),
-		Status:          string(l.Status),
-		DecisionSource:  string(l.DecisionSource),
-		ResolverVersion: l.ResolverVersion,
-		Score:           l.Score,
-		Evidence:        l.Evidence,
-		CreatedAt:       l.CreatedAt.Format(time.RFC3339Nano),
+		ID:               l.ID,
+		UnitID:           l.UnitID,
+		ConceptID:        l.ConceptID,
+		Relation:         string(l.Relation),
+		Status:           string(l.Status),
+		DecisionSource:   string(l.DecisionSource),
+		ResolverVersion:  l.ResolverVersion,
+		Score:            l.Score,
+		Evidence:         l.Evidence,
+		SupersedesLinkID: l.SupersedesLinkID,
+		CreatedAt:        l.CreatedAt.Format(time.RFC3339Nano),
 	}
 }
 
@@ -190,6 +204,10 @@ func toResolutionOutcomeResponse(o *application.ResolutionOutcome) resolutionOut
 // ---- request DTOs ----
 
 type resolveSameRequest struct {
+	ConceptID int64 `json:"concept_id"`
+}
+
+type reassignSameRequest struct {
 	ConceptID int64 `json:"concept_id"`
 }
 
@@ -354,6 +372,41 @@ func (h *Handler) handleResolveSame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, toLinkResponse(*link))
+}
+
+// handleReassignSame is the explicit human correction of a unit's SAME membership.
+// Unlike handleResolveSame, it succeeds even when the unit already has a current
+// SAME membership: it moves the unit to the target concept, preserving the prior
+// decision as immutable history. It returns 409 ONLY for a genuinely invalid
+// operation, never merely because a previous SAME decision exists. Status: 200 ok,
+// 400 invalid JSON/id, 404 unit or concept not found, 422 invalid input, 500
+// storage failure.
+func (h *Handler) handleReassignSame(w http.ResponseWriter, r *http.Request) {
+	unitID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	var req reassignSameRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	link, err := h.concept.ReassignSame(r.Context(), unitID, req.ConceptID)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "unit or concept not found")
+		return
+	}
+	if errors.Is(err, domain.ErrValidation) {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not reassign SAME membership")
+		return
+	}
+	writeJSON(w, http.StatusOK, toLinkResponse(*link))
 }
 
 // handleRecordRelation records a non-membership BROADER/NARROWER/RELATED decision

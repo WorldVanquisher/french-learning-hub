@@ -777,10 +777,13 @@ guessed.
 
 Three decisions are kept independent:
 
-- **Membership** is a `same` link. A unit has **at most one currently accepted
-  SAME membership** (enforced by a partial unique index and re-checked inside the
-  repository transaction). Re-affirming the same membership is idempotent;
-  claiming a second, different concept is `ErrConceptConflict` (`409`).
+- **Membership** is a `same` link. A unit has **at most one *current* SAME
+  membership**, held in a small mutable projection (`unit_concept_memberships`,
+  one row per unit — see milestone 10.5.1). Re-affirming the same membership is
+  idempotent; claiming a second, different concept through the SAME endpoint is
+  `ErrConceptConflict` (`409`). A human correction that *moves* the membership to
+  a different concept is a separate, always-allowed operation (`ReassignSame`);
+  see milestone 10.5.1.
 - **Relations** (`broader`, `narrower`, `related`) are recorded for review but
   are **not membership** — they never make a unit a member of a concept and never
   contribute support. `INVALID` is deliberately not a relation. Attempting to
@@ -792,11 +795,15 @@ Three decisions are kept independent:
   that concept (`422` otherwise). Concept IDs are stable when the preferred
   representation changes.
 
-Every resolution decision preserves unit id, concept id, relation, status
-(`accepted`/`superseded`/`rejected`), decision source (`resolver:automatic` or
-`human`), resolver version, an optional score, structured auditable evidence, and
-a timestamp. History is append-only: superseding a link inserts a new row rather
-than mutating the old one.
+Every resolution decision preserves unit id, concept id, relation, status,
+decision source (`resolver:automatic` or `human`), resolver version, an optional
+score, structured auditable evidence, and a timestamp. History is strictly
+append-only: a decision that replaces an earlier one inserts a **new** event row
+carrying a `supersedes_link_id` back-pointer to the row it replaces, and the
+earlier row is left byte-for-byte intact (milestone 10.5.1 removed the old
+`UPDATE ... SET status='superseded'` rewrite). Which SAME event is *current* is
+read from the `unit_concept_memberships` projection, not inferred by scanning
+statuses.
 
 ### Current extraction and the active-support invariant
 
@@ -811,33 +818,63 @@ successful extraction (`MAX(version)`) is current. A **successful zero-unit
 extraction is still current** and simply contributes zero units. Because a failed
 run persists nothing (milestone 10), it can never displace the last successful
 current extraction. An explicit override row (`entry_current_extractions`) lets a
-human roll back to an earlier extraction; setting it recomputes the support of
-every concept linked to any of the entry's units.
+human roll back to an earlier extraction.
 
-Concept **state** is derived from support, deterministically: a concept with at
-least one supporting unit is `active`; one that loses all current support becomes
-`orphaned` (never deleted, so it can recover if support returns); `retired` is a
-sticky human decision that recompute never overrides.
+**Support is derived at read time, never persisted** (milestone 10.5.1). There is
+no stored support flag to keep in sync and no recompute-on-write step: whenever a
+concept is read, its supporting units are computed live from the three conditions
+above against the *current* state of extraction selection, admission overrides,
+and SAME membership. A newer extraction, an admission override, or a SAME
+reassignment therefore changes a concept's effective support immediately, with no
+separate recompute call.
+
+Concept **lifecycle** and **support** are two separate, deliberately distinct
+axes:
+
+- **Lifecycle** is persisted (`knowledge_concepts.lifecycle_state`): `normal` or
+  `retired`. `retired` is a sticky human decision.
+- **Support** is derived (`supported`/`orphaned`) as described above and is
+  **never stored**.
+
+The **effective state** a reader sees combines them: `retired` wins; otherwise a
+supported concept reads `active` and an unsupported one reads `orphaned`. An
+orphaned concept is never deleted and recovers to `active` automatically if
+support returns.
 
 ### Persistence
 
 Migration `006` adds three tables, additively and idempotently:
 
 - `knowledge_concepts` — identity columns, the canonical `signature`, a nullable
-  `preferred_unit_id` (FK to `knowledge_units` `ON DELETE RESTRICT`), and `state`.
-  A **partial unique index on `signature WHERE state = 'active'`** enforces "at
-  most one active concept per signature", so creating a concept first checks for
-  an existing active concept with the same normalized v1 signature and conflicts
-  rather than duplicating.
-- `unit_concept_links` — the append-only membership/relation history, with a
-  **partial unique index on `unit_id WHERE relation='same' AND status='accepted'`**
-  enforcing the one-accepted-SAME-per-unit invariant at the schema level.
+  `preferred_unit_id` (FK to `knowledge_units` `ON DELETE RESTRICT`).
+- `unit_concept_links` — the append-only membership/relation event log.
 - `entry_current_extractions` — the explicit human rollback override
   (`entry_id` PK, FK to `knowledge_extractions` `ON DELETE RESTRICT`).
 
+Migration `007` (milestone 10.5.1) corrects the persistence model without editing
+`006`:
+
+- It drops the `one-accepted-SAME-per-unit` partial index on
+  `unit_concept_links` (that table is now a pure append-only event log that must
+  be free to accumulate superseded events) and adds a `supersedes_link_id`
+  self-referential column recording provenance.
+- It adds `unit_concept_memberships` (`unit_id` PK, `concept_id`, `link_id`,
+  `updated_at`) — the small **mutable projection** holding each unit's single
+  *current* SAME membership. This is the authoritative "what is current" table;
+  the event log is the immutable "what was decided" history. The uniqueness of
+  the current membership is now the `unit_id` primary key of this projection.
+- It replaces the `state` column with a persisted `lifecycle_state`
+  (`normal`/`retired`) and **removes the stale `state` truth entirely** — support
+  is derived at read time, not stored.
+- It replaces the `signature WHERE state='active'` partial unique index with a
+  **durable-identity unique index on `(identity_schema_version, signature) WHERE
+  lifecycle_state != 'retired'`**. Identity is thus owned for the concept's whole
+  durable life and is **not released by orphaning** (a temporarily unsupported
+  concept still blocks a duplicate), only by explicit retirement.
+
 No embeddings or ML tables are introduced. The repository enforces the same
 invariants inside transactions (not relying on indexes alone), and translates the
-duplicate-signature case to `ErrConceptConflict`.
+duplicate-identity case to `ErrConceptConflict`.
 
 ### API (for near-term human review)
 
@@ -847,12 +884,18 @@ Handlers contain no SQL; all decisions run through the application
 
 - `GET  /concepts` (optional `?state=`) — list concepts.
 - `POST /concepts` — create a concept from an explicit identity (optionally
-  seeding + linking a unit as SAME).
+  seeding + linking a unit as SAME **atomically**, in one repository transaction:
+  if the seed link fails, no concept persists either).
 - `GET  /concepts/{id}` — a concept with its links.
 - `POST /concepts/{id}/preferred-unit` — explicitly select the preferred unit.
 - `GET  /knowledge-units/{id}/concept-resolution` — read-only: what the
   deterministic resolver would decide for this unit (records nothing).
-- `POST /knowledge-units/{id}/concept-links/same` — accept a SAME membership.
+- `POST /knowledge-units/{id}/concept-links/same` — accept a SAME membership for
+  a unit that has **no** current SAME (conflicts if it already has one).
+- `PUT  /knowledge-units/{id}/concept-membership` — human correction that *moves*
+  a unit's current SAME membership to a different concept even when one already
+  exists (milestone 10.5.1). Returns `409` only for a genuinely invalid move,
+  never merely because a prior SAME decision exists.
 - `POST /knowledge-units/{id}/concept-links/relation` — record
   broader/narrower/related.
 - `GET  /reviewable-units` (optional `?entry_id=`) — units with no accepted SAME
@@ -868,6 +911,56 @@ candidates; review scheduling, mastery, or spaced repetition on top of concepts
 (concepts are only the identity those will later attach to); and reconciliation
 of the interaction taxonomy with the knowledge-kind vocabulary. These wait until
 real human resolution labels exist.
+
+### Correctness model (milestone 10.5.1)
+
+Milestone 10.5.1 is a correctness patch, not a feature expansion. It fixes six
+ways the 10.5 model could drift from its own principles, and it keeps every 10.5
+deferral (no embeddings, vectors, neural/LLM resolution, `P(SAME)`, automatic
+BROADER/NARROWER inference, review/mastery/scheduling, frontend, or taxonomy
+reconciliation). The v1 normalizer is intentionally left as-is; exact
+deterministic signature match remains the only automatic SAME condition. The
+model now rests on a few sharp distinctions:
+
+- **`KnowledgeUnit` = immutable extraction evidence.** Never deleted or rewritten.
+- **`KnowledgeConcept` = durable learning identity.** The thing a future Review
+  Engine attaches to — never a raw unit. Its identity is stable for its whole
+  durable life, even while it is temporarily unsupported.
+- **Resolution history = immutable decision/event log.** `unit_concept_links` is
+  append-only; a replacement is a *new* row with a `supersedes_link_id`
+  back-pointer, and prior rows are never mutated. Historical evidence is not
+  current derived authority.
+- **Current SAME membership = derived/current authority.** At most one concept per
+  unit, read from the mutable `unit_concept_memberships` projection, correctable
+  by a human at any time.
+- **Concept support = derived, never persisted.** Recomputed live from current
+  extraction + effective admission + current SAME membership on every read, so it
+  is never stale.
+- **Human correction may supersede any prior machine or human resolution** —
+  automatic SAME, a previous human SAME, anything — **without deleting history**.
+  `ReassignSame` moves the current membership, appends the superseding event, and
+  atomically clears a now-invalid `preferred_unit_id` if the moved unit was the
+  old concept's preferred representation.
+
+The six fixes, concretely:
+
+1. **A human can correct a wrong SAME link.** `ReassignSame` moves the unit's
+   current membership to another concept even though it already belongs to one.
+   The old event stays queryable; the new one supersedes it; affected concepts get
+   correct effective support immediately; a stale `preferred_unit_id` on the old
+   concept is cleared in the same transaction.
+2. **Resolution history is immutable.** No `UPDATE ... SET status='superseded'`
+   anywhere; supersession is an append plus a provenance back-pointer.
+3. **Support is never stale.** It is derived at read time (see above), not stored,
+   so a newer extraction / admission override / reassignment changes it with no
+   recompute call.
+4. **Identity is not released by orphaning.** Durable-identity uniqueness holds
+   across all non-retired concepts, so an orphaned concept still owns its
+   signature and a would-be duplicate conflicts (or resolves to the existing one).
+5. **Create-concept + seed SAME is atomic** — one repository transaction, all or
+   nothing; no transaction logic in HTTP handlers.
+6. **`AutoResolve` stays unused publicly** but remains compatible with the
+   corrected current-membership model.
 
 ## Design principles
 

@@ -44,6 +44,17 @@ func grammarUnit(canonical string) domain.ExtractedUnit {
 	return domain.ExtractedUnit{Kind: domain.KindGrammar, Canonical: canonical, Statement: "s: " + canonical, Confidence: 0.9}
 }
 
+// mustConcept creates a concept and fails the test on error. It hides the seed
+// link (unused by most callers) behind the three-value signature.
+func mustConcept(t *testing.T, concepts *ConceptRepository, identity domain.ConceptIdentity) *domain.KnowledgeConcept {
+	t.Helper()
+	c, _, err := concepts.CreateConcept(context.Background(), domain.NewConceptInput{Identity: identity})
+	if err != nil {
+		t.Fatalf("create concept %q: %v", identity.Target, err)
+	}
+	return c
+}
+
 // entryIDForExtraction reads back the entry id that owns an extraction.
 func entryIDForExtraction(t *testing.T, knowledge *KnowledgeRepository, extractionID int64) int64 {
 	t.Helper()
@@ -61,17 +72,22 @@ func TestConceptRepository_CreateAndFindBySignature(t *testing.T) {
 	seedUnit := view.Units[0].Unit.ID
 
 	identity := domain.DeriveCandidateIdentity(view.Units[0].Unit)
-	c, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: identity, SeedUnitID: &seedUnit})
+	c, _, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: identity, SeedUnitID: &seedUnit})
 	if err != nil {
 		t.Fatalf("create concept: %v", err)
 	}
-	if c.State != domain.ConceptActive {
-		t.Fatalf("new concept should be active, got %q", c.State)
+	// A newly created concept with no supporting unit is orphaned (derived), not
+	// active: support is computed, not assumed.
+	if c.State != domain.ConceptOrphaned {
+		t.Fatalf("new unsupported concept should be orphaned, got %q", c.State)
+	}
+	if c.Lifecycle != domain.LifecycleNormal {
+		t.Fatalf("new concept lifecycle should be normal, got %q", c.Lifecycle)
 	}
 
-	// A second active concept with the same identity is refused.
-	if _, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: identity}); !errors.Is(err, domain.ErrConceptConflict) {
-		t.Fatalf("expected ErrConceptConflict for duplicate active identity, got %v", err)
+	// A second concept with the same durable identity is refused.
+	if _, _, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: identity}); !errors.Is(err, domain.ErrConceptConflict) {
+		t.Fatalf("expected ErrConceptConflict for duplicate identity, got %v", err)
 	}
 
 	found, err := concepts.FindActiveBySignature(ctx, identity.Signature())
@@ -89,8 +105,6 @@ func TestConceptRepository_SameSignatureDifferentWordingLinks(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()
 
-	// Two units whose DERIVED identities differ, but we give them the SAME explicit
-	// identity to model "different wording, same objective".
 	v1 := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{
 		{Kind: domain.KindGrammar, Canonical: "vouloir + infinitif", Statement: "one wording", Confidence: 0.9},
 	})
@@ -100,11 +114,7 @@ func TestConceptRepository_SameSignatureDifferentWordingLinks(t *testing.T) {
 	unitA := v1.Units[0].Unit.ID
 	unitB := v2.Units[0].Unit.ID
 
-	identity := domain.ConceptIdentity{Target: "vouloir + infinitive", PedagogicalIntent: "grammar"}
-	c, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: identity})
-	if err != nil {
-		t.Fatalf("create concept: %v", err)
-	}
+	c := mustConcept(t, concepts, domain.ConceptIdentity{Target: "vouloir + infinitive", PedagogicalIntent: "grammar"})
 
 	if _, err := concepts.LinkSame(ctx, unitA, c.ID, domain.SourceHuman, nil, ""); err != nil {
 		t.Fatalf("link A: %v", err)
@@ -124,30 +134,24 @@ func TestConceptRepository_SameSignatureDifferentWordingLinks(t *testing.T) {
 		}
 	}
 	if sameCount != 2 {
-		t.Fatalf("expected 2 accepted SAME links, got %d", sameCount)
+		t.Fatalf("expected 2 accepted SAME events, got %d", sameCount)
 	}
 }
 
-// Required case 3: one unit cannot hold two accepted SAME memberships.
+// Required case 3: one unit cannot hold two CURRENT SAME memberships via LinkSame.
 func TestConceptRepository_OneAcceptedSamePerUnit(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()
 	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
 	unitID := view.Units[0].Unit.ID
 
-	c1, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"}})
-	if err != nil {
-		t.Fatalf("create c1: %v", err)
-	}
-	c2, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: domain.ConceptIdentity{Target: "b", PedagogicalIntent: "grammar"}})
-	if err != nil {
-		t.Fatalf("create c2: %v", err)
-	}
+	c1 := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	c2 := mustConcept(t, concepts, domain.ConceptIdentity{Target: "b", PedagogicalIntent: "grammar"})
 
 	if _, err := concepts.LinkSame(ctx, unitID, c1.ID, domain.SourceHuman, nil, ""); err != nil {
 		t.Fatalf("first same: %v", err)
 	}
-	// Second SAME to a different concept must conflict.
+	// LinkSame to a different concept must conflict (use ReassignSame to correct).
 	if _, err := concepts.LinkSame(ctx, unitID, c2.ID, domain.SourceHuman, nil, ""); !errors.Is(err, domain.ErrConceptConflict) {
 		t.Fatalf("expected ErrConceptConflict on second SAME, got %v", err)
 	}
@@ -157,8 +161,124 @@ func TestConceptRepository_OneAcceptedSamePerUnit(t *testing.T) {
 	}
 }
 
-// Required case 4 & 5: SAME membership does not auto-set preferred unit; and the
-// preferred unit must have an accepted SAME membership to that concept.
+// Required case A: a human can move a wrong SAME membership to a different concept,
+// the new one becomes current, the old is history only, and both remain queryable.
+func TestConceptRepository_ReassignSameCorrectsMembership(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	b := mustConcept(t, concepts, domain.ConceptIdentity{Target: "b", PedagogicalIntent: "grammar"})
+
+	first, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceHuman, nil, "")
+	if err != nil {
+		t.Fatalf("link A: %v", err)
+	}
+
+	// Human correction: move the unit to B even though it already belongs to A.
+	moved, err := concepts.ReassignSame(ctx, unitID, b.ID, domain.SourceHuman, "")
+	if err != nil {
+		t.Fatalf("reassign to B: %v", err)
+	}
+	if moved.SupersedesLinkID == nil || *moved.SupersedesLinkID != first.ID {
+		t.Fatalf("new event must supersede the old link %d, got %v", first.ID, moved.SupersedesLinkID)
+	}
+
+	// Exactly one CURRENT SAME membership, now to B.
+	supB, _ := concepts.ActiveSupportUnitIDs(ctx, b.ID)
+	if len(supB) != 1 || supB[0] != unitID {
+		t.Fatalf("unit should now support B, got %v", supB)
+	}
+	supA, _ := concepts.ActiveSupportUnitIDs(ctx, a.ID)
+	if len(supA) != 0 {
+		t.Fatalf("A must no longer be supported by the moved unit, got %v", supA)
+	}
+
+	// Case D: the OLD accepted event for A is unchanged (append-only). Its row still
+	// says accepted, relation same, concept A — history was not rewritten.
+	aView, err := concepts.GetConcept(ctx, a.ID)
+	if err != nil {
+		t.Fatalf("get A: %v", err)
+	}
+	var found *domain.UnitConceptLink
+	for i := range aView.Links {
+		if aView.Links[i].ID == first.ID {
+			found = &aView.Links[i]
+		}
+	}
+	if found == nil {
+		t.Fatalf("original decision to A must remain queryable")
+	}
+	if found.Status != domain.LinkAccepted || found.ConceptID != a.ID || found.Relation != domain.RelationSame {
+		t.Fatalf("historical event content must be intact, got %+v", *found)
+	}
+	if found.SupersedesLinkID != nil {
+		t.Fatalf("the original event must not have gained a supersedes pointer")
+	}
+}
+
+// Required case B: an automatic SAME link can be corrected by a human. Human wins.
+func TestConceptRepository_HumanCorrectsAutomaticSame(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	b := mustConcept(t, concepts, domain.ConceptIdentity{Target: "b", PedagogicalIntent: "grammar"})
+
+	score := 1.0
+	if _, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceResolverAutomatic, &score, ""); err != nil {
+		t.Fatalf("automatic same: %v", err)
+	}
+	moved, err := concepts.ReassignSame(ctx, unitID, b.ID, domain.SourceHuman, "")
+	if err != nil {
+		t.Fatalf("human correction: %v", err)
+	}
+	if moved.DecisionSource != domain.SourceHuman {
+		t.Fatalf("current decision should be human, got %q", moved.DecisionSource)
+	}
+	sup, _ := concepts.ActiveSupportUnitIDs(ctx, b.ID)
+	if len(sup) != 1 || sup[0] != unitID {
+		t.Fatalf("human decision must win: unit should support B, got %v", sup)
+	}
+}
+
+// Required case C: if a unit was the preferred representation of concept A and its
+// SAME membership is moved to B, A must not retain an invalid preferred_unit_id.
+func TestConceptRepository_ReassignClearsStalePreferred(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	b := mustConcept(t, concepts, domain.ConceptIdentity{Target: "b", PedagogicalIntent: "grammar"})
+
+	if _, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceHuman, nil, ""); err != nil {
+		t.Fatalf("link A: %v", err)
+	}
+	if _, err := concepts.SetPreferredUnit(ctx, a.ID, unitID); err != nil {
+		t.Fatalf("set preferred on A: %v", err)
+	}
+
+	if _, err := concepts.ReassignSame(ctx, unitID, b.ID, domain.SourceHuman, ""); err != nil {
+		t.Fatalf("reassign to B: %v", err)
+	}
+
+	aView, err := concepts.GetConcept(ctx, a.ID)
+	if err != nil {
+		t.Fatalf("get A: %v", err)
+	}
+	if aView.Concept.PreferredUnitID != nil {
+		t.Fatalf("A must not keep an invalid preferred_unit_id after the member moved, got %v", *aView.Concept.PreferredUnitID)
+	}
+}
+
+// Required cases 4 & 5: SAME membership does not auto-set preferred unit; and the
+// preferred unit must currently hold the SAME membership to that concept.
 func TestConceptRepository_PreferredUnitRules(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()
@@ -166,10 +286,7 @@ func TestConceptRepository_PreferredUnitRules(t *testing.T) {
 	memberUnit := view.Units[0].Unit.ID
 	nonMemberUnit := view.Units[1].Unit.ID
 
-	c, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"}})
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
+	c := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
 	if _, err := concepts.LinkSame(ctx, memberUnit, c.ID, domain.SourceHuman, nil, ""); err != nil {
 		t.Fatalf("link same: %v", err)
 	}
@@ -201,8 +318,9 @@ func TestConceptRepository_PreferredUnitRules(t *testing.T) {
 	}
 }
 
-// Required cases 6 & 8: a newer successful extraction becomes current, and units
-// from the old extraction no longer provide current support.
+// Required cases 6, 8, 10 & E: a newer successful extraction becomes current, units
+// from the old extraction stop providing current support IMMEDIATELY (no manual
+// recompute), and historical extractions/links remain queryable.
 func TestConceptRepository_NewerExtractionBecomesCurrent(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()
@@ -222,11 +340,7 @@ func TestConceptRepository_NewerExtractionBecomesCurrent(t *testing.T) {
 	first := mk("v1 unit")
 	oldUnit := first.Units[0].Unit.ID
 
-	// Link the old unit as SAME to a concept: it supports the concept while v1 is current.
-	c, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"}})
-	if err != nil {
-		t.Fatalf("create concept: %v", err)
-	}
+	c := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
 	if _, err := concepts.LinkSame(ctx, oldUnit, c.ID, domain.SourceHuman, nil, ""); err != nil {
 		t.Fatalf("link old unit: %v", err)
 	}
@@ -236,6 +350,10 @@ func TestConceptRepository_NewerExtractionBecomesCurrent(t *testing.T) {
 	}
 	if len(supported) != 1 || supported[0] != oldUnit {
 		t.Fatalf("old unit should support concept while v1 current, got %v", supported)
+	}
+	// And the derived concept state reads active.
+	if cv, _ := concepts.GetConcept(ctx, c.ID); cv.Concept.State != domain.ConceptActive {
+		t.Fatalf("concept should read active while supported, got %q", cv.Concept.State)
 	}
 
 	// A newer successful extraction becomes current by default.
@@ -248,7 +366,8 @@ func TestConceptRepository_NewerExtractionBecomesCurrent(t *testing.T) {
 		t.Fatalf("newer extraction should be current, got %v want %d", current, second.Extraction.ID)
 	}
 
-	// The old unit no longer provides current support (case 8).
+	// Case E: without any SetCurrentExtraction call, the old unit no longer supports
+	// and the concept reads orphaned immediately.
 	supported, err = concepts.ActiveSupportUnitIDs(ctx, c.ID)
 	if err != nil {
 		t.Fatalf("support after v2: %v", err)
@@ -256,8 +375,11 @@ func TestConceptRepository_NewerExtractionBecomesCurrent(t *testing.T) {
 	if len(supported) != 0 {
 		t.Fatalf("old-extraction unit must not support the current pool, got %v", supported)
 	}
+	if cv, _ := concepts.GetConcept(ctx, c.ID); cv.Concept.State != domain.ConceptOrphaned {
+		t.Fatalf("concept should read orphaned after support dropped, got %q", cv.Concept.State)
+	}
 
-	// The old unit and link remain queryable (case 10).
+	// Case 10: the old unit and link remain queryable.
 	oldView, err := knowledge.GetByID(ctx, first.Extraction.ID)
 	if err != nil {
 		t.Fatalf("historical extraction must remain queryable: %v", err)
@@ -274,8 +396,8 @@ func TestConceptRepository_NewerExtractionBecomesCurrent(t *testing.T) {
 	}
 }
 
-// Required case 11: a concept that loses all current support becomes orphaned, not
-// deleted.
+// Required case 11: a concept that loses all current support reads orphaned (not
+// deleted) with NO manual recompute call.
 func TestConceptRepository_UnsupportedConceptBecomesOrphaned(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()
@@ -291,10 +413,7 @@ func TestConceptRepository_UnsupportedConceptBecomesOrphaned(t *testing.T) {
 	}
 	oldUnit := first.Units[0].Unit.ID
 
-	c, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"}})
-	if err != nil {
-		t.Fatalf("create concept: %v", err)
-	}
+	c := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
 	if _, err := concepts.LinkSame(ctx, oldUnit, c.ID, domain.SourceHuman, nil, ""); err != nil {
 		t.Fatalf("link: %v", err)
 	}
@@ -308,14 +427,7 @@ func TestConceptRepository_UnsupportedConceptBecomesOrphaned(t *testing.T) {
 		t.Fatalf("second extraction: %v", err)
 	}
 
-	// Support recompute is triggered by an explicit current-extraction set (also
-	// covers rollback plumbing). Re-selecting the latest is a no-op selection but
-	// forces a recompute of affected concepts.
-	current, _ := concepts.GetCurrentExtractionID(ctx, entryID)
-	if err := concepts.SetCurrentExtraction(ctx, entryID, *current); err != nil {
-		t.Fatalf("set current: %v", err)
-	}
-
+	// No manual recompute call: the derived state must already read orphaned.
 	got, err := concepts.GetConcept(ctx, c.ID)
 	if err != nil {
 		t.Fatalf("concept must still exist (not deleted): %v", err)
@@ -325,10 +437,8 @@ func TestConceptRepository_UnsupportedConceptBecomesOrphaned(t *testing.T) {
 	}
 }
 
-// Required case 9: a failed extraction persists nothing, so it cannot replace the
-// last successful current extraction. We model the storage guarantee: only
-// successful Create calls write rows, and the current pointer derives from what is
-// stored.
+// Required case G: a failed extraction persists nothing, so it cannot replace the
+// last successful current extraction.
 func TestConceptRepository_FailedExtractionDoesNotReplaceCurrent(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()
@@ -344,8 +454,7 @@ func TestConceptRepository_FailedExtractionDoesNotReplaceCurrent(t *testing.T) {
 	}
 
 	// A "failed" run: mismatched recommendations makes Create fail atomically,
-	// writing nothing (the failure mode a real extractor error would surface as
-	// no persisted extraction).
+	// writing nothing.
 	if _, err := knowledge.Create(ctx, domain.NewExtractionInput{
 		EntryID: entryID, SourceAnalysisID: analysisID, Extractor: "x",
 		Units: units, Recommendations: nil,
@@ -362,20 +471,35 @@ func TestConceptRepository_FailedExtractionDoesNotReplaceCurrent(t *testing.T) {
 	}
 }
 
-// Required case 7: a successful zero-unit extraction is current and contributes
-// zero units to the pool.
+// Required case F: a successful zero-unit extraction becomes current immediately
+// and removes support from old-extraction units.
 func TestConceptRepository_ZeroUnitExtractionIsCurrentWithNoUnits(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()
 
 	entryID, analysisID := seedEntryWithAnalysis(t, entries, knowledge)
+	// First a unit-bearing extraction supporting a concept.
+	firstUnits := []domain.ExtractedUnit{grammarUnit("v1")}
+	first, err := knowledge.Create(ctx, domain.NewExtractionInput{
+		EntryID: entryID, SourceAnalysisID: analysisID, Extractor: "x",
+		Units: firstUnits, Recommendations: domain.ApplyAdmissionV1(firstUnits),
+	})
+	if err != nil {
+		t.Fatalf("first extraction: %v", err)
+	}
+	oldUnit := first.Units[0].Unit.ID
+	c := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	if _, err := concepts.LinkSame(ctx, oldUnit, c.ID, domain.SourceHuman, nil, ""); err != nil {
+		t.Fatalf("link: %v", err)
+	}
+
+	// A successful zero-unit extraction becomes current.
 	zero, err := knowledge.Create(ctx, domain.NewExtractionInput{
 		EntryID: entryID, SourceAnalysisID: analysisID, Extractor: "x",
 	})
 	if err != nil {
 		t.Fatalf("zero-unit extraction: %v", err)
 	}
-
 	current, err := concepts.GetCurrentExtractionID(ctx, entryID)
 	if err != nil {
 		t.Fatalf("current: %v", err)
@@ -390,10 +514,14 @@ func TestConceptRepository_ZeroUnitExtractionIsCurrentWithNoUnits(t *testing.T) 
 	if len(reviewable) != 0 {
 		t.Fatalf("zero-unit extraction contributes no units, got %d", len(reviewable))
 	}
+	// Old-extraction support is gone under the zero-unit current extraction.
+	if ids, _ := concepts.ActiveSupportUnitIDs(ctx, c.ID); len(ids) != 0 {
+		t.Fatalf("zero-unit current extraction must remove old support, got %v", ids)
+	}
 }
 
-// Explicit rollback to an older successful extraction makes its units current
-// again (design requirement: future explicit human rollback is possible).
+// Required case K: explicit rollback to an older successful extraction still works
+// and immediately restores that extraction's support.
 func TestConceptRepository_ExplicitRollbackRestoresOldSupport(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()
@@ -412,10 +540,7 @@ func TestConceptRepository_ExplicitRollbackRestoresOldSupport(t *testing.T) {
 	}
 	first := mk("v1")
 	oldUnit := first.Units[0].Unit.ID
-	c, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"}})
-	if err != nil {
-		t.Fatalf("concept: %v", err)
-	}
+	c := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
 	if _, err := concepts.LinkSame(ctx, oldUnit, c.ID, domain.SourceHuman, nil, ""); err != nil {
 		t.Fatalf("link: %v", err)
 	}
@@ -425,7 +550,7 @@ func TestConceptRepository_ExplicitRollbackRestoresOldSupport(t *testing.T) {
 		t.Fatalf("expected no support under v2, got %v", ids)
 	}
 
-	// Roll back to the first extraction: the old unit supports again.
+	// Roll back to the first extraction: the old unit supports again immediately.
 	if err := concepts.SetCurrentExtraction(ctx, entryID, first.Extraction.ID); err != nil {
 		t.Fatalf("rollback: %v", err)
 	}
@@ -445,8 +570,8 @@ func TestConceptRepository_ExplicitRollbackRestoresOldSupport(t *testing.T) {
 	_ = entryIDForExtraction
 }
 
-// A suppressed (non-active) admission unit does not provide current support even
-// when it is in the current extraction and has an accepted SAME link.
+// Required case H: admission override flips derived support immediately, with no
+// manual concept recompute call.
 func TestConceptRepository_SuppressedUnitDoesNotSupport(t *testing.T) {
 	entries, knowledge, admission, concepts := newConceptTestRepos(t)
 	ctx := context.Background()
@@ -460,31 +585,124 @@ func TestConceptRepository_SuppressedUnitDoesNotSupport(t *testing.T) {
 	}
 	suppressed := view.Units[1].Unit.ID
 
-	c, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"}})
-	if err != nil {
-		t.Fatalf("concept: %v", err)
-	}
+	c := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
 	if _, err := concepts.LinkSame(ctx, suppressed, c.ID, domain.SourceHuman, nil, ""); err != nil {
 		t.Fatalf("link suppressed: %v", err)
 	}
-	ids, err := concepts.ActiveSupportUnitIDs(ctx, c.ID)
-	if err != nil {
-		t.Fatalf("support: %v", err)
-	}
-	if len(ids) != 0 {
+	if ids, _ := concepts.ActiveSupportUnitIDs(ctx, c.ID); len(ids) != 0 {
 		t.Fatalf("suppressed unit must not support the pool, got %v", ids)
 	}
+	if cv, _ := concepts.GetConcept(ctx, c.ID); cv.Concept.State != domain.ConceptOrphaned {
+		t.Fatalf("concept with only a suppressed member should read orphaned, got %q", cv.Concept.State)
+	}
 
-	// A human override re-activating the unit restores support.
+	// A human override re-activating the unit restores support immediately.
 	if _, err := admission.Create(ctx, suppressed, domain.NewAdmissionOverrideInput{Decision: domain.HumanAdmitActive}); err != nil {
-		t.Fatalf("override: %v", err)
+		t.Fatalf("override active: %v", err)
 	}
-	ids, err = concepts.ActiveSupportUnitIDs(ctx, c.ID)
-	if err != nil {
-		t.Fatalf("support after override: %v", err)
-	}
-	if len(ids) != 1 || ids[0] != suppressed {
+	if ids, _ := concepts.ActiveSupportUnitIDs(ctx, c.ID); len(ids) != 1 || ids[0] != suppressed {
 		t.Fatalf("re-activated unit should support, got %v", ids)
+	}
+	if cv, _ := concepts.GetConcept(ctx, c.ID); cv.Concept.State != domain.ConceptActive {
+		t.Fatalf("concept should read active after reactivation, got %q", cv.Concept.State)
+	}
+
+	// Suppressing again immediately drops support back to orphaned.
+	if _, err := admission.Create(ctx, suppressed, domain.NewAdmissionOverrideInput{Decision: domain.HumanAdmitSuppressed, Reason: domain.HumanReasonIgnored}); err != nil {
+		t.Fatalf("override suppress: %v", err)
+	}
+	if ids, _ := concepts.ActiveSupportUnitIDs(ctx, c.ID); len(ids) != 0 {
+		t.Fatalf("re-suppressed unit must not support, got %v", ids)
+	}
+}
+
+// Required case I: identity is not released by orphaning. Create a concept, make it
+// orphaned (unsupported), then attempt to create another with the same signature —
+// it must conflict rather than create a duplicate durable identity.
+func TestConceptRepository_OrphanedIdentityNotReleased(t *testing.T) {
+	_, _, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+
+	// A concept with no supporting unit is immediately orphaned (derived).
+	identity := domain.ConceptIdentity{Target: "vouloir", PedagogicalIntent: "grammar"}
+	c := mustConcept(t, concepts, identity)
+	got, err := concepts.GetConcept(ctx, c.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Concept.State != domain.ConceptOrphaned {
+		t.Fatalf("expected orphaned, got %q", got.Concept.State)
+	}
+
+	// A second concept with the same durable identity must be refused even though the
+	// first is currently unsupported.
+	if _, _, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: identity}); !errors.Is(err, domain.ErrConceptConflict) {
+		t.Fatalf("orphaning must not release identity; expected ErrConceptConflict, got %v", err)
+	}
+
+	// And the resolver still finds the orphaned concept for that signature, so a new
+	// unit resolves SAME to it rather than spawning a duplicate.
+	found, err := concepts.FindActiveBySignature(ctx, identity.Signature())
+	if err != nil {
+		t.Fatalf("find: %v", err)
+	}
+	if len(found) != 1 || found[0].ID != c.ID {
+		t.Fatalf("orphaned concept must still own its identity, got %+v", found)
+	}
+}
+
+// Required case J: atomic create + seed SAME. On success both persist; the seed unit
+// gains the current membership in the same call.
+func TestConceptRepository_CreateAndAttachAtomic(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	c, link, err := concepts.CreateConcept(ctx, domain.NewConceptInput{
+		Identity:       domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"},
+		SeedUnitID:     &unitID,
+		LinkSeedAsSame: true,
+		SeedSource:     domain.SourceHuman,
+	})
+	if err != nil {
+		t.Fatalf("create+attach: %v", err)
+	}
+	if link == nil || link.ConceptID != c.ID || link.UnitID != unitID {
+		t.Fatalf("expected a seed SAME link, got %+v", link)
+	}
+	// The seed unit holds the current membership and supports the concept.
+	sup, _ := concepts.ActiveSupportUnitIDs(ctx, c.ID)
+	if len(sup) != 1 || sup[0] != unitID {
+		t.Fatalf("seed unit should support the new concept, got %v", sup)
+	}
+	if c.State != domain.ConceptActive {
+		t.Fatalf("create+attach with a supporting unit should read active, got %q", c.State)
+	}
+}
+
+// Required case J (failure half): if the seed link is impossible (a non-existent
+// unit), the whole operation fails and NO concept is persisted.
+func TestConceptRepository_CreateAndAttachRollsBack(t *testing.T) {
+	_, _, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+
+	bogusUnit := int64(999999)
+	_, _, err := concepts.CreateConcept(ctx, domain.NewConceptInput{
+		Identity:       domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"},
+		SeedUnitID:     &bogusUnit,
+		LinkSeedAsSame: true,
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for missing seed unit, got %v", err)
+	}
+	// No concept must have been left behind.
+	all, err := concepts.ListConcepts(ctx, nil)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(all) != 0 {
+		t.Fatalf("failed create+attach must persist no concept, got %d", len(all))
 	}
 }
 
@@ -494,10 +712,7 @@ func TestConceptRepository_RelationsAreNotMembership(t *testing.T) {
 	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
 	unitID := view.Units[0].Unit.ID
 
-	c, err := concepts.CreateConcept(ctx, domain.NewConceptInput{Identity: domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"}})
-	if err != nil {
-		t.Fatalf("concept: %v", err)
-	}
+	c := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
 
 	if _, err := concepts.LinkRelation(ctx, unitID, c.ID, domain.RelationBroader, domain.SourceHuman, ""); err != nil {
 		t.Fatalf("broader: %v", err)
@@ -506,7 +721,7 @@ func TestConceptRepository_RelationsAreNotMembership(t *testing.T) {
 	if ids, _ := concepts.ActiveSupportUnitIDs(ctx, c.ID); len(ids) != 0 {
 		t.Fatalf("relation must not create support, got %v", ids)
 	}
-	// The unit still has no accepted SAME, so it is reviewable.
+	// The unit still has no current SAME, so it is reviewable.
 	reviewable, err := concepts.ListReviewableUnits(ctx, nil)
 	if err != nil {
 		t.Fatalf("reviewable: %v", err)
@@ -524,5 +739,45 @@ func TestConceptRepository_RelationsAreNotMembership(t *testing.T) {
 	// LinkRelation rejects SAME.
 	if _, err := concepts.LinkRelation(ctx, unitID, c.ID, domain.RelationSame, domain.SourceHuman, ""); !errors.Is(err, domain.ErrValidation) {
 		t.Fatalf("LinkRelation must reject SAME, got %v", err)
+	}
+}
+
+// Required case D (relations): superseding a relation is append-only — the old
+// event row keeps its data and the new one points back at it.
+func TestConceptRepository_RelationHistoryIsAppendOnly(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+	c := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+
+	first, err := concepts.LinkRelation(ctx, unitID, c.ID, domain.RelationRelated, domain.SourceHuman, `{"v":1}`)
+	if err != nil {
+		t.Fatalf("first relation: %v", err)
+	}
+	second, err := concepts.LinkRelation(ctx, unitID, c.ID, domain.RelationRelated, domain.SourceHuman, `{"v":2}`)
+	if err != nil {
+		t.Fatalf("second relation: %v", err)
+	}
+	if second.SupersedesLinkID == nil || *second.SupersedesLinkID != first.ID {
+		t.Fatalf("second event must supersede the first, got %v", second.SupersedesLinkID)
+	}
+
+	// The first event row is unchanged (still accepted, still its original evidence).
+	view2, err := concepts.GetConcept(ctx, c.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	var orig *domain.UnitConceptLink
+	for i := range view2.Links {
+		if view2.Links[i].ID == first.ID {
+			orig = &view2.Links[i]
+		}
+	}
+	if orig == nil {
+		t.Fatalf("original relation event must remain queryable")
+	}
+	if orig.Status != domain.LinkAccepted || orig.Evidence != `{"v":1}` {
+		t.Fatalf("original event content must be intact, got %+v", *orig)
 	}
 }
