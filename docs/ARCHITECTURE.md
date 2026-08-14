@@ -708,9 +708,166 @@ extractor; local models; model routing or cost optimization; ruleset
 evolution/proposal/replay/activation; spaced repetition or review scheduling;
 mastery probability or automatic mastery detection; CEFR or difficulty scoring;
 embeddings, vector search, or semantic duplicate detection; a knowledge or
-prerequisite graph; a `KnowledgeConcept` aggregation layer; and cross-interaction
-normalization. The history and provenance are preserved so these remain possible
-later.
+prerequisite graph; and cross-interaction normalization. The history and
+provenance are preserved so these remain possible later. (The
+`KnowledgeConcept` aggregation layer named here as out-of-scope is introduced in
+milestone 10.5 below.)
+
+## Knowledge concept resolution (milestone 10.5)
+
+Milestone 10 made a `KnowledgeUnit` the output of one extraction. But a unit is
+tied to a single extraction of a single entry: re-extract the same entry, or
+learn the same objective from a different interaction, and you get a *new* unit
+for the *same* underlying thing to learn. A unit is therefore the wrong place to
+hang durable learning state (review history, mastery, scheduling). Milestone 10.5
+introduces the durable identity — the **`KnowledgeConcept`** — and separates it
+cleanly from the evidence that supports it.
+
+    KnowledgeUnit (immutable extraction evidence / candidate)
+        -> DeriveCandidateIdentity     (unit -> normalized concept identity)
+        -> conservative deterministic resolver (exact signature match only)
+        -> KnowledgeConcept (durable learning identity)
+             ^ accepted SAME membership links (append-only, superseding)
+             ^ current-extraction selection decides which units count as support
+
+### Two roles, deliberately separated
+
+- A **`KnowledgeUnit` is immutable evidence**: the candidate representation of
+  one objective as it appeared in one `KnowledgeExtraction`. Historical units are
+  never deleted or rewritten. Its canonical/normalized text is *retrieval
+  evidence*, not identity.
+- A **`KnowledgeConcept` is the durable learning identity** that future review,
+  mastery, and scheduling attach to. Its identity is an explicit, versioned
+  schema (`fr_l2_concept_identity_v1`): `target`, `pedagogical_intent`, `scope`,
+  and an extensible `identity_features` map. Identity is intentionally **not** a
+  large fixed linguistic schema, and it deliberately excludes taxonomy decisions
+  (`fr_l2_taxonomy_v1` vs `fr_l2_knowledge_v1` are not reconciled here).
+
+The future Review Engine must target `KnowledgeConcept`, never a raw
+`KnowledgeUnit`.
+
+### Deterministic identity signature
+
+`ConceptIdentity.Signature()` is a canonical JSON encoding of the *normalized*
+identity: each field is trimmed, lowercased, and internal whitespace collapsed
+(accents preserved), and feature keys are sorted so the signature is independent
+of map insertion order. Two different surface wordings that normalize to the same
+identity produce the same signature; any difference in `target`,
+`pedagogical_intent`, `scope`, or an identity-bearing feature produces a
+different one. The signature is the sole basis for automatic equality.
+
+### Conservative, deterministic resolver (v1)
+
+`ResolveConcept(candidate, matches)` classifies a candidate against the active
+concepts sharing its signature and never force-merges:
+
+- **no active concept with that signature** → `no_match` (a human may create a
+  concept).
+- **exactly one** → `matched` (safe to link SAME automatically).
+- **more than one** → `ambiguous` (stays reviewable; never auto-merged).
+
+The resolver is purely deterministic and does **no** embeddings, vector search,
+sentence transformers, neural networks, LLM fuzzy matching, semantic similarity,
+learned probabilities, `P(SAME)`, or automatic BROADER/NARROWER inference. These
+are deliberately deferred until real human resolution labels exist to train and
+evaluate against. Ambiguous candidates are surfaced for human review rather than
+guessed.
+
+### Membership vs. relations vs. preferred representation
+
+Three decisions are kept independent:
+
+- **Membership** is a `same` link. A unit has **at most one currently accepted
+  SAME membership** (enforced by a partial unique index and re-checked inside the
+  repository transaction). Re-affirming the same membership is idempotent;
+  claiming a second, different concept is `ErrConceptConflict` (`409`).
+- **Relations** (`broader`, `narrower`, `related`) are recorded for review but
+  are **not membership** — they never make a unit a member of a concept and never
+  contribute support. `INVALID` is deliberately not a relation. Attempting to
+  record `same` through the relation endpoint is rejected (`422`); use the SAME
+  endpoint, which carries the membership invariant.
+- **Preferred representation** is separate from membership. Accepting SAME does
+  **not** auto-set the concept's preferred unit. `SetPreferredUnit` is an explicit
+  operation and validates that the chosen unit has an accepted SAME membership to
+  that concept (`422` otherwise). Concept IDs are stable when the preferred
+  representation changes.
+
+Every resolution decision preserves unit id, concept id, relation, status
+(`accepted`/`superseded`/`rejected`), decision source (`resolver:automatic` or
+`human`), resolver version, an optional score, structured auditable evidence, and
+a timestamp. History is append-only: superseding a link inserts a new row rather
+than mutating the old one.
+
+### Current extraction and the active-support invariant
+
+A concept receives **automatic current support** from a unit only when all three
+hold: the unit belongs to the entry's *current* successful extraction, its
+effective admission state is `active`, and it has an accepted SAME link to the
+concept. Historical, superseded, or rejected units never silently enter the
+active pool.
+
+"Current extraction" is derived, not a new mutable flag: by default the latest
+successful extraction (`MAX(version)`) is current. A **successful zero-unit
+extraction is still current** and simply contributes zero units. Because a failed
+run persists nothing (milestone 10), it can never displace the last successful
+current extraction. An explicit override row (`entry_current_extractions`) lets a
+human roll back to an earlier extraction; setting it recomputes the support of
+every concept linked to any of the entry's units.
+
+Concept **state** is derived from support, deterministically: a concept with at
+least one supporting unit is `active`; one that loses all current support becomes
+`orphaned` (never deleted, so it can recover if support returns); `retired` is a
+sticky human decision that recompute never overrides.
+
+### Persistence
+
+Migration `006` adds three tables, additively and idempotently:
+
+- `knowledge_concepts` — identity columns, the canonical `signature`, a nullable
+  `preferred_unit_id` (FK to `knowledge_units` `ON DELETE RESTRICT`), and `state`.
+  A **partial unique index on `signature WHERE state = 'active'`** enforces "at
+  most one active concept per signature", so creating a concept first checks for
+  an existing active concept with the same normalized v1 signature and conflicts
+  rather than duplicating.
+- `unit_concept_links` — the append-only membership/relation history, with a
+  **partial unique index on `unit_id WHERE relation='same' AND status='accepted'`**
+  enforcing the one-accepted-SAME-per-unit invariant at the schema level.
+- `entry_current_extractions` — the explicit human rollback override
+  (`entry_id` PK, FK to `knowledge_extractions` `ON DELETE RESTRICT`).
+
+No embeddings or ML tables are introduced. The repository enforces the same
+invariants inside transactions (not relying on indexes alone), and translates the
+duplicate-signature case to `ErrConceptConflict`.
+
+### API (for near-term human review)
+
+Handlers contain no SQL; all decisions run through the application
+`ConceptService`, following the existing error conventions (`400` bad id/JSON,
+`404` not found, `409` conflict, `422` validation, `500` storage):
+
+- `GET  /concepts` (optional `?state=`) — list concepts.
+- `POST /concepts` — create a concept from an explicit identity (optionally
+  seeding + linking a unit as SAME).
+- `GET  /concepts/{id}` — a concept with its links.
+- `POST /concepts/{id}/preferred-unit` — explicitly select the preferred unit.
+- `GET  /knowledge-units/{id}/concept-resolution` — read-only: what the
+  deterministic resolver would decide for this unit (records nothing).
+- `POST /knowledge-units/{id}/concept-links/same` — accept a SAME membership.
+- `POST /knowledge-units/{id}/concept-links/relation` — record
+  broader/narrower/related.
+- `GET  /reviewable-units` (optional `?entry_id=`) — units with no accepted SAME
+  membership, with their derived candidate identity for a reviewer.
+- `GET  /entries/{id}/current-extraction` — inspect the current extraction.
+- `PUT  /entries/{id}/current-extraction` — explicit human rollback.
+
+### Out of scope (deliberately not built)
+
+Any similarity/ML resolution (embeddings, vectors, transformers, learned SAME
+probabilities); automatic BROADER/NARROWER inference; forced merging of ambiguous
+candidates; review scheduling, mastery, or spaced repetition on top of concepts
+(concepts are only the identity those will later attach to); and reconciliation
+of the interaction taxonomy with the knowledge-kind vocabulary. These wait until
+real human resolution labels exist.
 
 ## Design principles
 

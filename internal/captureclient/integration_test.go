@@ -40,6 +40,7 @@ func setupHub(t *testing.T) *httptest.Server {
 		application.NewInventoryService(inventoryRepo),
 		application.NewCaptureService(captureRepo),
 		nil,
+		nil,
 	)
 	srv := httptest.NewServer(handler.Routes())
 	t.Cleanup(srv.Close)

@@ -72,11 +72,12 @@ type Handler struct {
 	inventory InventoryService
 	capture   CaptureService
 	knowledge KnowledgeService
+	concept   ConceptService
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService) *Handler {
-	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge}
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService) *Handler {
+	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept}
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -102,6 +103,17 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /knowledge-units/{id}/admission-overrides", h.handleCreateOverride)
 	mux.HandleFunc("GET /knowledge-units/{id}/admission-overrides", h.handleListOverrides)
 	mux.HandleFunc("GET /knowledge-units/{id}/admission", h.handleGetAdmission)
+	// Knowledge concept resolution (milestone 10.5).
+	mux.HandleFunc("GET /concepts", h.handleListConcepts)
+	mux.HandleFunc("POST /concepts", h.handleCreateConcept)
+	mux.HandleFunc("GET /concepts/{id}", h.handleGetConcept)
+	mux.HandleFunc("POST /concepts/{id}/preferred-unit", h.handleSetPreferredUnit)
+	mux.HandleFunc("GET /knowledge-units/{id}/concept-resolution", h.handleResolveUnit)
+	mux.HandleFunc("POST /knowledge-units/{id}/concept-links/same", h.handleResolveSame)
+	mux.HandleFunc("POST /knowledge-units/{id}/concept-links/relation", h.handleRecordRelation)
+	mux.HandleFunc("GET /reviewable-units", h.handleListReviewableUnits)
+	mux.HandleFunc("GET /entries/{id}/current-extraction", h.handleGetCurrentExtraction)
+	mux.HandleFunc("PUT /entries/{id}/current-extraction", h.handleSetCurrentExtraction)
 	return mux
 }
 
@@ -805,6 +817,12 @@ func parseID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 		return 0, false
 	}
 	return id, true
+}
+
+// parseInt64 parses a base-10 int64 from a query-string value. The caller decides
+// how to treat a parse error or a non-positive result.
+func parseInt64(s string) (int64, error) {
+	return strconv.ParseInt(s, 10, 64)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

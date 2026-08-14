@@ -81,6 +81,36 @@ incremental milestones. Implemented so far:
   recommendation. Extraction, units, and recommendations persist atomically
   (migration 005); public errors never leak keys, headers, provider bodies, or
   original content.
+* **Knowledge concept resolution** (`/concepts`, `/concepts/{id}`,
+  `/concepts/{id}/preferred-unit`, `/knowledge-units/{id}/concept-resolution`,
+  `/knowledge-units/{id}/concept-links/same`,
+  `/knowledge-units/{id}/concept-links/relation`, `/reviewable-units`,
+  `/entries/{id}/current-extraction`) that introduces the durable learning
+  identity. A **`KnowledgeUnit` is now immutable extraction evidence/candidate**
+  (never deleted or rewritten); the **`KnowledgeConcept` is the durable identity**
+  future review/mastery/scheduling attaches to (never a raw unit). Concept
+  identity is an explicit versioned schema `fr_l2_concept_identity_v1` (`target`,
+  `pedagogical_intent`, `scope`, extensible `identity_features`), compared by a
+  deterministic canonical-JSON `signature`; canonical unit text is retrieval
+  evidence, not identity. The v1 resolver is **conservative and deterministic**:
+  automatic SAME only on an exact single signature match, `no_match` when none,
+  `ambiguous` (reviewable, never force-merged) when many — **no embeddings,
+  vectors, transformers, LLM fuzzy matching, semantic similarity, or learned
+  P(SAME), and no automatic broader/narrower inference** (all deferred until real
+  human resolution labels exist). Membership (`same`, at most one accepted per
+  unit), relations (`broader`/`narrower`/`related`, which are **not** membership
+  and carry no support), and preferred representation (explicit, must be a SAME
+  member, never auto-set by accepting SAME) are independent decisions; links are
+  append-only/superseding with full audit provenance. A concept gets automatic
+  current support only from a unit that belongs to the entry's current successful
+  extraction, is effectively `active` in admission, and has an accepted SAME link;
+  current extraction defaults to latest successful (a zero-unit success is still
+  current; a failed run can't displace it) with an explicit human rollback row.
+  Losing all support makes a concept `orphaned` (not deleted); `retired` is a
+  sticky human decision. Migration 006 adds `knowledge_concepts`,
+  `unit_concept_links`, `entry_current_extractions` with partial unique indexes
+  enforcing one-active-concept-per-signature and one-accepted-SAME-per-unit; no ML
+  tables.
 
 Inspect the repository before proposing changes; do not assume planned
 directories, frameworks, services, or database schemas exist until confirmed.
