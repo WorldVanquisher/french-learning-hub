@@ -156,6 +156,14 @@ func (s *ConceptService) GetConcept(ctx context.Context, conceptID int64) (*doma
 	return s.concepts.GetConcept(ctx, conceptID)
 }
 
+// GetCurrentMembership returns a unit's CURRENT SAME membership (or nil when it has
+// none), read from the membership projection. It is the read model a UI must use
+// to show current authority: it never infers currency from the append-only
+// resolution events, which are historical evidence. Read-only; makes no AI call.
+func (s *ConceptService) GetCurrentMembership(ctx context.Context, unitID int64) (*domain.CurrentConceptMembership, error) {
+	return s.concepts.GetCurrentMembership(ctx, unitID)
+}
+
 // ListConcepts returns concepts filtered by optional state, newest first.
 // Read-only.
 func (s *ConceptService) ListConcepts(ctx context.Context, state *domain.ConceptState) ([]domain.KnowledgeConcept, error) {

@@ -22,6 +22,7 @@ type ConceptService interface {
 	RecordRelation(ctx context.Context, unitID, conceptID int64, relation domain.ConceptRelation) (*domain.UnitConceptLink, error)
 	SetPreferredUnit(ctx context.Context, conceptID, unitID int64) (*domain.KnowledgeConcept, error)
 	GetConcept(ctx context.Context, conceptID int64) (*domain.ConceptView, error)
+	GetCurrentMembership(ctx context.Context, unitID int64) (*domain.CurrentConceptMembership, error)
 	ListConcepts(ctx context.Context, state *domain.ConceptState) ([]domain.KnowledgeConcept, error)
 	ListReviewableUnits(ctx context.Context, entryID *int64) ([]domain.ReviewableUnit, error)
 	GetCurrentExtraction(ctx context.Context, entryID int64) (*int64, error)
@@ -174,6 +175,28 @@ func toReviewableUnitResponse(ru domain.ReviewableUnit) reviewableUnitResponse {
 		Statement: ru.Unit.Statement,
 		Candidate: toIdentityDTO(ru.Candidate),
 		Signature: ru.Candidate.Signature(),
+	}
+}
+
+// currentMembershipResponse is the wire shape of a unit's CURRENT SAME membership.
+// It is the read model a UI uses to show current authority; it is populated
+// straight from the membership projection, never inferred from the append-only
+// resolution events. When the unit has no current SAME membership the enclosing
+// response's current_membership is an explicit null.
+type currentMembershipResponse struct {
+	ConceptID int64  `json:"concept_id"`
+	LinkID    int64  `json:"link_id"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func toCurrentMembershipResponse(m *domain.CurrentConceptMembership) *currentMembershipResponse {
+	if m == nil {
+		return nil
+	}
+	return &currentMembershipResponse{
+		ConceptID: m.ConceptID,
+		LinkID:    m.LinkID,
+		UpdatedAt: m.UpdatedAt.Format(time.RFC3339Nano),
 	}
 }
 
@@ -407,6 +430,32 @@ func (h *Handler) handleReassignSame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, toLinkResponse(*link))
+}
+
+// handleGetCurrentMembership returns a unit's CURRENT SAME membership read from the
+// membership projection (current_membership is null when the unit has none). This
+// is the read model a UI must use for current authority: it never infers currency
+// from the append-only resolution events, which may still show a superseded
+// decision as 'accepted'. Read-only; makes no AI call. Status: 200 ok (with or
+// without a membership), 400 invalid id, 404 unit not found, 500 storage failure.
+func (h *Handler) handleGetCurrentMembership(w http.ResponseWriter, r *http.Request) {
+	unitID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	m, err := h.concept.GetCurrentMembership(r.Context(), unitID)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "knowledge unit not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not fetch current membership")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"unit_id":            unitID,
+		"current_membership": toCurrentMembershipResponse(m),
+	})
 }
 
 // handleRecordRelation records a non-membership BROADER/NARROWER/RELATED decision

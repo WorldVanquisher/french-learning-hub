@@ -783,7 +783,18 @@ Three decisions are kept independent:
   idempotent; claiming a second, different concept through the SAME endpoint is
   `ErrConceptConflict` (`409`). A human correction that *moves* the membership to
   a different concept is a separate, always-allowed operation (`ReassignSame`);
-  see milestone 10.5.1.
+  see milestone 10.5.1. **`ReassignSame` is the only operation that may move an
+  existing current membership.** In particular, `POST /concepts` with
+  `link_seed_as_same` only *establishes* membership for an **unresolved** seed
+  unit; if the seed unit already has a current SAME membership, creation is refused
+  with `ErrConceptConflict` and nothing is persisted — concept creation never gains
+  hidden reassignment authority and never implicitly calls `ReassignSame`.
+- **Reading current membership** is done through the projection, never by scanning
+  the event log. A UI must not infer "which concept this unit belongs to now" from
+  the append-only resolution events: a superseded event legitimately keeps
+  `status = accepted` (it was accepted at the time it was recorded). The
+  authoritative current answer is `unit_concept_memberships`, exposed read-only at
+  `GET /knowledge-units/{id}/concept-membership`.
 - **Relations** (`broader`, `narrower`, `related`) are recorded for review but
   are **not membership** — they never make a unit a member of a concept and never
   contribute support. `INVALID` is deliberately not a relation. Attempting to
@@ -885,17 +896,32 @@ Handlers contain no SQL; all decisions run through the application
 - `GET  /concepts` (optional `?state=`) — list concepts.
 - `POST /concepts` — create a concept from an explicit identity (optionally
   seeding + linking a unit as SAME **atomically**, in one repository transaction:
-  if the seed link fails, no concept persists either).
+  if the seed link fails, no concept persists either). The seed SAME only
+  **establishes** membership for an **unresolved** unit; if the seed unit already
+  has a current SAME membership the whole transaction rolls back with `409`
+  (`ErrConceptConflict`) — nothing is created, no event is appended, the existing
+  membership is untouched. Moving an existing membership is `ReassignSame`'s job
+  alone.
 - `GET  /concepts/{id}` — a concept with its links.
 - `POST /concepts/{id}/preferred-unit` — explicitly select the preferred unit.
 - `GET  /knowledge-units/{id}/concept-resolution` — read-only: what the
   deterministic resolver would decide for this unit (records nothing).
 - `POST /knowledge-units/{id}/concept-links/same` — accept a SAME membership for
   a unit that has **no** current SAME (conflicts if it already has one).
+- `GET  /knowledge-units/{id}/concept-membership` — read-only current-membership
+  read model. Returns the unit's **current** SAME membership straight from the
+  `unit_concept_memberships` projection (`{"unit_id":…,"current_membership":
+  {"concept_id":…,"link_id":…,"updated_at":…}}`), or an explicit
+  `"current_membership": null` when the unit is unresolved. It never scans the
+  append-only event log, so a superseded-but-still-`accepted` event cannot be
+  mistaken for the current answer. `404` if the unit does not exist.
 - `PUT  /knowledge-units/{id}/concept-membership` — human correction that *moves*
   a unit's current SAME membership to a different concept even when one already
   exists (milestone 10.5.1). Returns `409` only for a genuinely invalid move,
-  never merely because a prior SAME decision exists.
+  never merely because a prior SAME decision exists. This is the **only**
+  operation permitted to move an existing current membership; concept creation
+  with a seed SAME establishes membership only for an unresolved unit and never
+  reassigns.
 - `POST /knowledge-units/{id}/concept-links/relation` — record
   broader/narrower/related.
 - `GET  /reviewable-units` (optional `?entry_id=`) — units with no accepted SAME

@@ -706,6 +706,170 @@ func TestConceptRepository_CreateAndAttachRollsBack(t *testing.T) {
 	}
 }
 
+// Create+seed only ESTABLISHES membership for an unresolved unit (spec 1, case A):
+// with no current membership, create+attach succeeds atomically.
+func TestConceptRepository_CreateAndAttachEstablishesForUnresolvedUnit(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	c, link, err := concepts.CreateConcept(ctx, domain.NewConceptInput{
+		Identity:       domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"},
+		SeedUnitID:     &unitID,
+		LinkSeedAsSame: true,
+		SeedSource:     domain.SourceHuman,
+	})
+	if err != nil {
+		t.Fatalf("create+attach for unresolved unit: %v", err)
+	}
+	m, err := concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership: %v", err)
+	}
+	if m == nil || m.ConceptID != c.ID || m.LinkID != link.ID {
+		t.Fatalf("membership should point at the new concept and seed link, got %+v", m)
+	}
+}
+
+// Create+seed must NOT be a hidden reassignment side door (spec 1, case B): when the
+// seed unit already has a current SAME membership, creating another concept with
+// link_seed_as_same fails with ErrConceptConflict and persists nothing.
+func TestConceptRepository_CreateAndAttachRefusesExistingMembership(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	// Establish current SAME to concept A and make the unit A's preferred rep.
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	firstLink, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceHuman, nil, "")
+	if err != nil {
+		t.Fatalf("link A: %v", err)
+	}
+	if _, err := concepts.SetPreferredUnit(ctx, a.ID, unitID); err != nil {
+		t.Fatalf("set preferred on A: %v", err)
+	}
+
+	// Snapshot A's event history before the attempt.
+	beforeA, err := concepts.GetConcept(ctx, a.ID)
+	if err != nil {
+		t.Fatalf("get A before: %v", err)
+	}
+
+	// Attempt to create concept B seeding the SAME already-resolved unit.
+	_, link, err := concepts.CreateConcept(ctx, domain.NewConceptInput{
+		Identity:       domain.ConceptIdentity{Target: "b", PedagogicalIntent: "grammar"},
+		SeedUnitID:     &unitID,
+		LinkSeedAsSame: true,
+		SeedSource:     domain.SourceHuman,
+	})
+	if !errors.Is(err, domain.ErrConceptConflict) {
+		t.Fatalf("expected ErrConceptConflict from create+seed on a resolved unit, got %v", err)
+	}
+	if link != nil {
+		t.Fatalf("no seed link may be returned, got %+v", link)
+	}
+
+	// Concept B must not persist: only A exists.
+	all, err := concepts.ListConcepts(ctx, nil)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(all) != 1 || all[0].ID != a.ID {
+		t.Fatalf("concept B must not persist; concepts = %+v", all)
+	}
+
+	// Current membership is still A via the original link (no new SAME event, no
+	// projection change).
+	m, err := concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership: %v", err)
+	}
+	if m == nil || m.ConceptID != a.ID || m.LinkID != firstLink.ID {
+		t.Fatalf("membership must remain A on the original link, got %+v", m)
+	}
+
+	// A's preferred unit is unchanged, and its event history is unchanged (no extra
+	// SAME event was appended).
+	afterA, err := concepts.GetConcept(ctx, a.ID)
+	if err != nil {
+		t.Fatalf("get A after: %v", err)
+	}
+	if afterA.Concept.PreferredUnitID == nil || *afterA.Concept.PreferredUnitID != unitID {
+		t.Fatalf("A's preferred unit must be unchanged, got %v", afterA.Concept.PreferredUnitID)
+	}
+	if len(afterA.Links) != len(beforeA.Links) {
+		t.Fatalf("A's history must be unchanged: before %d events, after %d", len(beforeA.Links), len(afterA.Links))
+	}
+}
+
+// GetCurrentMembership reads the projection, not the event log (spec 2). It returns
+// nil for an unresolved unit and the current concept for a resolved one.
+func TestConceptRepository_GetCurrentMembership(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	// Unresolved: nil membership.
+	m, err := concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership (unresolved): %v", err)
+	}
+	if m != nil {
+		t.Fatalf("unresolved unit must have nil current membership, got %+v", m)
+	}
+
+	// Missing unit: ErrNotFound.
+	if _, err := concepts.GetCurrentMembership(ctx, 999999); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for missing unit, got %v", err)
+	}
+
+	// After SAME to A: returns A and the establishing link.
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	linkA, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceHuman, nil, "")
+	if err != nil {
+		t.Fatalf("link A: %v", err)
+	}
+	m, err = concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership (A): %v", err)
+	}
+	if m == nil || m.UnitID != unitID || m.ConceptID != a.ID || m.LinkID != linkA.ID {
+		t.Fatalf("expected membership to A on link %d, got %+v", linkA.ID, m)
+	}
+
+	// After ReassignSame A->B: immediately returns B and the new superseding link,
+	// while the historical A event remains queryable and does not confuse the read.
+	b := mustConcept(t, concepts, domain.ConceptIdentity{Target: "b", PedagogicalIntent: "grammar"})
+	linkB, err := concepts.ReassignSame(ctx, unitID, b.ID, domain.SourceHuman, "")
+	if err != nil {
+		t.Fatalf("reassign to B: %v", err)
+	}
+	m, err = concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership (B): %v", err)
+	}
+	if m == nil || m.ConceptID != b.ID || m.LinkID != linkB.ID {
+		t.Fatalf("expected membership to B on link %d, got %+v", linkB.ID, m)
+	}
+	// The historical accepted A event is still present in A's history.
+	aView, err := concepts.GetConcept(ctx, a.ID)
+	if err != nil {
+		t.Fatalf("get A: %v", err)
+	}
+	foundA := false
+	for _, l := range aView.Links {
+		if l.ID == linkA.ID && l.ConceptID == a.ID && l.Status == domain.LinkAccepted {
+			foundA = true
+		}
+	}
+	if !foundA {
+		t.Fatalf("historical A event must remain queryable and accepted")
+	}
+}
+
 func TestConceptRepository_RelationsAreNotMembership(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()

@@ -334,7 +334,10 @@ func (r *ConceptRepository) FindActiveBySignature(ctx context.Context, sig strin
 // CreateConcept inserts a new concept from a validated identity, refusing a
 // duplicate DURABLE identity (non-retired). When in.LinkSeedAsSame is set it also
 // records the seed unit's SAME membership in the same transaction, so create and
-// attach are atomic.
+// attach are atomic. Create+seed only ESTABLISHES membership for an unresolved
+// unit: if the seed unit already has a current SAME membership it returns
+// ErrConceptConflict and creates nothing — moving an existing membership is the
+// exclusive job of ReassignSame, never a side effect of concept creation.
 func (r *ConceptRepository) CreateConcept(ctx context.Context, in domain.NewConceptInput) (*domain.KnowledgeConcept, *domain.UnitConceptLink, error) {
 	if err := in.Identity.Validate(); err != nil {
 		return nil, nil, err
@@ -393,6 +396,19 @@ func (r *ConceptRepository) CreateConcept(ctx context.Context, in domain.NewConc
 	// transaction so a link failure rolls back the concept too.
 	var seedLink *domain.UnitConceptLink
 	if in.LinkSeedAsSame {
+		// Create+seed may only ESTABLISH membership for an unresolved unit. It must
+		// never move an existing CURRENT SAME membership: that is the exclusive job
+		// of the explicit ReassignSame correction path. If the seed unit already
+		// belongs SAME to some concept, refuse and roll the whole transaction back —
+		// the new concept must not be created and no membership is touched.
+		existing, err := currentMembership(ctx, tx, *in.SeedUnitID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if existing != nil {
+			return nil, nil, fmt.Errorf("%w: seed unit already has a current SAME membership; use ReassignSame to move it", domain.ErrConceptConflict)
+		}
+
 		source := in.SeedSource
 		if source == "" {
 			source = domain.SourceHuman
@@ -767,6 +783,33 @@ func (r *ConceptRepository) ActiveSupportUnitIDs(ctx context.Context, conceptID 
 		return nil, err
 	}
 	return supportingUnitIDs(ctx, r.db, conceptID)
+}
+
+// GetCurrentMembership returns the unit's CURRENT SAME membership straight from the
+// projection, or (nil, nil) when there is none. It never reconstructs currency
+// from the append-only event log: a superseded event may still read
+// status='accepted', so only unit_concept_memberships is authoritative.
+func (r *ConceptRepository) GetCurrentMembership(ctx context.Context, unitID int64) (*domain.CurrentConceptMembership, error) {
+	if err := unitExists(ctx, r.db, unitID); err != nil {
+		return nil, err
+	}
+	var (
+		m          domain.CurrentConceptMembership
+		updatedStr string
+	)
+	err := r.db.QueryRowContext(ctx,
+		`SELECT unit_id, concept_id, link_id, updated_at FROM unit_concept_memberships WHERE unit_id = ?`, unitID).
+		Scan(&m.UnitID, &m.ConceptID, &m.LinkID, &updatedStr)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read current membership: %w", err)
+	}
+	if m.UpdatedAt, err = time.Parse(rfc3339, updatedStr); err != nil {
+		return nil, fmt.Errorf("parse membership updated_at: %w", err)
+	}
+	return &m, nil
 }
 
 // ---- membership projection helpers ----

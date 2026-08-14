@@ -330,6 +330,146 @@ func TestIntegration_ReassignSameCorrectsMembership(t *testing.T) {
 	assertConceptState(conceptA, "orphaned", 1)
 }
 
+// TestIntegration_CurrentMembershipReadModel drives GET
+// /knowledge-units/{id}/concept-membership end to end. The UI reads current
+// authority here, not from the append-only resolution events. It covers: an
+// unresolved unit (null), a SAME unit (concept A + establishing link), immediate
+// reflection of a ReassignSame correction (concept B + superseding link), and that
+// the historical A event stays queryable via GET /concepts without confusing the
+// membership endpoint.
+func TestIntegration_CurrentMembershipReadModel(t *testing.T) {
+	srv, entryID := setupConceptServer(t, []domain.ExtractedUnit{
+		{Kind: domain.KindGrammar, Canonical: "x", Statement: "s", Confidence: 0.9},
+	})
+	unitID := extractUnits(t, srv, entryID)[0]
+
+	getMembership := func() (int, struct {
+		UnitID            int64 `json:"unit_id"`
+		CurrentMembership *struct {
+			ConceptID int64 `json:"concept_id"`
+			LinkID    int64 `json:"link_id"`
+		} `json:"current_membership"`
+	}) {
+		resp, err := http.Get(srv.URL + "/knowledge-units/" + itoa(unitID) + "/concept-membership")
+		if err != nil {
+			t.Fatalf("GET membership: %v", err)
+		}
+		defer resp.Body.Close()
+		var body struct {
+			UnitID            int64 `json:"unit_id"`
+			CurrentMembership *struct {
+				ConceptID int64 `json:"concept_id"`
+				LinkID    int64 `json:"link_id"`
+			} `json:"current_membership"`
+		}
+		json.NewDecoder(resp.Body).Decode(&body)
+		return resp.StatusCode, body
+	}
+
+	mkConcept := func(target string) int64 {
+		reqBody := `{"identity":{"target":"` + target + `","pedagogical_intent":"grammar"}}`
+		resp, err := http.Post(srv.URL+"/concepts", "application/json", bytes.NewReader([]byte(reqBody)))
+		if err != nil {
+			t.Fatalf("POST concept: %v", err)
+		}
+		defer resp.Body.Close()
+		var created struct {
+			Concept struct {
+				ID int64 `json:"id"`
+			} `json:"concept"`
+		}
+		json.NewDecoder(resp.Body).Decode(&created)
+		return created.Concept.ID
+	}
+
+	// A. Unresolved unit -> 200 with null membership.
+	code, body := getMembership()
+	if code != http.StatusOK {
+		t.Fatalf("membership status = %d, want 200", code)
+	}
+	if body.UnitID != unitID || body.CurrentMembership != nil {
+		t.Fatalf("unresolved unit must have null current_membership, got %+v", body)
+	}
+
+	// B. SAME to A -> returns A and the establishing link id.
+	conceptA := mkConcept("alpha")
+	sResp, err := http.Post(srv.URL+"/knowledge-units/"+itoa(unitID)+"/concept-links/same", "application/json",
+		bytes.NewReader([]byte(`{"concept_id":`+itoa(conceptA)+`}`)))
+	if err != nil {
+		t.Fatalf("POST same: %v", err)
+	}
+	var linkA struct {
+		ID int64 `json:"id"`
+	}
+	json.NewDecoder(sResp.Body).Decode(&linkA)
+	sResp.Body.Close()
+
+	code, body = getMembership()
+	if code != http.StatusOK || body.CurrentMembership == nil {
+		t.Fatalf("resolved unit must report a membership, got status=%d body=%+v", code, body)
+	}
+	if body.CurrentMembership.ConceptID != conceptA || body.CurrentMembership.LinkID != linkA.ID {
+		t.Fatalf("membership should be A on link %d, got %+v", linkA.ID, body.CurrentMembership)
+	}
+
+	// C. ReassignSame A -> B -> immediately returns B and the new superseding link.
+	conceptB := mkConcept("beta")
+	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/knowledge-units/"+itoa(unitID)+"/concept-membership",
+		bytes.NewReader([]byte(`{"concept_id":`+itoa(conceptB)+`}`)))
+	req.Header.Set("Content-Type", "application/json")
+	rResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT membership: %v", err)
+	}
+	var linkB struct {
+		ID int64 `json:"id"`
+	}
+	json.NewDecoder(rResp.Body).Decode(&linkB)
+	rResp.Body.Close()
+
+	code, body = getMembership()
+	if code != http.StatusOK || body.CurrentMembership == nil {
+		t.Fatalf("after reassign, membership must be present, got status=%d body=%+v", code, body)
+	}
+	if body.CurrentMembership.ConceptID != conceptB || body.CurrentMembership.LinkID != linkB.ID {
+		t.Fatalf("membership should be B on link %d, got %+v", linkB.ID, body.CurrentMembership)
+	}
+
+	// D. The historical A event remains queryable via GET /concepts/{A} and is still
+	// 'accepted' there, without changing what the membership endpoint reports.
+	gResp, err := http.Get(srv.URL + "/concepts/" + itoa(conceptA))
+	if err != nil {
+		t.Fatalf("GET concept A: %v", err)
+	}
+	var aView struct {
+		Links []struct {
+			ID     int64  `json:"id"`
+			Status string `json:"status"`
+		} `json:"links"`
+	}
+	json.NewDecoder(gResp.Body).Decode(&aView)
+	gResp.Body.Close()
+	foundAccepted := false
+	for _, l := range aView.Links {
+		if l.ID == linkA.ID && l.Status == "accepted" {
+			foundAccepted = true
+		}
+	}
+	if !foundAccepted {
+		t.Fatalf("historical A event %d must remain queryable as accepted, got %+v", linkA.ID, aView.Links)
+	}
+
+	// E. Missing unit -> 404.
+	resp, err := http.Get(srv.URL + "/knowledge-units/999999/concept-membership")
+	if err != nil {
+		t.Fatalf("GET missing membership: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing unit membership status = %d, want 404", resp.StatusCode)
+	}
+}
+
 func TestIntegration_ConceptDuplicateActiveIdentityConflicts(t *testing.T) {
 	srv, _ := setupConceptServer(t, nil)
 	body := `{"identity":{"target":"vouloir","pedagogical_intent":"grammar"}}`
