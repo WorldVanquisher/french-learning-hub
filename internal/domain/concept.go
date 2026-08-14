@@ -455,6 +455,20 @@ type ReviewableUnit struct {
 	Candidate ConceptIdentity
 }
 
+// CurrentConceptMembership is the read model for a unit's CURRENT SAME membership.
+// It is the single source of truth for "which concept this unit belongs to right
+// now": it is read directly from the current-membership projection, NEVER
+// reconstructed by scanning the append-only event log (a historical event may
+// still read status='accepted' long after it was superseded, so events are
+// evidence, not current authority). LinkID is the event-log row currently in
+// force. A unit with no current SAME membership has no CurrentConceptMembership.
+type CurrentConceptMembership struct {
+	UnitID    int64
+	ConceptID int64
+	LinkID    int64
+	UpdatedAt time.Time
+}
+
 // NewConceptInput is the validated bundle for creating a concept from a
 // unit/signature. Identity is validated and normalized; SeedUnitID optionally
 // records which unit motivated the concept. When LinkSeedAsSame is true, the
@@ -494,6 +508,12 @@ type ConceptRepository interface {
 	// atomic: if the seed link fails, the concept is not persisted either. SeedUnitID,
 	// when set, must reference an existing unit; LinkSeedAsSame requires SeedUnitID.
 	// The returned link is non-nil only when a seed membership was created.
+	//
+	// Create+seed only ESTABLISHES membership for an unresolved unit. If the seed
+	// unit already has a current SAME membership, CreateConcept returns
+	// ErrConceptConflict and persists nothing (no concept, no event, no projection
+	// change): moving an existing membership is exclusively ReassignSame's job and is
+	// never a hidden side effect of concept creation.
 	CreateConcept(ctx context.Context, in NewConceptInput) (*KnowledgeConcept, *UnitConceptLink, error)
 	// GetConcept returns one concept (with derived support state) and its full
 	// append-only event history, or ErrNotFound.
@@ -537,6 +557,11 @@ type ConceptRepository interface {
 	// support to conceptID (current SAME membership + belongs to their entry's
 	// current extraction + effective admission active). Computed from current data.
 	ActiveSupportUnitIDs(ctx context.Context, conceptID int64) ([]int64, error)
+	// GetCurrentMembership returns the unit's CURRENT SAME membership read from the
+	// membership projection, or (nil, nil) when the unit has no current SAME. It
+	// never reconstructs currency from the append-only event log. Returns ErrNotFound
+	// if the unit does not exist.
+	GetCurrentMembership(ctx context.Context, unitID int64) (*CurrentConceptMembership, error)
 }
 
 // CurrentExtractionRepository is the persistence boundary for the explicit

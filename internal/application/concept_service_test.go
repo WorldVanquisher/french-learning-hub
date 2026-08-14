@@ -23,6 +23,8 @@ type fakeConceptRepo struct {
 	createSeedError error // when set, atomic create+attach fails after the concept insert
 	createCall      int
 	seedLinked      int
+	membership      *domain.CurrentConceptMembership
+	membershipCall  int
 }
 
 func (f *fakeConceptRepo) UnitByID(context.Context, int64) (*domain.KnowledgeUnit, error) {
@@ -77,6 +79,10 @@ func (f *fakeConceptRepo) ListReviewableUnits(context.Context, *int64) ([]domain
 }
 func (f *fakeConceptRepo) ActiveSupportUnitIDs(context.Context, int64) ([]int64, error) {
 	return nil, nil
+}
+func (f *fakeConceptRepo) GetCurrentMembership(_ context.Context, unitID int64) (*domain.CurrentConceptMembership, error) {
+	f.membershipCall++
+	return f.membership, nil
 }
 func (f *fakeConceptRepo) GetCurrentExtractionID(context.Context, int64) (*int64, error) {
 	return nil, nil
@@ -208,5 +214,32 @@ func TestCreateConcept_SeedLinkFailureLeavesNothing(t *testing.T) {
 	}
 	if concept != nil || link != nil {
 		t.Fatalf("no concept or link must be returned on atomic failure, got %v %v", concept, link)
+	}
+}
+
+// GetCurrentMembership is a read-only pass-through to the projection read model.
+func TestGetCurrentMembership_ReadsProjection(t *testing.T) {
+	repo := &fakeConceptRepo{membership: &domain.CurrentConceptMembership{UnitID: 7, ConceptID: 42, LinkID: 11}}
+	svc := NewConceptService(nil, repo, repo)
+	m, err := svc.GetCurrentMembership(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("get current membership: %v", err)
+	}
+	if m == nil || m.ConceptID != 42 || m.LinkID != 11 {
+		t.Fatalf("expected the projection membership, got %+v", m)
+	}
+	if repo.membershipCall != 1 {
+		t.Fatalf("expected one projection read, got %d", repo.membershipCall)
+	}
+
+	// No membership => nil, still read-only.
+	repo2 := &fakeConceptRepo{membership: nil}
+	svc2 := NewConceptService(nil, repo2, repo2)
+	m2, err := svc2.GetCurrentMembership(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("get current membership (none): %v", err)
+	}
+	if m2 != nil {
+		t.Fatalf("expected nil membership, got %+v", m2)
 	}
 }
