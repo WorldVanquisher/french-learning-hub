@@ -578,7 +578,9 @@ type ConceptRepository interface {
 	// unit already has a current SAME membership, CreateConcept returns
 	// ErrConceptConflict and persists nothing (no concept, no event, no projection
 	// change): moving an existing membership is exclusively ReassignSame's job and is
-	// never a hidden side effect of concept creation.
+	// never a hidden side effect of concept creation. An effectively INVALID seed
+	// unit also returns ErrConceptConflict and causes the whole create-and-attach
+	// transaction to roll back; RestoreUnit must be called first.
 	CreateConcept(ctx context.Context, in NewConceptInput) (*KnowledgeConcept, *UnitConceptLink, error)
 	// GetConcept returns one concept (with derived support state) and its full
 	// append-only event history, or ErrNotFound.
@@ -591,7 +593,9 @@ type ConceptRepository interface {
 	// as the unit's current membership. It enforces at-most-one CURRENT SAME per
 	// unit: re-affirming the same concept is idempotent; a SAME to a DIFFERENT
 	// concept while one is already current is a conflict (ErrConceptConflict) — use
-	// ReassignSame for an explicit human correction. Appends an immutable event.
+	// ReassignSame for an explicit human correction. An effectively INVALID unit also
+	// returns ErrConceptConflict until RestoreUnit appends a restored judgment.
+	// Appends an immutable event.
 	// Returns ErrNotFound if the unit or concept does not exist.
 	LinkSame(ctx context.Context, unitID, conceptID int64, source DecisionSource, score *float64, evidence string) (*UnitConceptLink, error)
 	// ReassignSame moves a unit's CURRENT SAME membership to a different concept as
@@ -600,12 +604,13 @@ type ConceptRepository interface {
 	// (via SupersedesLinkID), updates the current-membership projection, and — if
 	// the OLD concept's preferred_unit_id pointed at this unit — clears it, since
 	// the unit is no longer a member there. All in one transaction. Re-affirming the
-	// unit's existing current concept is idempotent. Returns ErrNotFound if the unit
-	// or concept does not exist.
+	// unit's existing current concept is idempotent. An effectively INVALID unit
+	// cannot establish or move SAME and returns ErrConceptConflict until restored.
+	// Returns ErrNotFound if the unit or concept does not exist.
 	ReassignSame(ctx context.Context, unitID, conceptID int64, source DecisionSource, evidence string) (*UnitConceptLink, error)
-	// RejectSame records an explicit HUMAN judgment that a unit's candidate does not
-	// belong to any concept (INVALID), clearing its CURRENT SAME membership. INVALID
-	// is deliberately NOT a ConceptRelation: it is recorded as an immutable
+	// RejectSame records an explicit HUMAN membership-level correction, clearing the
+	// unit's CURRENT SAME membership. It is separate from unit-level INVALID and does
+	// not write a UnitResolutionJudgment. The rejection is recorded as an immutable
 	// append-only event with relation='same' and status='rejected', referencing the
 	// previously-in-force SAME event via SupersedesLinkID, so the human judgment is
 	// preserved as queryable negative evidence rather than represented merely by
@@ -651,8 +656,9 @@ type ConceptRepository interface {
 	// RecordDistinction records an explicit human DISTINCT judgment: the unit is NOT
 	// the same learning identity as conceptID. It is an append-only negative pair; it
 	// creates no membership and no ConceptRelation, and never changes the unit's SAME
-	// membership, so the unit stays reviewable. Returns ErrNotFound if the unit or
-	// concept does not exist.
+	// membership, so the unit stays reviewable. If conceptID is the unit's CURRENT
+	// SAME concept, it returns ErrConceptConflict and inserts nothing. Returns
+	// ErrNotFound if the unit or concept does not exist.
 	RecordDistinction(ctx context.Context, unitID, conceptID int64, source DecisionSource, evidence string) (*UnitConceptDistinction, error)
 	// ListDistinctions returns a unit's full append-only DISTINCT history, newest
 	// first. Returns ErrNotFound if the unit does not exist.

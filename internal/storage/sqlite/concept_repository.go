@@ -337,7 +337,9 @@ func (r *ConceptRepository) FindActiveBySignature(ctx context.Context, sig strin
 // attach are atomic. Create+seed only ESTABLISHES membership for an unresolved
 // unit: if the seed unit already has a current SAME membership it returns
 // ErrConceptConflict and creates nothing — moving an existing membership is the
-// exclusive job of ReassignSame, never a side effect of concept creation.
+// exclusive job of ReassignSame, never a side effect of concept creation. An
+// effectively INVALID seed unit also returns ErrConceptConflict and rolls back the
+// concept insert; it must be restored explicitly before SAME can be established.
 func (r *ConceptRepository) CreateConcept(ctx context.Context, in domain.NewConceptInput) (*domain.KnowledgeConcept, *domain.UnitConceptLink, error) {
 	if err := in.Identity.Validate(); err != nil {
 		return nil, nil, err
@@ -501,7 +503,8 @@ func (r *ConceptRepository) ListConcepts(ctx context.Context, state *domain.Conc
 // LinkSame records an accepted SAME membership and sets it as the unit's current
 // membership. It enforces at-most-one CURRENT SAME per unit: re-affirming the same
 // concept is idempotent; a SAME to a different concept while one is current is a
-// conflict (use ReassignSame). Appends an immutable event.
+// conflict (use ReassignSame). Effectively INVALID units cannot establish SAME
+// until restored. Appends an immutable event.
 func (r *ConceptRepository) LinkSame(ctx context.Context, unitID, conceptID int64, source domain.DecisionSource, score *float64, evidence string) (*domain.UnitConceptLink, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -551,7 +554,8 @@ func (r *ConceptRepository) LinkSame(ctx context.Context, unitID, conceptID int6
 // ReassignSame moves a unit's current SAME membership to a different concept as an
 // explicit human correction. It appends a superseding event, updates the current
 // projection, and clears the old concept's preferred unit if it pointed at this
-// unit — all atomically. History is preserved: the prior event row is untouched.
+// unit — all atomically. Effectively INVALID units cannot establish or move SAME
+// until restored. History is preserved: the prior event row is untouched.
 func (r *ConceptRepository) ReassignSame(ctx context.Context, unitID, conceptID int64, source domain.DecisionSource, evidence string) (*domain.UnitConceptLink, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -611,8 +615,9 @@ func (r *ConceptRepository) ReassignSame(ctx context.Context, unitID, conceptID 
 	return link, nil
 }
 
-// RejectSame records an explicit human INVALID judgment for a unit and clears its
-// current SAME membership, all in one transaction. It appends an immutable
+// RejectSame records an explicit membership-level correction and clears the unit's
+// current SAME membership, all in one transaction. It is separate from unit-level
+// INVALID and never writes unit_resolution_judgments. It appends an immutable
 // rejection event (relation='same', status='rejected') that references the
 // previously-in-force SAME event via supersedes_link_id — so the human judgment
 // survives as queryable negative evidence, not merely as a deleted projection row —
@@ -652,8 +657,8 @@ func (r *ConceptRepository) RejectSame(ctx context.Context, unitID int64, source
 	now := r.now()
 	supersedes := current.linkID
 
-	// Append the immutable INVALID event: relation stays 'same' (this is about a
-	// SAME membership being rejected, not a new relation kind) with status
+	// Append the immutable rejected-SAME event: relation stays 'same' (this is about
+	// a SAME membership being rejected, not a new relation kind) with status
 	// 'rejected', pointing back at the SAME event it invalidates.
 	link, err := insertLink(ctx, tx, unitID, current.conceptID, domain.RelationSame, domain.LinkRejected, source, domain.ConceptResolverVersion, nil, evidence, &supersedes, now)
 	if err != nil {
@@ -802,7 +807,9 @@ func (r *ConceptRepository) ListUnitJudgments(ctx context.Context, unitID int64)
 
 // RecordDistinction records an explicit human DISTINCT negative pair. It creates no
 // membership and no relation and never changes SAME membership; the unit stays
-// reviewable. Both the unit and the concept must exist.
+// reviewable. A distinction from the unit's CURRENT SAME concept is contradictory
+// and returns ErrConceptConflict without inserting anything. Both the unit and the
+// concept must exist.
 func (r *ConceptRepository) RecordDistinction(ctx context.Context, unitID, conceptID int64, source domain.DecisionSource, evidence string) (*domain.UnitConceptDistinction, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -815,6 +822,13 @@ func (r *ConceptRepository) RecordDistinction(ctx context.Context, unitID, conce
 	}
 	if err := conceptExists(ctx, tx, conceptID); err != nil {
 		return nil, err
+	}
+	current, err := currentMembership(ctx, tx, unitID)
+	if err != nil {
+		return nil, err
+	}
+	if current != nil && current.conceptID == conceptID {
+		return nil, fmt.Errorf("%w: unit cannot be DISTINCT from its current SAME concept", domain.ErrConceptConflict)
 	}
 
 	if evidence == "" {
@@ -1142,6 +1156,14 @@ func (r *ConceptRepository) applySame(ctx context.Context, tx *sql.Tx, unitID, c
 // applySameEvent appends an accepted SAME event (optionally superseding another)
 // and upserts the current-membership projection to point at the new event.
 func (r *ConceptRepository) applySameEvent(ctx context.Context, tx *sql.Tx, unitID, conceptID int64, source domain.DecisionSource, score *float64, evidence string, supersedes *int64, now time.Time) (*domain.UnitConceptLink, error) {
+	latest, err := latestUnitJudgment(ctx, tx, unitID)
+	if err != nil {
+		return nil, err
+	}
+	if domain.EffectiveUnitInvalid(latest) {
+		return nil, fmt.Errorf("%w: effectively INVALID unit must be restored before establishing SAME membership", domain.ErrConceptConflict)
+	}
+
 	link, err := insertLink(ctx, tx, unitID, conceptID, domain.RelationSame, domain.LinkAccepted, source, domain.ConceptResolverVersion, score, evidence, supersedes, now)
 	if err != nil {
 		return nil, err

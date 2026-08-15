@@ -132,6 +132,19 @@ incremental milestones. Implemented so far:
 Inspect the repository before proposing changes; do not assume planned
 directories, frameworks, services, or database schemas exist until confirmed.
 
+M10.6:
+
+- `web/` is a human annotation/data-collection UI, not a consumer product UI.
+- `unit_concept_memberships` is the sole authority for CURRENT SAME.
+- `unit_concept_links` is historical append-only resolution evidence, not current
+  authority.
+- Unit-level `INVALID` is stored in `unit_resolution_judgments`.
+- `RejectSame` is a separate membership-level correction.
+- `DISTINCT` is an explicit non-SAME identity pair stored in
+  `unit_concept_distinctions`.
+- `BROADER` / `NARROWER` / `RELATED` are non-membership relations.
+- No ML resolver or dataset exporter exists yet.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.
@@ -193,11 +206,16 @@ For small and obvious fixes, proceed after inspecting the affected files.
 * Never claim a command or test passed unless it was actually executed.
 * Do not silently modify unrelated files.
 * Do not delete user work merely because another structure seems cleaner.
-* Do not commit, push, rewrite history, or create pull requests unless explicitly requested.
 * Do not place credentials, tokens, account data, or local machine paths in Git.
 * Do not read or expose `.env`, credential databases, SSH keys, or secret files.
-* Use small, focused commits when commits are requested.
+* Keep working-tree changes small and focused so the human owner can commit them
+  cleanly.
 * Update this document when real project commands or architecture change.
+* Coding agents must not run Git or GitHub commands at all, including read-only
+  inspection. The human owner exclusively controls branches, staging, commits,
+  pushes, pull requests, merges, and rebases. Coding agents work only from the
+  provided working tree: they inspect files, modify the requested scope, format,
+  test, and report.
 
 ## Documentation
 
@@ -221,23 +239,22 @@ Before declaring a task complete:
 4. Documentation is updated when behavior changes.
 5. No credentials or generated local files are included.
 6. The final report names modified files and validation commands.
+7. The final report ends exactly with a suggested commit message for the human
+   owner. The agent must only suggest it, never execute it.
+
+```text
+Suggested commit message:
+<type>: <concise description>
+```
 
 ## Scope Discipline
 
-Do not implement advanced agents, automatic schema rewriting, recommendation
-systems, embeddings, review scheduling, speech processing, or a frontend unless
-the user explicitly changes the scope. The OpenAI analyzer is the only external
-AI provider integration in scope; do not add automatic fallback, retries,
-streaming, batch analysis, additional providers, or usage/billing dashboards
-without an explicit scope change.
+Do not expand the existing annotation frontend into a consumer/product UI,
+authentication system, review engine, or unrelated frontend architecture
+unless explicitly requested.
 
-## Git Workflow
+## Human-Owned Git Workflow
 
-For non-trivial milestone work:
-
-1. Start from an up-to-date `main` and create or use a feature branch.
-2. Do not implement non-trivial milestones directly on `main`.
-3. Open a pull request targeting `main`.
-4. Ensure CI passes and review the final diff before merge.
-5. Prefer a squash merge, then delete the feature branch.
-6. Coding agents must not merge their own pull requests unless explicitly instructed.
+The human owner exclusively manages branches, staging, commits, pushes, pull
+requests, merges, and rebases. Coding agents do not inspect or operate on Git or
+GitHub state; they modify, format, test, and report working-tree files only.
