@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Experimental human concept-review / annotation UI for the French learning hub (milestone 10.6). Not the Review Engine.",
+  "description": "Experimental human concept-review / annotation UI for the French learning hub (milestone 10.7). Not the Review Engine.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

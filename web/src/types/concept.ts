@@ -29,7 +29,8 @@ export interface Concept {
 }
 
 // One immutable append-only resolution event. `relation="same"`+`status="rejected"`
-// is the INVALID judgment; `supersedes_link_id` is the correction back-pointer.
+// is a membership-level SAME correction, separate from unit-level INVALID;
+// `supersedes_link_id` is the correction back-pointer.
 export interface UnitConceptLink {
   id: number;
   unit_id: number;

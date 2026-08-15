@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import type {
@@ -14,30 +14,40 @@ import { IdentityEditor } from "../components/IdentityEditor";
 import { MembershipPanel } from "../components/MembershipPanel";
 import { HistoryPanel } from "../components/HistoryPanel";
 import { ResolutionActions, type ActionKind } from "../components/ResolutionActions";
+import { discoverConcepts } from "../conceptSearch";
 
 type Notice = { kind: "success" | "error" | "info"; text: string } | null;
 
 // ReviewQueue is the single experimental annotation page. It walks the reviewer
 // through the reviewable-units queue one at a time, shows current membership as the
-// sole authority (never inferred from history), and records each of the six human
-// decisions against the backend. After a successful decision it advances the queue
-// without a page refresh.
+// sole authority (never inferred from history), and keeps exact resolver matches
+// separate from retrieval-only catalog discovery. Showing, searching, or selecting
+// a candidate records nothing; only one of the seven explicit human actions writes
+// annotation data.
 export function ReviewQueue() {
   const [queue, setQueue] = useState<ReviewableUnit[]>([]);
   const [index, setIndex] = useState(0);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+  const [catalog, setCatalog] = useState<Concept[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
 
   // Per-unit review state.
   const [membership, setMembership] = useState<CurrentMembership | null>(null);
   const [candidates, setCandidates] = useState<Concept[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedConceptId, setSelectedConceptId] = useState<number | null>(null);
   const [identity, setIdentity] = useState<ConceptIdentity | null>(null);
   const [history, setHistory] = useState<UnitConceptLink[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const current: ReviewableUnit | undefined = queue[index];
+  const exactConceptIds = useMemo(() => new Set(candidates.map((concept) => concept.id)), [candidates]);
+  const discoveryCandidates = useMemo(
+    () => discoverConcepts(catalog, searchQuery, exactConceptIds),
+    [catalog, exactConceptIds, searchQuery],
+  );
 
   // loadQueue fetches the reviewable units. Any error is surfaced, never swallowed.
   const loadQueue = useCallback(async () => {
@@ -53,9 +63,23 @@ export function ReviewQueue() {
     }
   }, []);
 
+  // The durable concept catalog is discovery input only. Loading it records no
+  // annotation and does not affect deterministic exact-signature resolution.
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    try {
+      setCatalog(await api.listConcepts());
+    } catch (e) {
+      setNotice({ kind: "error", text: describe(e, "Could not load the concept catalog.") });
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadQueue();
-  }, [loadQueue]);
+    void loadCatalog();
+  }, [loadCatalog, loadQueue]);
 
   // loadUnitContext loads everything needed to review one unit: current membership
   // (the authority), any exact-signature candidate concepts, and a fresh editable
@@ -63,6 +87,7 @@ export function ReviewQueue() {
   const loadUnitContext = useCallback(async (unit: ReviewableUnit) => {
     setMembership(null);
     setCandidates([]);
+    setSearchQuery(unit.candidate_identity.target);
     setSelectedConceptId(null);
     setHistory([]);
     setIdentity({ ...unit.candidate_identity, identity_features: { ...unit.candidate_identity.identity_features } });
@@ -223,7 +248,13 @@ export function ReviewQueue() {
         {notice ? <div className={`banner ${notice.kind}`}>{notice.text}</div> : null}
         <div className="empty">
           <p>No units are awaiting review. 🎉</p>
-          <button className="ghost" onClick={() => void loadQueue()}>
+          <button
+            className="ghost"
+            onClick={() => {
+              void loadQueue();
+              void loadCatalog();
+            }}
+          >
             Reload queue
           </button>
         </div>
@@ -252,7 +283,13 @@ export function ReviewQueue() {
         >
           skip →
         </button>
-        <button className="ghost" onClick={() => void loadQueue()}>
+        <button
+          className="ghost"
+          onClick={() => {
+            void loadQueue();
+            void loadCatalog();
+          }}
+        >
           reload queue
         </button>
       </div>
@@ -265,7 +302,11 @@ export function ReviewQueue() {
 
         <div>
           <div className="panel">
-            <h2>Existing concept candidates</h2>
+            <h2>Exact identity matches</h2>
+            <p className="hint">
+              From the deterministic exact-signature resolver. Showing or selecting
+              a match records no label; only an explicit human action below does.
+            </p>
             {candidates.length === 0 ? (
               <p className="value">
                 <em>No exact-signature concept exists for this identity.</em> Create a
@@ -279,6 +320,49 @@ export function ReviewQueue() {
                     concept={c}
                     selected={selectedConceptId === c.id}
                     onSelect={() => setSelectedConceptId(selectedConceptId === c.id ? null : c.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="panel">
+            <h2>Search existing concepts</h2>
+            <p className="hint">
+              Retrieval-only catalog search, not an automatic SAME recommendation.
+              Showing, searching, selecting, or skipping a result records nothing.
+            </p>
+            <label className="discovery-search" htmlFor="concept-discovery-search">
+              Search target, intent, scope, or identity features
+            </label>
+            <div className="discovery-search-row">
+              <input
+                id="concept-discovery-search"
+                type="search"
+                aria-label="Search existing concepts"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              <button type="button" className="ghost" onClick={() => setSearchQuery("")}>
+                clear
+              </button>
+            </div>
+            {catalogLoading ? (
+              <p className="value">Loading concept catalog…</p>
+            ) : discoveryCandidates.length === 0 ? (
+              <p className="value">
+                <em>No discoverable concepts match this search.</em>
+              </p>
+            ) : (
+              <div className="candidate-list discovery-results">
+                {discoveryCandidates.map((concept) => (
+                  <CandidateConceptCard
+                    key={concept.id}
+                    concept={concept}
+                    selected={selectedConceptId === concept.id}
+                    onSelect={() =>
+                      setSelectedConceptId(selectedConceptId === concept.id ? null : concept.id)
+                    }
                   />
                 ))}
               </div>

@@ -1,4 +1,4 @@
-# Concept Review UI (milestone 10.6)
+# Concept Review UI (milestone 10.7)
 
 An experimental **human annotation / data-collection** frontend for
 `KnowledgeUnit → KnowledgeConcept` resolution. It lets a reviewer inspect candidate
@@ -40,7 +40,8 @@ FRENCH_HUB_URL=http://localhost:9000 npm run dev
 
 To have units to review, create an entry, analyze it, and run an extraction against
 the backend (see the repository `README.md` and `docs/ARCHITECTURE.md`). Units from
-the current extraction with no current SAME membership appear in the queue.
+the current extraction appear in the queue only when they have no CURRENT SAME
+membership and are not effectively INVALID.
 
 ## Scripts
 
@@ -54,7 +55,7 @@ the current extraction with no current SAME membership appear in the queue.
 
 ## What the reviewer can do
 
-Six decisions, all recorded as backend data:
+Seven decisions, all recorded as backend data:
 
 - **SAME** — resolve an unresolved unit SAME to a selected existing concept. If the
   unit already has a current SAME membership and a different concept is chosen, the
@@ -65,8 +66,33 @@ Six decisions, all recorded as backend data:
   SAME when the unit is unresolved.
 - **BROADER / NARROWER / RELATED** — record a non-membership relation. These do not
   make the unit a SAME member.
-- **INVALID** — record an explicit human rejection; clears any current SAME
-  membership and preserves the rejection as immutable negative evidence.
+- **DISTINCT** — explicitly record that the unit is not the same pedagogical
+  identity as the selected concept. This negative pair creates no membership and
+  leaves the unit reviewable.
+- **INVALID** — record the unit-level judgment that the `KnowledgeUnit` candidate
+  itself should not participate in concept resolution. It works without a prior
+  SAME, clears CURRENT SAME atomically when present, and removes the unit from the
+  review queue. It is separate from membership-level `RejectSame` and can later be
+  restored.
+
+## Candidate sources and authority
+
+The page keeps two candidate sources visibly and semantically separate:
+
+- **Exact identity matches** come from the existing deterministic
+  `resolveUnit()` exact-signature resolver. Its behavior is unchanged.
+- **Search existing concepts** reads the existing `GET /concepts` catalog and
+  performs transparent client-side token matching over `target`,
+  `pedagogical_intent`, `scope`, and `identity_features`. Search is
+  case-insensitive, ignores French accents for retrieval convenience, excludes
+  retired concepts, and keeps orphaned durable identities discoverable. Concepts
+  already shown as exact matches are deduplicated by Concept ID.
+
+Catalog discovery is retrieval evidence only, never annotation authority. Showing,
+searching, selecting, or skipping a candidate writes nothing and does not imply
+SAME or DISTINCT. Both sections share one selected Concept; only an explicit human
+action uses that selection to call the existing SAME, DISTINCT, or relation
+endpoint. Search normalization never changes stored identities or signatures.
 
 ## Current membership vs. history
 
@@ -83,6 +109,7 @@ web/src/
   api/         fetch client (client.ts) — all request logic lives here
   components/  UnitCard, CandidateConceptCard, IdentityEditor,
                MembershipPanel, HistoryPanel, ResolutionActions
+  conceptSearch.ts  deterministic retrieval-only catalog filtering
   pages/       ReviewQueue — the single experimental dashboard
   types/       wire types mirroring the Go transport DTOs
   App.tsx

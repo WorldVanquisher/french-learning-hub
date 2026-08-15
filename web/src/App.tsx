@@ -1,9 +1,9 @@
 import { ReviewQueue } from "./pages/ReviewQueue";
 
-// App is the single experimental dashboard for milestone 10.6. It is an
-// annotation / data-collection instrument for future resolver experiments — NOT the
-// Review Engine, mastery, scheduling, or an ML resolver. No authentication in this
-// milestone.
+// App is the single experimental dashboard for milestone 10.7. It is an
+// annotation / data-collection instrument with retrieval-only concept discovery —
+// NOT the Review Engine, mastery, scheduling, or an ML resolver. No authentication
+// in this milestone.
 export default function App() {
   return (
     <div className="app">

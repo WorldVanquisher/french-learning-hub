@@ -25,6 +25,15 @@ describe("api client request shapes", () => {
     expect(units[0].unit_id).toBe(5);
   });
 
+  it("lists the existing concept catalog via GET /api/concepts", async () => {
+    const { impl, calls } = stubFetch(200, { concepts: [{ id: 7, target: "être" }] });
+    const concepts = await api.listConcepts(impl);
+    expect(calls[0].url).toBe("/api/concepts");
+    expect(calls[0].init.method).toBe("GET");
+    expect(concepts).toHaveLength(1);
+    expect(concepts[0].id).toBe(7);
+  });
+
   it("reads current membership from the projection endpoint (never history)", async () => {
     const { impl, calls } = stubFetch(200, { unit_id: 7, current_membership: null });
     const env = await api.getCurrentMembership(7, impl);
