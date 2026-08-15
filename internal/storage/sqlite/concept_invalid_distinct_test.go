@@ -399,3 +399,172 @@ func TestConceptRepository_InvalidAndDistinctErrorHandling(t *testing.T) {
 		t.Fatalf("ListDistinctions missing unit: expected ErrNotFound, got %v", err)
 	}
 }
+
+func TestConceptRepository_InvalidUnitCannotLinkSame(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+	concept := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+
+	if _, err := concepts.MarkUnitInvalid(ctx, unitID, domain.SourceHuman, "", ""); err != nil {
+		t.Fatalf("mark invalid: %v", err)
+	}
+	if _, err := concepts.LinkSame(ctx, unitID, concept.ID, domain.SourceHuman, nil, ""); !errors.Is(err, domain.ErrConceptConflict) {
+		t.Fatalf("LinkSame on INVALID unit: expected ErrConceptConflict, got %v", err)
+	}
+	if membership, err := concepts.GetCurrentMembership(ctx, unitID); err != nil {
+		t.Fatalf("get membership: %v", err)
+	} else if membership != nil {
+		t.Fatalf("failed LinkSame must not establish membership, got %+v", membership)
+	}
+}
+
+func TestConceptRepository_InvalidUnitCannotReassignSame(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+	concept := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+
+	if _, err := concepts.MarkUnitInvalid(ctx, unitID, domain.SourceHuman, "", ""); err != nil {
+		t.Fatalf("mark invalid: %v", err)
+	}
+	if _, err := concepts.ReassignSame(ctx, unitID, concept.ID, domain.SourceHuman, ""); !errors.Is(err, domain.ErrConceptConflict) {
+		t.Fatalf("ReassignSame on INVALID unit: expected ErrConceptConflict, got %v", err)
+	}
+	if membership, err := concepts.GetCurrentMembership(ctx, unitID); err != nil {
+		t.Fatalf("get membership: %v", err)
+	} else if membership != nil {
+		t.Fatalf("failed ReassignSame must not establish membership, got %+v", membership)
+	}
+}
+
+func TestConceptRepository_InvalidUnitCreateAndAttachRollsBack(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	if _, err := concepts.MarkUnitInvalid(ctx, unitID, domain.SourceHuman, "", ""); err != nil {
+		t.Fatalf("mark invalid: %v", err)
+	}
+	_, link, err := concepts.CreateConcept(ctx, domain.NewConceptInput{
+		Identity:       domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"},
+		SeedUnitID:     &unitID,
+		LinkSeedAsSame: true,
+		SeedSource:     domain.SourceHuman,
+	})
+	if !errors.Is(err, domain.ErrConceptConflict) {
+		t.Fatalf("create+attach on INVALID unit: expected ErrConceptConflict, got %v", err)
+	}
+	if link != nil {
+		t.Fatalf("failed create+attach must not return a SAME event, got %+v", link)
+	}
+
+	all, err := concepts.ListConcepts(ctx, nil)
+	if err != nil {
+		t.Fatalf("list concepts: %v", err)
+	}
+	if len(all) != 0 {
+		t.Fatalf("failed create+attach must roll back the concept, got %+v", all)
+	}
+	if membership, err := concepts.GetCurrentMembership(ctx, unitID); err != nil {
+		t.Fatalf("get membership: %v", err)
+	} else if membership != nil {
+		t.Fatalf("failed create+attach must not establish membership, got %+v", membership)
+	}
+	var sameEvents int
+	if err := concepts.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM unit_concept_links WHERE unit_id = ? AND relation = 'same'`, unitID).
+		Scan(&sameEvents); err != nil {
+		t.Fatalf("count SAME events: %v", err)
+	}
+	if sameEvents != 0 {
+		t.Fatalf("failed create+attach must not persist a SAME event, got %d", sameEvents)
+	}
+}
+
+func TestConceptRepository_RestoredUnitCanLinkSame(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+	concept := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+
+	if _, err := concepts.MarkUnitInvalid(ctx, unitID, domain.SourceHuman, "", ""); err != nil {
+		t.Fatalf("mark invalid: %v", err)
+	}
+	if _, err := concepts.RestoreUnit(ctx, unitID, domain.SourceHuman, "", ""); err != nil {
+		t.Fatalf("restore unit: %v", err)
+	}
+	link, err := concepts.LinkSame(ctx, unitID, concept.ID, domain.SourceHuman, nil, "")
+	if err != nil {
+		t.Fatalf("LinkSame after restore: %v", err)
+	}
+	membership, err := concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership: %v", err)
+	}
+	if membership == nil || membership.ConceptID != concept.ID || membership.LinkID != link.ID {
+		t.Fatalf("restored unit must establish SAME membership, got %+v", membership)
+	}
+}
+
+func TestConceptRepository_DistinctFromCurrentSameConflicts(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	linkA, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceHuman, nil, "")
+	if err != nil {
+		t.Fatalf("link A: %v", err)
+	}
+
+	if _, err := concepts.RecordDistinction(ctx, unitID, a.ID, domain.SourceHuman, ""); !errors.Is(err, domain.ErrConceptConflict) {
+		t.Fatalf("DISTINCT from CURRENT SAME concept: expected ErrConceptConflict, got %v", err)
+	}
+	distinctions, err := concepts.ListDistinctions(ctx, unitID)
+	if err != nil {
+		t.Fatalf("list distinctions: %v", err)
+	}
+	if len(distinctions) != 0 {
+		t.Fatalf("conflicting DISTINCT must insert nothing, got %+v", distinctions)
+	}
+	membership, err := concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership: %v", err)
+	}
+	if membership == nil || membership.ConceptID != a.ID || membership.LinkID != linkA.ID {
+		t.Fatalf("conflicting DISTINCT must leave CURRENT SAME A unchanged, got %+v", membership)
+	}
+}
+
+func TestConceptRepository_DistinctFromOtherConceptKeepsCurrentSame(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	b := mustConcept(t, concepts, domain.ConceptIdentity{Target: "b", PedagogicalIntent: "grammar"})
+	linkA, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceHuman, nil, "")
+	if err != nil {
+		t.Fatalf("link A: %v", err)
+	}
+
+	distinction, err := concepts.RecordDistinction(ctx, unitID, b.ID, domain.SourceHuman, "")
+	if err != nil {
+		t.Fatalf("DISTINCT from B: %v", err)
+	}
+	if distinction == nil || distinction.ConceptID != b.ID {
+		t.Fatalf("DISTINCT from B must persist, got %+v", distinction)
+	}
+	membership, err := concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership: %v", err)
+	}
+	if membership == nil || membership.ConceptID != a.ID || membership.LinkID != linkA.ID {
+		t.Fatalf("DISTINCT from B must leave CURRENT SAME A unchanged, got %+v", membership)
+	}
+}

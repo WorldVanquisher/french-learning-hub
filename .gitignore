@@ -10,3 +10,5 @@ data/*
 bin/
 dist/
 coverage.out
+/server
+/capture
