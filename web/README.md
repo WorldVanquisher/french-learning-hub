@@ -41,7 +41,8 @@ FRENCH_HUB_URL=http://localhost:9000 npm run dev
 To have units to review, create an entry, analyze it, and run an extraction against
 the backend (see the repository `README.md` and `docs/ARCHITECTURE.md`). Units from
 the current extraction appear in the queue only when they have no CURRENT SAME
-membership and are not effectively INVALID.
+membership and are not effectively INVALID. Absence of CURRENT SAME alone is not
+sufficient for reviewability.
 
 ## Scripts
 
@@ -66,14 +67,18 @@ Seven decisions, all recorded as backend data:
   SAME when the unit is unresolved.
 - **BROADER / NARROWER / RELATED** — record a non-membership relation. These do not
   make the unit a SAME member.
-- **DISTINCT** — explicitly record that the unit is not the same pedagogical
-  identity as the selected concept. This negative pair creates no membership and
-  leaves the unit reviewable.
-- **INVALID** — record the unit-level judgment that the `KnowledgeUnit` candidate
-  itself should not participate in concept resolution. It works without a prior
-  SAME, clears CURRENT SAME atomically when present, and removes the unit from the
-  review queue. It is separate from membership-level `RejectSame` and can later be
-  restored.
+- **DISTINCT** — `DISTINCT(U, Concept A)` records that the reviewer explicitly
+  judged Unit U to be **not** the same pedagogical identity as Concept A. It is an
+  explicit negative pair: it creates no membership, does not resolve the unit, and
+  keeps the unit reviewable. It is separate from BROADER / NARROWER / RELATED and
+  from INVALID. It cannot contradict a CURRENT SAME membership to the same concept.
+- **INVALID** — the primary INVALID action is a unit-level judgment that the
+  `KnowledgeUnit` candidate itself should not participate in concept resolution.
+  It works even when the unit never had a SAME membership. If CURRENT SAME exists,
+  INVALID clears it atomically; the unit then leaves the normal review queue. The
+  append-only unit-level judgment can later be restored. This is separate from
+  membership-level `RejectSame`, which corrects a SAME membership without declaring
+  the unit itself invalid.
 
 ## Candidate sources and authority
 

@@ -23,7 +23,8 @@ type Notice = { kind: "success" | "error" | "info"; text: string } | null;
 // sole authority (never inferred from history), and keeps exact resolver matches
 // separate from retrieval-only catalog discovery. Showing, searching, or selecting
 // a candidate records nothing; only one of the seven explicit human actions writes
-// annotation data.
+// annotation data. After a successful explicit decision it advances the queue
+// without a page refresh.
 export function ReviewQueue() {
   const [queue, setQueue] = useState<ReviewableUnit[]>([]);
   const [index, setIndex] = useState(0);
