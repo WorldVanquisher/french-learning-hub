@@ -43,8 +43,19 @@ or stdin and posts it to the backend's `POST /captures` endpoint over HTTP. It
 is a thin transport client — **not a chatbot, not an analyzer, and not an
 importer that rewrites data**: it never contacts a model and sends the payload
 to the server unchanged, so the server stays the single source of truth for all
-capture rules. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design
-principles.
+capture rules.
+Milestone 10 adds **knowledge extraction** (immutable per-extraction
+`KnowledgeUnit` candidates) and milestone 10.5 / 10.5.1 add the durable
+**`KnowledgeConcept`** identity layer with a conservative deterministic resolver,
+an append-only resolution event log, and a current-SAME-membership projection as
+the single authority. Milestone 10.6 adds the first **human concept-review /
+annotation UI** (`web/`) plus the backend **INVALID** operation
+(`POST /knowledge-units/{id}/concept-membership/reject`) that clears a unit's
+current SAME membership while preserving the human rejection as immutable negative
+evidence. The review UI is an annotation / data-collection instrument for future
+resolver experiments — **not** the Review Engine, mastery, scheduling, or an ML
+resolver. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
+and [web/README.md](web/README.md) for running the frontend.
 
 ## Requirements
 
@@ -66,6 +77,7 @@ internal/transport/http  HTTP handlers and routing
 internal/config       environment-based configuration
 migrations            embedded .sql migrations
 examples/captures     example learning_capture_v1 documents
+web                   experimental human concept-review / annotation UI (React + Vite + TS, milestone 10.6)
 ```
 
 Layers are kept separate: HTTP handlers hold no database logic, and the

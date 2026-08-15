@@ -922,10 +922,21 @@ Handlers contain no SQL; all decisions run through the application
   operation permitted to move an existing current membership; concept creation
   with a seed SAME establishes membership only for an unresolved unit and never
   reassigns.
+- `POST /knowledge-units/{id}/concept-membership/reject` — explicit human
+  **INVALID** judgment (milestone 10.6): the candidate belongs to no concept.
+  Clears the unit's current SAME membership and records the rejection as an
+  immutable append-only event (`relation='same'`, `status='rejected'`) that
+  supersedes the in-force SAME — negative evidence, not a deleted row. Also clears
+  a now-invalid `preferred_unit_id`. Idempotent: rejecting a unit with no current
+  SAME is a `200` no-op with a null `link`. `404` if the unit does not exist. The
+  concept's derived support drops on the next read. INVALID is deliberately **not**
+  a relation.
 - `POST /knowledge-units/{id}/concept-links/relation` — record
   broader/narrower/related.
 - `GET  /reviewable-units` (optional `?entry_id=`) — units with no accepted SAME
-  membership, with their derived candidate identity for a reviewer.
+  membership, with their derived candidate identity for a reviewer. Each entry also
+  carries the unit's `example` and extraction `confidence` (milestone 10.6) so the
+  review UI needs no extra round-trip.
 - `GET  /entries/{id}/current-extraction` — inspect the current extraction.
 - `PUT  /entries/{id}/current-extraction` — explicit human rollback.
 
@@ -987,6 +998,74 @@ The six fixes, concretely:
    nothing; no transaction logic in HTTP handlers.
 6. **`AutoResolve` stays unused publicly** but remains compatible with the
    corrected current-membership model.
+
+### Human concept review / annotation UI (milestone 10.6)
+
+Milestone 10.6 adds the first real **human-review workflow** for
+`KnowledgeUnit → KnowledgeConcept` resolution, plus the one backend operation that
+was still missing to express it. It is deliberately an **annotation /
+data-collection instrument**: its purpose is to let a human record high-quality
+resolution decisions that can later become ML training data. It is **not** the
+Review Engine, mastery, scheduling, or an ML resolver — those remain separate and
+deferred. All the 10.5 / 10.5.1 semantics above are unchanged.
+
+**New backend operation — human INVALID / clear SAME.** The model could express
+`unresolved → SAME A` and `A → B` (`ReassignSame`), but not `A → no concept`.
+`RejectSame` fills that gap. Given a unit whose current SAME is concept A, in one
+transaction it:
+
+- appends an immutable rejection **event** (`relation='same'`, `status='rejected'`,
+  `decision_source='human'`, `concept_id = A`) whose `supersedes_link_id` points at
+  the in-force SAME event — so the human judgment is preserved as queryable
+  **negative evidence**, not represented merely by deleting the projection row;
+- removes the unit from `unit_concept_memberships` (clears current membership);
+- clears the old concept's `preferred_unit_id` if it pointed at this unit;
+- leaves all historical events queryable; the concept's derived support drops on the
+  next read.
+
+INVALID is deliberately **not** a `ConceptRelation` (it is not SAME / BROADER /
+NARROWER / RELATED). Rejecting a unit that already has no current SAME membership is
+a deterministic idempotent no-op (no fabricated event). Exposed at
+`POST /knowledge-units/{id}/concept-membership/reject`.
+
+**The complete experimental loop the UI closes:**
+
+    Entry
+      -> Analysis / Feedback
+      -> EffectiveAnalysis
+      -> KnowledgeExtraction
+      -> KnowledgeUnit candidate (immutable evidence)
+      -> Human Concept Review  (the 10.6 UI)
+      -> KnowledgeConcept (durable identity)
+      -> resolution labels (append-only events = future training data)
+
+**Frontend (`web/`).** React + Vite + TypeScript, native `fetch`, plain CSS — no
+state-management or component framework, no authentication in this milestone. In
+development the browser talks to the Go backend through a `/api` prefix that the
+Vite dev server proxies to `:8080`, so requests are same-origin and **no backend
+CORS is weakened**; the proxy strips `/api` before forwarding, so Go routes are
+untouched. Run the backend (`go run ./cmd/server`) and the frontend
+(`npm run dev` in `web/`) in two terminals — see `web/README.md`.
+
+The UI presents the six human decisions — **SAME, NEW CONCEPT, BROADER, NARROWER,
+RELATED, INVALID** — one reviewable unit at a time. Two invariants matter most:
+
+- **Current membership is read only from `GET
+  /knowledge-units/{id}/concept-membership`**, never inferred from the append-only
+  events (a superseded event may still read `accepted`). The UI shows *current
+  membership* visually distinct from the collapsible *resolution history*.
+- **SAME never becomes a hidden reassignment.** When a unit already has a current
+  SAME membership and the reviewer picks a different concept, the UI uses the
+  explicit `ReassignSame` (`PUT …/concept-membership`); create+seed is used only to
+  *establish* membership for an unresolved unit. On a `409` the UI refreshes the
+  unit's current membership before offering another action, because authority may
+  have changed.
+
+Every decision produces backend data sufficient to later construct training
+examples (SAME = positive identity pair; new concept = the candidate didn't match;
+BROADER/NARROWER/RELATED = structured non-SAME relations; INVALID = negative
+resolution evidence). The **training exporter itself is deliberately not built** in
+this milestone — the UI only ensures the provenance needed later is never discarded.
 
 ## Design principles
 

@@ -118,6 +118,10 @@ func (h *Handler) Routes() http.Handler {
 	// the unit to a different concept even when it already has one, preserving the
 	// prior decision as history.
 	mux.HandleFunc("PUT /knowledge-units/{id}/concept-membership", h.handleReassignSame)
+	// Explicit human INVALID judgment (milestone 10.6): clears the unit's current
+	// SAME membership and records the rejection as immutable append-only negative
+	// evidence, never merely deleting the projection.
+	mux.HandleFunc("POST /knowledge-units/{id}/concept-membership/reject", h.handleRejectSame)
 	mux.HandleFunc("POST /knowledge-units/{id}/concept-links/relation", h.handleRecordRelation)
 	mux.HandleFunc("GET /reviewable-units", h.handleListReviewableUnits)
 	mux.HandleFunc("GET /entries/{id}/current-extraction", h.handleGetCurrentExtraction)

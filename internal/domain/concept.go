@@ -538,6 +538,21 @@ type ConceptRepository interface {
 	// unit's existing current concept is idempotent. Returns ErrNotFound if the unit
 	// or concept does not exist.
 	ReassignSame(ctx context.Context, unitID, conceptID int64, source DecisionSource, evidence string) (*UnitConceptLink, error)
+	// RejectSame records an explicit HUMAN judgment that a unit's candidate does not
+	// belong to any concept (INVALID), clearing its CURRENT SAME membership. INVALID
+	// is deliberately NOT a ConceptRelation: it is recorded as an immutable
+	// append-only event with relation='same' and status='rejected', referencing the
+	// previously-in-force SAME event via SupersedesLinkID, so the human judgment is
+	// preserved as queryable negative evidence rather than represented merely by
+	// deleting the projection row. Atomically, in one transaction, it: appends the
+	// rejection event (source=human), removes the unit from the current-membership
+	// projection, and — if the previously-current concept's preferred_unit_id pointed
+	// at this unit — clears it. Historical events are never mutated, so the concept's
+	// derived support immediately reflects the loss on the next read. When the unit
+	// has no current SAME membership the postcondition ("no current SAME") already
+	// holds, so the call is an idempotent no-op returning (nil, nil). Returns
+	// ErrNotFound if the unit does not exist.
+	RejectSame(ctx context.Context, unitID int64, source DecisionSource, evidence string) (*UnitConceptLink, error)
 	// LinkRelation records a non-membership BROADER/NARROWER/RELATED decision as an
 	// immutable event. It never affects SAME membership or automatic support. A
 	// repeated identical (unit, concept, relation) appends a new event that

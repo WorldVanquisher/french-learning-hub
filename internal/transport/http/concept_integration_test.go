@@ -470,6 +470,189 @@ func TestIntegration_CurrentMembershipReadModel(t *testing.T) {
 	}
 }
 
+// TestIntegration_RejectSameClearsMembership drives POST
+// /knowledge-units/{id}/concept-membership/reject (the INVALID action) end to end: a
+// unit resolved SAME to A is rejected, which must clear its current membership (the
+// endpoint reports current_membership null), append a rejected SAME event as
+// negative evidence that supersedes the accepted one, drop A to orphaned, keep the
+// original decision as queryable history, and make the unit reviewable again. A
+// missing unit is 404.
+func TestIntegration_RejectSameClearsMembership(t *testing.T) {
+	srv, entryID := setupConceptServer(t, []domain.ExtractedUnit{
+		{Kind: domain.KindGrammar, Canonical: "x", Statement: "s", Confidence: 0.9},
+	})
+	unitID := extractUnits(t, srv, entryID)[0]
+
+	mkConcept := func(target string) int64 {
+		body := `{"identity":{"target":"` + target + `","pedagogical_intent":"grammar"}}`
+		resp, err := http.Post(srv.URL+"/concepts", "application/json", bytes.NewReader([]byte(body)))
+		if err != nil {
+			t.Fatalf("POST concept: %v", err)
+		}
+		defer resp.Body.Close()
+		var created struct {
+			Concept struct {
+				ID int64 `json:"id"`
+			} `json:"concept"`
+		}
+		json.NewDecoder(resp.Body).Decode(&created)
+		return created.Concept.ID
+	}
+	conceptA := mkConcept("alpha")
+
+	// Resolve the unit SAME to A.
+	sResp, err := http.Post(srv.URL+"/knowledge-units/"+itoa(unitID)+"/concept-links/same", "application/json",
+		bytes.NewReader([]byte(`{"concept_id":`+itoa(conceptA)+`}`)))
+	if err != nil {
+		t.Fatalf("POST same: %v", err)
+	}
+	var acceptedLink struct {
+		ID int64 `json:"id"`
+	}
+	json.NewDecoder(sResp.Body).Decode(&acceptedLink)
+	sResp.Body.Close()
+
+	// INVALID: reject the SAME membership.
+	rResp, err := http.Post(srv.URL+"/knowledge-units/"+itoa(unitID)+"/concept-membership/reject", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST reject: %v", err)
+	}
+	if rResp.StatusCode != http.StatusOK {
+		t.Fatalf("reject status = %d, want 200", rResp.StatusCode)
+	}
+	var rejectResp struct {
+		UnitID            int64 `json:"unit_id"`
+		CurrentMembership *struct {
+			ConceptID int64 `json:"concept_id"`
+		} `json:"current_membership"`
+		Link *struct {
+			ConceptID        int64  `json:"concept_id"`
+			Relation         string `json:"relation"`
+			Status           string `json:"status"`
+			DecisionSource   string `json:"decision_source"`
+			SupersedesLinkID *int64 `json:"supersedes_link_id"`
+		} `json:"link"`
+	}
+	json.NewDecoder(rResp.Body).Decode(&rejectResp)
+	rResp.Body.Close()
+
+	// The response confirms the cleared membership and carries the rejection event.
+	if rejectResp.CurrentMembership != nil {
+		t.Fatalf("reject must clear current membership, got %+v", rejectResp.CurrentMembership)
+	}
+	if rejectResp.Link == nil {
+		t.Fatal("reject must return the appended rejection event")
+	}
+	if rejectResp.Link.ConceptID != conceptA || rejectResp.Link.Relation != "same" || rejectResp.Link.Status != "rejected" {
+		t.Fatalf("rejection event must be a rejected SAME to A, got %+v", rejectResp.Link)
+	}
+	if rejectResp.Link.DecisionSource != "human" {
+		t.Fatalf("rejection must be human-sourced, got %q", rejectResp.Link.DecisionSource)
+	}
+	if rejectResp.Link.SupersedesLinkID == nil || *rejectResp.Link.SupersedesLinkID != acceptedLink.ID {
+		t.Fatalf("rejection must supersede the accepted SAME %d, got %v", acceptedLink.ID, rejectResp.Link.SupersedesLinkID)
+	}
+
+	// The membership endpoint (the UI's authority) now reports null.
+	mResp, err := http.Get(srv.URL + "/knowledge-units/" + itoa(unitID) + "/concept-membership")
+	if err != nil {
+		t.Fatalf("GET membership: %v", err)
+	}
+	var membership struct {
+		CurrentMembership *struct {
+			ConceptID int64 `json:"concept_id"`
+		} `json:"current_membership"`
+	}
+	json.NewDecoder(mResp.Body).Decode(&membership)
+	mResp.Body.Close()
+	if membership.CurrentMembership != nil {
+		t.Fatalf("membership endpoint must report null after reject, got %+v", membership.CurrentMembership)
+	}
+
+	// A is orphaned but keeps both the accepted and the rejected events as history.
+	gResp, err := http.Get(srv.URL + "/concepts/" + itoa(conceptA))
+	if err != nil {
+		t.Fatalf("GET concept A: %v", err)
+	}
+	var aView struct {
+		Concept struct {
+			State string `json:"state"`
+		} `json:"concept"`
+		Links []struct {
+			ID     int64  `json:"id"`
+			Status string `json:"status"`
+		} `json:"links"`
+	}
+	json.NewDecoder(gResp.Body).Decode(&aView)
+	gResp.Body.Close()
+	if aView.Concept.State != "orphaned" {
+		t.Fatalf("A should be orphaned after its only member was rejected, got %q", aView.Concept.State)
+	}
+	var sawAccepted, sawRejected bool
+	for _, l := range aView.Links {
+		if l.ID == acceptedLink.ID && l.Status == "accepted" {
+			sawAccepted = true
+		}
+		if l.Status == "rejected" {
+			sawRejected = true
+		}
+	}
+	if !sawAccepted || !sawRejected {
+		t.Fatalf("A must retain both the accepted and rejected events as history, got %+v", aView.Links)
+	}
+
+	// The unit is reviewable again.
+	revResp, err := http.Get(srv.URL + "/reviewable-units?entry_id=" + itoa(entryID))
+	if err != nil {
+		t.Fatalf("GET reviewable: %v", err)
+	}
+	var reviewable struct {
+		Units []struct {
+			UnitID int64 `json:"unit_id"`
+		} `json:"reviewable_units"`
+	}
+	json.NewDecoder(revResp.Body).Decode(&reviewable)
+	revResp.Body.Close()
+	seen := false
+	for _, ru := range reviewable.Units {
+		if ru.UnitID == unitID {
+			seen = true
+		}
+	}
+	if !seen {
+		t.Fatal("a rejected unit must be reviewable again")
+	}
+
+	// Rejecting again (now unresolved) is an idempotent no-op: 200 with null link.
+	againResp, err := http.Post(srv.URL+"/knowledge-units/"+itoa(unitID)+"/concept-membership/reject", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST reject again: %v", err)
+	}
+	if againResp.StatusCode != http.StatusOK {
+		t.Fatalf("second reject status = %d, want 200", againResp.StatusCode)
+	}
+	var again struct {
+		Link *struct {
+			ID int64 `json:"id"`
+		} `json:"link"`
+	}
+	json.NewDecoder(againResp.Body).Decode(&again)
+	againResp.Body.Close()
+	if again.Link != nil {
+		t.Fatalf("second reject must be a no-op with null link, got %+v", again.Link)
+	}
+
+	// Missing unit -> 404.
+	missResp, err := http.Post(srv.URL+"/knowledge-units/999999/concept-membership/reject", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST reject missing: %v", err)
+	}
+	missResp.Body.Close()
+	if missResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing unit reject status = %d, want 404", missResp.StatusCode)
+	}
+}
+
 func TestIntegration_ConceptDuplicateActiveIdentityConflicts(t *testing.T) {
 	srv, _ := setupConceptServer(t, nil)
 	body := `{"identity":{"target":"vouloir","pedagogical_intent":"grammar"}}`

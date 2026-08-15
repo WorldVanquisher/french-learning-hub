@@ -18,6 +18,7 @@ type ConceptService interface {
 	ResolveCandidate(ctx context.Context, unitID int64) (*application.ResolutionOutcome, error)
 	ResolveSame(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptLink, error)
 	ReassignSame(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptLink, error)
+	RejectSame(ctx context.Context, unitID int64) (*domain.UnitConceptLink, error)
 	CreateConcept(ctx context.Context, identity domain.ConceptIdentity, seedUnitID *int64, linkSeedAsSame bool) (*domain.KnowledgeConcept, *domain.UnitConceptLink, error)
 	RecordRelation(ctx context.Context, unitID, conceptID int64, relation domain.ConceptRelation) (*domain.UnitConceptLink, error)
 	SetPreferredUnit(ctx context.Context, conceptID, unitID int64) (*domain.KnowledgeConcept, error)
@@ -159,22 +160,30 @@ func toIdentityDTO(ci domain.ConceptIdentity) conceptIdentityDTO {
 // reviewableUnitResponse is one current-extraction unit awaiting SAME resolution,
 // with its derived default candidate identity to seed a review UI.
 type reviewableUnitResponse struct {
-	UnitID    int64              `json:"unit_id"`
-	Kind      string             `json:"kind"`
-	Canonical string             `json:"canonical"`
-	Statement string             `json:"statement"`
-	Candidate conceptIdentityDTO `json:"candidate_identity"`
-	Signature string             `json:"signature"`
+	UnitID    int64  `json:"unit_id"`
+	Kind      string `json:"kind"`
+	Canonical string `json:"canonical"`
+	Statement string `json:"statement"`
+	// Example is the unit's optional illustrative example (null when absent). The
+	// review UI shows it verbatim; it is evidence, not identity.
+	Example *string `json:"example"`
+	// Confidence is the extractor's confidence for this unit, surfaced so a reviewer
+	// can weigh a low-confidence candidate.
+	Confidence float64            `json:"confidence"`
+	Candidate  conceptIdentityDTO `json:"candidate_identity"`
+	Signature  string             `json:"signature"`
 }
 
 func toReviewableUnitResponse(ru domain.ReviewableUnit) reviewableUnitResponse {
 	return reviewableUnitResponse{
-		UnitID:    ru.Unit.ID,
-		Kind:      string(ru.Unit.Kind),
-		Canonical: ru.Unit.Canonical,
-		Statement: ru.Unit.Statement,
-		Candidate: toIdentityDTO(ru.Candidate),
-		Signature: ru.Candidate.Signature(),
+		UnitID:     ru.Unit.ID,
+		Kind:       string(ru.Unit.Kind),
+		Canonical:  ru.Unit.Canonical,
+		Statement:  ru.Unit.Statement,
+		Example:    ru.Unit.Example,
+		Confidence: ru.Unit.Confidence,
+		Candidate:  toIdentityDTO(ru.Candidate),
+		Signature:  ru.Candidate.Signature(),
 	}
 }
 
@@ -430,6 +439,43 @@ func (h *Handler) handleReassignSame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, toLinkResponse(*link))
+}
+
+// handleRejectSame records an explicit human INVALID judgment for a unit and clears
+// its current SAME membership. The human judgment is preserved as an immutable
+// append-only rejection event (negative evidence), not merely by deleting the
+// projection. It is idempotent: rejecting a unit that already has no current SAME
+// membership succeeds with a null link. Status: 200 ok, 400 invalid id, 404 unit
+// not found, 500 storage failure. The response carries the appended rejection event
+// under "link" (null on the idempotent no-op) plus the now-cleared current
+// membership so a UI can refresh authority without a second request.
+func (h *Handler) handleRejectSame(w http.ResponseWriter, r *http.Request) {
+	unitID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	link, err := h.concept.RejectSame(r.Context(), unitID)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "knowledge unit not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not reject SAME membership")
+		return
+	}
+	resp := map[string]any{
+		"unit_id": unitID,
+		// After a rejection the unit belongs to no concept: current membership is
+		// explicitly null so the UI can update authority in place.
+		"current_membership": nil,
+	}
+	if link != nil {
+		l := toLinkResponse(*link)
+		resp["link"] = &l
+	} else {
+		resp["link"] = nil
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // handleGetCurrentMembership returns a unit's CURRENT SAME membership read from the

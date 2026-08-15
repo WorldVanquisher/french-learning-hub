@@ -25,6 +25,9 @@ type fakeConceptRepo struct {
 	seedLinked      int
 	membership      *domain.CurrentConceptMembership
 	membershipCall  int
+	rejectCall      int
+	lastRejectUnit  int64
+	rejectLink      *domain.UnitConceptLink
 }
 
 func (f *fakeConceptRepo) UnitByID(context.Context, int64) (*domain.KnowledgeUnit, error) {
@@ -83,6 +86,11 @@ func (f *fakeConceptRepo) ActiveSupportUnitIDs(context.Context, int64) ([]int64,
 func (f *fakeConceptRepo) GetCurrentMembership(_ context.Context, unitID int64) (*domain.CurrentConceptMembership, error) {
 	f.membershipCall++
 	return f.membership, nil
+}
+func (f *fakeConceptRepo) RejectSame(_ context.Context, unitID int64, _ domain.DecisionSource, _ string) (*domain.UnitConceptLink, error) {
+	f.rejectCall++
+	f.lastRejectUnit = unitID
+	return f.rejectLink, nil
 }
 func (f *fakeConceptRepo) GetCurrentExtractionID(context.Context, int64) (*int64, error) {
 	return nil, nil
@@ -241,5 +249,42 @@ func TestGetCurrentMembership_ReadsProjection(t *testing.T) {
 	}
 	if m2 != nil {
 		t.Fatalf("expected nil membership, got %+v", m2)
+	}
+}
+
+// RejectSame (INVALID) routes to the repository's rejection operation with a human
+// source; it does not go through LinkSame or ReassignSame.
+func TestRejectSame_RoutesToReject(t *testing.T) {
+	repo := &fakeConceptRepo{rejectLink: &domain.UnitConceptLink{ID: 12, UnitID: 7, ConceptID: 1, Relation: domain.RelationSame, Status: domain.LinkRejected}}
+	svc := NewConceptService(nil, repo, repo)
+	link, err := svc.RejectSame(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("reject: %v", err)
+	}
+	if link == nil || link.Status != domain.LinkRejected {
+		t.Fatalf("expected the rejection event, got %+v", link)
+	}
+	if repo.rejectCall != 1 || repo.lastRejectUnit != 7 {
+		t.Fatalf("expected one rejection of unit 7, got calls=%d unit=%d", repo.rejectCall, repo.lastRejectUnit)
+	}
+	if repo.linkSameCall != 0 || repo.reassignCall != 0 {
+		t.Fatalf("reject must not route through LinkSame/ReassignSame")
+	}
+}
+
+// A no-op rejection (unit already had no current membership) returns a nil link
+// without error, and the service passes that through unchanged.
+func TestRejectSame_NoopReturnsNil(t *testing.T) {
+	repo := &fakeConceptRepo{rejectLink: nil}
+	svc := NewConceptService(nil, repo, repo)
+	link, err := svc.RejectSame(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("reject no-op: %v", err)
+	}
+	if link != nil {
+		t.Fatalf("expected nil link for a no-op rejection, got %+v", link)
+	}
+	if repo.rejectCall != 1 {
+		t.Fatalf("expected one rejection call, got %d", repo.rejectCall)
 	}
 }
