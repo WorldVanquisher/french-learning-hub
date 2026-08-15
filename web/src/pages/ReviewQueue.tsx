@@ -19,7 +19,7 @@ type Notice = { kind: "success" | "error" | "info"; text: string } | null;
 
 // ReviewQueue is the single experimental annotation page. It walks the reviewer
 // through the reviewable-units queue one at a time, shows current membership as the
-// sole authority (never inferred from history), and records each of the six human
+// sole authority (never inferred from history), and records each of the seven human
 // decisions against the backend. After a successful decision it advances the queue
 // without a page refresh.
 export function ReviewQueue() {

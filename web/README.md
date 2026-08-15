@@ -40,7 +40,9 @@ FRENCH_HUB_URL=http://localhost:9000 npm run dev
 
 To have units to review, create an entry, analyze it, and run an extraction against
 the backend (see the repository `README.md` and `docs/ARCHITECTURE.md`). Units from
-the current extraction with no current SAME membership appear in the queue.
+the current extraction appear in the queue only when they have no CURRENT SAME
+membership and are not effectively INVALID. Absence of CURRENT SAME alone is not
+sufficient for reviewability.
 
 ## Scripts
 
@@ -54,7 +56,7 @@ the current extraction with no current SAME membership appear in the queue.
 
 ## What the reviewer can do
 
-Six decisions, all recorded as backend data:
+Seven decisions, all recorded as backend data:
 
 - **SAME** — resolve an unresolved unit SAME to a selected existing concept. If the
   unit already has a current SAME membership and a different concept is chosen, the
@@ -65,8 +67,18 @@ Six decisions, all recorded as backend data:
   SAME when the unit is unresolved.
 - **BROADER / NARROWER / RELATED** — record a non-membership relation. These do not
   make the unit a SAME member.
-- **INVALID** — record an explicit human rejection; clears any current SAME
-  membership and preserves the rejection as immutable negative evidence.
+- **DISTINCT** — `DISTINCT(U, Concept A)` records that the reviewer explicitly
+  judged Unit U to be **not** the same pedagogical identity as Concept A. It is an
+  explicit negative pair: it creates no membership, does not resolve the unit, and
+  keeps the unit reviewable. It is separate from BROADER / NARROWER / RELATED and
+  from INVALID. It cannot contradict a CURRENT SAME membership to the same concept.
+- **INVALID** — the primary INVALID action is a unit-level judgment that the
+  `KnowledgeUnit` candidate itself should not participate in concept resolution.
+  It works even when the unit never had a SAME membership. If CURRENT SAME exists,
+  INVALID clears it atomically; the unit then leaves the normal review queue. The
+  append-only unit-level judgment can later be restored. This is separate from
+  membership-level `RejectSame`, which corrects a SAME membership without declaring
+  the unit itself invalid.
 
 ## Current membership vs. history
 

@@ -121,7 +121,7 @@ describe("ReviewQueue rendering", () => {
     expect(screen.getByText("Je veux partir.")).toBeInTheDocument();
 
     // The current membership authority shows "no current SAME membership" for an
-    // unresolved unit, and the six actions are present.
+    // unresolved unit, and the seven actions are present.
     await waitFor(() => {
       expect(screen.getByText(/No current SAME membership/i)).toBeInTheDocument();
     });

@@ -253,6 +253,20 @@ Do not expand the existing annotation frontend into a consumer/product UI,
 authentication system, review engine, or unrelated frontend architecture
 unless explicitly requested.
 
+Unless explicitly requested, do not introduce:
+
+* Advanced or general-purpose agents
+* Automatic schema rewriting
+* Recommendation systems
+* Embeddings, vector search, semantic similarity systems, or ML resolver work
+* Review scheduling or mastery systems
+* Speech processing
+* Authentication or consumer/product frontend expansion
+* Additional AI providers or automatic provider fallback
+* Automatic retry systems, streaming, or batch analysis
+* Usage or billing dashboards
+* Unrelated infrastructure or architecture expansion
+
 ## Human-Owned Git Workflow
 
 The human owner exclusively manages branches, staging, commits, pushes, pull

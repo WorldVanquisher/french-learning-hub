@@ -78,8 +78,8 @@ async function request<T>(
 
 // ---- read endpoints ----
 
-// listReviewableUnits returns current-extraction units with no current SAME
-// membership. Optionally scoped to one entry.
+// listReviewableUnits returns current-extraction units with no CURRENT SAME
+// membership that are not effectively INVALID. Optionally scoped to one entry.
 export async function listReviewableUnits(
   entryId?: number,
   fetchImpl: typeof fetch = fetch,
@@ -111,7 +111,7 @@ export function getConcept(conceptId: number, fetchImpl: typeof fetch = fetch): 
   return request<ConceptView>("GET", `/concepts/${conceptId}`, undefined, fetchImpl);
 }
 
-// ---- decision endpoints (the six human actions) ----
+// ---- decision endpoints (the seven human actions) ----
 
 // resolveSame records an explicit human SAME for a unit that has NO current SAME
 // membership. A 409 means it already has one — the caller should reassign instead.
