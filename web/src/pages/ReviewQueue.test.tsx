@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ReviewQueue } from "./ReviewQueue";
 
 afterEach(cleanup);
@@ -264,30 +264,79 @@ describe("ReviewQueue milestone 10.7 candidate discovery", () => {
       state: "retired",
       lifecycle_state: "retired",
     };
-    globalThis.fetch = routeFetch({
+    const handlers: Record<string, unknown> = {
       "/api/reviewable-units": { reviewable_units: [unit] },
       "/api/concepts": { concepts: [exact, orphaned, retired] },
       "/api/knowledge-units/5/concept-membership": { unit_id: 5, current_membership: null },
-      "/api/knowledge-units/5/concept-resolution": {
-        unit_id: 5,
-        candidate_identity: unit.candidate_identity,
-        signature: unit.signature,
-        decision: "matched",
-        matches: [exact],
-      },
+    };
+    let finishExactContext!: (response: Response) => void;
+    const pendingExactContext = new Promise<Response>((resolve) => {
+      finishExactContext = resolve;
     });
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const path = new URL(String(url), "http://localhost").pathname;
+      if (path === "/api/knowledge-units/5/concept-resolution") {
+        return pendingExactContext;
+      }
+      const body = handlers[path];
+      const status = body === undefined ? 404 : 200;
+      return new Response(body === undefined ? JSON.stringify({ error: "not found" }) : JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
 
     render(<ReviewQueue />);
 
     expect(await screen.findByRole("heading", { name: "Exact identity matches" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Search existing concepts" })).toBeInTheDocument();
+    const discoveryPanel = screen
+      .getByRole("heading", { name: "Search existing concepts" })
+      .closest(".panel");
+    expect(discoveryPanel).not.toBeNull();
     expect(screen.getByText(/Retrieval-only catalog search/i)).toBeInTheDocument();
 
-    // The search is seeded from the candidate target, but the exact concept appears
-    // only in the exact section even though it is also present in the catalog.
+    // The catalog is already available, but discovery stays gated until the exact
+    // resolver context for this Unit is known. The catalog's exact Concept must not
+    // flash as a generic result during this interval.
+    expect(
+      await within(discoveryPanel as HTMLElement).findByText(
+        "Loading exact unit context before candidate discovery…",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(discoveryPanel as HTMLElement).queryByText("vouloir + infinitive"),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      finishExactContext(
+        new Response(
+          JSON.stringify({
+            unit_id: 5,
+            candidate_identity: unit.candidate_identity,
+            signature: unit.signature,
+            decision: "matched",
+            matches: [exact],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    });
+
+    // Once discovery is available, the overlapping Concept appears only in the
+    // exact section and remains deduplicated from generic catalog results.
+    const exactPanel = screen
+      .getByRole("heading", { name: "Exact identity matches" })
+      .closest(".panel");
+    expect(exactPanel).not.toBeNull();
+    expect(
+      await within(exactPanel as HTMLElement).findByText("vouloir + infinitive"),
+    ).toBeInTheDocument();
+    expect(
+      within(discoveryPanel as HTMLElement).queryByText("vouloir + infinitive"),
+    ).not.toBeInTheDocument();
+
     const search = screen.getByRole("searchbox", { name: "Search existing concepts" });
     expect(search).toHaveValue("vouloir + infinitive");
-    expect(await screen.findAllByText("vouloir + infinitive")).toHaveLength(1);
 
     // The reviewer can replace the query. Accent-insensitive discovery exposes the
     // orphaned durable identity, while a retired matching concept stays hidden.

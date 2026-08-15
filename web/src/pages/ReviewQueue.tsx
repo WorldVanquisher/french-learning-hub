@@ -35,6 +35,7 @@ export function ReviewQueue() {
   const [catalogLoading, setCatalogLoading] = useState(true);
 
   // Per-unit review state.
+  const [loadedUnitContextId, setLoadedUnitContextId] = useState<number | null>(null);
   const [membership, setMembership] = useState<CurrentMembership | null>(null);
   const [candidates, setCandidates] = useState<Concept[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,6 +45,7 @@ export function ReviewQueue() {
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const current: ReviewableUnit | undefined = queue[index];
+  const unitContextReady = current !== undefined && loadedUnitContextId === current.unit_id;
   const exactConceptIds = useMemo(() => new Set(candidates.map((concept) => concept.id)), [candidates]);
   const discoveryCandidates = useMemo(
     () => discoverConcepts(catalog, searchQuery, exactConceptIds),
@@ -86,6 +88,7 @@ export function ReviewQueue() {
   // (the authority), any exact-signature candidate concepts, and a fresh editable
   // identity seeded from the backend candidate.
   const loadUnitContext = useCallback(async (unit: ReviewableUnit) => {
+    setLoadedUnitContextId(null);
     setMembership(null);
     setCandidates([]);
     setSearchQuery(unit.candidate_identity.target);
@@ -103,6 +106,7 @@ export function ReviewQueue() {
       if (outcome.matches.length === 1) {
         setSelectedConceptId(outcome.matches[0].id);
       }
+      setLoadedUnitContextId(unit.unit_id);
     } catch (e) {
       setNotice({ kind: "error", text: describe(e, "Could not load unit context.") });
     }
@@ -308,7 +312,9 @@ export function ReviewQueue() {
               From the deterministic exact-signature resolver. Showing or selecting
               a match records no label; only an explicit human action below does.
             </p>
-            {candidates.length === 0 ? (
+            {!unitContextReady ? (
+              <p className="value">Loading exact resolver context…</p>
+            ) : candidates.length === 0 ? (
               <p className="value">
                 <em>No exact-signature concept exists for this identity.</em> Create a
                 new concept below, or select nothing and mark INVALID.
@@ -350,6 +356,8 @@ export function ReviewQueue() {
             </div>
             {catalogLoading ? (
               <p className="value">Loading concept catalog…</p>
+            ) : !unitContextReady ? (
+              <p className="value">Loading exact unit context before candidate discovery…</p>
             ) : discoveryCandidates.length === 0 ? (
               <p className="value">
                 <em>No discoverable concepts match this search.</em>
