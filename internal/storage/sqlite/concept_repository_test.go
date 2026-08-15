@@ -870,6 +870,199 @@ func TestConceptRepository_GetCurrentMembership(t *testing.T) {
 	}
 }
 
+// Milestone 10.6: an explicit human INVALID judgment clears a unit's current SAME
+// membership, records the rejection as immutable negative evidence, clears a stale
+// preferred_unit_id, and drops the concept's derived support immediately — while
+// leaving all historical events queryable. A missing unit is ErrNotFound; a unit
+// with no current membership is a deterministic no-op.
+func TestConceptRepository_RejectSameClearsMembership(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+
+	// Establish current SAME to A and make the unit A's preferred representation, so
+	// A is currently supported.
+	sameLink, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceHuman, nil, "")
+	if err != nil {
+		t.Fatalf("link A: %v", err)
+	}
+	if _, err := concepts.SetPreferredUnit(ctx, a.ID, unitID); err != nil {
+		t.Fatalf("set preferred on A: %v", err)
+	}
+	if ids, _ := concepts.ActiveSupportUnitIDs(ctx, a.ID); len(ids) != 1 || ids[0] != unitID {
+		t.Fatalf("precondition: A should be supported by the unit, got %v", ids)
+	}
+
+	// INVALID: the human rejects the candidate.
+	rej, err := concepts.RejectSame(ctx, unitID, domain.SourceHuman, "")
+	if err != nil {
+		t.Fatalf("reject same: %v", err)
+	}
+	// The rejection event is an immutable append-only record: relation stays SAME
+	// (it is a rejected SAME membership, not a new relation kind), status rejected,
+	// human source, and it points back at the SAME event it invalidates.
+	if rej == nil {
+		t.Fatal("reject must return the appended rejection event")
+	}
+	if rej.Relation != domain.RelationSame || rej.Status != domain.LinkRejected {
+		t.Fatalf("rejection event must be a rejected SAME, got relation=%q status=%q", rej.Relation, rej.Status)
+	}
+	if rej.DecisionSource != domain.SourceHuman {
+		t.Fatalf("rejection must be human-sourced, got %q", rej.DecisionSource)
+	}
+	if rej.ConceptID != a.ID {
+		t.Fatalf("rejection must reference the previously-current concept A, got %d", rej.ConceptID)
+	}
+	if rej.SupersedesLinkID == nil || *rej.SupersedesLinkID != sameLink.ID {
+		t.Fatalf("rejection must supersede the in-force SAME event %d, got %v", sameLink.ID, rej.SupersedesLinkID)
+	}
+
+	// Current membership is cleared: the unit belongs to no concept now.
+	m, err := concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership after reject: %v", err)
+	}
+	if m != nil {
+		t.Fatalf("INVALID must clear current membership, got %+v", m)
+	}
+
+	// A immediately loses support (support is derived, not stored).
+	if ids, _ := concepts.ActiveSupportUnitIDs(ctx, a.ID); len(ids) != 0 {
+		t.Fatalf("A must lose support after its only member was rejected, got %v", ids)
+	}
+
+	aView, err := concepts.GetConcept(ctx, a.ID)
+	if err != nil {
+		t.Fatalf("get A: %v", err)
+	}
+	// Effective state falls to orphaned (normal lifecycle + no support).
+	if aView.Concept.State != domain.ConceptOrphaned {
+		t.Fatalf("A should be orphaned after losing its only support, got %q", aView.Concept.State)
+	}
+	// The stale preferred_unit_id is cleared: the unit is no longer a member of A.
+	if aView.Concept.PreferredUnitID != nil {
+		t.Fatalf("A must not keep an invalid preferred_unit_id, got %v", *aView.Concept.PreferredUnitID)
+	}
+	// The original accepted SAME event is untouched (append-only history) and both
+	// it and the rejection event remain queryable in A's history.
+	var foundAccepted, foundRejected bool
+	for _, l := range aView.Links {
+		if l.ID == sameLink.ID {
+			if l.Status != domain.LinkAccepted || l.SupersedesLinkID != nil {
+				t.Fatalf("original SAME event must be intact, got %+v", l)
+			}
+			foundAccepted = true
+		}
+		if l.ID == rej.ID && l.Status == domain.LinkRejected {
+			foundRejected = true
+		}
+	}
+	if !foundAccepted {
+		t.Fatal("original accepted SAME event must remain queryable")
+	}
+	if !foundRejected {
+		t.Fatal("the rejection event must be preserved as queryable negative evidence")
+	}
+
+	// The unit is reviewable again (no current SAME membership).
+	reviewable, err := concepts.ListReviewableUnits(ctx, nil)
+	if err != nil {
+		t.Fatalf("list reviewable: %v", err)
+	}
+	seen := false
+	for _, ru := range reviewable {
+		if ru.Unit.ID == unitID {
+			seen = true
+		}
+	}
+	if !seen {
+		t.Fatal("a rejected unit with no current membership must be reviewable again")
+	}
+}
+
+// Rejecting a unit that has no current SAME membership is a deterministic no-op:
+// the postcondition (no current membership) already holds, so no rejection event is
+// fabricated. A missing unit is ErrNotFound.
+func TestConceptRepository_RejectSameDeterministicWithoutMembership(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	// Missing unit.
+	if _, err := concepts.RejectSame(ctx, 999999, domain.SourceHuman, ""); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for missing unit, got %v", err)
+	}
+
+	// Unresolved unit: no-op, nil link, no event written.
+	link, err := concepts.RejectSame(ctx, unitID, domain.SourceHuman, "")
+	if err != nil {
+		t.Fatalf("reject unresolved: %v", err)
+	}
+	if link != nil {
+		t.Fatalf("rejecting an unresolved unit must be a no-op, got link %+v", link)
+	}
+
+	// Repeated reject after an actual rejection is also a no-op (membership already
+	// cleared), and does not append a second rejection event.
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	if _, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceHuman, nil, ""); err != nil {
+		t.Fatalf("link A: %v", err)
+	}
+	if _, err := concepts.RejectSame(ctx, unitID, domain.SourceHuman, ""); err != nil {
+		t.Fatalf("first reject: %v", err)
+	}
+	before, err := concepts.GetConcept(ctx, a.ID)
+	if err != nil {
+		t.Fatalf("get A: %v", err)
+	}
+	if link, err := concepts.RejectSame(ctx, unitID, domain.SourceHuman, ""); err != nil || link != nil {
+		t.Fatalf("second reject must be a no-op, got link=%+v err=%v", link, err)
+	}
+	after, err := concepts.GetConcept(ctx, a.ID)
+	if err != nil {
+		t.Fatalf("get A again: %v", err)
+	}
+	if len(after.Links) != len(before.Links) {
+		t.Fatalf("a repeated reject must not append another event: had %d links, now %d", len(before.Links), len(after.Links))
+	}
+}
+
+// After a rejection, the same unit can be resolved SAME again (to any concept) with
+// a plain LinkSame — INVALID does not permanently block a unit, it only records that
+// the earlier candidate was rejected.
+func TestConceptRepository_RejectThenResolveAgain(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	view := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{grammarUnit("x")})
+	unitID := view.Units[0].Unit.ID
+
+	a := mustConcept(t, concepts, domain.ConceptIdentity{Target: "a", PedagogicalIntent: "grammar"})
+	b := mustConcept(t, concepts, domain.ConceptIdentity{Target: "b", PedagogicalIntent: "grammar"})
+
+	if _, err := concepts.LinkSame(ctx, unitID, a.ID, domain.SourceHuman, nil, ""); err != nil {
+		t.Fatalf("link A: %v", err)
+	}
+	if _, err := concepts.RejectSame(ctx, unitID, domain.SourceHuman, ""); err != nil {
+		t.Fatalf("reject: %v", err)
+	}
+	// With no current membership, a fresh SAME to B is allowed (not a conflict).
+	linkB, err := concepts.LinkSame(ctx, unitID, b.ID, domain.SourceHuman, nil, "")
+	if err != nil {
+		t.Fatalf("link B after reject: %v", err)
+	}
+	m, err := concepts.GetCurrentMembership(ctx, unitID)
+	if err != nil {
+		t.Fatalf("get membership: %v", err)
+	}
+	if m == nil || m.ConceptID != b.ID || m.LinkID != linkB.ID {
+		t.Fatalf("unit should now belong SAME to B, got %+v", m)
+	}
+}
+
 func TestConceptRepository_RelationsAreNotMembership(t *testing.T) {
 	entries, knowledge, _, concepts := newConceptTestRepos(t)
 	ctx := context.Background()

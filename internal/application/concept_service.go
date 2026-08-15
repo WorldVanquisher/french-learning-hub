@@ -117,6 +117,18 @@ func (s *ConceptService) ReassignSame(ctx context.Context, unitID, conceptID int
 	return s.concepts.ReassignSame(ctx, unitID, conceptID, domain.SourceHuman, evidence)
 }
 
+// RejectSame records an explicit human INVALID judgment for a unit: its candidate
+// does not belong to any concept. It clears the unit's current SAME membership
+// while preserving the judgment as immutable negative evidence (an append-only
+// rejection event referencing the superseded SAME). It never deletes history and
+// never invents a membership relation. When the unit already has no current SAME
+// membership the postcondition holds and the call is an idempotent no-op returning
+// (nil, nil). Returns domain.ErrNotFound if the unit does not exist.
+func (s *ConceptService) RejectSame(ctx context.Context, unitID int64) (*domain.UnitConceptLink, error) {
+	evidence := mustEvidence(map[string]any{"reason": "human_invalid", "resolver": domain.ConceptResolverVersion})
+	return s.concepts.RejectSame(ctx, unitID, domain.SourceHuman, evidence)
+}
+
 // CreateConcept creates a new durable concept from an explicit identity (and an
 // optional seed unit). The repository checks — inside one transaction — that no
 // non-retired concept already owns the same durable identity signature, returning

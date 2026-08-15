@@ -1,0 +1,17 @@
+# Frontend build artifacts and dependencies (milestone 10.6).
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+coverage/
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

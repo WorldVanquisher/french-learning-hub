@@ -611,6 +611,76 @@ func (r *ConceptRepository) ReassignSame(ctx context.Context, unitID, conceptID 
 	return link, nil
 }
 
+// RejectSame records an explicit human INVALID judgment for a unit and clears its
+// current SAME membership, all in one transaction. It appends an immutable
+// rejection event (relation='same', status='rejected') that references the
+// previously-in-force SAME event via supersedes_link_id — so the human judgment
+// survives as queryable negative evidence, not merely as a deleted projection row —
+// then removes the unit from unit_concept_memberships and clears the old concept's
+// preferred_unit_id when it pointed at this unit. History is preserved: the prior
+// event row is untouched, and the concept's derived support drops on the next read.
+// When the unit has no current SAME membership the postcondition already holds, so
+// the call is an idempotent no-op returning (nil, nil).
+func (r *ConceptRepository) RejectSame(ctx context.Context, unitID int64, source domain.DecisionSource, evidence string) (*domain.UnitConceptLink, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := unitExists(ctx, tx, unitID); err != nil {
+		return nil, err
+	}
+
+	current, err := currentMembership(ctx, tx, unitID)
+	if err != nil {
+		return nil, err
+	}
+	if current == nil {
+		// No current SAME membership: the desired postcondition (unit belongs to no
+		// concept) already holds. Do not fabricate a rejection event pointing at
+		// nothing; the operation is a deterministic idempotent no-op.
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("commit tx: %w", err)
+		}
+		return nil, nil
+	}
+
+	if evidence == "" {
+		evidence = "{}"
+	}
+	now := r.now()
+	supersedes := current.linkID
+
+	// Append the immutable INVALID event: relation stays 'same' (this is about a
+	// SAME membership being rejected, not a new relation kind) with status
+	// 'rejected', pointing back at the SAME event it invalidates.
+	link, err := insertLink(ctx, tx, unitID, current.conceptID, domain.RelationSame, domain.LinkRejected, source, domain.ConceptResolverVersion, nil, evidence, &supersedes, now)
+	if err != nil {
+		return nil, err
+	}
+
+	// Clear the current-membership projection: the unit now belongs to no concept.
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM unit_concept_memberships WHERE unit_id = ?`, unitID); err != nil {
+		return nil, fmt.Errorf("clear current membership: %w", err)
+	}
+
+	// If the old concept's preferred unit was this unit, it is no longer a member
+	// there; clear the now-invalid preferred_unit_id.
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE knowledge_concepts SET preferred_unit_id = NULL, updated_at = ?
+		 WHERE id = ? AND preferred_unit_id = ?`,
+		now.Format(rfc3339), current.conceptID, unitID); err != nil {
+		return nil, fmt.Errorf("clear stale preferred unit: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	return link, nil
+}
+
 // LinkRelation records a non-membership BROADER/NARROWER/RELATED decision as an
 // immutable event. A repeated identical (unit, concept, relation) appends a new
 // event that supersedes the prior current one via supersedes_link_id (the old row
