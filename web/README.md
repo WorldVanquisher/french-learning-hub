@@ -1,4 +1,4 @@
-# Concept Review UI (milestone 10.6)
+# Concept Review UI (milestone 10.7)
 
 An experimental **human annotation / data-collection** frontend for
 `KnowledgeUnit → KnowledgeConcept` resolution. It lets a reviewer inspect candidate
@@ -80,6 +80,25 @@ Seven decisions, all recorded as backend data:
   membership-level `RejectSame`, which corrects a SAME membership without declaring
   the unit itself invalid.
 
+## Candidate sources and authority
+
+The page keeps two candidate sources visibly and semantically separate:
+
+- **Exact identity matches** come from the existing deterministic
+  `resolveUnit()` exact-signature resolver. Its behavior is unchanged.
+- **Search existing concepts** reads the existing `GET /concepts` catalog and
+  performs transparent client-side token matching over `target`,
+  `pedagogical_intent`, `scope`, and `identity_features`. Search is
+  case-insensitive, ignores French accents for retrieval convenience, excludes
+  retired concepts, and keeps orphaned durable identities discoverable. Concepts
+  already shown as exact matches are deduplicated by Concept ID.
+
+Catalog discovery is retrieval evidence only, never annotation authority. Showing,
+searching, selecting, or skipping a candidate writes nothing and does not imply
+SAME or DISTINCT. Both sections share one selected Concept; only an explicit human
+action uses that selection to call the existing SAME, DISTINCT, or relation
+endpoint. Search normalization never changes stored identities or signatures.
+
 ## Current membership vs. history
 
 The UI reads the unit's **current** SAME membership only from
@@ -95,6 +114,7 @@ web/src/
   api/         fetch client (client.ts) — all request logic lives here
   components/  UnitCard, CandidateConceptCard, IdentityEditor,
                MembershipPanel, HistoryPanel, ResolutionActions
+  conceptSearch.ts  deterministic retrieval-only catalog filtering
   pages/       ReviewQueue — the single experimental dashboard
   types/       wire types mirroring the Go transport DTOs
   App.tsx

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ReviewQueue } from "./ReviewQueue";
 
 afterEach(cleanup);
@@ -104,6 +104,7 @@ describe("ReviewQueue rendering", () => {
     };
     globalThis.fetch = routeFetch({
       "/api/reviewable-units": { reviewable_units: [unit] },
+      "/api/concepts": { concepts: [] },
       "/api/knowledge-units/5/concept-membership": { unit_id: 5, current_membership: null },
       "/api/knowledge-units/5/concept-resolution": {
         unit_id: 5,
@@ -134,7 +135,10 @@ describe("ReviewQueue rendering", () => {
   });
 
   it("shows an empty state when nothing is awaiting review", async () => {
-    globalThis.fetch = routeFetch({ "/api/reviewable-units": { reviewable_units: [] } });
+    globalThis.fetch = routeFetch({
+      "/api/reviewable-units": { reviewable_units: [] },
+      "/api/concepts": { concepts: [] },
+    });
     render(<ReviewQueue />);
     expect(await screen.findByText(/No units are awaiting review/)).toBeInTheDocument();
   });
@@ -145,6 +149,7 @@ describe("ReviewQueue milestone 10.6 actions", () => {
     const unit = reviewableUnitFixture(5);
     const { impl, calls } = methodRouteFetch({
       "GET /api/reviewable-units": { reviewable_units: [unit] },
+      "GET /api/concepts": { concepts: [] },
       "GET /api/knowledge-units/5/concept-membership": { unit_id: 5, current_membership: null },
       "GET /api/knowledge-units/5/concept-resolution": {
         unit_id: 5,
@@ -186,6 +191,7 @@ describe("ReviewQueue milestone 10.6 actions", () => {
     const candidate = conceptFixture(42, "vouloir + infinitive");
     const { impl, calls } = methodRouteFetch({
       "GET /api/reviewable-units": { reviewable_units: [unit] },
+      "GET /api/concepts": { concepts: [] },
       "GET /api/knowledge-units/5/concept-membership": { unit_id: 5, current_membership: null },
       // A single exact-signature match is returned and auto-selected, enabling DISTINCT.
       "GET /api/knowledge-units/5/concept-resolution": {
@@ -241,5 +247,177 @@ describe("ReviewQueue milestone 10.6 actions", () => {
       expect((created?.body as { link_seed_as_same: boolean }).link_seed_as_same).toBe(true);
     });
     expect(await screen.findByText(/No units are awaiting review/)).toBeInTheDocument();
+  });
+});
+
+describe("ReviewQueue milestone 10.7 candidate discovery", () => {
+  it("keeps exact matches separate, deduplicates them, and filters the searchable catalog", async () => {
+    const unit = reviewableUnitFixture(5);
+    const exact = conceptFixture(42, "vouloir + infinitive");
+    const orphaned = {
+      ...conceptFixture(43, "Être au Québec"),
+      pedagogical_intent: "vocabulary",
+      scope: "travel",
+    };
+    const retired = {
+      ...conceptFixture(44, "Être Québec retired"),
+      state: "retired",
+      lifecycle_state: "retired",
+    };
+    const handlers: Record<string, unknown> = {
+      "/api/reviewable-units": { reviewable_units: [unit] },
+      "/api/concepts": { concepts: [exact, orphaned, retired] },
+      "/api/knowledge-units/5/concept-membership": { unit_id: 5, current_membership: null },
+    };
+    let finishExactContext!: (response: Response) => void;
+    const pendingExactContext = new Promise<Response>((resolve) => {
+      finishExactContext = resolve;
+    });
+    globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+      const path = new URL(String(url), "http://localhost").pathname;
+      if (path === "/api/knowledge-units/5/concept-resolution") {
+        return pendingExactContext;
+      }
+      const body = handlers[path];
+      const status = body === undefined ? 404 : 200;
+      return new Response(body === undefined ? JSON.stringify({ error: "not found" }) : JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+
+    render(<ReviewQueue />);
+
+    expect(await screen.findByRole("heading", { name: "Exact identity matches" })).toBeInTheDocument();
+    const discoveryPanel = screen
+      .getByRole("heading", { name: "Search existing concepts" })
+      .closest(".panel");
+    expect(discoveryPanel).not.toBeNull();
+    expect(screen.getByText(/Retrieval-only catalog search/i)).toBeInTheDocument();
+
+    // The catalog is already available, but discovery stays gated until the exact
+    // resolver context for this Unit is known. The catalog's exact Concept must not
+    // flash as a generic result during this interval.
+    expect(
+      await within(discoveryPanel as HTMLElement).findByText(
+        "Loading exact unit context before candidate discovery…",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(discoveryPanel as HTMLElement).queryByText("vouloir + infinitive"),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      finishExactContext(
+        new Response(
+          JSON.stringify({
+            unit_id: 5,
+            candidate_identity: unit.candidate_identity,
+            signature: unit.signature,
+            decision: "matched",
+            matches: [exact],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    });
+
+    // Once discovery is available, the overlapping Concept appears only in the
+    // exact section and remains deduplicated from generic catalog results.
+    const exactPanel = screen
+      .getByRole("heading", { name: "Exact identity matches" })
+      .closest(".panel");
+    expect(exactPanel).not.toBeNull();
+    expect(
+      await within(exactPanel as HTMLElement).findByText("vouloir + infinitive"),
+    ).toBeInTheDocument();
+    expect(
+      within(discoveryPanel as HTMLElement).queryByText("vouloir + infinitive"),
+    ).not.toBeInTheDocument();
+
+    const search = screen.getByRole("searchbox", { name: "Search existing concepts" });
+    expect(search).toHaveValue("vouloir + infinitive");
+
+    // The reviewer can replace the query. Accent-insensitive discovery exposes the
+    // orphaned durable identity, while a retired matching concept stays hidden.
+    fireEvent.change(search, { target: { value: "etre quebec" } });
+    expect(await screen.findByText("Être au Québec")).toBeInTheDocument();
+    expect(screen.queryByText("Être Québec retired")).not.toBeInTheDocument();
+
+    // Exact and discovery cards share one logical selection: choosing the
+    // discovery result deselects the auto-selected exact match, and vice versa.
+    const discoverySelect = screen.getByRole("button", { name: "select this concept" });
+    fireEvent.click(discoverySelect);
+    expect(discoverySelect).toHaveAttribute("aria-pressed", "true");
+    const exactSelect = screen.getByRole("button", { name: "select this concept" });
+    fireEvent.click(exactSelect);
+    expect(exactSelect).toHaveAttribute("aria-pressed", "true");
+    expect(discoverySelect).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "clear" }));
+    expect(search).toHaveValue("");
+  });
+
+  it.each([
+    {
+      actionName: "SAME → selected",
+      path: "/api/knowledge-units/5/concept-links/same",
+      body: { concept_id: 77 },
+      response: { id: 10, unit_id: 5, concept_id: 77, relation: "same", status: "accepted" },
+    },
+    {
+      actionName: "DISTINCT",
+      path: "/api/knowledge-units/5/concept-distinctions",
+      body: { concept_id: 77 },
+      response: { id: 11, unit_id: 5, concept_id: 77 },
+    },
+    {
+      actionName: "BROADER",
+      path: "/api/knowledge-units/5/concept-links/relation",
+      body: { concept_id: 77, relation: "broader" },
+      response: { id: 12, unit_id: 5, concept_id: 77, relation: "broader", status: "accepted" },
+    },
+  ])("routes explicit $actionName from a discovery selection through the existing endpoint", async ({
+    actionName,
+    path,
+    body,
+    response,
+  }) => {
+    const unit = reviewableUnitFixture(5);
+    const discovered = conceptFixture(77, "vouloir + infinitive usage");
+    const { impl, calls } = methodRouteFetch({
+      "GET /api/reviewable-units": { reviewable_units: [unit] },
+      "GET /api/concepts": { concepts: [discovered] },
+      "GET /api/knowledge-units/5/concept-membership": { unit_id: 5, current_membership: null },
+      "GET /api/knowledge-units/5/concept-resolution": {
+        unit_id: 5,
+        candidate_identity: unit.candidate_identity,
+        signature: unit.signature,
+        decision: "no_match",
+        matches: [],
+      },
+      [`POST ${path}`]: response,
+    });
+    globalThis.fetch = impl;
+
+    render(<ReviewQueue />);
+
+    const select = await screen.findByRole("button", { name: "select this concept" });
+    expect(select).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "SAME → selected" })).toBeDisabled();
+    expect(calls.every((call) => call.method === "GET")).toBe(true);
+
+    // Displaying and selecting retrieval candidates creates no annotation authority.
+    fireEvent.click(select);
+    expect(select).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "SAME → selected" })).toBeEnabled();
+    expect(calls.every((call) => call.method === "GET")).toBe(true);
+
+    // The same selectedConceptId drives the pre-existing explicit action route.
+    fireEvent.click(screen.getByRole("button", { name: actionName }));
+    await waitFor(() => {
+      const write = calls.find((call) => call.method === "POST" && call.path === path);
+      expect(write?.body).toEqual(body);
+    });
   });
 });

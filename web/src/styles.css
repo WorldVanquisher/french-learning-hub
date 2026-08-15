@@ -1,4 +1,4 @@
-/* Intentionally simple, boring, inspectable styling (milestone 10.6). Priorities:
+/* Intentionally simple, boring, inspectable styling (milestone 10.7). Priorities:
    readable French text, comparable identity fields, unmistakable action buttons,
    and a clear visual split between CURRENT membership and RESOLUTION HISTORY.
    No themes, animations, or branding. */
@@ -236,6 +236,7 @@ button.ghost { background: #fff; }
 .history-list .st { color: var(--muted); }
 
 .candidate-list { display: flex; flex-direction: column; gap: 10px; }
+.candidate-list.discovery-results { max-height: 520px; overflow: auto; }
 .candidate {
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -243,6 +244,22 @@ button.ghost { background: #fff; }
 }
 .candidate.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .candidate .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+.discovery-search {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 10px 0;
+}
+.discovery-search-row { display: flex; gap: 8px; margin-top: 4px; }
+.discovery-search-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font: inherit;
+}
 
 .empty {
   text-align: center;

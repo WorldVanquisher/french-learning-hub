@@ -145,6 +145,20 @@ M10.6:
 - `BROADER` / `NARROWER` / `RELATED` are non-membership relations.
 - No ML resolver or dataset exporter exists yet.
 
+M10.7:
+
+- The annotation UI reads the existing `GET /concepts` catalog and performs
+  deterministic client-side token search over durable Concept identity fields.
+- Exact-signature resolver matches and generic catalog discovery are separate
+  candidate sources. Showing, searching, selecting, or skipping a candidate has no
+  annotation authority; only an explicit human action records a label.
+- Discovery excludes retired concepts, keeps orphaned concepts discoverable, and
+  deduplicates exact matches by Concept ID.
+- Search normalization is retrieval-only and never changes Concept identity,
+  signatures, stored data, SAME semantics, or current membership.
+- No backend search endpoint, schema change, embedding, vector search, semantic
+  similarity model, or automatic candidate label was added.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

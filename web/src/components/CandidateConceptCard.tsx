@@ -1,9 +1,9 @@
 import type { Concept } from "../types/concept";
 
-// CandidateConceptCard shows one existing concept the current unit might resolve to
-// (from the deterministic exact-signature resolver). It surfaces the identity, the
-// derived effective state, and the preferred representation, and lets the reviewer
-// select it as the target for a SAME / relation decision.
+// CandidateConceptCard shows one existing concept from either the deterministic
+// exact-signature resolver or retrieval-only catalog discovery. The containing
+// section communicates that provenance. Selecting the card creates no annotation;
+// it only targets a later explicit SAME / DISTINCT / relation action.
 export function CandidateConceptCard({
   concept,
   selected,

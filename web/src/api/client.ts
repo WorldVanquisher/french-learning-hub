@@ -94,6 +94,13 @@ export async function listReviewableUnits(
   return data.reviewable_units ?? [];
 }
 
+// listConcepts reads the existing durable-concept catalog. The annotation UI uses
+// it only for reviewer-visible discovery; this read creates no resolution evidence.
+export async function listConcepts(fetchImpl: typeof fetch = fetch): Promise<Concept[]> {
+  const data = await request<{ concepts: Concept[] }>("GET", "/concepts", undefined, fetchImpl);
+  return data.concepts ?? [];
+}
+
 // resolveUnit runs the deterministic resolver for a unit (records nothing) so the
 // UI can show any exact-signature candidate concept.
 export function resolveUnit(unitId: number, fetchImpl: typeof fetch = fetch): Promise<ResolutionOutcome> {
@@ -111,7 +118,7 @@ export function getConcept(conceptId: number, fetchImpl: typeof fetch = fetch): 
   return request<ConceptView>("GET", `/concepts/${conceptId}`, undefined, fetchImpl);
 }
 
-// ---- decision endpoints (the seven human actions) ----
+// ---- decision endpoints (the seven explicit human actions) ----
 
 // resolveSame records an explicit human SAME for a unit that has NO current SAME
 // membership. A 409 means it already has one — the caller should reassign instead.
