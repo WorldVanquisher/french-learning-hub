@@ -89,3 +89,50 @@ export interface MembershipEnvelope {
 
 // The concept-relations the reviewer can assert as non-membership decisions.
 export type RelationKind = "broader" | "narrower" | "related";
+
+// One append-only unit-level judgment (milestone 10.6). This is NOT a concept
+// membership and carries no concept id: it records that the KnowledgeUnit itself is
+// an invalid candidate for resolution ("invalid"), or that a prior such judgment was
+// withdrawn ("restored"). The effective invalid state is the latest judgment.
+export interface UnitJudgment {
+  id: number;
+  unit_id: number;
+  judgment: "invalid" | "restored";
+  decision_source: string;
+  note: string;
+  evidence: string;
+  created_at: string;
+}
+
+// The POST /knowledge-units/{id}/invalid response. `invalid` is the effective state
+// after the call; `current_membership` is always null because marking a unit invalid
+// also atomically clears any current SAME membership (a unit is never both SAME and
+// invalid). `judgment` is the recorded judgment (null on an idempotent restore).
+export interface MarkInvalidResponse {
+  unit_id: number;
+  invalid: boolean;
+  current_membership: null;
+  judgment: UnitJudgment | null;
+}
+
+// The GET /knowledge-units/{id}/invalid read model: the effective invalid state plus
+// the full append-only judgment history (newest first).
+export interface UnitInvalidEnvelope {
+  unit_id: number;
+  invalid: boolean;
+  history: UnitJudgment[];
+}
+
+// One explicit DISTINCT negative pair (milestone 10.6): the reviewer judged the unit
+// is NOT the same learning identity as the concept. It is an append-only negative
+// pair for future ML training — NOT a membership, relation, or INVALID judgment — and
+// never changes SAME membership, so the unit stays reviewable.
+export interface UnitDistinction {
+  id: number;
+  unit_id: number;
+  concept_id: number;
+  decision_source: string;
+  resolver_version: string;
+  evidence: string;
+  created_at: string;
+}

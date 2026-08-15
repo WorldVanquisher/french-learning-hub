@@ -164,17 +164,32 @@ export function ReviewQueue() {
           setNotice({ kind: "success", text: `Recorded ${action.toUpperCase()} → concept #${selectedConceptId}.` });
           break;
         }
+        case "distinct": {
+          // Explicit negative pair against the selected concept. It records no
+          // membership and never resolves the unit, so the reviewer can continue
+          // (e.g. DISTINCT candidate A, then create NEW concept B and SAME to it).
+          if (selectedConceptId === null) return;
+          await api.recordDistinction(unitId, selectedConceptId);
+          setNotice({
+            kind: "success",
+            text: `Recorded DISTINCT: unit is NOT concept #${selectedConceptId}. Pick another concept, create a NEW one, or mark INVALID.`,
+          });
+          break;
+        }
         case "invalid": {
-          const res = await api.rejectInvalid(unitId);
-          link = res.link;
-          setNotice({ kind: "success", text: "Marked INVALID: current membership cleared." });
+          // Unit-level INVALID: works for a freshly unresolved unit and also clears
+          // any current SAME membership. Uses the dedicated unit-level endpoint, not
+          // the membership-level reject.
+          await api.markUnitInvalid(unitId);
+          setNotice({ kind: "success", text: "Marked the unit INVALID: removed from the review queue." });
           break;
         }
       }
 
-      // A membership-changing action (SAME/NEW+seed/INVALID) resolves the unit, so
-      // it leaves the review queue. A non-membership relation does NOT resolve it —
-      // keep the unit and just refresh its context so the reviewer can continue.
+      // A membership-changing action (SAME/NEW+seed) or a unit-level INVALID resolves
+      // the unit, so it leaves the review queue. A non-membership relation or an
+      // explicit DISTINCT negative pair does NOT resolve it — keep the unit and just
+      // refresh its context so the reviewer can continue.
       const resolved = action === "same" || action === "invalid" || (action === "new" && membership === null);
       if (resolved) {
         advance();

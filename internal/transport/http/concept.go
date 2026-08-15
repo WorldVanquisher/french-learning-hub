@@ -19,6 +19,12 @@ type ConceptService interface {
 	ResolveSame(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptLink, error)
 	ReassignSame(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptLink, error)
 	RejectSame(ctx context.Context, unitID int64) (*domain.UnitConceptLink, error)
+	MarkUnitInvalid(ctx context.Context, unitID int64) (*domain.UnitResolutionJudgment, error)
+	RestoreUnit(ctx context.Context, unitID int64) (*domain.UnitResolutionJudgment, error)
+	LatestUnitJudgment(ctx context.Context, unitID int64) (*domain.UnitResolutionJudgment, error)
+	ListUnitJudgments(ctx context.Context, unitID int64) ([]domain.UnitResolutionJudgment, error)
+	RecordDistinction(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptDistinction, error)
+	ListDistinctions(ctx context.Context, unitID int64) ([]domain.UnitConceptDistinction, error)
 	CreateConcept(ctx context.Context, identity domain.ConceptIdentity, seedUnitID *int64, linkSeedAsSame bool) (*domain.KnowledgeConcept, *domain.UnitConceptLink, error)
 	RecordRelation(ctx context.Context, unitID, conceptID int64, relation domain.ConceptRelation) (*domain.UnitConceptLink, error)
 	SetPreferredUnit(ctx context.Context, conceptID, unitID int64) (*domain.KnowledgeConcept, error)
@@ -209,6 +215,55 @@ func toCurrentMembershipResponse(m *domain.CurrentConceptMembership) *currentMem
 	}
 }
 
+// unitJudgmentResponse is the wire shape of one append-only unit-level judgment
+// ('invalid' | 'restored'). It carries no concept id: a unit-level judgment is
+// candidate-scoped, deliberately not a concept relation.
+type unitJudgmentResponse struct {
+	ID             int64  `json:"id"`
+	UnitID         int64  `json:"unit_id"`
+	Judgment       string `json:"judgment"`
+	DecisionSource string `json:"decision_source"`
+	Note           string `json:"note"`
+	Evidence       string `json:"evidence"`
+	CreatedAt      string `json:"created_at"`
+}
+
+func toUnitJudgmentResponse(j domain.UnitResolutionJudgment) unitJudgmentResponse {
+	return unitJudgmentResponse{
+		ID:             j.ID,
+		UnitID:         j.UnitID,
+		Judgment:       string(j.Judgment),
+		DecisionSource: string(j.DecisionSource),
+		Note:           j.Note,
+		Evidence:       j.Evidence,
+		CreatedAt:      j.CreatedAt.Format(time.RFC3339Nano),
+	}
+}
+
+// unitDistinctionResponse is the wire shape of one append-only DISTINCT negative
+// pair. It is not a membership and not a relation.
+type unitDistinctionResponse struct {
+	ID              int64  `json:"id"`
+	UnitID          int64  `json:"unit_id"`
+	ConceptID       int64  `json:"concept_id"`
+	DecisionSource  string `json:"decision_source"`
+	ResolverVersion string `json:"resolver_version"`
+	Evidence        string `json:"evidence"`
+	CreatedAt       string `json:"created_at"`
+}
+
+func toUnitDistinctionResponse(d domain.UnitConceptDistinction) unitDistinctionResponse {
+	return unitDistinctionResponse{
+		ID:              d.ID,
+		UnitID:          d.UnitID,
+		ConceptID:       d.ConceptID,
+		DecisionSource:  string(d.DecisionSource),
+		ResolverVersion: d.ResolverVersion,
+		Evidence:        d.Evidence,
+		CreatedAt:       d.CreatedAt.Format(time.RFC3339Nano),
+	}
+}
+
 // resolutionOutcomeResponse reports the deterministic resolver decision for a unit
 // and any active concepts sharing its signature. It records nothing.
 type resolutionOutcomeResponse struct {
@@ -252,6 +307,10 @@ type createConceptRequest struct {
 type recordRelationRequest struct {
 	ConceptID int64  `json:"concept_id"`
 	Relation  string `json:"relation"`
+}
+
+type recordDistinctionRequest struct {
+	ConceptID int64 `json:"concept_id"`
 }
 
 type setPreferredUnitRequest struct {
@@ -476,6 +535,160 @@ func (h *Handler) handleRejectSame(w http.ResponseWriter, r *http.Request) {
 		resp["link"] = nil
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleMarkUnitInvalid records an explicit unit-level INVALID judgment for a unit:
+// the candidate should not participate in concept resolution. Unlike the
+// membership-reject endpoint, it works for a freshly extracted, never-resolved
+// unit. It also atomically clears any current SAME membership so no contradictory
+// authority remains. It is append-only and reversible via the restore endpoint;
+// marking an already-invalid unit is idempotent. Status: 200 ok, 400 invalid id,
+// 404 unit not found, 500 storage failure. The response carries the recorded
+// judgment, the effective invalid state, and the now-null current membership.
+func (h *Handler) handleMarkUnitInvalid(w http.ResponseWriter, r *http.Request) {
+	unitID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	judgment, err := h.concept.MarkUnitInvalid(r.Context(), unitID)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "knowledge unit not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not mark unit invalid")
+		return
+	}
+	resp := map[string]any{
+		"unit_id": unitID,
+		"invalid": true,
+		// Marking a unit invalid clears any current SAME membership, so authority is
+		// explicitly null and a UI can refresh in place.
+		"current_membership": nil,
+	}
+	if judgment != nil {
+		j := toUnitJudgmentResponse(*judgment)
+		resp["judgment"] = &j
+	} else {
+		resp["judgment"] = nil
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleRestoreUnit withdraws a prior INVALID judgment, returning the unit to the
+// review queue. It never deletes the historical judgment and never recreates a
+// cleared SAME membership. Restoring a unit that is not currently invalid is an
+// idempotent no-op (200, null judgment). Status: 200 ok, 400 invalid id, 404 unit
+// not found, 500 storage failure.
+func (h *Handler) handleRestoreUnit(w http.ResponseWriter, r *http.Request) {
+	unitID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	judgment, err := h.concept.RestoreUnit(r.Context(), unitID)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "knowledge unit not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not restore unit")
+		return
+	}
+	resp := map[string]any{"unit_id": unitID, "invalid": false}
+	if judgment != nil {
+		j := toUnitJudgmentResponse(*judgment)
+		resp["judgment"] = &j
+	} else {
+		resp["judgment"] = nil
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleGetUnitInvalid reports a unit's effective invalid state plus its full
+// append-only judgment history. Read-only. Status: 200 ok, 400 invalid id, 404 unit
+// not found, 500 storage failure.
+func (h *Handler) handleGetUnitInvalid(w http.ResponseWriter, r *http.Request) {
+	unitID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	judgments, err := h.concept.ListUnitJudgments(r.Context(), unitID)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "knowledge unit not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not fetch unit judgments")
+		return
+	}
+	// The list is newest-first, so the first element (if any) is the latest judgment.
+	invalid := len(judgments) > 0 && judgments[0].Judgment == domain.UnitInvalid
+	history := make([]unitJudgmentResponse, 0, len(judgments))
+	for _, j := range judgments {
+		history = append(history, toUnitJudgmentResponse(j))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"unit_id": unitID,
+		"invalid": invalid,
+		"history": history,
+	})
+}
+
+// handleRecordDistinction records an explicit human DISTINCT judgment: the unit is
+// NOT the same learning identity as the concept. It is an append-only negative
+// pair; it creates no membership and no relation and never changes SAME
+// membership, so the unit stays reviewable. Status: 201 created, 400 invalid
+// JSON/id, 404 unit or concept not found, 500 storage failure.
+func (h *Handler) handleRecordDistinction(w http.ResponseWriter, r *http.Request) {
+	unitID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	var req recordDistinctionRequest
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	d, err := h.concept.RecordDistinction(r.Context(), unitID, req.ConceptID)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "unit or concept not found")
+		return
+	}
+	if errors.Is(err, domain.ErrValidation) {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not record distinction")
+		return
+	}
+	writeJSON(w, http.StatusCreated, toUnitDistinctionResponse(*d))
+}
+
+// handleListDistinctions returns a unit's full append-only DISTINCT history
+// (newest first) for a provenance/dataset UI. Read-only. Status: 200 ok, 400
+// invalid id, 404 unit not found, 500 storage failure.
+func (h *Handler) handleListDistinctions(w http.ResponseWriter, r *http.Request) {
+	unitID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	distinctions, err := h.concept.ListDistinctions(r.Context(), unitID)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "knowledge unit not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not fetch distinctions")
+		return
+	}
+	resp := make([]unitDistinctionResponse, 0, len(distinctions))
+	for _, d := range distinctions {
+		resp = append(resp, toUnitDistinctionResponse(d))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"unit_id": unitID, "distinctions": resp})
 }
 
 // handleGetCurrentMembership returns a unit's CURRENT SAME membership read from the

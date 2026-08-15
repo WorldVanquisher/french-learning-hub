@@ -122,6 +122,21 @@ func (h *Handler) Routes() http.Handler {
 	// SAME membership and records the rejection as immutable append-only negative
 	// evidence, never merely deleting the projection.
 	mux.HandleFunc("POST /knowledge-units/{id}/concept-membership/reject", h.handleRejectSame)
+	// Unit-level INVALID judgment (milestone 10.6 correctness patch): an explicit,
+	// append-only human judgment that a KnowledgeUnit is an invalid candidate for
+	// concept resolution — recordable even for a freshly extracted unit that never
+	// had a SAME membership (distinct from the membership-level reject above). It
+	// atomically clears any current SAME membership so no contradictory authority
+	// remains, is reversible via restore, and removes the unit from the review queue.
+	mux.HandleFunc("POST /knowledge-units/{id}/invalid", h.handleMarkUnitInvalid)
+	mux.HandleFunc("POST /knowledge-units/{id}/invalid/restore", h.handleRestoreUnit)
+	mux.HandleFunc("GET /knowledge-units/{id}/invalid", h.handleGetUnitInvalid)
+	// Explicit DISTINCT negative pair (milestone 10.6 correctness patch): the unit is
+	// NOT the same learning identity as the given concept. Append-only evidence for
+	// future ML training; it creates no membership and no relation and never changes
+	// SAME membership, so the unit stays reviewable.
+	mux.HandleFunc("POST /knowledge-units/{id}/concept-distinctions", h.handleRecordDistinction)
+	mux.HandleFunc("GET /knowledge-units/{id}/concept-distinctions", h.handleListDistinctions)
 	mux.HandleFunc("POST /knowledge-units/{id}/concept-links/relation", h.handleRecordRelation)
 	mux.HandleFunc("GET /reviewable-units", h.handleListReviewableUnits)
 	mux.HandleFunc("GET /entries/{id}/current-extraction", h.handleGetCurrentExtraction)

@@ -469,6 +469,71 @@ type CurrentConceptMembership struct {
 	UpdatedAt time.Time
 }
 
+// UnitJudgmentKind is a unit-level, candidate-scoped human judgment about a
+// KnowledgeUnit — distinct from any concept relation or membership. It answers
+// "is this KnowledgeUnit a valid candidate for concept resolution at all?", not
+// "does this unit belong to concept A?". It is deliberately NOT a ConceptRelation
+// and never references a concept.
+type UnitJudgmentKind string
+
+const (
+	// UnitInvalid records that the unit is an invalid concept candidate. This is a
+	// positive, recorded judgment — NOT the mere absence of a SAME membership, which
+	// means "unresolved". The two states stay distinguishable.
+	UnitInvalid UnitJudgmentKind = "invalid"
+	// UnitRestored withdraws a prior UnitInvalid judgment, returning the unit to the
+	// normal review queue. Judgments are append-only, so a restore is a new event,
+	// never a deletion of the invalid record.
+	UnitRestored UnitJudgmentKind = "restored"
+)
+
+// ValidUnitJudgmentKind reports whether k is a known unit judgment kind.
+func ValidUnitJudgmentKind(k UnitJudgmentKind) bool {
+	return k == UnitInvalid || k == UnitRestored
+}
+
+// UnitResolutionJudgment is one immutable, append-only unit-level judgment event.
+// The EFFECTIVE invalid state of a unit is decided by its latest judgment (by
+// created_at, then id): a latest 'invalid' means the unit is currently invalid; a
+// latest 'restored' (or no judgment at all) means it is not. History is never
+// destroyed, so a wrongly-invalidated unit can be restored without losing the
+// audit trail. It records no concept id: INVALID is not a concept relation.
+type UnitResolutionJudgment struct {
+	ID             int64
+	UnitID         int64
+	Judgment       UnitJudgmentKind
+	DecisionSource DecisionSource
+	Note           string
+	// Evidence is a structured, auditable JSON string. It never contains secrets or
+	// raw provider payloads.
+	Evidence  string
+	CreatedAt time.Time
+}
+
+// EffectiveUnitInvalid reports whether the latest judgment marks the unit invalid.
+// nil (no judgment) is not invalid. It is the single rule for deriving the current
+// invalid state from append-only judgment history.
+func EffectiveUnitInvalid(latest *UnitResolutionJudgment) bool {
+	return latest != nil && latest.Judgment == UnitInvalid
+}
+
+// UnitConceptDistinction is one immutable, append-only DISTINCT judgment: a human
+// explicitly decided a unit is NOT the same learning identity as a specific
+// concept. It is an explicit negative pair for future ML training. It is NOT a
+// membership, NOT a ConceptRelation (broader/narrower/related), and NOT INVALID;
+// recording it never changes SAME membership, so the unit remains reviewable.
+type UnitConceptDistinction struct {
+	ID              int64
+	UnitID          int64
+	ConceptID       int64
+	DecisionSource  DecisionSource
+	ResolverVersion string
+	// Evidence is a structured, auditable JSON string. It never contains secrets or
+	// raw provider payloads.
+	Evidence  string
+	CreatedAt time.Time
+}
+
 // NewConceptInput is the validated bundle for creating a concept from a
 // unit/signature. Identity is validated and normalized; SeedUnitID optionally
 // records which unit motivated the concept. When LinkSeedAsSame is true, the
@@ -553,6 +618,45 @@ type ConceptRepository interface {
 	// holds, so the call is an idempotent no-op returning (nil, nil). Returns
 	// ErrNotFound if the unit does not exist.
 	RejectSame(ctx context.Context, unitID int64, source DecisionSource, evidence string) (*UnitConceptLink, error)
+	// MarkUnitInvalid records an explicit unit-level INVALID judgment: the candidate
+	// KnowledgeUnit should not participate in concept resolution at all. It is
+	// distinct from RejectSame (which is a membership-level correction): this judgment
+	// is recordable even when the unit has NEVER had a SAME membership, so a human can
+	// reject a freshly extracted garbage unit. Because a unit that is currently SAME to
+	// a concept must not simultaneously be invalid (that would leave contradictory
+	// current authority), MarkUnitInvalid ALSO clears any current SAME membership in
+	// the SAME transaction, exactly as RejectSame does — appending an immutable
+	// rejected-SAME event as negative evidence and clearing a now-invalid
+	// preferred_unit_id — and then appends the append-only unit-level 'invalid'
+	// judgment. Marking an already-invalid unit invalid again is idempotent (no second
+	// judgment row). Returns the recorded judgment (and, when a SAME membership was
+	// cleared, that is reflected by the unit no longer being a member). Returns
+	// ErrNotFound if the unit does not exist.
+	MarkUnitInvalid(ctx context.Context, unitID int64, source DecisionSource, note, evidence string) (*UnitResolutionJudgment, error)
+	// RestoreUnit withdraws a prior INVALID judgment by appending a 'restored'
+	// judgment, so the unit re-enters the normal review queue. It never deletes the
+	// historical 'invalid' judgment. Restoring a unit that is not currently invalid is
+	// an idempotent no-op returning (nil, nil). It does NOT recreate any SAME
+	// membership that a previous MarkUnitInvalid cleared — the unit simply becomes
+	// unresolved and reviewable again. Returns ErrNotFound if the unit does not exist.
+	RestoreUnit(ctx context.Context, unitID int64, source DecisionSource, note, evidence string) (*UnitResolutionJudgment, error)
+	// LatestUnitJudgment returns the unit's most recent judgment (by created_at, then
+	// id), or (nil, nil) when the unit has no judgment. Used to derive the effective
+	// invalid state. Returns ErrNotFound if the unit does not exist.
+	LatestUnitJudgment(ctx context.Context, unitID int64) (*UnitResolutionJudgment, error)
+	// ListUnitJudgments returns a unit's full append-only judgment history, newest
+	// first, for a review/provenance UI. Returns ErrNotFound if the unit does not
+	// exist.
+	ListUnitJudgments(ctx context.Context, unitID int64) ([]UnitResolutionJudgment, error)
+	// RecordDistinction records an explicit human DISTINCT judgment: the unit is NOT
+	// the same learning identity as conceptID. It is an append-only negative pair; it
+	// creates no membership and no ConceptRelation, and never changes the unit's SAME
+	// membership, so the unit stays reviewable. Returns ErrNotFound if the unit or
+	// concept does not exist.
+	RecordDistinction(ctx context.Context, unitID, conceptID int64, source DecisionSource, evidence string) (*UnitConceptDistinction, error)
+	// ListDistinctions returns a unit's full append-only DISTINCT history, newest
+	// first. Returns ErrNotFound if the unit does not exist.
+	ListDistinctions(ctx context.Context, unitID int64) ([]UnitConceptDistinction, error)
 	// LinkRelation records a non-membership BROADER/NARROWER/RELATED decision as an
 	// immutable event. It never affects SAME membership or automatic support. A
 	// repeated identical (unit, concept, relation) appends a new event that

@@ -28,6 +28,16 @@ type fakeConceptRepo struct {
 	rejectCall      int
 	lastRejectUnit  int64
 	rejectLink      *domain.UnitConceptLink
+
+	markInvalidCall    int
+	lastMarkInvalidHit int64
+	markInvalidJudg    *domain.UnitResolutionJudgment
+	restoreCall        int
+	restoreJudg        *domain.UnitResolutionJudgment
+	distinctCall       int
+	lastDistinctUnit   int64
+	lastDistinctConc   int64
+	distinctRecord     *domain.UnitConceptDistinction
 }
 
 func (f *fakeConceptRepo) UnitByID(context.Context, int64) (*domain.KnowledgeUnit, error) {
@@ -91,6 +101,30 @@ func (f *fakeConceptRepo) RejectSame(_ context.Context, unitID int64, _ domain.D
 	f.rejectCall++
 	f.lastRejectUnit = unitID
 	return f.rejectLink, nil
+}
+func (f *fakeConceptRepo) MarkUnitInvalid(_ context.Context, unitID int64, _ domain.DecisionSource, _, _ string) (*domain.UnitResolutionJudgment, error) {
+	f.markInvalidCall++
+	f.lastMarkInvalidHit = unitID
+	return f.markInvalidJudg, nil
+}
+func (f *fakeConceptRepo) RestoreUnit(context.Context, int64, domain.DecisionSource, string, string) (*domain.UnitResolutionJudgment, error) {
+	f.restoreCall++
+	return f.restoreJudg, nil
+}
+func (f *fakeConceptRepo) LatestUnitJudgment(context.Context, int64) (*domain.UnitResolutionJudgment, error) {
+	return f.markInvalidJudg, nil
+}
+func (f *fakeConceptRepo) ListUnitJudgments(context.Context, int64) ([]domain.UnitResolutionJudgment, error) {
+	return nil, nil
+}
+func (f *fakeConceptRepo) RecordDistinction(_ context.Context, unitID, conceptID int64, _ domain.DecisionSource, _ string) (*domain.UnitConceptDistinction, error) {
+	f.distinctCall++
+	f.lastDistinctUnit = unitID
+	f.lastDistinctConc = conceptID
+	return f.distinctRecord, nil
+}
+func (f *fakeConceptRepo) ListDistinctions(context.Context, int64) ([]domain.UnitConceptDistinction, error) {
+	return nil, nil
 }
 func (f *fakeConceptRepo) GetCurrentExtractionID(context.Context, int64) (*int64, error) {
 	return nil, nil
@@ -286,5 +320,75 @@ func TestRejectSame_NoopReturnsNil(t *testing.T) {
 	}
 	if repo.rejectCall != 1 {
 		t.Fatalf("expected one rejection call, got %d", repo.rejectCall)
+	}
+}
+
+// MarkUnitInvalid (unit-level INVALID) routes to the repository's unit-level
+// operation with a human source; it does NOT route through RejectSame (the
+// membership-level correction), which is a distinct concept.
+func TestMarkUnitInvalid_RoutesToUnitLevel(t *testing.T) {
+	repo := &fakeConceptRepo{markInvalidJudg: &domain.UnitResolutionJudgment{ID: 5, UnitID: 7, Judgment: domain.UnitInvalid, DecisionSource: domain.SourceHuman}}
+	svc := NewConceptService(nil, repo, repo)
+	j, err := svc.MarkUnitInvalid(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("mark invalid: %v", err)
+	}
+	if j == nil || j.Judgment != domain.UnitInvalid {
+		t.Fatalf("expected the invalid judgment, got %+v", j)
+	}
+	if repo.markInvalidCall != 1 || repo.lastMarkInvalidHit != 7 {
+		t.Fatalf("expected one unit-level INVALID of unit 7, got calls=%d unit=%d", repo.markInvalidCall, repo.lastMarkInvalidHit)
+	}
+	// Unit-level INVALID is not the membership-level reject.
+	if repo.rejectCall != 0 {
+		t.Fatalf("MarkUnitInvalid must not route through RejectSame, got %d reject calls", repo.rejectCall)
+	}
+}
+
+// RestoreUnit routes to the repository's restore operation; a no-op restore
+// (unit not currently invalid) returns nil and is passed through unchanged.
+func TestRestoreUnit_RoutesToRestore(t *testing.T) {
+	repo := &fakeConceptRepo{restoreJudg: &domain.UnitResolutionJudgment{ID: 6, UnitID: 7, Judgment: domain.UnitRestored}}
+	svc := NewConceptService(nil, repo, repo)
+	j, err := svc.RestoreUnit(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	if j == nil || j.Judgment != domain.UnitRestored {
+		t.Fatalf("expected the restored judgment, got %+v", j)
+	}
+	if repo.restoreCall != 1 {
+		t.Fatalf("expected one restore call, got %d", repo.restoreCall)
+	}
+
+	repo2 := &fakeConceptRepo{restoreJudg: nil}
+	svc2 := NewConceptService(nil, repo2, repo2)
+	j2, err := svc2.RestoreUnit(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("restore no-op: %v", err)
+	}
+	if j2 != nil {
+		t.Fatalf("a no-op restore must return nil, got %+v", j2)
+	}
+}
+
+// RecordDistinction routes to the repository's distinction operation without
+// touching SAME membership (LinkSame/ReassignSame): DISTINCT is an explicit
+// negative pair, not a membership.
+func TestRecordDistinction_RoutesWithoutMembership(t *testing.T) {
+	repo := &fakeConceptRepo{distinctRecord: &domain.UnitConceptDistinction{ID: 3, UnitID: 7, ConceptID: 42, DecisionSource: domain.SourceHuman}}
+	svc := NewConceptService(nil, repo, repo)
+	d, err := svc.RecordDistinction(context.Background(), 7, 42)
+	if err != nil {
+		t.Fatalf("record distinction: %v", err)
+	}
+	if d == nil || d.UnitID != 7 || d.ConceptID != 42 {
+		t.Fatalf("expected the distinction record, got %+v", d)
+	}
+	if repo.distinctCall != 1 || repo.lastDistinctUnit != 7 || repo.lastDistinctConc != 42 {
+		t.Fatalf("expected one distinction of (7,42), got calls=%d unit=%d concept=%d", repo.distinctCall, repo.lastDistinctUnit, repo.lastDistinctConc)
+	}
+	if repo.linkSameCall != 0 || repo.reassignCall != 0 {
+		t.Fatalf("DISTINCT must not create or move a SAME membership")
 	}
 }
