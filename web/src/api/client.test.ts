@@ -72,12 +72,51 @@ describe("api client request shapes", () => {
     expect(JSON.parse(String(calls[0].init.body))).toEqual({ concept_id: 42, relation: "broader" });
   });
 
-  it("rejectInvalid POSTs to the reject endpoint", async () => {
+  it("rejectSameMembership POSTs to the membership-level reject endpoint", async () => {
     const { impl, calls } = stubFetch(200, { unit_id: 7, current_membership: null, link: { id: 13 } });
-    const res = await api.rejectInvalid(7, impl);
+    const res = await api.rejectSameMembership(7, impl);
     expect(calls[0].url).toBe("/api/knowledge-units/7/concept-membership/reject");
     expect(calls[0].init.method).toBe("POST");
     expect(res.current_membership).toBeNull();
+  });
+
+  it("markUnitInvalid POSTs to the unit-level invalid endpoint (no membership required)", async () => {
+    const { impl, calls } = stubFetch(200, {
+      unit_id: 7,
+      invalid: true,
+      current_membership: null,
+      judgment: { id: 5, unit_id: 7, judgment: "invalid", decision_source: "human", note: "", evidence: "{}", created_at: "t" },
+    });
+    const res = await api.markUnitInvalid(7, impl);
+    expect(calls[0].url).toBe("/api/knowledge-units/7/invalid");
+    expect(calls[0].init.method).toBe("POST");
+    expect(res.invalid).toBe(true);
+    expect(res.judgment?.judgment).toBe("invalid");
+  });
+
+  it("restoreUnit POSTs to the invalid/restore endpoint", async () => {
+    const { impl, calls } = stubFetch(200, { unit_id: 7, invalid: false, current_membership: null, judgment: { judgment: "restored" } });
+    const res = await api.restoreUnit(7, impl);
+    expect(calls[0].url).toBe("/api/knowledge-units/7/invalid/restore");
+    expect(calls[0].init.method).toBe("POST");
+    expect(res.invalid).toBe(false);
+  });
+
+  it("getUnitInvalid GETs the invalid read model with history", async () => {
+    const { impl, calls } = stubFetch(200, { unit_id: 7, invalid: false, history: [{ judgment: "restored" }, { judgment: "invalid" }] });
+    const env = await api.getUnitInvalid(7, impl);
+    expect(calls[0].url).toBe("/api/knowledge-units/7/invalid");
+    expect(calls[0].init.method).toBe("GET");
+    expect(env.history).toHaveLength(2);
+  });
+
+  it("recordDistinction POSTs concept_id to the concept-distinctions endpoint", async () => {
+    const { impl, calls } = stubFetch(201, { id: 3, unit_id: 7, concept_id: 42, decision_source: "human", resolver_version: "concept_resolver_v1", evidence: "{}", created_at: "t" });
+    const d = await api.recordDistinction(7, 42, impl);
+    expect(calls[0].url).toBe("/api/knowledge-units/7/concept-distinctions");
+    expect(calls[0].init.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({ concept_id: 42 });
+    expect(d.concept_id).toBe(42);
   });
 
   it("maps a 409 into an ApiError flagged as a conflict, preferring backend error text", async () => {

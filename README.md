@@ -49,12 +49,19 @@ Milestone 10 adds **knowledge extraction** (immutable per-extraction
 **`KnowledgeConcept`** identity layer with a conservative deterministic resolver,
 an append-only resolution event log, and a current-SAME-membership projection as
 the single authority. Milestone 10.6 adds the first **human concept-review /
-annotation UI** (`web/`) plus the backend **INVALID** operation
-(`POST /knowledge-units/{id}/concept-membership/reject`) that clears a unit's
-current SAME membership while preserving the human rejection as immutable negative
-evidence. The review UI is an annotation / data-collection instrument for future
-resolver experiments — **not** the Review Engine, mastery, scheduling, or an ML
-resolver. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
+annotation UI** (`web/`) plus the backend operations needed to record
+high-quality resolution labels. An **annotation-semantics correctness patch**
+(migration `008`) sharpens two labels: a **unit-level INVALID** judgment
+(`POST /knowledge-units/{id}/invalid`) records that a `KnowledgeUnit` is an invalid
+candidate — recordable even for a freshly extracted unit that never had a SAME
+membership, reversible via `.../invalid/restore`, and distinct from the
+membership-level clear (`POST /knowledge-units/{id}/concept-membership/reject`); and
+an explicit **DISTINCT** negative pair (`POST
+/knowledge-units/{id}/concept-distinctions`) records that a unit is *not* the same
+identity as a concept without touching membership. The review UI is an annotation /
+data-collection instrument for future resolver experiments — **not** the Review
+Engine, mastery, scheduling, or an ML resolver, and no dataset exporter is built
+yet. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
 and [web/README.md](web/README.md) for running the frontend.
 
 ## Requirements

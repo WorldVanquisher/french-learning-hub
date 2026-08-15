@@ -1067,6 +1067,82 @@ BROADER/NARROWER/RELATED = structured non-SAME relations; INVALID = negative
 resolution evidence). The **training exporter itself is deliberately not built** in
 this milestone — the UI only ensures the provenance needed later is never discarded.
 
+### Annotation-semantics correctness patch (milestone 10.6, migration 008)
+
+The first 10.6 pass exposed two ways the recorded labels did not mean what a future
+ML pipeline needs them to mean. This patch (migration `008`) closes both with two
+new **dedicated, append-only** tables. Neither reuses `unit_concept_links`: that
+table carries a strict `CHECK` on `relation`/`status`, a self-referential FK, and an
+inbound FK from `unit_concept_memberships`, and SQLite cannot `ALTER` a `CHECK` in
+place — so a purpose-built table is both safer and more explicit than a rebuild. No
+ML, embeddings, or dataset exporter is added; only human judgments are recorded.
+
+**Problem 1 — INVALID meant the wrong thing.** `RejectSame` (above) is a
+**membership-level** correction: it only does something when a *current* SAME
+membership exists, and for a freshly extracted, never-resolved unit it is an
+idempotent no-op. So a human could not label a garbage/invalid candidate that never
+had a SAME. The patch adds a distinct **unit-level INVALID judgment**:
+
+- `unit_resolution_judgments` (append-only): `unit_id`, `judgment IN
+  ('invalid','restored')`, `decision_source`, optional `note`, structured
+  `evidence`, `created_at`. It records "**this KnowledgeUnit is an invalid
+  candidate**" without inventing a fake concept id and without being a
+  `ConceptRelation`.
+- **Effective invalid = the latest judgment** by `(created_at, id)`. INVALID is
+  explicit positive evidence, never inferred from the *absence* of a membership
+  (absence = unresolved / still reviewable; INVALID = explicitly reviewed and
+  rejected — the two stay distinguishable).
+- **Reversible**: `restored` withdraws a prior `invalid` and returns the unit to the
+  queue; history is never destroyed, so a wrongly-invalidated unit recovers with its
+  audit trail intact.
+- **Review-queue semantics**: `GET /reviewable-units` now also excludes units whose
+  latest judgment is `invalid`. Fresh unresolved → reviewable; INVALID → leaves the
+  queue; restored → reviewable again.
+- **Kept separate from `RejectSame`.** `RejectSame` remains the membership-level
+  "clear the current SAME" action; unit-level `MarkUnitInvalid` is the
+  candidate-level judgment. For a unit that *does* currently have a SAME membership,
+  `MarkUnitInvalid` uses the **conservative atomic rule (option A)**: it clears the
+  current SAME (reusing the reject-event logic, so the cleared membership survives as
+  negative evidence) **and** appends the unit-level `invalid` judgment in one
+  transaction, so a unit is never simultaneously SAME to a concept and INVALID.
+- **API**: `POST /knowledge-units/{id}/invalid` (response carries the recorded
+  judgment + effective invalid state + the now-null current membership),
+  `POST /knowledge-units/{id}/invalid/restore`, and read model
+  `GET /knowledge-units/{id}/invalid` (effective state + full history).
+
+**Problem 2 — distinct negative pairs were lost.** When a reviewer was shown
+candidate A and decided the unit was *not* A, nothing recorded that comparison; it
+could only be (wrongly) inferred later from the absence of a SAME link. The patch
+adds an explicit **DISTINCT** judgment:
+
+- `unit_concept_distinctions` (append-only): `unit_id`, `concept_id`,
+  `decision_source`, `resolver_version`, structured `evidence`, `created_at`.
+  `DISTINCT(U, A)` = "the reviewer explicitly judged U is **not** the same learning
+  identity as concept A" — a real negative pair for future training.
+- DISTINCT is **not** a membership, **not** a relation (BROADER/NARROWER/RELATED),
+  and **not** INVALID. It **never changes SAME membership**, so the unit stays
+  reviewable. This supports the sequence *candidate A shown → DISTINCT A → NEW
+  CONCEPT B → SAME U→B*, yielding both a negative `(U, A)` pair and a positive `(U,
+  B)` membership. Clicking NEW does **not** implicitly reject the visible
+  candidates; only explicit human decisions become labels.
+- **API**: `POST /knowledge-units/{id}/concept-distinctions` and
+  `GET /knowledge-units/{id}/concept-distinctions`.
+
+**Frontend changes.** INVALID is no longer gated on `membership != null`; it is
+always available and calls the unit-level endpoint (`markUnitInvalid`), then removes
+the unit from the in-memory queue and advances with no refresh. A new **DISTINCT**
+action is enabled when an existing candidate concept is selected; it records the
+negative pair and **keeps** the unit in the queue so the reviewer can continue
+(pick another concept, create a NEW one, or mark INVALID). The membership-level
+`reject` endpoint remains available in the client as `rejectSameMembership`, kept
+distinct from the primary INVALID action.
+
+The full label vocabulary the annotation data now distinguishes: **SAME** (positive
+identity pair), **DISTINCT** (explicit negative pair), **BROADER/NARROWER**
+(structured non-SAME hierarchy), **RELATED** (associated non-SAME), and **INVALID**
+(unit-level negative — the candidate should not participate in resolution at all).
+The dataset exporter is still deliberately not built.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.

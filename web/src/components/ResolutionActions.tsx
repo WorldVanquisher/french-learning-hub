@@ -1,14 +1,24 @@
 import type { CurrentMembership, RelationKind } from "../types/concept";
 
 // The decision the reviewer is about to make. NEW is handled by the parent (it
-// needs the edited identity); the rest act on a selected existing concept.
-export type ActionKind = "same" | "new" | "broader" | "narrower" | "related" | "invalid";
+// needs the edited identity); SAME / relations / DISTINCT act on a selected existing
+// concept; INVALID is a unit-level judgment that needs no selection.
+export type ActionKind =
+  | "same"
+  | "new"
+  | "broader"
+  | "narrower"
+  | "related"
+  | "distinct"
+  | "invalid";
 
-// ResolutionActions renders the six human decisions as unmistakable buttons and
-// routes SAME correctly: when the unit already has a current SAME membership and the
-// reviewer picks a DIFFERENT concept, this is an explicit ReassignSame — never a
-// create+seed reassignment path. The parent performs the request; this component
-// only decides which decisions are currently valid and labels them clearly.
+// ResolutionActions renders the human decisions as unmistakable buttons and routes
+// SAME correctly: when the unit already has a current SAME membership and the reviewer
+// picks a DIFFERENT concept, this is an explicit ReassignSame — never a create+seed
+// reassignment path. INVALID is a unit-level judgment (available for a freshly
+// unresolved unit, not gated on membership); DISTINCT records an explicit negative
+// pair against the selected concept without changing membership. The parent performs
+// the request; this component only decides which decisions are currently valid.
 export function ResolutionActions({
   membership,
   selectedConceptId,
@@ -68,10 +78,19 @@ export function ResolutionActions({
         {relation("related")}
 
         <button
+          className="ghost"
+          disabled={busy || !hasSelection}
+          onClick={() => onAct("distinct")}
+          title="Record that this unit is NOT the same learning identity as the selected concept (an explicit negative pair). Does not create or change SAME membership; the unit stays reviewable."
+        >
+          DISTINCT
+        </button>
+
+        <button
           className="invalid"
-          disabled={busy || membership === null}
+          disabled={busy}
           onClick={() => onAct("invalid")}
-          title="Mark the candidate invalid: clears any current SAME membership and records the rejection as evidence."
+          title="Mark this KnowledgeUnit an invalid candidate for concept resolution. Works for a freshly unresolved unit and also clears any current SAME membership."
         >
           INVALID
         </button>
@@ -79,12 +98,14 @@ export function ResolutionActions({
 
       <p className="hint">
         {hasSelection
-          ? "SAME / BROADER / NARROWER / RELATED act on the selected concept above."
-          : "Select a concept above to enable SAME and the relation actions, or create a NEW CONCEPT."}
+          ? "SAME / BROADER / NARROWER / RELATED / DISTINCT act on the selected concept above."
+          : "Select a concept above to enable SAME, the relation actions, and DISTINCT, or create a NEW CONCEPT."}
         {" "}
-        BROADER / NARROWER / RELATED record a non-membership relation — they do not
-        make the unit a SAME member. INVALID is enabled only when a current SAME
-        membership exists to clear.
+        BROADER / NARROWER / RELATED record a non-membership relation and DISTINCT
+        records an explicit negative pair — none of these make the unit a SAME member,
+        and all keep it reviewable. INVALID is always available: it marks the unit
+        itself an invalid candidate (clearing any current SAME membership) and removes
+        it from the queue.
       </p>
     </div>
   );

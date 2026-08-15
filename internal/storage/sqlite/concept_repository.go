@@ -681,6 +681,222 @@ func (r *ConceptRepository) RejectSame(ctx context.Context, unitID int64, source
 	return link, nil
 }
 
+// MarkUnitInvalid records a unit-level INVALID judgment, clearing any current SAME
+// membership in the same transaction so the product state stays internally
+// consistent (a unit is never simultaneously SAME to a concept and effectively
+// invalid). Concretely, atomically: if the unit currently has a SAME membership it
+// appends an immutable rejected-SAME event (negative membership evidence),
+// removes the current-membership projection row, and clears a now-invalid
+// preferred_unit_id — exactly the RejectSame behavior — and then, unless the unit
+// is already effectively invalid, appends an append-only unit-level 'invalid'
+// judgment. Marking an already-invalid unit is idempotent (no second judgment).
+func (r *ConceptRepository) MarkUnitInvalid(ctx context.Context, unitID int64, source domain.DecisionSource, note, evidence string) (*domain.UnitResolutionJudgment, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := unitExists(ctx, tx, unitID); err != nil {
+		return nil, err
+	}
+
+	now := r.now()
+
+	// Conservative atomic rule (spec 5, option A): clearing any current SAME first
+	// guarantees we never leave a unit that is both SAME to a concept and INVALID.
+	if err := r.clearCurrentSame(ctx, tx, unitID, source, now); err != nil {
+		return nil, err
+	}
+
+	// Idempotency: if the latest judgment already marks the unit invalid, do not
+	// append a second identical judgment.
+	latest, err := latestUnitJudgment(ctx, tx, unitID)
+	if err != nil {
+		return nil, err
+	}
+	if domain.EffectiveUnitInvalid(latest) {
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("commit tx: %w", err)
+		}
+		return latest, nil
+	}
+
+	judgment, err := insertUnitJudgment(ctx, tx, unitID, domain.UnitInvalid, source, note, evidence, now)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	return judgment, nil
+}
+
+// RestoreUnit withdraws a prior INVALID judgment by appending a 'restored' event,
+// returning the unit to the normal review queue. It never deletes the historical
+// 'invalid' judgment and never recreates a cleared SAME membership. Restoring a
+// unit that is not currently invalid is an idempotent no-op returning (nil, nil).
+func (r *ConceptRepository) RestoreUnit(ctx context.Context, unitID int64, source domain.DecisionSource, note, evidence string) (*domain.UnitResolutionJudgment, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := unitExists(ctx, tx, unitID); err != nil {
+		return nil, err
+	}
+
+	latest, err := latestUnitJudgment(ctx, tx, unitID)
+	if err != nil {
+		return nil, err
+	}
+	if !domain.EffectiveUnitInvalid(latest) {
+		// Not currently invalid: the postcondition (valid/reviewable) already holds.
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("commit tx: %w", err)
+		}
+		return nil, nil
+	}
+
+	judgment, err := insertUnitJudgment(ctx, tx, unitID, domain.UnitRestored, source, note, evidence, r.now())
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	return judgment, nil
+}
+
+// LatestUnitJudgment returns the unit's most recent judgment (by created_at, then
+// id), or (nil, nil) when it has none. Returns ErrNotFound if the unit is missing.
+func (r *ConceptRepository) LatestUnitJudgment(ctx context.Context, unitID int64) (*domain.UnitResolutionJudgment, error) {
+	if err := unitExists(ctx, r.db, unitID); err != nil {
+		return nil, err
+	}
+	return latestUnitJudgment(ctx, r.db, unitID)
+}
+
+// ListUnitJudgments returns a unit's full append-only judgment history, newest
+// first. Returns ErrNotFound if the unit is missing.
+func (r *ConceptRepository) ListUnitJudgments(ctx context.Context, unitID int64) ([]domain.UnitResolutionJudgment, error) {
+	if err := unitExists(ctx, r.db, unitID); err != nil {
+		return nil, err
+	}
+	rows, err := r.db.QueryContext(ctx, unitJudgmentSelect+` WHERE unit_id = ? ORDER BY created_at DESC, id DESC`, unitID)
+	if err != nil {
+		return nil, fmt.Errorf("list unit judgments: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.UnitResolutionJudgment
+	for rows.Next() {
+		j, err := scanUnitJudgment(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan unit judgment: %w", err)
+		}
+		out = append(out, *j)
+	}
+	return out, rows.Err()
+}
+
+// RecordDistinction records an explicit human DISTINCT negative pair. It creates no
+// membership and no relation and never changes SAME membership; the unit stays
+// reviewable. Both the unit and the concept must exist.
+func (r *ConceptRepository) RecordDistinction(ctx context.Context, unitID, conceptID int64, source domain.DecisionSource, evidence string) (*domain.UnitConceptDistinction, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := unitExists(ctx, tx, unitID); err != nil {
+		return nil, err
+	}
+	if err := conceptExists(ctx, tx, conceptID); err != nil {
+		return nil, err
+	}
+
+	if evidence == "" {
+		evidence = "{}"
+	}
+	now := r.now()
+	ts := now.Format(rfc3339)
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO unit_concept_distinctions
+		   (unit_id, concept_id, decision_source, resolver_version, evidence, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		unitID, conceptID, string(source), domain.ConceptResolverVersion, evidence, ts)
+	if err != nil {
+		return nil, fmt.Errorf("insert distinction: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("distinction last insert id: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	return &domain.UnitConceptDistinction{
+		ID: id, UnitID: unitID, ConceptID: conceptID, DecisionSource: source,
+		ResolverVersion: domain.ConceptResolverVersion, Evidence: evidence, CreatedAt: now,
+	}, nil
+}
+
+// ListDistinctions returns a unit's full append-only DISTINCT history, newest
+// first. Returns ErrNotFound if the unit is missing.
+func (r *ConceptRepository) ListDistinctions(ctx context.Context, unitID int64) ([]domain.UnitConceptDistinction, error) {
+	if err := unitExists(ctx, r.db, unitID); err != nil {
+		return nil, err
+	}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, unit_id, concept_id, decision_source, resolver_version, evidence, created_at
+		 FROM unit_concept_distinctions WHERE unit_id = ? ORDER BY created_at DESC, id DESC`, unitID)
+	if err != nil {
+		return nil, fmt.Errorf("list distinctions: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.UnitConceptDistinction
+	for rows.Next() {
+		d, err := scanDistinction(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan distinction: %w", err)
+		}
+		out = append(out, *d)
+	}
+	return out, rows.Err()
+}
+
+// clearCurrentSame clears a unit's current SAME membership if it has one, appending
+// an immutable rejected-SAME event (negative evidence) that supersedes the in-force
+// SAME, removing the projection row, and clearing a now-invalid preferred_unit_id.
+// It is the shared core of RejectSame and MarkUnitInvalid. When the unit has no
+// current SAME membership it does nothing.
+func (r *ConceptRepository) clearCurrentSame(ctx context.Context, tx *sql.Tx, unitID int64, source domain.DecisionSource, now time.Time) error {
+	current, err := currentMembership(ctx, tx, unitID)
+	if err != nil {
+		return err
+	}
+	if current == nil {
+		return nil
+	}
+	supersedes := current.linkID
+	if _, err := insertLink(ctx, tx, unitID, current.conceptID, domain.RelationSame, domain.LinkRejected, source, domain.ConceptResolverVersion, nil, "{}", &supersedes, now); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM unit_concept_memberships WHERE unit_id = ?`, unitID); err != nil {
+		return fmt.Errorf("clear current membership: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE knowledge_concepts SET preferred_unit_id = NULL, updated_at = ?
+		 WHERE id = ? AND preferred_unit_id = ?`,
+		now.Format(rfc3339), current.conceptID, unitID); err != nil {
+		return fmt.Errorf("clear stale preferred unit: %w", err)
+	}
+	return nil
+}
+
 // LinkRelation records a non-membership BROADER/NARROWER/RELATED decision as an
 // immutable event. A repeated identical (unit, concept, relation) appends a new
 // event that supersedes the prior current one via supersedes_link_id (the old row
@@ -822,11 +1038,23 @@ func (r *ConceptRepository) ListReviewableUnits(ctx context.Context, entryID *in
 		if current == nil {
 			continue
 		}
+		// A unit is reviewable only when it has no current SAME membership AND is not
+		// currently explicitly INVALID. "Currently invalid" means its LATEST judgment
+		// (by created_at, then id) is 'invalid'; a later 'restored' judgment (or none)
+		// keeps it reviewable. Absence of a judgment means unresolved, not invalid.
 		urows, err := r.db.QueryContext(ctx,
 			`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at
 			 FROM knowledge_units
 			 WHERE extraction_id = ?
 			   AND id NOT IN (SELECT unit_id FROM unit_concept_memberships)
+			   AND id NOT IN (
+			       SELECT j.unit_id FROM unit_resolution_judgments j
+			       WHERE j.id = (
+			           SELECT id FROM unit_resolution_judgments
+			           WHERE unit_id = j.unit_id
+			           ORDER BY created_at DESC, id DESC LIMIT 1
+			       ) AND j.judgment = 'invalid'
+			   )
 			 ORDER BY ordinal ASC`, *current)
 		if err != nil {
 			return nil, fmt.Errorf("list reviewable units: %w", err)
@@ -1084,6 +1312,83 @@ func scanLink(s scanner) (*domain.UnitConceptLink, error) {
 		return nil, fmt.Errorf("parse created_at: %w", err)
 	}
 	return &l, nil
+}
+
+// ---- unit judgment / distinction helpers ----
+
+const unitJudgmentSelect = `SELECT id, unit_id, judgment, decision_source, note, evidence, created_at FROM unit_resolution_judgments`
+
+// latestUnitJudgment returns the unit's most recent judgment (by created_at, then
+// id), or (nil, nil) when it has none. It does not verify the unit exists.
+func latestUnitJudgment(ctx context.Context, q txQuerier, unitID int64) (*domain.UnitResolutionJudgment, error) {
+	row := q.QueryRowContext(ctx, unitJudgmentSelect+` WHERE unit_id = ? ORDER BY created_at DESC, id DESC LIMIT 1`, unitID)
+	j, err := scanUnitJudgment(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read latest unit judgment: %w", err)
+	}
+	return j, nil
+}
+
+// insertUnitJudgment appends one append-only unit-level judgment row.
+func insertUnitJudgment(ctx context.Context, q txQuerier, unitID int64, kind domain.UnitJudgmentKind, source domain.DecisionSource, note, evidence string, now time.Time) (*domain.UnitResolutionJudgment, error) {
+	if evidence == "" {
+		evidence = "{}"
+	}
+	ts := now.Format(rfc3339)
+	res, err := q.ExecContext(ctx,
+		`INSERT INTO unit_resolution_judgments (unit_id, judgment, decision_source, note, evidence, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		unitID, string(kind), string(source), note, evidence, ts)
+	if err != nil {
+		return nil, fmt.Errorf("insert unit judgment: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("unit judgment last insert id: %w", err)
+	}
+	return &domain.UnitResolutionJudgment{
+		ID: id, UnitID: unitID, Judgment: kind, DecisionSource: source,
+		Note: note, Evidence: evidence, CreatedAt: now,
+	}, nil
+}
+
+func scanUnitJudgment(s scanner) (*domain.UnitResolutionJudgment, error) {
+	var (
+		j          domain.UnitResolutionJudgment
+		judgment   string
+		source     string
+		createdStr string
+	)
+	if err := s.Scan(&j.ID, &j.UnitID, &judgment, &source, &j.Note, &j.Evidence, &createdStr); err != nil {
+		return nil, err
+	}
+	j.Judgment = domain.UnitJudgmentKind(judgment)
+	j.DecisionSource = domain.DecisionSource(source)
+	var err error
+	if j.CreatedAt, err = time.Parse(rfc3339, createdStr); err != nil {
+		return nil, fmt.Errorf("parse created_at: %w", err)
+	}
+	return &j, nil
+}
+
+func scanDistinction(s scanner) (*domain.UnitConceptDistinction, error) {
+	var (
+		d          domain.UnitConceptDistinction
+		source     string
+		createdStr string
+	)
+	if err := s.Scan(&d.ID, &d.UnitID, &d.ConceptID, &source, &d.ResolverVersion, &d.Evidence, &createdStr); err != nil {
+		return nil, err
+	}
+	d.DecisionSource = domain.DecisionSource(source)
+	var err error
+	if d.CreatedAt, err = time.Parse(rfc3339, createdStr); err != nil {
+		return nil, fmt.Errorf("parse created_at: %w", err)
+	}
+	return &d, nil
 }
 
 // ---- existence helpers ----

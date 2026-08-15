@@ -7,11 +7,14 @@ import type {
   Concept,
   ConceptIdentity,
   ConceptView,
+  MarkInvalidResponse,
   MembershipEnvelope,
   RelationKind,
   ResolutionOutcome,
   ReviewableUnit,
   UnitConceptLink,
+  UnitDistinction,
+  UnitInvalidEnvelope,
 } from "../types/concept";
 
 // ApiError carries the HTTP status so callers can react specifically — most
@@ -166,10 +169,12 @@ export function recordRelation(
   );
 }
 
-// rejectInvalid records the explicit human INVALID judgment: the candidate belongs
-// to no concept. It clears any current SAME membership and preserves the rejection
-// as immutable negative evidence. Idempotent (null link when already unresolved).
-export function rejectInvalid(
+// rejectSameMembership records a membership-LEVEL correction: it clears the unit's
+// CURRENT SAME membership and preserves the rejection as immutable negative evidence.
+// It is a no-op (null link) when the unit is already unresolved, so it cannot express
+// "this candidate is invalid" for a never-resolved unit — that is markUnitInvalid.
+// Kept available as an explicit membership-clear action, distinct from INVALID.
+export function rejectSameMembership(
   unitId: number,
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ unit_id: number; current_membership: null; link: UnitConceptLink | null }> {
@@ -177,6 +182,45 @@ export function rejectInvalid(
     "POST",
     `/knowledge-units/${unitId}/concept-membership/reject`,
     undefined,
+    fetchImpl,
+  );
+}
+
+// markUnitInvalid records the unit-LEVEL INVALID judgment: the KnowledgeUnit itself is
+// an invalid candidate for concept resolution. Unlike rejectSameMembership it works
+// for a freshly extracted, never-resolved unit (no membership required), and it also
+// atomically clears any current SAME membership so the unit is never both SAME and
+// invalid. This is the primary INVALID action. Reversible via restoreUnit.
+export function markUnitInvalid(unitId: number, fetchImpl: typeof fetch = fetch): Promise<MarkInvalidResponse> {
+  return request<MarkInvalidResponse>("POST", `/knowledge-units/${unitId}/invalid`, undefined, fetchImpl);
+}
+
+// restoreUnit withdraws a prior INVALID judgment, returning the unit to the review
+// queue. It never deletes the historical judgment and never recreates a cleared SAME
+// membership. Idempotent (null judgment) when the unit is not currently invalid.
+export function restoreUnit(unitId: number, fetchImpl: typeof fetch = fetch): Promise<MarkInvalidResponse> {
+  return request<MarkInvalidResponse>("POST", `/knowledge-units/${unitId}/invalid/restore`, undefined, fetchImpl);
+}
+
+// getUnitInvalid reads the effective invalid state plus the full append-only judgment
+// history for a unit.
+export function getUnitInvalid(unitId: number, fetchImpl: typeof fetch = fetch): Promise<UnitInvalidEnvelope> {
+  return request<UnitInvalidEnvelope>("GET", `/knowledge-units/${unitId}/invalid`, undefined, fetchImpl);
+}
+
+// recordDistinction records an explicit DISTINCT negative pair: the unit is NOT the
+// same learning identity as the concept. It creates no membership and no relation and
+// never changes SAME membership, so the unit stays reviewable and the reviewer can
+// then pick another concept, create a NEW one, or mark the unit INVALID.
+export function recordDistinction(
+  unitId: number,
+  conceptId: number,
+  fetchImpl: typeof fetch = fetch,
+): Promise<UnitDistinction> {
+  return request<UnitDistinction>(
+    "POST",
+    `/knowledge-units/${unitId}/concept-distinctions`,
+    { concept_id: conceptId },
     fetchImpl,
   );
 }

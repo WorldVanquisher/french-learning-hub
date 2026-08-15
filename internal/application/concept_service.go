@@ -129,6 +129,59 @@ func (s *ConceptService) RejectSame(ctx context.Context, unitID int64) (*domain.
 	return s.concepts.RejectSame(ctx, unitID, domain.SourceHuman, evidence)
 }
 
+// MarkUnitInvalid records an explicit unit-level INVALID judgment: the candidate
+// KnowledgeUnit should not participate in concept resolution. Unlike RejectSame
+// (a membership-level correction that only clears an existing SAME), this is
+// recordable even for a freshly extracted unit that never had a SAME membership —
+// so a human can reject garbage extraction candidates. To keep product state
+// internally consistent it also clears any current SAME membership atomically (a
+// unit is never both SAME to a concept and invalid). The judgment is append-only
+// and reversible via RestoreUnit; marking an already-invalid unit is idempotent.
+// Returns domain.ErrNotFound if the unit does not exist.
+func (s *ConceptService) MarkUnitInvalid(ctx context.Context, unitID int64) (*domain.UnitResolutionJudgment, error) {
+	evidence := mustEvidence(map[string]any{"reason": "human_unit_invalid", "resolver": domain.ConceptResolverVersion})
+	return s.concepts.MarkUnitInvalid(ctx, unitID, domain.SourceHuman, "", evidence)
+}
+
+// RestoreUnit withdraws a prior INVALID judgment, returning the unit to the review
+// queue without deleting the historical judgment. It does not recreate any SAME
+// membership a prior MarkUnitInvalid cleared: the unit simply becomes unresolved
+// and reviewable again. Restoring a unit that is not currently invalid is an
+// idempotent no-op returning (nil, nil). Returns domain.ErrNotFound if the unit
+// does not exist.
+func (s *ConceptService) RestoreUnit(ctx context.Context, unitID int64) (*domain.UnitResolutionJudgment, error) {
+	evidence := mustEvidence(map[string]any{"reason": "human_unit_restored", "resolver": domain.ConceptResolverVersion})
+	return s.concepts.RestoreUnit(ctx, unitID, domain.SourceHuman, "", evidence)
+}
+
+// LatestUnitJudgment returns the unit's most recent judgment (or nil when it has
+// none), so a UI can show the effective invalid state. Read-only.
+func (s *ConceptService) LatestUnitJudgment(ctx context.Context, unitID int64) (*domain.UnitResolutionJudgment, error) {
+	return s.concepts.LatestUnitJudgment(ctx, unitID)
+}
+
+// ListUnitJudgments returns a unit's full append-only judgment history (newest
+// first) for a provenance UI. Read-only.
+func (s *ConceptService) ListUnitJudgments(ctx context.Context, unitID int64) ([]domain.UnitResolutionJudgment, error) {
+	return s.concepts.ListUnitJudgments(ctx, unitID)
+}
+
+// RecordDistinction records an explicit human DISTINCT judgment: the unit is NOT
+// the same learning identity as the concept. It is an append-only negative pair
+// for future ML training; it creates no membership and no relation and never
+// changes SAME membership, so the unit stays reviewable. Returns
+// domain.ErrNotFound if the unit or concept does not exist.
+func (s *ConceptService) RecordDistinction(ctx context.Context, unitID, conceptID int64) (*domain.UnitConceptDistinction, error) {
+	evidence := mustEvidence(map[string]any{"reason": "human_distinct", "resolver": domain.ConceptResolverVersion})
+	return s.concepts.RecordDistinction(ctx, unitID, conceptID, domain.SourceHuman, evidence)
+}
+
+// ListDistinctions returns a unit's full append-only DISTINCT history (newest
+// first). Read-only.
+func (s *ConceptService) ListDistinctions(ctx context.Context, unitID int64) ([]domain.UnitConceptDistinction, error) {
+	return s.concepts.ListDistinctions(ctx, unitID)
+}
+
 // CreateConcept creates a new durable concept from an explicit identity (and an
 // optional seed unit). The repository checks — inside one transaction — that no
 // non-retired concept already owns the same durable identity signature, returning
