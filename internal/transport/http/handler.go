@@ -75,11 +75,16 @@ type Handler struct {
 	concept             ConceptService
 	effectiveAnnotation EffectiveAnnotationInspectorService
 	annotationDataset   AnnotationDatasetService
+	annotationQuality   AnnotationDatasetQualityService
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService, effectiveAnnotation EffectiveAnnotationInspectorService, annotationDataset AnnotationDatasetService) *Handler {
-	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept, effectiveAnnotation: effectiveAnnotation, annotationDataset: annotationDataset}
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService, effectiveAnnotation EffectiveAnnotationInspectorService, annotationDataset AnnotationDatasetService, annotationQuality ...AnnotationDatasetQualityService) *Handler {
+	handler := &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept, effectiveAnnotation: effectiveAnnotation, annotationDataset: annotationDataset}
+	if len(annotationQuality) > 0 {
+		handler.annotationQuality = annotationQuality[0]
+	}
+	return handler
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -151,6 +156,7 @@ func (h *Handler) Routes() http.Handler {
 	// JSON and JSONL read representations. Both consume M11-A authority.
 	mux.HandleFunc("GET /annotation-dataset/v1", h.handleGetAnnotationDatasetV1)
 	mux.HandleFunc("GET /annotation-dataset/v1/export", h.handleExportAnnotationDatasetV1)
+	mux.HandleFunc("GET /annotation-dataset/v1/quality", h.handleGetAnnotationDatasetQualityV1)
 	return mux
 }
 

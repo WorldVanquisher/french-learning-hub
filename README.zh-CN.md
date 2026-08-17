@@ -12,7 +12,7 @@
 - `unit_concept_memberships` 是 CURRENT SAME 的唯一当前权威。
 - 后端、应用层、领域层和 SQLite 存储层保持分离。
 - 默认规则分析器完全在本地运行；OpenAI 分析和知识抽取必须显式启用。
-- 标注 Inspector 和 Dataset 都是只读视图，不会创建新的标注权威。
+- 标注 Inspector、Dataset 和 Quality Report 都是只读视图，不会创建新的标注权威。
 
 详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，前端运行说明见 [web/README.md](web/README.md)。
 
@@ -32,6 +32,7 @@
 10. 使用持久化 `KnowledgeConcept`、保守的精确签名解析器和人工标注工作台管理 Concept 身份。
 11. 只读查看 M11-A Effective Annotation 状态。
 12. 通过 JSON 或 NDJSON 获取 `concept_annotation_dataset_v1` 当前快照。
+13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
 
 这不是最终消费者产品，也不是间隔重复 Review Engine、掌握度系统或 ML 解析器。
 
@@ -383,7 +384,32 @@ concept_annotation_dataset_v1
 
 记录按 `entry_id`、Extraction version、Unit ordinal、Unit ID 升序排列。JSON 和 NDJSON 使用同一应用层表示；每行 NDJSON 都重复 `schema_version`。
 
-Dataset v1 不决定 `gold` 或 `training_ready`，不生成训练/验证/测试切分，不计算指标，不训练模型，也不实现候选检索。数据集质量验证和评估属于后续里程碑。
+Dataset v1 不决定 `gold` 或 `training_ready`，不生成训练/验证/测试切分，不计算指标，不训练模型，也不实现候选检索。
+
+## Dataset Validation & Quality Report v1（M11-D）
+
+后端通过一个只读端点验证并描述 M11-C 应用层表示：
+
+```bash
+curl -sS localhost:8080/annotation-dataset/v1/quality
+```
+
+响应 schema 为 `concept_annotation_quality_report_v1`，其
+`dataset_schema_version` 为 `concept_annotation_dataset_v1`。Quality Report 只消费
+M11-C 的 `ListV1` 边界，不读取 SQLite 标注历史，也不重新计算 CURRENT SAME、
+INVALID、DISTINCT 或关系权威。
+
+报告检查记录与来源/Extraction 的一致性、Effective 状态和人工标签投影、Concept
+身份快照字段、矛盾状态以及 active Unit 的 Concept support。`valid` 仅表示不存在
+结构性验证错误。保守警告（目前包括非 active Admission 上的人工标签，以及指向已
+retired Concept 的人工 CURRENT SAME）不会让报告失效，也不会删除或改写标签。因此，
+发现结构错误时端点仍返回 HTTP `200`；只有报告构建失败才返回 HTTP `500`。
+
+报告还提供 Effective 状态、Admission 与权威来源计数；明确区分人工 SAME 与自动
+SAME 的人工标签清单；按值稳定排序的 extractor、Concept identity schema 和 resolver
+来源分布；以及量化 Entry/Concept 分组泄漏风险的统计。Issue 也按固定规则稳定排序。
+M11-D 不声明通用训练资格，不生成 train/test split，不计算检索指标，不训练模型，也
+不实现检索。
 
 ## 开发与验证
 

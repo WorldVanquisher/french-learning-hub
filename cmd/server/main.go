@@ -77,11 +77,12 @@ func run() error {
 	conceptSvc := application.NewConceptService(knowledgeRepo, conceptRepo, conceptRepo)
 	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
 	annotationDatasetSvc := application.NewConceptAnnotationDatasetService(effectiveAnnotationSvc, knowledgeRepo, conceptRepo)
+	annotationQualitySvc := application.NewConceptAnnotationDatasetQualityService(annotationDatasetSvc)
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)
 	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, conceptSvc, effectiveAnnotationSvc, annotationDatasetSvc)
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, conceptSvc, effectiveAnnotationSvc, annotationDatasetSvc, annotationQualitySvc)
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,
