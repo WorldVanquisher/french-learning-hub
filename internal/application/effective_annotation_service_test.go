@@ -14,11 +14,15 @@ type stubEffectiveAnnotationRepo struct {
 	membership   *domain.CurrentConceptMembership
 	links        []domain.UnitConceptLink
 	distinctions []domain.UnitConceptDistinction
+	unit         *domain.KnowledgeUnit
+	currentUnits []domain.KnowledgeUnit
 
 	latestErr       error
 	membershipErr   error
 	linksErr        error
 	distinctionsErr error
+	unitErr         error
+	currentUnitsErr error
 }
 
 func (s *stubEffectiveAnnotationRepo) LatestUnitJudgment(context.Context, int64) (*domain.UnitResolutionJudgment, error) {
@@ -35,6 +39,14 @@ func (s *stubEffectiveAnnotationRepo) ListUnitConceptLinks(context.Context, int6
 
 func (s *stubEffectiveAnnotationRepo) ListDistinctions(context.Context, int64) ([]domain.UnitConceptDistinction, error) {
 	return s.distinctions, s.distinctionsErr
+}
+
+func (s *stubEffectiveAnnotationRepo) UnitByID(context.Context, int64) (*domain.KnowledgeUnit, error) {
+	return s.unit, s.unitErr
+}
+
+func (s *stubEffectiveAnnotationRepo) ListCurrentExtractionUnits(context.Context) ([]domain.KnowledgeUnit, error) {
+	return s.currentUnits, s.currentUnitsErr
 }
 
 func TestEffectiveAnnotationService_ComposesPersistedFacts(t *testing.T) {
@@ -61,7 +73,7 @@ func TestEffectiveAnnotationService_ComposesPersistedFacts(t *testing.T) {
 		},
 	}
 
-	snapshot, err := NewEffectiveAnnotationService(repo).GetEffectiveAnnotationSnapshot(context.Background(), 7)
+	snapshot, err := NewEffectiveAnnotationService(repo, repo).GetEffectiveAnnotationSnapshot(context.Background(), 7)
 	if err != nil {
 		t.Fatalf("GetEffectiveAnnotationSnapshot: %v", err)
 	}
@@ -82,7 +94,7 @@ func TestEffectiveAnnotationService_ComposesPersistedFacts(t *testing.T) {
 func TestEffectiveAnnotationService_PropagatesRepositoryErrors(t *testing.T) {
 	want := errors.New("read links")
 	repo := &stubEffectiveAnnotationRepo{linksErr: want}
-	_, err := NewEffectiveAnnotationService(repo).GetEffectiveAnnotationSnapshot(context.Background(), 7)
+	_, err := NewEffectiveAnnotationService(repo, repo).GetEffectiveAnnotationSnapshot(context.Background(), 7)
 	if !errors.Is(err, want) {
 		t.Fatalf("error = %v, want %v", err, want)
 	}
@@ -93,8 +105,52 @@ func TestEffectiveAnnotationService_RejectsCorruptMembershipProvenance(t *testin
 		membership: &domain.CurrentConceptMembership{UnitID: 7, ConceptID: 42, LinkID: 99},
 		links:      nil,
 	}
-	_, err := NewEffectiveAnnotationService(repo).GetEffectiveAnnotationSnapshot(context.Background(), 7)
+	_, err := NewEffectiveAnnotationService(repo, repo).GetEffectiveAnnotationSnapshot(context.Background(), 7)
 	if !errors.Is(err, domain.ErrEffectiveAnnotationCorrupt) {
 		t.Fatalf("expected ErrEffectiveAnnotationCorrupt, got %v", err)
+	}
+}
+
+func TestEffectiveAnnotationService_GetIncludesUnitEvidence(t *testing.T) {
+	unit := &domain.KnowledgeUnit{ID: 7, Kind: domain.KindGrammar, Canonical: "vouloir", Statement: "statement"}
+	repo := &stubEffectiveAnnotationRepo{unit: unit}
+	item, err := NewEffectiveAnnotationService(repo, repo).GetEffectiveAnnotation(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("GetEffectiveAnnotation: %v", err)
+	}
+	if item.Unit.ID != 7 || item.Unit.Canonical != "vouloir" {
+		t.Fatalf("unit evidence not preserved: %+v", item.Unit)
+	}
+	if item.Snapshot.Status != domain.EffectiveAnnotationUnresolved {
+		t.Fatalf("snapshot status = %q, want unresolved", item.Snapshot.Status)
+	}
+}
+
+func TestEffectiveAnnotationService_GetPropagatesMissingUnit(t *testing.T) {
+	repo := &stubEffectiveAnnotationRepo{unitErr: domain.ErrNotFound}
+	_, err := NewEffectiveAnnotationService(repo, repo).GetEffectiveAnnotation(context.Background(), 999)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestEffectiveAnnotationService_ListsCurrentUnitsWithSnapshots(t *testing.T) {
+	repo := &stubEffectiveAnnotationRepo{
+		currentUnits: []domain.KnowledgeUnit{
+			{ID: 7, Kind: domain.KindGrammar, Canonical: "a"},
+			{ID: 8, Kind: domain.KindVocabulary, Canonical: "b"},
+		},
+	}
+	items, err := NewEffectiveAnnotationService(repo, repo).ListEffectiveAnnotations(context.Background())
+	if err != nil {
+		t.Fatalf("ListEffectiveAnnotations: %v", err)
+	}
+	if len(items) != 2 || items[0].Unit.ID != 7 || items[1].Unit.ID != 8 {
+		t.Fatalf("unexpected items: %+v", items)
+	}
+	for _, item := range items {
+		if item.Snapshot.Status != domain.EffectiveAnnotationUnresolved || item.Snapshot.UnitID != item.Unit.ID {
+			t.Fatalf("unit/snapshot mismatch: %+v", item)
+		}
 	}
 }

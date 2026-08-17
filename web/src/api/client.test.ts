@@ -34,6 +34,27 @@ describe("api client request shapes", () => {
     expect(concepts[0].id).toBe(7);
   });
 
+  it("lists effective annotations via the read-only collection endpoint", async () => {
+    const { impl, calls } = stubFetch(200, {
+      effective_annotations: [{ unit: { id: 5 }, snapshot: { unit_id: 5, status: "unresolved" } }],
+    });
+    const annotations = await api.listEffectiveAnnotations(impl);
+    expect(calls[0].url).toBe("/api/effective-annotations");
+    expect(calls[0].init.method).toBe("GET");
+    expect(annotations[0].unit.id).toBe(5);
+  });
+
+  it("gets one effective annotation via its read-only unit endpoint", async () => {
+    const { impl, calls } = stubFetch(200, {
+      unit: { id: 5 },
+      snapshot: { unit_id: 5, status: "resolved" },
+    });
+    const annotation = await api.getEffectiveAnnotation(5, impl);
+    expect(calls[0].url).toBe("/api/knowledge-units/5/effective-annotation");
+    expect(calls[0].init.method).toBe("GET");
+    expect(annotation.snapshot.status).toBe("resolved");
+  });
+
   it("reads current membership from the projection endpoint (never history)", async () => {
     const { impl, calls } = stubFetch(200, { unit_id: 7, current_membership: null });
     const env = await api.getCurrentMembership(7, impl);

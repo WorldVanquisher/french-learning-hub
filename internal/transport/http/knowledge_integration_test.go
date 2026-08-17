@@ -56,7 +56,7 @@ func setupKnowledgeServer(t *testing.T, ex domain.Extractor) (*httptest.Server, 
 	captureSvc := application.NewCaptureService(captureRepo)
 	knowledgeSvc := application.NewKnowledgeService(entryRepo, analysisRepo, feedbackRepo, knowledgeRepo, admissionRepo, ex)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, nil)
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, nil, nil)
 	srv := httptest.NewServer(handler.Routes())
 	t.Cleanup(srv.Close)
 	return srv, entryRepo, analysisRepo, feedbackRepo

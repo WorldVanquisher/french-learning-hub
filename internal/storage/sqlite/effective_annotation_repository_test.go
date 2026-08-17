@@ -67,3 +67,42 @@ func TestConceptRepository_ListUnitConceptLinksRequiresExistingUnit(t *testing.T
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
+
+func TestConceptRepository_ListCurrentExtractionUnitsExcludesHistoricalUnits(t *testing.T) {
+	entries, knowledge, _, concepts := newConceptTestRepos(t)
+	ctx := context.Background()
+	first := seedExtractionWithUnits(t, entries, knowledge, []domain.ExtractedUnit{
+		grammarUnit("historical"),
+	})
+	entryID := entryIDForExtraction(t, knowledge, first.Extraction.ID)
+
+	second, err := knowledge.Create(ctx, domain.NewExtractionInput{
+		EntryID:          entryID,
+		SourceAnalysisID: first.Extraction.SourceAnalysisID,
+		Extractor:        "openai:test:knowledge_extraction_v1",
+		Units:            []domain.ExtractedUnit{grammarUnit("current")},
+		Recommendations:  domain.ApplyAdmissionV1([]domain.ExtractedUnit{grammarUnit("current")}),
+	})
+	if err != nil {
+		t.Fatalf("create second extraction: %v", err)
+	}
+
+	units, err := concepts.ListCurrentExtractionUnits(ctx)
+	if err != nil {
+		t.Fatalf("list current units: %v", err)
+	}
+	if len(units) != 1 || units[0].ID != second.Units[0].Unit.ID {
+		t.Fatalf("default current units = %+v, want only second extraction unit", units)
+	}
+
+	if err := concepts.SetCurrentExtraction(ctx, entryID, first.Extraction.ID); err != nil {
+		t.Fatalf("select first extraction: %v", err)
+	}
+	units, err = concepts.ListCurrentExtractionUnits(ctx)
+	if err != nil {
+		t.Fatalf("list selected current units: %v", err)
+	}
+	if len(units) != 1 || units[0].ID != first.Units[0].Unit.ID {
+		t.Fatalf("selected current units = %+v, want only first extraction unit", units)
+	}
+}

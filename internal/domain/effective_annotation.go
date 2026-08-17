@@ -54,6 +54,14 @@ type EffectiveAnnotationRepository interface {
 	ListDistinctions(ctx context.Context, unitID int64) ([]UnitConceptDistinction, error)
 }
 
+// EffectiveAnnotationUnitRepository supplies unit evidence for the inspector.
+// Collection reads include every unit from each entry's CURRENT extraction,
+// regardless of annotation status or admission state.
+type EffectiveAnnotationUnitRepository interface {
+	UnitByID(ctx context.Context, unitID int64) (*KnowledgeUnit, error)
+	ListCurrentExtractionUnits(ctx context.Context) ([]KnowledgeUnit, error)
+}
+
 // ResolveEffectiveAnnotation derives the effective snapshot from persisted facts.
 // Input ordering is irrelevant. CURRENT SAME comes exclusively from membership;
 // accepted SAME history is consulted only to stop older contradictory DISTINCT or

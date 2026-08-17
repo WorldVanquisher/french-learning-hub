@@ -137,3 +137,39 @@ export interface UnitDistinction {
   evidence: string;
   created_at: string;
 }
+
+// The read-only M11-B inspector combines one current-extraction KnowledgeUnit
+// with the M11-A effective annotation projection. These types describe only
+// backend-derived state; the frontend does not recompute annotation authority.
+export interface EffectiveAnnotationUnit {
+  id: number;
+  extraction_id: number;
+  ordinal: number;
+  kind: string;
+  canonical: string;
+  statement: string;
+  example: string | null;
+  confidence: number;
+  created_at: string;
+}
+
+export type EffectiveAnnotationStatus = "resolved" | "unresolved" | "invalid";
+
+export interface EffectiveSame {
+  membership: CurrentMembership;
+  decision: UnitConceptLink;
+}
+
+export interface EffectiveAnnotationSnapshot {
+  unit_id: number;
+  status: EffectiveAnnotationStatus;
+  latest_unit_judgment: UnitJudgment | null;
+  current_same: EffectiveSame | null;
+  distinctions: UnitDistinction[];
+  relations: UnitConceptLink[];
+}
+
+export interface EffectiveAnnotationItem {
+  unit: EffectiveAnnotationUnit;
+  snapshot: EffectiveAnnotationSnapshot;
+}

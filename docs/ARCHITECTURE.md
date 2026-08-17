@@ -1197,6 +1197,23 @@ This milestone does **not** export CSV/JSONL/Parquet, select human-gold training
 labels, split datasets, compute statistics, train or evaluate models, add retrieval
 or embeddings, or alter the annotation frontend. Those remain later milestones.
 
+## Effective Annotation Inspector (milestone 11-B)
+
+M11-B exposes the existing M11-A projection through two read-only endpoints:
+`GET /knowledge-units/{id}/effective-annotation` and `GET
+/effective-annotations`. The collection selects every KnowledgeUnit belonging to
+each entry's CURRENT extraction, including resolved, unresolved, and invalid units,
+while excluding stale historical extraction units. SQLite retrieves unit evidence
+and persisted annotation facts; `EffectiveAnnotationService` calls the unchanged
+M11-A resolver; transport maps the result to explicit DTOs.
+
+The web workbench has a local two-view switch between Concept Review and Annotation
+Inspector. The Inspector loads the effective collection and Concept catalog once,
+maps Concept IDs to readable targets with an ID-only fallback, and filters status
+and CURRENT SAME source client-side. It performs GET requests only and does not
+define, infer, or mutate annotation authority. It is a debugging view for collected
+annotation data before dataset-export work; no ML dataset export is included.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.
