@@ -1,23 +1,43 @@
+import { useState } from "react";
+import { AnnotationInspector } from "./pages/AnnotationInspector";
 import { ReviewQueue } from "./pages/ReviewQueue";
 
-// App is the single experimental dashboard for milestone 10.7. It is an
-// annotation / data-collection instrument with retrieval-only concept discovery —
-// NOT the Review Engine, mastery, scheduling, or an ML resolver. No authentication
-// in this milestone.
+type View = "review" | "inspector";
+
+// App keeps the two internal annotation views behind a local tab switch. The
+// inspector is intentionally separate from the write-capable review workflow.
 export default function App() {
+  const [view, setView] = useState<View>("review");
+
   return (
     <div className="app">
       <header className="app-header">
         <div>
-          <h1>Concept Review</h1>
+          <h1>{view === "review" ? "Concept Review" : "Effective Annotation Inspector"}</h1>
           <p className="subtitle">
-            Experimental human annotation for KnowledgeUnit → KnowledgeConcept
-            resolution. Every decision is recorded as backend data for later resolver
-            training. This is not the Review Engine.
+            {view === "review"
+              ? "Experimental human annotation for KnowledgeUnit → KnowledgeConcept resolution. Every explicit decision is recorded as backend data."
+              : "Read-only inspection of backend-derived annotation state for current-extraction units."}
           </p>
         </div>
       </header>
-      <ReviewQueue />
+      <nav className="view-tabs" aria-label="Annotation views">
+        <button
+          type="button"
+          aria-pressed={view === "review"}
+          onClick={() => setView("review")}
+        >
+          Concept Review
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === "inspector"}
+          onClick={() => setView("inspector")}
+        >
+          Annotation Inspector
+        </button>
+      </nav>
+      {view === "review" ? <ReviewQueue /> : <AnnotationInspector />}
     </div>
   );
 }

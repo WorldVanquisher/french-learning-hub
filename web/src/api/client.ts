@@ -7,6 +7,7 @@ import type {
   Concept,
   ConceptIdentity,
   ConceptView,
+  EffectiveAnnotationItem,
   MarkInvalidResponse,
   MembershipEnvelope,
   RelationKind,
@@ -99,6 +100,34 @@ export async function listReviewableUnits(
 export async function listConcepts(fetchImpl: typeof fetch = fetch): Promise<Concept[]> {
   const data = await request<{ concepts: Concept[] }>("GET", "/concepts", undefined, fetchImpl);
   return data.concepts ?? [];
+}
+
+// listEffectiveAnnotations reads every unit from the current extraction(s) with
+// its backend-derived M11-A effective annotation. Filtering stays client-side.
+export async function listEffectiveAnnotations(
+  fetchImpl: typeof fetch = fetch,
+): Promise<EffectiveAnnotationItem[]> {
+  const data = await request<{ effective_annotations: EffectiveAnnotationItem[] }>(
+    "GET",
+    "/effective-annotations",
+    undefined,
+    fetchImpl,
+  );
+  return data.effective_annotations ?? [];
+}
+
+// getEffectiveAnnotation reads one unit and its effective annotation projection.
+// It is exposed for focused inspection without creating annotation authority.
+export function getEffectiveAnnotation(
+  unitId: number,
+  fetchImpl: typeof fetch = fetch,
+): Promise<EffectiveAnnotationItem> {
+  return request<EffectiveAnnotationItem>(
+    "GET",
+    `/knowledge-units/${unitId}/effective-annotation`,
+    undefined,
+    fetchImpl,
+  );
 }
 
 // resolveUnit runs the deterministic resolver for a unit (records nothing) so the

@@ -1,4 +1,4 @@
-/* Intentionally simple, boring, inspectable styling (milestone 10.7). Priorities:
+/* Intentionally simple, boring, inspectable styling. Priorities:
    readable French text, comparable identity fields, unmistakable action buttons,
    and a clear visual split between CURRENT membership and RESOLUTION HISTORY.
    No themes, animations, or branding. */
@@ -57,6 +57,18 @@ body {
   color: var(--muted);
   font-size: 13px;
   max-width: 640px;
+}
+
+.view-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.view-tabs button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .queue-nav {
@@ -274,4 +286,134 @@ details.raw pre {
   border-radius: 5px;
   overflow: auto;
   font-size: 12px;
+}
+
+.inspector-filters {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: end;
+  margin: 16px 0;
+}
+
+.inspector-filters label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.inspector-filters select {
+  min-width: 170px;
+  padding: 7px 30px 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
+.inspector-list {
+  display: grid;
+  gap: 16px;
+}
+
+.inspector-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.inspector-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.inspector-card-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.status-tag {
+  padding: 2px 9px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-tag.resolved { color: var(--same); }
+.status-tag.unresolved { color: var(--muted); }
+.status-tag.invalid { color: var(--invalid); }
+
+.unit-evidence {
+  margin: 12px 0;
+}
+
+.unit-evidence div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+.unit-evidence dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.unit-evidence dd {
+  margin: 0;
+}
+
+.annotation-section {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.annotation-section h3 {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  margin: 0 0 7px;
+  text-transform: uppercase;
+}
+
+.annotation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.annotation-list li {
+  padding: 7px 0;
+}
+
+.annotation-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.annotation-provenance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.concept-intent {
+  color: var(--muted);
+}
+
+.invalid-provenance {
+  border-left: 3px solid var(--invalid);
+  padding-left: 10px;
 }

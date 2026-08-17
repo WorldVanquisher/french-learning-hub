@@ -33,9 +33,10 @@ type ConceptRepository struct {
 
 // compile-time checks.
 var (
-	_ domain.ConceptRepository             = (*ConceptRepository)(nil)
-	_ domain.CurrentExtractionRepository   = (*ConceptRepository)(nil)
-	_ domain.EffectiveAnnotationRepository = (*ConceptRepository)(nil)
+	_ domain.ConceptRepository                 = (*ConceptRepository)(nil)
+	_ domain.CurrentExtractionRepository       = (*ConceptRepository)(nil)
+	_ domain.EffectiveAnnotationRepository     = (*ConceptRepository)(nil)
+	_ domain.EffectiveAnnotationUnitRepository = (*ConceptRepository)(nil)
 )
 
 // NewConceptRepository builds a repository over an open database.
@@ -311,6 +312,62 @@ func (r *ConceptRepository) UnitByID(ctx context.Context, unitID int64) (*domain
 		return nil, fmt.Errorf("get unit: %w", err)
 	}
 	return u, nil
+}
+
+// ListCurrentExtractionUnits returns every KnowledgeUnit belonging to each
+// entry's selected CURRENT extraction. It deliberately applies no admission,
+// membership, INVALID, or reviewability filter: the inspector needs to see all
+// current unit evidence and lets M11-A derive annotation status.
+func (r *ConceptRepository) ListCurrentExtractionUnits(ctx context.Context) ([]domain.KnowledgeUnit, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT DISTINCT entry_id FROM knowledge_extractions ORDER BY entry_id ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("list entries with extractions: %w", err)
+	}
+	var entryIDs []int64
+	for rows.Next() {
+		var entryID int64
+		if err := rows.Scan(&entryID); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scan entry with extraction: %w", err)
+		}
+		entryIDs = append(entryIDs, entryID)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+
+	var out []domain.KnowledgeUnit
+	for _, entryID := range entryIDs {
+		extractionID, err := currentExtractionID(ctx, r.db, entryID)
+		if err != nil {
+			return nil, err
+		}
+		if extractionID == nil {
+			continue
+		}
+		unitRows, err := r.db.QueryContext(ctx,
+			`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at
+			 FROM knowledge_units WHERE extraction_id = ? ORDER BY ordinal ASC, id ASC`, *extractionID)
+		if err != nil {
+			return nil, fmt.Errorf("list current extraction units: %w", err)
+		}
+		for unitRows.Next() {
+			unit, err := scanUnit(unitRows)
+			if err != nil {
+				unitRows.Close()
+				return nil, fmt.Errorf("scan current extraction unit: %w", err)
+			}
+			out = append(out, *unit)
+		}
+		if err := unitRows.Err(); err != nil {
+			unitRows.Close()
+			return nil, err
+		}
+		unitRows.Close()
+	}
+	return out, nil
 }
 
 // FindActiveBySignature returns the non-retired concept(s) that own the given

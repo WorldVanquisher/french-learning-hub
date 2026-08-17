@@ -65,19 +65,20 @@ type CaptureService interface {
 
 // Handler holds dependencies for the HTTP layer.
 type Handler struct {
-	svc       EntryService
-	analysis  AnalysisService
-	feedback  FeedbackService
-	effective EffectiveService
-	inventory InventoryService
-	capture   CaptureService
-	knowledge KnowledgeService
-	concept   ConceptService
+	svc                 EntryService
+	analysis            AnalysisService
+	feedback            FeedbackService
+	effective           EffectiveService
+	inventory           InventoryService
+	capture             CaptureService
+	knowledge           KnowledgeService
+	concept             ConceptService
+	effectiveAnnotation EffectiveAnnotationInspectorService
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService) *Handler {
-	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept}
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService, effectiveAnnotation EffectiveAnnotationInspectorService) *Handler {
+	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept, effectiveAnnotation: effectiveAnnotation}
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -141,6 +142,10 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /reviewable-units", h.handleListReviewableUnits)
 	mux.HandleFunc("GET /entries/{id}/current-extraction", h.handleGetCurrentExtraction)
 	mux.HandleFunc("PUT /entries/{id}/current-extraction", h.handleSetCurrentExtraction)
+	// M11-B read-only effective annotation inspector. Both routes delegate to the
+	// existing M11-A projection and create no annotation authority.
+	mux.HandleFunc("GET /knowledge-units/{id}/effective-annotation", h.handleGetEffectiveAnnotation)
+	mux.HandleFunc("GET /effective-annotations", h.handleListEffectiveAnnotations)
 	return mux
 }
 

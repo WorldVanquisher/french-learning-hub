@@ -1,9 +1,9 @@
-# Concept Review UI (milestone 10.7)
+# Annotation Workbench
 
-An experimental **human annotation / data-collection** frontend for
-`KnowledgeUnit → KnowledgeConcept` resolution. It lets a reviewer inspect candidate
-units and record high-quality resolution decisions that can later become ML training
-data.
+An internal frontend with two views: the write-capable **Concept Review** workflow
+for `KnowledgeUnit → KnowledgeConcept` annotation, and the read-only **Annotation
+Inspector** for viewing M11-A effective annotation state over current-extraction
+units.
 
 It is **not** the Review Engine, mastery, scheduling, or an ML resolver. There is no
 authentication in this milestone.
@@ -32,7 +32,9 @@ npm run dev
 # Vite dev server on http://localhost:5173, proxying /api → http://localhost:8080
 ```
 
-Open the printed Vite URL. If the backend is not on `:8080`, point the proxy at it:
+Open the printed Vite URL and use the local view switch to move between **Concept
+Review** and **Annotation Inspector**. If the backend is not on `:8080`, point the
+proxy at it:
 
 ```sh
 FRENCH_HUB_URL=http://localhost:9000 npm run dev
@@ -107,6 +109,20 @@ from the append-only resolution events, which may still show a superseded decisi
 as `accepted`. The current-membership panel is visually distinct from the collapsible
 resolution-history panel for exactly this reason.
 
+## Effective Annotation Inspector (milestone 11-B)
+
+The Inspector calls `GET /effective-annotations` and loads `GET /concepts` once to
+show human-readable Concept targets. It displays the M11-A projection exactly as
+returned: status, CURRENT SAME and its source, effective DISTINCT evidence,
+effective relations, and INVALID provenance. Filters for status and CURRENT SAME
+source run only in the browser.
+
+The Inspector is read-only. Opening, browsing, and filtering it perform only GET
+requests and do not define annotation authority; M11-A and CURRENT SAME remain the
+backend sources of truth. Missing catalog references stay visible as `Concept #ID`.
+This view exists to inspect and debug collected annotations before dataset work; it
+does not export the ML dataset.
+
 ## Layout
 
 ```
@@ -115,7 +131,8 @@ web/src/
   components/  UnitCard, CandidateConceptCard, IdentityEditor,
                MembershipPanel, HistoryPanel, ResolutionActions
   conceptSearch.ts  deterministic retrieval-only catalog filtering
-  pages/       ReviewQueue — the single experimental dashboard
+  pages/       ReviewQueue — write-capable annotation workflow
+               AnnotationInspector — read-only effective-state view
   types/       wire types mirroring the Go transport DTOs
   App.tsx
 ```

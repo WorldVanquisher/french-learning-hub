@@ -46,8 +46,9 @@ func setupConceptServer(t *testing.T, units []domain.ExtractedUnit) (*httptest.S
 	captureSvc := application.NewCaptureService(captureRepo)
 	knowledgeSvc := application.NewKnowledgeService(entryRepo, analysisRepo, feedbackRepo, knowledgeRepo, admissionRepo, ex)
 	conceptSvc := application.NewConceptService(knowledgeRepo, conceptRepo, conceptRepo)
+	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, conceptSvc)
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, conceptSvc, effectiveAnnotationSvc)
 	srv := httptest.NewServer(handler.Routes())
 	t.Cleanup(srv.Close)
 
@@ -89,6 +90,49 @@ func extractUnits(t *testing.T, srv *httptest.Server, entryID int64) []int64 {
 		ids = append(ids, u.ID)
 	}
 	return ids
+}
+
+func TestIntegration_EffectiveAnnotationsUseOnlyCurrentExtractionUnits(t *testing.T) {
+	srv, entryID := setupConceptServer(t, []domain.ExtractedUnit{
+		{Kind: domain.KindGrammar, Canonical: "vouloir + infinitif", Statement: "current wording", Confidence: 0.9},
+	})
+	historicalIDs := extractUnits(t, srv, entryID)
+	currentIDs := extractUnits(t, srv, entryID)
+	if len(historicalIDs) != 1 || len(currentIDs) != 1 || historicalIDs[0] == currentIDs[0] {
+		t.Fatalf("unexpected extraction unit ids: historical=%v current=%v", historicalIDs, currentIDs)
+	}
+
+	resp, err := http.Get(srv.URL + "/effective-annotations")
+	if err != nil {
+		t.Fatalf("GET effective annotations: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var body struct {
+		Items []struct {
+			Unit struct {
+				ID int64 `json:"id"`
+			} `json:"unit"`
+			Snapshot struct {
+				UnitID int64  `json:"unit_id"`
+				Status string `json:"status"`
+			} `json:"snapshot"`
+		} `json:"effective_annotations"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode effective annotations: %v", err)
+	}
+	if len(body.Items) != 1 || body.Items[0].Unit.ID != currentIDs[0] {
+		t.Fatalf("items = %+v, want only current unit %d", body.Items, currentIDs[0])
+	}
+	if body.Items[0].Unit.ID == historicalIDs[0] || body.Items[0].Snapshot.UnitID != currentIDs[0] {
+		t.Fatalf("historical or mismatched unit leaked into response: %+v", body.Items[0])
+	}
+	if body.Items[0].Snapshot.Status != "unresolved" {
+		t.Fatalf("status = %q, want unresolved", body.Items[0].Snapshot.Status)
+	}
 }
 
 func TestIntegration_ConceptCreateResolveSameAndPreferred(t *testing.T) {
