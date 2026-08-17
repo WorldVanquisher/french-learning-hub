@@ -33,8 +33,9 @@ type ConceptRepository struct {
 
 // compile-time checks.
 var (
-	_ domain.ConceptRepository           = (*ConceptRepository)(nil)
-	_ domain.CurrentExtractionRepository = (*ConceptRepository)(nil)
+	_ domain.ConceptRepository             = (*ConceptRepository)(nil)
+	_ domain.CurrentExtractionRepository   = (*ConceptRepository)(nil)
+	_ domain.EffectiveAnnotationRepository = (*ConceptRepository)(nil)
 )
 
 // NewConceptRepository builds a repository over an open database.
@@ -1122,6 +1123,30 @@ func (r *ConceptRepository) GetCurrentMembership(ctx context.Context, unitID int
 		return nil, fmt.Errorf("parse membership updated_at: %w", err)
 	}
 	return &m, nil
+}
+
+// ListUnitConceptLinks returns every immutable concept-link event for one unit,
+// newest first. It exposes persisted facts only; effective SAME/relation semantics
+// are derived in the domain layer.
+func (r *ConceptRepository) ListUnitConceptLinks(ctx context.Context, unitID int64) ([]domain.UnitConceptLink, error) {
+	if err := unitExists(ctx, r.db, unitID); err != nil {
+		return nil, err
+	}
+	rows, err := r.db.QueryContext(ctx, linkSelect+` WHERE unit_id = ? ORDER BY created_at DESC, id DESC`, unitID)
+	if err != nil {
+		return nil, fmt.Errorf("list unit concept links: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.UnitConceptLink
+	for rows.Next() {
+		link, err := scanLink(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan unit concept link: %w", err)
+		}
+		out = append(out, *link)
+	}
+	return out, rows.Err()
 }
 
 // ---- membership projection helpers ----

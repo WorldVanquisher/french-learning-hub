@@ -1143,6 +1143,60 @@ identity pair), **DISTINCT** (explicit negative pair), **BROADER/NARROWER**
 (unit-level negative — the candidate should not participate in resolution at all).
 The dataset exporter is still deliberately not built.
 
+## Effective annotation semantics (milestone 11-A)
+
+M11-A adds a read-only, deterministic `EffectiveAnnotationSnapshot` for one
+KnowledgeUnit. It composes persisted facts without rewriting them:
+
+```text
+append-only judgments, distinctions, and concept-link events
+                              +
+          current unit_concept_memberships authority
+                              ↓
+               effective annotation snapshot
+```
+
+The storage layer only retrieves the latest unit judgment, CURRENT SAME
+membership, full unit-scoped concept-link history, and full DISTINCT history. The
+application service composes those facts, and a pure domain resolver decides what
+is effective. No migration or HTTP endpoint is needed.
+
+- **Status:** the latest unit judgment by `(created_at, id)` determines INVALID.
+  INVALID wins and suppresses all SAME, DISTINCT, and relation output. Otherwise a
+  row in `unit_concept_memberships` means `resolved`; its absence means
+  `unresolved`. A restored unit does not regain a SAME membership cleared during
+  invalidation.
+- **CURRENT SAME:** `unit_concept_memberships` remains the sole authority. Its
+  `link_id` must resolve to an immutable matching `same`/`accepted` event; missing
+  or incompatible provenance is reported as corruption instead of guessed or
+  repaired. The snapshot retains the membership plus the complete event, including
+  decision source, resolver version, evidence, score, and timestamp. Thus a current
+  automatic SAME remains distinguishable from human SAME and is not automatically
+  declared human-gold.
+- **DISTINCT:** only explicit `unit_concept_distinctions` rows qualify. Repeated
+  rows collapse to the newest per Concept. CURRENT SAME suppresses DISTINCT for
+  that Concept, and any later accepted SAME permanently suppresses an older
+  DISTINCT even if SAME later moves elsewhere. A new DISTINCT after that correction
+  can become effective again. Equal cross-table timestamps conservatively favor
+  SAME. `RejectSame`, candidate display, skipping, relations, and reassignment away
+  never infer DISTINCT.
+- **BROADER/NARROWER/RELATED:** only accepted, structurally un-superseded relation
+  events qualify. Rejected, legacy-superseded, and structurally superseded events
+  do not. CURRENT SAME and later affirmative SAME history suppress older relations
+  to the same Concept without allowing them to resurrect after reassignment. A new
+  explicit relation after the correction can become effective. Existing semantics
+  supersede repetitions of the same relation kind only; if different non-SAME
+  kinds remain active for one pair, M11-A preserves all of them rather than
+  inventing cross-type precedence.
+- **Determinism and provenance:** DISTINCT output is sorted by Concept ID then
+  event ID; relations by Concept ID, relation kind, then event ID. All emitted
+  records retain their persisted IDs, sources, evidence, resolver versions, and
+  timestamps so later dataset decisions remain auditable.
+
+This milestone does **not** export CSV/JSONL/Parquet, select human-gold training
+labels, split datasets, compute statistics, train or evaluate models, add retrieval
+or embeddings, or alter the annotation frontend. Those remain later milestones.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.
