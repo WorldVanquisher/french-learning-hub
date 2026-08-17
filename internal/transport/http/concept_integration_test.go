@@ -48,8 +48,9 @@ func setupConceptServer(t *testing.T, units []domain.ExtractedUnit) (*httptest.S
 	conceptSvc := application.NewConceptService(knowledgeRepo, conceptRepo, conceptRepo)
 	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
 	annotationDatasetSvc := application.NewConceptAnnotationDatasetService(effectiveAnnotationSvc, knowledgeRepo, conceptRepo)
+	annotationQualitySvc := application.NewConceptAnnotationDatasetQualityService(annotationDatasetSvc)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, conceptSvc, effectiveAnnotationSvc, annotationDatasetSvc)
+	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, conceptSvc, effectiveAnnotationSvc, annotationDatasetSvc, annotationQualitySvc)
 	srv := httptest.NewServer(handler.Routes())
 	t.Cleanup(srv.Close)
 

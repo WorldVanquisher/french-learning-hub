@@ -64,7 +64,9 @@ identity as a concept without touching membership. The review UI is an annotatio
 data-collection instrument for future resolver experiments — **not** the Review
 Engine, mastery, scheduling, or an ML resolver. Milestones 11-A/11-B add the
 effective annotation projection and its read-only Inspector; milestone 11-C adds
-the read-only, versioned Concept Annotation Dataset v1 without training a model.
+the read-only, versioned Concept Annotation Dataset v1, and milestone 11-D adds a
+deterministic validation and quality report over that dataset without training a
+model.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
 and [web/README.md](web/README.md) for running the frontend.
 
@@ -860,7 +862,37 @@ remains unit-level exclusion evidence.
 
 Dataset v1 performs no mutation or AI call and does not decide final training
 eligibility, create splits, compute metrics, train a model, or implement candidate
-retrieval. Dataset validation and evaluation are deferred to the next milestone.
+retrieval.
+
+### Dataset Validation & Quality Report v1 (milestone 11-D)
+
+The backend validates and describes the M11-C application representation through
+one read-only endpoint:
+
+```bash
+curl -sS http://localhost:8080/annotation-dataset/v1/quality
+```
+
+The response schema is `concept_annotation_quality_report_v1`; its
+`dataset_schema_version` is `concept_annotation_dataset_v1`. The report consumes
+M11-C's `ListV1` boundary only. It does not read SQLite annotation history or
+recompute CURRENT SAME, INVALID, DISTINCT, or relation authority.
+
+The report checks record/source/extraction consistency, effective-state and
+human-label projections, Concept snapshot identity fields, contradictions, and
+active-unit Concept support. `valid` means there are no structural validation
+errors. Conservative warnings—currently a human label on non-active admission and
+a human CURRENT SAME to a retired Concept—do not make the report invalid and do
+not discard or rewrite a label. A structurally invalid dataset is therefore still
+reported with HTTP `200`; HTTP `500` is reserved for a report build failure.
+
+Alongside stable, deterministically ordered issues, the report exposes effective
+status/admission/authority counts, an explicit human-label inventory that keeps
+human and automatic SAME separate, sorted extractor/Concept-schema/resolver
+provenance distributions, and grouping statistics that quantify entry- and
+Concept-level leakage risk. It deliberately does not declare universal training
+eligibility, generate train/test splits, compute retrieval metrics, train a model,
+or implement retrieval.
 
 **Knowledge-extraction work still out of scope** (not implemented): automatic extraction on
 capture/analysis/feedback, a rule-based semantic extractor, local models, model

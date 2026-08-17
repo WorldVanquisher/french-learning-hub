@@ -1248,8 +1248,45 @@ separate conservative `human_labels` projection:
 
 Records sort by entry ID, extraction version, unit ordinal, then unit ID. M11-C
 does not assert `gold`/`training_ready`, create train/validation/test splits,
-compute metrics, train a model, or implement candidate retrieval. Dataset quality
-validation and evaluation are the next milestone.
+compute metrics, train a model, or implement candidate retrieval.
+
+## Dataset Validation & Quality Report v1 (milestone 11-D)
+
+M11-D adds `GET /annotation-dataset/v1/quality`, returning the explicit schema
+`concept_annotation_quality_report_v1` for
+`concept_annotation_dataset_v1`. `ConceptAnnotationDatasetQualityService` has one
+narrow dependency—`AnnotationDatasetV1Reader.ListV1`—which the M11-C service
+satisfies. It neither accesses SQLite nor scans append-only annotation history;
+M11-A remains the authority and M11-C remains the dataset boundary.
+
+One report build calls `ListV1` once and deterministically computes:
+
+- record, entry, extraction, referenced-Concept, effective-status, admission, and
+  resolved-authority counts;
+- explicit human SAME, DISTINCT, typed relation, and INVALID inventory, keeping
+  `resolver:automatic` SAME out of human supervision;
+- sorted distributions for extractor provenance, referenced Concept identity
+  schema versions, and resolver versions carried by explicit human pair labels;
+- entry grouping and human-SAME Concept grouping statistics that expose leakage
+  risk without generating a split.
+
+Structural validation covers record/source/extraction/ordinal consistency,
+unique units, resolved/current-SAME consistency, internal membership/decision
+links, bidirectional human-label projections, INVALID pair-output suppression,
+SAME contradictions, required Concept identity fields, and supported Concepts for
+active units with CURRENT SAME. Issues are sorted by fixed severity (error before
+warning), then code, entry ID, unit ID, and nullable Concept ID. Provenance buckets
+sort by value. No wall-clock generation timestamp is included.
+
+`valid` is true exactly when no error finding exists. Warnings are diagnostic and
+do not reject data: v1 warns about an explicit human label on non-active admission
+and a human CURRENT SAME pointing to a retired Concept. The endpoint returns HTTP
+`200` even when validation produces `valid: false`; only failure to build the
+underlying M11-C dataset/report returns a generic HTTP `500`.
+
+This report is descriptive only. It creates no annotation authority, universal
+training-eligibility decision, automatic correction, train/test split, retrieval
+metric, model, or retrieval implementation.
 
 ## Design principles
 

@@ -159,6 +159,20 @@ M10.7:
 - No backend search endpoint, schema change, embedding, vector search, semantic
   similarity model, or automatic candidate label was added.
 
+M11-A through M11-D:
+
+- M11-A is the read-only effective annotation authority; M11-B exposes it through
+  the Inspector API/UI, and neither creates annotation authority.
+- M11-C exposes the versioned, current-extraction-only
+  `concept_annotation_dataset_v1` JSON/NDJSON dataset. It consumes M11-A and does
+  not reconstruct annotation semantics from history.
+- M11-D exposes the read-only `concept_annotation_quality_report_v1` at
+  `GET /annotation-dataset/v1/quality`. It consumes M11-C only, reports structural
+  errors, human-supervision inventory, sorted provenance distributions, and
+  grouping/leakage risk. Warnings do not invalidate the report.
+- These milestones do not declare universal training eligibility, create splits,
+  compute retrieval metrics, train models, or implement retrieval.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

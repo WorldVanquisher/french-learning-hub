@@ -115,3 +115,43 @@ func TestIntegration_AnnotationDatasetEmptyWithoutCurrentExtractions(t *testing.
 		t.Fatalf("empty dataset = %+v", body)
 	}
 }
+
+func TestIntegration_AnnotationDatasetQualityConsumesRealCurrentDataset(t *testing.T) {
+	srv, entryID := setupConceptServer(t, []domain.ExtractedUnit{
+		{Kind: domain.KindGrammar, Canonical: "vouloir + infinitif", Statement: "grammar", Confidence: 0.9},
+		{Kind: domain.KindVocabulary, Canonical: "éphémère", Statement: "vocabulary", Confidence: 0.9},
+	})
+	extractUnits(t, srv, entryID)
+
+	resp, err := http.Get(srv.URL + "/annotation-dataset/v1/quality")
+	if err != nil {
+		t.Fatalf("GET annotation dataset quality: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var body struct {
+		SchemaVersion        string `json:"schema_version"`
+		DatasetSchemaVersion string `json:"dataset_schema_version"`
+		Valid                bool   `json:"valid"`
+		ErrorCount           int    `json:"error_count"`
+		Summary              struct {
+			TotalRecords     int `json:"total_records"`
+			TotalEntries     int `json:"total_entries"`
+			TotalExtractions int `json:"total_extractions"`
+			EffectiveStatus  struct {
+				Unresolved int `json:"unresolved"`
+			} `json:"effective_status"`
+		} `json:"summary"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode quality report: %v", err)
+	}
+	if body.SchemaVersion != application.ConceptAnnotationQualityReportV1SchemaVersion || body.DatasetSchemaVersion != application.ConceptAnnotationDatasetV1SchemaVersion {
+		t.Fatalf("schema versions = %q, %q", body.SchemaVersion, body.DatasetSchemaVersion)
+	}
+	if !body.Valid || body.ErrorCount != 0 || body.Summary.TotalRecords != 2 || body.Summary.TotalEntries != 1 || body.Summary.TotalExtractions != 1 || body.Summary.EffectiveStatus.Unresolved != 2 {
+		t.Fatalf("quality report = %+v", body)
+	}
+}
