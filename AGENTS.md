@@ -243,6 +243,12 @@ Use:
 Documentation should describe the implemented system, not an imaginary future
 platform. Keep temporary, task-specific instructions out of this file.
 
+Every completed implementation task must ensure that `README.zh-CN.md` exists as
+the maintained Simplified Chinese companion to `README.md`. When user-facing
+behavior, setup, commands, API contracts, or architecture documented in the
+English README changes, update the corresponding Chinese documentation in the
+same task.
+
 ## Definition of Done
 
 Before declaring a task complete:
@@ -255,6 +261,9 @@ Before declaring a task complete:
 6. The final report names modified files and validation commands.
 7. The final report ends exactly with a suggested commit message for the human
    owner. The agent must only suggest it, never execute it.
+8. The final report includes an executable `git add -- ...` command listing only
+   the files modified for the task. The agent must display the command for the
+   human owner and must never execute it.
 
 ```text
 Suggested commit message:

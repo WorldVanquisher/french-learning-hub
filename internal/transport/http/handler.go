@@ -74,11 +74,12 @@ type Handler struct {
 	knowledge           KnowledgeService
 	concept             ConceptService
 	effectiveAnnotation EffectiveAnnotationInspectorService
+	annotationDataset   AnnotationDatasetService
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService, effectiveAnnotation EffectiveAnnotationInspectorService) *Handler {
-	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept, effectiveAnnotation: effectiveAnnotation}
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService, effectiveAnnotation EffectiveAnnotationInspectorService, annotationDataset AnnotationDatasetService) *Handler {
+	return &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept, effectiveAnnotation: effectiveAnnotation, annotationDataset: annotationDataset}
 }
 
 // Routes returns the configured HTTP mux for the API.
@@ -146,6 +147,10 @@ func (h *Handler) Routes() http.Handler {
 	// existing M11-A projection and create no annotation authority.
 	mux.HandleFunc("GET /knowledge-units/{id}/effective-annotation", h.handleGetEffectiveAnnotation)
 	mux.HandleFunc("GET /effective-annotations", h.handleListEffectiveAnnotations)
+	// M11-C exposes one versioned, current-snapshot dataset through equivalent
+	// JSON and JSONL read representations. Both consume M11-A authority.
+	mux.HandleFunc("GET /annotation-dataset/v1", h.handleGetAnnotationDatasetV1)
+	mux.HandleFunc("GET /annotation-dataset/v1/export", h.handleExportAnnotationDatasetV1)
 	return mux
 }
 

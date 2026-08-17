@@ -42,6 +42,7 @@ func setupHub(t *testing.T) *httptest.Server {
 		nil,
 		nil,
 		nil,
+		nil,
 	)
 	srv := httptest.NewServer(handler.Routes())
 	t.Cleanup(srv.Close)

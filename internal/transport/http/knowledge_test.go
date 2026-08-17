@@ -42,7 +42,7 @@ func (f *fakeKnowledge) ListOverrides(ctx context.Context, unitID int64) ([]*dom
 }
 
 func knowledgeServer(k KnowledgeService) http.Handler {
-	return NewHandler(&fakeService{}, nil, nil, nil, nil, nil, k, nil, nil).Routes()
+	return NewHandler(&fakeService{}, nil, nil, nil, nil, nil, k, nil, nil, nil).Routes()
 }
 
 func sampleView() *domain.ExtractionView {

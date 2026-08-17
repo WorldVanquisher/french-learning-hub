@@ -1,5 +1,7 @@
 # French Learning App
 
+[简体中文](README.zh-CN.md)
+
 A small Go HTTP service that persistently stores French-learning questions and
 their original context. The original user input is treated as the source of
 truth; AI-generated metadata is stored separately as versioned analyses and
@@ -60,8 +62,10 @@ an explicit **DISTINCT** negative pair (`POST
 /knowledge-units/{id}/concept-distinctions`) records that a unit is *not* the same
 identity as a concept without touching membership. The review UI is an annotation /
 data-collection instrument for future resolver experiments — **not** the Review
-Engine, mastery, scheduling, or an ML resolver, and no dataset exporter is built
-yet. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
+Engine, mastery, scheduling, or an ML resolver. Milestones 11-A/11-B add the
+effective annotation projection and its read-only Inspector; milestone 11-C adds
+the read-only, versioned Concept Annotation Dataset v1 without training a model.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
 and [web/README.md](web/README.md) for running the frontend.
 
 ## Requirements
@@ -826,7 +830,39 @@ their machine recommendations commit atomically or not at all). Errors use the
 shared `{"error":"..."}` shape and never expose API keys, authorization headers,
 full provider bodies, or original learning content.
 
-**Out of scope for this milestone** (not implemented): automatic extraction on
+### Concept Annotation Dataset v1 (milestone 11-C)
+
+The backend exposes the collected Concept annotations as a stable, read-only
+current snapshot:
+
+```bash
+# Versioned JSON envelope.
+curl -sS http://localhost:8080/annotation-dataset/v1
+
+# The same ordered records as newline-delimited JSON.
+curl -sS http://localhost:8080/annotation-dataset/v1/export
+```
+
+Both endpoints use schema version `concept_annotation_dataset_v1` and consume the
+M11-A effective annotation projection; they do not reconstruct authority from raw
+history. Version 1 includes every unit from each entry's CURRENT extraction,
+including suppressed and needs-review admission states, while excluding historical
+extraction units. Each record preserves immutable unit evidence, entry/extraction
+provenance, current admission state, effective annotation provenance, and snapshots
+of every referenced durable Concept identity.
+
+The `human_labels` section is deliberately narrower than effective system state.
+A human CURRENT SAME, explicit human DISTINCT, human relation, or human INVALID
+judgment is preserved as its own label; a `resolver:automatic` CURRENT SAME may be
+effectively resolved but is not emitted as human SAME gold. DISTINCT remains
+negative identity evidence, BROADER/NARROWER/RELATED remain relations, and INVALID
+remains unit-level exclusion evidence.
+
+Dataset v1 performs no mutation or AI call and does not decide final training
+eligibility, create splits, compute metrics, train a model, or implement candidate
+retrieval. Dataset validation and evaluation are deferred to the next milestone.
+
+**Knowledge-extraction work still out of scope** (not implemented): automatic extraction on
 capture/analysis/feedback, a rule-based semantic extractor, local models, model
 routing or cost optimization, ruleset evolution/proposal/replay, spaced
 repetition or review scheduling, mastery probability or automatic mastery

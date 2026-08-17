@@ -30,7 +30,7 @@ func (f *fakeEffectiveAnnotationInspector) ListEffectiveAnnotations(context.Cont
 }
 
 func effectiveAnnotationServer(svc EffectiveAnnotationInspectorService) http.Handler {
-	return NewHandler(&fakeService{}, nil, nil, nil, nil, nil, nil, nil, svc).Routes()
+	return NewHandler(&fakeService{}, nil, nil, nil, nil, nil, nil, nil, svc, nil).Routes()
 }
 
 func effectiveAnnotationTestItem(status domain.EffectiveAnnotationStatus) application.EffectiveAnnotationItem {
