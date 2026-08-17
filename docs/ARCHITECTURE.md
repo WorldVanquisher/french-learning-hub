@@ -1141,7 +1141,8 @@ The full label vocabulary the annotation data now distinguishes: **SAME** (posit
 identity pair), **DISTINCT** (explicit negative pair), **BROADER/NARROWER**
 (structured non-SAME hierarchy), **RELATED** (associated non-SAME), and **INVALID**
 (unit-level negative — the candidate should not participate in resolution at all).
-The dataset exporter is still deliberately not built.
+At this milestone the dataset exporter was deliberately deferred; M11-C below
+consumes the resulting effective projection without changing these semantics.
 
 ## Effective annotation semantics (milestone 11-A)
 
@@ -1213,6 +1214,42 @@ maps Concept IDs to readable targets with an ID-only fallback, and filters statu
 and CURRENT SAME source client-side. It performs GET requests only and does not
 define, infer, or mutate annotation authority. It is a debugging view for collected
 annotation data before dataset-export work; no ML dataset export is included.
+
+## Concept Annotation Dataset v1 (milestone 11-C)
+
+M11-C exposes a stable read-only current snapshot through `GET
+/annotation-dataset/v1` and `GET /annotation-dataset/v1/export`. The former returns
+a `concept_annotation_dataset_v1` JSON envelope; the latter returns the same
+application records in the same order as NDJSON, with the schema version repeated
+on every line. Neither endpoint mutates data, invokes AI, or makes an annotation
+decision.
+
+Dataset composition begins with `EffectiveAnnotationService.ListEffectiveAnnotations`.
+Consequently, M11-A remains the only definition of CURRENT SAME, INVALID,
+effective DISTINCT, and effective relations, and v1 includes only units from each
+entry's CURRENT extraction. The dataset service does not scan link history. It
+loads each referenced `KnowledgeExtraction` once per build for `entry_id`, version,
+analysis/feedback/extractor provenance and current admission state, and loads each
+referenced Concept once per build for its durable human-readable identity and
+lifecycle/support snapshot. A missing extraction/unit/Concept reference fails the
+whole build closed.
+
+Each record preserves immutable unit evidence, extraction provenance, machine and
+effective admission state, the Concept-decorated effective annotation, and a
+separate conservative `human_labels` projection:
+
+- Human CURRENT SAME becomes a human SAME label; `resolver:automatic` SAME can
+  remain effectively resolved but is not human gold.
+- Explicit effective human DISTINCT becomes negative identity evidence.
+- Human BROADER/NARROWER/RELATED remain typed relations and are never collapsed
+  into DISTINCT.
+- Effective human INVALID becomes unit-level exclusion evidence and has no
+  pair-level labels.
+
+Records sort by entry ID, extraction version, unit ordinal, then unit ID. M11-C
+does not assert `gold`/`training_ready`, create train/validation/test splits,
+compute metrics, train a model, or implement candidate retrieval. Dataset quality
+validation and evaluation are the next milestone.
 
 ## Design principles
 
