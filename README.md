@@ -66,7 +66,8 @@ Engine, mastery, scheduling, or an ML resolver. Milestones 11-A/11-B add the
 effective annotation projection and its read-only Inspector; milestone 11-C adds
 the read-only, versioned Concept Annotation Dataset v1, and milestone 11-D adds a
 deterministic validation and quality report over that dataset without training a
-model.
+model. Milestone 12-A adds a read-only exact-signature retrieval evaluation
+foundation without changing Concept resolution or annotation authority.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
 and [web/README.md](web/README.md) for running the frontend.
 
@@ -893,6 +894,50 @@ provenance distributions, and grouping statistics that quantify entry- and
 Concept-level leakage risk. It deliberately does not declare universal training
 eligibility, generate train/test splits, compute retrieval metrics, train a model,
 or implement retrieval.
+
+### Retrieval Evaluation Foundation v1 (milestone 12-A)
+
+M12-A measures whether a retrieval-only baseline can place the current explicit
+human SAME target in the top candidate ranks:
+
+```bash
+curl -sS http://localhost:8080/retrieval-evaluation/v1
+```
+
+The report uses schema `concept_retrieval_evaluation_v1`, policy
+`concept_retrieval_eval_policy_v1`, and retriever
+`exact_signature_retriever_v1`. Human ground truth comes only from M11-C's
+effective CURRENT human SAME and matching `human_labels.same`; automatic SAME is
+never evaluation gold. M11-D runs first, and a structurally invalid dataset
+returns HTTP `200` with `state: "blocked_invalid_dataset"`, null metrics, and no
+samples. Quality warnings do not block evaluation.
+
+A human `seed_unit_same` created by NEW CONCEPT is excluded because that Concept
+did not exist when retrieval for its seed Unit would have run. Ordinary
+`human_same` and corrective `human_same_correction` decisions to an existing
+Concept may be eligible. The remaining exclusion precedence is malformed or
+unknown SAME provenance, seed creation, non-active admission, retired target,
+then target missing from the current catalog; each human SAME record is counted
+once.
+
+Version 1 evaluates eligible Units against the CURRENT Concept catalog, sorted by
+Concept ID. Retired Concepts are excluded; normal supported and normal orphaned
+Concepts remain candidates. This intentionally does not reconstruct a historical
+catalog, so Concepts created later can be additional current competitors.
+
+The exact baseline returns only a complete candidate-identity signature match,
+with score `1.0`; it has no fuzzy, token, or semantic behavior. A human SAME whose
+Unit wording produces a different signature is therefore an expected baseline
+miss, not an error. The report computes Recall@1, Recall@3, Recall@5, and MRR for
+one positive target per eligible sample and exposes the query, target, ranked
+candidates, target rank, reciprocal rank, and hit flags for audit. When there are
+no eligible samples all metrics are `null`, distinguishing no data from measured
+zero performance.
+
+Retrieval output creates no annotation authority and is never persisted. M12-A
+adds no lexical ranking, BM25, embeddings, vector database, reranking, ML, model
+training, automatic SAME/DISTINCT, or frontend changes; improved retrieval is
+deferred to later M12 milestones.
 
 **Knowledge-extraction work still out of scope** (not implemented): automatic extraction on
 capture/analysis/feedback, a rule-based semantic extractor, local models, model

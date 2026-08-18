@@ -78,11 +78,22 @@ func run() error {
 	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
 	annotationDatasetSvc := application.NewConceptAnnotationDatasetService(effectiveAnnotationSvc, knowledgeRepo, conceptRepo)
 	annotationQualitySvc := application.NewConceptAnnotationDatasetQualityService(annotationDatasetSvc)
+	retrievalEvaluationSvc := application.NewConceptRetrievalEvaluationService(
+		annotationDatasetSvc,
+		annotationQualitySvc,
+		conceptSvc,
+		application.NewExactSignatureConceptRetriever(),
+	)
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)
 	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
 
-	handler := transporthttp.NewHandler(entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc, knowledgeSvc, conceptSvc, effectiveAnnotationSvc, annotationDatasetSvc, annotationQualitySvc)
+	handler := transporthttp.NewHandler(
+		entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc,
+		knowledgeSvc, conceptSvc, effectiveAnnotationSvc, annotationDatasetSvc,
+		transporthttp.WithAnnotationDatasetQuality(annotationQualitySvc),
+		transporthttp.WithRetrievalEvaluation(retrievalEvaluationSvc),
+	)
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,

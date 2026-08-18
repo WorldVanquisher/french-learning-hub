@@ -76,13 +76,26 @@ type Handler struct {
 	effectiveAnnotation EffectiveAnnotationInspectorService
 	annotationDataset   AnnotationDatasetService
 	annotationQuality   AnnotationDatasetQualityService
+	retrievalEvaluation RetrievalEvaluationService
+}
+
+// HandlerOption wires optional read-only milestone services without forcing
+// unrelated focused handler tests to construct every dependency.
+type HandlerOption func(*Handler)
+
+func WithAnnotationDatasetQuality(service AnnotationDatasetQualityService) HandlerOption {
+	return func(handler *Handler) { handler.annotationQuality = service }
+}
+
+func WithRetrievalEvaluation(service RetrievalEvaluationService) HandlerOption {
+	return func(handler *Handler) { handler.retrievalEvaluation = service }
 }
 
 // NewHandler builds a Handler over the given services.
-func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService, effectiveAnnotation EffectiveAnnotationInspectorService, annotationDataset AnnotationDatasetService, annotationQuality ...AnnotationDatasetQualityService) *Handler {
+func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService, effectiveAnnotation EffectiveAnnotationInspectorService, annotationDataset AnnotationDatasetService, options ...HandlerOption) *Handler {
 	handler := &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept, effectiveAnnotation: effectiveAnnotation, annotationDataset: annotationDataset}
-	if len(annotationQuality) > 0 {
-		handler.annotationQuality = annotationQuality[0]
+	for _, option := range options {
+		option(handler)
 	}
 	return handler
 }
@@ -157,6 +170,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /annotation-dataset/v1", h.handleGetAnnotationDatasetV1)
 	mux.HandleFunc("GET /annotation-dataset/v1/export", h.handleExportAnnotationDatasetV1)
 	mux.HandleFunc("GET /annotation-dataset/v1/quality", h.handleGetAnnotationDatasetQualityV1)
+	mux.HandleFunc("GET /retrieval-evaluation/v1", h.handleGetRetrievalEvaluationV1)
 	return mux
 }
 

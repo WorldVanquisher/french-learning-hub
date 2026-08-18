@@ -173,6 +173,21 @@ M11-A through M11-D:
 - These milestones do not declare universal training eligibility, create splits,
   compute retrieval metrics, train models, or implement retrieval.
 
+M12-A:
+
+- `GET /retrieval-evaluation/v1` exposes the read-only
+  `concept_retrieval_evaluation_v1` report under policy
+  `concept_retrieval_eval_policy_v1`.
+- M11-C CURRENT human SAME is the only positive retrieval truth; automatic SAME
+  is excluded, and NEW CONCEPT `seed_unit_same` is excluded as temporal leakage.
+- M11-D validity gates evaluation. Invalid Dataset v1 state produces a blocked
+  HTTP `200` report with null metrics and no samples; warnings do not block.
+- The current candidate universe excludes retired Concepts but includes normal
+  supported and orphaned Concepts. Historical catalog reconstruction is deferred.
+- `exact_signature_retriever_v1` is a deterministic retrieval-only baseline. It
+  records no annotation and intentionally has no lexical/fuzzy/BM25/embedding/ML
+  behavior. Metrics are Recall@1/3/5 and MRR; zero samples produce null metrics.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.
