@@ -24,7 +24,7 @@ func (f *fakeAnnotationDatasetQualityService) BuildV1(context.Context) (applicat
 }
 
 func qualityTestRoutes(service AnnotationDatasetQualityService) http.Handler {
-	return NewHandler(&fakeService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, service).Routes()
+	return NewHandler(&fakeService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, WithAnnotationDatasetQuality(service)).Routes()
 }
 
 func TestAnnotationDatasetQualityHandler_ReturnsStableSchemaAndEmptyCollections(t *testing.T) {

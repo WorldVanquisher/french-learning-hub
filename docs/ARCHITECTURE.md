@@ -1288,6 +1288,70 @@ This report is descriptive only. It creates no annotation authority, universal
 training-eligibility decision, automatic correction, train/test split, retrieval
 metric, model, or retrieval implementation.
 
+## Retrieval Evaluation Foundation v1 (milestone 12-A)
+
+M12-A introduces a retrieval experiment boundary, not a resolution or annotation
+boundary. `ConceptRetriever` accepts an immutable Unit query, a caller-composed
+Concept document universe, and a limit, then returns ranked candidates. It has no
+repository or mutation capability. The initial `exact_signature_retriever_v1`
+returns only complete candidate-identity/Concept-signature equality with score
+`1.0`, ranks from one, and breaks ties by Concept ID. It does not call
+`AutoResolve` and does not record SAME.
+
+`ConceptRetrievalEvaluationService` depends on four narrow readers/components:
+
+```text
+M11-D AnnotationDatasetQualityReader.BuildV1
+                         ↓ valid only
+M11-C AnnotationDatasetV1Reader.ListV1 ── human CURRENT SAME truth
+RetrievalConceptCatalogReader.ListConcepts ── current candidate corpus
+ConceptRetriever ── ranked retrieval output only
+```
+
+An invalid M11-D report blocks evaluation before the service reads the evaluation
+dataset/catalog or calls the retriever. The resulting successful report has state
+`blocked_invalid_dataset`, `dataset_valid: false`, null metrics, and an empty
+sample array. Warnings do not block. Build failures from quality, Dataset v1,
+catalog reading, or retrieval propagate to the HTTP adapter, which returns a
+generic `500` without leaking internal errors.
+
+Ground truth is exactly one effective CURRENT human SAME target with a matching
+M11-C `human_labels.same`. Automatic SAME, missing SAME, displayed candidates, and
+signature equality never create gold relevance. The service parses only
+`reason` from the SAME decision's structured evidence:
+
+- `human_same` and `human_same_correction` may be evaluated;
+- `seed_unit_same` is excluded because NEW CONCEPT created the target from that
+  Unit, so the target did not yet exist at the relevant retrieval moment;
+- malformed, missing, or unknown reasons are excluded rather than guessed.
+
+After provenance classification, the sample must have active effective admission,
+a non-retired target, and a target present in the current candidate universe.
+Exclusion precedence is unclassified provenance, seed creation, non-active
+admission, retired target, missing current target, then eligible. Thus eligible
+plus exclusions always equals the number of explicit human SAME records.
+
+The candidate corpus is the current `ListConcepts(nil)` result filtered only by
+persisted lifecycle: retired Concepts are removed, while normal supported and
+normal orphaned Concepts remain. Documents sort by Concept ID before retrieval.
+M12-A intentionally asks how each current labeled Unit performs against the
+catalog available now; it does not reconstruct point-in-time catalogs, so later
+Concepts can be additional competitors.
+
+The `concept_retrieval_evaluation_v1` report, governed by
+`concept_retrieval_eval_policy_v1`, requests top five candidates and computes
+Recall@1, Recall@3, Recall@5, and mean reciprocal rank for the single human target.
+A miss contributes zero; with zero eligible samples every aggregate metric is
+`null`, not `0.0`. Samples sort by entry ID then Unit ID and preserve query
+evidence, current target identity, human SAME event/reason, ranked retrieval
+output, nullable target rank, reciprocal rank, and hit flags. No wall-clock value
+is included.
+
+`GET /retrieval-evaluation/v1` exposes that audit read-only. Rankings and scores
+are never persisted and create no annotation authority. Lexical ranking, TF-IDF,
+BM25, embeddings, vector search, reranking, ML/LLM similarity, training, automatic
+labels, historical-corpus replay, and frontend work remain deferred.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.

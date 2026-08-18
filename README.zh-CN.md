@@ -13,6 +13,7 @@
 - 后端、应用层、领域层和 SQLite 存储层保持分离。
 - 默认规则分析器完全在本地运行；OpenAI 分析和知识抽取必须显式启用。
 - 标注 Inspector、Dataset 和 Quality Report 都是只读视图，不会创建新的标注权威。
+- Retrieval Evaluation 也是只读实验层，检索排名不会成为 SAME 或其他标注权威。
 
 详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，前端运行说明见 [web/README.md](web/README.md)。
 
@@ -33,6 +34,7 @@
 11. 只读查看 M11-A Effective Annotation 状态。
 12. 通过 JSON 或 NDJSON 获取 `concept_annotation_dataset_v1` 当前快照。
 13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
+14. 使用精确签名基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
 
 这不是最终消费者产品，也不是间隔重复 Review Engine、掌握度系统或 ML 解析器。
 
@@ -410,6 +412,41 @@ SAME 的人工标签清单；按值稳定排序的 extractor、Concept identity 
 来源分布；以及量化 Entry/Concept 分组泄漏风险的统计。Issue 也按固定规则稳定排序。
 M11-D 不声明通用训练资格，不生成 train/test split，不计算检索指标，不训练模型，也
 不实现检索。
+
+## Retrieval Evaluation Foundation v1（M12-A）
+
+M12-A 通过只读端点评估检索基线能否把当前显式人工 SAME 目标排入前 K 个候选：
+
+```bash
+curl -sS localhost:8080/retrieval-evaluation/v1
+```
+
+报告使用 schema `concept_retrieval_evaluation_v1`、policy
+`concept_retrieval_eval_policy_v1` 和 retriever
+`exact_signature_retriever_v1`。Ground truth 只来自 M11-C 的有效 CURRENT 人工 SAME
+及其匹配的 `human_labels.same`；自动 SAME 永远不作为评估 gold。评估首先运行 M11-D；
+若 Dataset 存在结构错误，端点仍返回 HTTP `200`，但 state 为
+`blocked_invalid_dataset`，指标为 `null`，samples 为 `[]`。Quality warning 不阻塞评估。
+
+通过 NEW CONCEPT 产生的 `seed_unit_same` 必须排除，因为检索 seed Unit 时目标 Concept
+尚不存在。指向已有 Concept 的普通 `human_same` 和纠正型
+`human_same_correction` 才可能符合资格。排除顺序固定为：无法分类的 SAME provenance、
+seed creation、非 active Admission、retired target、目标不在当前 catalog；每条人工
+SAME 记录只计数一次。
+
+v1 使用当前（而非历史时点）Concept catalog，并按 Concept ID 排序。retired Concept
+不参与候选；lifecycle 为 normal 的 supported 和 orphaned Concept 都保留。因此后来创建
+的 Concept 可能成为当前评估中的额外竞争候选，这是 v1 明确记录的限制。
+
+精确基线只返回完整 candidate identity signature 相等的 Concept，score 为 `1.0`，不做
+模糊、token 或语义匹配。若人工 SAME Unit 的措辞导致签名不同，baseline miss 是预期
+测量结果，不是错误。报告计算 Recall@1、Recall@3、Recall@5 和 MRR，并为每个样本公开
+query、目标 Concept、候选排名、target rank、reciprocal rank 与 hit flags。没有符合
+资格的样本时所有指标为 `null`，不会把“没有数据”误报为 `0.0` 性能。
+
+检索结果不会被持久化，也不会创建标注权威。M12-A 不实现 lexical ranking、BM25、
+embeddings、vector database、reranker、ML、训练、自动 SAME/DISTINCT 或前端改动；改进
+检索留给后续 M12 里程碑。
 
 ## 开发与验证
 
