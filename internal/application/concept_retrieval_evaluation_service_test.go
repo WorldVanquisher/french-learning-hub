@@ -174,19 +174,26 @@ func TestConceptRetrievalEvaluationService_ExclusionPrecedenceCountsOnce(t *test
 
 func TestConceptRetrievalEvaluationService_QualityGateAndFailures(t *testing.T) {
 	t.Run("invalid blocks before dataset catalog and retrieval", func(t *testing.T) {
-		dataset := &fakeAnnotationDatasetV1Reader{}
-		quality := &fakeRetrievalQualityReader{report: ConceptAnnotationQualityReport{Valid: false, ErrorCount: 1}}
-		catalog := &fakeRetrievalConceptCatalog{}
-		retriever := &fakeConceptRetriever{}
-		report, err := NewConceptRetrievalEvaluationService(dataset, quality, catalog, retriever).BuildV1(context.Background())
-		if err != nil {
-			t.Fatalf("BuildV1: %v", err)
-		}
-		if report.State != ConceptRetrievalEvaluationStateBlockedInvalidDataset || report.DatasetValid || report.Metrics.RecallAt1 != nil || report.Metrics.RecallAt3 != nil || report.Metrics.RecallAt5 != nil || report.Metrics.MRR != nil || report.Samples == nil || len(report.Samples) != 0 {
-			t.Fatalf("blocked report = %+v", report)
-		}
-		if dataset.calls != 0 || catalog.calls != 0 || retriever.calls != 0 || quality.calls != 1 {
-			t.Fatalf("blocked calls: dataset=%d catalog=%d retriever=%d quality=%d", dataset.calls, catalog.calls, retriever.calls, quality.calls)
+		for _, name := range []string{ExactSignatureRetrieverV1Name, WeightedLexicalRetrieverV1Name} {
+			t.Run(name, func(t *testing.T) {
+				dataset := &fakeAnnotationDatasetV1Reader{}
+				quality := &fakeRetrievalQualityReader{report: ConceptAnnotationQualityReport{Valid: false, ErrorCount: 1}}
+				catalog := &fakeRetrievalConceptCatalog{}
+				service := NewConceptRetrievalEvaluationServiceWithRegistry(
+					dataset, quality, catalog,
+					NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever()),
+				)
+				report, err := service.BuildV1WithRetriever(context.Background(), name)
+				if err != nil {
+					t.Fatalf("BuildV1WithRetriever: %v", err)
+				}
+				if report.Retriever != name || report.State != ConceptRetrievalEvaluationStateBlockedInvalidDataset || report.DatasetValid || report.Metrics.RecallAt1 != nil || report.Metrics.RecallAt3 != nil || report.Metrics.RecallAt5 != nil || report.Metrics.MRR != nil || report.Samples == nil || len(report.Samples) != 0 {
+					t.Fatalf("blocked report = %+v", report)
+				}
+				if dataset.calls != 0 || catalog.calls != 0 || quality.calls != 1 {
+					t.Fatalf("blocked calls: dataset=%d catalog=%d quality=%d", dataset.calls, catalog.calls, quality.calls)
+				}
+			})
 		}
 	})
 
@@ -197,6 +204,73 @@ func TestConceptRetrievalEvaluationService_QualityGateAndFailures(t *testing.T) 
 			t.Fatalf("error = %v", err)
 		}
 	})
+}
+
+func TestConceptRetrievalEvaluationService_ExactAndWeightedShareEvaluationPopulation(t *testing.T) {
+	targetIdentity := domain.ConceptIdentity{Target: "parler + nom de langue — pas d'article", PedagogicalIntent: "usage"}
+	target := qualityTestConcept(11)
+	target.Target = targetIdentity.Target
+	target.PedagogicalIntent = targetIdentity.PedagogicalIntent
+	target.Signature = targetIdentity.Signature()
+	distractor := qualityTestConcept(12)
+	distractor.Target = "accord de l'adjectif qualificatif"
+	distractor.PedagogicalIntent = "grammar"
+	distractor.Signature = domain.ConceptIdentity{Target: distractor.Target, PedagogicalIntent: distractor.PedagogicalIntent}.Signature()
+
+	record := retrievalHumanSameRecord(2, 20, 21, target, 121, "human_same")
+	record.Unit.Canonical = "nom de langue — omission d'article après parler"
+	record.Unit.Statement = "On n'emploie pas d'article défini devant un nom de langue après un verbe comme parler."
+	record.Unit.Kind = domain.KindGrammar
+	seed := retrievalHumanSameRecord(1, 10, 10, target, 110, "seed_unit_same")
+
+	dataset := &fakeAnnotationDatasetV1Reader{records: []ConceptAnnotationDatasetRecord{record, seed}}
+	quality := &fakeRetrievalQualityReader{report: ConceptAnnotationQualityReport{Valid: true}}
+	catalog := &fakeRetrievalConceptCatalog{concepts: []domain.KnowledgeConcept{distractor, target}}
+	registry := NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever())
+	service := NewConceptRetrievalEvaluationServiceWithRegistry(dataset, quality, catalog, registry)
+
+	exact, err := service.BuildV1(context.Background())
+	if err != nil {
+		t.Fatalf("default exact BuildV1: %v", err)
+	}
+	weighted, err := service.BuildV1WithRetriever(context.Background(), WeightedLexicalRetrieverV1Name)
+	if err != nil {
+		t.Fatalf("weighted BuildV1: %v", err)
+	}
+	if exact.Retriever != ExactSignatureRetrieverV1Name || weighted.Retriever != WeightedLexicalRetrieverV1Name {
+		t.Fatalf("retrievers = %q, %q", exact.Retriever, weighted.Retriever)
+	}
+	if exact.DatasetValid != weighted.DatasetValid || exact.CandidateUniverse != weighted.CandidateUniverse || !reflect.DeepEqual(exact.EvaluationSamples, weighted.EvaluationSamples) {
+		t.Fatalf("evaluation population differs: exact=%+v weighted=%+v", exact, weighted)
+	}
+	if len(exact.Samples) != 1 || len(weighted.Samples) != 1 || exact.Samples[0].UnitID != weighted.Samples[0].UnitID || exact.Samples[0].TargetConcept.ConceptID != weighted.Samples[0].TargetConcept.ConceptID {
+		t.Fatalf("sample identities differ: exact=%+v weighted=%+v", exact.Samples, weighted.Samples)
+	}
+	if len(exact.Samples[0].Retrieved) != 0 || exact.Samples[0].TargetRank != nil {
+		t.Fatalf("exact should miss: %+v", exact.Samples[0])
+	}
+	if weighted.Samples[0].TargetRank == nil || *weighted.Samples[0].TargetRank != 1 || len(weighted.Samples[0].Retrieved) == 0 || weighted.Samples[0].Retrieved[0].ConceptID != target.ID {
+		t.Fatalf("weighted should retrieve target at rank 1: %+v", weighted.Samples[0])
+	}
+	assertRetrievalMetrics(t, exact.Metrics, 0, 0, 0, 0)
+	assertRetrievalMetrics(t, weighted.Metrics, 1, 1, 1, 1)
+}
+
+func TestConceptRetrievalEvaluationService_UnknownRetrieverStopsBeforeDependencies(t *testing.T) {
+	dataset := &fakeAnnotationDatasetV1Reader{}
+	quality := &fakeRetrievalQualityReader{}
+	catalog := &fakeRetrievalConceptCatalog{}
+	service := NewConceptRetrievalEvaluationServiceWithRegistry(
+		dataset, quality, catalog,
+		NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever()),
+	)
+	_, err := service.BuildV1WithRetriever(context.Background(), "not_registered")
+	if !errors.Is(err, ErrUnknownConceptRetriever) {
+		t.Fatalf("error = %v", err)
+	}
+	if dataset.calls != 0 || quality.calls != 0 || catalog.calls != 0 {
+		t.Fatalf("dependency calls: dataset=%d quality=%d catalog=%d", dataset.calls, quality.calls, catalog.calls)
+	}
 }
 
 func TestConceptRetrievalEvaluationService_DatasetCatalogAndRetrieverFailuresPropagate(t *testing.T) {

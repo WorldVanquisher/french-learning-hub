@@ -26,7 +26,7 @@ func (*retrievalEvaluationExtractor) Extract(_ context.Context, source domain.Ex
 	statement := "Seed representation for the durable Concept."
 	if source.OriginalInput == "later retrieval query" {
 		canonical = "nom de langue — omission d'article après parler"
-		statement = "Later wording that a human maps to the existing Concept."
+		statement = "On n'emploie pas d'article défini devant un nom de langue après un verbe comme parler."
 	}
 	return domain.ExtractionResult{Units: []domain.ExtractedUnit{{
 		Kind: domain.KindGrammar, Canonical: canonical, Statement: statement, Confidence: 0.9,
@@ -61,7 +61,15 @@ func setupRetrievalEvaluationServer(t *testing.T) (*httptest.Server, *sqlite.Ent
 	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
 	datasetSvc := application.NewConceptAnnotationDatasetService(effectiveAnnotationSvc, knowledgeRepo, conceptRepo)
 	qualitySvc := application.NewConceptAnnotationDatasetQualityService(datasetSvc)
-	evaluationSvc := application.NewConceptRetrievalEvaluationService(datasetSvc, qualitySvc, conceptSvc, application.NewExactSignatureConceptRetriever())
+	evaluationSvc := application.NewConceptRetrievalEvaluationServiceWithRegistry(
+		datasetSvc,
+		qualitySvc,
+		conceptSvc,
+		application.NewConceptRetrieverRegistry(
+			application.NewExactSignatureConceptRetriever(),
+			application.NewWeightedLexicalConceptRetriever(),
+		),
+	)
 
 	handler := transporthttp.NewHandler(
 		entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc,
@@ -89,13 +97,64 @@ func createRetrievalEvaluationEntry(t *testing.T, entries *sqlite.EntryRepositor
 	return entry.ID
 }
 
-func TestIntegration_RetrievalEvaluationExcludesSeedAndAuditsLaterExactMiss(t *testing.T) {
+type retrievalEvaluationIntegrationReport struct {
+	Retriever         string `json:"retriever"`
+	State             string `json:"state"`
+	DatasetValid      bool   `json:"dataset_valid"`
+	CandidateUniverse struct {
+		Concepts int `json:"concepts"`
+	} `json:"candidate_universe"`
+	EvaluationSamples struct {
+		HumanSameRecords int `json:"human_same_records"`
+		EligibleSamples  int `json:"eligible_samples"`
+		Excluded         struct {
+			SeedNewConcept int `json:"seed_new_concept"`
+		} `json:"excluded"`
+	} `json:"evaluation_samples"`
+	Metrics struct {
+		RecallAt1 *float64 `json:"recall_at_1"`
+		RecallAt3 *float64 `json:"recall_at_3"`
+		RecallAt5 *float64 `json:"recall_at_5"`
+		MRR       *float64 `json:"mrr"`
+	} `json:"metrics"`
+	Samples []struct {
+		UnitID          int64  `json:"unit_id"`
+		HumanSameReason string `json:"human_same_reason"`
+		TargetConcept   struct {
+			ID int64 `json:"id"`
+		} `json:"target_concept"`
+		Retrieved []struct {
+			ConceptID int64 `json:"concept_id"`
+			Rank      int   `json:"rank"`
+		} `json:"retrieved"`
+		TargetRank *int `json:"target_rank"`
+	} `json:"samples"`
+}
+
+func getRetrievalEvaluationIntegrationReport(t *testing.T, url string) retrievalEvaluationIntegrationReport {
+	t.Helper()
+	response, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET retrieval evaluation: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("evaluation status = %d", response.StatusCode)
+	}
+	var report retrievalEvaluationIntegrationReport
+	if err := json.NewDecoder(response.Body).Decode(&report); err != nil {
+		t.Fatalf("decode evaluation: %v", err)
+	}
+	return report
+}
+
+func TestIntegration_RetrievalEvaluationComparesExactMissWithWeightedLexicalHit(t *testing.T) {
 	server, entries, analyses := setupRetrievalEvaluationServer(t)
 
 	seedEntryID := createRetrievalEvaluationEntry(t, entries, analyses, "seed concept query")
 	seedUnitID := extractUnits(t, server, seedEntryID)[0]
 	createBody := `{
-		"identity":{"target":"parler + nom de langue — pas d'article","pedagogical_intent":"grammar"},
+		"identity":{"target":"parler + nom de langue — pas d'article","pedagogical_intent":"usage"},
 		"seed_unit_id":` + itoa(seedUnitID) + `,
 		"link_seed_as_same":true
 	}`
@@ -131,53 +190,33 @@ func TestIntegration_RetrievalEvaluationExcludesSeedAndAuditsLaterExactMiss(t *t
 	}
 	sameResponse.Body.Close()
 
-	response, err := http.Get(server.URL + "/retrieval-evaluation/v1")
-	if err != nil {
-		t.Fatalf("GET retrieval evaluation: %v", err)
+	exact := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1")
+	weighted := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1?retriever="+application.WeightedLexicalRetrieverV1Name)
+
+	if exact.Retriever != application.ExactSignatureRetrieverV1Name || weighted.Retriever != application.WeightedLexicalRetrieverV1Name {
+		t.Fatalf("retrievers = %q, %q", exact.Retriever, weighted.Retriever)
 	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		t.Fatalf("evaluation status = %d", response.StatusCode)
+	for name, report := range map[string]retrievalEvaluationIntegrationReport{"exact": exact, "weighted": weighted} {
+		if report.State != application.ConceptRetrievalEvaluationStateEvaluated || !report.DatasetValid || report.CandidateUniverse.Concepts != 1 {
+			t.Fatalf("%s evaluation state/universe = %+v", name, report)
+		}
+		if report.EvaluationSamples.HumanSameRecords != 2 || report.EvaluationSamples.EligibleSamples != 1 || report.EvaluationSamples.Excluded.SeedNewConcept != 1 {
+			t.Fatalf("%s evaluation sample inventory = %+v", name, report.EvaluationSamples)
+		}
+		if len(report.Samples) != 1 || report.Samples[0].UnitID != laterUnitID || report.Samples[0].HumanSameReason != "human_same" || report.Samples[0].TargetConcept.ID != created.Concept.ID {
+			t.Fatalf("%s later sample identity = %+v", name, report.Samples)
+		}
 	}
-	var report struct {
-		State             string `json:"state"`
-		DatasetValid      bool   `json:"dataset_valid"`
-		CandidateUniverse struct {
-			Concepts int `json:"concepts"`
-		} `json:"candidate_universe"`
-		EvaluationSamples struct {
-			HumanSameRecords int `json:"human_same_records"`
-			EligibleSamples  int `json:"eligible_samples"`
-			Excluded         struct {
-				SeedNewConcept int `json:"seed_new_concept"`
-			} `json:"excluded"`
-		} `json:"evaluation_samples"`
-		Metrics struct {
-			RecallAt1 *float64 `json:"recall_at_1"`
-			RecallAt3 *float64 `json:"recall_at_3"`
-			RecallAt5 *float64 `json:"recall_at_5"`
-			MRR       *float64 `json:"mrr"`
-		} `json:"metrics"`
-		Samples []struct {
-			UnitID          int64             `json:"unit_id"`
-			HumanSameReason string            `json:"human_same_reason"`
-			Retrieved       []json.RawMessage `json:"retrieved"`
-			TargetRank      *int              `json:"target_rank"`
-		} `json:"samples"`
+	if len(exact.Samples[0].Retrieved) != 0 || exact.Samples[0].TargetRank != nil {
+		t.Fatalf("exact later sample audit = %+v", exact.Samples)
 	}
-	if err := json.NewDecoder(response.Body).Decode(&report); err != nil {
-		t.Fatalf("decode evaluation: %v", err)
+	if exact.Metrics.RecallAt1 == nil || exact.Metrics.RecallAt3 == nil || exact.Metrics.RecallAt5 == nil || exact.Metrics.MRR == nil || *exact.Metrics.RecallAt1 != 0 || *exact.Metrics.RecallAt3 != 0 || *exact.Metrics.RecallAt5 != 0 || *exact.Metrics.MRR != 0 {
+		t.Fatalf("exact-signature miss metrics = %+v", exact.Metrics)
 	}
-	if report.State != application.ConceptRetrievalEvaluationStateEvaluated || !report.DatasetValid || report.CandidateUniverse.Concepts != 1 {
-		t.Fatalf("evaluation state/universe = %+v", report)
+	if len(weighted.Samples[0].Retrieved) == 0 || weighted.Samples[0].Retrieved[0].ConceptID != created.Concept.ID || weighted.Samples[0].Retrieved[0].Rank != 1 || weighted.Samples[0].TargetRank == nil || *weighted.Samples[0].TargetRank != 1 {
+		t.Fatalf("weighted later sample audit = %+v", weighted.Samples)
 	}
-	if report.EvaluationSamples.HumanSameRecords != 2 || report.EvaluationSamples.EligibleSamples != 1 || report.EvaluationSamples.Excluded.SeedNewConcept != 1 {
-		t.Fatalf("evaluation sample inventory = %+v", report.EvaluationSamples)
-	}
-	if len(report.Samples) != 1 || report.Samples[0].UnitID != laterUnitID || report.Samples[0].HumanSameReason != "human_same" || len(report.Samples[0].Retrieved) != 0 || report.Samples[0].TargetRank != nil {
-		t.Fatalf("later sample audit = %+v", report.Samples)
-	}
-	if report.Metrics.RecallAt1 == nil || report.Metrics.RecallAt3 == nil || report.Metrics.RecallAt5 == nil || report.Metrics.MRR == nil || *report.Metrics.RecallAt1 != 0 || *report.Metrics.RecallAt3 != 0 || *report.Metrics.RecallAt5 != 0 || *report.Metrics.MRR != 0 {
-		t.Fatalf("exact-signature miss metrics = %+v", report.Metrics)
+	if weighted.Metrics.RecallAt1 == nil || weighted.Metrics.RecallAt3 == nil || weighted.Metrics.RecallAt5 == nil || weighted.Metrics.MRR == nil || *weighted.Metrics.RecallAt1 != 1 || *weighted.Metrics.RecallAt3 != 1 || *weighted.Metrics.RecallAt5 != 1 || *weighted.Metrics.MRR != 1 {
+		t.Fatalf("weighted lexical hit metrics = %+v", weighted.Metrics)
 	}
 }

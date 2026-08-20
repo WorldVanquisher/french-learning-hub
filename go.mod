@@ -2,7 +2,10 @@ module french-learning-app
 
 go 1.26.5
 
-require modernc.org/sqlite v1.54.0
+require (
+	golang.org/x/text v0.38.0
+	modernc.org/sqlite v1.54.0
+)
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect

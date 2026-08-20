@@ -78,11 +78,14 @@ func run() error {
 	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
 	annotationDatasetSvc := application.NewConceptAnnotationDatasetService(effectiveAnnotationSvc, knowledgeRepo, conceptRepo)
 	annotationQualitySvc := application.NewConceptAnnotationDatasetQualityService(annotationDatasetSvc)
-	retrievalEvaluationSvc := application.NewConceptRetrievalEvaluationService(
+	retrievalEvaluationSvc := application.NewConceptRetrievalEvaluationServiceWithRegistry(
 		annotationDatasetSvc,
 		annotationQualitySvc,
 		conceptSvc,
-		application.NewExactSignatureConceptRetriever(),
+		application.NewConceptRetrieverRegistry(
+			application.NewExactSignatureConceptRetriever(),
+			application.NewWeightedLexicalConceptRetriever(),
+		),
 	)
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)

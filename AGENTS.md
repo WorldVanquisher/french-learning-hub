@@ -188,6 +188,27 @@ M12-A:
   records no annotation and intentionally has no lexical/fuzzy/BM25/embedding/ML
   behavior. Metrics are Recall@1/3/5 and MRR; zero samples produce null metrics.
 
+M12-B:
+
+- `weighted_lexical_retriever_v1` is selectable through the same read-only
+  evaluation endpoint; no query parameter still defaults to
+  `exact_signature_retriever_v1`.
+- Application-owned `ConceptRetrieverRegistry` selection keeps algorithm
+  construction out of HTTP. Unknown retriever names return HTTP `400` rather
+  than falling back.
+- `concept_lexical_normalization_v1` lowercases Unicode, canonically decomposes
+  text, removes combining marks, creates token boundaries at punctuation and
+  separators, and discards one-rune tokens. It has no stop-word list, stemming,
+  lemmatization, IDF, BM25, embeddings, fuzzy matching, ML, or provider call.
+- The retriever deduplicates tokens within each weighted field, computes
+  weighted cosine similarity, returns only positive-overlap Concepts, and sorts
+  by score descending then Concept ID ascending. Stable JSON evidence lists
+  unique sorted matched tokens and creates no annotation authority.
+- Exact and lexical evaluations reuse `concept_retrieval_eval_policy_v1`; their
+  validity, universe, eligibility, exclusions, sample Units, targets, and max K
+  must remain identical. Only retrieval output, ranks, metrics, and retriever
+  name may differ.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

@@ -1348,9 +1348,58 @@ output, nullable target rank, reciprocal rank, and hit flags. No wall-clock valu
 is included.
 
 `GET /retrieval-evaluation/v1` exposes that audit read-only. Rankings and scores
-are never persisted and create no annotation authority. Lexical ranking, TF-IDF,
-BM25, embeddings, vector search, reranking, ML/LLM similarity, training, automatic
-labels, historical-corpus replay, and frontend work remain deferred.
+are never persisted and create no annotation authority.
+
+## Weighted Lexical Ranked Retriever v1 (milestone 12-B)
+
+M12-B adds `weighted_lexical_retriever_v1` behind an application-owned
+`ConceptRetrieverRegistry`. The empty selector and explicit
+`exact_signature_retriever_v1` select the exact baseline; explicit
+`weighted_lexical_retriever_v1` selects lexical ranking. The HTTP adapter only
+passes the query value to the application service, returns `400` for an unknown
+name, and never constructs an algorithm or gains storage capability.
+
+Both retrievers execute the same `concept_retrieval_eval_policy_v1` path after
+selection. They therefore share the M11-D validity gate, M11-C human-SAME truth,
+seed/provenance/admission/target exclusions, current non-retired candidate
+universe, sample ordering and targets, max K of five, and Recall@1/3/5 and MRR
+definitions. Only retriever name, candidates, target ranks, and metrics may
+differ. This is an experiment-control invariant, not merely a response-shape
+convention.
+
+The lexical representation uses normalization version
+`concept_lexical_normalization_v1`:
+
+1. Unicode lowercase, canonical decomposition, and combining-mark removal make
+   accented and unaccented spellings comparable.
+2. Non-letter/non-digit runes create token boundaries; empty and one-rune tokens
+   are discarded.
+3. There is no stop-word list, stemming, lemmatization, or fuzzy rewriting.
+4. Tokens are deduplicated inside each field, then field weights accumulate when
+   the same token occurs in distinct fields.
+
+Query canonical and statement weights are `4.0` and `2.0`; candidate intent,
+scope, feature keys, and feature values each weigh `1.0`. Candidate target is
+omitted because v1 derives it from canonical and including both would double
+count the primary evidence. Concept target weighs `4.0`; Concept intent, scope,
+feature keys, and feature values each weigh `1.0`. Lifecycle, support, and state
+remain metadata and never enter the vector.
+
+The retriever scores the positive weighted vectors with cosine similarity. Empty
+or disjoint vectors score zero and are omitted. Positive results sort by score
+descending and Concept ID ascending, receive one-based ranks, and are truncated
+to the caller's limit. Cosine supplies a transparent, length-normalized baseline
+without corpus statistics or training; its score is neither a calibrated
+probability nor evidence of SAME. Exact signatures receive no special lexical
+boost. Evidence is stable JSON containing the reason
+`weighted_lexical_cosine`, normalization version, and unique lexicographically
+sorted matched tokens.
+
+Each request scores the small current Concept corpus in memory. Nothing is
+persisted, no annotation or membership is written, and no provider is called.
+IDF, TF-IDF, BM25, inverted indexes, SQLite FTS, embeddings, vector search,
+reranking, fuzzy edit distance, ML/LLM similarity, automatic labels,
+historical-corpus replay, and frontend work remain deferred.
 
 ## Design principles
 

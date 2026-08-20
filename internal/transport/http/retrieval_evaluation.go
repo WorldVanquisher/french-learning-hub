@@ -2,15 +2,16 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"french-learning-app/internal/application"
 )
 
 // RetrievalEvaluationService is the one read-only operation needed by the
-// M12-A transport endpoint.
+// M12 transport endpoint.
 type RetrievalEvaluationService interface {
-	BuildV1(ctx context.Context) (application.ConceptRetrievalEvaluationReport, error)
+	BuildV1WithRetriever(ctx context.Context, name string) (application.ConceptRetrievalEvaluationReport, error)
 }
 
 type retrievalEvaluationResponse struct {
@@ -160,7 +161,20 @@ func (h *Handler) handleGetRetrievalEvaluationV1(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusInternalServerError, "could not build concept retrieval evaluation")
 		return
 	}
-	report, err := h.retrievalEvaluation.BuildV1(r.Context())
+	values := r.URL.Query()["retriever"]
+	if len(values) > 1 {
+		writeError(w, http.StatusBadRequest, "invalid retriever")
+		return
+	}
+	retriever := ""
+	if len(values) == 1 {
+		retriever = values[0]
+	}
+	report, err := h.retrievalEvaluation.BuildV1WithRetriever(r.Context(), retriever)
+	if errors.Is(err, application.ErrUnknownConceptRetriever) {
+		writeError(w, http.StatusBadRequest, "unknown retriever")
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not build concept retrieval evaluation")
 		return
