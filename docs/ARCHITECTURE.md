@@ -1397,9 +1397,79 @@ sorted matched tokens.
 
 Each request scores the small current Concept corpus in memory. Nothing is
 persisted, no annotation or membership is written, and no provider is called.
-IDF, TF-IDF, BM25, inverted indexes, SQLite FTS, embeddings, vector search,
+The M12-B algorithm has no IDF, TF-IDF, or BM25 behavior; M12-C adds the separate
+BM25 baseline below. Inverted indexes, SQLite FTS, embeddings, vector search,
 reranking, fuzzy edit distance, ML/LLM similarity, automatic labels,
 historical-corpus replay, and frontend work remain deferred.
+
+## Corpus-aware BM25 Ranked Retriever v1 (milestone 12-C)
+
+M12-C registers `bm25_retriever_v1` alongside the exact and weighted-cosine
+retrievers. It implements the unchanged `ConceptRetriever` interface and receives
+only one immutable query, the caller-supplied documents, and a limit. It does not
+read a repository, SQLite, annotation history, resolver state, or an external
+service. `ConceptRetrieverRegistry` remains the algorithm-selection owner;
+production composition registers all three algorithms while retaining
+`exact_signature_retriever_v1` as the empty-selector default. HTTP still only
+passes `?retriever=` and maps an unknown name to `400`.
+
+The retriever reuses `concept_lexical_normalization_v1` exactly. Unlike M12-B's
+per-field token sets, M12-C keeps every normalized occurrence. Query fields and
+weights are canonical `4.0`, statement `2.0`, and candidate intent, scope, feature
+keys, and feature values `1.0` each. Candidate-identity target remains omitted
+because canonical is the primary evidence and adding both would double count it.
+Document fields are target `4.0` and intent, scope, feature keys, and feature
+values `1.0` each. Example, Concept lifecycle/support/effective state, human SAME
+target information, human reasons, rank, and evaluation outcomes never enter the
+lexical representation.
+
+Field weighting is explicit multiplication, never string or token duplication.
+For token `t`, `q_w(t)` is raw query term frequency multiplied and summed over
+query field weights, and `tf_w(t,D)` is the equivalent document value. Weighted
+document length `|D|_w` is the sum of the relevant field weight for every
+normalized token occurrence. For every retrieval call, the supplied corpus alone
+defines document count `N`, per-token document frequency `df(t)`, and average
+weighted document length `avgdl_w`. Version 1 uses positive Robertson/Sparck Jones
+IDF and this score:
+
+```text
+IDF(t) = ln(1 + (N - df(t) + 0.5) / (df(t) + 0.5))
+
+score(D,Q) = Σ[t in Q] q_w(t) * IDF(t) *
+             tf_w(t,D) * (k1 + 1)
+             -----------------------------------------------
+             tf_w(t,D) + k1 * (1 - b + b * |D|_w / avgdl_w)
+```
+
+The versioned constants are `k1=1.2` and `b=0.75`; they are conventional defaults
+and are not tuned against Dataset v1 labels. `k1` saturates repeated document-term
+frequency, `b` normalizes for document length, and IDF reduces the influence of
+tokens common throughout the supplied corpus. This is a deliberately small
+field-weighted BM25 variant rather than full per-field-normalized BM25F: fields are
+combined into one weighted representation before saturation and length
+normalization. Empty or degenerate representations produce no result and never a
+NaN or infinity.
+
+Positive finite scores sort descending with Concept ID ascending as the stable
+tie-break, are assigned one-based ranks, and are truncated to the requested
+limit. Evidence is deterministic structured JSON with reason `bm25`, normalization
+and parameter versions, corpus/document lengths, unique sorted matched tokens,
+and sorted per-token query weight, document frequency, IDF, weighted document TF,
+and contribution. This evidence remains retrieval relevance, not a probability,
+SAME/DISTINCT label, or resolution decision.
+
+The evaluation service is unchanged. Exact, weighted cosine, and BM25 therefore
+share the M11-D validity gate, M11-C CURRENT explicit human-SAME truth, provenance
+classification, seed creation exclusion, admission/retired/missing-target
+exclusions, current non-retired Concept universe, eligible Units, targets, sample
+ordering, maximum K of five, and Recall@1/3/5 and MRR definitions. Only retriever
+name, candidates, scores, evidence, target rank/hits, and aggregate metrics can
+differ. The quality gate still runs before dataset/catalog reads or BM25 scoring.
+
+Corpus statistics are calculated in memory for each call. M12-C adds no migration,
+table, persisted index/statistic/result, cache, SQLite FTS, annotation mutation,
+Concept resolution, semantic embedding, model inference, provider, reranker,
+parameter learning, or frontend behavior.
 
 ## Design principles
 

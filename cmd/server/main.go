@@ -85,6 +85,7 @@ func run() error {
 		application.NewConceptRetrieverRegistry(
 			application.NewExactSignatureConceptRetriever(),
 			application.NewWeightedLexicalConceptRetriever(),
+			application.NewBM25ConceptRetriever(),
 		),
 	)
 

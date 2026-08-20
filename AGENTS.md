@@ -209,6 +209,26 @@ M12-B:
   must remain identical. Only retrieval output, ranks, metrics, and retriever
   name may differ.
 
+M12-C:
+
+- `bm25_retriever_v1` is the deterministic corpus-aware lexical baseline. It is
+  registered beside exact and weighted cosine through the existing
+  `ConceptRetrieverRegistry`; the default remains `exact_signature_retriever_v1`.
+- BM25 reuses `concept_lexical_normalization_v1` but preserves raw term frequency.
+  Explicit field weights produce weighted query/document term frequencies and
+  weighted document length; per-call in-memory corpus statistics provide document
+  frequency, positive Robertson/Sparck Jones IDF, and average document length.
+- Version 1 fixes `k1=1.2` and `b=0.75` without label-driven tuning. It applies
+  term-frequency saturation and document-length normalization, returns positive
+  finite scores only, sorts by score descending then Concept ID ascending, and
+  emits stable JSON evidence with sorted matched tokens and term contributions.
+- Exact, weighted cosine, and BM25 evaluations share the same M11-D gate, M11-C
+  human-SAME truth, exclusions, current non-retired universe, samples, targets,
+  max K, and metrics. BM25 ranking is retrieval evidence only and creates no
+  annotation or resolution authority.
+- M12-C adds no persistence, migration, index, SQLite FTS, cache, embedding,
+  model inference, provider call, parameter learning, or frontend behavior.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

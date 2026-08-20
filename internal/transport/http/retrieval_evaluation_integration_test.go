@@ -68,6 +68,7 @@ func setupRetrievalEvaluationServer(t *testing.T) (*httptest.Server, *sqlite.Ent
 		application.NewConceptRetrieverRegistry(
 			application.NewExactSignatureConceptRetriever(),
 			application.NewWeightedLexicalConceptRetriever(),
+			application.NewBM25ConceptRetriever(),
 		),
 	)
 
@@ -148,7 +149,7 @@ func getRetrievalEvaluationIntegrationReport(t *testing.T, url string) retrieval
 	return report
 }
 
-func TestIntegration_RetrievalEvaluationComparesExactMissWithWeightedLexicalHit(t *testing.T) {
+func TestIntegration_RetrievalEvaluationComparesExactMissWithLexicalHits(t *testing.T) {
 	server, entries, analyses := setupRetrievalEvaluationServer(t)
 
 	seedEntryID := createRetrievalEvaluationEntry(t, entries, analyses, "seed concept query")
@@ -192,11 +193,12 @@ func TestIntegration_RetrievalEvaluationComparesExactMissWithWeightedLexicalHit(
 
 	exact := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1")
 	weighted := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1?retriever="+application.WeightedLexicalRetrieverV1Name)
+	bm25 := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1?retriever="+application.BM25RetrieverV1Name)
 
-	if exact.Retriever != application.ExactSignatureRetrieverV1Name || weighted.Retriever != application.WeightedLexicalRetrieverV1Name {
-		t.Fatalf("retrievers = %q, %q", exact.Retriever, weighted.Retriever)
+	if exact.Retriever != application.ExactSignatureRetrieverV1Name || weighted.Retriever != application.WeightedLexicalRetrieverV1Name || bm25.Retriever != application.BM25RetrieverV1Name {
+		t.Fatalf("retrievers = %q, %q, %q", exact.Retriever, weighted.Retriever, bm25.Retriever)
 	}
-	for name, report := range map[string]retrievalEvaluationIntegrationReport{"exact": exact, "weighted": weighted} {
+	for name, report := range map[string]retrievalEvaluationIntegrationReport{"exact": exact, "weighted": weighted, "bm25": bm25} {
 		if report.State != application.ConceptRetrievalEvaluationStateEvaluated || !report.DatasetValid || report.CandidateUniverse.Concepts != 1 {
 			t.Fatalf("%s evaluation state/universe = %+v", name, report)
 		}
@@ -218,5 +220,11 @@ func TestIntegration_RetrievalEvaluationComparesExactMissWithWeightedLexicalHit(
 	}
 	if weighted.Metrics.RecallAt1 == nil || weighted.Metrics.RecallAt3 == nil || weighted.Metrics.RecallAt5 == nil || weighted.Metrics.MRR == nil || *weighted.Metrics.RecallAt1 != 1 || *weighted.Metrics.RecallAt3 != 1 || *weighted.Metrics.RecallAt5 != 1 || *weighted.Metrics.MRR != 1 {
 		t.Fatalf("weighted lexical hit metrics = %+v", weighted.Metrics)
+	}
+	if len(bm25.Samples[0].Retrieved) == 0 || bm25.Samples[0].Retrieved[0].ConceptID != created.Concept.ID || bm25.Samples[0].Retrieved[0].Rank != 1 || bm25.Samples[0].TargetRank == nil || *bm25.Samples[0].TargetRank != 1 {
+		t.Fatalf("BM25 later sample audit = %+v", bm25.Samples)
+	}
+	if bm25.Metrics.RecallAt1 == nil || bm25.Metrics.RecallAt3 == nil || bm25.Metrics.RecallAt5 == nil || bm25.Metrics.MRR == nil || *bm25.Metrics.RecallAt1 != 1 || *bm25.Metrics.RecallAt3 != 1 || *bm25.Metrics.RecallAt5 != 1 || *bm25.Metrics.MRR != 1 {
+		t.Fatalf("BM25 lexical hit metrics = %+v", bm25.Metrics)
 	}
 }

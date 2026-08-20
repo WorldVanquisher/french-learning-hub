@@ -67,8 +67,9 @@ effective annotation projection and its read-only Inspector; milestone 11-C adds
 the read-only, versioned Concept Annotation Dataset v1, and milestone 11-D adds a
 deterministic validation and quality report over that dataset without training a
 model. Milestone 12-A adds a read-only exact-signature retrieval evaluation
-foundation, and milestone 12-B adds a selectable weighted lexical baseline,
-without changing Concept resolution or annotation authority.
+foundation, milestone 12-B adds a selectable weighted lexical cosine baseline,
+and milestone 12-C adds a corpus-aware BM25 lexical baseline, without changing
+Concept resolution or annotation authority.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
 and [web/README.md](web/README.md) for running the frontend.
 
@@ -942,13 +943,14 @@ Retrieval output creates no annotation authority and is never persisted.
 M12-B reuses the exact M12-A schema, policy, quality gate, eligibility rules,
 current non-retired candidate universe, max K of five, and Recall/MRR definitions.
 Only the selected retrieval algorithm and its ranked output change. The endpoint
-keeps exact retrieval as its backward-compatible default and accepts either
-retriever explicitly:
+keeps exact retrieval as its backward-compatible default and accepts each
+registered retriever explicitly (the BM25 option is described under M12-C):
 
 ```bash
 curl -sS http://localhost:8080/retrieval-evaluation/v1
 curl -sS 'http://localhost:8080/retrieval-evaluation/v1?retriever=exact_signature_retriever_v1'
 curl -sS 'http://localhost:8080/retrieval-evaluation/v1?retriever=weighted_lexical_retriever_v1'
+curl -sS 'http://localhost:8080/retrieval-evaluation/v1?retriever=bm25_retriever_v1'
 ```
 
 An unknown retriever returns HTTP `400` with `{"error":"unknown retriever"}`.
@@ -984,10 +986,71 @@ Cosine is used here because it is transparent, deterministic, requires no corpus
 statistics or training, and prevents longer fields from winning merely because
 they contain more words. Exact signatures receive no special boost in this
 retriever, preserving a fair comparison with `exact_signature_retriever_v1`.
-M12-B still adds no IDF, TF-IDF, BM25, inverted index, SQLite FTS, embeddings,
+The M12-B algorithm itself still has no IDF, TF-IDF, or BM25 behavior. Across the
+retrieval experiment there is still no inverted index, SQLite FTS, embedding,
 vector database, fuzzy edit matching, reranking, ML/LLM similarity, automatic
-labels, persistence, migration, provider call, or frontend change. Corpus-aware
-lexical ranking such as BM25 remains deferred.
+label, persistence, migration, provider call, or frontend change.
+
+### Corpus-aware BM25 Ranked Retriever v1 (milestone 12-C)
+
+M12-C adds `bm25_retriever_v1` to the same application registry and shared
+endpoint. The empty selector remains `exact_signature_retriever_v1`; an unknown
+name still returns HTTP `400`. M12-A is therefore the exact-identity baseline,
+M12-B is the corpus-independent weighted lexical cosine baseline, and M12-C is
+the corpus-aware lexical baseline.
+
+BM25 reuses `concept_lexical_normalization_v1` and the same lexical fields and
+fixed field weights as M12-B, but it deliberately preserves raw token frequency
+within fields. Candidate-identity target is still omitted from the query because
+canonical is the primary Unit evidence. Concept lifecycle, support, effective
+state, human labels, target rank, and evaluation outcome never enter scoring.
+
+| Representation | Field | Weight |
+| --- | --- | ---: |
+| Unit query | canonical | 4.0 |
+| Unit query | statement | 2.0 |
+| Unit query | candidate intent, scope, feature keys, feature values | 1.0 each |
+| Concept document | target | 4.0 |
+| Concept document | intent, scope, feature keys, feature values | 1.0 each |
+
+For every retrieval call, the retriever builds statistics only from the supplied
+Concept documents. Let `q_w(t)` be raw query term frequency multiplied and summed
+by query field weight, `tf_w(t,D)` the corresponding weighted document frequency,
+and `|D|_w` the total weighted normalized-token count. With `N` supplied documents,
+`df(t)` documents containing `t`, and `avgdl_w` the average `|D|_w`, v1 uses:
+
+```text
+IDF(t) = ln(1 + (N - df(t) + 0.5) / (df(t) + 0.5))
+
+score(D,Q) = Σ[t in Q] q_w(t) * IDF(t) *
+             tf_w(t,D) * (k1 + 1)
+             -----------------------------------------------
+             tf_w(t,D) + k1 * (1 - b + b * |D|_w / avgdl_w)
+```
+
+The fixed, untuned v1 parameters are `k1=1.2` (term-frequency saturation) and
+`b=0.75` (document-length normalization). This is a simple field-weighted BM25
+variant, not full per-field-normalized BM25F: fields are explicitly combined into
+one weighted query/document representation before BM25 saturation and length
+normalization. Corpus-derived IDF makes rare terms more discriminative than common
+terms, repeated document terms help with diminishing returns, and the `b` term
+prevents longer Concept text from winning solely by containing more tokens.
+
+Only positive finite scores are returned. Results sort by score descending and
+Concept ID ascending, receive one-based ranks, and respect the requested limit.
+Stable JSON evidence records `reason: "bm25"`, normalization and parameters,
+corpus/document lengths, sorted unique matched tokens, and sorted compact
+per-token contributions. The score is lexical relevance, not a probability or
+proof of SAME.
+
+All corpus statistics are recalculated in memory from the evaluation service's
+current non-retired Concept universe. Exact, cosine, and BM25 evaluations retain
+the identical M11-D gate, M11-C CURRENT human-SAME truth, provenance and admission
+exclusions, seed-unit leakage exclusion, candidate universe, eligible samples,
+targets, ordering, maximum K, and Recall/MRR definitions. Only retriever-owned
+ranking output and resulting metrics may differ. M12-C adds no persistence,
+migration, index, cache, SQLite FTS, embedding, model inference, annotation
+authority, Concept resolution, provider call, or frontend behavior.
 
 **Knowledge-extraction work still out of scope** (not implemented): automatic extraction on
 capture/analysis/feedback, a rule-based semantic extractor, local models, model

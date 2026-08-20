@@ -56,6 +56,7 @@ func setupConceptServer(t *testing.T, units []domain.ExtractedUnit) (*httptest.S
 		application.NewConceptRetrieverRegistry(
 			application.NewExactSignatureConceptRetriever(),
 			application.NewWeightedLexicalConceptRetriever(),
+			application.NewBM25ConceptRetriever(),
 		),
 	)
 
