@@ -444,9 +444,50 @@ v1 使用当前（而非历史时点）Concept catalog，并按 Concept ID 排�
 query、目标 Concept、候选排名、target rank、reciprocal rank 与 hit flags。没有符合
 资格的样本时所有指标为 `null`，不会把“没有数据”误报为 `0.0` 性能。
 
-检索结果不会被持久化，也不会创建标注权威。M12-A 不实现 lexical ranking、BM25、
-embeddings、vector database、reranker、ML、训练、自动 SAME/DISTINCT 或前端改动；改进
-检索留给后续 M12 里程碑。
+检索结果不会被持久化，也不会创建标注权威。
+
+## 加权词法排序检索器 v1（M12-B）
+
+M12-B 完整复用 M12-A 的 schema、policy、质量门、样本资格规则、当前非 retired 候选
+全集、最大 K=5 以及 Recall/MRR 定义；只有所选检索算法及其排名输出可以变化。端点为
+向后兼容仍默认精确检索，也可显式选择两种检索器：
+
+```bash
+curl -sS localhost:8080/retrieval-evaluation/v1
+curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=exact_signature_retriever_v1'
+curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=weighted_lexical_retriever_v1'
+```
+
+未知检索器返回 HTTP `400` 和 `{"error":"unknown retriever"}`。检索器选择由应用层
+registry 负责；HTTP 层只读取并传递名称。
+
+`weighted_lexical_retriever_v1` 是确定性的加权词袋 baseline。规范化版本
+`concept_lexical_normalization_v1` 执行 Unicode 小写化与规范分解，移除组合附加符号，
+把标点和分隔符作为 token 边界，并丢弃空 token 与单 rune token。v1 刻意不使用法语
+停用词表，也不做 stemming 或 lemmatization。每个字段内部先去重；同一 token 出现在
+不同字段时可累加权重。
+
+| 表示 | 字段 | 权重 |
+| --- | --- | ---: |
+| Unit query | canonical | 4.0 |
+| Unit query | statement | 2.0 |
+| Unit query | candidate intent、scope、feature keys、feature values | 各 1.0 |
+| Concept document | target | 4.0 |
+| Concept document | intent、scope、feature keys、feature values | 各 1.0 |
+
+由于 candidate identity target 由 canonical 证据派生，Unit query 不会再次加入它。
+Concept lifecycle、support 和 state 也不作为词法内容。检索器对每个当前非 retired
+Concept 计算加权余弦相似度，只返回正重叠结果，先按 score 降序、再按 Concept ID
+升序稳定排序，最后截取请求数量。score 是长度归一化的词法相似度，不是校准概率，
+更不是 SAME 的证明。候选 evidence 是稳定 JSON，包含评分原因、规范化版本，以及唯一、
+按字典序排列的匹配 token。
+
+选择余弦是因为它透明、确定性强，不需要 corpus 统计或训练，并避免长字段仅因词更多
+而获胜。词法检索器不会给精确 signature 特殊加分，从而能与
+`exact_signature_retriever_v1` 公平比较。M12-B 仍不实现 IDF、TF-IDF、BM25、倒排索引、
+SQLite FTS、embeddings、vector database、模糊编辑匹配、reranking、ML/LLM 相似度、
+自动标签、持久化、migration、provider 调用或前端改动。BM25 等 corpus-aware 词法
+排序继续留待后续里程碑。
 
 ## 开发与验证
 

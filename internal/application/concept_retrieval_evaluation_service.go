@@ -88,24 +88,38 @@ type ConceptRetrievalEvaluationReport struct {
 // ConceptRetrievalEvaluationService builds a current-catalog retrieval audit
 // using M11-C human truth, gated by M11-D validity.
 type ConceptRetrievalEvaluationService struct {
-	dataset   AnnotationDatasetV1Reader
-	quality   AnnotationDatasetQualityReader
-	catalog   RetrievalConceptCatalogReader
-	retriever ConceptRetriever
+	dataset    AnnotationDatasetV1Reader
+	quality    AnnotationDatasetQualityReader
+	catalog    RetrievalConceptCatalogReader
+	retrievers *ConceptRetrieverRegistry
 }
 
 func NewConceptRetrievalEvaluationService(dataset AnnotationDatasetV1Reader, quality AnnotationDatasetQualityReader, catalog RetrievalConceptCatalogReader, retriever ConceptRetriever) *ConceptRetrievalEvaluationService {
-	return &ConceptRetrievalEvaluationService{dataset: dataset, quality: quality, catalog: catalog, retriever: retriever}
+	return NewConceptRetrievalEvaluationServiceWithRegistry(dataset, quality, catalog, NewConceptRetrieverRegistry(retriever))
+}
+
+func NewConceptRetrievalEvaluationServiceWithRegistry(dataset AnnotationDatasetV1Reader, quality AnnotationDatasetQualityReader, catalog RetrievalConceptCatalogReader, retrievers *ConceptRetrieverRegistry) *ConceptRetrievalEvaluationService {
+	return &ConceptRetrievalEvaluationService{dataset: dataset, quality: quality, catalog: catalog, retrievers: retrievers}
 }
 
 // BuildV1 evaluates eligible explicit human SAME labels against the current
 // non-retired Concept catalog. It never records retrieval output or annotation
 // authority.
 func (s *ConceptRetrievalEvaluationService) BuildV1(ctx context.Context) (ConceptRetrievalEvaluationReport, error) {
+	return s.BuildV1WithRetriever(ctx, "")
+}
+
+// BuildV1WithRetriever runs the unchanged evaluation policy with the selected
+// retrieval strategy. Empty selection preserves the exact-signature default.
+func (s *ConceptRetrievalEvaluationService) BuildV1WithRetriever(ctx context.Context, name string) (ConceptRetrievalEvaluationReport, error) {
+	retriever, err := s.retrievers.Select(name)
+	if err != nil {
+		return ConceptRetrievalEvaluationReport{}, err
+	}
 	report := ConceptRetrievalEvaluationReport{
 		SchemaVersion:    ConceptRetrievalEvaluationV1SchemaVersion,
 		EvaluationPolicy: ConceptRetrievalEvaluationPolicyV1,
-		Retriever:        s.retriever.Name(),
+		Retriever:        retriever.Name(),
 		State:            ConceptRetrievalEvaluationStateEvaluated,
 		DatasetValid:     true,
 		Samples:          make([]ConceptRetrievalEvaluationSample, 0),
@@ -195,7 +209,7 @@ func (s *ConceptRetrievalEvaluationService) BuildV1(ctx context.Context) (Concep
 
 	for _, item := range eligible {
 		query := toConceptRetrievalQuery(item.record.Unit)
-		candidates, err := s.retriever.Retrieve(ctx, query, documents, ConceptRetrievalEvaluationMaxK)
+		candidates, err := retriever.Retrieve(ctx, query, documents, ConceptRetrievalEvaluationMaxK)
 		if err != nil {
 			return ConceptRetrievalEvaluationReport{}, fmt.Errorf("retrieve candidates for unit %d: %w", item.record.Unit.ID, err)
 		}

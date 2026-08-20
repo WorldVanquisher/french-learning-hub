@@ -67,7 +67,8 @@ effective annotation projection and its read-only Inspector; milestone 11-C adds
 the read-only, versioned Concept Annotation Dataset v1, and milestone 11-D adds a
 deterministic validation and quality report over that dataset without training a
 model. Milestone 12-A adds a read-only exact-signature retrieval evaluation
-foundation without changing Concept resolution or annotation authority.
+foundation, and milestone 12-B adds a selectable weighted lexical baseline,
+without changing Concept resolution or annotation authority.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
 and [web/README.md](web/README.md) for running the frontend.
 
@@ -934,10 +935,59 @@ candidates, target rank, reciprocal rank, and hit flags for audit. When there ar
 no eligible samples all metrics are `null`, distinguishing no data from measured
 zero performance.
 
-Retrieval output creates no annotation authority and is never persisted. M12-A
-adds no lexical ranking, BM25, embeddings, vector database, reranking, ML, model
-training, automatic SAME/DISTINCT, or frontend changes; improved retrieval is
-deferred to later M12 milestones.
+Retrieval output creates no annotation authority and is never persisted.
+
+### Weighted Lexical Ranked Retriever v1 (milestone 12-B)
+
+M12-B reuses the exact M12-A schema, policy, quality gate, eligibility rules,
+current non-retired candidate universe, max K of five, and Recall/MRR definitions.
+Only the selected retrieval algorithm and its ranked output change. The endpoint
+keeps exact retrieval as its backward-compatible default and accepts either
+retriever explicitly:
+
+```bash
+curl -sS http://localhost:8080/retrieval-evaluation/v1
+curl -sS 'http://localhost:8080/retrieval-evaluation/v1?retriever=exact_signature_retriever_v1'
+curl -sS 'http://localhost:8080/retrieval-evaluation/v1?retriever=weighted_lexical_retriever_v1'
+```
+
+An unknown retriever returns HTTP `400` with `{"error":"unknown retriever"}`.
+Selection is owned by an application-level registry; HTTP only reads and passes
+the name.
+
+`weighted_lexical_retriever_v1` is a deterministic weighted bag-of-words
+baseline. Normalization version `concept_lexical_normalization_v1` performs
+Unicode lowercase and canonical decomposition, removes combining diacritics,
+uses punctuation and separators as token boundaries, and discards empty and
+one-rune tokens. It deliberately has no French stop-word list and performs no
+stemming or lemmatization. Tokens are deduplicated within each field; the same
+token can accumulate weight across distinct fields.
+
+| Representation | Field | Weight |
+| --- | --- | ---: |
+| Unit query | canonical | 4.0 |
+| Unit query | statement | 2.0 |
+| Unit query | candidate intent, scope, feature keys, feature values | 1.0 each |
+| Concept document | target | 4.0 |
+| Concept document | intent, scope, feature keys, feature values | 1.0 each |
+
+Candidate-identity target is not separately added to a Unit query because it is
+derived from canonical evidence. Concept lifecycle, support, and state are not
+lexical content. The retriever scores every current non-retired Concept using
+weighted cosine similarity, returns only positive-overlap results, sorts by score
+descending then Concept ID ascending, and truncates to the requested limit. A
+score is a length-normalized lexical similarity—not a calibrated probability and
+not proof of SAME. Candidate evidence is stable JSON naming the reason,
+normalization version, and unique lexicographically sorted matched tokens.
+
+Cosine is used here because it is transparent, deterministic, requires no corpus
+statistics or training, and prevents longer fields from winning merely because
+they contain more words. Exact signatures receive no special boost in this
+retriever, preserving a fair comparison with `exact_signature_retriever_v1`.
+M12-B still adds no IDF, TF-IDF, BM25, inverted index, SQLite FTS, embeddings,
+vector database, fuzzy edit matching, reranking, ML/LLM similarity, automatic
+labels, persistence, migration, provider call, or frontend change. Corpus-aware
+lexical ranking such as BM25 remains deferred.
 
 **Knowledge-extraction work still out of scope** (not implemented): automatic extraction on
 capture/analysis/feedback, a rule-based semantic extractor, local models, model
