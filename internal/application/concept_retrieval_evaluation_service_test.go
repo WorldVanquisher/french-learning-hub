@@ -174,14 +174,14 @@ func TestConceptRetrievalEvaluationService_ExclusionPrecedenceCountsOnce(t *test
 
 func TestConceptRetrievalEvaluationService_QualityGateAndFailures(t *testing.T) {
 	t.Run("invalid blocks before dataset catalog and retrieval", func(t *testing.T) {
-		for _, name := range []string{ExactSignatureRetrieverV1Name, WeightedLexicalRetrieverV1Name} {
+		for _, name := range []string{ExactSignatureRetrieverV1Name, WeightedLexicalRetrieverV1Name, BM25RetrieverV1Name} {
 			t.Run(name, func(t *testing.T) {
 				dataset := &fakeAnnotationDatasetV1Reader{}
 				quality := &fakeRetrievalQualityReader{report: ConceptAnnotationQualityReport{Valid: false, ErrorCount: 1}}
 				catalog := &fakeRetrievalConceptCatalog{}
 				service := NewConceptRetrievalEvaluationServiceWithRegistry(
 					dataset, quality, catalog,
-					NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever()),
+					NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever(), NewBM25ConceptRetriever()),
 				)
 				report, err := service.BuildV1WithRetriever(context.Background(), name)
 				if err != nil {
@@ -206,7 +206,7 @@ func TestConceptRetrievalEvaluationService_QualityGateAndFailures(t *testing.T) 
 	})
 }
 
-func TestConceptRetrievalEvaluationService_ExactAndWeightedShareEvaluationPopulation(t *testing.T) {
+func TestConceptRetrievalEvaluationService_AllRetrieversShareEvaluationPopulation(t *testing.T) {
 	targetIdentity := domain.ConceptIdentity{Target: "parler + nom de langue — pas d'article", PedagogicalIntent: "usage"}
 	target := qualityTestConcept(11)
 	target.Target = targetIdentity.Target
@@ -226,7 +226,7 @@ func TestConceptRetrievalEvaluationService_ExactAndWeightedShareEvaluationPopula
 	dataset := &fakeAnnotationDatasetV1Reader{records: []ConceptAnnotationDatasetRecord{record, seed}}
 	quality := &fakeRetrievalQualityReader{report: ConceptAnnotationQualityReport{Valid: true}}
 	catalog := &fakeRetrievalConceptCatalog{concepts: []domain.KnowledgeConcept{distractor, target}}
-	registry := NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever())
+	registry := NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever(), NewBM25ConceptRetriever())
 	service := NewConceptRetrievalEvaluationServiceWithRegistry(dataset, quality, catalog, registry)
 
 	exact, err := service.BuildV1(context.Background())
@@ -237,14 +237,20 @@ func TestConceptRetrievalEvaluationService_ExactAndWeightedShareEvaluationPopula
 	if err != nil {
 		t.Fatalf("weighted BuildV1: %v", err)
 	}
-	if exact.Retriever != ExactSignatureRetrieverV1Name || weighted.Retriever != WeightedLexicalRetrieverV1Name {
-		t.Fatalf("retrievers = %q, %q", exact.Retriever, weighted.Retriever)
+	bm25, err := service.BuildV1WithRetriever(context.Background(), BM25RetrieverV1Name)
+	if err != nil {
+		t.Fatalf("BM25 BuildV1: %v", err)
 	}
-	if exact.DatasetValid != weighted.DatasetValid || exact.CandidateUniverse != weighted.CandidateUniverse || !reflect.DeepEqual(exact.EvaluationSamples, weighted.EvaluationSamples) {
-		t.Fatalf("evaluation population differs: exact=%+v weighted=%+v", exact, weighted)
+	if exact.Retriever != ExactSignatureRetrieverV1Name || weighted.Retriever != WeightedLexicalRetrieverV1Name || bm25.Retriever != BM25RetrieverV1Name {
+		t.Fatalf("retrievers = %q, %q, %q", exact.Retriever, weighted.Retriever, bm25.Retriever)
 	}
-	if len(exact.Samples) != 1 || len(weighted.Samples) != 1 || exact.Samples[0].UnitID != weighted.Samples[0].UnitID || exact.Samples[0].TargetConcept.ConceptID != weighted.Samples[0].TargetConcept.ConceptID {
-		t.Fatalf("sample identities differ: exact=%+v weighted=%+v", exact.Samples, weighted.Samples)
+	for name, report := range map[string]ConceptRetrievalEvaluationReport{"weighted": weighted, "bm25": bm25} {
+		if exact.SchemaVersion != report.SchemaVersion || exact.EvaluationPolicy != report.EvaluationPolicy || exact.State != report.State || exact.DatasetValid != report.DatasetValid || exact.CandidateUniverse != report.CandidateUniverse || !reflect.DeepEqual(exact.EvaluationSamples, report.EvaluationSamples) {
+			t.Fatalf("%s evaluation population differs: exact=%+v selected=%+v", name, exact, report)
+		}
+		if len(exact.Samples) != 1 || len(report.Samples) != 1 || exact.Samples[0].UnitID != report.Samples[0].UnitID || exact.Samples[0].EntryID != report.Samples[0].EntryID || exact.Samples[0].ExtractionID != report.Samples[0].ExtractionID || exact.Samples[0].TargetConcept.ConceptID != report.Samples[0].TargetConcept.ConceptID || exact.Samples[0].HumanSameEventID != report.Samples[0].HumanSameEventID || exact.Samples[0].HumanSameReason != report.Samples[0].HumanSameReason || !reflect.DeepEqual(exact.Samples[0].Query, report.Samples[0].Query) {
+			t.Fatalf("%s sample identity differs: exact=%+v selected=%+v", name, exact.Samples, report.Samples)
+		}
 	}
 	if len(exact.Samples[0].Retrieved) != 0 || exact.Samples[0].TargetRank != nil {
 		t.Fatalf("exact should miss: %+v", exact.Samples[0])
@@ -252,8 +258,12 @@ func TestConceptRetrievalEvaluationService_ExactAndWeightedShareEvaluationPopula
 	if weighted.Samples[0].TargetRank == nil || *weighted.Samples[0].TargetRank != 1 || len(weighted.Samples[0].Retrieved) == 0 || weighted.Samples[0].Retrieved[0].ConceptID != target.ID {
 		t.Fatalf("weighted should retrieve target at rank 1: %+v", weighted.Samples[0])
 	}
+	if bm25.Samples[0].TargetRank == nil || *bm25.Samples[0].TargetRank != 1 || len(bm25.Samples[0].Retrieved) == 0 || bm25.Samples[0].Retrieved[0].ConceptID != target.ID {
+		t.Fatalf("BM25 should retrieve target at rank 1: %+v", bm25.Samples[0])
+	}
 	assertRetrievalMetrics(t, exact.Metrics, 0, 0, 0, 0)
 	assertRetrievalMetrics(t, weighted.Metrics, 1, 1, 1, 1)
+	assertRetrievalMetrics(t, bm25.Metrics, 1, 1, 1, 1)
 }
 
 func TestConceptRetrievalEvaluationService_UnknownRetrieverStopsBeforeDependencies(t *testing.T) {
@@ -262,7 +272,7 @@ func TestConceptRetrievalEvaluationService_UnknownRetrieverStopsBeforeDependenci
 	catalog := &fakeRetrievalConceptCatalog{}
 	service := NewConceptRetrievalEvaluationServiceWithRegistry(
 		dataset, quality, catalog,
-		NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever()),
+		NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever(), NewBM25ConceptRetriever()),
 	)
 	_, err := service.BuildV1WithRetriever(context.Background(), "not_registered")
 	if !errors.Is(err, ErrUnknownConceptRetriever) {

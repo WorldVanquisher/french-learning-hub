@@ -77,7 +77,7 @@ func TestRetrievalEvaluationHandler_ReturnsVersionedEvaluatedReport(t *testing.T
 }
 
 func TestRetrievalEvaluationHandler_PassesExplicitRetrieverSelection(t *testing.T) {
-	for _, name := range []string{application.ExactSignatureRetrieverV1Name, application.WeightedLexicalRetrieverV1Name} {
+	for _, name := range []string{application.ExactSignatureRetrieverV1Name, application.WeightedLexicalRetrieverV1Name, application.BM25RetrieverV1Name} {
 		t.Run(name, func(t *testing.T) {
 			service := &fakeRetrievalEvaluationService{report: application.ConceptRetrievalEvaluationReport{
 				Retriever: name, Samples: []application.ConceptRetrievalEvaluationSample{},
@@ -117,7 +117,7 @@ func TestRetrievalEvaluationHandler_RejectsUnknownAndDuplicateRetriever(t *testi
 }
 
 func TestRetrievalEvaluationHandler_BlockedInvalidDatasetReturnsOKAndNullMetrics(t *testing.T) {
-	for _, name := range []string{application.ExactSignatureRetrieverV1Name, application.WeightedLexicalRetrieverV1Name} {
+	for _, name := range []string{application.ExactSignatureRetrieverV1Name, application.WeightedLexicalRetrieverV1Name, application.BM25RetrieverV1Name} {
 		t.Run(name, func(t *testing.T) {
 			service := &fakeRetrievalEvaluationService{report: application.ConceptRetrievalEvaluationReport{
 				SchemaVersion:    application.ConceptRetrievalEvaluationV1SchemaVersion,

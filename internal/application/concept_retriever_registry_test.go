@@ -8,7 +8,8 @@ import (
 func TestConceptRetrieverRegistry_DefaultExplicitAndUnknown(t *testing.T) {
 	exact := NewExactSignatureConceptRetriever()
 	weighted := NewWeightedLexicalConceptRetriever()
-	registry := NewConceptRetrieverRegistry(exact, weighted)
+	bm25 := NewBM25ConceptRetriever()
+	registry := NewConceptRetrieverRegistry(exact, weighted, bm25)
 
 	for _, tc := range []struct {
 		name string
@@ -17,6 +18,7 @@ func TestConceptRetrieverRegistry_DefaultExplicitAndUnknown(t *testing.T) {
 		{name: "", want: exact},
 		{name: ExactSignatureRetrieverV1Name, want: exact},
 		{name: WeightedLexicalRetrieverV1Name, want: weighted},
+		{name: BM25RetrieverV1Name, want: bm25},
 	} {
 		got, err := registry.Select(tc.name)
 		if err != nil || got != tc.want {

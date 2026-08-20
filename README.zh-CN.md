@@ -34,7 +34,7 @@
 11. 只读查看 M11-A Effective Annotation 状态。
 12. 通过 JSON 或 NDJSON 获取 `concept_annotation_dataset_v1` 当前快照。
 13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
-14. 使用精确签名基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
+14. 使用精确签名、加权词法余弦和 corpus-aware BM25 基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
 
 这不是最终消费者产品，也不是间隔重复 Review Engine、掌握度系统或 ML 解析器。
 
@@ -450,12 +450,13 @@ query、目标 Concept、候选排名、target rank、reciprocal rank 与 hit fl
 
 M12-B 完整复用 M12-A 的 schema、policy、质量门、样本资格规则、当前非 retired 候选
 全集、最大 K=5 以及 Recall/MRR 定义；只有所选检索算法及其排名输出可以变化。端点为
-向后兼容仍默认精确检索，也可显式选择两种检索器：
+向后兼容仍默认精确检索，也可显式选择已注册的检索器（BM25 见 M12-C）：
 
 ```bash
 curl -sS localhost:8080/retrieval-evaluation/v1
 curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=exact_signature_retriever_v1'
 curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=weighted_lexical_retriever_v1'
+curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=bm25_retriever_v1'
 ```
 
 未知检索器返回 HTTP `400` 和 `{"error":"unknown retriever"}`。检索器选择由应用层
@@ -484,10 +485,61 @@ Concept 计算加权余弦相似度，只返回正重叠结果，先按 score �
 
 选择余弦是因为它透明、确定性强，不需要 corpus 统计或训练，并避免长字段仅因词更多
 而获胜。词法检索器不会给精确 signature 特殊加分，从而能与
-`exact_signature_retriever_v1` 公平比较。M12-B 仍不实现 IDF、TF-IDF、BM25、倒排索引、
-SQLite FTS、embeddings、vector database、模糊编辑匹配、reranking、ML/LLM 相似度、
-自动标签、持久化、migration、provider 调用或前端改动。BM25 等 corpus-aware 词法
-排序继续留待后续里程碑。
+`exact_signature_retriever_v1` 公平比较。M12-B 算法本身仍不使用 IDF、TF-IDF 或 BM25。
+整个检索实验仍不包含倒排索引、SQLite FTS、embeddings、vector database、模糊编辑匹配、
+reranking、ML/LLM 相似度、自动标签、持久化、migration、provider 调用或前端改动。
+
+## Corpus-aware BM25 排序检索器 v1（M12-C）
+
+M12-C 在同一个应用层 registry 和同一个评估端点中加入 `bm25_retriever_v1`。空 selector
+继续选择 `exact_signature_retriever_v1`，未知名称继续返回 HTTP `400`。因此 M12-A 是精确
+身份 baseline，M12-B 是不依赖 corpus 统计的加权词法余弦 baseline，M12-C 是 corpus-aware
+词法 baseline。
+
+BM25 复用 `concept_lexical_normalization_v1` 以及 M12-B 的字段和固定权重，但保留字段内
+原始 token 次数。candidate identity 的 target 仍不加入 query，因为 canonical 已是 Unit
+的主要证据。Concept lifecycle、support、effective state、人工标签、target rank 和评估
+结果都不参与打分。
+
+| 表示 | 字段 | 权重 |
+| --- | --- | ---: |
+| Unit query | canonical | 4.0 |
+| Unit query | statement | 2.0 |
+| Unit query | candidate intent、scope、feature keys、feature values | 各 1.0 |
+| Concept document | target | 4.0 |
+| Concept document | intent、scope、feature keys、feature values | 各 1.0 |
+
+每次检索只从调用方提供的 Concept documents 计算统计。令 `q_w(t)` 为 query 各字段的原始
+词频乘字段权重后求和，`tf_w(t,D)` 为 document 的对应加权词频，`|D|_w` 为 document 的
+加权规范化 token 总数；`N` 是 document 数，`df(t)` 是包含 token `t` 的 document 数，
+`avgdl_w` 是平均 `|D|_w`。v1 使用：
+
+```text
+IDF(t) = ln(1 + (N - df(t) + 0.5) / (df(t) + 0.5))
+
+score(D,Q) = Σ[t in Q] q_w(t) * IDF(t) *
+             tf_w(t,D) * (k1 + 1)
+             -----------------------------------------------
+             tf_w(t,D) + k1 * (1 - b + b * |D|_w / avgdl_w)
+```
+
+固定且未根据现有人工数据调参的 v1 参数是 `k1=1.2`（词频饱和）和 `b=0.75`（文档长度
+归一化）。这是简单的字段加权 BM25 变体，不是逐字段分别归一化的完整 BM25F：各字段先以
+显式权重合并为一个 query/document 表示，再执行 BM25 饱和与长度归一化。由 corpus 导出的
+IDF 让稀有词比常见词更有区分力；重复 document token 的收益递减；`b` 防止更长的 Concept
+文本仅因包含更多词而获胜。
+
+检索器只返回有限且为正的 score，按 score 降序、Concept ID 升序稳定排序，赋予从 1 开始
+的 rank，并遵守请求 limit。稳定 JSON evidence 包含 `reason: "bm25"`、规范化版本、参数、
+corpus/document 长度、唯一且排序的 matched tokens，以及按 token 排序的紧凑贡献明细。
+score 是词法相关性，不是概率，也不是 SAME 的证明。
+
+所有 corpus 统计都在内存中从评估服务提供的当前非 retired Concept 全集重新计算。精确、
+余弦和 BM25 评估保持完全相同的 M11-D 质量门、M11-C CURRENT 人工 SAME truth、来源与
+Admission 排除、seed-unit 泄漏排除、候选全集、合格样本、targets、排序、最大 K 和
+Recall/MRR 定义；只有检索器拥有的排名输出及相应指标可以不同。M12-C 不增加持久化、
+migration、索引、cache、SQLite FTS、embedding、模型推理、标注权威、Concept resolution、
+provider 调用或前端行为。
 
 ## 开发与验证
 
