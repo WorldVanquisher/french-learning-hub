@@ -155,7 +155,7 @@ export function ReviewQueue() {
   // stay visible; on conflict it refreshes the authority before letting the reviewer
   // retry.
   async function act(action: ActionKind) {
-    if (!current || !identity) return;
+    if (!current) return;
     const unitId = current.unit_id;
     setBusy(true);
     setNotice(null);
@@ -173,6 +173,7 @@ export function ReviewQueue() {
           break;
         }
         case "new": {
+          if (!identity) return;
           // Seed SAME only when the unit is unresolved; otherwise create the concept
           // without touching the existing membership (reassign is a separate action).
           const seedAsSame = membership === null;
