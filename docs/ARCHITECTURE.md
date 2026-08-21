@@ -1399,8 +1399,9 @@ Each request scores the small current Concept corpus in memory. Nothing is
 persisted, no annotation or membership is written, and no provider is called.
 The M12-B algorithm has no IDF, TF-IDF, or BM25 behavior; M12-C adds the separate
 BM25 baseline below. Inverted indexes, SQLite FTS, embeddings, vector search,
-reranking, fuzzy edit distance, ML/LLM similarity, automatic labels,
-historical-corpus replay, and frontend work remain deferred.
+reranking, fuzzy edit distance, automatic labels, historical-corpus replay, and
+frontend work remain outside M12-B. M12-D adds a separate embedding baseline
+below without changing this algorithm.
 
 ## Corpus-aware BM25 Ranked Retriever v1 (milestone 12-C)
 
@@ -1468,8 +1469,95 @@ differ. The quality gate still runs before dataset/catalog reads or BM25 scoring
 
 Corpus statistics are calculated in memory for each call. M12-C adds no migration,
 table, persisted index/statistic/result, cache, SQLite FTS, annotation mutation,
-Concept resolution, semantic embedding, model inference, provider, reranker,
-parameter learning, or frontend behavior.
+Concept resolution, reranker, parameter learning, or frontend behavior. Its BM25
+algorithm performs no embedding/model/provider work; M12-D adds that separate
+baseline below.
+
+## Semantic Embedding Ranked Retriever v1 (milestone 12-D)
+
+M12-D adds `embedding_retriever_v1` as the semantic baseline after exact identity
+(M12-A), weighted lexical cosine (M12-B), and corpus-aware BM25 lexical retrieval
+(M12-C). It implements the unchanged `ConceptRetriever` contract. Semantic
+inference is isolated behind one small application-owned, batch-oriented boundary:
+
+```go
+type EmbeddingProvider interface {
+    Name() string
+    Embed(ctx context.Context, texts []string) ([][]float64, error)
+}
+```
+
+The retriever owns semantic-text construction, vector validation, cosine scoring,
+evidence, result limits, and stable ordering. The provider owns only text-to-vector
+inference and its provider/model provenance name. One retrieval sends a single
+combined batch in deterministic `query, Concept documents...` order, rather than
+making one remote call per Concept. The provider has no repository, SQLite,
+annotation-history, lifecycle-policy, human-label, target, or metric access.
+
+### Versioned semantic representation
+
+`concept_embedding_text_v1` is deterministic compact JSON rather than prompt-like
+prose. The query representation contains canonical, statement, nullable example,
+candidate-identity target, pedagogical intent, scope, and identity-feature
+key/value pairs. The document representation contains target, pedagogical intent,
+scope, and feature pairs. Feature keys sort lexicographically before serialization.
+IDs, signatures, identity-schema versions, lifecycle/support/effective state,
+human SAME/DISTINCT labels, annotation reasons, target rank, hit flags, and metrics
+are excluded. Consequently, query text derives only from Unit evidence, document
+text only from Concept representation, and evaluation truth is inaccessible while
+embedding and ranking.
+
+### Vector validation, ranking, and evidence
+
+Cosine similarity is evaluated only for non-empty, equal-dimensional vectors with
+finite components. A zero-norm vector and non-positive similarity yield no
+candidate. An empty vector, dimension mismatch, non-finite component, or incorrect
+provider batch count fails the retrieval request instead of creating a partial or
+fabricated ranking. Positive candidates sort by score descending and Concept ID
+ascending, receive one-based ranks, and are truncated to the requested limit.
+
+The score is semantic relevance, not a calibrated probability or proof of SAME.
+There is no automatic similarity threshold, annotation, resolution, or fallback.
+Stable structured JSON evidence records `reason: "embedding_cosine"`, the
+provider/model name, `concept_embedding_text_v1`, cosine similarity, and vector
+dimension. It never contains raw vectors or human truth.
+
+### Composition and provider operation
+
+Embedding configuration is independent of `AI_PROVIDER` and
+`EXTRACTOR_PROVIDER`. `EMBEDDING_PROVIDER=disabled` is the default and requires no
+model, credential, GPU, or embedding service. In that mode production composition
+does not register `embedding_retriever_v1`; explicit semantic selection therefore
+uses the registry's existing HTTP `400` unknown-retriever behavior. When
+`EMBEDDING_PROVIDER=http`, production registers all four retrievers while the
+empty selector still defaults to `exact_signature_retriever_v1`.
+
+The HTTP adapter sends one OpenAI-compatible batch to
+`<EMBEDDING_BASE_URL>/embeddings` using `EMBEDDING_MODEL`, optional bearer
+`EMBEDDING_API_KEY`, and `EMBEDDING_TIMEOUT`. It reconstructs response order from
+explicit provider indexes and validates exact count, uniqueness, dimensions, and
+finite values. Provider timeouts map to a secret-safe HTTP `504`; other provider
+unavailability maps to `502`. Neither case falls back to exact, lexical, or BM25.
+
+### Experiment control and operational scope
+
+Exact, weighted lexical, BM25, and semantic evaluations use the same unchanged
+evaluation service. They share the M11-D validity gate, M11-C CURRENT explicit
+human-SAME truth, provenance classification, seed/admission/retired/missing-target
+exclusions, current non-retired candidate universe, eligible Units, targets,
+sample ordering, maximum K of five, and Recall@1/3/5 and MRR definitions. Only
+retriever/provider-owned candidates, scores, evidence/provenance, target ranks and
+hits, and resulting metrics may differ. Frozen-vector tests enforce this boundary
+and deterministic ranking; they are architecture tests, not evidence about any
+real embedding model's quality.
+
+The small current evaluation corpus is embedded at request time. M12-D adds no
+migration, vector persistence/cache/database, ANN/HNSW/FAISS index, hybrid fusion,
+reranker, cross-encoder, LLM judge, learned SAME classifier, calibrated threshold,
+training, local runtime, model weights, GPU detection, or NAS inference
+requirement. A remote API, rented GPU, or a service hosted on an RTX 4070
+workstation can implement the same boundary; local-inference optimization remains
+deferred.
 
 ## Design principles
 

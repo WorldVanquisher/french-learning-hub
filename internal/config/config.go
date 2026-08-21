@@ -37,6 +37,20 @@ const (
 	ExtractorOpenAI ExtractorProvider = "openai"
 )
 
+// EmbeddingProvider selects the text-to-vector implementation used only by the
+// semantic retrieval baseline. It is independent of analyzer and extractor
+// provider selection.
+type EmbeddingProvider string
+
+const (
+	// EmbeddingDisabled is the default. The server starts without an embedding
+	// service and does not register the semantic retriever.
+	EmbeddingDisabled EmbeddingProvider = "disabled"
+	// EmbeddingHTTP selects the generic OpenAI-compatible HTTP embedding client.
+	// The endpoint may be remote, rented, or hosted on another local machine.
+	EmbeddingHTTP EmbeddingProvider = "http"
+)
+
 // Config holds the server's runtime settings.
 type Config struct {
 	// Addr is the TCP address the HTTP server listens on (e.g. ":8080").
@@ -52,6 +66,10 @@ type Config struct {
 
 	// Extractor holds knowledge-extractor configuration, independent of AI.
 	Extractor ExtractorConfig
+
+	// Embedding holds semantic-retrieval provider configuration, independent of
+	// both the analyzer and extractor.
+	Embedding EmbeddingConfig
 }
 
 // AIConfig holds analyzer-provider selection and OpenAI settings. Secrets in
@@ -93,11 +111,23 @@ type ExtractorConfig struct {
 	OpenAITimeout time.Duration
 }
 
+// EmbeddingConfig holds the optional semantic-retrieval provider settings.
+// APIKey is optional so a trusted local service can be used without credentials;
+// when present it must never be logged or included in errors.
+type EmbeddingConfig struct {
+	Provider EmbeddingProvider
+	APIKey   string
+	Model    string
+	BaseURL  string
+	Timeout  time.Duration
+}
+
 const (
 	defaultOpenAIBaseURL = "https://api.openai.com/v1"
 	// defaultOpenAITimeout is deliberately below the default HTTP write
 	// timeout (10s) so the provider request cannot normally exceed it.
-	defaultOpenAITimeout = 8 * time.Second
+	defaultOpenAITimeout    = 8 * time.Second
+	defaultEmbeddingTimeout = 8 * time.Second
 )
 
 // Load builds a Config from environment variables, falling back to defaults
@@ -112,6 +142,11 @@ const (
 //	OPENAI_MODEL     -> AI.OpenAIModel (required for openai)
 //	OPENAI_BASE_URL  -> AI.OpenAIBaseURL, default https://api.openai.com/v1
 //	OPENAI_TIMEOUT   -> AI.OpenAITimeout (seconds), default 8
+//	EMBEDDING_PROVIDER -> Embedding.Provider, default disabled
+//	EMBEDDING_MODEL    -> Embedding.Model (required for http)
+//	EMBEDDING_BASE_URL -> Embedding.BaseURL (required for http)
+//	EMBEDDING_API_KEY  -> Embedding.APIKey (optional; never logged)
+//	EMBEDDING_TIMEOUT  -> Embedding.Timeout (seconds), default 8
 func Load() (Config, error) {
 	cfg := Config{
 		Addr:         ":" + getenv("PORT", "8080"),
@@ -132,12 +167,22 @@ func Load() (Config, error) {
 			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
+		Embedding: EmbeddingConfig{
+			Provider: EmbeddingProvider(getenv("EMBEDDING_PROVIDER", string(EmbeddingDisabled))),
+			APIKey:   os.Getenv("EMBEDDING_API_KEY"),
+			Model:    strings.TrimSpace(os.Getenv("EMBEDDING_MODEL")),
+			BaseURL:  strings.TrimSpace(os.Getenv("EMBEDDING_BASE_URL")),
+			Timeout:  getdur("EMBEDDING_TIMEOUT", defaultEmbeddingTimeout),
+		},
 	}
 
 	if err := cfg.AI.validate(); err != nil {
 		return Config{}, err
 	}
 	if err := cfg.Extractor.validate(); err != nil {
+		return Config{}, err
+	}
+	if err := cfg.Embedding.validate(); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
@@ -187,6 +232,25 @@ func (c *ExtractorConfig) validate() error {
 		return nil
 	default:
 		return fmt.Errorf("unknown EXTRACTOR_PROVIDER %q (supported: disabled, openai)", string(c.Provider))
+	}
+}
+
+// validate checks semantic-retrieval provider selection independently. The
+// default requires no model, endpoint, key, GPU, or external service.
+func (c *EmbeddingConfig) validate() error {
+	switch c.Provider {
+	case EmbeddingDisabled:
+		return nil
+	case EmbeddingHTTP:
+		if c.Model == "" {
+			return fmt.Errorf("EMBEDDING_PROVIDER=http requires EMBEDDING_MODEL to be set")
+		}
+		if c.BaseURL == "" {
+			return fmt.Errorf("EMBEDDING_PROVIDER=http requires EMBEDDING_BASE_URL to be set")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown EMBEDDING_PROVIDER %q (supported: disabled, http)", string(c.Provider))
 	}
 }
 

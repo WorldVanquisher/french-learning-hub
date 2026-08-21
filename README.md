@@ -68,7 +68,8 @@ the read-only, versioned Concept Annotation Dataset v1, and milestone 11-D adds 
 deterministic validation and quality report over that dataset without training a
 model. Milestone 12-A adds a read-only exact-signature retrieval evaluation
 foundation, milestone 12-B adds a selectable weighted lexical cosine baseline,
-and milestone 12-C adds a corpus-aware BM25 lexical baseline, without changing
+milestone 12-C adds a corpus-aware BM25 lexical baseline, and milestone 12-D adds
+an optional provider-independent semantic embedding baseline, without changing
 Concept resolution or annotation authority.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
 and [web/README.md](web/README.md) for running the frontend.
@@ -87,6 +88,7 @@ internal/domain       Entry/Analysis/Feedback entities, repository + Analyzer in
 internal/application  use cases (entry create/get/list; entry analysis; analysis feedback; effective analysis resolution; learning inventory)
 internal/analyzer     local rule-based Analyzer + OpenAI Analyzer + named rule engine (assessment)
 internal/extractor    OpenAI knowledge Extractor (opt-in) selected by EXTRACTOR_PROVIDER
+internal/embedding    optional HTTP text-to-vector provider for M12-D evaluation
 internal/captureclient   thin HTTP client for POST /captures (used by cmd/capture)
 internal/storage/sqlite  SQLite repositories + migration runner
 internal/transport/http  HTTP handlers and routing
@@ -121,6 +123,11 @@ Defaults work out of the box:
 | `OPENAI_MODEL`       | _(none)_                    | Required for `openai`; the model to use       |
 | `OPENAI_BASE_URL`    | `https://api.openai.com/v1` | API base URL (override for gateways/testing)  |
 | `OPENAI_TIMEOUT`     | `8`                         | Per-request provider timeout (seconds)        |
+| `EMBEDDING_PROVIDER` | `disabled`                  | Semantic retrieval provider: `disabled` or `http` |
+| `EMBEDDING_MODEL`    | _(none)_                    | Required when embedding provider is `http`    |
+| `EMBEDDING_BASE_URL` | _(none)_                    | Required OpenAI-compatible API base for `http` |
+| `EMBEDDING_API_KEY`  | _(none)_                    | Optional bearer token; never logged           |
+| `EMBEDDING_TIMEOUT`  | `8`                         | Per-request embedding timeout (seconds)       |
 
 `EXTRACTOR_PROVIDER` is independent of `AI_PROVIDER`: knowledge extraction is a
 separate, opt-in capability, so `AI_PROVIDER=rule-based` together with
@@ -128,6 +135,18 @@ separate, opt-in capability, so `AI_PROVIDER=rule-based` together with
 analyzer but not the extractor). When `EXTRACTOR_PROVIDER=openai`, the extractor
 reuses the same `OPENAI_*` settings above. See
 [Knowledge extraction](#knowledge-extraction-milestone-10) for details.
+
+`EMBEDDING_PROVIDER` is a third, independent selection boundary used only by the
+M12-D retrieval evaluation baseline. The default `disabled` mode requires no key,
+model, GPU, or embedding service and leaves `embedding_retriever_v1` unregistered;
+explicitly selecting that name then returns the existing HTTP `400` unknown-
+retriever response. `http` requires `EMBEDDING_MODEL` and
+`EMBEDDING_BASE_URL`, calls `POST <base-url>/embeddings` with one batch, and uses
+`EMBEDDING_API_KEY` only when a bearer token is needed. This OpenAI-compatible
+wire adapter can point at a remote API, rented compute, or a service hosted on
+another machine; it is not coupled to the analyzer/extractor OpenAI settings.
+Provider timeouts return `504`, other embedding failures return `502`, and there
+is no fallback to another retriever.
 
 ### Analyzer providers
 
@@ -987,9 +1006,10 @@ statistics or training, and prevents longer fields from winning merely because
 they contain more words. Exact signatures receive no special boost in this
 retriever, preserving a fair comparison with `exact_signature_retriever_v1`.
 The M12-B algorithm itself still has no IDF, TF-IDF, or BM25 behavior. Across the
-retrieval experiment there is still no inverted index, SQLite FTS, embedding,
-vector database, fuzzy edit matching, reranking, ML/LLM similarity, automatic
-label, persistence, migration, provider call, or frontend change.
+retrieval experiment there is still no inverted index, SQLite FTS, vector
+database, fuzzy edit matching, reranking, automatic label, persistence,
+migration, or frontend change. M12-D adds a separate embedding baseline below;
+it does not change the M12-B algorithm.
 
 ### Corpus-aware BM25 Ranked Retriever v1 (milestone 12-C)
 
@@ -1049,14 +1069,92 @@ the identical M11-D gate, M11-C CURRENT human-SAME truth, provenance and admissi
 exclusions, seed-unit leakage exclusion, candidate universe, eligible samples,
 targets, ordering, maximum K, and Recall/MRR definitions. Only retriever-owned
 ranking output and resulting metrics may differ. M12-C adds no persistence,
-migration, index, cache, SQLite FTS, embedding, model inference, annotation
-authority, Concept resolution, provider call, or frontend behavior.
+migration, index, cache, SQLite FTS, annotation authority, Concept resolution,
+or frontend behavior. Its BM25 algorithm has no embedding/model/provider behavior;
+M12-D adds that separate baseline below.
+
+### Semantic Embedding Ranked Retriever v1 (milestone 12-D)
+
+M12-D completes the current baseline sequence:
+
+```text
+M12-A = exact identity retrieval
+M12-B = weighted lexical cosine retrieval
+M12-C = corpus-aware BM25 lexical retrieval
+M12-D = semantic embedding retrieval
+```
+
+`embedding_retriever_v1` implements the unchanged `ConceptRetriever` contract and
+depends on one batch-oriented application interface:
+
+```go
+type EmbeddingProvider interface {
+    Name() string
+    Embed(ctx context.Context, texts []string) ([][]float64, error)
+}
+```
+
+The retriever owns semantic text construction, vector validation, cosine ranking,
+evidence, limits, and stable ordering. The provider owns only text-to-vector
+inference plus provider/model provenance. It receives one combined batch in the
+deterministic order `query, Concept documents...`; there is no per-Concept remote
+call. The provider cannot read repositories, SQLite, annotation history,
+lifecycle policy, human labels, targets, or metrics.
+
+The versioned `concept_embedding_text_v1` representation is compact deterministic
+JSON. Query text includes canonical, statement, nullable example, candidate-
+identity target, pedagogical intent, scope, and identity-feature key/value pairs.
+Concept text includes target, pedagogical intent, scope, and feature pairs.
+Feature keys sort lexicographically before serialization. IDs, signatures,
+identity-schema version, lifecycle/support/effective state, human SAME/DISTINCT,
+annotation reason, target rank, hits, and metrics are excluded. Thus the query is
+constructed only from Unit/query evidence and documents only from Concept
+representation; evaluation truth is unavailable during embedding and ranking.
+
+Cosine similarity is computed after requiring non-empty, equal-dimensional,
+finite vectors. A zero-norm vector and non-positive similarity produce no
+candidate; dimension mismatch, empty vectors, non-finite values, or a wrong batch
+count fail the request rather than fabricating results. Positive results sort by
+score descending then Concept ID ascending, receive one-based ranks, and respect
+the requested limit. The score is semantic relevance—not a calibrated probability
+or proof of SAME—and there is no automatic threshold, resolution, or fallback.
+Stable JSON evidence contains `reason: "embedding_cosine"`, provider/model name,
+representation version, similarity, and vector dimension; raw vectors and human
+labels are never exposed.
+
+Production embedding configuration is independent of `AI_PROVIDER` and
+`EXTRACTOR_PROVIDER`. With the default `EMBEDDING_PROVIDER=disabled`, the server
+requires no embedding infrastructure and does not register the semantic retriever;
+explicit semantic selection therefore follows the registry's existing HTTP `400`
+unknown-name behavior. With `EMBEDDING_PROVIDER=http`, the registry exposes all
+four retrievers while exact signature remains the empty-selector default. The
+HTTP provider sends an OpenAI-compatible batch request to
+`<EMBEDDING_BASE_URL>/embeddings` using `EMBEDDING_MODEL`, an optional bearer
+`EMBEDDING_API_KEY`, and `EMBEDDING_TIMEOUT`. It preserves response order by the
+provider's explicit indexes and returns secret-safe `504` timeout or `502`
+unavailable responses without lexical/exact fallback.
+
+Exact, weighted lexical, BM25, and embedding evaluation still share the same
+M11-D gate, M11-C CURRENT explicit human-SAME truth, provenance classification,
+seed/admission/retired/missing-target exclusions, current non-retired universe,
+eligible Units, targets, ordering, maximum K, and Recall@1/3/5 and MRR definitions.
+Only retriever/provider-owned candidates, scores, evidence/provenance, target
+ranks/hits, and resulting metrics may differ. Frozen-vector tests establish this
+architecture and predictable ranking; they do not claim quality for any real
+embedding model.
+
+M12-D embeds the small evaluation corpus at request time and adds no migration,
+vector persistence/cache/database, ANN/HNSW/FAISS index, hybrid fusion, reranking,
+cross-encoder, LLM judge, learned SAME classifier, calibrated threshold, training,
+local runtime, model weights, GPU detection, or NAS inference requirement. A
+remote API, rented GPU, or a service on an RTX 4070 workstation can implement the
+same boundary. Local-inference optimization is deferred.
 
 **Knowledge-extraction work still out of scope** (not implemented): automatic extraction on
 capture/analysis/feedback, a rule-based semantic extractor, local models, model
 routing or cost optimization, ruleset evolution/proposal/replay, spaced
 repetition or review scheduling, mastery probability or automatic mastery
-detection, CEFR or difficulty scoring, embeddings/vector search/semantic dedup,
+detection, CEFR or difficulty scoring, embedding-based knowledge dedup/resolution,
 knowledge or prerequisite graphs, and cross-interaction normalization.
 
 ## Capture CLI (`cmd/capture`)

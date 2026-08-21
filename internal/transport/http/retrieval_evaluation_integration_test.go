@@ -33,7 +33,26 @@ func (*retrievalEvaluationExtractor) Extract(_ context.Context, source domain.Ex
 	}}}, nil
 }
 
-func setupRetrievalEvaluationServer(t *testing.T) (*httptest.Server, *sqlite.EntryRepository, *sqlite.AnalysisRepository) {
+type retrievalEvaluationEmbeddingProvider struct {
+	calls   int
+	batches [][]string
+}
+
+func (*retrievalEvaluationEmbeddingProvider) Name() string {
+	return "frozen:retrieval-integration-v1"
+}
+
+func (p *retrievalEvaluationEmbeddingProvider) Embed(_ context.Context, texts []string) ([][]float64, error) {
+	p.calls++
+	p.batches = append(p.batches, append([]string(nil), texts...))
+	vectors := make([][]float64, len(texts))
+	for index := range texts {
+		vectors[index] = []float64{1, 0}
+	}
+	return vectors, nil
+}
+
+func setupRetrievalEvaluationServer(t *testing.T) (*httptest.Server, *sqlite.EntryRepository, *sqlite.AnalysisRepository, *retrievalEvaluationEmbeddingProvider) {
 	t.Helper()
 	db, err := sqlite.Open(filepath.Join(t.TempDir(), "retrieval_evaluation_it.db"))
 	if err != nil {
@@ -61,6 +80,7 @@ func setupRetrievalEvaluationServer(t *testing.T) (*httptest.Server, *sqlite.Ent
 	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
 	datasetSvc := application.NewConceptAnnotationDatasetService(effectiveAnnotationSvc, knowledgeRepo, conceptRepo)
 	qualitySvc := application.NewConceptAnnotationDatasetQualityService(datasetSvc)
+	embeddingProvider := &retrievalEvaluationEmbeddingProvider{}
 	evaluationSvc := application.NewConceptRetrievalEvaluationServiceWithRegistry(
 		datasetSvc,
 		qualitySvc,
@@ -69,6 +89,7 @@ func setupRetrievalEvaluationServer(t *testing.T) (*httptest.Server, *sqlite.Ent
 			application.NewExactSignatureConceptRetriever(),
 			application.NewWeightedLexicalConceptRetriever(),
 			application.NewBM25ConceptRetriever(),
+			application.NewEmbeddingConceptRetriever(embeddingProvider),
 		),
 	)
 
@@ -80,7 +101,7 @@ func setupRetrievalEvaluationServer(t *testing.T) (*httptest.Server, *sqlite.Ent
 	)
 	server := httptest.NewServer(handler.Routes())
 	t.Cleanup(server.Close)
-	return server, entryRepo, analysisRepo
+	return server, entryRepo, analysisRepo, embeddingProvider
 }
 
 func createRetrievalEvaluationEntry(t *testing.T, entries *sqlite.EntryRepository, analyses *sqlite.AnalysisRepository, originalInput string) int64 {
@@ -149,8 +170,8 @@ func getRetrievalEvaluationIntegrationReport(t *testing.T, url string) retrieval
 	return report
 }
 
-func TestIntegration_RetrievalEvaluationComparesExactMissWithLexicalHits(t *testing.T) {
-	server, entries, analyses := setupRetrievalEvaluationServer(t)
+func TestIntegration_RetrievalEvaluationComparesConfiguredRetrievers(t *testing.T) {
+	server, entries, analyses, embeddingProvider := setupRetrievalEvaluationServer(t)
 
 	seedEntryID := createRetrievalEvaluationEntry(t, entries, analyses, "seed concept query")
 	seedUnitID := extractUnits(t, server, seedEntryID)[0]
@@ -194,11 +215,12 @@ func TestIntegration_RetrievalEvaluationComparesExactMissWithLexicalHits(t *test
 	exact := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1")
 	weighted := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1?retriever="+application.WeightedLexicalRetrieverV1Name)
 	bm25 := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1?retriever="+application.BM25RetrieverV1Name)
+	embedding := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1?retriever="+application.EmbeddingRetrieverV1Name)
 
-	if exact.Retriever != application.ExactSignatureRetrieverV1Name || weighted.Retriever != application.WeightedLexicalRetrieverV1Name || bm25.Retriever != application.BM25RetrieverV1Name {
-		t.Fatalf("retrievers = %q, %q, %q", exact.Retriever, weighted.Retriever, bm25.Retriever)
+	if exact.Retriever != application.ExactSignatureRetrieverV1Name || weighted.Retriever != application.WeightedLexicalRetrieverV1Name || bm25.Retriever != application.BM25RetrieverV1Name || embedding.Retriever != application.EmbeddingRetrieverV1Name {
+		t.Fatalf("retrievers = %q, %q, %q, %q", exact.Retriever, weighted.Retriever, bm25.Retriever, embedding.Retriever)
 	}
-	for name, report := range map[string]retrievalEvaluationIntegrationReport{"exact": exact, "weighted": weighted, "bm25": bm25} {
+	for name, report := range map[string]retrievalEvaluationIntegrationReport{"exact": exact, "weighted": weighted, "bm25": bm25, "embedding": embedding} {
 		if report.State != application.ConceptRetrievalEvaluationStateEvaluated || !report.DatasetValid || report.CandidateUniverse.Concepts != 1 {
 			t.Fatalf("%s evaluation state/universe = %+v", name, report)
 		}
@@ -226,5 +248,14 @@ func TestIntegration_RetrievalEvaluationComparesExactMissWithLexicalHits(t *test
 	}
 	if bm25.Metrics.RecallAt1 == nil || bm25.Metrics.RecallAt3 == nil || bm25.Metrics.RecallAt5 == nil || bm25.Metrics.MRR == nil || *bm25.Metrics.RecallAt1 != 1 || *bm25.Metrics.RecallAt3 != 1 || *bm25.Metrics.RecallAt5 != 1 || *bm25.Metrics.MRR != 1 {
 		t.Fatalf("BM25 lexical hit metrics = %+v", bm25.Metrics)
+	}
+	if len(embedding.Samples[0].Retrieved) == 0 || embedding.Samples[0].Retrieved[0].ConceptID != created.Concept.ID || embedding.Samples[0].Retrieved[0].Rank != 1 || embedding.Samples[0].TargetRank == nil || *embedding.Samples[0].TargetRank != 1 {
+		t.Fatalf("embedding later sample audit = %+v", embedding.Samples)
+	}
+	if embedding.Metrics.RecallAt1 == nil || embedding.Metrics.RecallAt3 == nil || embedding.Metrics.RecallAt5 == nil || embedding.Metrics.MRR == nil || *embedding.Metrics.RecallAt1 != 1 || *embedding.Metrics.RecallAt3 != 1 || *embedding.Metrics.RecallAt5 != 1 || *embedding.Metrics.MRR != 1 {
+		t.Fatalf("embedding hit metrics = %+v", embedding.Metrics)
+	}
+	if embeddingProvider.calls != 1 || len(embeddingProvider.batches) != 1 || len(embeddingProvider.batches[0]) != 2 {
+		t.Fatalf("embedding provider calls/batches = %d, %#v", embeddingProvider.calls, embeddingProvider.batches)
 	}
 }

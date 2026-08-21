@@ -34,7 +34,7 @@
 11. 只读查看 M11-A Effective Annotation 状态。
 12. 通过 JSON 或 NDJSON 获取 `concept_annotation_dataset_v1` 当前快照。
 13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
-14. 使用精确签名、加权词法余弦和 corpus-aware BM25 基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
+14. 使用精确签名、加权词法余弦、corpus-aware BM25 和可选语义 embedding 基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
 
 这不是最终消费者产品，也不是间隔重复 Review Engine、掌握度系统或 ML 解析器。
 
@@ -53,6 +53,7 @@ internal/domain          领域实体、验证、仓库与 Analyzer/Extractor �
 internal/application     应用用例和只读投影
 internal/analyzer        本地规则 Analyzer 与可选 OpenAI Analyzer
 internal/extractor       可选 OpenAI Knowledge Extractor
+internal/embedding       M12-D 可选 HTTP 文本向量 Provider
 internal/captureclient   Capture CLI 使用的 HTTP 客户端
 internal/storage/sqlite  SQLite 仓库与迁移执行器
 internal/transport/http  HTTP DTO、Handler 和路由
@@ -78,8 +79,22 @@ web                      React + Vite + TypeScript 标注工作台
 | `OPENAI_MODEL` | 无 | 启用 OpenAI 时必需 |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | API 基础地址 |
 | `OPENAI_TIMEOUT` | `8` | 单次 Provider 请求超时（秒） |
+| `EMBEDDING_PROVIDER` | `disabled` | `disabled` 或 `http` |
+| `EMBEDDING_MODEL` | 无 | embedding provider 为 `http` 时必需 |
+| `EMBEDDING_BASE_URL` | 无 | `http` Provider 的 OpenAI-compatible API 基础地址 |
+| `EMBEDDING_API_KEY` | 无 | 可选 bearer token；不会被记录 |
+| `EMBEDDING_TIMEOUT` | `8` | 单次 embedding 请求超时（秒） |
 
 `AI_PROVIDER` 和 `EXTRACTOR_PROVIDER` 相互独立。例如，可以使用本地规则分析器，同时单独启用 OpenAI 知识抽取器。
+
+`EMBEDDING_PROVIDER` 是第三个独立边界，只服务于 M12-D 只读检索评估。默认
+`disabled` 不需要 key、model、GPU 或 embedding 服务，也不会注册
+`embedding_retriever_v1`；显式选择该名称时沿用 registry 的 HTTP `400` unknown-
+retriever 行为。`http` 要求 `EMBEDDING_MODEL` 与 `EMBEDDING_BASE_URL`，通过一次 batch
+调用 `POST <base-url>/embeddings`，仅在需要 bearer token 时使用可选
+`EMBEDDING_API_KEY`。该 OpenAI-compatible adapter 可指向远程 API、租用算力或另一台机器
+上的服务，与 Analyzer/Extractor 的 OpenAI 配置无关。超时返回 `504`，其他 embedding
+故障返回 `502`，且不会回退到其他检索器。
 
 ### Analyzer
 
@@ -457,6 +472,7 @@ curl -sS localhost:8080/retrieval-evaluation/v1
 curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=exact_signature_retriever_v1'
 curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=weighted_lexical_retriever_v1'
 curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=bm25_retriever_v1'
+curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=embedding_retriever_v1'
 ```
 
 未知检索器返回 HTTP `400` 和 `{"error":"unknown retriever"}`。检索器选择由应用层
@@ -486,8 +502,9 @@ Concept 计算加权余弦相似度，只返回正重叠结果，先按 score �
 选择余弦是因为它透明、确定性强，不需要 corpus 统计或训练，并避免长字段仅因词更多
 而获胜。词法检索器不会给精确 signature 特殊加分，从而能与
 `exact_signature_retriever_v1` 公平比较。M12-B 算法本身仍不使用 IDF、TF-IDF 或 BM25。
-整个检索实验仍不包含倒排索引、SQLite FTS、embeddings、vector database、模糊编辑匹配、
-reranking、ML/LLM 相似度、自动标签、持久化、migration、provider 调用或前端改动。
+M12-B 算法本身也不调用 embedding provider。整个检索实验仍不使用倒排索引、SQLite FTS、
+vector database、模糊编辑匹配、reranking、自动标签、持久化、migration 或前端改动；
+M12-D 在下文加入独立的 embedding baseline，但不改变 M12-B 算法。
 
 ## Corpus-aware BM25 排序检索器 v1（M12-C）
 
@@ -538,8 +555,62 @@ score 是词法相关性，不是概率，也不是 SAME 的证明。
 余弦和 BM25 评估保持完全相同的 M11-D 质量门、M11-C CURRENT 人工 SAME truth、来源与
 Admission 排除、seed-unit 泄漏排除、候选全集、合格样本、targets、排序、最大 K 和
 Recall/MRR 定义；只有检索器拥有的排名输出及相应指标可以不同。M12-C 不增加持久化、
-migration、索引、cache、SQLite FTS、embedding、模型推理、标注权威、Concept resolution、
-provider 调用或前端行为。
+migration、索引、cache、SQLite FTS、标注权威、Concept resolution 或前端行为。BM25 算法
+本身不调用 embedding/model/provider；M12-D 在下文加入与它分离的 baseline。
+
+## 语义 Embedding 排序检索器 v1（M12-D）
+
+M12-D 完成当前四个 baseline 的递进：M12-A 是精确身份检索，M12-B 是加权词法余弦，
+M12-C 是 corpus-aware BM25 词法检索，M12-D 是语义 embedding 检索。
+`embedding_retriever_v1` 继续实现同一个 `ConceptRetriever`，并依赖一个小型、批量化的应用层
+边界：
+
+```go
+type EmbeddingProvider interface {
+    Name() string
+    Embed(ctx context.Context, texts []string) ([][]float64, error)
+}
+```
+
+检索器负责稳定语义文本、向量验证、余弦打分、evidence、limit 和排序；provider 只负责
+text-to-vector 推理以及 provider/model 来源名称。一次检索按 `query, Concept documents...`
+的确定顺序发出一个合并 batch，不会为每个 Concept 单独远程调用。provider 无权读取
+repository、SQLite、标注历史、lifecycle policy、人工 labels、targets 或 metrics。
+
+版本化的 `concept_embedding_text_v1` 是紧凑的确定性 JSON。query 包含 canonical、
+statement、可空 example、candidate identity 的 target、pedagogical intent、scope，以及按 key
+字典序排列的 identity feature 键值对；Concept 文本包含 target、intent、scope 和同样排序的
+features。ID、signature、identity schema version、lifecycle/support/effective state、人工
+SAME/DISTINCT、标注原因、target rank、hits 和 metrics 都被排除。因此 query 只来自 Unit
+证据，document 只来自 Concept 表示，构建向量和排序时不可访问评估 truth。
+
+余弦计算要求向量非空、维度一致且所有值有限。zero-norm 向量和非正相似度不产生候选；
+batch 数量错误、空向量、维度不一致或 NaN/Inf 会使请求明确失败，而不是伪造排名。正分结果
+按 score 降序、Concept ID 升序稳定排序，rank 从 1 开始并遵守 limit。score 只是语义相关
+性，不是校准概率或 SAME 证明，也不存在自动阈值、resolution 或 fallback。稳定 JSON
+evidence 包含 `reason: "embedding_cosine"`、provider/model 名称、表示版本、相似度和向量
+维度；不暴露原始向量或人工标签。
+
+生产配置独立于 `AI_PROVIDER` 和 `EXTRACTOR_PROVIDER`。默认
+`EMBEDDING_PROVIDER=disabled` 不需要 embedding 基础设施，也不注册语义检索器；显式选择其
+名称因此沿用 registry 的 HTTP `400` unknown-name 行为。设置
+`EMBEDDING_PROVIDER=http` 后，registry 暴露四个检索器，但空 selector 仍默认精确签名。
+HTTP provider 使用 `EMBEDDING_MODEL`、可选 bearer `EMBEDDING_API_KEY` 和
+`EMBEDDING_TIMEOUT`，向 `<EMBEDDING_BASE_URL>/embeddings` 发送 OpenAI-compatible batch；
+它按响应中的显式 index 恢复顺序。超时以不泄密的 HTTP `504` 返回，其他 provider 不可用
+错误返回 `502`，且不静默回退到词法或精确检索。
+
+精确、加权词法、BM25 和 embedding 评估仍共享同一个 M11-D gate、M11-C CURRENT 显式人工
+SAME truth、provenance 分类、seed/admission/retired/missing-target 排除、当前非 retired
+候选全集、合格 Units、targets、排序、最大 K 和 Recall@1/3/5 与 MRR 定义。只有检索器或
+provider 拥有的 candidates、scores、evidence/provenance、target ranks/hits 及最终 metrics
+可以不同。固定向量测试验证架构和确定性排名，不代表任何真实 embedding model 的质量。
+
+M12-D 在请求时对当前小型评估 corpus 做 embedding，不增加 migration、向量持久化/cache/
+database、ANN/HNSW/FAISS 索引、hybrid fusion、reranking、cross-encoder、LLM judge、学习式
+SAME classifier、校准阈值、训练、本地 runtime、模型权重、GPU 检测或 NAS 推理要求。远程
+API、租用 GPU 或 RTX 4070 工作站上的服务都可实现同一 provider 边界；本地推理优化留待
+后续里程碑。
 
 ## 开发与验证
 

@@ -175,6 +175,14 @@ func (h *Handler) handleGetRetrievalEvaluationV1(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusBadRequest, "unknown retriever")
 		return
 	}
+	if errors.Is(err, application.ErrEmbeddingProviderTimeout) {
+		writeError(w, http.StatusGatewayTimeout, "embedding provider timed out")
+		return
+	}
+	if errors.Is(err, application.ErrEmbeddingProviderUnavailable) {
+		writeError(w, http.StatusBadGateway, "embedding provider unavailable")
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not build concept retrieval evaluation")
 		return

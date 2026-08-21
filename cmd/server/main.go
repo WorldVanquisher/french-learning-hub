@@ -15,6 +15,7 @@ import (
 	"french-learning-app/internal/analyzer"
 	"french-learning-app/internal/application"
 	"french-learning-app/internal/config"
+	"french-learning-app/internal/embedding"
 	"french-learning-app/internal/extractor"
 	"french-learning-app/internal/storage/sqlite"
 	transporthttp "french-learning-app/internal/transport/http"
@@ -66,6 +67,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	selectedEmbeddingProvider, err := embedding.New(cfg.Embedding)
+	if err != nil {
+		return err
+	}
 
 	entrySvc := application.NewEntryService(entryRepo)
 	analysisSvc := application.NewAnalysisService(entryRepo, analysisRepo, selectedAnalyzer)
@@ -78,19 +83,26 @@ func run() error {
 	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
 	annotationDatasetSvc := application.NewConceptAnnotationDatasetService(effectiveAnnotationSvc, knowledgeRepo, conceptRepo)
 	annotationQualitySvc := application.NewConceptAnnotationDatasetQualityService(annotationDatasetSvc)
+	additionalRetrievers := []application.ConceptRetriever{
+		application.NewWeightedLexicalConceptRetriever(),
+		application.NewBM25ConceptRetriever(),
+	}
+	if selectedEmbeddingProvider != nil {
+		additionalRetrievers = append(additionalRetrievers, application.NewEmbeddingConceptRetriever(selectedEmbeddingProvider))
+	}
 	retrievalEvaluationSvc := application.NewConceptRetrievalEvaluationServiceWithRegistry(
 		annotationDatasetSvc,
 		annotationQualitySvc,
 		conceptSvc,
 		application.NewConceptRetrieverRegistry(
 			application.NewExactSignatureConceptRetriever(),
-			application.NewWeightedLexicalConceptRetriever(),
-			application.NewBM25ConceptRetriever(),
+			additionalRetrievers...,
 		),
 	)
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)
 	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
+	log.Printf("embedding provider: %s", cfg.Embedding.Provider)
 
 	handler := transporthttp.NewHandler(
 		entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc,

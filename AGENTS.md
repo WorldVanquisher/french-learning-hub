@@ -229,6 +229,32 @@ M12-C:
 - M12-C adds no persistence, migration, index, SQLite FTS, cache, embedding,
   model inference, provider call, parameter learning, or frontend behavior.
 
+M12-D:
+
+- `embedding_retriever_v1` is the optional semantic retrieval baseline behind the
+  unchanged `ConceptRetriever` contract. The application-owned batch
+  `EmbeddingProvider` converts text to vectors but owns no repository, annotation,
+  evaluation, or resolution policy.
+- `concept_embedding_text_v1` deterministically serializes Unit query evidence and
+  Concept semantic fields with sorted identity features. It excludes IDs,
+  signatures, lifecycle/support state, human labels/reasons, target ranks, hits,
+  and metrics.
+- The retriever validates non-empty, equal-dimensional finite vectors, uses cosine
+  similarity, omits zero-norm and non-positive results, sorts score descending then
+  Concept ID ascending, and emits stable evidence without raw vectors or human
+  truth. Provider failures never fall back and map to secret-safe HTTP errors.
+- Embedding configuration is independent of analyzer and extractor configuration.
+  The default is disabled and leaves the semantic retriever unregistered; when an
+  HTTP provider is configured, production exposes all four retrievers while exact
+  signature remains the default.
+- Exact, weighted lexical, BM25, and semantic evaluation share the same M11-D gate,
+  M11-C human-SAME truth, exclusions, candidate universe, samples, targets, max K,
+  and metrics. Semantic ranking is retrieval evidence only and creates no
+  annotation or Concept-resolution authority.
+- M12-D adds no persistence, vector index/cache/database, hybrid or neural
+  reranking, learned threshold/classifier, training, model weights, local runtime,
+  GPU detection, or NAS inference requirement.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.
