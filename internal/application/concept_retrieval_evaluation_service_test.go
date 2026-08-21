@@ -174,14 +174,18 @@ func TestConceptRetrievalEvaluationService_ExclusionPrecedenceCountsOnce(t *test
 
 func TestConceptRetrievalEvaluationService_QualityGateAndFailures(t *testing.T) {
 	t.Run("invalid blocks before dataset catalog and retrieval", func(t *testing.T) {
-		for _, name := range []string{ExactSignatureRetrieverV1Name, WeightedLexicalRetrieverV1Name, BM25RetrieverV1Name} {
+		for _, name := range []string{ExactSignatureRetrieverV1Name, WeightedLexicalRetrieverV1Name, BM25RetrieverV1Name, EmbeddingRetrieverV1Name} {
 			t.Run(name, func(t *testing.T) {
 				dataset := &fakeAnnotationDatasetV1Reader{}
 				quality := &fakeRetrievalQualityReader{report: ConceptAnnotationQualityReport{Valid: false, ErrorCount: 1}}
 				catalog := &fakeRetrievalConceptCatalog{}
+				embeddingProvider := &frozenEmbeddingProvider{name: "frozen:test", output: [][]float64{{1}}}
 				service := NewConceptRetrievalEvaluationServiceWithRegistry(
 					dataset, quality, catalog,
-					NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever(), NewBM25ConceptRetriever()),
+					NewConceptRetrieverRegistry(
+						NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever(),
+						NewBM25ConceptRetriever(), NewEmbeddingConceptRetriever(embeddingProvider),
+					),
 				)
 				report, err := service.BuildV1WithRetriever(context.Background(), name)
 				if err != nil {
@@ -190,8 +194,8 @@ func TestConceptRetrievalEvaluationService_QualityGateAndFailures(t *testing.T) 
 				if report.Retriever != name || report.State != ConceptRetrievalEvaluationStateBlockedInvalidDataset || report.DatasetValid || report.Metrics.RecallAt1 != nil || report.Metrics.RecallAt3 != nil || report.Metrics.RecallAt5 != nil || report.Metrics.MRR != nil || report.Samples == nil || len(report.Samples) != 0 {
 					t.Fatalf("blocked report = %+v", report)
 				}
-				if dataset.calls != 0 || catalog.calls != 0 || quality.calls != 1 {
-					t.Fatalf("blocked calls: dataset=%d catalog=%d quality=%d", dataset.calls, catalog.calls, quality.calls)
+				if dataset.calls != 0 || catalog.calls != 0 || quality.calls != 1 || embeddingProvider.calls != 0 {
+					t.Fatalf("blocked calls: dataset=%d catalog=%d quality=%d embedding=%d", dataset.calls, catalog.calls, quality.calls, embeddingProvider.calls)
 				}
 			})
 		}
@@ -199,9 +203,21 @@ func TestConceptRetrievalEvaluationService_QualityGateAndFailures(t *testing.T) 
 
 	t.Run("quality failure propagates", func(t *testing.T) {
 		sentinel := errors.New("quality failed")
-		_, err := NewConceptRetrievalEvaluationService(&fakeAnnotationDatasetV1Reader{}, &fakeRetrievalQualityReader{err: sentinel}, &fakeRetrievalConceptCatalog{}, &fakeConceptRetriever{}).BuildV1(context.Background())
+		embeddingProvider := &frozenEmbeddingProvider{name: "frozen:test", output: [][]float64{{1}}}
+		service := NewConceptRetrievalEvaluationServiceWithRegistry(
+			&fakeAnnotationDatasetV1Reader{}, &fakeRetrievalQualityReader{err: sentinel},
+			&fakeRetrievalConceptCatalog{},
+			NewConceptRetrieverRegistry(
+				NewExactSignatureConceptRetriever(),
+				NewEmbeddingConceptRetriever(embeddingProvider),
+			),
+		)
+		_, err := service.BuildV1WithRetriever(context.Background(), EmbeddingRetrieverV1Name)
 		if !errors.Is(err, sentinel) {
 			t.Fatalf("error = %v", err)
+		}
+		if embeddingProvider.calls != 0 {
+			t.Fatalf("embedding provider calls = %d, want 0", embeddingProvider.calls)
 		}
 	})
 }
@@ -226,7 +242,18 @@ func TestConceptRetrievalEvaluationService_AllRetrieversShareEvaluationPopulatio
 	dataset := &fakeAnnotationDatasetV1Reader{records: []ConceptAnnotationDatasetRecord{record, seed}}
 	quality := &fakeRetrievalQualityReader{report: ConceptAnnotationQualityReport{Valid: true}}
 	catalog := &fakeRetrievalConceptCatalog{concepts: []domain.KnowledgeConcept{distractor, target}}
-	registry := NewConceptRetrieverRegistry(NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever(), NewBM25ConceptRetriever())
+	embeddingProvider := &frozenEmbeddingProvider{
+		name: "frozen:population-v1",
+		output: [][]float64{
+			{1, 0}, // query
+			{1, 0}, // target Concept 11 after service sorting
+			{0, 1}, // distractor Concept 12
+		},
+	}
+	registry := NewConceptRetrieverRegistry(
+		NewExactSignatureConceptRetriever(), NewWeightedLexicalConceptRetriever(),
+		NewBM25ConceptRetriever(), NewEmbeddingConceptRetriever(embeddingProvider),
+	)
 	service := NewConceptRetrievalEvaluationServiceWithRegistry(dataset, quality, catalog, registry)
 
 	exact, err := service.BuildV1(context.Background())
@@ -241,10 +268,14 @@ func TestConceptRetrievalEvaluationService_AllRetrieversShareEvaluationPopulatio
 	if err != nil {
 		t.Fatalf("BM25 BuildV1: %v", err)
 	}
-	if exact.Retriever != ExactSignatureRetrieverV1Name || weighted.Retriever != WeightedLexicalRetrieverV1Name || bm25.Retriever != BM25RetrieverV1Name {
-		t.Fatalf("retrievers = %q, %q, %q", exact.Retriever, weighted.Retriever, bm25.Retriever)
+	embedding, err := service.BuildV1WithRetriever(context.Background(), EmbeddingRetrieverV1Name)
+	if err != nil {
+		t.Fatalf("embedding BuildV1: %v", err)
 	}
-	for name, report := range map[string]ConceptRetrievalEvaluationReport{"weighted": weighted, "bm25": bm25} {
+	if exact.Retriever != ExactSignatureRetrieverV1Name || weighted.Retriever != WeightedLexicalRetrieverV1Name || bm25.Retriever != BM25RetrieverV1Name || embedding.Retriever != EmbeddingRetrieverV1Name {
+		t.Fatalf("retrievers = %q, %q, %q, %q", exact.Retriever, weighted.Retriever, bm25.Retriever, embedding.Retriever)
+	}
+	for name, report := range map[string]ConceptRetrievalEvaluationReport{"weighted": weighted, "bm25": bm25, "embedding": embedding} {
 		if exact.SchemaVersion != report.SchemaVersion || exact.EvaluationPolicy != report.EvaluationPolicy || exact.State != report.State || exact.DatasetValid != report.DatasetValid || exact.CandidateUniverse != report.CandidateUniverse || !reflect.DeepEqual(exact.EvaluationSamples, report.EvaluationSamples) {
 			t.Fatalf("%s evaluation population differs: exact=%+v selected=%+v", name, exact, report)
 		}
@@ -261,9 +292,16 @@ func TestConceptRetrievalEvaluationService_AllRetrieversShareEvaluationPopulatio
 	if bm25.Samples[0].TargetRank == nil || *bm25.Samples[0].TargetRank != 1 || len(bm25.Samples[0].Retrieved) == 0 || bm25.Samples[0].Retrieved[0].ConceptID != target.ID {
 		t.Fatalf("BM25 should retrieve target at rank 1: %+v", bm25.Samples[0])
 	}
+	if embedding.Samples[0].TargetRank == nil || *embedding.Samples[0].TargetRank != 1 || len(embedding.Samples[0].Retrieved) == 0 || embedding.Samples[0].Retrieved[0].ConceptID != target.ID {
+		t.Fatalf("embedding should retrieve target at rank 1: %+v", embedding.Samples[0])
+	}
+	if embeddingProvider.calls != 1 {
+		t.Fatalf("embedding provider calls = %d, want 1", embeddingProvider.calls)
+	}
 	assertRetrievalMetrics(t, exact.Metrics, 0, 0, 0, 0)
 	assertRetrievalMetrics(t, weighted.Metrics, 1, 1, 1, 1)
 	assertRetrievalMetrics(t, bm25.Metrics, 1, 1, 1, 1)
+	assertRetrievalMetrics(t, embedding.Metrics, 1, 1, 1, 1)
 }
 
 func TestConceptRetrievalEvaluationService_UnknownRetrieverStopsBeforeDependencies(t *testing.T) {

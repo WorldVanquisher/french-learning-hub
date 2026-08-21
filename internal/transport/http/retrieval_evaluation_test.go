@@ -14,16 +14,17 @@ import (
 )
 
 type fakeRetrievalEvaluationService struct {
-	report application.ConceptRetrievalEvaluationReport
-	err    error
-	calls  int
-	names  []string
+	report               application.ConceptRetrievalEvaluationReport
+	err                  error
+	calls                int
+	names                []string
+	embeddingUnavailable bool
 }
 
 func (f *fakeRetrievalEvaluationService) BuildV1WithRetriever(_ context.Context, name string) (application.ConceptRetrievalEvaluationReport, error) {
 	f.calls++
 	f.names = append(f.names, name)
-	if name == "unknown" {
+	if name == "unknown" || (name == application.EmbeddingRetrieverV1Name && f.embeddingUnavailable) {
 		return application.ConceptRetrievalEvaluationReport{}, application.ErrUnknownConceptRetriever
 	}
 	return f.report, f.err
@@ -77,7 +78,7 @@ func TestRetrievalEvaluationHandler_ReturnsVersionedEvaluatedReport(t *testing.T
 }
 
 func TestRetrievalEvaluationHandler_PassesExplicitRetrieverSelection(t *testing.T) {
-	for _, name := range []string{application.ExactSignatureRetrieverV1Name, application.WeightedLexicalRetrieverV1Name, application.BM25RetrieverV1Name} {
+	for _, name := range []string{application.ExactSignatureRetrieverV1Name, application.WeightedLexicalRetrieverV1Name, application.BM25RetrieverV1Name, application.EmbeddingRetrieverV1Name} {
 		t.Run(name, func(t *testing.T) {
 			service := &fakeRetrievalEvaluationService{report: application.ConceptRetrievalEvaluationReport{
 				Retriever: name, Samples: []application.ConceptRetrievalEvaluationSample{},
@@ -116,8 +117,18 @@ func TestRetrievalEvaluationHandler_RejectsUnknownAndDuplicateRetriever(t *testi
 	})
 }
 
+func TestRetrievalEvaluationHandler_EmbeddingUnavailableWhenNotRegistered(t *testing.T) {
+	service := &fakeRetrievalEvaluationService{embeddingUnavailable: true}
+	recorder := httptest.NewRecorder()
+	path := "/retrieval-evaluation/v1?retriever=" + application.EmbeddingRetrieverV1Name
+	retrievalEvaluationTestRoutes(service).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+	if recorder.Code != http.StatusBadRequest || recorder.Body.String() != "{\"error\":\"unknown retriever\"}\n" {
+		t.Fatalf("status = %d, body = %q", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestRetrievalEvaluationHandler_BlockedInvalidDatasetReturnsOKAndNullMetrics(t *testing.T) {
-	for _, name := range []string{application.ExactSignatureRetrieverV1Name, application.WeightedLexicalRetrieverV1Name, application.BM25RetrieverV1Name} {
+	for _, name := range []string{application.ExactSignatureRetrieverV1Name, application.WeightedLexicalRetrieverV1Name, application.BM25RetrieverV1Name, application.EmbeddingRetrieverV1Name} {
 		t.Run(name, func(t *testing.T) {
 			service := &fakeRetrievalEvaluationService{report: application.ConceptRetrievalEvaluationReport{
 				SchemaVersion:    application.ConceptRetrievalEvaluationV1SchemaVersion,
@@ -156,6 +167,28 @@ func TestRetrievalEvaluationHandler_InternalFailureIsGeneric(t *testing.T) {
 	body := recorder.Body.String()
 	if !strings.Contains(body, "could not build concept retrieval evaluation") || strings.Contains(body, "private storage") || strings.Contains(body, "provider detail") {
 		t.Fatalf("body = %s", body)
+	}
+}
+
+func TestRetrievalEvaluationHandler_EmbeddingProviderFailuresAreSafe(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		err    error
+		status int
+		body   string
+	}{
+		{name: "timeout", err: application.ErrEmbeddingProviderTimeout, status: http.StatusGatewayTimeout, body: "{\"error\":\"embedding provider timed out\"}\n"},
+		{name: "unavailable", err: application.ErrEmbeddingProviderUnavailable, status: http.StatusBadGateway, body: "{\"error\":\"embedding provider unavailable\"}\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			service := &fakeRetrievalEvaluationService{err: errors.Join(tc.err, errors.New("secret provider response"))}
+			recorder := httptest.NewRecorder()
+			path := "/retrieval-evaluation/v1?retriever=" + application.EmbeddingRetrieverV1Name
+			retrievalEvaluationTestRoutes(service).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+			if recorder.Code != tc.status || recorder.Body.String() != tc.body || strings.Contains(recorder.Body.String(), "secret") {
+				t.Fatalf("status = %d, body = %q", recorder.Code, recorder.Body.String())
+			}
+		})
 	}
 }
 
