@@ -92,12 +92,14 @@ func setupRetrievalEvaluationServer(t *testing.T) (*httptest.Server, *sqlite.Ent
 			application.NewEmbeddingConceptRetriever(embeddingProvider),
 		),
 	)
+	comparisonSvc := application.NewConceptRetrievalComparisonService(evaluationSvc)
 
 	handler := transporthttp.NewHandler(
 		entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc,
 		knowledgeSvc, conceptSvc, effectiveAnnotationSvc, datasetSvc,
 		transporthttp.WithAnnotationDatasetQuality(qualitySvc),
 		transporthttp.WithRetrievalEvaluation(evaluationSvc),
+		transporthttp.WithRetrievalComparison(comparisonSvc),
 	)
 	server := httptest.NewServer(handler.Routes())
 	t.Cleanup(server.Close)
@@ -153,6 +155,28 @@ type retrievalEvaluationIntegrationReport struct {
 	} `json:"samples"`
 }
 
+type retrievalComparisonIntegrationReport struct {
+	SchemaVersion     string `json:"schema_version"`
+	State             string `json:"state"`
+	DatasetValid      bool   `json:"dataset_valid"`
+	CandidateUniverse struct {
+		Concepts int `json:"concepts"`
+	} `json:"candidate_universe"`
+	EvaluationSamples struct {
+		EligibleSamples int `json:"eligible_samples"`
+	} `json:"evaluation_samples"`
+	Retrievers []struct {
+		Retriever string `json:"retriever"`
+		State     string `json:"state"`
+		Metrics   struct {
+			RecallAt1 *float64 `json:"recall_at_1"`
+			RecallAt3 *float64 `json:"recall_at_3"`
+			RecallAt5 *float64 `json:"recall_at_5"`
+			MRR       *float64 `json:"mrr"`
+		} `json:"metrics"`
+	} `json:"retrievers"`
+}
+
 func getRetrievalEvaluationIntegrationReport(t *testing.T, url string) retrievalEvaluationIntegrationReport {
 	t.Helper()
 	response, err := http.Get(url)
@@ -166,6 +190,23 @@ func getRetrievalEvaluationIntegrationReport(t *testing.T, url string) retrieval
 	var report retrievalEvaluationIntegrationReport
 	if err := json.NewDecoder(response.Body).Decode(&report); err != nil {
 		t.Fatalf("decode evaluation: %v", err)
+	}
+	return report
+}
+
+func getRetrievalComparisonIntegrationReport(t *testing.T, url string) retrievalComparisonIntegrationReport {
+	t.Helper()
+	response, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET retrieval comparison: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("comparison status = %d", response.StatusCode)
+	}
+	var report retrievalComparisonIntegrationReport
+	if err := json.NewDecoder(response.Body).Decode(&report); err != nil {
+		t.Fatalf("decode comparison: %v", err)
 	}
 	return report
 }
@@ -216,6 +257,7 @@ func TestIntegration_RetrievalEvaluationComparesConfiguredRetrievers(t *testing.
 	weighted := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1?retriever="+application.WeightedLexicalRetrieverV1Name)
 	bm25 := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1?retriever="+application.BM25RetrieverV1Name)
 	embedding := getRetrievalEvaluationIntegrationReport(t, server.URL+"/retrieval-evaluation/v1?retriever="+application.EmbeddingRetrieverV1Name)
+	comparison := getRetrievalComparisonIntegrationReport(t, server.URL+"/retrieval-comparison/v1")
 
 	if exact.Retriever != application.ExactSignatureRetrieverV1Name || weighted.Retriever != application.WeightedLexicalRetrieverV1Name || bm25.Retriever != application.BM25RetrieverV1Name || embedding.Retriever != application.EmbeddingRetrieverV1Name {
 		t.Fatalf("retrievers = %q, %q, %q, %q", exact.Retriever, weighted.Retriever, bm25.Retriever, embedding.Retriever)
@@ -255,7 +297,20 @@ func TestIntegration_RetrievalEvaluationComparesConfiguredRetrievers(t *testing.
 	if embedding.Metrics.RecallAt1 == nil || embedding.Metrics.RecallAt3 == nil || embedding.Metrics.RecallAt5 == nil || embedding.Metrics.MRR == nil || *embedding.Metrics.RecallAt1 != 1 || *embedding.Metrics.RecallAt3 != 1 || *embedding.Metrics.RecallAt5 != 1 || *embedding.Metrics.MRR != 1 {
 		t.Fatalf("embedding hit metrics = %+v", embedding.Metrics)
 	}
-	if embeddingProvider.calls != 1 || len(embeddingProvider.batches) != 1 || len(embeddingProvider.batches[0]) != 2 {
+	if comparison.SchemaVersion != application.ConceptRetrievalComparisonV1SchemaVersion || comparison.State != application.ConceptRetrievalEvaluationStateEvaluated || !comparison.DatasetValid || comparison.CandidateUniverse.Concepts != 1 || comparison.EvaluationSamples.EligibleSamples != 1 || len(comparison.Retrievers) != 4 {
+		t.Fatalf("comparison identity/population = %+v", comparison)
+	}
+	wantComparisonOrder := []string{application.ExactSignatureRetrieverV1Name, application.WeightedLexicalRetrieverV1Name, application.BM25RetrieverV1Name, application.EmbeddingRetrieverV1Name}
+	for index, name := range wantComparisonOrder {
+		row := comparison.Retrievers[index]
+		if row.Retriever != name || row.State != application.ConceptRetrievalEvaluationStateEvaluated || row.Metrics.RecallAt1 == nil || row.Metrics.RecallAt3 == nil || row.Metrics.RecallAt5 == nil || row.Metrics.MRR == nil {
+			t.Fatalf("comparison row[%d] = %+v", index, row)
+		}
+	}
+	if *comparison.Retrievers[0].Metrics.RecallAt1 != 0 || *comparison.Retrievers[1].Metrics.RecallAt1 != 1 || *comparison.Retrievers[2].Metrics.RecallAt1 != 1 || *comparison.Retrievers[3].Metrics.RecallAt1 != 1 {
+		t.Fatalf("comparison Recall@1 rows = %+v", comparison.Retrievers)
+	}
+	if embeddingProvider.calls != 2 || len(embeddingProvider.batches) != 2 || len(embeddingProvider.batches[0]) != 2 || len(embeddingProvider.batches[1]) != 2 {
 		t.Fatalf("embedding provider calls/batches = %d, %#v", embeddingProvider.calls, embeddingProvider.batches)
 	}
 }

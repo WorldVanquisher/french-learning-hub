@@ -70,7 +70,9 @@ model. Milestone 12-A adds a read-only exact-signature retrieval evaluation
 foundation, milestone 12-B adds a selectable weighted lexical cosine baseline,
 milestone 12-C adds a corpus-aware BM25 lexical baseline, and milestone 12-D adds
 an optional provider-independent semantic embedding baseline, without changing
-Concept resolution or annotation authority.
+Concept resolution or annotation authority. Milestone 13-A0 adds one compact,
+read-only comparison over those four baselines while preserving the complete M12
+experiment contract.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
 and [web/README.md](web/README.md) for running the frontend.
 
@@ -1149,6 +1151,51 @@ cross-encoder, LLM judge, learned SAME classifier, calibrated threshold, trainin
 local runtime, model weights, GPU detection, or NAS inference requirement. A
 remote API, rented GPU, or a service on an RTX 4070 workstation can implement the
 same boundary. Local-inference optimization is deferred.
+
+### Retrieval Baseline Comparison v1 (milestone 13-A0)
+
+M12 builds and audits one retrieval baseline at a time. M13-A0 adds the first
+experiment-analysis layer: a compact comparison of their top-level metrics under
+the unchanged M12 experiment contract.
+
+```bash
+curl -sS http://localhost:8080/retrieval-comparison/v1
+```
+
+`GET /retrieval-comparison/v1` returns schema
+`concept_retrieval_comparison_v1`, the shared dataset validity, candidate-universe
+size, eligible-sample count, and fixed-order rows for:
+
+```text
+exact_signature_retriever_v1
+weighted_lexical_retriever_v1
+bm25_retriever_v1
+embedding_retriever_v1
+```
+
+Each evaluated row copies `state`, Recall@1, Recall@3, Recall@5, and MRR directly
+from the existing `ConceptRetrievalEvaluationService`; the comparison layer does
+not compute rankings or metrics. Detailed per-sample audit output remains at
+`GET /retrieval-evaluation/v1?retriever=...` and is deliberately omitted from the
+compact comparison response.
+
+The optional embedding row is never silently omitted or replaced. When production
+uses the default `EMBEDDING_PROVIDER=disabled`, it appears with
+`state: "unavailable"` and null metrics. When configured, it is evaluated normally;
+provider timeout/unavailability still returns the existing secret-safe HTTP
+`504`/`502` failure rather than a fallback result.
+
+Before presenting metrics, M13-A0 verifies that all evaluated reports agree on
+the M12 schema/policy/state, dataset validity, complete exclusion inventory,
+candidate universe, ordered eligible Units, queries, target Concepts, and human
+SAME provenance. A mismatch fails explicitly with HTTP `500` rather than mixing
+different populations. An M11-D-invalid dataset retains the existing successful
+`blocked_invalid_dataset` interpretation with null metrics, and the underlying
+M12 quality gate prevents any retriever call.
+
+M13-A0 adds no retriever, ground truth, candidate-selection rule, persistence,
+migration, cache, hybrid retrieval, score fusion, reranking, statistical analysis,
+chart, dashboard, annotation write, or Concept-resolution behavior.
 
 **Knowledge-extraction work still out of scope** (not implemented): automatic extraction on
 capture/analysis/feedback, a rule-based semantic extractor, local models, model

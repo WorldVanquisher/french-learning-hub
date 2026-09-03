@@ -1559,6 +1559,57 @@ requirement. A remote API, rented GPU, or a service hosted on an RTX 4070
 workstation can implement the same boundary; local-inference optimization remains
 deferred.
 
+## Retrieval Baseline Comparison v1 (milestone 13-A0)
+
+M13-A0 is the first experiment-analysis layer after M12's four individual
+retrieval baselines. `ConceptRetrievalComparisonService` depends only on the
+existing evaluation capability:
+
+```text
+ConceptRetrievalComparisonService.BuildV1
+                    │ fixed v1 order
+                    ▼
+ConceptRetrievalEvaluationService.BuildV1WithRetriever
+                    │
+       exact → weighted lexical → BM25 → embedding
+```
+
+The comparison service neither receives repositories nor implements retrieval,
+truth selection, exclusions, candidate-universe construction, Recall, or MRR. It
+invokes the detailed M12 contract for each fixed name and copies only shared
+population metadata plus each report's state and top-level metrics into schema
+`concept_retrieval_comparison_v1`. `GET /retrieval-comparison/v1` exposes this
+compact report; `GET /retrieval-evaluation/v1?retriever=...` remains the owner of
+full per-sample audit output.
+
+Rows have deterministic order: exact signature, weighted lexical cosine, BM25,
+then embedding. The first three baselines are required. The embedding baseline is
+optional in production: only `ErrUnknownConceptRetriever` for that fixed name is
+converted to explicit state `unavailable` with null metrics. A configured
+embedding provider is evaluated normally, and its timeout/unavailable errors
+propagate to the existing secret-safe HTTP `504`/`502` mappings. No other
+retriever is substituted and the embedding row is never omitted.
+
+Before returning a comparison, every evaluated report must agree on evaluation
+schema and policy, state, dataset validity, candidate universe, complete sample
+inventory and exclusions, and the ordered sample identities: Unit, Entry,
+Extraction, query, target Concept, human-SAME event, and provenance reason.
+Retriever-owned candidates, ranks, hits, and metrics are intentionally excluded
+from that equality check. Any population mismatch returns an internal consistency
+error and the HTTP layer emits a generic `500`; the service never selects one
+population or combines incompatible metrics.
+
+An invalid M11-D dataset still produces the M12-owned successful
+`blocked_invalid_dataset` reports. The comparison preserves that top-level and
+per-row state with null metrics. Each underlying M12 call stops at its quality
+gate before dataset/catalog reads or retriever execution; warnings remain
+non-blocking.
+
+M13-A0 is read-only and request-scoped. It adds no persistence, migration, result
+history, cache, retriever, hybrid/fusion algorithm, reranker, significance test,
+confidence interval, subgroup analysis, error taxonomy, chart, frontend,
+annotation authority, or Concept-resolution behavior.
+
 ## Design principles
 
 1. Store raw learning records before attempting advanced classification.
