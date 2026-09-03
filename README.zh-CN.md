@@ -35,6 +35,7 @@
 12. 通过 JSON 或 NDJSON 获取 `concept_annotation_dataset_v1` 当前快照。
 13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
 14. 使用精确签名、加权词法余弦、corpus-aware BM25 和可选语义 embedding 基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
+15. 通过 `concept_retrieval_comparison_v1` 在同一 M12 实验契约下对比四种基线的顶层指标。
 
 这不是最终消费者产品，也不是间隔重复 Review Engine、掌握度系统或 ML 解析器。
 
@@ -611,6 +612,44 @@ database、ANN/HNSW/FAISS 索引、hybrid fusion、reranking、cross-encoder、L
 SAME classifier、校准阈值、训练、本地 runtime、模型权重、GPU 检测或 NAS 推理要求。远程
 API、租用 GPU 或 RTX 4070 工作站上的服务都可实现同一 provider 边界；本地推理优化留待
 后续里程碑。
+
+## 检索基线比较 v1（M13-A0）
+
+M12 逐个建立并审计检索 baseline。M13-A0 是第一个 experiment-analysis 层：它在完全不改变
+M12 实验契约的情况下，把四种 baseline 的顶层指标放入一个紧凑报告。
+
+```bash
+curl -sS localhost:8080/retrieval-comparison/v1
+```
+
+`GET /retrieval-comparison/v1` 返回 schema `concept_retrieval_comparison_v1`、共享的 Dataset
+有效性、候选 Concept 数、合格样本数，并按以下固定顺序返回行：
+
+```text
+exact_signature_retriever_v1
+weighted_lexical_retriever_v1
+bm25_retriever_v1
+embedding_retriever_v1
+```
+
+每个已评估行都直接复制现有 `ConceptRetrievalEvaluationService` 的 state、Recall@1、
+Recall@3、Recall@5 和 MRR；比较层不计算排名或指标。完整 per-sample audit 仍由
+`GET /retrieval-evaluation/v1?retriever=...` 提供，不进入这个紧凑响应。
+
+可选 embedding 行不会被静默省略或替换。生产环境默认
+`EMBEDDING_PROVIDER=disabled` 时，该行明确为 `state: "unavailable"`，四个指标均为
+`null`。配置 provider 后则正常评估；provider timeout/unavailable 仍返回不泄密的 HTTP
+`504`/`502`，不会 fallback 到其他算法。
+
+展示指标前，M13-A0 会检查所有已评估报告是否共享 M12 schema/policy/state、Dataset
+有效性、完整 exclusion inventory、候选全集、按顺序排列的合格 Units、queries、target
+Concepts 和人工 SAME provenance。任何不一致都会明确失败并返回 HTTP `500`，不会混合
+不同 population。若 M11-D 判定 Dataset 无效，报告继续沿用现有
+`blocked_invalid_dataset` 成功状态和 null metrics；底层 M12 质量门保证不会调用检索器。
+
+M13-A0 不增加新 retriever、ground truth、候选规则、持久化、migration、cache、hybrid
+retrieval、score fusion、reranking、统计分析、图表、dashboard、标注写入或 Concept
+resolution 行为。
 
 ## 开发与验证
 

@@ -99,6 +99,7 @@ func run() error {
 			additionalRetrievers...,
 		),
 	)
+	retrievalComparisonSvc := application.NewConceptRetrievalComparisonService(retrievalEvaluationSvc)
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)
 	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
@@ -109,6 +110,7 @@ func run() error {
 		knowledgeSvc, conceptSvc, effectiveAnnotationSvc, annotationDatasetSvc,
 		transporthttp.WithAnnotationDatasetQuality(annotationQualitySvc),
 		transporthttp.WithRetrievalEvaluation(retrievalEvaluationSvc),
+		transporthttp.WithRetrievalComparison(retrievalComparisonSvc),
 	)
 
 	srv := &http.Server{

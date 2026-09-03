@@ -77,6 +77,7 @@ type Handler struct {
 	annotationDataset   AnnotationDatasetService
 	annotationQuality   AnnotationDatasetQualityService
 	retrievalEvaluation RetrievalEvaluationService
+	retrievalComparison RetrievalComparisonService
 }
 
 // HandlerOption wires optional read-only milestone services without forcing
@@ -89,6 +90,10 @@ func WithAnnotationDatasetQuality(service AnnotationDatasetQualityService) Handl
 
 func WithRetrievalEvaluation(service RetrievalEvaluationService) HandlerOption {
 	return func(handler *Handler) { handler.retrievalEvaluation = service }
+}
+
+func WithRetrievalComparison(service RetrievalComparisonService) HandlerOption {
+	return func(handler *Handler) { handler.retrievalComparison = service }
 }
 
 // NewHandler builds a Handler over the given services.
@@ -171,6 +176,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /annotation-dataset/v1/export", h.handleExportAnnotationDatasetV1)
 	mux.HandleFunc("GET /annotation-dataset/v1/quality", h.handleGetAnnotationDatasetQualityV1)
 	mux.HandleFunc("GET /retrieval-evaluation/v1", h.handleGetRetrievalEvaluationV1)
+	mux.HandleFunc("GET /retrieval-comparison/v1", h.handleGetRetrievalComparisonV1)
 	return mux
 }
 

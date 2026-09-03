@@ -255,6 +255,28 @@ M12-D:
   reranking, learned threshold/classifier, training, model weights, local runtime,
   GPU detection, or NAS inference requirement.
 
+M13-A0:
+
+- `GET /retrieval-comparison/v1` exposes the compact, read-only
+  `concept_retrieval_comparison_v1` report. It compares exact, weighted lexical,
+  BM25, and embedding top-level Recall@1/3/5 and MRR in that fixed order.
+- `ConceptRetrievalComparisonService` consumes the existing M12 evaluation
+  capability only. It does not own repositories, ground truth, exclusions,
+  candidate-universe construction, ranking, or metric calculation.
+- All evaluated rows must agree on the M12 schema/policy/state, dataset validity,
+  candidate universe, complete sample inventory and exclusions, and ordered sample
+  identities/targets/provenance. A mismatch fails explicitly rather than mixing
+  populations.
+- An unregistered optional `embedding_retriever_v1` is represented by an explicit
+  `unavailable` row with null metrics. A configured embedding provider is evaluated
+  normally; provider failures propagate without fallback.
+- M11-D-invalid data retains the existing successful `blocked_invalid_dataset`
+  behavior. The existing evaluation quality gate prevents retriever calls;
+  warnings remain non-blocking.
+- M13-A0 adds no retriever, persistence, migration, cache, hybrid retrieval,
+  fusion, reranking, statistical analysis, chart, frontend, annotation authority,
+  or Concept-resolution behavior.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.
