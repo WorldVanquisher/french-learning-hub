@@ -188,14 +188,11 @@ type createEntryRequest struct {
 }
 
 type entryResponse struct {
-	ID              int64    `json:"id"`
-	OriginalInput   string   `json:"original_input"`
-	OriginalContext string   `json:"original_context"`
-	CreatedAt       string   `json:"created_at"`
-	UpdatedAt       string   `json:"updated_at"`
-	Category        *string  `json:"category,omitempty"`
-	Explanation     *string  `json:"explanation,omitempty"`
-	Confidence      *float64 `json:"confidence,omitempty"`
+	ID              int64  `json:"id"`
+	OriginalInput   string `json:"original_input"`
+	OriginalContext string `json:"original_context"`
+	CreatedAt       string `json:"created_at"`
+	UpdatedAt       string `json:"updated_at"`
 }
 
 func toResponse(e *domain.Entry) entryResponse {
@@ -205,9 +202,6 @@ func toResponse(e *domain.Entry) entryResponse {
 		OriginalContext: e.OriginalContext,
 		CreatedAt:       e.CreatedAt.Format(time.RFC3339Nano),
 		UpdatedAt:       e.UpdatedAt.Format(time.RFC3339Nano),
-		Category:        e.Category,
-		Explanation:     e.Explanation,
-		Confidence:      e.Confidence,
 	}
 }
 

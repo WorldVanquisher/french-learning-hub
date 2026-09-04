@@ -15,7 +15,10 @@ The application is a single Go HTTP service backed by SQLite, built up in
 incremental milestones. Implemented so far:
 
 * Persistence of learning entries (original input + context), with validation,
-  timestamps, and a create/get/list workflow.
+  timestamps, and a create/get/list workflow. Active `Entry` domain and wire
+  models contain only learner-authored source data, IDs, and timestamps; the
+  nullable `category`/`explanation`/`confidence` columns from migration 001 are
+  retained only as ignored physical schema for historical database compatibility.
 * Validated, versioned AI-generated metadata (analyses) stored separately from
   the original entry, produced by a pluggable `Analyzer`. Two implementations
   exist: a local deterministic rule-based analyzer (the default, no cost) — an
@@ -290,6 +293,18 @@ M13-A1:
 - The dashboard creates no annotation or resolution authority, triggers no
   retriever/provider configuration, and adds no backend experiment logic,
   persistence, routing framework, chart library, or frontend state framework.
+
+v1.0 Entry ownership cleanup:
+
+- `Entry` is the learner-authored source record only: ID, original input/context,
+  and timestamps. It has no active AI metadata fields.
+- Versioned `Analysis` is the sole active machine-interpretation authority;
+  Feedback, Effective Analysis, and Inventory retain their existing ownership.
+- Migration 001 remains unchanged. Its nullable Entry metadata columns are legacy
+  physical storage kept only for historical-schema compatibility; normal Entry
+  repository reads/writes and Entry HTTP responses ignore them.
+- Do not add a replacement Entry metadata path, synthesize Analysis values into
+  Entry responses, migrate legacy column values, or rewrite migration history.
 
 ## Design Priorities
 
