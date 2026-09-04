@@ -73,6 +73,9 @@ an optional provider-independent semantic embedding baseline, without changing
 Concept resolution or annotation authority. Milestone 13-A0 adds one compact,
 read-only comparison over those four baselines while preserving the complete M12
 experiment contract.
+Milestone 13-A1 exposes the M11-D quality summary and M13-A0 retrieval comparison
+in a third, read-only **Experiment Dashboard** view inside the existing workbench;
+the browser presents backend-owned values and computes no experiment metrics.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design principles
 and [web/README.md](web/README.md) for running the frontend.
 
@@ -97,7 +100,7 @@ internal/transport/http  HTTP handlers and routing
 internal/config       environment-based configuration
 migrations            embedded .sql migrations
 examples/captures     example learning_capture_v1 documents
-web                   experimental human concept-review / annotation UI (React + Vite + TS, milestone 10.6)
+web                   internal annotation, inspection, and experiment dashboard workbench (React + Vite + TS)
 ```
 
 Layers are kept separate: HTTP handlers hold no database logic, and the
@@ -1196,6 +1199,28 @@ M12 quality gate prevents any retriever call.
 M13-A0 adds no retriever, ground truth, candidate-selection rule, persistence,
 migration, cache, hybrid retrieval, score fusion, reranking, statistical analysis,
 chart, dashboard, annotation write, or Concept-resolution behavior.
+
+### Experiment Dashboard v1 (milestone 13-A1)
+
+The existing `web/` workbench now has a third local view, **Experiment
+Dashboard**, beside Concept Review and Annotation Inspector. It reads only:
+
+- `GET /annotation-dataset/v1/quality` for M11-D structural validity, error and
+  warning counts, dataset totals, human SAME/DISTINCT/INVALID inventory,
+  unlabeled unresolved records, and human-versus-automatic SAME authority;
+- `GET /retrieval-comparison/v1` for the fixed backend-ordered exact, weighted
+  lexical, BM25, and embedding rows with state, Recall@1/3/5, and MRR.
+
+Non-null retrieval metrics are formatted consistently as percentages. Null
+metrics remain visibly distinct as `—`; an unavailable embedding row is retained,
+and `blocked_invalid_dataset` is shown rather than reinterpreted. The two sections
+load independently, so one successful report remains useful if the other request
+fails.
+
+This dashboard is a presentation-only view. It does not fetch detailed per-sample
+evaluations, recompute validity, eligible samples, Recall, or MRR, select or run a
+retriever independently, configure an embedding provider, write annotations, or
+create Concept-resolution authority. M11-D and M13-A0 remain the sources of truth.
 
 **Knowledge-extraction work still out of scope** (not implemented): automatic extraction on
 capture/analysis/feedback, a rule-based semantic extractor, local models, model

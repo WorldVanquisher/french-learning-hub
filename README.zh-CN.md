@@ -36,6 +36,7 @@
 13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
 14. 使用精确签名、加权词法余弦、corpus-aware BM25 和可选语义 embedding 基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
 15. 通过 `concept_retrieval_comparison_v1` 在同一 M12 实验契约下对比四种基线的顶层指标。
+16. 在只读 **Experiment Dashboard** 中查看 M11-D Dataset 质量与 M13-A0 检索基线比较。
 
 这不是最终消费者产品，也不是间隔重复 Review Engine、掌握度系统或 ML 解析器。
 
@@ -329,10 +330,11 @@ CURRENT SAME 只来自 `unit_concept_memberships`。`unit_concept_links` 是只�
 
 ### 标注工作台
 
-`web/` 提供两个本地视图：
+`web/` 提供三个本地视图：
 
 - **Concept Review**：写入显式人工 SAME、DISTINCT、关系、INVALID 或新 Concept。
 - **Annotation Inspector**：只读显示当前 Effective Annotation。
+- **Experiment Dashboard**：只读显示 Dataset 结构质量、人工监督规模与固定顺序的检索基线指标。
 
 启动方法见 [web/README.md](web/README.md)。该前端是内部标注/数据收集工具，不是最终 Review Engine。
 
@@ -650,6 +652,24 @@ Concepts 和人工 SAME provenance。任何不一致都会明确失败并返回 
 M13-A0 不增加新 retriever、ground truth、候选规则、持久化、migration、cache、hybrid
 retrieval、score fusion、reranking、统计分析、图表、dashboard、标注写入或 Concept
 resolution 行为。
+
+## 实验仪表板 v1（M13-A1）
+
+现有 `web/` 工作台新增第三个本地视图 **Experiment Dashboard**。它只读取两个已有端点：
+
+- `GET /annotation-dataset/v1/quality`：展示 M11-D 的结构有效性、error/warning 数、记录与
+  Entry 总数、人工 SAME/DISTINCT/INVALID、未标注 unresolved 数，以及人工 SAME 与自动 SAME
+  的 resolution authority 计数；
+- `GET /retrieval-comparison/v1`：按照后端原始顺序展示 exact signature、weighted lexical、
+  BM25 与 embedding 的 state、Recall@1/3/5 和 MRR。
+
+非空指标统一格式化为百分比；`null` 显示为 `—`，不会误显示为 `0%`。不可用的 embedding
+行仍然可见，`blocked_invalid_dataset` 保留后端原始状态。两个区块独立加载；其中一个请求
+失败时，另一个成功报告仍可查看。
+
+该页面只负责展示，不获取 per-sample 详细评估，不重新计算 Dataset 有效性、eligible sample、
+Recall 或 MRR，不自行选择/运行检索器，不配置 embedding provider，也不写入标注或创建
+Concept resolution 权威。M11-D 与 M13-A0 仍是唯一真实来源。
 
 ## 开发与验证
 

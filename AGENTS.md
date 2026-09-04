@@ -277,6 +277,20 @@ M13-A0:
   fusion, reranking, statistical analysis, chart, frontend, annotation authority,
   or Concept-resolution behavior.
 
+M13-A1:
+
+- The annotation workbench has a third, read-only **Experiment Dashboard** beside
+  Concept Review and Annotation Inspector.
+- It consumes only the existing M11-D `GET /annotation-dataset/v1/quality` and
+  M13-A0 `GET /retrieval-comparison/v1` reports. The browser does not recompute
+  validity, evaluation population, Recall@K, or MRR.
+- Retrieval rows retain backend order and exact identifiers. Null metrics remain
+  distinct from measured zero, and `unavailable` / `blocked_invalid_dataset`
+  states stay explicit.
+- The dashboard creates no annotation or resolution authority, triggers no
+  retriever/provider configuration, and adds no backend experiment logic,
+  persistence, routing framework, chart library, or frontend state framework.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

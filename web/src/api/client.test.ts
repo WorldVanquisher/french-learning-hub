@@ -44,6 +44,71 @@ describe("api client request shapes", () => {
     expect(annotations[0].unit.id).toBe(5);
   });
 
+  it("gets the typed annotation quality report from its read-only path", async () => {
+    const { impl, calls } = stubFetch(200, {
+      schema_version: "concept_annotation_quality_report_v1",
+      dataset_schema_version: "concept_annotation_dataset_v1",
+      valid: true,
+      error_count: 0,
+      warning_count: 1,
+      summary: { total_records: 8, total_entries: 5 },
+      label_inventory: { human_same_records: 3 },
+      provenance: {},
+      leakage_risk: {},
+      issues: [],
+    });
+
+    const report = await api.getAnnotationDatasetQuality(impl);
+
+    expect(calls[0].url).toBe("/api/annotation-dataset/v1/quality");
+    expect(calls[0].init.method).toBe("GET");
+    expect(report.valid).toBe(true);
+    expect(report.summary.total_records).toBe(8);
+    expect(report.label_inventory.human_same_records).toBe(3);
+  });
+
+  it("gets the typed retrieval comparison without changing backend row order", async () => {
+    const { impl, calls } = stubFetch(200, {
+      schema_version: "concept_retrieval_comparison_v1",
+      state: "evaluated",
+      dataset_valid: true,
+      candidate_universe: { concepts: 12 },
+      evaluation_samples: { eligible_samples: 4 },
+      retrievers: [
+        {
+          retriever: "exact_signature_retriever_v1",
+          state: "evaluated",
+          metrics: { recall_at_1: 0.25, recall_at_3: 0.5, recall_at_5: 0.75, mrr: 0.4 },
+        },
+        {
+          retriever: "embedding_retriever_v1",
+          state: "unavailable",
+          metrics: { recall_at_1: null, recall_at_3: null, recall_at_5: null, mrr: null },
+        },
+      ],
+    });
+
+    const report = await api.getRetrievalComparison(impl);
+
+    expect(calls[0].url).toBe("/api/retrieval-comparison/v1");
+    expect(calls[0].init.method).toBe("GET");
+    expect(report.retrievers.map((row) => row.retriever)).toEqual([
+      "exact_signature_retriever_v1",
+      "embedding_retriever_v1",
+    ]);
+    expect(report.retrievers[1].metrics.mrr).toBeNull();
+  });
+
+  it("propagates experiment endpoint errors through the existing ApiError", async () => {
+    const { impl } = stubFetch(502, { error: "embedding provider unavailable" });
+
+    await expect(api.getRetrievalComparison(impl)).rejects.toMatchObject({
+      name: "ApiError",
+      status: 502,
+      message: "embedding provider unavailable",
+    });
+  });
+
   it("gets one effective annotation via its read-only unit endpoint", async () => {
     const { impl, calls } = stubFetch(200, {
       unit: { id: 5 },

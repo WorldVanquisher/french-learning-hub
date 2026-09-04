@@ -417,3 +417,172 @@ details.raw pre {
   border-left: 3px solid var(--invalid);
   padding-left: 10px;
 }
+
+/* Read-only experiment dashboard. The layout favors compact, comparable values
+   and a semantic table over charts or decorative visualization. */
+.experiment-section {
+  padding: 18px;
+}
+
+.experiment-section h2 {
+  color: var(--text);
+  font-size: 18px;
+  letter-spacing: normal;
+  text-transform: none;
+  margin-bottom: 2px;
+}
+
+.section-description,
+.report-metadata {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.section-description {
+  margin: 0 0 14px;
+}
+
+.section-loading {
+  color: var(--muted);
+  padding: 20px 0;
+}
+
+.quality-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.quality-state.valid {
+  color: var(--same);
+  background: #ecfdf3;
+}
+
+.quality-state.invalid {
+  color: var(--invalid);
+  background: #fef3f2;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.dashboard-stats > div {
+  min-width: 0;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.dashboard-stats dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dashboard-stats dd {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  margin: 3px 0 0;
+}
+
+.dashboard-stats .state-value {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.comparison-context {
+  margin-bottom: 16px;
+}
+
+.comparison-table-scroll {
+  overflow-x: auto;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-table caption {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+  margin-bottom: 7px;
+}
+
+.comparison-table th,
+.comparison-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 8px;
+  text-align: right;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.comparison-table th:first-child,
+.comparison-table td:first-child {
+  text-align: left;
+}
+
+.comparison-table thead th {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.retriever-label,
+.retriever-id {
+  display: block;
+}
+
+.retriever-id {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.experiment-state {
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+}
+
+.experiment-state.evaluated { color: var(--same); }
+.experiment-state.blocked_invalid_dataset { color: var(--invalid); }
+.experiment-state.unavailable { color: var(--muted); }
+
+.report-metadata {
+  margin: 14px 0 0;
+}
+
+.report-metadata code {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .view-tabs {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .quality-state {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
