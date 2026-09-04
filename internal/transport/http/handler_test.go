@@ -33,6 +33,15 @@ func newServer(svc EntryService) http.Handler {
 	return NewHandler(svc, nil, nil, nil, nil, nil, nil, nil, nil, nil).Routes()
 }
 
+func assertNoLegacyEntryMetadata(t *testing.T, entry map[string]json.RawMessage) {
+	t.Helper()
+	for _, field := range []string{"category", "explanation", "confidence"} {
+		if _, exists := entry[field]; exists {
+			t.Errorf("Entry response unexpectedly contains legacy field %q", field)
+		}
+	}
+}
+
 func TestCreateEntry_Success(t *testing.T) {
 	svc := &fakeService{
 		createFn: func(_ context.Context, in domain.NewEntryInput) (*domain.Entry, error) {
@@ -62,6 +71,11 @@ func TestCreateEntry_Success(t *testing.T) {
 	if resp.ID != 1 || resp.OriginalInput != "Bonjour" {
 		t.Fatalf("unexpected response: %+v", resp)
 	}
+	var wire map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &wire); err != nil {
+		t.Fatalf("decode raw response: %v", err)
+	}
+	assertNoLegacyEntryMetadata(t, wire)
 }
 
 func TestCreateEntry_ValidationError(t *testing.T) {
@@ -111,6 +125,35 @@ func TestGetEntry_NotFound(t *testing.T) {
 	}
 }
 
+func TestGetEntry_SuccessOmitsLegacyMetadata(t *testing.T) {
+	now := time.Now().UTC()
+	svc := &fakeService{
+		getFn: func(_ context.Context, id int64) (*domain.Entry, error) {
+			return &domain.Entry{
+				ID:              id,
+				OriginalInput:   "Bonjour",
+				OriginalContext: "greeting",
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			}, nil
+		},
+	}
+	rec := httptest.NewRecorder()
+	newServer(svc).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/entries/42", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var wire map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &wire); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	assertNoLegacyEntryMetadata(t, wire)
+	if string(wire["original_input"]) != `"Bonjour"` {
+		t.Fatalf("original_input = %s, want Bonjour", wire["original_input"])
+	}
+}
+
 func TestGetEntry_InvalidID(t *testing.T) {
 	svc := &fakeService{}
 	srv := newServer(svc)
@@ -150,6 +193,15 @@ func TestListEntries_Success(t *testing.T) {
 	}
 	if len(resp.Entries) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(resp.Entries))
+	}
+	var wire struct {
+		Entries []map[string]json.RawMessage `json:"entries"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &wire); err != nil {
+		t.Fatalf("decode raw response: %v", err)
+	}
+	for _, entry := range wire.Entries {
+		assertNoLegacyEntryMetadata(t, entry)
 	}
 }
 

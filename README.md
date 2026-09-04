@@ -7,6 +7,14 @@ their original context. The original user input is treated as the source of
 truth; AI-generated metadata is stored separately as versioned analyses and
 never overwrites the original record.
 
+The active `Entry` model and `POST /entries`, `GET /entries`, and
+`GET /entries/{id}` responses contain only learner-authored input/context,
+identity, and timestamps. Category, explanation, and confidence belong only to
+versioned `Analysis` records and the Effective Analysis / Inventory projections
+that consume them. Migration 001's nullable columns with those names remain
+physically present solely so historical databases keep their original schema;
+active Entry reads and writes ignore them.
+
 Milestone 1 delivered persistence: a single backend, SQLite storage, and the
 workflow from question input to storage. Milestone 2 adds validated, versioned
 AI-generated metadata: each entry can be analyzed repeatedly, and every analysis
@@ -246,6 +254,13 @@ Response `201 Created`:
 
 `original_input` is required. Requests with an empty input or unknown JSON
 fields are rejected with `400`.
+
+An Entry response deliberately does not include `category`, `explanation`, or
+`confidence`. Use the Analysis endpoints below for versioned machine
+interpretation, Effective Analysis for feedback-resolved interpretation, or the
+learning inventory for the current cross-entry view. The similarly named nullable
+columns created by migration 001 are legacy physical storage only and are not an
+active API or domain authority.
 
 ### Get an entry
 

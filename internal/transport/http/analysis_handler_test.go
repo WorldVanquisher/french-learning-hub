@@ -57,7 +57,8 @@ func TestCreateAnalysis_Success(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if resp.EntryID != 5 || resp.Version != 1 || resp.Analyzer != "rule-based" {
+	if resp.EntryID != 5 || resp.Version != 1 || resp.Analyzer != "rule-based" ||
+		resp.Category != "vocabulary" || resp.Explanation != "means hello" || resp.Confidence != 0.7 {
 		t.Fatalf("unexpected response: %+v", resp)
 	}
 }

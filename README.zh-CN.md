@@ -7,6 +7,8 @@
 核心原则：
 
 - 原始输入始终是真实来源，不会被 AI 生成内容覆盖。
+- 活跃 `Entry` 只包含学习者提供的输入/上下文、ID 与时间戳；category、explanation、
+  confidence 只属于版本化 `Analysis` 及其 Effective Analysis / Inventory 只读投影。
 - 分析、反馈、抽取和标注在需要保留历史时采用版本化或只追加记录。
 - `KnowledgeUnit` 是不可变的抽取证据；`KnowledgeConcept` 才是长期学习身份。
 - `unit_concept_memberships` 是 CURRENT SAME 的唯一当前权威。
@@ -142,6 +144,12 @@ curl 'localhost:8080/entries?limit=20'
 ```
 
 `original_input` 必填。未知 JSON 字段和空输入返回 `400`。
+
+`POST /entries`、`GET /entries` 与 `GET /entries/{id}` 的 Entry 响应不会包含
+`category`、`explanation` 或 `confidence`。需要机器解释时应读取下方的版本化 Analysis
+端点；需要经人工反馈解析后的当前解释时应读取 Effective Analysis 或学习清单。
+migration 001 创建的同名 nullable SQLite 列仍保留，以保证历史数据库 schema 兼容，但
+活跃 Entry domain、读写查询与 API 都会忽略它们；这些物理列不再是第二套解释权威。
 
 ### 分析
 

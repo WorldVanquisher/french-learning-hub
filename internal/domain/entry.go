@@ -18,27 +18,20 @@ var ErrNotFound = errors.New("entry not found")
 // maxInputLen bounds a single field to protect storage and keep records sane.
 const maxInputLen = 10000
 
-// Entry is a single French-learning record.
-//
-// The original user data (OriginalInput, OriginalContext) is the source of
-// truth and must never be overwritten by AI-generated metadata. The AI fields
-// are optional and editable.
+// Entry is the learner-authored source record for one French-learning
+// interaction. AI interpretation is not part of Entry: it lives exclusively in
+// immutable, versioned Analysis records and their read projections.
 type Entry struct {
 	ID              int64
 	OriginalInput   string
 	OriginalContext string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
-
-	// AI-generated / editable metadata. Nil pointers mean "not set".
-	Category    *string
-	Explanation *string
-	Confidence  *float64
 }
 
 // NewEntryInput carries the fields a caller may supply when creating an entry.
-// Only the original user data is accepted here; AI metadata is added later
-// through a separate path so it can never replace the original record.
+// Only learner-authored source data is accepted here. AI interpretation is
+// created separately through the versioned Analysis workflow.
 type NewEntryInput struct {
 	OriginalInput   string
 	OriginalContext string

@@ -21,7 +21,7 @@ func NewEntryService(repo domain.Repository) *EntryService {
 
 // CreateEntry validates the input and persists a new learning entry. The
 // returned entry contains the stored original data plus generated timestamps
-// and ID. AI metadata is intentionally not set here.
+// and ID. Versioned AI interpretation is owned by AnalysisService, not Entry.
 func (s *EntryService) CreateEntry(ctx context.Context, in domain.NewEntryInput) (*domain.Entry, error) {
 	if err := in.Validate(); err != nil {
 		return nil, err

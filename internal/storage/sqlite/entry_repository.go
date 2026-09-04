@@ -29,8 +29,9 @@ func NewEntryRepository(db *sql.DB) *EntryRepository {
 
 const rfc3339 = time.RFC3339Nano
 
-// Create inserts a new entry from validated input and returns the stored row.
-// Timestamps are generated here; AI metadata columns are left NULL.
+// Create inserts a learner-authored source entry and returns it. Timestamps are
+// generated here. Migration 001's legacy AI columns are deliberately omitted
+// from the active write and remain NULL under the historical schema.
 func (r *EntryRepository) Create(ctx context.Context, in domain.NewEntryInput) (*domain.Entry, error) {
 	now := r.now()
 	ts := now.Format(rfc3339)
@@ -60,8 +61,7 @@ func (r *EntryRepository) Create(ctx context.Context, in domain.NewEntryInput) (
 // GetByID returns the entry with the given id, or domain.ErrNotFound.
 func (r *EntryRepository) GetByID(ctx context.Context, id int64) (*domain.Entry, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, original_input, original_context, created_at, updated_at,
-		        category, explanation, confidence
+		`SELECT id, original_input, original_context, created_at, updated_at
 		 FROM learning_entries WHERE id = ?`, id)
 
 	e, err := scanEntry(row)
@@ -77,8 +77,7 @@ func (r *EntryRepository) GetByID(ctx context.Context, id int64) (*domain.Entry,
 // List returns up to limit entries, newest first.
 func (r *EntryRepository) List(ctx context.Context, limit int) ([]*domain.Entry, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, original_input, original_context, created_at, updated_at,
-		        category, explanation, confidence
+		`SELECT id, original_input, original_context, created_at, updated_at
 		 FROM learning_entries
 		 ORDER BY id DESC
 		 LIMIT ?`, limit)
@@ -111,12 +110,9 @@ func scanEntry(s scanner) (*domain.Entry, error) {
 		e          domain.Entry
 		createdStr string
 		updatedStr string
-		category   sql.NullString
-		expl       sql.NullString
-		confidence sql.NullFloat64
 	)
 	if err := s.Scan(&e.ID, &e.OriginalInput, &e.OriginalContext,
-		&createdStr, &updatedStr, &category, &expl, &confidence); err != nil {
+		&createdStr, &updatedStr); err != nil {
 		return nil, err
 	}
 
@@ -126,15 +122,6 @@ func scanEntry(s scanner) (*domain.Entry, error) {
 	}
 	if e.UpdatedAt, err = time.Parse(rfc3339, updatedStr); err != nil {
 		return nil, fmt.Errorf("parse updated_at: %w", err)
-	}
-	if category.Valid {
-		e.Category = &category.String
-	}
-	if expl.Valid {
-		e.Explanation = &expl.String
-	}
-	if confidence.Valid {
-		e.Confidence = &confidence.Float64
 	}
 	return &e, nil
 }
