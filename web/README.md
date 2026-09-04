@@ -1,9 +1,10 @@
 # Annotation Workbench
 
-An internal frontend with two views: the write-capable **Concept Review** workflow
-for `KnowledgeUnit → KnowledgeConcept` annotation, and the read-only **Annotation
-Inspector** for viewing M11-A effective annotation state over current-extraction
-units.
+An internal frontend with three views: the write-capable **Concept Review**
+workflow for `KnowledgeUnit → KnowledgeConcept` annotation, the read-only
+**Annotation Inspector** for viewing M11-A effective annotation state over
+current-extraction units, and the read-only **Experiment Dashboard** for M11-D
+dataset quality and M13-A0 retrieval comparison summaries.
 
 It is **not** the Review Engine, mastery, scheduling, or an ML resolver. There is no
 authentication in this milestone.
@@ -33,8 +34,8 @@ npm run dev
 ```
 
 Open the printed Vite URL and use the local view switch to move between **Concept
-Review** and **Annotation Inspector**. If the backend is not on `:8080`, point the
-proxy at it:
+Review**, **Annotation Inspector**, and **Experiment Dashboard**. If the backend
+is not on `:8080`, point the proxy at it:
 
 ```sh
 FRENCH_HUB_URL=http://localhost:9000 npm run dev
@@ -123,6 +124,26 @@ backend sources of truth. Missing catalog references stay visible as `Concept #I
 This view exists to inspect and debug collected annotations before dataset work; it
 does not export the ML dataset.
 
+## Experiment Dashboard (milestone 13-A1)
+
+The dashboard uses two existing GET endpoints and performs no writes:
+
+- `GET /annotation-dataset/v1/quality` supplies M11-D validity, error/warning
+  counts, record/entry totals, human SAME/DISTINCT/INVALID inventory, unlabeled
+  unresolved records, and human/automatic SAME authority counts.
+- `GET /retrieval-comparison/v1` supplies the backend-ordered exact signature,
+  weighted lexical, BM25, and embedding rows with state, Recall@1/3/5, and MRR.
+
+The browser does not calculate validity, sample eligibility, Recall, or MRR.
+Metrics are displayed as percentages, while null stays distinct as `—`.
+`unavailable` embedding and `blocked_invalid_dataset` states remain visible as
+reported. The sections load independently, so a failure in one does not discard
+the other report.
+
+This view does not load detailed per-sample evaluations, run or select retrievers,
+configure providers, create annotations, or change Concept resolution. It is a
+compact presentation of backend-owned experiment state.
+
 ## Layout
 
 ```
@@ -133,6 +154,7 @@ web/src/
   conceptSearch.ts  deterministic retrieval-only catalog filtering
   pages/       ReviewQueue — write-capable annotation workflow
                AnnotationInspector — read-only effective-state view
+               ExperimentDashboard — read-only quality/comparison summary
   types/       wire types mirroring the Go transport DTOs
   App.tsx
 ```

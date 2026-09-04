@@ -17,6 +17,10 @@ import type {
   UnitDistinction,
   UnitInvalidEnvelope,
 } from "../types/concept";
+import type {
+  AnnotationDatasetQualityReport,
+  RetrievalComparisonReport,
+} from "../types/experiment";
 
 // ApiError carries the HTTP status so callers can react specifically — most
 // importantly to 409 Conflict, after which the UI must refresh the unit's current
@@ -114,6 +118,32 @@ export async function listEffectiveAnnotations(
     fetchImpl,
   );
   return data.effective_annotations ?? [];
+}
+
+// getAnnotationDatasetQuality reads the backend-owned M11-D structural quality
+// report. The frontend does not infer validity or rebuild any of its counts.
+export function getAnnotationDatasetQuality(
+  fetchImpl: typeof fetch = fetch,
+): Promise<AnnotationDatasetQualityReport> {
+  return request<AnnotationDatasetQualityReport>(
+    "GET",
+    "/annotation-dataset/v1/quality",
+    undefined,
+    fetchImpl,
+  );
+}
+
+// getRetrievalComparison reads the compact M13-A0 report in its backend-provided
+// row order. The frontend does not select retrievers or calculate metrics.
+export function getRetrievalComparison(
+  fetchImpl: typeof fetch = fetch,
+): Promise<RetrievalComparisonReport> {
+  return request<RetrievalComparisonReport>(
+    "GET",
+    "/retrieval-comparison/v1",
+    undefined,
+    fetchImpl,
+  );
 }
 
 // getEffectiveAnnotation reads one unit and its effective annotation projection.
