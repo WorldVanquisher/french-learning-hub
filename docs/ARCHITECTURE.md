@@ -17,6 +17,30 @@ HTTP request
     -> domain repository interface
     -> SQLite repository
 
+### Active Entry boundary and legacy milestone-1 columns
+
+`Entry` is exclusively the learner-authored source record: ID, original input,
+original context, and timestamps. It has no category, explanation, or confidence
+fields, and the normal Entry repository and HTTP responses neither select nor
+expose such values.
+
+Migration `001_create_learning_entries.sql` historically created nullable
+`category`, `explanation`, and `confidence` columns before milestone 2 established
+the versioned Analysis model. Those columns remain physically present so existing
+databases created from the original migration continue to open without a table
+rebuild or rewritten migration history. They are legacy compatibility storage
+only: active Entry reads/writes ignore them, no values are migrated or synthesized,
+and they carry no current domain or API authority.
+
+The active ownership chain is:
+
+```text
+learner-authored source truth -> Entry
+versioned machine interpretation -> Analysis
+human correction/review -> Feedback
+current interpreted view -> Effective Analysis / Inventory
+```
+
 ## Analysis metadata (milestone 2)
 
 AI-generated metadata is stored separately from the original entry as versioned

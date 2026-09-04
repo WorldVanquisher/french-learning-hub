@@ -37,9 +37,6 @@ func TestEntryRepository_CreateAndGet(t *testing.T) {
 	if created.CreatedAt.IsZero() || created.UpdatedAt.IsZero() {
 		t.Fatal("expected timestamps to be set")
 	}
-	if created.Category != nil || created.Explanation != nil || created.Confidence != nil {
-		t.Fatal("AI metadata should be nil on create")
-	}
 
 	got, err := repo.GetByID(ctx, created.ID)
 	if err != nil {
@@ -54,6 +51,47 @@ func TestEntryRepository_CreateAndGet(t *testing.T) {
 	// Timestamps should round-trip to the same instant.
 	if !got.CreatedAt.Equal(created.CreatedAt) {
 		t.Fatalf("CreatedAt mismatch: %v vs %v", got.CreatedAt, created.CreatedAt)
+	}
+}
+
+// Migration 001's nullable metadata columns remain on disk for compatibility,
+// but EntryRepository must not select or scan them. A deliberately non-numeric
+// legacy confidence value would fail the old sql.NullFloat64 scan; active Entry
+// reads must ignore it and return only learner-authored source fields.
+func TestEntryRepository_IgnoresLegacyMetadataColumns(t *testing.T) {
+	repo := newTestRepo(t)
+	ctx := context.Background()
+
+	created, err := repo.Create(ctx, domain.NewEntryInput{
+		OriginalInput:   "Pourquoi dit-on en France ?",
+		OriginalContext: "legacy database compatibility",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := repo.db.ExecContext(ctx,
+		`UPDATE learning_entries
+		 SET category = ?, explanation = ?, confidence = ?
+		 WHERE id = ?`,
+		"legacy-category", "legacy explanation", "not-a-number", created.ID,
+	); err != nil {
+		t.Fatalf("populate migration-001 legacy columns: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("GetByID with populated legacy columns: %v", err)
+	}
+	if got.OriginalInput != created.OriginalInput || got.OriginalContext != created.OriginalContext {
+		t.Fatalf("active Entry fields changed: %+v", got)
+	}
+
+	listed, err := repo.List(ctx, 10)
+	if err != nil {
+		t.Fatalf("List with populated legacy columns: %v", err)
+	}
+	if len(listed) != 1 || listed[0].ID != created.ID {
+		t.Fatalf("listed entries = %+v, want legacy-compatible entry %d", listed, created.ID)
 	}
 }
 
