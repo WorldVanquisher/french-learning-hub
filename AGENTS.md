@@ -306,6 +306,15 @@ v1.0 Entry ownership cleanup:
 - Do not add a replacement Entry metadata path, synthesize Analysis values into
   Entry responses, migrate legacy column values, or rewrite migration history.
 
+v1.0 release verification:
+
+- `docs/QUICKSTART.md` is the maintained first-run path and must remain truthful
+  about default-disabled extraction/embedding capabilities and fresh-database
+  limits.
+- Root `make verify` is the non-mutating release check: Go formatting, tests,
+  vet, server/capture builds, and frontend typecheck/tests/production build. It
+  expects `web/node_modules` to have been installed separately with `npm ci`.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

@@ -1,19 +1,104 @@
-# French Learning App
+# French Learning Hub
 
 [简体中文](README.zh-CN.md)
 
-A small Go HTTP service that persistently stores French-learning questions and
-their original context. The original user input is treated as the source of
-truth; AI-generated metadata is stored separately as versioned analyses and
-never overwrites the original record.
+A local-first Go and SQLite service for turning French-learning questions into
+traceable learning records, human-reviewed knowledge concepts, and reproducible
+retrieval experiments. Learner-authored input remains the source of truth;
+machine interpretations are versioned metadata and never overwrite it.
 
-The active `Entry` model and `POST /entries`, `GET /entries`, and
-`GET /entries/{id}` responses contain only learner-authored input/context,
-identity, and timestamps. Category, explanation, and confidence belong only to
-versioned `Analysis` records and the Effective Analysis / Inventory projections
-that consume them. Migration 001's nullable columns with those names remain
-physically present solely so historical databases keep their original schema;
-active Entry reads and writes ignore them.
+## v1.0 at a glance
+
+- The default backend needs no API key: SQLite is embedded and the deterministic
+  rule-based Analyzer runs locally.
+- `Entry` owns only learner-authored input and context. Versioned `Analysis`,
+  immutable Feedback, and read-only Effective Analysis own interpretation.
+- Explicit extraction produces immutable `KnowledgeUnit` evidence; durable
+  `KnowledgeConcept` identity and human annotation remain separate authorities.
+- Dataset quality, retrieval evaluation, and comparison reports are read-only,
+  and the three-view workbench keeps annotation actions separate from inspection
+  and experiment display.
+- OpenAI extraction/analysis and HTTP embeddings are optional, independently
+  configured capabilities with no silent fallback.
+
+This is a focused learning-data and retrieval-research system, not a chatbot,
+consumer course UI, review scheduler, mastery engine, or automatic ML resolver.
+
+## Core pipeline
+
+```text
+learner input
+  -> Entry
+  -> Analysis
+  -> Feedback / Effective Analysis
+  -> explicit Knowledge Extraction
+  -> KnowledgeConcept / human annotation
+  -> Dataset v1 / Quality Report
+  -> Retrieval Evaluation / Comparison
+  -> Experiment Dashboard
+```
+
+The default path works through Entry, local Analysis, Capture, and read-only
+inventory access. Knowledge extraction is unavailable while
+`EXTRACTOR_PROVIDER=disabled`; a fresh database needs extracted units and
+explicit human annotations before its Concept dataset and retrieval experiments
+become meaningful.
+
+## Quick start
+
+```bash
+cd web && npm ci && cd ..
+make verify
+make run
+```
+
+Then check `curl -sS http://localhost:8080/healthz`. For the complete first-run
+workflow—including Capture, the workbench, optional providers, and interpreting
+empty experiment results—follow [docs/QUICKSTART.md](docs/QUICKSTART.md).
+
+## Current capabilities
+
+- Persist, retrieve, analyze, and human-correct French-learning Entries without
+  mixing source records with generated interpretation.
+- Import idempotent `learning_capture_v1` documents through the HTTP API or thin
+  `cmd/capture` transport client.
+- Explicitly extract KnowledgeUnits, apply admission rules and human overrides,
+  and resolve them into durable KnowledgeConcept identities with append-only
+  history and explicit CURRENT SAME authority.
+- Inspect effective annotations and export the versioned Concept Annotation
+  Dataset v1 with its deterministic quality report.
+- Evaluate exact-signature, weighted lexical cosine, corpus-aware BM25, and
+  optional semantic embedding retrievers under one controlled experiment
+  population, then compare their Recall@K and MRR.
+- Use the internal React workbench's write-capable **Concept Review**, read-only
+  **Annotation Inspector**, and read-only **Experiment Dashboard** views.
+
+## Research and evaluation
+
+`GET /annotation-dataset/v1/quality` reports whether the current Dataset v1 is
+structurally valid. `GET /retrieval-evaluation/v1?retriever=...` evaluates one
+registered baseline; `GET /retrieval-comparison/v1` compares the fixed baseline
+set without allowing the browser to recompute the population or metrics.
+
+Retrieval uses the current non-retired Concept catalog rather than a historical
+catalog reconstruction. Rankings and metrics are evidence only: they never
+create SAME/DISTINCT labels or resolve Concepts. With embeddings disabled, the
+comparison truthfully includes an `unavailable` semantic row while the local
+baselines continue to work.
+
+The retrievers share the same evaluation population, but the semantic
+representation also includes the query example and candidate-identity target;
+the lexical/BM25 query representation does not. The comparison is therefore not
+a scorer-only ablation over perfectly matched evidence.
+
+## Documentation
+
+- [Quick start](docs/QUICKSTART.md)
+- [Architecture and ownership](docs/ARCHITECTURE.md)
+- [Workbench guide](web/README.md)
+- [Environment-variable reference](.env.example)
+
+## Milestone history
 
 Milestone 1 delivered persistence: a single backend, SQLite storage, and the
 workflow from question input to storage. Milestone 2 adds validated, versioned
@@ -89,8 +174,10 @@ and [web/README.md](web/README.md) for running the frontend.
 
 ## Requirements
 
-- Go 1.26+ (uses `net/http` method-based routing)
+- Go 1.26.5 (as declared by `go.mod`; uses `net/http` method-based routing)
 - No CGO required — SQLite is provided by the pure-Go `modernc.org/sqlite` driver.
+- Node.js and npm are required only for `web/`; the project declares no minimum
+  Node version, while CI currently uses Node 22.
 
 ## Layout
 
@@ -189,8 +276,10 @@ routing between the local engine and OpenAI (escalating low-confidence local
 results to the AI provider) is future work and is not implemented here; there is
 no automatic fallback in either direction.
 
-Enable OpenAI through the environment — never place credentials in Git. Provide
-them via your shell or an untracked `.env` file (see [.env.example](.env.example)):
+Enable OpenAI through the process environment — never place credentials in Git.
+The service does not load `.env` automatically; use
+[.env.example](.env.example) as a reference and explicitly load any untracked
+local environment file yourself:
 
 ```bash
 # Rule-based (default): no configuration needed.
