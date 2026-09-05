@@ -1,4 +1,4 @@
-.PHONY: help tidy build build-capture run capture test fmt vet clean
+.PHONY: help tidy build build-capture run capture test fmt vet verify clean
 
 BINARY := bin/server
 CAPTURE_BINARY := bin/capture
@@ -13,6 +13,7 @@ help:
 	@echo "  test          - run all tests"
 	@echo "  fmt           - format all Go files"
 	@echo "  vet           - run go vet"
+	@echo "  verify        - run non-mutating release verification"
 	@echo "  clean         - remove build artifacts"
 
 tidy:
@@ -39,6 +40,27 @@ fmt:
 
 vet:
 	go vet ./...
+
+verify:
+	@files="$$(gofmt -l .)"; \
+	if [ -n "$$files" ]; then \
+		echo "Go files need formatting:"; \
+		echo "$$files"; \
+		exit 1; \
+	fi
+	go test ./...
+	go vet ./...
+	@verify_dir="$$(mktemp -d)"; \
+	trap 'rm -rf "$$verify_dir"' EXIT; \
+	go build -o "$$verify_dir/server" ./cmd/server; \
+	go build -o "$$verify_dir/capture" ./cmd/capture
+	@test -d web/node_modules || { \
+		echo "web/node_modules is missing; run 'cd web && npm ci' first"; \
+		exit 1; \
+	}
+	cd web && npm run typecheck
+	cd web && npm test
+	cd web && npm run build
 
 clean:
 	rm -rf bin

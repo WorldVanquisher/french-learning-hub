@@ -1,23 +1,47 @@
-# 法语学习应用
+# French Learning Hub（法语学习中心）
 
 [English](README.md)
 
-这是一个使用 Go 和 SQLite 构建的小型法语学习服务。它保存学习者提出的原始问题及其上下文，并把分析、人工反馈、知识抽取和 Concept 标注作为独立、可追溯的数据层保存。
+这是一个本地优先的 Go + SQLite 服务：把法语学习问题逐步转化为可追溯的学习记录、经过人工审阅的 KnowledgeConcept，以及可复现的检索实验。学习者原始输入始终是真实来源；机器解释属于独立的版本化元数据，绝不会覆盖原始输入。
 
-核心原则：
+## v1.0 概览
 
 - 原始输入始终是真实来源，不会被 AI 生成内容覆盖。
 - 活跃 `Entry` 只包含学习者提供的输入/上下文、ID 与时间戳；category、explanation、
   confidence 只属于版本化 `Analysis` 及其 Effective Analysis / Inventory 只读投影。
-- 分析、反馈、抽取和标注在需要保留历史时采用版本化或只追加记录。
-- `KnowledgeUnit` 是不可变的抽取证据；`KnowledgeConcept` 才是长期学习身份。
-- `unit_concept_memberships` 是 CURRENT SAME 的唯一当前权威。
-- 后端、应用层、领域层和 SQLite 存储层保持分离。
-- 默认规则分析器完全在本地运行；OpenAI 分析和知识抽取必须显式启用。
-- 标注 Inspector、Dataset 和 Quality Report 都是只读视图，不会创建新的标注权威。
-- Retrieval Evaluation 也是只读实验层，检索排名不会成为 SAME 或其他标注权威。
+- 默认后端不需要 API key：SQLite 为嵌入式数据库，本地确定性规则 Analyzer 可直接运行。
+- 显式抽取产生不可变 `KnowledgeUnit` 证据；`KnowledgeConcept` 长期身份与人工标注各有清晰权威边界，`unit_concept_memberships` 是 CURRENT SAME 的唯一当前权威。
+- Dataset 质量、检索评估与比较报告均为只读；三视图工作台把写入型标注与只读检查、实验展示分开。
+- OpenAI 分析/抽取与 HTTP embedding 都是相互独立、必须显式配置的可选能力，不会静默回退。
 
-详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，前端运行说明见 [web/README.md](web/README.md)。
+本项目不是聊天机器人、消费者课程 UI、间隔复习调度器、掌握度系统或自动 ML Resolver。
+
+## 核心流程
+
+```text
+学习者输入
+  -> Entry
+  -> Analysis
+  -> Feedback / Effective Analysis
+  -> 显式 Knowledge Extraction
+  -> KnowledgeConcept / 人工标注
+  -> Dataset v1 / Quality Report
+  -> Retrieval Evaluation / Comparison
+  -> Experiment Dashboard
+```
+
+默认配置可以完成 Entry、本地 Analysis、Capture 和只读 Inventory 流程。
+`EXTRACTOR_PROVIDER=disabled` 时 Knowledge Extraction 不可用；全新数据库必须先产生抽取数据并记录明确的人工 Concept 标注，才能形成有意义的 Dataset 和检索实验。
+
+## 快速开始
+
+```bash
+cd web && npm ci && cd ..
+make verify
+make run
+```
+
+然后运行 `curl -sS http://localhost:8080/healthz`。从首次 Capture、启动三视图工作台，到配置可选 Provider 和理解空实验结果的完整流程，请阅读 [docs/QUICKSTART.md](docs/QUICKSTART.md)。
 
 ## 当前能力
 
@@ -38,15 +62,30 @@
 13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
 14. 使用精确签名、加权词法余弦、corpus-aware BM25 和可选语义 embedding 基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
 15. 通过 `concept_retrieval_comparison_v1` 在同一 M12 实验契约下对比四种基线的顶层指标。
-16. 在只读 **Experiment Dashboard** 中查看 M11-D Dataset 质量与 M13-A0 检索基线比较。
+16. 在内部工作台使用可写入的 **Concept Review**、只读 **Annotation Inspector**，以及只读 **Experiment Dashboard**。
 
-这不是最终消费者产品，也不是间隔重复 Review Engine、掌握度系统或 ML 解析器。
+## 研究与评估
+
+`GET /annotation-dataset/v1/quality` 报告当前 Dataset v1 是否通过结构校验；
+`GET /retrieval-evaluation/v1?retriever=...` 评估一个已注册基线；
+`GET /retrieval-comparison/v1` 在不让浏览器重算实验样本或指标的前提下比较固定的基线集合。
+
+检索使用当前未 retired 的 Concept catalog，而不是历史 catalog 重建。排名与指标只属于检索证据，绝不会创建 SAME/DISTINCT 标注或执行 Concept resolution。embedding 默认禁用时，比较报告会如实显示一行 `unavailable` 的语义基线，本地基线仍可正常工作。
+
+各检索器共享同一实验样本，但语义表示还包含 query example 和 candidate-identity target，词法/BM25 query 表示不包含这些字段；因此该比较并不是在完全相同证据上只替换 scorer 的消融实验。
+
+## 文档导航
+
+- [快速入门](docs/QUICKSTART.md)
+- [架构与权威边界](docs/ARCHITECTURE.md)
+- [标注工作台说明](web/README.md)
+- [环境变量参考](.env.example)
 
 ## 环境要求
 
-- Go 1.26 或更高版本（使用 `net/http` 基于方法的路由）
+- Go 1.26.5（由 `go.mod` 声明；使用 `net/http` 基于方法的路由）
 - 不需要 CGO；SQLite 使用纯 Go 的 `modernc.org/sqlite` 驱动
-- 若运行标注前端，需要 Node.js/npm
+- 只有运行 `web/` 时才需要 Node.js/npm；项目未声明最低 Node 版本，当前 CI 使用 Node 22
 
 ## 目录结构
 
