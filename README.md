@@ -56,6 +56,14 @@ Then check `curl -sS http://localhost:8080/healthz`. For the complete first-run
 workflow—including Capture, the workbench, optional providers, and interpreting
 empty experiment results—follow [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
+For a small interview rehearsal, follow the
+[two-trial demo (简体中文)](docs/TWO_TRIAL_DEMO.zh-CN.md) with the
+[copyable capture prompt](docs/CAPTURE_PROMPT.zh-CN.md). It walks through two real
+conversations using the existing CLI, an isolated temporary database and port
+18080, including replay/conflict checks and an observation worksheet. The base
+demo needs no API key; extraction and human Concept Review are separate optional
+steps, and fresh data may have null retrieval metrics.
+
 ## Current capabilities
 
 - Persist, retrieve, analyze, and human-correct French-learning Entries without
