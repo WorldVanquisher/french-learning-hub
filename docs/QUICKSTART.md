@@ -6,6 +6,14 @@ Go service, SQLite persistence, the local rule-based analyzer, the capture CLI,
 read-only inventory views, and the annotation/retrieval reports that can be
 derived from data already in the database.
 
+For an interview rehearsal with two real conversations, use the
+[two-trial demo runbook (简体中文)](TWO_TRIAL_DEMO.zh-CN.md) and its
+[copyable ChatGPT capture prompt](CAPTURE_PROMPT.zh-CN.md). It uses a temporary
+`DB_PATH` and port 18080, builds the existing server/CLI, and checks new imports,
+replay, conflicts, record lookup, and inventory without touching `data/app.db`.
+Extraction and human Concept annotation are optional follow-on steps; empty
+retrieval metrics are expected without eligible human SAME examples.
+
 ## Prerequisites
 
 - Go 1.26.5, as declared by `go.mod`.
