@@ -6,11 +6,11 @@ Go service, SQLite persistence, the local rule-based analyzer, the capture CLI,
 read-only inventory views, and the annotation/retrieval reports that can be
 derived from data already in the database.
 
-For an interview rehearsal with two real conversations, use the
-[two-trial demo runbook (简体中文)](TWO_TRIAL_DEMO.zh-CN.md) and its
-[copyable ChatGPT capture prompt](CAPTURE_PROMPT.zh-CN.md). It uses a temporary
-`DB_PATH` and port 18080, builds the existing server/CLI, and checks new imports,
-replay, conflicts, record lookup, and inventory without touching `data/app.db`.
+For repeated interview practice with real conversations, use the
+[reusable local-learning workflow (简体中文)](LOCAL_LEARNING_WORKFLOW.zh-CN.md) and
+its [copyable ChatGPT capture prompt](CAPTURE_PROMPT.zh-CN.md). It keeps records
+across restarts in the isolated `data/local-trial/app.db`, explains one complete
+Capture cycle, and identifies exactly what to repeat for each later discussion.
 Extraction and human Concept annotation are optional follow-on steps; empty
 retrieval metrics are expected without eligible human SAME examples.
 
