@@ -43,11 +43,11 @@ make run
 
 然后运行 `curl -sS http://localhost:8080/healthz`。从首次 Capture、启动三视图工作台，到配置可选 Provider 和理解空实验结果的完整流程，请阅读 [docs/QUICKSTART.md](docs/QUICKSTART.md)。
 
-面试前可按[两次真实对话试用](docs/TWO_TRIAL_DEMO.zh-CN.md)，配合
-[可复制的 Capture 提示词](docs/CAPTURE_PROMPT.zh-CN.md)运行小型演示。流程复用现有 CLI，
-使用独立临时数据库和 18080 端口，包含重放/冲突检查及观察记录表，不影响 `data/app.db`。
-基础试用无需 API key；Knowledge Extraction 和人工 Concept Review 是单独的可选步骤，
-全新数据的检索指标可能为 `null`。
+面试前可按[可重复的本地学习流程](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md)，配合
+[可复制的 Capture 提示词](docs/CAPTURE_PROMPT.zh-CN.md)反复使用产品。手册先讲解一次完整的
+真实对话循环，再明确以后每次讨论需要重复哪些步骤。记录跨重启累积在独立的
+`data/local-trial/app.db`，不影响 `data/app.db`。基础流程无需 API key；Knowledge
+Extraction 和人工 Concept Review 是单独的可选步骤，全新数据的检索指标可能为 `null`。
 
 ## 当前能力
 
