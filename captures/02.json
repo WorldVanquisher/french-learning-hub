@@ -1,0 +1,14 @@
+{
+  "schema_version": "learning_capture_v1",
+  "capture_id": "demo-flh-20260928-02",
+  "source": "manual",
+  "original_input": "Why is it Je lisais quand elle est entrée instead of J'ai lu quand elle entrait?",
+  "original_context": "Learning note: A continuing background action may be expressed with the imperfect, while an event that interrupts it may be expressed with the passé composé. Compare Je lisais quand elle est entrée. Synthetic practice discussion.",
+  "discussion_summary": "Learning note: A continuing background action may be expressed with the imperfect, while an event that interrupts it may be expressed with the passé composé. Compare Je lisais quand elle est entrée. Synthetic practice discussion.",
+  "analysis": {
+    "category": "grammar",
+    "explanation": "The imperfect can establish a background action interrupted by a completed event in the passé composé.",
+    "confidence": 0.85,
+    "uncertainty": "Synthetic demonstration record; verify the learning point during review."
+  }
+}

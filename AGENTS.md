@@ -1,13 +1,15 @@
 ## Project Overview
 
-This repository contains an AI-assisted French learning application.
+This repository contains a personal French-learning knowledge service and an
+engineering portfolio project. It preserves learner-authored records, produces
+versioned interpretations and extraction evidence, and supports auditable human
+organization of KnowledgeUnits into durable KnowledgeConcepts.
 
-The application stores the user's French-learning questions and their original
-context, classifies learning records, generates explanations, and creates
-personalized review activities.
-
-The current priority is to build a small working end-to-end system. Prefer
-simple, testable implementations over speculative platform architecture.
+The current priority is a usable, reproducibly released service: complete daily
+workflows, backend correctness, maintainable UI, deployment and recovery.
+Preserve existing data and research capabilities. Model training and new
+retrieval experiments are deferred until the operational baseline is reliable.
+Prefer simple, testable implementations over speculative platform architecture.
 
 ## Current Stage
 
@@ -146,7 +148,8 @@ M10.6:
 - `DISTINCT` is an explicit non-SAME identity pair stored in
   `unit_concept_distinctions`.
 - `BROADER` / `NARROWER` / `RELATED` are non-membership relations.
-- No ML resolver or dataset exporter exists yet.
+- At M10.6, no ML resolver or dataset exporter existed. Dataset export was
+  subsequently introduced in M11-C; no learned resolver is implemented.
 
 M10.7:
 
@@ -360,7 +363,7 @@ refer to.
 
 For non-trivial tasks:
 
-1. Inspect relevant files and current repository state.
+1. Inspect relevant working-tree files and task context without Git/GitHub commands.
 2. Explain the existing behavior and constraints.
 3. Propose a concise implementation plan.
 4. Identify exact files that will be created or modified.
@@ -370,6 +373,84 @@ For non-trivial tasks:
 8. Report changed files, commands executed, test results, and unresolved risks.
 
 For small and obvious fixes, proceed after inspecting the affected files.
+
+## Agent Roles and Coordination
+
+These are task-assignment defaults, not claims about model capability. The human
+owner may override them for an explicitly scoped task.
+
+* **Claude Code owns large tasks:** cross-layer features, substantial refactors,
+  daily-use workflow changes, release/deployment work, and integration of a
+  coherent milestone. Before implementation, inspect the relevant code, agree on
+  contracts, and divide the task into reviewable steps with acceptance criteria.
+  Large scope does not authorize unrelated changes or a whole-repository rewrite.
+* **Codex owns small, bounded tasks:** focused bug fixes, validation, targeted
+  tests, documentation corrections, and isolated helpers. Codex also performs
+  bounded sanity checks and independent reviews of Claude's changes.
+* Either tool may review the other's work. A review assignment is read-only
+  unless the human owner explicitly transfers implementation ownership.
+* Claude Code backed by Kiro credits and Claude Code backed by a personal
+  subscription are separate sessions of the same role. Neither is automatically
+  a coordinator or entitled to edit the other's files. Provider configuration and
+  credentials stay outside this repository.
+
+### One writer by default
+
+One shared working tree has one implementation owner at a time. Other agents
+may inspect files and report findings, but must not edit, run mutating formatters,
+install dependencies, regenerate code, or update snapshots in that working tree.
+Use read-only checks or isolated temporary output; defer checks that would
+rewrite shared outputs until the implementation owner finishes.
+
+Before modifying files, every implementation task must identify:
+
+1. Task ID or descriptive name and acceptance criteria.
+2. Implementation owner and provided working directory.
+3. Exact files or bounded directories it owns.
+4. API, schema, and shared-file dependencies.
+5. Validation commands and isolated test database/output locations.
+
+If ownership is missing or ambiguous, inspect and propose the scope first;
+do not start a second writer. Do not take over an active task merely because its
+owner is waiting, slow, or has hit a usage limit.
+
+### Parallel work and shared contracts
+
+* Prefer separate working copies prepared by the human owner for concurrent
+  implementation. Different machines do not isolate a shared NAS-mounted folder.
+  Agents must not create branches/worktrees themselves.
+* The human owner must confirm disjoint file ownership and compatible contracts
+  before parallel edits. Never have two agents edit the same file concurrently,
+  including this document and task-status files.
+* Schema/migration allocation, shared domain types, HTTP DTOs, API client types,
+  dependency manifests/lockfiles, global configuration, Makefile and CI changes
+  require one designated owner. Agree on these before dependent implementation.
+* If a task needs another owner's file or a contract change, report the dependency
+  and continue independent in-scope work. Do not make a competing edit.
+* Do not run repository-wide formatting, auto-fixes, dependency upgrades, or
+  generated-file updates while another implementation task is active.
+* Tests use separate temporary databases, output directories and ports. Never
+  share a writable test database or mutate the user's daily database.
+* Temporary discussion belongs in per-task notes under docs/plans/ when useful;
+  a note's file has one owner. Do not invent a shared editable lock file as a
+  guarantee of mutual exclusion.
+
+### Handoff and review
+
+The implementation owner reports the modified files, contract changes,
+validation evidence, pending work and known risks, then stops editing before
+ownership transfers. The receiving agent rereads the current files and must not
+overwrite newer work using a stale snapshot.
+
+Review findings must name the affected location, concrete failure scenario,
+impact and suggested verification. Report findings instead of silently patching.
+The implementation owner fixes valid findings and runs relevant checks.
+The human owner integrates separate copies and owns all Git/GitHub operations.
+After integration, validate the combined working tree; separate passing checks
+alone do not prove integration correctness.
+
+Do not spawn further coding agents, expand file ownership, or start an unattended
+multi-agent loop unless explicitly requested for that task.
 
 ## Working Rules
 
@@ -428,26 +509,47 @@ Suggested commit message:
 
 ## Scope Discipline
 
-Do not expand the existing annotation frontend into a consumer/product UI,
-authentication system, review engine, or unrelated frontend architecture
-unless explicitly requested.
+The existing React/Vite/TypeScript workbench may be extended for personal daily
+use: capture import, learning-record browsing, explicit analysis/extraction,
+concept review, and correction. Keep business rules and current authority in the
+backend; UI convenience must not change annotation semantics.
+
+AI-assisted batch resolution suggestions are within the current roadmap.
+Suggestions must remain separate from CURRENT SAME and human labels. Human
+acceptance must validate current state and preserve auditable provenance.
+Automatic application of AI suggestions is not part of this phase.
+
+AI-assisted resolution suggestions may use semantic judgment, but must remain
+advisory. This does not authorize training a resolver or automatically applying
+its decisions. Roadmap permission is not an instruction to implement the whole
+roadmap in a single task.
+
+Existing retrieval and embedding capabilities may be maintained, tested, and
+fixed. New model experiments and retrieval capabilities are deferred.
+
+Release packaging, production frontend/API wiring, health/readiness,
+structured logging and backup/restore are within the current roadmap.
+Choose a simple deployment path and implement only the assigned task.
 
 Unless explicitly requested, do not introduce:
 
 * Advanced or general-purpose agents
 * Automatic schema rewriting
 * Recommendation systems
-* Embeddings, vector search, semantic similarity systems, or ML resolver work
+* New embedding, vector-search, or semantic-retrieval capabilities
+* Learned or automatically applied concept resolvers
 * Review scheduling or mastery systems
 * Speech processing
-* Authentication or consumer/product frontend expansion
+* Authentication, multi-user features, or commercial product expansion
 * Additional AI providers or automatic provider fallback
-* Automatic retry systems, streaming, or batch analysis
+* Automatic retry systems, streaming, or batch analysis beyond the
+  explicitly scoped batch resolution suggestions
 * Usage or billing dashboards
-* Unrelated infrastructure or architecture expansion
+* Infrastructure or architecture changes unrelated to the current task
 
 ## Human-Owned Git Workflow
 
 The human owner exclusively manages branches, staging, commits, pushes, pull
 requests, merges, and rebases. Coding agents do not inspect or operate on Git or
 GitHub state; they modify, format, test, and report working-tree files only.
+

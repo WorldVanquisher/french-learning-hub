@@ -1,0 +1,14 @@
+{
+  "schema_version": "learning_capture_v1",
+  "capture_id": "demo-flh-20260928-01",
+  "source": "manual",
+  "original_input": "When do I use l'imparfait rather than le passé composé?",
+  "original_context": "Learning note: Je lisais quand Marie est arrivée. The imperfect describes a background or ongoing action; the passé composé marks the completed arrival. This is a synthetic practice discussion.",
+  "discussion_summary": "Learning note: Je lisais quand Marie est arrivée. The imperfect describes a background or ongoing action; the passé composé marks the completed arrival. This is a synthetic practice discussion.",
+  "analysis": {
+    "category": "grammar",
+    "explanation": "Contrast background or ongoing past situations with completed narrative events.",
+    "confidence": 0.85,
+    "uncertainty": "Synthetic demonstration record; verify the learning point during review."
+  }
+}
