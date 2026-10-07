@@ -421,3 +421,169 @@ describe("ReviewQueue milestone 10.7 candidate discovery", () => {
     });
   });
 });
+
+// FLH-005 regression tests for the Concept Review state bugs reproduced in FLH-003.
+describe("ReviewQueue unit-scoped editing state", () => {
+  function unitWithIdentity(unitId: number, target: string, features: Record<string, string>) {
+    const unit = reviewableUnitFixture(unitId);
+    return { ...unit, candidate_identity: { ...unit.candidate_identity, target, identity_features: features } };
+  }
+
+  function unitContextHandlers(unitId: number, matches: unknown[] = []) {
+    return {
+      [`GET /api/knowledge-units/${unitId}/concept-membership`]: { unit_id: unitId, current_membership: null },
+      [`GET /api/knowledge-units/${unitId}/concept-resolution`]: {
+        unit_id: unitId,
+        decision: matches.length > 0 ? "matched" : "no_match",
+        matches,
+      },
+    };
+  }
+
+  it("resets identity feature rows when switching to another unit", async () => {
+    const first = unitWithIdentity(1, "alpha", { tense: "present" });
+    const second = unitWithIdentity(2, "beta", {});
+    const { impl, calls } = methodRouteFetch({
+      "GET /api/reviewable-units": { reviewable_units: [first, second] },
+      "GET /api/concepts": { concepts: [] },
+      ...unitContextHandlers(1),
+      ...unitContextHandlers(2),
+      "POST /api/concepts": { concept: conceptFixture(50, "beta"), link: null },
+    });
+    globalThis.fetch = impl;
+
+    render(<ReviewQueue />);
+    await waitFor(() => expect(screen.getByLabelText("target")).toHaveValue("alpha"));
+    expect(screen.getByLabelText("feature key 0")).toHaveValue("tense");
+
+    fireEvent.click(screen.getByRole("button", { name: "skip →" }));
+    await waitFor(() => expect(screen.getByLabelText("target")).toHaveValue("beta"));
+    // Unit 2 has no identity features; unit 1's row must not leak into its editor.
+    expect(screen.queryByLabelText("feature key 0")).not.toBeInTheDocument();
+
+    // Adding a feature on unit 2 submits only unit 2's identity.
+    fireEvent.click(screen.getByRole("button", { name: "+ add feature" }));
+    fireEvent.change(screen.getByLabelText("feature key 0"), { target: { value: "register" } });
+    fireEvent.change(screen.getByLabelText("feature value 0"), { target: { value: "formal" } });
+    fireEvent.click(screen.getByRole("button", { name: "NEW CONCEPT" }));
+    await waitFor(() => {
+      const created = calls.find((c) => c.method === "POST" && c.path === "/api/concepts");
+      expect((created?.body as { identity: unknown }).identity).toEqual({
+        target: "beta",
+        pedagogical_intent: "grammar",
+        scope: "",
+        identity_features: { register: "formal" },
+      });
+    });
+
+    // Returning to unit 1 restores its backend candidate identity, not unit 2's edits.
+    await waitFor(() => expect(screen.getByLabelText("target")).toHaveValue("alpha"));
+    expect(screen.getByLabelText("feature key 0")).toHaveValue("tense");
+    expect(screen.queryByLabelText("feature key 1")).not.toBeInTheDocument();
+  });
+
+  it("preserves identity edits and the search query after DISTINCT so NEW CONCEPT uses them", async () => {
+    const unit = reviewableUnitFixture(5);
+    const candidate = conceptFixture(42, "vouloir + infinitive");
+    const { impl, calls } = methodRouteFetch({
+      "GET /api/reviewable-units": { reviewable_units: [unit] },
+      "GET /api/concepts": { concepts: [] },
+      ...unitContextHandlers(5, [candidate]),
+      "POST /api/knowledge-units/5/concept-distinctions": { id: 3, unit_id: 5, concept_id: 42 },
+      "POST /api/concepts": { concept: conceptFixture(99, "vouloir + infinitif (désir)"), link: { id: 20 } },
+    });
+    globalThis.fetch = impl;
+
+    render(<ReviewQueue />);
+    const distinctBtn = await screen.findByRole("button", { name: "DISTINCT" });
+    await waitFor(() => expect(distinctBtn).toBeEnabled());
+
+    fireEvent.change(screen.getByLabelText("target"), { target: { value: "vouloir + infinitif (désir)" } });
+    fireEvent.change(screen.getByLabelText("scope"), { target: { value: "desire" } });
+    fireEvent.click(screen.getByRole("button", { name: "+ add feature" }));
+    fireEvent.change(screen.getByLabelText("feature key 0"), { target: { value: "mood" } });
+    fireEvent.change(screen.getByLabelText("feature value 0"), { target: { value: "indicative" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search existing concepts" }), {
+      target: { value: "desir" },
+    });
+
+    fireEvent.click(distinctBtn);
+    await screen.findByText(/Recorded DISTINCT/);
+
+    // The same unit's authority is re-read after DISTINCT...
+    await waitFor(() => {
+      const reads = calls.filter((c) => c.path === "/api/knowledge-units/5/concept-resolution");
+      expect(reads).toHaveLength(2);
+    });
+    // ...but the reviewer's in-progress edits for this unit survive.
+    expect(screen.getByLabelText("target")).toHaveValue("vouloir + infinitif (désir)");
+    expect(screen.getByLabelText("scope")).toHaveValue("desire");
+    expect(screen.getByLabelText("feature key 0")).toHaveValue("mood");
+    expect(screen.getByLabelText("feature value 0")).toHaveValue("indicative");
+    expect(screen.getByRole("searchbox", { name: "Search existing concepts" })).toHaveValue("desir");
+    // The just-distinguished concept is not re-preselected for a follow-up SAME.
+    expect(screen.getByRole("button", { name: "SAME → selected" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "NEW CONCEPT" }));
+    await waitFor(() => {
+      const created = calls.find((c) => c.method === "POST" && c.path === "/api/concepts");
+      expect((created?.body as { identity: unknown }).identity).toEqual({
+        target: "vouloir + infinitif (désir)",
+        pedagogical_intent: "grammar",
+        scope: "desire",
+        identity_features: { mood: "indicative" },
+      });
+    });
+  });
+
+  it.each([
+    {
+      actionName: "NEW CONCEPT",
+      method: "POST",
+      path: "/api/concepts",
+      message: "concept resolution conflict: a concept with this identity already exists",
+      matches: [],
+    },
+    {
+      actionName: "SAME → selected",
+      method: "POST",
+      path: "/api/knowledge-units/5/concept-links/same",
+      message: "concept resolution conflict: unit already has a current SAME membership",
+      matches: [conceptFixture(42, "vouloir + infinitive")],
+    },
+  ])("shows the backend's 409 message for $actionName and re-reads current membership", async ({
+    actionName,
+    method,
+    path,
+    message,
+    matches,
+  }) => {
+    const unit = reviewableUnitFixture(5);
+    const { impl, calls } = methodRouteFetch({
+      "GET /api/reviewable-units": { reviewable_units: [unit] },
+      "GET /api/concepts": { concepts: [] },
+      ...unitContextHandlers(5, matches),
+      [`${method} ${path}`]: () => ({ status: 409, body: { error: message } }),
+    });
+    globalThis.fetch = impl;
+
+    render(<ReviewQueue />);
+    const button = await screen.findByRole("button", { name: actionName });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+
+    // Wait for the settled state: membership re-read and the action finished.
+    await waitFor(() => {
+      const reads = calls.filter((c) => c.path === "/api/knowledge-units/5/concept-membership");
+      expect(reads).toHaveLength(2);
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "NEW CONCEPT" })).toBeEnabled());
+    const banner = document.querySelector(".banner");
+    expect(banner).toHaveClass("error");
+    expect(banner?.textContent).toContain(message);
+    expect(banner?.textContent).toMatch(/409/);
+    expect(banner?.textContent).toMatch(/current membership was re-read/);
+    // The unit stays in the queue; nothing was recorded.
+    expect(screen.getByText(/unit 1 of 1/)).toBeInTheDocument();
+  });
+});

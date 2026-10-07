@@ -18,6 +18,10 @@ import { discoverConcepts } from "../conceptSearch";
 
 type Notice = { kind: "success" | "error" | "info"; text: string } | null;
 
+// IdentityDraft is the reviewer's editable NEW CONCEPT identity, tagged with the
+// unit it was seeded from so a draft can never leak into another unit's editor.
+type IdentityDraft = { unitId: number; value: ConceptIdentity };
+
 // ReviewQueue is the single experimental annotation page. It walks the reviewer
 // through the reviewable-units queue one at a time, shows current membership as the
 // sole authority (never inferred from history), and keeps exact resolver matches
@@ -40,12 +44,13 @@ export function ReviewQueue() {
   const [candidates, setCandidates] = useState<Concept[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedConceptId, setSelectedConceptId] = useState<number | null>(null);
-  const [identity, setIdentity] = useState<ConceptIdentity | null>(null);
+  const [identityDraft, setIdentityDraft] = useState<IdentityDraft | null>(null);
   const [history, setHistory] = useState<UnitConceptLink[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const current: ReviewableUnit | undefined = queue[index];
   const unitContextReady = current !== undefined && loadedUnitContextId === current.unit_id;
+  const identity = current !== undefined && identityDraft?.unitId === current.unit_id ? identityDraft.value : null;
   const exactConceptIds = useMemo(() => new Set(candidates.map((concept) => concept.id)), [candidates]);
   const discoveryCandidates = useMemo(
     () => discoverConcepts(catalog, searchQuery, exactConceptIds),
@@ -84,17 +89,10 @@ export function ReviewQueue() {
     void loadCatalog();
   }, [loadCatalog, loadQueue]);
 
-  // loadUnitContext loads everything needed to review one unit: current membership
-  // (the authority), any exact-signature candidate concepts, and a fresh editable
-  // identity seeded from the backend candidate.
-  const loadUnitContext = useCallback(async (unit: ReviewableUnit) => {
-    setLoadedUnitContextId(null);
-    setMembership(null);
-    setCandidates([]);
-    setSearchQuery(unit.candidate_identity.target);
-    setSelectedConceptId(null);
-    setHistory([]);
-    setIdentity({ ...unit.candidate_identity, identity_features: { ...unit.candidate_identity.identity_features } });
+  // readUnitAuthority re-reads the backend-owned context for one unit: current
+  // membership (the authority) and any exact-signature candidate concepts. It never
+  // touches the reviewer's identity draft or search query.
+  const readUnitAuthority = useCallback(async (unit: ReviewableUnit, preselectLoneMatch: boolean) => {
     try {
       const [mEnv, outcome] = await Promise.all([
         api.getCurrentMembership(unit.unit_id),
@@ -103,7 +101,7 @@ export function ReviewQueue() {
       setMembership(mEnv.current_membership);
       setCandidates(outcome.matches);
       // Pre-select a lone exact match to speed up the common SAME decision.
-      if (outcome.matches.length === 1) {
+      if (preselectLoneMatch && outcome.matches.length === 1) {
         setSelectedConceptId(outcome.matches[0].id);
       }
       setLoadedUnitContextId(unit.unit_id);
@@ -111,6 +109,32 @@ export function ReviewQueue() {
       setNotice({ kind: "error", text: describe(e, "Could not load unit context.") });
     }
   }, []);
+
+  // loadUnitContext starts reviewing a different unit: all unit-specific state is
+  // reset and a fresh editable identity is seeded from the backend candidate.
+  const loadUnitContext = useCallback(async (unit: ReviewableUnit) => {
+    setLoadedUnitContextId(null);
+    setMembership(null);
+    setCandidates([]);
+    setSearchQuery(unit.candidate_identity.target);
+    setSelectedConceptId(null);
+    setHistory([]);
+    setIdentityDraft({
+      unitId: unit.unit_id,
+      value: { ...unit.candidate_identity, identity_features: { ...unit.candidate_identity.identity_features } },
+    });
+    await readUnitAuthority(unit, true);
+  }, [readUnitAuthority]);
+
+  // refreshUnitContext re-reads the same unit after a decision that keeps it in the
+  // queue (DISTINCT or a relation). The identity draft and search query survive so
+  // the reviewer can continue, e.g. DISTINCT A then NEW CONCEPT B with the edited
+  // identity. The selection is cleared so the concept just judged is not silently
+  // re-targeted by a follow-up action.
+  const refreshUnitContext = useCallback(async (unit: ReviewableUnit) => {
+    setSelectedConceptId(null);
+    await readUnitAuthority(unit, false);
+  }, [readUnitAuthority]);
 
   useEffect(() => {
     if (current) {
@@ -225,19 +249,21 @@ export function ReviewQueue() {
       if (resolved) {
         advance();
       } else {
-        await loadUnitContext(current);
+        await refreshUnitContext(current);
       }
       void link;
     } catch (e) {
-      setNotice({ kind: "error", text: describe(e, "The decision could not be recorded.") });
       if (e instanceof ApiError && e.isConflict) {
         // Authority may have changed; refresh it so the next action is well-formed.
+        // The backend's conflict message stays visible: it says what actually
+        // conflicted (e.g. an existing identity vs. an existing membership).
         await refreshMembership(unitId);
         setNotice({
-          kind: "info",
-          text:
-            "Conflict: this unit's current membership was refreshed because it may have changed. Review the current membership and try again.",
+          kind: "error",
+          text: `${describe(e, "The decision could not be recorded.")} This unit's current membership was re-read from the backend; review it before trying again.`,
         });
+      } else {
+        setNotice({ kind: "error", text: describe(e, "The decision could not be recorded.") });
       }
     } finally {
       setBusy(false);
@@ -381,7 +407,14 @@ export function ReviewQueue() {
 
           <div className="panel">
             <h2>Reviewed identity (for NEW CONCEPT)</h2>
-            {identity ? <IdentityEditor value={identity} onChange={setIdentity} /> : null}
+            {identity ? (
+              // Keyed by unit so the editor's local feature rows reset with the unit.
+              <IdentityEditor
+                key={current.unit_id}
+                value={identity}
+                onChange={(value) => setIdentityDraft({ unitId: current.unit_id, value })}
+              />
+            ) : null}
           </div>
         </div>
       </div>
