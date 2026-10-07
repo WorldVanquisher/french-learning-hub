@@ -1,0 +1,14 @@
+{
+  "schema_version": "learning_capture_v1",
+  "capture_id": "demo-flh-20260928-04",
+  "source": "manual",
+  "original_input": "Why does J'ai su mean I found out, but Je savais means I knew?",
+  "original_context": "Learning note: With savoir, the imperfect can express an ongoing state of knowledge; the passé composé can express the event of learning a fact. Synthetic practice discussion about the same learning target as the preceding capture.",
+  "discussion_summary": "Learning note: With savoir, the imperfect can express an ongoing state of knowledge; the passé composé can express the event of learning a fact. Synthetic practice discussion about the same learning target as the preceding capture.",
+  "analysis": {
+    "category": "grammar",
+    "explanation": "Savoir in the imperfect expresses knowing; in the passé composé it can express coming to know.",
+    "confidence": 0.85,
+    "uncertainty": "Synthetic demonstration record; verify the learning point during review."
+  }
+}

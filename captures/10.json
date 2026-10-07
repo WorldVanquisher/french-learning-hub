@@ -1,0 +1,14 @@
+{
+  "schema_version": "learning_capture_v1",
+  "capture_id": "demo-flh-20260928-10",
+  "source": "manual",
+  "original_input": "What does assister à une réunion mean?",
+  "original_context": "Learning note: Assister à une réunion means to attend a meeting, not to assist the meeting. The preposition à belongs to this use. Synthetic practice discussion.",
+  "discussion_summary": "Learning note: Assister à une réunion means to attend a meeting, not to assist the meeting. The preposition à belongs to this use. Synthetic practice discussion.",
+  "analysis": {
+    "category": "vocabulary",
+    "explanation": "Assister à means to attend an event; it is a false friend of English assist.",
+    "confidence": 0.85,
+    "uncertainty": "Synthetic demonstration record; verify the learning point during review."
+  }
+}

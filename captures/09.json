@@ -1,0 +1,14 @@
+{
+  "schema_version": "learning_capture_v1",
+  "capture_id": "demo-flh-20260928-09",
+  "source": "manual",
+  "original_input": "Does actuellement mean actually?",
+  "original_context": "Learning note: Actuellement means currently or at present, not the usual English sense of actually; en fait can often express actually in a correction. Synthetic practice discussion.",
+  "discussion_summary": "Learning note: Actuellement means currently or at present, not the usual English sense of actually; en fait can often express actually in a correction. Synthetic practice discussion.",
+  "analysis": {
+    "category": "vocabulary",
+    "explanation": "Actuellement means currently, a false friend of English actually.",
+    "confidence": 0.85,
+    "uncertainty": "Synthetic demonstration record; verify the learning point during review."
+  }
+}

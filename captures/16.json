@@ -1,0 +1,14 @@
+{
+  "schema_version": "learning_capture_v1",
+  "capture_id": "demo-flh-20260928-16",
+  "source": "manual",
+  "original_input": "What is the difference between ne ... pas and ne ... jamais?",
+  "original_context": "Learning note: Je ne parle pas français negates the statement; Je ne parle jamais français expresses never. In informal speech ne may be dropped, but the standard written pattern includes it. Synthetic practice discussion.",
+  "discussion_summary": "Learning note: Je ne parle pas français negates the statement; Je ne parle jamais français expresses never. In informal speech ne may be dropped, but the standard written pattern includes it. Synthetic practice discussion.",
+  "analysis": {
+    "category": "grammar",
+    "explanation": "Distinguish basic negation ne ... pas from never ne ... jamais.",
+    "confidence": 0.85,
+    "uncertainty": "Synthetic demonstration record; verify the learning point during review."
+  }
+}

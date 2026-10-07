@@ -1,0 +1,14 @@
+{
+  "schema_version": "learning_capture_v1",
+  "capture_id": "demo-flh-20260928-12",
+  "source": "manual",
+  "original_input": "Do I pronounce the final s in plus?",
+  "original_context": "Learning note: The pronunciation of plus depends on meaning and context, including negative constructions such as ne ... plus; avoid a single unconditional rule. Synthetic practice discussion.",
+  "discussion_summary": "Learning note: The pronunciation of plus depends on meaning and context, including negative constructions such as ne ... plus; avoid a single unconditional rule. Synthetic practice discussion.",
+  "analysis": {
+    "category": "pronunciation",
+    "explanation": "The pronunciation of the final s in plus varies with usage and phonetic context.",
+    "confidence": 0.85,
+    "uncertainty": "Synthetic demonstration record; verify the learning point during review."
+  }
+}

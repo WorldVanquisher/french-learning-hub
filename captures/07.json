@@ -1,0 +1,14 @@
+{
+  "schema_version": "learning_capture_v1",
+  "capture_id": "demo-flh-20260928-07",
+  "source": "manual",
+  "original_input": "Why do we say Elle parle japonais without le?",
+  "original_context": "Learning note: Elle parle japonais illustrates the same article pattern after parler as Je parle français. Compare Elle apprend le japonais. Synthetic practice discussion.",
+  "discussion_summary": "Learning note: Elle parle japonais illustrates the same article pattern after parler as Je parle français. Compare Elle apprend le japonais. Synthetic practice discussion.",
+  "analysis": {
+    "category": "grammar",
+    "explanation": "Parler followed by a language name normally uses no definite article.",
+    "confidence": 0.85,
+    "uncertainty": "Synthetic demonstration record; verify the learning point during review."
+  }
+}
