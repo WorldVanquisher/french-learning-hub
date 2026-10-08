@@ -14,6 +14,10 @@ Capture cycle, and identifies exactly what to repeat for each later discussion.
 Extraction and human Concept annotation are optional follow-on steps; empty
 retrieval metrics are expected without eligible human SAME examples.
 
+This guide uses the development servers. To run the API and the built workbench
+in one local container with a persistent data directory and backup/restore
+procedures, see [RELEASE.md](RELEASE.md).
+
 ## Prerequisites
 
 - Go 1.26.5, as declared by `go.mod`.
@@ -184,8 +188,11 @@ representation does not. Interpret comparisons with that limitation in mind.
 
 Provider configuration is optional for the default workflow. Use
 [`.env.example`](../.env.example) as the authoritative variable reference and
-replace every placeholder with your own value. The service reads process
-environment variables; it does not automatically load a `.env` file.
+replace every placeholder with your own value. The server reads process
+environment variables and an optional untracked `.env` file in its working
+directory (the repository root for `make run`). A variable already set in the
+process environment wins over `.env`, even when empty. Single-quote values that
+contain `$` or `#`.
 
 For example, the Analyzer can remain local while knowledge extraction uses the
 OpenAI adapter:

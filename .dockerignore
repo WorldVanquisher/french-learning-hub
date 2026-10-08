@@ -1,0 +1,27 @@
+# Allowlist build context: only what the image build needs. Everything else,
+# including .env files, data/, databases, captures/, docs, .git, node_modules,
+# dist and bin, never reaches the Docker daemon.
+*
+!go.mod
+!go.sum
+!cmd/
+!internal/
+!migrations/
+!web/package.json
+!web/package-lock.json
+!web/index.html
+!web/vite.config.ts
+!web/tsconfig.json
+!web/tsconfig.app.json
+!web/tsconfig.node.json
+!web/src/
+
+# Not needed to build the server binary.
+**/*_test.go
+**/testdata/
+# Defensive: never send local secrets or databases even if placed under an
+# allowed directory.
+**/.env
+**/.env.*
+**/*.db
+**/*.db-*

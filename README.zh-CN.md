@@ -43,6 +43,8 @@ make run
 
 然后运行 `curl -sS http://localhost:8080/healthz`。从首次 Capture、启动四视图工作台，到配置可选 Provider 和理解空实验结果的完整流程，请阅读 [docs/QUICKSTART.md](docs/QUICKSTART.md)。
 
+如需在一个本地容器中同时运行 API 和构建后的工作台，请阅读 [docs/RELEASE.md](docs/RELEASE.md)。
+
 面试前可按[可重复的本地学习流程](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md)，配合
 [可复制的 Capture 提示词](docs/CAPTURE_PROMPT.zh-CN.md)反复使用产品。手册先讲解一次完整的
 真实对话循环，再明确以后每次讨论需要重复哪些步骤。记录跨重启累积在独立的
@@ -83,6 +85,7 @@ Extraction 和人工 Concept Review 是单独的可选步骤，全新数据的�
 ## 文档导航
 
 - [快速入门](docs/QUICKSTART.md)
+- [个人使用发布（Docker、备份与恢复，英文）](docs/RELEASE.md)
 - [架构与权威边界](docs/ARCHITECTURE.md)
 - [标注工作台说明](web/README.md)
 - [环境变量参考](.env.example)
@@ -114,7 +117,7 @@ web                      React + Vite + TypeScript 记录浏览与标注工作�
 
 ## 配置
 
-配置来自环境变量。默认配置可直接启动本地服务：
+配置来自进程环境变量，以及服务工作目录中可选的 `.env` 文件（`make run` 时为仓库根目录）。进程中已存在的变量优先于 `.env`，即使其值为空；空值视为未设置。`.env` 不存在不影响启动；格式错误会阻止启动，且错误信息不显示其中的值。包含 `$` 或 `#` 的值请使用单引号。不要把凭据放入 Git。默认配置可直接启动本地服务：
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -162,6 +165,27 @@ go run ./cmd/server
 
 首次启动时会自动创建数据库目录、数据库文件并执行迁移。默认监听 `http://localhost:8080`。
 
+如需由同一服务提供构建后的工作台（无需 Vite 开发服务器），先构建前端并传入 `-web-dir`：
+
+```bash
+cd web && npm ci && npm run build && cd ..
+go run ./cmd/server -web-dir web/dist
+```
+
+此时 `/` 提供工作台，`/assets/...` 提供构建产物，`/api/...` 去掉前缀后转发到 API（工作台使用的路径）。所有现有 API 路由保持原有根路径，curl 和 Capture CLI 不受影响。不传 `-web-dir` 时服务只提供 API。
+
+## 个人使用发布（Docker）
+
+`Dockerfile` 与 `compose.yaml` 把服务和构建后的工作台打包为一个镜像，在 `http://127.0.0.1:8080` 提供服务（只绑定本机；服务没有认证），SQLite 数据保存在 `./data/release`：
+
+```bash
+mkdir -p data/release
+docker compose up -d --build     # 启动；用 docker compose ps 等待 "(healthy)"
+docker compose stop              # 停止（数据保留）；也可使用 start / restart / down
+```
+
+容器固定 `PORT` 与 `DB_PATH`，只转发列出的 Provider 变量并保持其默认值，镜像和容器中不包含 `.env`、凭据或数据库。现有数据库不会被自动移动到 `./data/release`。只在服务停止时备份，只恢复到空目录，并在每次升级镜像前备份：迁移只能向前执行，旧镜像不得运行在新版本数据库上。完整步骤见 [docs/RELEASE.md](docs/RELEASE.md)。
+
 ## 基础 API
 
 ### 健康检查
@@ -169,7 +193,11 @@ go run ./cmd/server
 ```bash
 curl localhost:8080/healthz
 # {"status":"ok"}
+curl localhost:8080/readyz
+# {"status":"ready"}
 ```
+
+`/healthz` 只表示存活，不访问数据库。`/readyz` 表示就绪：以 2 秒上限 ping SQLite，返回 `200`，或返回不含错误细节的 `503 {"status":"not_ready"}`。
 
 ### 学习条目
 

@@ -211,7 +211,7 @@ export EXTRACTOR_PROVIDER=openai
 go run ./cmd/server
 ```
 
-服务读取进程环境，不自动加载 `.env`。`AI_PROVIDER=rule-based` 与 Extractor 相互独立；
+服务读取进程环境，以及工作目录中可选的 `.env`（从仓库根目录运行时即根目录的 `.env`）；进程中已设置的变量优先，因此这里 `export` 的值（包括 `DB_PATH`、`PORT`）会覆盖 `.env`。`AI_PROVIDER=rule-based` 与 Extractor 相互独立；
 `OPENAI_BASE_URL` 可覆盖默认 API 地址。不要把密钥放入 Capture、回执、数据库或仓库文件。
 
 Extraction 只接受最新有效状态为 `unreviewed`、`accepted` 或 `corrected` 的 Entry。

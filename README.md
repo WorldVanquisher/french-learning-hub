@@ -56,6 +56,9 @@ Then check `curl -sS http://localhost:8080/healthz`. For the complete first-run
 workflow—including Capture, the workbench, optional providers, and interpreting
 empty experiment results—follow [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
+To run the API and the built workbench together in one local container, see
+[docs/RELEASE.md](docs/RELEASE.md).
+
 For repeated interview practice, follow the
 [reusable local-learning workflow (简体中文)](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md)
 with the [copyable capture prompt](docs/CAPTURE_PROMPT.zh-CN.md). It teaches one
@@ -105,6 +108,7 @@ a scorer-only ablation over perfectly matched evidence.
 ## Documentation
 
 - [Quick start](docs/QUICKSTART.md)
+- [Personal-use release (Docker, backup/restore)](docs/RELEASE.md)
 - [Architecture and ownership](docs/ARCHITECTURE.md)
 - [Workbench guide](web/README.md)
 - [Environment-variable reference](.env.example)
@@ -219,8 +223,10 @@ feedback records are immutable. Original entries and analyses are never mutated.
 
 ## Configuration
 
-Configuration comes from the environment (see [.env.example](.env.example)).
-Defaults work out of the box:
+Configuration comes from the process environment and an optional `.env` file in
+the server's working directory (see [.env.example](.env.example)). A variable
+already present in the process environment wins over `.env`, even when empty;
+empty values behave as unset. Defaults work out of the box:
 
 | Variable             | Default                     | Description                                   |
 | -------------------- | --------------------------- | --------------------------------------------- |
@@ -287,10 +293,13 @@ routing between the local engine and OpenAI (escalating low-confidence local
 results to the AI provider) is future work and is not implemented here; there is
 no automatic fallback in either direction.
 
-Enable OpenAI through the process environment — never place credentials in Git.
-The service does not load `.env` automatically; use
-[.env.example](.env.example) as a reference and explicitly load any untracked
-local environment file yourself:
+Enable OpenAI through the process environment or an untracked `.env` file —
+never place credentials in Git. The server reads `.env` from its working
+directory (the repository root for `make run`); a missing file is fine, and a
+malformed one stops startup without showing its values. Use
+[.env.example](.env.example) as the reference and put values containing `$` or
+`#` in single quotes. The container release never copies `.env` into the image
+(see [docs/RELEASE.md](docs/RELEASE.md#configuration)):
 
 ```bash
 # Rule-based (default): no configuration needed.
@@ -323,6 +332,39 @@ make run          # or: go run ./cmd/server
 The database file and its directory are created automatically on first run,
 and migrations are applied at startup.
 
+To serve the built workbench from the same server, without the Vite dev server,
+build it and pass `-web-dir`:
+
+```bash
+cd web && npm ci && npm run build && cd ..
+go run ./cmd/server -web-dir web/dist
+```
+
+`/` then serves the workbench, `/assets/...` its built files, and `/api/...` the
+API with the prefix stripped (what the workbench calls). Every existing API
+route keeps its root path, so curl and the capture CLI are unchanged. Without
+`-web-dir` the server is API-only.
+
+### Personal-use release
+
+`Dockerfile` and `compose.yaml` package the server and built workbench into one
+image, served at `http://127.0.0.1:8080` (bound to localhost only; there is no
+authentication) with SQLite in `./data/release`:
+
+```bash
+mkdir -p data/release
+docker compose up -d --build     # start; wait for "(healthy)" in: docker compose ps
+docker compose stop              # stop (data kept); start / restart / down also work
+```
+
+The container fixes `PORT` and `DB_PATH`, forwards only the listed provider
+variables with their defaults, and never contains `.env`, credentials or a
+database. Your existing database is not moved into `./data/release`
+automatically. Back up only while stopped, restore only into an empty
+directory, and back up before every image upgrade: migrations are forward-only
+and an older image must not run on a newer database. Full procedures are in
+[docs/RELEASE.md](docs/RELEASE.md).
+
 ## API
 
 ### Health
@@ -330,7 +372,13 @@ and migrations are applied at startup.
 ```bash
 curl localhost:8080/healthz
 # {"status":"ok"}
+curl localhost:8080/readyz
+# {"status":"ready"}
 ```
+
+`/healthz` is liveness only and does not touch the database. `/readyz` is
+readiness: it pings SQLite with a 2-second bound and answers `200` or `503
+{"status":"not_ready"}` without error details.
 
 ### Create an entry
 
