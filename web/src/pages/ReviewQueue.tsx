@@ -143,13 +143,16 @@ export function ReviewQueue() {
   }, [current, loadUnitContext]);
 
   // refreshMembership re-reads the authority. Used after a 409 conflict, because
-  // another operation may have changed the current membership underneath us.
-  const refreshMembership = useCallback(async (unitId: number) => {
+  // another operation may have changed the current membership underneath us. It
+  // reports whether the re-read succeeded so callers never claim a refresh that
+  // did not happen; on failure the prior (unconfirmed) value is left in place.
+  const refreshMembership = useCallback(async (unitId: number): Promise<"refreshed" | "failed"> => {
     try {
       const env = await api.getCurrentMembership(unitId);
       setMembership(env.current_membership);
+      return "refreshed";
     } catch {
-      // Leave the prior value; the error banner from the failed action still shows.
+      return "failed";
     }
   }, []);
 
@@ -257,10 +260,14 @@ export function ReviewQueue() {
         // Authority may have changed; refresh it so the next action is well-formed.
         // The backend's conflict message stays visible: it says what actually
         // conflicted (e.g. an existing identity vs. an existing membership).
-        await refreshMembership(unitId);
+        const refresh = await refreshMembership(unitId);
+        const conflict = describe(e, "The decision could not be recorded.");
         setNotice({
           kind: "error",
-          text: `${describe(e, "The decision could not be recorded.")} This unit's current membership was re-read from the backend; review it before trying again.`,
+          text:
+            refresh === "refreshed"
+              ? `${conflict} This unit's current membership was re-read from the backend; review it before trying again.`
+              : `${conflict} This unit's current membership could not be refreshed; the membership shown is not confirmed. Reload the queue before trying again.`,
         });
       } else {
         setNotice({ kind: "error", text: describe(e, "The decision could not be recorded.") });

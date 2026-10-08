@@ -587,3 +587,44 @@ describe("ReviewQueue unit-scoped editing state", () => {
     expect(screen.getByText(/unit 1 of 1/)).toBeInTheDocument();
   });
 });
+
+describe("ReviewQueue conflict refresh outcome", () => {
+  it("keeps the backend's 409 message and does not claim a refresh when the membership re-read fails", async () => {
+    const unit = reviewableUnitFixture(5);
+    const message = "concept resolution conflict: a concept with this identity already exists";
+    let membershipReads = 0;
+    const { impl, calls } = methodRouteFetch({
+      "GET /api/reviewable-units": { reviewable_units: [unit] },
+      "GET /api/concepts": { concepts: [] },
+      // The initial context read succeeds; the post-conflict re-read fails.
+      "GET /api/knowledge-units/5/concept-membership": () => {
+        membershipReads += 1;
+        return membershipReads === 1
+          ? { body: { unit_id: 5, current_membership: null } }
+          : { status: 500, body: { error: "could not read membership" } };
+      },
+      "GET /api/knowledge-units/5/concept-resolution": { unit_id: 5, decision: "no_match", matches: [] },
+      "POST /api/concepts": () => ({ status: 409, body: { error: message } }),
+    });
+    globalThis.fetch = impl;
+
+    render(<ReviewQueue />);
+    const button = await screen.findByRole("button", { name: "NEW CONCEPT" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      const reads = calls.filter((c) => c.path === "/api/knowledge-units/5/concept-membership");
+      expect(reads).toHaveLength(2);
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "NEW CONCEPT" })).toBeEnabled());
+    const banner = document.querySelector(".banner");
+    expect(banner).toHaveClass("error");
+    expect(banner?.textContent).toContain(message);
+    expect(banner?.textContent).toMatch(/409/);
+    expect(banner?.textContent).toMatch(/could not be refreshed/);
+    expect(banner?.textContent).toMatch(/not confirmed/);
+    expect(banner?.textContent).not.toMatch(/was re-read/);
+    expect(screen.getByText(/unit 1 of 1/)).toBeInTheDocument();
+  });
+});

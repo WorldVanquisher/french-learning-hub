@@ -100,7 +100,9 @@ search query belong to the unit being reviewed:
 When the backend rejects a decision with `409 Conflict`, the banner shows the
 backend's own message (for example, an identity that already exists versus an
 existing membership) and the UI re-reads the unit's current membership before
-the reviewer tries again. Nothing is recorded by the rejected request.
+the reviewer tries again. If that re-read fails, the banner keeps the backend
+message and says the membership could not be refreshed, so the membership shown
+must not be treated as confirmed. Nothing is recorded by the rejected request.
 
 ## Candidate sources and authority
 
