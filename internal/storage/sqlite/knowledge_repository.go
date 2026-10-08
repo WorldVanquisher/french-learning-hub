@@ -379,7 +379,7 @@ func (r *AdmissionRepository) ListByUnit(ctx context.Context, unitID int64) ([]*
 		`SELECT id, unit_id, decision, reason, note, created_at
 		 FROM knowledge_admission_overrides
 		 WHERE unit_id = ?
-		 ORDER BY created_at ASC, id ASC`, unitID)
+		 ORDER BY created_at COLLATE flh_timestamp_v1 ASC, id ASC`, unitID)
 	if err != nil {
 		return nil, fmt.Errorf("list overrides: %w", err)
 	}
@@ -449,7 +449,7 @@ func getLatestOverride(ctx context.Context, db *sql.DB, unitID int64) (*domain.A
 		`SELECT id, unit_id, decision, reason, note, created_at
 		 FROM knowledge_admission_overrides
 		 WHERE unit_id = ?
-		 ORDER BY created_at DESC, id DESC
+		 ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC
 		 LIMIT 1`, unitID)
 	o, err := scanOverride(row)
 	if errors.Is(err, sql.ErrNoRows) {

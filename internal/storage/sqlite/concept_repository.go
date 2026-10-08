@@ -229,7 +229,7 @@ func effectiveAdmissionState(ctx context.Context, q txQuerier, unitID int64) (do
 		`SELECT id, unit_id, decision, reason, note, created_at
 		 FROM knowledge_admission_overrides
 		 WHERE unit_id = ?
-		 ORDER BY created_at DESC, id DESC
+		 ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC
 		 LIMIT 1`, unitID).Scan(&id, &unit, &decision, &reason, &note, &createdStr)
 	var latest *domain.AdmissionOverride
 	if err == nil {
@@ -847,7 +847,7 @@ func (r *ConceptRepository) ListUnitJudgments(ctx context.Context, unitID int64)
 	if err := unitExists(ctx, r.db, unitID); err != nil {
 		return nil, err
 	}
-	rows, err := r.db.QueryContext(ctx, unitJudgmentSelect+` WHERE unit_id = ? ORDER BY created_at DESC, id DESC`, unitID)
+	rows, err := r.db.QueryContext(ctx, unitJudgmentSelect+` WHERE unit_id = ? ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC`, unitID)
 	if err != nil {
 		return nil, fmt.Errorf("list unit judgments: %w", err)
 	}
@@ -923,7 +923,7 @@ func (r *ConceptRepository) ListDistinctions(ctx context.Context, unitID int64) 
 	}
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, unit_id, concept_id, decision_source, resolver_version, evidence, created_at
-		 FROM unit_concept_distinctions WHERE unit_id = ? ORDER BY created_at DESC, id DESC`, unitID)
+		 FROM unit_concept_distinctions WHERE unit_id = ? ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC`, unitID)
 	if err != nil {
 		return nil, fmt.Errorf("list distinctions: %w", err)
 	}
@@ -1124,7 +1124,7 @@ func (r *ConceptRepository) ListReviewableUnits(ctx context.Context, entryID *in
 			       WHERE j.id = (
 			           SELECT id FROM unit_resolution_judgments
 			           WHERE unit_id = j.unit_id
-			           ORDER BY created_at DESC, id DESC LIMIT 1
+			           ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC LIMIT 1
 			       ) AND j.judgment = 'invalid'
 			   )
 			 ORDER BY ordinal ASC`, *current)
@@ -1189,7 +1189,7 @@ func (r *ConceptRepository) ListUnitConceptLinks(ctx context.Context, unitID int
 	if err := unitExists(ctx, r.db, unitID); err != nil {
 		return nil, err
 	}
-	rows, err := r.db.QueryContext(ctx, linkSelect+` WHERE unit_id = ? ORDER BY created_at DESC, id DESC`, unitID)
+	rows, err := r.db.QueryContext(ctx, linkSelect+` WHERE unit_id = ? ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC`, unitID)
 	if err != nil {
 		return nil, fmt.Errorf("list unit concept links: %w", err)
 	}
@@ -1297,7 +1297,7 @@ func (r *ConceptRepository) linkByID(ctx context.Context, q txQuerier, linkID in
 }
 
 func (r *ConceptRepository) linksByConcept(ctx context.Context, conceptID int64) ([]domain.UnitConceptLink, error) {
-	rows, err := r.db.QueryContext(ctx, linkSelect+` WHERE concept_id = ? ORDER BY created_at DESC, id DESC`, conceptID)
+	rows, err := r.db.QueryContext(ctx, linkSelect+` WHERE concept_id = ? ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC`, conceptID)
 	if err != nil {
 		return nil, fmt.Errorf("list links: %w", err)
 	}
@@ -1425,7 +1425,7 @@ const unitJudgmentSelect = `SELECT id, unit_id, judgment, decision_source, note,
 // latestUnitJudgment returns the unit's most recent judgment (by created_at, then
 // id), or (nil, nil) when it has none. It does not verify the unit exists.
 func latestUnitJudgment(ctx context.Context, q txQuerier, unitID int64) (*domain.UnitResolutionJudgment, error) {
-	row := q.QueryRowContext(ctx, unitJudgmentSelect+` WHERE unit_id = ? ORDER BY created_at DESC, id DESC LIMIT 1`, unitID)
+	row := q.QueryRowContext(ctx, unitJudgmentSelect+` WHERE unit_id = ? ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC LIMIT 1`, unitID)
 	j, err := scanUnitJudgment(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil

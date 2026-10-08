@@ -491,6 +491,13 @@ curl localhost:8080/analyses/1/effective
 ```
 
 Only the **latest** feedback (by `created_at`, then `id`) decides the outcome.
+
+Timestamp ordering compares parsed RFC3339 instants at nanosecond precision, with
+higher IDs breaking equal-instant ties. This also applies to admission overrides,
+unit judgments, inventory and reviewability. Existing variable-width timestamp
+text is compared correctly on read; no historical rows are rewritten. A clock
+rollback does not make a later-inserted, earlier-timestamped record the latest.
+
 The response `resolution` is one of four states:
 
 - **`unreviewed`** — no feedback exists. The effective values equal the original

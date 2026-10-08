@@ -128,7 +128,7 @@ func (r *FeedbackRepository) GetLatestByAnalysis(ctx context.Context, analysisID
 		`SELECT id, analysis_id, status, corrected_category, corrected_explanation, user_note, created_at
 		 FROM analysis_feedback
 		 WHERE analysis_id = ?
-		 ORDER BY created_at DESC, id DESC
+		 ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC
 		 LIMIT 1`, analysisID)
 	f, err := scanFeedback(row)
 	if errors.Is(err, sql.ErrNoRows) {
