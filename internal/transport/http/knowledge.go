@@ -150,7 +150,8 @@ type createOverrideRequest struct {
 // handleCreateExtraction runs a new knowledge extraction for an entry and
 // persists it. It is the only knowledge endpoint that invokes the extractor.
 // Status mapping: 201 created, 400 invalid id, 404 entry not found, 409 not
-// eligible (unanalyzed / rejected current analysis), 422 invalid extractor
+// eligible (unanalyzed / rejected current analysis) or source changed during
+// the provider call (new analysis or feedback), 422 invalid extractor
 // output, 503 extractor disabled, 504 provider timeout, 502 provider
 // unavailable, 500 storage failure. No partial data is persisted on failure.
 func (h *Handler) handleCreateExtraction(w http.ResponseWriter, r *http.Request) {
@@ -171,6 +172,12 @@ func (h *Handler) handleCreateExtraction(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if errors.Is(err, domain.ErrNotEligible) {
+		writeError(w, http.StatusConflict, err.Error())
+		return
+	}
+	if errors.Is(err, domain.ErrExtractionSourceChanged) {
+		// The interpretation moved while the provider ran; nothing was stored.
+		// The message names only what changed, never learning content.
 		writeError(w, http.StatusConflict, err.Error())
 		return
 	}

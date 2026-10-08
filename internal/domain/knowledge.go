@@ -15,6 +15,16 @@ import (
 // falls back to another provider.
 var ErrExtractorDisabled = errors.New("knowledge extractor disabled")
 
+// ErrExtractionSourceChanged is returned when an extraction result is ready to be
+// persisted but its source is no longer the entry's current effective
+// interpretation: a newer analysis exists, the source analysis received newer
+// feedback (or its first feedback), or that feedback made it ineligible. The
+// result is discarded rather than recorded as current, so a client can simply
+// request a new extraction. It is a conflict, distinct from ErrNotEligible
+// (checked before the provider call) and from ErrValidation (inconsistent
+// provenance).
+var ErrExtractionSourceChanged = errors.New("extraction source changed")
+
 // KnowledgeKindVersion identifies the dedicated knowledge-unit vocabulary this
 // milestone uses. It is deliberately separate from TaxonomyVersion (the
 // interaction-classification taxonomy): a knowledge unit answers "what learning

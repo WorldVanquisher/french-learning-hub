@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"french-learning-app/internal/domain"
 )
@@ -450,5 +451,74 @@ func TestKnowledgeRepository_LaterFeedbackDoesNotMutateOldExtraction(t *testing.
 	}
 	if got.Extraction.SourceFeedbackID != nil {
 		t.Fatalf("old extraction provenance was mutated: %v", got.Extraction.SourceFeedbackID)
+	}
+}
+
+// TestKnowledgeRepository_SourceCurrencyUsesLatestRecordOrdering proves the
+// in-transaction currency check selects the latest feedback with the same rule
+// as GetLatestByAnalysis. A later insertion with an earlier wall time is not the
+// latest feedback, so only the chronologically latest one is accepted as the
+// current source.
+func TestKnowledgeRepository_SourceCurrencyUsesLatestRecordOrdering(t *testing.T) {
+	entries, knowledge, _ := newKnowledgeTestRepos(t)
+	entryID, analysisID := seedEntryWithAnalysis(t, entries, knowledge)
+	ctx := context.Background()
+
+	fbRepo := NewFeedbackRepository(knowledge.db)
+	base := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	fbRepo.now = func() time.Time { return base.Add(2 * time.Second) }
+	newer, err := fbRepo.Create(ctx, analysisID, domain.NewFeedbackInput{Status: domain.FeedbackAccepted})
+	if err != nil {
+		t.Fatalf("create newer feedback: %v", err)
+	}
+	fbRepo.now = func() time.Time { return base.Add(time.Second) }
+	older, err := fbRepo.Create(ctx, analysisID, domain.NewFeedbackInput{Status: domain.FeedbackAccepted})
+	if err != nil {
+		t.Fatalf("create older feedback: %v", err)
+	}
+
+	latest, err := fbRepo.GetLatestByAnalysis(ctx, analysisID)
+	if err != nil || latest == nil || latest.ID != newer.ID {
+		t.Fatalf("GetLatestByAnalysis = %v, %v; want feedback %d", latest, err, newer.ID)
+	}
+
+	_, err = knowledge.Create(ctx, domain.NewExtractionInput{
+		EntryID: entryID, SourceAnalysisID: analysisID, SourceFeedbackID: &older.ID, Extractor: "x",
+	})
+	if !errors.Is(err, domain.ErrExtractionSourceChanged) {
+		t.Fatalf("higher-id but older feedback: got %v, want ErrExtractionSourceChanged", err)
+	}
+	if _, err := knowledge.Create(ctx, domain.NewExtractionInput{
+		EntryID: entryID, SourceAnalysisID: analysisID, SourceFeedbackID: &newer.ID, Extractor: "x",
+	}); err != nil {
+		t.Fatalf("chronologically latest feedback should be current: %v", err)
+	}
+}
+
+// TestKnowledgeRepository_RejectsSourceRejectedByLatestFeedback covers a caller
+// whose source feedback is the latest one but rejects the analysis: the source is
+// current yet ineligible, so nothing is persisted.
+func TestKnowledgeRepository_RejectsSourceRejectedByLatestFeedback(t *testing.T) {
+	entries, knowledge, _ := newKnowledgeTestRepos(t)
+	entryID, analysisID := seedEntryWithAnalysis(t, entries, knowledge)
+	ctx := context.Background()
+
+	fb, err := NewFeedbackRepository(knowledge.db).Create(ctx, analysisID, domain.NewFeedbackInput{Status: domain.FeedbackRejected})
+	if err != nil {
+		t.Fatalf("create feedback: %v", err)
+	}
+	_, err = knowledge.Create(ctx, domain.NewExtractionInput{
+		EntryID: entryID, SourceAnalysisID: analysisID, SourceFeedbackID: &fb.ID, Extractor: "x",
+		Units: sampleUnits(), Recommendations: domain.ApplyAdmissionV1(sampleUnits()),
+	})
+	if !errors.Is(err, domain.ErrExtractionSourceChanged) {
+		t.Fatalf("got %v, want ErrExtractionSourceChanged", err)
+	}
+	list, err := knowledge.ListByEntry(ctx, entryID)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected no extractions, got %d", len(list))
 	}
 }

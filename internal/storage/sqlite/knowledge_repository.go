@@ -96,6 +96,15 @@ func (r *KnowledgeRepository) Create(ctx context.Context, in domain.NewExtractio
 		}
 	}
 
+	// Currency. The service read the source before the provider call, and new
+	// analyses or feedback may have been recorded since. Re-derive the entry's
+	// current effective interpretation inside this transaction and persist only
+	// if it is still the one the result was extracted from. Otherwise the result
+	// is discarded, leaving the existing current extraction and history intact.
+	if err := checkSourceCurrent(ctx, tx, in); err != nil {
+		return nil, err
+	}
+
 	// Next version = current max for this entry + 1 (starts at 1).
 	var maxVersion sql.NullInt64
 	if err := tx.QueryRowContext(ctx,
@@ -185,6 +194,40 @@ func (r *KnowledgeRepository) Create(ctx context.Context, in domain.NewExtractio
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	return view, nil
+}
+
+// checkSourceCurrent reports domain.ErrExtractionSourceChanged unless in's source
+// analysis is still the entry's latest analysis and in's source feedback is still
+// that analysis's latest feedback (both absent counts as a match), and that
+// feedback does not reject the analysis. It uses the same latest-record rules as
+// the reads that built the source: analyses by version, feedback by
+// latestFeedback. The caller must already have checked provenance ownership.
+func checkSourceCurrent(ctx context.Context, tx *sql.Tx, in domain.NewExtractionInput) error {
+	var latestAnalysisID int64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT id FROM entry_analyses WHERE entry_id = ? ORDER BY version DESC, id DESC LIMIT 1`,
+		in.EntryID,
+	).Scan(&latestAnalysisID); err != nil {
+		// The source analysis belongs to this entry, so a row must exist.
+		return fmt.Errorf("read latest analysis: %w", err)
+	}
+	if latestAnalysisID != in.SourceAnalysisID {
+		return fmt.Errorf("%w: a newer analysis exists for this entry", domain.ErrExtractionSourceChanged)
+	}
+
+	fb, err := latestFeedback(ctx, tx, in.SourceAnalysisID)
+	if err != nil {
+		return err
+	}
+	switch {
+	case fb == nil && in.SourceFeedbackID == nil:
+		return nil
+	case fb == nil || in.SourceFeedbackID == nil || fb.ID != *in.SourceFeedbackID:
+		return fmt.Errorf("%w: the current analysis has newer feedback", domain.ErrExtractionSourceChanged)
+	case fb.Status == domain.FeedbackRejected:
+		return fmt.Errorf("%w: the current analysis is rejected", domain.ErrExtractionSourceChanged)
+	}
+	return nil
 }
 
 // ListByEntry returns every extraction for entryID (each fully assembled with its

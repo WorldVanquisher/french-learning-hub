@@ -968,6 +968,7 @@ The `GET` endpoints never call the extractor. Only `POST
 | Invalid path id / invalid JSON                  | `400`  |
 | Entry / extraction / knowledge unit not found   | `404`  |
 | Entry not eligible (unanalyzed / rejected)      | `409`  |
+| Source changed while the provider ran           | `409`  |
 | Invalid extractor output / invalid override     | `422`  |
 | Extractor disabled                              | `503`  |
 | Provider timeout                                | `504`  |
@@ -975,7 +976,16 @@ The `GET` endpoints never call the extractor. Only `POST
 | Unexpected storage failure                      | `500`  |
 
 On any failure, no partial extraction is persisted (extraction, all units, and
-their machine recommendations commit atomically or not at all). Errors use the
+their machine recommendations commit atomically or not at all).
+
+The source is read before the provider call, and no database transaction is held
+while the provider runs. Inside the write transaction the server re-checks that
+the source analysis is still the entry's latest analysis and the source feedback
+is still that analysis's latest feedback (using the same latest-record ordering
+as reads). If a newer analysis or feedback arrived in the meantime, or the
+current analysis became rejected, the result is discarded with `409` and nothing
+is written; the previous current extraction and all history stay as they were.
+Request a new extraction to use the updated interpretation. Errors use the
 shared `{"error":"..."}` shape and never expose API keys, authorization headers,
 full provider bodies, or original learning content.
 
