@@ -9,6 +9,8 @@ network you do not trust.
 ## Requirements
 
 - Docker with the Compose plugin (verified with Docker 29.7 and Compose 5.5).
+- Host `sqlite3` and GNU `sha256sum` for integrity and checksum checks; Bash
+  for the fail-fast recovery blocks below.
 - The repository checkout. Nothing is pulled from a private registry and no
   image is published.
 
@@ -92,7 +94,9 @@ refuses to start if it is missing (`bind source path does not exist`) instead
 of creating it as root.
 
 ```bash
+umask 077
 mkdir -p data/release
+chmod 700 data/release
 docker compose up -d --build
 docker compose ps          # wait for "(healthy)"
 ```
@@ -104,8 +108,11 @@ go run ./cmd/capture -url http://127.0.0.1:8080 -file examples/captures/manual-e
 ```
 
 `./data/release` starts as a fresh database. Your existing daily database is
-not moved or copied automatically. To use it, stop whatever server uses it,
-then follow **Restore** below with that database directory as the source.
+not moved or copied automatically. Use **Migrate the daily database** below.
+Keep data, staging, preserved-old and backup directories mode `700`, owned by
+`FLH_UID:FLH_GID` (set ownership appropriately before starting). The container
+creates database files with mode `644`; private parent directories prevent other
+local users from reading them. Docker administrators still have access.
 
 ## Start, stop, restart
 
@@ -125,44 +132,122 @@ directory.
 
 ## Backup
 
-Back up only while the service is stopped, so SQLite has checkpointed its WAL
-and nothing is writing.
+Run each block in Bash from the Compose project directory. `set -e` stops on
+copy, checksum, SQLite or rename failure; never continue to start after an error.
+Resolve `active` to the directory Compose actually mounts: the default is
+`./data/release`. For custom `FLH_DATA_DIR`, use that same configured path in
+**all** blocks and ordinary Compose commands. If configured in Compose `.env`,
+set `active` explicitly to its resolved path; shell `${FLH_DATA_DIR:-...}` alone
+cannot read Compose's configuration. Keep that configuration unchanged during
+recovery. Do not point `active` at the parent `data/` directory.
+
+Stop the service before copying; no other process may write the database.
+Copy only the database and its present WAL/SHM sidecars, never recursively copy
+a directory. Keep backups off-machine too.
 
 ```bash
-docker compose stop
+set -e
+umask 077
+active=./data/release                       # use your configured path
 backup="data/backups/flh-$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -p "$backup"
-cp -a data/release/. "$backup/"            # app.db plus any -wal/-shm files
-sqlite3 -readonly "$backup/app.db" 'PRAGMA integrity_check;'   # expect: ok
-(cd "$backup" && sha256sum * > SHA256SUMS)
+docker compose stop
+mkdir -p data/backups
+chmod 700 data/backups
+mkdir -m 700 "$backup"                     # fails if already present
+cp -a "$active/app.db" "$backup/app.db"
+for suffix in -wal -shm; do
+  if [ -e "$active/app.db$suffix" ]; then
+    cp -a "$active/app.db$suffix" "$backup/"
+  fi
+done
+integrity=$(sqlite3 -readonly "$backup/app.db" 'PRAGMA integrity_check;')
+[ "$integrity" = ok ] || { echo 'Backup integrity check failed' >&2; exit 1; }
+(cd "$backup" && sha256sum app.db* > SHA256SUMS)
 docker compose start
 ```
 
-Copy the whole directory, not just `app.db`. If `-wal`/`-shm` files are
-present, they are part of the database. `data/` is ignored by Git, so backups
-under `data/backups/` are not committed; copy them off the machine as well.
+A zero SQLite exit status alone does not prove integrity. The comparison above
+requires the complete output to be exactly `ok` (apart from the final newline).
 
 ## Restore
 
-Restore into an empty directory, verify it, then switch to it.
+Restore at the **same configured path**, so ordinary `down`/`up` and
+`up --build` keep selecting it. Preserve the old directory by renaming it;
+do not delete it or use a one-command `FLH_DATA_DIR` override. The staging and
+old paths below are siblings of `active`, on the same filesystem. They must
+not already exist. Use a known backup from the procedure above.
 
 ```bash
+set -e
+umask 077
+active=./data/release                       # use your configured path
+# Set backup to the chosen backup directory before running this block.
+: "${backup:?Set backup to the chosen backup directory}"
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+stage="$active.restore-$stamp"
+old="$active.before-restore-$stamp"
 docker compose stop
-restore=data/release-restored
-mkdir "$restore"                            # must be new and empty
-cp -a "$backup/." "$restore/"
-rm -f "$restore/SHA256SUMS"
-sqlite3 -readonly "$restore/app.db" 'PRAGMA integrity_check;'
-FLH_DATA_DIR="./$restore" docker compose up -d
+test ! -e "$old"
+mkdir -m 700 "$stage"
+(cd "$backup" && sha256sum -c SHA256SUMS)
+cp -a "$backup/app.db" "$stage/app.db"
+for suffix in -wal -shm; do
+  if [ -e "$backup/app.db$suffix" ]; then
+    cp -a "$backup/app.db$suffix" "$stage/"
+  fi
+done
+integrity=$(sqlite3 -readonly "$stage/app.db" 'PRAGMA integrity_check;')
+[ "$integrity" = ok ] || { echo 'Restore integrity check failed' >&2; exit 1; }
+# Both directories must be owned by the configured FLH_UID:FLH_GID.
+mv "$active" "$old"
+mv "$stage" "$active"
+docker compose up -d --force-recreate
 ```
 
-To check a backup without touching the running instance, run a second instance
-on another port and project name:
+If the second rename fails, leave the service stopped and move `old` back to
+`active` before retrying. On earlier errors, the original active directory is
+untouched; inspect the failed staging directory before removing it. Preserve
+`old` for review. Check `/readyz` and expected records after starting.
+
+For an independent backup check, copy into another private directory, validate
+it as above, then use a separate project and port. This is a test instance,
+not the durable restore procedure:
 
 ```bash
-FLH_DATA_DIR="./$restore" FLH_HOST_PORT=18081 docker compose -p flh-restore-check up -d
-curl -s http://127.0.0.1:18081/readyz
+: "${check_dir:?Set check_dir to the separately copied and validated directory}"
+FLH_DATA_DIR="$check_dir" FLH_HOST_PORT=18081 docker compose -p flh-restore-check up -d
+curl --fail http://127.0.0.1:18081/readyz
 docker compose -p flh-restore-check down
+```
+
+## Migrate the daily database
+
+Stop `make run` (or whichever process owns `data/app.db`) and wait for it to
+exit. Stop the release container too. No writer may remain active. Never run
+`cp -a data/. ...`: `data/` may contain nested releases, backups and unrelated
+databases. First make a private, file-only backup, then run **Restore** with
+that backup. If the configured release directory does not yet exist, create
+it privately first so Restore can preserve it, even if empty.
+
+```bash
+set -e
+umask 077
+source_db=./data/app.db
+backup="data/backups/daily-$(date -u +%Y%m%dT%H%M%SZ)"
+docker compose stop
+mkdir -p data/backups
+chmod 700 data/backups
+mkdir -m 700 "$backup"
+cp -a "$source_db" "$backup/app.db"
+for suffix in -wal -shm; do
+  if [ -e "$source_db$suffix" ]; then
+    cp -a "$source_db$suffix" "$backup/"
+  fi
+done
+integrity=$(sqlite3 -readonly "$backup/app.db" 'PRAGMA integrity_check;')
+[ "$integrity" = ok ] || { echo 'Migration integrity check failed' >&2; exit 1; }
+(cd "$backup" && sha256sum app.db* > SHA256SUMS)
+# Continue with Restore only after this entire block succeeds.
 ```
 
 ## Upgrades and migration rollback limits
@@ -178,16 +263,21 @@ migrations.
   built for (for example, migration `007` drops columns). Never run an older
   image on a newer database.
 - To roll back, stop the service, restore the backup taken before the upgrade
-  into a new directory, and start the older image on that directory. Data
-  written after that backup is not carried back.
+  at the configured path using Restore above, and start the older image there.
+  Data written after that backup is not carried back.
 
 ## Troubleshooting
 
 - `bind source path does not exist`: create `FLH_DATA_DIR` first.
-- `unable to open database file`, or the container exits right away: the data
+- `unable to open database file` in restart-loop logs: the data
   directory is not writable by `FLH_UID:FLH_GID`. Set them to the owner, e.g.
   `FLH_UID=$(id -u) FLH_GID=$(id -g)`.
-- Stays `unhealthy`: `docker compose logs app` shows configuration errors (for
-  example `EXTRACTOR_PROVIDER=openai requires OPENAI_API_KEY to be set`). They
-  never include key values.
+- Startup configuration errors cause a restart loop under
+  `restart: unless-stopped`, rather than a single exit or a stable `unhealthy`
+  state. Stop the service, correct the problem, then start it.
+  `docker compose logs app` shows configuration errors (for example
+  `EXTRACTOR_PROVIDER=openai requires OPENAI_API_KEY to be set`). They never
+  include key values.
+- A running process whose readiness checks fail can become `unhealthy`; the
+  restart policy does not restart it merely for failing healthchecks.
 - Port in use: set `FLH_HOST_PORT`; the container port stays `8080`.
