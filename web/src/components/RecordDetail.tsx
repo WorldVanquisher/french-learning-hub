@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import type { Analysis, EffectiveAnalysis, Entry } from "../types/learning";
+import { AnalysisRequest } from "./AnalysisRequest";
+import { ExtractionPanel } from "./ExtractionPanel";
 
 // Load is the lifecycle of one independent read. Each section of the detail has its
 // own Load so a failure in one read never hides the data of another.
@@ -29,8 +31,18 @@ function latestAnalysis(analyses: Analysis[]): Analysis | undefined {
 // RecordDetail is a GET-only view of one learning record: the learner-authored
 // Entry, its immutable analysis versions, and the backend-owned effective
 // interpretation of the selected version. A response that arrives after the reader
-// has moved on (another record, another version) is discarded.
-export function RecordDetail({ entryId, onBack }: { entryId: number; onBack: () => void }) {
+// has moved on (another record, another version) is discarded. Explicit Analysis
+// and Extraction requests live here; after a write the record is re-read from the
+// backend and onRecordChanged lets the list refresh its row.
+export function RecordDetail({
+  entryId,
+  onBack,
+  onRecordChanged,
+}: {
+  entryId: number;
+  onBack: () => void;
+  onRecordChanged?: (entryId: number) => void;
+}) {
   const [entry, setEntry] = useState<Load<Entry>>({ status: "loading" });
   const [analyses, setAnalyses] = useState<Load<Analysis[]>>({ status: "loading" });
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<number | null>(null);
@@ -96,6 +108,21 @@ export function RecordDetail({ entryId, onBack }: { entryId: number; onBack: () 
   const latest = latestAnalysis(analysisList);
   const selected = analysisList.find((a) => a.id === selectedAnalysisId);
   const anyError = entry.status === "error" || analyses.status === "error" || effective.status === "error";
+
+  // A confirmed or uncertain analysis request re-reads the record, which selects
+  // the latest version; a request the server rejected leaves the selection alone.
+  const analysisAction = (
+    <AnalysisRequest
+      key={entryId}
+      entryId={entryId}
+      onSettled={(_created, reread) => {
+        if (reread) {
+          setReloadCount((n) => n + 1);
+          onRecordChanged?.(entryId);
+        }
+      }}
+    />
+  );
 
   return (
     <main className="record-detail">
@@ -179,6 +206,8 @@ export function RecordDetail({ entryId, onBack }: { entryId: number; onBack: () 
             </div>
           </>
         )}
+        {/* Always mounted: the re-read it triggers must not discard its outcome. */}
+        {analysisAction}
       </section>
 
       {selected ? (
@@ -193,6 +222,9 @@ export function RecordDetail({ entryId, onBack }: { entryId: number; onBack: () 
           <EffectiveInterpretation load={effective} />
         </section>
       ) : null}
+
+      {/* Keyed by entry so a late response for another record never reaches it. */}
+      <ExtractionPanel key={entryId} entryId={entryId} />
     </main>
   );
 }

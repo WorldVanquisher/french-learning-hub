@@ -9,7 +9,7 @@ type View = "records" | "review" | "inspector" | "experiments";
 const viewCopy: Record<View, { title: string; subtitle: string }> = {
   records: {
     title: "Learning Records",
-    subtitle: "Read-only browsing of learner-authored records, their analysis versions, and backend-owned effective interpretations.",
+    subtitle: "Import captures, browse learner-authored records, and explicitly request analysis or extraction. Interpretations and eligibility stay backend-owned.",
   },
   review: {
     title: "Concept Review",
@@ -26,8 +26,9 @@ const viewCopy: Record<View, { title: string; subtitle: string }> = {
 };
 
 // App keeps the internal workbench views behind a local tab switch. Learning
-// Records, the Inspector, and the Experiment Dashboard are read-only and remain
-// separate from the write-capable Concept Review workflow.
+// Records writes only through explicit capture import, analysis, and extraction
+// requests; the Inspector and Experiment Dashboard are read-only; Concept Review
+// records annotation decisions.
 export default function App() {
   const [view, setView] = useState<View>("review");
   const copy = viewCopy[view];

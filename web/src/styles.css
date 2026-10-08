@@ -626,3 +626,26 @@ details.raw pre {
 .record-state.rejected { color: var(--invalid); }
 .record-detail-heading { margin: 12px 0; }
 .version-list { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Colored and selected buttons keep their own background on hover. The generic
+   button:hover rule above is more specific than button.primary, which made white
+   labels unreadable on hover (FLH-012 issue 1). */
+button.primary:hover:not(:disabled),
+.view-tabs button[aria-pressed="true"]:hover:not(:disabled) { background: #1e40af; border-color: #1e40af; }
+button.same:hover:not(:disabled) { background: #05603a; border-color: #05603a; }
+button.invalid:hover:not(:disabled) { background: #912018; border-color: #912018; }
+
+/* Capture-to-extraction workflow */
+.capture-json {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+.file-input { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.workflow-action { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.explicit-action { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
+.explicit-action-explanation p { margin: 4px 0; }

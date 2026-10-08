@@ -11,12 +11,21 @@ type Handler = Reply | (() => Reply | Promise<Reply>);
 // routeFetch routes "/api/path?query" (exact, including the query string) to a
 // static reply or a function that may return a deferred promise, so tests control
 // response order. Every request is recorded for assertions.
+// Record detail also reads the extraction panel. Unless a test registers those
+// reads, they answer "no extraction stored" so they do not add unrelated alerts.
+function noExtractionDefault(url: string): Reply | undefined {
+  const current = url.match(/^\/api\/entries\/(\d+)\/current-extraction$/);
+  if (current) return { body: { entry_id: Number(current[1]), current_extraction_id: null } };
+  if (/^\/api\/entries\/\d+\/extractions$/.test(url)) return { body: { extractions: [] } };
+  return undefined;
+}
+
 function routeFetch(handlers: Record<string, Handler>) {
   const calls: Array<{ method: string; url: string }> = [];
   const impl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     calls.push({ method: (init?.method ?? "GET").toUpperCase(), url });
-    const handler = handlers[url];
+    const handler = handlers[url] ?? noExtractionDefault(url);
     const reply: Reply =
       handler === undefined
         ? { status: 404, body: { error: "not found" } }

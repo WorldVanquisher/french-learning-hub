@@ -83,3 +83,78 @@ export interface EffectiveAnalysis {
   resolution: AnalysisResolution;
   feedback_id: number | null;
 }
+
+// ---- capture import (POST /captures, GET /captures/{capture_id}) ----
+
+// The POST /captures result. `created` is false for an idempotent replay of
+// identical content (HTTP 200); `analysis_id` is null when the capture carried no
+// analysis.
+export interface CaptureResult {
+  capture_id: string;
+  entry_id: number;
+  analysis_id: number | null;
+  created: boolean;
+}
+
+// GET /captures/{capture_id}: the stored receipt (references and metadata only).
+export interface CaptureReceipt {
+  capture_id: string;
+  schema_version: string;
+  source: string;
+  entry_id: number;
+  analysis_id: number | null;
+  discussion_summary: string;
+  created_at: string;
+}
+
+// ---- knowledge extraction (POST/GET /entries/{id}/extractions) ----
+
+export interface AdmissionOverride {
+  id: number;
+  unit_id: number;
+  decision: string;
+  reason?: string;
+  note?: string;
+  created_at: string;
+}
+
+// A unit's backend-derived admission: the machine recommendation and the
+// effective state after any human override.
+export interface UnitAdmission {
+  ruleset: string;
+  machine_state: string;
+  machine_reason: string;
+  effective_state: string;
+  latest_override: AdmissionOverride | null;
+}
+
+export interface ExtractedUnit {
+  id: number;
+  ordinal: number;
+  kind: string;
+  canonical: string;
+  statement: string;
+  example: string | null;
+  confidence: number;
+  created_at: string;
+  admission: UnitAdmission;
+}
+
+// One immutable extraction version with the analysis/feedback it was derived
+// from. Zero units is a valid successful result.
+export interface Extraction {
+  id: number;
+  entry_id: number;
+  version: number;
+  source_analysis_id: number;
+  source_feedback_id: number | null;
+  extractor: string;
+  created_at: string;
+  units: ExtractedUnit[];
+}
+
+// GET /entries/{id}/current-extraction: null when no extraction is current.
+export interface CurrentExtraction {
+  entry_id: number;
+  current_extraction_id: number | null;
+}

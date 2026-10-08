@@ -82,8 +82,9 @@ retrieval metrics.
 - Evaluate exact-signature, weighted lexical cosine, corpus-aware BM25, and
   optional semantic embedding retrievers under one controlled experiment
   population, then compare their Recall@K and MRR.
-- Use the internal React workbench's read-only **Learning Records** browser
-  (records, analysis versions, and effective interpretations), write-capable
+- Use the internal React workbench's **Learning Records** view (capture import,
+  records, analysis versions, effective interpretations, and explicit Analysis
+  and Extraction requests), write-capable
   **Concept Review**, read-only **Annotation Inspector**, and read-only
   **Experiment Dashboard** views.
 

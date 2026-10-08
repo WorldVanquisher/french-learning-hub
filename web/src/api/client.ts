@@ -23,8 +23,12 @@ import type {
 } from "../types/experiment";
 import type {
   Analysis,
+  CaptureReceipt,
+  CaptureResult,
+  CurrentExtraction,
   EffectiveAnalysis,
   Entry,
+  Extraction,
   LearningRecordPage,
   LearningRecordState,
 } from "../types/learning";
@@ -49,6 +53,26 @@ export class ApiError extends Error {
   }
 }
 
+// NetworkError means no HTTP response was received (connection refused, reset,
+// or dropped). For a write request the outcome is therefore UNKNOWN: the server
+// may or may not have stored it. Callers must say so instead of reporting a
+// failure, and must never resubmit automatically.
+export class NetworkError extends Error {
+  readonly method: string;
+  constructor(method: string) {
+    super("no response from the server (network error)");
+    this.name = "NetworkError";
+    this.method = method;
+  }
+}
+
+// RawJsonBody sends a JSON document exactly as the user supplied it, so the
+// backend (not the browser) validates its content, unknown fields, and trailing
+// data, exactly as for the capture CLI.
+class RawJsonBody {
+  constructor(readonly text: string) {}
+}
+
 // The base prefix. Overridable for tests; defaults to the proxied "/api".
 const BASE = "/api";
 
@@ -63,9 +87,14 @@ async function request<T>(
   const init: RequestInit = { method, headers: {} };
   if (body !== undefined) {
     (init.headers as Record<string, string>)["Content-Type"] = "application/json";
-    init.body = JSON.stringify(body);
+    init.body = body instanceof RawJsonBody ? body.text : JSON.stringify(body);
   }
-  const res = await fetchImpl(`${BASE}${path}`, init);
+  let res: Response;
+  try {
+    res = await fetchImpl(`${BASE}${path}`, init);
+  } catch {
+    throw new NetworkError(method);
+  }
 
   // 204 or empty body: return undefined as T.
   const text = await res.text();
@@ -228,6 +257,52 @@ export function getCurrentMembership(unitId: number, fetchImpl: typeof fetch = f
 // getConcept returns a concept with its full append-only event history.
 export function getConcept(conceptId: number, fetchImpl: typeof fetch = fetch): Promise<ConceptView> {
   return request<ConceptView>("GET", `/concepts/${conceptId}`, undefined, fetchImpl);
+}
+
+// ---- capture, analysis, and extraction workflow ----
+
+// importCapture posts one learning_capture_v1 document unchanged to POST /captures.
+// HTTP 201 (new) and 200 (identical replay) both resolve; `created` tells them
+// apart. 400/409/422 reject with an ApiError carrying the backend message.
+export function importCapture(rawJson: string, fetchImpl: typeof fetch = fetch): Promise<CaptureResult> {
+  return request<CaptureResult>("POST", "/captures", new RawJsonBody(rawJson), fetchImpl);
+}
+
+// getCaptureReceipt reads a stored capture receipt; 404 means it is not stored.
+export function getCaptureReceipt(captureId: string, fetchImpl: typeof fetch = fetch): Promise<CaptureReceipt> {
+  return request<CaptureReceipt>("GET", `/captures/${encodeURIComponent(captureId)}`, undefined, fetchImpl);
+}
+
+// createAnalysis explicitly asks the server's configured analyzer for a new,
+// immutable analysis version. Not idempotent: every success appends a version.
+export function createAnalysis(entryId: number, fetchImpl: typeof fetch = fetch): Promise<Analysis> {
+  return request<Analysis>("POST", `/entries/${entryId}/analysis`, undefined, fetchImpl);
+}
+
+// createExtraction explicitly asks the configured (possibly billed) extractor for
+// a new extraction version. Not idempotent; eligibility is decided by the backend.
+export function createExtraction(entryId: number, fetchImpl: typeof fetch = fetch): Promise<Extraction> {
+  return request<Extraction>("POST", `/entries/${entryId}/extractions`, undefined, fetchImpl);
+}
+
+// listExtractions reads every stored extraction version for an entry.
+export async function listExtractions(entryId: number, fetchImpl: typeof fetch = fetch): Promise<Extraction[]> {
+  const data = await request<{ extractions: Extraction[] }>("GET", `/entries/${entryId}/extractions`, undefined, fetchImpl);
+  return data.extractions ?? [];
+}
+
+// getCurrentExtraction reads which extraction the backend treats as current.
+export function getCurrentExtraction(entryId: number, fetchImpl: typeof fetch = fetch): Promise<CurrentExtraction> {
+  return request<CurrentExtraction>("GET", `/entries/${entryId}/current-extraction`, undefined, fetchImpl);
+}
+
+// getLearningRecord re-reads one inventory row through the existing cursor: the
+// inventory is ordered by entry_id descending and before_entry_id is exclusive,
+// so the first row before entryId + 1 is that entry. Returns null if absent.
+export async function getLearningRecord(entryId: number, fetchImpl: typeof fetch = fetch) {
+  const page = await listLearningRecords({ limit: 1, beforeEntryId: entryId + 1 }, fetchImpl);
+  const record = page.records[0];
+  return record && record.entry_id === entryId ? record : null;
 }
 
 // ---- decision endpoints (the seven explicit human actions) ----
