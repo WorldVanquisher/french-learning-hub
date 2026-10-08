@@ -36,6 +36,7 @@ export function RecordDetail({ entryId, onBack }: { entryId: number; onBack: () 
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<number | null>(null);
   const [effective, setEffective] = useState<Load<EffectiveAnalysis>>({ status: "loading" });
   const [reloadCount, setReloadCount] = useState(0);
+  const [effectiveReloadCount, setEffectiveReloadCount] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Move focus to the detail heading so keyboard and screen-reader users land on
@@ -87,9 +88,9 @@ export function RecordDetail({ entryId, onBack }: { entryId: number; onBack: () 
     return () => {
       active = false;
     };
-    // A retry re-reads the analyses, which resets and re-selects the version and so
-    // re-runs this effect; reloadCount is deliberately not a dependency here.
-  }, [selectedAnalysisId]);
+    // Retry the selected interpretation without reloading the version list.
+    // Cleanup also discards a retry response after another version is selected.
+  }, [selectedAnalysisId, effectiveReloadCount]);
 
   const analysisList = analyses.status === "ready" ? analyses.data : [];
   const latest = latestAnalysis(analysisList);
@@ -103,7 +104,17 @@ export function RecordDetail({ entryId, onBack }: { entryId: number; onBack: () 
           ← Back to records
         </button>
         {anyError ? (
-          <button type="button" className="ghost" onClick={() => setReloadCount((n) => n + 1)}>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => {
+              if (entry.status === "error" || analyses.status === "error") {
+                setReloadCount((n) => n + 1);
+              } else {
+                setEffectiveReloadCount((n) => n + 1);
+              }
+            }}
+          >
             Retry
           </button>
         ) : null}
