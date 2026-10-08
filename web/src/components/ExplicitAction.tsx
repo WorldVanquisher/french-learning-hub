@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-// Outcome of one explicit write request, shown next to the action.
+// Outcome of one explicit write request, shown next to the action. It describes
+// only the write; re-reading stored state afterwards is a separate RefreshState.
 // - succeeded: the server confirmed the write.
 // - rejected: the server answered with an error, so it reported the write as not
 //   performed.
@@ -26,6 +27,41 @@ export function OutcomeBanner({ outcome }: { outcome: Outcome | null }) {
   );
 }
 
+// RefreshState tracks the GET that re-reads stored state after a write. Until it
+// succeeds the UI must not claim that what it shows reflects the write.
+export type RefreshState =
+  | { kind: "idle" }
+  | { kind: "refreshing" }
+  | { kind: "refreshed" }
+  | { kind: "failed"; message: string };
+
+// RefreshBanner reports the post-write re-read separately from the write outcome.
+export function RefreshBanner({ refresh, what }: { refresh: RefreshState; what: string }) {
+  switch (refresh.kind) {
+    case "idle":
+      return null;
+    case "refreshing":
+      return (
+        <p className="hint" role="status">
+          Re-reading {what} from the server…
+        </p>
+      );
+    case "refreshed":
+      return (
+        <p className="hint" role="status">
+          {what.charAt(0).toUpperCase() + what.slice(1)} re-read from the server.
+        </p>
+      );
+    case "failed":
+      return (
+        <div className="banner error" role="alert">
+          Could not re-read {what} from the server ({refresh.message}). What is shown may be out of
+          date; reload it before acting again.
+        </div>
+      );
+  }
+}
+
 // ExplicitAction is a two-step write control. The first button only reveals what
 // the request will do; the request is sent once, by the confirm button. While it
 // is pending the control is disabled, and a synchronous guard also drops a second
@@ -36,14 +72,16 @@ export function ExplicitAction({
   confirmLabel,
   explanation,
   pending,
-  disabled,
+  disabledReason,
   onConfirm,
 }: {
   label: string;
   confirmLabel: string;
   explanation: ReactNode;
   pending: boolean;
-  disabled?: boolean;
+  // When set, the action stays unavailable and this explains why (for example,
+  // an unknown outcome that has not been checked against stored state yet).
+  disabledReason?: string | null;
   onConfirm: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -65,11 +103,14 @@ export function ExplicitAction({
     }
   }
 
-  if (!open) {
+  if (!open || disabledReason) {
     return (
-      <button type="button" className="ghost" disabled={pending || disabled} onClick={() => setOpen(true)}>
-        {pending ? `${label} — waiting for the server…` : `${label}…`}
-      </button>
+      <>
+        <button type="button" className="ghost" disabled={pending || Boolean(disabledReason)} onClick={() => setOpen(true)}>
+          {pending ? `${label} — waiting for the server…` : `${label}…`}
+        </button>
+        {disabledReason && !pending ? <p className="hint">{disabledReason}</p> : null}
+      </>
     );
   }
 

@@ -422,7 +422,10 @@ CURRENT SAME 只来自 `unit_concept_memberships`。`unit_concept_links` 是只�
 - **Learning Records**：浏览 `GET /learning-records`，支持状态筛选与游标分页；详情显示原始输入与上下文、全部 Analysis 版本，以及所选版本由后端解析的 Effective 解释。区分加载中、请求失败、无记录、无 Analysis、未审核与被拒绝的解释；过期响应会被丢弃，返回列表时保留已加载页面与筛选条件。
   - **导入 Capture**：把粘贴或载入的 `learning_capture_v1` JSON 原样提交到 `POST /captures`（与 CLI 相同，不调用模型）。浏览器只检查 JSON 语法，内容校验由服务端负责并显示其 `400`/`422` 信息。新导入（`201`）会刷新列表并可打开记录；相同内容重放（`200`）显示已有记录且不新增；冲突重放（`409`）说明未做任何修改，并通过 `GET /captures/{capture_id}` 提供打开已有记录的入口。
   - **显式请求 Analysis 与 Extraction**：在记录详情中分两步操作，先说明请求的效果、是否可能调用并计费外部 Provider、以及不会自动重试，确认后才发送且只发送一次；请求进行中控件被禁用。成功的 Analysis 会重新读取记录并选中新的最新版本，列表行也从后端刷新；不再符合当前筛选的行会明确提示。Extraction 面板显示已保存版本、后端认定的当前版本及其 Unit 与 Admission 状态，零 Unit 被视为有效结果。
-  - 服务端错误按状态与原始信息显示：Extraction 未启用（`503`）或不符合条件（`409`）时不会发送也不会保存；Provider 输出无效（`422`）或失败（`502`/`504`）时可能已调用 Provider 但未保存。**未收到响应**（网络故障）时显示“结果未知”，从不声称失败或自动重提：Analysis 与 Extraction 会重新读取记录供核对，Capture 导入提供只读的“检查导入状态”。工作台尚不支持 Feedback，请使用 `POST /analyses/{id}/feedback`。
+  - **请求结果与后续刷新分开显示**：结果只陈述服务端的回答；刷新行先显示“正在从服务端重新读取…”，只有 GET 成功后才显示“已从服务端重新读取”，失败则提示“无法重新读取，显示内容可能已过期”。Analysis 的 Retry 与 Extraction 的“Reload extractions”可完成失败的刷新；列表行重新读取失败时会标记为可能过期。
+  - 错误按状态与原始信息显示，且只陈述后端契约支持的内容：任何错误响应都表示未保存任何数据。只有 Extraction 的 `503`（未启用）在调用任何 Provider 之前返回。`409` 既可能来自 Provider 运行前的资格检查，也可能来自 Provider 返回后的来源变更检查（出现更新的分析或反馈，或分析被拒绝），因此提示 Provider 可能已被调用；`422`、`502`/`504` 等错误同样提示 Provider（或所配置的 Analyzer）可能已被调用。
+  - **未收到响应**（网络故障）时显示“结果未知”，从不声称失败或自动重提；在成功重新读取已保存状态之前，同一操作保持不可用并显示原因，避免在核对前发送重复请求。Capture 导入提供只读的“检查导入状态”，重新导入相同内容是幂等的。
+  - 按钮在所有状态下保持可读：彩色与已选按钮悬停时保留颜色；禁用按钮使用灰底虚线边框而非降低透明度；键盘焦点显示带间隙的深色焦点环。工作台尚不支持 Feedback，请使用 `POST /analyses/{id}/feedback`。
 - **Concept Review**：写入显式人工 SAME、DISTINCT、关系、INVALID 或新 Concept。
 - **Annotation Inspector**：只读显示当前 Effective Annotation。
 - **Experiment Dashboard**：只读显示 Dataset 结构质量、人工监督规模与固定顺序的检索基线指标。

@@ -3,6 +3,7 @@ import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import type { Analysis, EffectiveAnalysis, Entry } from "../types/learning";
 import { AnalysisRequest } from "./AnalysisRequest";
+import type { RefreshState } from "./ExplicitAction";
 import { ExtractionPanel } from "./ExtractionPanel";
 
 // Load is the lifecycle of one independent read. Each section of the detail has its
@@ -49,6 +50,9 @@ export function RecordDetail({
   const [effective, setEffective] = useState<Load<EffectiveAnalysis>>({ status: "loading" });
   const [reloadCount, setReloadCount] = useState(0);
   const [effectiveReloadCount, setEffectiveReloadCount] = useState(0);
+  // The re-read of analysis versions after an analysis request; any later reload
+  // (including Retry) settles it.
+  const [analysisRefresh, setAnalysisRefresh] = useState<RefreshState>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Move focus to the detail heading so keyboard and screen-reader users land on
@@ -71,14 +75,19 @@ export function RecordDetail({
         if (active) setEntry({ status: "error", message: describeError(error) });
       });
 
+    setAnalysisRefresh((r) => (r.kind === "idle" ? r : { kind: "refreshing" }));
     api.listAnalyses(entryId)
       .then((data) => {
         if (!active) return;
         setAnalyses({ status: "ready", data });
         setSelectedAnalysisId(latestAnalysis(data)?.id ?? null);
+        setAnalysisRefresh((r) => (r.kind === "idle" ? r : { kind: "refreshed" }));
       })
       .catch((error: unknown) => {
-        if (active) setAnalyses({ status: "error", message: describeError(error) });
+        if (!active) return;
+        const message = describeError(error);
+        setAnalyses({ status: "error", message });
+        setAnalysisRefresh((r) => (r.kind === "idle" ? r : { kind: "failed", message }));
       });
 
     return () => {
@@ -115,8 +124,11 @@ export function RecordDetail({
     <AnalysisRequest
       key={entryId}
       entryId={entryId}
+      refresh={analysisRefresh}
+      onStart={() => setAnalysisRefresh({ kind: "idle" })}
       onSettled={(_created, reread) => {
         if (reread) {
+          setAnalysisRefresh({ kind: "refreshing" });
           setReloadCount((n) => n + 1);
           onRecordChanged?.(entryId);
         }

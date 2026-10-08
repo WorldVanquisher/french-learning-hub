@@ -191,25 +191,41 @@ interpretation or eligibility.
   provider may be called and billed, and that it is never retried; only the
   confirm button sends it, once. While a request is pending the control is
   disabled.
-- After a confirmed analysis the record is re-read: the new version becomes the
-  selected latest version and its effective interpretation is shown. The list row
-  is refreshed from the backend (`GET /learning-records?before_entry_id=<id+1>&limit=1`),
-  and a row that no longer matches the active state filter says so instead of
-  disappearing.
+- The **request outcome** and the **refresh** that follows are reported
+  separately. The outcome says only what the server answered. The refresh line
+  says "Re-reading … from the server…", then "… re-read from the server." only
+  after the GET succeeded, or "Could not re-read …; what is shown may be out of
+  date" if it failed. Retry (analysis) and Reload extractions settle a failed
+  refresh.
+- After a confirmed or unknown analysis the record is re-read; on success the
+  new latest version is selected. The list row is re-read from the backend
+  (`GET /learning-records?before_entry_id=<id+1>&limit=1`). A row that no longer
+  matches the active state filter says so instead of disappearing, and a row
+  whose re-read failed is marked as possibly out of date.
 - The extraction panel shows the stored versions, the version the backend reports
   as current, and its units with their admission state. Zero units is shown as a
   valid result, distinct from "No extraction stored." It is re-read after every
   extraction request.
-- Server answers are reported with the backend status and message: extraction
-  disabled (`503`, nothing sent or stored), not eligible (`409`, nothing sent or
-  stored), provider output rejected (`422`) or provider failure (`502`/`504`;
-  the provider may have been called, nothing stored).
+- Error answers show the backend status and message, and claim only what the
+  backend contract supports. Every error response means nothing was stored.
+  Only extraction `503` (not enabled) is returned before any provider call. A
+  `409` can come from the eligibility check before the provider runs or from the
+  source-changed check after it returns (a newer analysis or feedback, or a
+  rejected analysis), so it says the provider may have been called. `422`,
+  `502`/`504` and other errors also say the provider (or configured analyzer)
+  may have been called.
 - **No response** (a network failure) is reported as **Outcome unknown**, never
-  as a failure, and nothing is resubmitted. Analysis and extraction re-read the
-  record so the reader can check before asking again; capture import offers
-  **Check import status**, which reads the receipt (`GET` only).
+  as a failure, and nothing is resubmitted. The same action stays unavailable,
+  with the reason shown, until the stored state has been re-read successfully,
+  so a duplicate request cannot be sent before the reader can check. Capture
+  import offers **Check import status**, which reads the receipt (`GET` only);
+  re-importing identical content is idempotent.
 - A result that arrives after the reader has opened another record is not shown
   on that record.
+
+Buttons keep readable labels in every state: colored and selected buttons keep
+their color on hover, disabled buttons use a grey fill with a dashed border
+instead of reduced opacity, and keyboard focus shows a dark ring with a gap.
 
 Feedback (accept, correct, reject) is not yet available in the workbench; use
 `POST /analyses/{id}/feedback`. The browser cannot tell which analyzer or
