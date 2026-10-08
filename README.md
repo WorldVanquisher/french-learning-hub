@@ -83,8 +83,8 @@ retrieval metrics.
   optional semantic embedding retrievers under one controlled experiment
   population, then compare their Recall@K and MRR.
 - Use the internal React workbench's **Learning Records** view (capture import,
-  records, analysis versions, effective interpretations, and explicit Analysis
-  and Extraction requests), write-capable
+  records, analysis versions, effective interpretations, explicit human feedback
+  with its history, and explicit Analysis and Extraction requests), write-capable
   **Concept Review**, read-only **Annotation Inspector**, and read-only
   **Experiment Dashboard** views.
 

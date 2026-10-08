@@ -158,3 +158,45 @@ export interface CurrentExtraction {
   entry_id: number;
   current_extraction_id: number | null;
 }
+
+// ---- human feedback (POST/GET /analyses/{id}/feedback) ----
+
+export type FeedbackStatus = "accepted" | "corrected" | "rejected";
+
+// One immutable feedback record about one analysis. Corrected fields are present
+// only for "corrected" feedback, and only the ones the reviewer supplied.
+export interface Feedback {
+  id: number;
+  analysis_id: number;
+  status: FeedbackStatus;
+  corrected_category?: string;
+  corrected_explanation?: string;
+  user_note: string;
+  created_at: string;
+}
+
+// The POST /analyses/{id}/feedback body. Corrected fields are allowed only with
+// status "corrected", which needs at least one of them; the server validates.
+export interface NewFeedback {
+  status: FeedbackStatus;
+  corrected_category?: string;
+  corrected_explanation?: string;
+  user_note?: string;
+}
+
+// fr_l2_taxonomy_v1 categories, offered for corrections. The backend exposes no
+// taxonomy endpoint, so this mirrors internal/domain/analysis.go; the server still
+// validates every value and rejects one it does not know (HTTP 422).
+export const FR_L2_TAXONOMY_V1: readonly string[] = [
+  "vocabulary",
+  "grammar",
+  "morphology",
+  "orthography",
+  "pronunciation",
+  "pragmatics",
+  "discourse",
+  "comprehension",
+  "translation",
+  "mixed",
+  "other",
+];
