@@ -972,8 +972,27 @@ Handlers contain no SQL; all decisions run through the application
   membership, with their derived candidate identity for a reviewer. Each entry also
   carries the unit's `example` and extraction `confidence` (milestone 10.6) so the
   review UI needs no extra round-trip.
-- `GET  /entries/{id}/current-extraction` — inspect the current extraction.
-- `PUT  /entries/{id}/current-extraction` — explicit human rollback.
+- `GET  /entries/{id}/current-extraction` — inspect selected extraction and mode.
+- `PUT  /entries/{id}/current-extraction` — explicit persistent pin (including a
+  pin to the latest version); request `{"extraction_id":34}`.
+- `DELETE /entries/{id}/current-extraction` — remove the pin and resume automatic
+  latest-successful selection. Bodyless, idempotent for an existing entry.
+
+All three return `200` with `{"entry_id":12,"current_extraction_id":34,
+"selection_mode":"pinned"}`. The existing ID fields are unchanged; the additive
+`selection_mode` is exactly `automatic` or `pinned`. Pinning latest still reports
+`pinned`. In automatic mode without a successful extraction, the ID is null.
+GET is read-only. DELETE clears only the `entry_current_extractions` projection
+row in a transaction and returns the resulting automatic snapshot. Unknown
+entry is `404`; invalid/nonpositive path ID is `400`; storage failure is `500`.
+PUT retains `400` for invalid JSON and `422` for an invalid or cross-entry target,
+without changing the old pin. The browser boundary covers this DELETE on root
+and workbench `/api/` routes before services execute.
+
+No migration or annotation rewrite: extraction/unit/history, SAME memberships,
+INVALID and DISTINCT records remain intact. Derived current-unit projections,
+reviewability and support follow the selected extraction immediately. See
+[FLH-023 frontend handoff](plans/FLH-023-extraction-selection-mode.md).
 
 ### Out of scope (deliberately not built)
 

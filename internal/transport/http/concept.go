@@ -33,6 +33,8 @@ type ConceptService interface {
 	ListConcepts(ctx context.Context, state *domain.ConceptState) ([]domain.KnowledgeConcept, error)
 	ListReviewableUnits(ctx context.Context, entryID *int64) ([]domain.ReviewableUnit, error)
 	GetCurrentExtraction(ctx context.Context, entryID int64) (*int64, error)
+	GetCurrentExtractionSelection(ctx context.Context, entryID int64) (domain.CurrentExtractionSelection, error)
+	ClearCurrentExtraction(ctx context.Context, entryID int64) (domain.CurrentExtractionSelection, error)
 	SetCurrentExtraction(ctx context.Context, entryID, extractionID int64) error
 }
 
@@ -810,13 +812,13 @@ func (h *Handler) handleListReviewableUnits(w http.ResponseWriter, r *http.Reque
 }
 
 // handleGetCurrentExtraction returns the entry's selected current extraction id
-// (null when the entry has no successful extraction). Read-only.
+// and automatic/pinned mode (null ID before any successful extraction). Read-only.
 func (h *Handler) handleGetCurrentExtraction(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(w, r)
 	if !ok {
 		return
 	}
-	extractionID, err := h.concept.GetCurrentExtraction(r.Context(), id)
+	selection, err := h.concept.GetCurrentExtractionSelection(r.Context(), id)
 	if errors.Is(err, domain.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "entry not found")
 		return
@@ -825,11 +827,11 @@ func (h *Handler) handleGetCurrentExtraction(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusInternalServerError, "could not fetch current extraction")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"entry_id": id, "current_extraction_id": extractionID})
+	writeCurrentExtractionSelection(w, id, selection)
 }
 
 // handleSetCurrentExtraction explicitly selects a successful extraction as current
-// (human rollback). Status: 200 ok, 400 invalid JSON/id, 404 entry not found, 422
+// as a persistent pin. Status: 200 ok, 400 invalid JSON/id, 404 entry not found, 422
 // extraction not owned by entry, 500 storage failure.
 func (h *Handler) handleSetCurrentExtraction(w http.ResponseWriter, r *http.Request) {
 	entryID, ok := parseID(w, r)
@@ -856,5 +858,32 @@ func (h *Handler) handleSetCurrentExtraction(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusInternalServerError, "could not set current extraction")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"entry_id": entryID, "current_extraction_id": req.ExtractionID})
+	writeCurrentExtractionSelection(w, entryID, domain.CurrentExtractionSelection{ExtractionID: &req.ExtractionID, Mode: domain.ExtractionSelectionPinned})
+}
+
+// handleClearCurrentExtraction removes the explicit pin without changing history.
+// Existing entry: 200, including repeated clears; unknown entry: 404.
+func (h *Handler) handleClearCurrentExtraction(w http.ResponseWriter, r *http.Request) {
+	entryID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+	selection, err := h.concept.ClearCurrentExtraction(r.Context(), entryID)
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "entry not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not clear current extraction selection")
+		return
+	}
+	writeCurrentExtractionSelection(w, entryID, selection)
+}
+
+func writeCurrentExtractionSelection(w http.ResponseWriter, entryID int64, selection domain.CurrentExtractionSelection) {
+	writeJSON(w, http.StatusOK, struct {
+		EntryID             int64                          `json:"entry_id"`
+		CurrentExtractionID *int64                         `json:"current_extraction_id"`
+		SelectionMode       domain.ExtractionSelectionMode `json:"selection_mode"`
+	}{entryID, selection.ExtractionID, selection.Mode})
 }

@@ -187,7 +187,7 @@ func TestBrowserBoundaryBlockedRequestsHaveNoSideEffects(t *testing.T) {
 		{"POST", "/analyses/1/feedback"}, {"POST", "/knowledge-units/1/admission-overrides"}, {"POST", "/concepts"},
 		{"POST", "/concepts/1/preferred-unit"}, {"POST", "/knowledge-units/1/concept-links/same"}, {"PUT", "/knowledge-units/1/concept-membership"},
 		{"POST", "/knowledge-units/1/concept-membership/reject"}, {"POST", "/knowledge-units/1/invalid"}, {"POST", "/knowledge-units/1/invalid/restore"},
-		{"POST", "/knowledge-units/1/concept-distinctions"}, {"POST", "/knowledge-units/1/concept-links/relation"}, {"PUT", "/entries/1/current-extraction"},
+		{"POST", "/knowledge-units/1/concept-distinctions"}, {"POST", "/knowledge-units/1/concept-links/relation"}, {"PUT", "/entries/1/current-extraction"}, {"DELETE", "/entries/1/current-extraction"},
 	}
 	for _, prefix := range []string{"", "/api"} {
 		for _, route := range paths {

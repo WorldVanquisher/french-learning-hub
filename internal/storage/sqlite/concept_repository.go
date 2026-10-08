@@ -120,16 +120,69 @@ func currentExtractionID(ctx context.Context, q txQuerier, entryID int64) (*int6
 	return &id, nil
 }
 
-// GetCurrentExtractionID implements domain.CurrentExtractionRepository.
-func (r *ConceptRepository) GetCurrentExtractionID(ctx context.Context, entryID int64) (*int64, error) {
-	if err := entryExists(ctx, r.db, entryID); err != nil {
-		return nil, err
+// currentExtractionSelection reads selection mode and ID in one SQL snapshot.
+func currentExtractionSelection(ctx context.Context, q txQuerier, entryID int64) (domain.CurrentExtractionSelection, error) {
+	var pinned, current sql.NullInt64
+	err := q.QueryRowContext(ctx, `
+		SELECT p.extraction_id, COALESCE(p.extraction_id, (
+			SELECT k.id FROM knowledge_extractions k WHERE k.entry_id = e.id
+			ORDER BY k.version DESC LIMIT 1))
+		FROM learning_entries e
+		LEFT JOIN entry_current_extractions p ON p.entry_id = e.id
+		WHERE e.id = ?`, entryID).Scan(&pinned, &current)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.CurrentExtractionSelection{}, domain.ErrNotFound
 	}
-	return currentExtractionID(ctx, r.db, entryID)
+	if err != nil {
+		return domain.CurrentExtractionSelection{}, fmt.Errorf("read extraction selection: %w", err)
+	}
+	selection := domain.CurrentExtractionSelection{Mode: domain.ExtractionSelectionAutomatic}
+	if pinned.Valid {
+		selection.Mode = domain.ExtractionSelectionPinned
+	}
+	if current.Valid {
+		selection.ExtractionID = &current.Int64
+	}
+	return selection, nil
+}
+
+// GetCurrentExtractionSelection implements the atomic read snapshot.
+func (r *ConceptRepository) GetCurrentExtractionSelection(ctx context.Context, entryID int64) (domain.CurrentExtractionSelection, error) {
+	return currentExtractionSelection(ctx, r.db, entryID)
+}
+
+// GetCurrentExtractionID retains the existing ID-only repository contract.
+func (r *ConceptRepository) GetCurrentExtractionID(ctx context.Context, entryID int64) (*int64, error) {
+	selection, err := r.GetCurrentExtractionSelection(ctx, entryID)
+	return selection.ExtractionID, err
+}
+
+// ClearCurrentExtraction resumes automatic latest-successful selection. Only
+// the mutable pin projection is removed; units, labels and history are preserved.
+func (r *ConceptRepository) ClearCurrentExtraction(ctx context.Context, entryID int64) (domain.CurrentExtractionSelection, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return domain.CurrentExtractionSelection{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := entryExists(ctx, tx, entryID); err != nil {
+		return domain.CurrentExtractionSelection{}, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM entry_current_extractions WHERE entry_id = ?`, entryID); err != nil {
+		return domain.CurrentExtractionSelection{}, fmt.Errorf("clear extraction selection: %w", err)
+	}
+	selection, err := currentExtractionSelection(ctx, tx, entryID)
+	if err != nil {
+		return domain.CurrentExtractionSelection{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return domain.CurrentExtractionSelection{}, err
+	}
+	return selection, nil
 }
 
 // SetCurrentExtraction explicitly points the entry at one of its successful
-// extractions (human rollback). The extraction must belong to the entry. It only
+// extractions as a persistent pin. The extraction must belong to the entry. It only
 // updates the pointer: because concept support is derived at read time, the next
 // read of any affected concept immediately reflects the change — there is no stale
 // per-concept state to recompute.
