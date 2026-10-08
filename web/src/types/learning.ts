@@ -153,10 +153,17 @@ export interface Extraction {
   units: ExtractedUnit[];
 }
 
-// GET /entries/{id}/current-extraction: null when no extraction is current.
+// How the backend chooses an entry's current extraction (FLH-023). "automatic"
+// follows the latest successful extraction; "pinned" keeps an explicitly selected
+// version current, even when it is also the latest.
+export type ExtractionSelectionMode = "automatic" | "pinned";
+
+// GET/PUT/DELETE /entries/{id}/current-extraction. `current_extraction_id` is null
+// when no extraction is current (automatic mode with no successful extraction).
 export interface CurrentExtraction {
   entry_id: number;
   current_extraction_id: number | null;
+  selection_mode: ExtractionSelectionMode;
 }
 
 // ---- human feedback (POST/GET /analyses/{id}/feedback) ----

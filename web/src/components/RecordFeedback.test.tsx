@@ -87,7 +87,7 @@ function recordHandlers(entryId: number, analyses: Array<ReturnType<typeof analy
         extractions: [{ id: 70, entry_id: entryId, version: 1, source_analysis_id: analyses[0]?.id ?? 0, source_feedback_id: null, extractor: "openai:test:knowledge_extraction_v1", created_at: "t", units: [] }],
       },
     },
-    [`GET /api/entries/${entryId}/current-extraction`]: { body: { entry_id: entryId, current_extraction_id: 70 } },
+    [`GET /api/entries/${entryId}/current-extraction`]: { body: { entry_id: entryId, current_extraction_id: 70, selection_mode: "automatic" } },
   };
   for (const a of analyses) {
     handlers[`GET /api/analyses/${a.id}/effective`] = { body: effective(a) };

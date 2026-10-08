@@ -100,7 +100,7 @@ function recordHandlers(entryId: number, analyses: Array<ReturnType<typeof analy
     [`GET /api/entries/${entryId}`]: { body: entry(entryId) },
     [`GET /api/entries/${entryId}/analyses`]: { body: { analyses } },
     [`GET /api/entries/${entryId}/extractions`]: { body: { extractions: [] } },
-    [`GET /api/entries/${entryId}/current-extraction`]: { body: { entry_id: entryId, current_extraction_id: null } },
+    [`GET /api/entries/${entryId}/current-extraction`]: { body: { entry_id: entryId, current_extraction_id: null, selection_mode: "automatic" } },
   };
   for (const a of analyses) {
     handlers[`GET /api/analyses/${a.id}/effective`] = { body: effective(a.id, entryId, a.version) };
@@ -225,7 +225,7 @@ describe("Extraction panel", () => {
     handlers["GET /api/entries/5/extractions"] = {
       body: { extractions: [extraction(2, 5, 2, [unit(7, { admission: { ruleset: "knowledge_admission_v1", machine_state: "needs_review", machine_reason: "low_confidence", effective_state: "needs_review", latest_override: null } })]), extraction(1, 5, 1, [])] },
     };
-    handlers["GET /api/entries/5/current-extraction"] = { body: { entry_id: 5, current_extraction_id: 2 } };
+    handlers["GET /api/entries/5/current-extraction"] = { body: { entry_id: 5, current_extraction_id: 2, selection_mode: "automatic" } };
     routeFetch(handlers);
     render(<RecordDetail entryId={5} onBack={() => {}} />);
     const current = await screen.findByLabelText("Viewed extraction");
@@ -234,13 +234,13 @@ describe("Extraction panel", () => {
     const units = within(current).getByRole("list", { name: "Extracted units" });
     expect(units).toHaveTextContent("vouloir au présent");
     expect(units).toHaveTextContent("needs_review (machine: low_confidence)");
-    expect(screen.getByLabelText("Extraction summary")).toHaveTextContent("Current: v2 · Latest stored: v2 · 2 versions stored");
+    expect(screen.getByLabelText("Extraction summary")).toHaveTextContent("Current: v2 · Selection: automatic · Latest stored: v2 · 2 versions stored");
   });
 
   it("says when the current extraction produced zero units, and when none is stored", async () => {
     const handlers = recordHandlers(6, [analysis(61, 6, 1)]);
     handlers["GET /api/entries/6/extractions"] = { body: { extractions: [extraction(3, 6, 1, [])] } };
-    handlers["GET /api/entries/6/current-extraction"] = { body: { entry_id: 6, current_extraction_id: 3 } };
+    handlers["GET /api/entries/6/current-extraction"] = { body: { entry_id: 6, current_extraction_id: 3, selection_mode: "automatic" } };
     routeFetch({ ...handlers, ...recordHandlers(8, []) });
     const { rerender } = render(<RecordDetail entryId={6} onBack={() => {}} />);
     expect(await screen.findByText("Zero units.")).toBeInTheDocument();
@@ -281,7 +281,7 @@ describe("Extraction panel", () => {
     let stored = false;
     const handlers = recordHandlers(10, [analysis(101, 10, 1)]);
     handlers["GET /api/entries/10/extractions"] = () => ({ body: { extractions: stored ? [extraction(4, 10, 1, [unit(9)])] : [] } });
-    handlers["GET /api/entries/10/current-extraction"] = () => ({ body: { entry_id: 10, current_extraction_id: stored ? 4 : null } });
+    handlers["GET /api/entries/10/current-extraction"] = () => ({ body: { entry_id: 10, current_extraction_id: stored ? 4 : null, selection_mode: "automatic" } });
     handlers["POST /api/entries/10/extractions"] = () => {
       stored = true;
       return { status: 201, body: extraction(4, 10, 1, [unit(9)]) };
@@ -453,7 +453,7 @@ describe("FLH-015 refresh after a mutation is reported separately", () => {
       if (listCalls === 2) return { status: 500, body: { error: "could not list extractions" } };
       return { body: { extractions: stored ? [extraction(6, 22, 1, [unit(11)])] : [] } };
     };
-    handlers["GET /api/entries/22/current-extraction"] = () => ({ body: { entry_id: 22, current_extraction_id: stored ? 6 : null } });
+    handlers["GET /api/entries/22/current-extraction"] = () => ({ body: { entry_id: 22, current_extraction_id: stored ? 6 : null, selection_mode: "automatic" } });
     handlers["POST /api/entries/22/extractions"] = () => {
       stored = true;
       return { status: 201, body: extraction(6, 22, 1, [unit(11)]) };

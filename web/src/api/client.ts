@@ -315,11 +315,11 @@ export function createFeedback(
   return request<Feedback>("POST", `/analyses/${analysisId}/feedback`, feedback, fetchImpl);
 }
 
-// setCurrentExtraction explicitly selects one stored extraction version as the
+// setCurrentExtraction explicitly pins one stored extraction version as the
 // entry's current extraction (PUT /entries/{id}/current-extraction). The 200 body
-// only echoes the request; callers must re-read with getCurrentExtraction before
-// presenting the stored state. 422 means the version does not exist or belongs to
-// another entry.
+// is built from the request (selection_mode "pinned"), not read back; callers
+// must re-read with getCurrentExtraction before presenting the stored state. 422
+// means the version does not exist or belongs to another entry.
 export function setCurrentExtraction(
   entryId: number,
   extractionId: number,
@@ -331,6 +331,14 @@ export function setCurrentExtraction(
     { extraction_id: extractionId },
     fetchImpl,
   );
+}
+
+// clearCurrentExtraction removes an explicit selection (DELETE
+// /entries/{id}/current-extraction) so the backend resumes automatic latest
+// selection. It deletes no extraction, unit, or label and runs no extraction.
+// Repeating it is harmless (200); callers still re-read to present stored state.
+export function clearCurrentExtraction(entryId: number, fetchImpl: typeof fetch = fetch): Promise<CurrentExtraction> {
+  return request<CurrentExtraction>("DELETE", `/entries/${entryId}/current-extraction`, undefined, fetchImpl);
 }
 
 // getLearningRecord re-reads one inventory row through the existing cursor: the

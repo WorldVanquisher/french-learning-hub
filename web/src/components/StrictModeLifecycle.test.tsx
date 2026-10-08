@@ -73,7 +73,7 @@ function recordHandlers(entryId: number, analyses: Array<ReturnType<typeof analy
     [`GET /api/entries/${entryId}`]: { body: { id: entryId, original_input: `Pourquoi ${entryId} ?`, original_context: "c", created_at: "t", updated_at: "t" } },
     [`GET /api/entries/${entryId}/analyses`]: { body: { analyses } },
     [`GET /api/entries/${entryId}/extractions`]: { body: { extractions: [] } },
-    [`GET /api/entries/${entryId}/current-extraction`]: { body: { entry_id: entryId, current_extraction_id: null } },
+    [`GET /api/entries/${entryId}/current-extraction`]: { body: { entry_id: entryId, current_extraction_id: null, selection_mode: "automatic" } },
   };
   for (const a of analyses) {
     handlers[`GET /api/analyses/${a.id}/effective`] = { body: effective(a) };
