@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "../api/client";
-import { ApiError } from "../api/client";
+import { ApiError, NetworkError } from "../api/client";
 import type {
   Concept,
   ConceptIdentity,
@@ -16,8 +16,44 @@ import { HistoryPanel } from "../components/HistoryPanel";
 import { ResolutionActions, type ActionKind } from "../components/ResolutionActions";
 import { discoverConcepts } from "../conceptSearch";
 import type { UnitTarget } from "../navigation";
+import {
+  ExplicitAction,
+  OutcomeBanner,
+  RefreshBanner,
+  type Outcome,
+  type RefreshState,
+} from "../components/ExplicitAction";
+import {
+  checkDecision,
+  describeDecision,
+  duplicateRisk,
+  readBaseline,
+  resolvesUnit,
+  sendDecision,
+  type Baseline,
+  type Decision,
+} from "./reviewOutcome";
 
 type Notice = { kind: "success" | "error" | "info"; text: string } | null;
+
+// The latest decision outcome and the re-read that followed it, per unit.
+type UnitStatus = { outcome: Outcome | null; refresh: { what: string; state: RefreshState } | null };
+
+// A decision whose outcome is unknown (no response) and the check of the backend
+// for its effect. Until the check finds it, or the reviewer explicitly accepts the
+// risk, no other decision can be sent for that unit.
+type Reconciliation = {
+  decision: Decision;
+  baseline: Baseline;
+  check: "checking" | "found" | "not-found" | "failed";
+  text: string;
+  acknowledged: boolean;
+};
+
+function errorText(e: unknown): string {
+  if (e instanceof ApiError) return `(${e.status}) ${e.message}`;
+  return e instanceof Error ? e.message : String(e);
+}
 
 // IdentityDraft is the reviewer's editable NEW CONCEPT identity, tagged with the
 // unit it was seeded from so a draft can never leak into another unit's editor.
@@ -52,7 +88,22 @@ export function ReviewQueue({
   const focusHeadingRef = useRef<HTMLHeadingElement>(null);
   const [index, setIndex] = useState(0);
   const [loadingQueue, setLoadingQueue] = useState(true);
-  const [busy, setBusy] = useState(false);
+  // The decision currently being sent. While set, no decision or unit switch is possible.
+  const [pendingWrite, setPendingWrite] = useState<{ unitId: number; label: string } | null>(null);
+  const writeInFlight = useRef(false);
+  const [unitStatus, setUnitStatus] = useState<Record<number, UnitStatus>>({});
+  const [reconciliations, setReconciliations] = useState<Record<number, Reconciliation>>({});
+  const reconciliationsRef = useRef(reconciliations);
+  reconciliationsRef.current = reconciliations;
+  // Only the latest check per unit is applied.
+  const checkRequest = useRef(new Map<number, number>());
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [notice, setNotice] = useState<Notice>(null);
   const [catalog, setCatalog] = useState<Concept[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -68,6 +119,11 @@ export function ReviewQueue({
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const current: ReviewableUnit | undefined = queue[index];
+  // Read by asynchronous results, which must only change the unit still shown.
+  const currentUnitRef = useRef<number | null>(null);
+  currentUnitRef.current = current?.unit_id ?? null;
+  const queueRef = useRef(queue);
+  queueRef.current = queue;
   const unitContextReady = current !== undefined && loadedUnitContextId === current.unit_id;
   const identity = current !== undefined && identityDraft?.unitId === current.unit_id ? identityDraft.value : null;
   const exactConceptIds = useMemo(() => new Set(candidates.map((concept) => concept.id)), [candidates]);
@@ -156,35 +212,12 @@ export function ReviewQueue({
     await readUnitAuthority(unit, true);
   }, [readUnitAuthority]);
 
-  // refreshUnitContext re-reads the same unit after a decision that keeps it in the
-  // queue (DISTINCT or a relation). The identity draft and search query survive so
-  // the reviewer can continue, e.g. DISTINCT A then NEW CONCEPT B with the edited
-  // identity. The selection is cleared so the concept just judged is not silently
-  // re-targeted by a follow-up action.
-  const refreshUnitContext = useCallback(async (unit: ReviewableUnit) => {
-    setSelectedConceptId(null);
-    await readUnitAuthority(unit, false);
-  }, [readUnitAuthority]);
 
   useEffect(() => {
     if (current) {
       void loadUnitContext(current);
     }
   }, [current, loadUnitContext]);
-
-  // refreshMembership re-reads the authority. Used after a 409 conflict, because
-  // another operation may have changed the current membership underneath us. It
-  // reports whether the re-read succeeded so callers never claim a refresh that
-  // did not happen; on failure the prior (unconfirmed) value is left in place.
-  const refreshMembership = useCallback(async (unitId: number): Promise<"refreshed" | "failed"> => {
-    try {
-      const env = await api.getCurrentMembership(unitId);
-      setMembership(env.current_membership);
-      return "refreshed";
-    } catch {
-      return "failed";
-    }
-  }, []);
 
   const loadHistory = useCallback(async (conceptId: number) => {
     setHistoryLoading(true);
@@ -198,112 +231,176 @@ export function ReviewQueue({
     }
   }, []);
 
-  // advance moves to the next unit. A resolved/invalidated unit is dropped from the
-  // in-memory queue so the reviewer is not shown it again this session.
-  const advance = useCallback(() => {
-    setQueue((q) => {
-      const next = q.filter((_, i) => i !== index);
-      setIndex((i) => Math.min(i, Math.max(0, next.length - 1)));
-      return next;
-    });
-  }, [index]);
+  const setStatus = useCallback((unitId: number, change: Partial<UnitStatus>) => {
+    setUnitStatus((all) => ({ ...all, [unitId]: { ...(all[unitId] ?? { outcome: null, refresh: null }), ...change } }));
+  }, []);
 
-  // act performs one human decision, then confirms and advances on success. Errors
-  // stay visible; on conflict it refreshes the authority before letting the reviewer
-  // retry.
+  // removeUnit drops one unit by ID (never by position) from the in-memory queue,
+  // keeping the reviewer on the unit they are looking at.
+  const removeUnit = useCallback((unitId: number) => {
+    const q = queueRef.current;
+    const at = q.findIndex((u) => u.unit_id === unitId);
+    if (at < 0) return;
+    const next = q.filter((u) => u.unit_id !== unitId);
+    setQueue(next);
+    setIndex((i) => Math.min(i > at ? i - 1 : i, Math.max(0, next.length - 1)));
+  }, []);
+
+  // rereadUnit re-reads a unit's backend authority after a write and reports that
+  // re-read separately from the write's outcome. The shown context changes only if
+  // the reviewer is still on that unit. The identity draft and search query are
+  // kept (e.g. DISTINCT A, then NEW CONCEPT B from the edited identity); the
+  // selection is cleared so the concept just judged is not re-targeted by accident.
+  const rereadUnit = useCallback(
+    async (unit: ReviewableUnit, what: string) => {
+      const id = unit.unit_id;
+      setStatus(id, { refresh: { what, state: { kind: "refreshing" } } });
+      try {
+        const [env, outcome] = await Promise.all([api.getCurrentMembership(id), api.resolveUnit(id)]);
+        if (!mounted.current) return;
+        if (currentUnitRef.current === id) {
+          setMembership(env.current_membership);
+          setCandidates(outcome.matches);
+          setSelectedConceptId(null);
+          setLoadedUnitContextId(id);
+        }
+        setStatus(id, { refresh: { what, state: { kind: "refreshed" } } });
+      } catch (e) {
+        if (mounted.current) setStatus(id, { refresh: { what, state: { kind: "failed", message: errorText(e) } } });
+      }
+    },
+    [setStatus],
+  );
+
+  const updateReconciliation = useCallback((unitId: number, change: Partial<Reconciliation>) => {
+    setReconciliations((all) => (all[unitId] ? { ...all, [unitId]: { ...all[unitId], ...change } } : all));
+  }, []);
+
+  // runCheck reads the backend authority or history the unknown decision would
+  // have changed. Finding nothing never counts as failure: the original request
+  // may still be in progress on the server.
+  const runCheck = useCallback(
+    async (unitId: number) => {
+      const rec = reconciliationsRef.current[unitId];
+      if (!rec) return;
+      const request = (checkRequest.current.get(unitId) ?? 0) + 1;
+      checkRequest.current.set(unitId, request);
+      const stale = () => !mounted.current || checkRequest.current.get(unitId) !== request;
+      updateReconciliation(unitId, { check: "checking" });
+      try {
+        const evidence = await checkDecision(rec.decision, rec.baseline);
+        if (stale()) return;
+        if (!evidence.found) {
+          updateReconciliation(unitId, { check: "not-found", text: evidence.text });
+          return;
+        }
+        updateReconciliation(unitId, { check: "found", text: evidence.text });
+        const label = describeDecision(rec.decision);
+        if (resolvesUnit(rec.decision)) {
+          removeUnit(unitId);
+          setNotice({
+            kind: "info",
+            text: `Unit #${unitId}: the server shows ${label} is stored (${evidence.text}), so the unit left the queue.`,
+          });
+        } else {
+          const unit = queueRef.current.find((u) => u.unit_id === unitId);
+          if (unit) await rereadUnit(unit, `unit #${unitId}'s membership and exact matches`);
+        }
+      } catch (e) {
+        if (!stale()) updateReconciliation(unitId, { check: "failed", text: errorText(e) });
+      }
+    },
+    [removeUnit, rereadUnit, updateReconciliation],
+  );
+
+  const blockedFor = (unitId: number) => {
+    const rec = reconciliations[unitId];
+    return rec !== undefined && rec.check !== "found" && !rec.acknowledged;
+  };
+
+  function buildDecision(action: ActionKind, unit: ReviewableUnit): Decision | null {
+    const unitId = unit.unit_id;
+    switch (action) {
+      case "same":
+        // An existing membership means an explicit ReassignSame; never create+seed.
+        return selectedConceptId === null ? null : { kind: "same", unitId, conceptId: selectedConceptId, reassign: membership !== null };
+      case "new":
+        // Seed SAME only when the unit is unresolved; otherwise only create the concept.
+        return identity ? { kind: "new", unitId, identity, seedAsSame: membership === null } : null;
+      case "broader":
+      case "narrower":
+      case "related":
+        return selectedConceptId === null ? null : { kind: "relation", unitId, conceptId: selectedConceptId, relation: action };
+      case "distinct":
+        return selectedConceptId === null ? null : { kind: "distinct", unitId, conceptId: selectedConceptId };
+      case "invalid":
+        return { kind: "invalid", unitId };
+    }
+  }
+
+  // act sends one explicit human decision once. A server answer is either a
+  // confirmed success or a rejection; no answer is an unknown outcome, which is
+  // reconciled against backend state and never resent automatically.
   async function act(action: ActionKind) {
-    if (!current) return;
-    const unitId = current.unit_id;
-    setBusy(true);
+    if (!current || writeInFlight.current || blockedFor(current.unit_id)) return;
+    const unit = current;
+    const unitId = unit.unit_id;
+    const decision = buildDecision(action, unit);
+    if (!decision) return;
+    const label = describeDecision(decision);
+    writeInFlight.current = true;
+    setPendingWrite({ unitId, label });
     setNotice(null);
+    setStatus(unitId, { outcome: null, refresh: null });
     try {
-      let link: UnitConceptLink | null = null;
-      switch (action) {
-        case "same": {
-          if (selectedConceptId === null) return;
-          // Route correctly: an existing membership means an explicit ReassignSame;
-          // an unresolved unit means a plain SAME. Never create+seed to reassign.
-          link = membership
-            ? await api.reassignSame(unitId, selectedConceptId)
-            : await api.resolveSame(unitId, selectedConceptId);
-          setNotice({ kind: "success", text: `Recorded SAME → concept #${selectedConceptId}.` });
-          break;
-        }
-        case "new": {
-          if (!identity) return;
-          // Seed SAME only when the unit is unresolved; otherwise create the concept
-          // without touching the existing membership (reassign is a separate action).
-          const seedAsSame = membership === null;
-          const res = await api.createConcept(identity, unitId, seedAsSame);
-          link = res.link;
-          setNotice({
-            kind: "success",
-            text: seedAsSame
-              ? `Created concept #${res.concept.id} and seeded SAME.`
-              : `Created concept #${res.concept.id} (membership unchanged; use REASSIGN to move it).`,
-          });
-          break;
-        }
-        case "broader":
-        case "narrower":
-        case "related": {
-          if (selectedConceptId === null) return;
-          link = await api.recordRelation(unitId, selectedConceptId, action);
-          setNotice({ kind: "success", text: `Recorded ${action.toUpperCase()} → concept #${selectedConceptId}.` });
-          break;
-        }
-        case "distinct": {
-          // Explicit negative pair against the selected concept. It records no
-          // membership and never resolves the unit, so the reviewer can continue
-          // (e.g. DISTINCT candidate A, then create NEW concept B and SAME to it).
-          if (selectedConceptId === null) return;
-          await api.recordDistinction(unitId, selectedConceptId);
-          setNotice({
-            kind: "success",
-            text: `Recorded DISTINCT: unit is NOT concept #${selectedConceptId}. Pick another concept, create a NEW one, or mark INVALID.`,
-          });
-          break;
-        }
-        case "invalid": {
-          // Unit-level INVALID: works for a freshly unresolved unit and also clears
-          // any current SAME membership. Uses the dedicated unit-level endpoint, not
-          // the membership-level reject.
-          await api.markUnitInvalid(unitId);
-          setNotice({ kind: "success", text: "Marked the unit INVALID: removed from the review queue." });
-          break;
-        }
-      }
-
-      // A membership-changing action (SAME/NEW+seed) or a unit-level INVALID resolves
-      // the unit, so it leaves the review queue. A non-membership relation or an
-      // explicit DISTINCT negative pair does NOT resolve it — keep the unit and just
-      // refresh its context so the reviewer can continue.
-      const resolved = action === "same" || action === "invalid" || (action === "new" && membership === null);
-      if (resolved) {
-        advance();
-      } else {
-        await refreshUnitContext(current);
-      }
-      void link;
-    } catch (e) {
-      if (e instanceof ApiError && e.isConflict) {
-        // Authority may have changed; refresh it so the next action is well-formed.
-        // The backend's conflict message stays visible: it says what actually
-        // conflicted (e.g. an existing identity vs. an existing membership).
-        const refresh = await refreshMembership(unitId);
-        const conflict = describe(e, "The decision could not be recorded.");
-        setNotice({
-          kind: "error",
-          text:
-            refresh === "refreshed"
-              ? `${conflict} This unit's current membership was re-read from the backend; review it before trying again.`
-              : `${conflict} This unit's current membership could not be refreshed; the membership shown is not confirmed. Reload the queue before trying again.`,
+      let baseline: Baseline;
+      try {
+        baseline = await readBaseline(decision);
+      } catch (e) {
+        setStatus(unitId, {
+          outcome: { kind: "rejected", text: `Nothing was sent: the existing events for ${label} could not be read first ${errorText(e)}.` },
         });
-      } else {
-        setNotice({ kind: "error", text: describe(e, "The decision could not be recorded.") });
+        return;
+      }
+      try {
+        const text = await sendDecision(decision);
+        if (!mounted.current) return;
+        if (resolvesUnit(decision)) {
+          removeUnit(unitId);
+          setNotice({ kind: "success", text: `Unit #${unitId}: ${text}` });
+        } else {
+          setStatus(unitId, { outcome: { kind: "succeeded", text } });
+          await rereadUnit(unit, `unit #${unitId}'s membership and exact matches`);
+        }
+      } catch (e) {
+        if (!mounted.current) return;
+        if (e instanceof NetworkError || !(e instanceof ApiError)) {
+          setStatus(unitId, {
+            outcome: {
+              kind: "uncertain",
+              text: `No response was received for ${label} on unit #${unitId}, so it may or may not have been recorded. It was not sent again.`,
+            },
+          });
+          setReconciliations((all) => ({
+            ...all,
+            [unitId]: { decision, baseline, check: "checking", text: "", acknowledged: false },
+          }));
+          reconciliationsRef.current = {
+            ...reconciliationsRef.current,
+            [unitId]: { decision, baseline, check: "checking", text: "", acknowledged: false },
+          };
+          void runCheck(unitId);
+        } else {
+          setStatus(unitId, {
+            outcome: { kind: "rejected", text: `The server did not record ${label} ${errorText(e)}.` },
+          });
+          // A conflict means authority may have changed underneath; re-read it.
+          if (e.isConflict) await rereadUnit(unit, `unit #${unitId}'s current membership`);
+        }
       }
     } finally {
-      setBusy(false);
+      writeInFlight.current = false;
+      if (mounted.current) setPendingWrite(null);
     }
   }
 
@@ -352,7 +449,7 @@ export function ReviewQueue({
       <div>
         {context}
         {missing}
-        {notice ? <div className={`banner ${notice.kind}`}>{notice.text}</div> : null}
+        {notice ? <div className={`banner ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.text}</div> : null}
         <div className="empty">
           <p>{focus ? `No units of record #${focus.entryId} are awaiting review.` : "No units are awaiting review. 🎉"}</p>
           <button
@@ -379,10 +476,14 @@ export function ReviewQueue({
       {focus && focusMissing ? (
         <p className="hint">Other units of record #{focus.entryId} are awaiting review below.</p>
       ) : null}
-      {notice ? <div className={`banner ${notice.kind}`}>{notice.text}</div> : null}
+      {notice ? <div className={`banner ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.text}</div> : null}
 
       <div className="queue-nav">
-        <button className="ghost" disabled={index === 0} onClick={() => setIndex((i) => Math.max(0, i - 1))}>
+        <button
+          className="ghost"
+          disabled={index === 0 || pendingWrite !== null}
+          onClick={() => setIndex((i) => Math.max(0, i - 1))}
+        >
           ← previous
         </button>
         <span className="position">
@@ -390,7 +491,7 @@ export function ReviewQueue({
         </span>
         <button
           className="ghost"
-          disabled={index >= queue.length - 1}
+          disabled={index >= queue.length - 1 || pendingWrite !== null}
           onClick={() => setIndex((i) => Math.min(queue.length - 1, i + 1))}
         >
           skip →
@@ -502,9 +603,31 @@ export function ReviewQueue({
       <ResolutionActions
         membership={membership}
         selectedConceptId={selectedConceptId}
-        busy={busy}
+        busy={pendingWrite !== null || blockedFor(current.unit_id)}
         onAct={act}
       />
+      {pendingWrite ? (
+        <p className="hint" role="status">
+          Sending {pendingWrite.label} for unit #{pendingWrite.unitId}… Other decisions and unit switches wait for the
+          server&apos;s answer.
+        </p>
+      ) : null}
+      <OutcomeBanner outcome={unitStatus[current.unit_id]?.outcome ?? null} />
+      {unitStatus[current.unit_id]?.refresh ? (
+        <RefreshBanner
+          refresh={unitStatus[current.unit_id]!.refresh!.state}
+          what={unitStatus[current.unit_id]!.refresh!.what}
+        />
+      ) : null}
+      {reconciliations[current.unit_id] ? (
+        <ReconciliationPanel
+          key={current.unit_id}
+          unitId={current.unit_id}
+          rec={reconciliations[current.unit_id]}
+          onCheck={() => void runCheck(current.unit_id)}
+          onAllow={async () => updateReconciliation(current.unit_id, { acknowledged: true })}
+        />
+      ) : null}
 
       <HistoryPanel
         title={
@@ -535,4 +658,76 @@ function describe(e: unknown, fallback: string): string {
     return `${fallback} ${e.message}`;
   }
   return fallback;
+}
+
+// ReconciliationPanel shows the check of an unknown decision outcome and the only
+// ways forward: check again, or explicitly allow another decision knowing the
+// risk. It never resends anything itself.
+function ReconciliationPanel({
+  unitId,
+  rec,
+  onCheck,
+  onAllow,
+}: {
+  unitId: number;
+  rec: Reconciliation;
+  onCheck: () => void;
+  onAllow: () => Promise<void>;
+}) {
+  const label = describeDecision(rec.decision);
+  if (rec.check === "checking") {
+    return (
+      <p className="hint" role="status">
+        Checking the server for {label} on unit #{unitId}…
+      </p>
+    );
+  }
+  if (rec.check === "found") {
+    return (
+      <p className="hint" role="status">
+        Found on the server: {rec.text} {label} is stored.
+      </p>
+    );
+  }
+  return (
+    <section className="panel reconciliation" aria-label="Unknown decision outcome">
+      <h2>Outcome of {label} still unknown</h2>
+      {rec.check === "failed" ? (
+        <div className="banner error" role="alert">
+          Could not check the server for {label}: {rec.text}
+        </div>
+      ) : (
+        <p>
+          Not visible on the server yet: {rec.text} The original request may still be in progress on the server, or
+          may never have arrived. It was not sent again.
+        </p>
+      )}
+      {rec.acknowledged ? (
+        <p className="hint">
+          You allowed another decision for unit #{unitId} although the outcome of {label} is still unknown.
+        </p>
+      ) : (
+        <p className="hint">Decisions for unit #{unitId} wait until the check finds it or you allow another decision.</p>
+      )}
+      <div className="actions">
+        <button type="button" className="ghost" onClick={onCheck}>
+          Check again
+        </button>
+      </div>
+      {!rec.acknowledged ? (
+        <ExplicitAction
+          label={`Allow another decision for unit #${unitId}`}
+          confirmLabel="Allow another decision"
+          pending={false}
+          onConfirm={onAllow}
+          explanation={
+            <p>
+              The earlier request may still be stored later. {duplicateRisk(rec.decision)} Check again first if you
+              can. Nothing is sent until you choose a decision yourself.
+            </p>
+          }
+        />
+      ) : null}
+    </section>
+  );
 }

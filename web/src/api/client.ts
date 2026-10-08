@@ -447,6 +447,19 @@ export function getUnitInvalid(unitId: number, fetchImpl: typeof fetch = fetch):
   return request<UnitInvalidEnvelope>("GET", `/knowledge-units/${unitId}/invalid`, undefined, fetchImpl);
 }
 
+// listDistinctions reads every DISTINCT event recorded for a unit (append-only
+// history, not the collapsed effective view), so a reviewer can check whether a
+// specific DISTINCT write was stored.
+export async function listDistinctions(unitId: number, fetchImpl: typeof fetch = fetch): Promise<UnitDistinction[]> {
+  const data = await request<{ unit_id: number; distinctions: UnitDistinction[] }>(
+    "GET",
+    `/knowledge-units/${unitId}/concept-distinctions`,
+    undefined,
+    fetchImpl,
+  );
+  return data.distinctions ?? [];
+}
+
 // recordDistinction records an explicit DISTINCT negative pair: the unit is NOT the
 // same learning identity as the concept. It creates no membership and no relation and
 // never changes SAME membership, so the unit stays reviewable and the reviewer can

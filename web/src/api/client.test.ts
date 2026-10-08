@@ -399,3 +399,13 @@ describe("automatic current-extraction selection", () => {
     await expect(api.clearCurrentExtraction(99, impl)).rejects.toMatchObject({ status: 404, isNotFound: true });
   });
 });
+
+describe("DISTINCT history", () => {
+  it("lists a unit's DISTINCT events via GET", async () => {
+    const { impl, calls } = stubFetch(200, { unit_id: 5, distinctions: [{ id: 3, unit_id: 5, concept_id: 9 }] });
+    const list = await api.listDistinctions(5, impl);
+    expect(calls[0].url).toBe("/api/knowledge-units/5/concept-distinctions");
+    expect(calls[0].init.method).toBe("GET");
+    expect(list.map((d) => d.id)).toEqual([3]);
+  });
+});

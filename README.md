@@ -88,7 +88,9 @@ retrieval metrics.
   history with automatic or pinned current-version selection, and links from
   extracted units to record-scoped Concept Review or unit inspection),
   write-capable
-  **Concept Review**, read-only **Annotation Inspector**, and read-only
+  **Concept Review** (each decision is sent once; when no response arrives, the
+  outcome is reported as unknown and checked against backend state instead of
+  being resent), read-only **Annotation Inspector**, and read-only
   **Experiment Dashboard** views.
 
 ## Research and evaluation

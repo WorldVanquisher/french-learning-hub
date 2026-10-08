@@ -32,7 +32,15 @@ function methodRouteFetch(
     const path = new URL(String(url), "http://localhost").pathname;
     const reqBody = init?.body ? JSON.parse(String(init.body)) : undefined;
     calls.push({ method, path, body: reqBody });
-    const handler = handlers[`${method} ${path}`];
+    // DISTINCT and relation decisions first read the existing events (the baseline
+    // for checking an unknown outcome). Unless a test registers them, none exist.
+    const handler =
+      handlers[`${method} ${path}`] ??
+      (method === "GET" && /^\/api\/knowledge-units\/\d+\/concept-distinctions$/.test(path)
+        ? { distinctions: [] }
+        : method === "GET" && /^\/api\/concepts\/\d+$/.test(path)
+          ? { concept: null, links: [] }
+          : undefined);
     if (handler === undefined) {
       return new Response(JSON.stringify({ error: "not found" }), {
         status: 404,
@@ -578,11 +586,14 @@ describe("ReviewQueue unit-scoped editing state", () => {
       expect(reads).toHaveLength(2);
     });
     await waitFor(() => expect(screen.getByRole("button", { name: "NEW CONCEPT" })).toBeEnabled());
+    // The outcome (the backend's message) and the re-read are reported separately.
     const banner = document.querySelector(".banner");
     expect(banner).toHaveClass("error");
     expect(banner?.textContent).toContain(message);
     expect(banner?.textContent).toMatch(/409/);
-    expect(banner?.textContent).toMatch(/current membership was re-read/);
+    expect(banner?.textContent).toMatch(/The server did not record/);
+    expect(banner?.textContent).not.toMatch(/re-read/);
+    expect(screen.getByText("Unit #5's current membership re-read from the server.")).toBeInTheDocument();
     // The unit stays in the queue; nothing was recorded.
     expect(screen.getByText(/unit 1 of 1/)).toBeInTheDocument();
   });
@@ -622,9 +633,11 @@ describe("ReviewQueue conflict refresh outcome", () => {
     expect(banner).toHaveClass("error");
     expect(banner?.textContent).toContain(message);
     expect(banner?.textContent).toMatch(/409/);
-    expect(banner?.textContent).toMatch(/could not be refreshed/);
-    expect(banner?.textContent).toMatch(/not confirmed/);
-    expect(banner?.textContent).not.toMatch(/was re-read/);
+    expect(banner?.textContent).not.toMatch(/re-read/);
+    expect(
+      screen.getByText(/Could not re-read unit #5's current membership from the server/),
+    ).toHaveTextContent("What is shown may be out of date");
+    expect(screen.queryByText(/current membership re-read from the server\./)).not.toBeInTheDocument();
     expect(screen.getByText(/unit 1 of 1/)).toBeInTheDocument();
   });
 });

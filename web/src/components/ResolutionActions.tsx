@@ -103,9 +103,10 @@ export function ResolutionActions({
         {" "}
         BROADER / NARROWER / RELATED record a non-membership relation and DISTINCT
         records an explicit negative pair — none of these make the unit a SAME member,
-        and all keep it reviewable. INVALID is always available: it marks the unit
-        itself an invalid candidate (clearing any current SAME membership) and removes
-        it from the queue.
+        and all keep it reviewable. INVALID needs no selected concept: it marks the
+        unit itself an invalid candidate (clearing any current SAME membership) and
+        removes it from the queue. All decisions wait while one is being sent or while
+        an earlier decision&apos;s outcome is still unknown.
       </p>
     </div>
   );
