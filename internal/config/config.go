@@ -1,10 +1,10 @@
-// Package config loads runtime configuration from the environment, applying
-// safe defaults for local development.
+// Package config loads runtime configuration from the process environment and an
+// optional .env file in the working directory, applying safe defaults for local
+// development.
 package config
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -135,6 +135,11 @@ const (
 // than silently selecting a provider when configuration is invalid (unknown
 // AI_PROVIDER, or missing required OpenAI settings).
 //
+// Each key is resolved from the process environment first; a key that is not
+// present there is read from the optional DotEnvFile in the working directory.
+// A missing .env is valid. An unreadable or malformed .env is an error whose
+// message never contains file contents. Empty values behave as unset.
+//
 //	PORT             -> Addr (":" + PORT), default ":8080"
 //	DB_PATH          -> DBPath, default "data/app.db"
 //	AI_PROVIDER      -> AI.Provider, default "rule-based"
@@ -148,6 +153,30 @@ const (
 //	EMBEDDING_API_KEY  -> Embedding.APIKey (optional; never logged)
 //	EMBEDDING_TIMEOUT  -> Embedding.Timeout (seconds), default 8
 func Load() (Config, error) {
+	dotenv, err := readDotEnv(DotEnvFile)
+	if err != nil {
+		return Config{}, err
+	}
+	return load(source{dotenv: dotenv})
+}
+
+// load builds and validates a Config from one resolved key source.
+func load(src source) (Config, error) {
+	getenv := func(key, def string) string {
+		if v := src.get(key); v != "" {
+			return v
+		}
+		return def
+	}
+	getdur := func(key string, def time.Duration) time.Duration {
+		if v := src.get(key); v != "" {
+			if secs, err := strconv.Atoi(v); err == nil && secs > 0 {
+				return time.Duration(secs) * time.Second
+			}
+		}
+		return def
+	}
+
 	cfg := Config{
 		Addr:         ":" + getenv("PORT", "8080"),
 		DBPath:       getenv("DB_PATH", "data/app.db"),
@@ -155,23 +184,23 @@ func Load() (Config, error) {
 		WriteTimeout: getdur("HTTP_WRITE_TIMEOUT", 10*time.Second),
 		AI: AIConfig{
 			Provider:      AIProvider(getenv("AI_PROVIDER", string(ProviderRuleBased))),
-			OpenAIAPIKey:  os.Getenv("OPENAI_API_KEY"),
-			OpenAIModel:   strings.TrimSpace(os.Getenv("OPENAI_MODEL")),
+			OpenAIAPIKey:  src.get("OPENAI_API_KEY"),
+			OpenAIModel:   strings.TrimSpace(src.get("OPENAI_MODEL")),
 			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
 		Extractor: ExtractorConfig{
 			Provider:      ExtractorProvider(getenv("EXTRACTOR_PROVIDER", string(ExtractorDisabled))),
-			OpenAIAPIKey:  os.Getenv("OPENAI_API_KEY"),
-			OpenAIModel:   strings.TrimSpace(os.Getenv("OPENAI_MODEL")),
+			OpenAIAPIKey:  src.get("OPENAI_API_KEY"),
+			OpenAIModel:   strings.TrimSpace(src.get("OPENAI_MODEL")),
 			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
 		Embedding: EmbeddingConfig{
 			Provider: EmbeddingProvider(getenv("EMBEDDING_PROVIDER", string(EmbeddingDisabled))),
-			APIKey:   os.Getenv("EMBEDDING_API_KEY"),
-			Model:    strings.TrimSpace(os.Getenv("EMBEDDING_MODEL")),
-			BaseURL:  strings.TrimSpace(os.Getenv("EMBEDDING_BASE_URL")),
+			APIKey:   src.get("EMBEDDING_API_KEY"),
+			Model:    strings.TrimSpace(src.get("EMBEDDING_MODEL")),
+			BaseURL:  strings.TrimSpace(src.get("EMBEDDING_BASE_URL")),
 			Timeout:  getdur("EMBEDDING_TIMEOUT", defaultEmbeddingTimeout),
 		},
 	}
@@ -252,20 +281,4 @@ func (c *EmbeddingConfig) validate() error {
 	default:
 		return fmt.Errorf("unknown EMBEDDING_PROVIDER %q (supported: disabled, http)", string(c.Provider))
 	}
-}
-
-func getenv(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
-}
-
-func getdur(key string, def time.Duration) time.Duration {
-	if v := os.Getenv(key); v != "" {
-		if secs, err := strconv.Atoi(v); err == nil && secs > 0 {
-			return time.Duration(secs) * time.Second
-		}
-	}
-	return def
 }
