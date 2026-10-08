@@ -95,7 +95,11 @@ The complete HTTP handler validates Host before serving either the workbench
 or the API, including both root and `/api/` routes. Unapproved or malformed
 Host values return `403` with `request host is not allowed`, including reads.
 This prevents an arbitrary rebinding hostname from reaching the service;
-blocking `text/plain` alone would not prevent DNS rebinding.
+blocking `text/plain` alone would not prevent DNS rebinding. The allowlist does
+not pin DNS or verify who controls an approved name. If an attacker controls an
+explicitly approved hostname, that name can still be rebound to the service
+and pass Host/same-origin checks. Only approve names you control; literal IP
+entries avoid this DNS-name gap. This policy is not authentication.
 
 - `HTTP_ALLOWED_HOSTS`: empty/unset means only `localhost`, `127.0.0.1`, and
   `::1`. A nonempty comma-separated list **adds** exact NAS DNS names or IP
