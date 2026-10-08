@@ -83,6 +83,27 @@ Seven decisions, all recorded as backend data:
   membership-level `RejectSame`, which corrects a SAME membership without declaring
   the unit itself invalid.
 
+## Review state within and across units
+
+The reviewed identity draft (target, intent, scope, identity features) and the
+search query belong to the unit being reviewed:
+
+- **Switching units** (skip, previous, or advancing after a resolving decision)
+  resets them to the new unit's backend candidate identity. Feature rows from one
+  unit never carry over to another.
+- **Staying on the same unit** after DISTINCT or BROADER / NARROWER / RELATED
+  re-reads the unit's current membership and exact matches from the backend but
+  keeps the draft and search query, so a reviewer can record DISTINCT against
+  one concept and then create a NEW CONCEPT from the edited identity. The
+  selection is cleared so the concept just judged is not reused by accident.
+
+When the backend rejects a decision with `409 Conflict`, the banner shows the
+backend's own message (for example, an identity that already exists versus an
+existing membership) and the UI re-reads the unit's current membership before
+the reviewer tries again. If that re-read fails, the banner keeps the backend
+message and says the membership could not be refreshed, so the membership shown
+must not be treated as confirmed. Nothing is recorded by the rejected request.
+
 ## Candidate sources and authority
 
 The page keeps two candidate sources visibly and semantically separate:
