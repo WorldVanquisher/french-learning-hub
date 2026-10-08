@@ -5,6 +5,7 @@ import type { Analysis, EffectiveAnalysis, Entry } from "../types/learning";
 import { AnalysisRequest } from "./AnalysisRequest";
 import type { RefreshState } from "./ExplicitAction";
 import { ExtractionPanel } from "./ExtractionPanel";
+import { FeedbackPanel } from "./FeedbackPanel";
 
 // Load is the lifecycle of one independent read. Each section of the detail has its
 // own Load so a failure in one read never hides the data of another.
@@ -53,6 +54,12 @@ export function RecordDetail({
   // The re-read of analysis versions after an analysis request; any later reload
   // (including Retry) settles it.
   const [analysisRefresh, setAnalysisRefresh] = useState<RefreshState>({ kind: "idle" });
+  // The re-read of one analysis version's effective interpretation after feedback,
+  // tied to that version so it is never shown for another one.
+  const [effectiveRefresh, setEffectiveRefresh] = useState<{ analysisId: number; state: RefreshState } | null>(null);
+  // The selection at the moment an asynchronous feedback result arrives.
+  const selectedRef = useRef<number | null>(null);
+  selectedRef.current = selectedAnalysisId;
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Move focus to the detail heading so keyboard and screen-reader users land on
@@ -97,14 +104,23 @@ export function RecordDetail({
 
   useEffect(() => {
     if (selectedAnalysisId === null) return;
+    const id = selectedAnalysisId;
     let active = true;
+    const settle = (state: RefreshState) =>
+      setEffectiveRefresh((r) => (r && r.analysisId === id && r.state.kind !== "idle" ? { analysisId: id, state } : r));
     setEffective({ status: "loading" });
-    api.getEffectiveAnalysis(selectedAnalysisId)
+    settle({ kind: "refreshing" });
+    api.getEffectiveAnalysis(id)
       .then((data) => {
-        if (active) setEffective({ status: "ready", data });
+        if (!active) return;
+        setEffective({ status: "ready", data });
+        settle({ kind: "refreshed" });
       })
       .catch((error: unknown) => {
-        if (active) setEffective({ status: "error", message: describeError(error) });
+        if (!active) return;
+        const message = describeError(error);
+        setEffective({ status: "error", message });
+        settle({ kind: "failed", message });
       });
     return () => {
       active = false;
@@ -224,7 +240,12 @@ export function RecordDetail({
 
       {selected ? (
         <section className="panel" aria-label="Selected analysis">
-          <h2>Analysis v{selected.version}</h2>
+          <h2>
+            Analysis v{selected.version}{" "}
+            <span className="hint">
+              ({selected.id === latest?.id ? "latest version" : `historical version; latest is v${latest?.version ?? "?"}`})
+            </span>
+          </h2>
           <dl className="unit-evidence">
             <div><dt>Analyzer</dt><dd className="mono">{selected.analyzer}</dd></div>
             <div><dt>Confidence</dt><dd>{selected.confidence}</dd></div>
@@ -235,8 +256,32 @@ export function RecordDetail({
         </section>
       ) : null}
 
+      {/* Always mounted for this record so drafts survive its read refreshes. Sibling
+          keys must differ from ExtractionPanel's, or React mixes up the two panels. */}
+      <FeedbackPanel
+        key={`feedback-${entryId}`}
+        analysis={selected}
+        latest={latest}
+        effectiveFeedbackId={
+          effective.status === "ready" && effective.data.analysis_id === selected?.id ? effective.data.feedback_id : undefined
+        }
+        effectiveResolution={
+          effective.status === "ready" && effective.data.analysis_id === selected?.id ? effective.data.resolution : undefined
+        }
+        effectiveRefresh={
+          effectiveRefresh && effectiveRefresh.analysisId === selected?.id ? effectiveRefresh.state : { kind: "idle" }
+        }
+        onRecorded={(analysisId) => {
+          // Feedback can change this version's effective interpretation and, for
+          // the latest version, the record's inventory state.
+          setEffectiveRefresh({ analysisId, state: { kind: "refreshing" } });
+          if (selectedRef.current === analysisId) setEffectiveReloadCount((n) => n + 1);
+          onRecordChanged?.(entryId);
+        }}
+      />
+
       {/* Keyed by entry so a late response for another record never reaches it. */}
-      <ExtractionPanel key={entryId} entryId={entryId} />
+      <ExtractionPanel key={`extraction-${entryId}`} entryId={entryId} latestVersion={latest?.version ?? null} />
     </main>
   );
 }

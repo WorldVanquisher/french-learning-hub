@@ -16,7 +16,10 @@ function routeFetch(handlers: Record<string, Handler>) {
     const method = (init?.method ?? "GET").toUpperCase();
     const url = String(input);
     calls.push({ method, url });
-    const handler = handlers[`${method} ${url}`];
+    // Unless a test registers it, a feedback history read answers "no feedback".
+    const handler =
+      handlers[`${method} ${url}`] ??
+      (method === "GET" && /^\/api\/analyses\/\d+\/feedback$/.test(url) ? { body: { feedback: [] } } : undefined);
     const reply = handler === undefined ? { status: 404, body: { error: "not found" } } : typeof handler === "function" ? await handler() : handler;
     if (reply === "network-error") throw new TypeError("Failed to fetch");
     return new Response(JSON.stringify(reply.body), { status: reply.status ?? 200, headers: { "Content-Type": "application/json" } });
@@ -325,7 +328,7 @@ describe("Extraction panel", () => {
     await act(async () => {
       slow.resolve({ status: 201, body: extraction(5, 12, 1, [unit(10)]) });
     });
-    expect(screen.queryByText(/Stored extraction/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Stored extraction v\d/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Request extraction…" })).toBeEnabled();
     expect(screen.getByText("No extraction stored.")).toBeInTheDocument();
   });

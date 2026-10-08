@@ -340,3 +340,27 @@ describe("capture, analysis, and extraction workflow endpoints", () => {
     expect((error as Error).message).toBe("no response from the server (network error)");
   });
 });
+
+describe("feedback endpoints", () => {
+  it("lists one analysis's feedback in backend order via GET", async () => {
+    const { impl, calls } = stubFetch(200, { feedback: [{ id: 1 }, { id: 2 }] });
+    const list = await api.listFeedback(9, impl);
+    expect(calls[0].url).toBe("/api/analyses/9/feedback");
+    expect(calls[0].init.method).toBe("GET");
+    expect(list.map((f) => f.id)).toEqual([1, 2]);
+  });
+
+  it("posts exactly the supplied feedback fields and surfaces 422 messages", async () => {
+    const ok = stubFetch(201, { id: 3, analysis_id: 9, status: "corrected" });
+    await api.createFeedback(9, { status: "corrected", corrected_category: "usage" }, ok.impl);
+    expect(ok.calls[0].url).toBe("/api/analyses/9/feedback");
+    expect(ok.calls[0].init.method).toBe("POST");
+    expect(JSON.parse(String(ok.calls[0].init.body))).toEqual({ status: "corrected", corrected_category: "usage" });
+
+    const bad = stubFetch(422, { error: "validation error\nstatus must be one of: accepted, corrected, rejected" });
+    await expect(api.createFeedback(9, { status: "accepted" }, bad.impl)).rejects.toMatchObject({
+      status: 422,
+      message: expect.stringContaining("status must be one of"),
+    });
+  });
+});

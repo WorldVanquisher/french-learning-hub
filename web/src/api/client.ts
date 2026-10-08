@@ -29,7 +29,9 @@ import type {
   EffectiveAnalysis,
   Entry,
   Extraction,
+  Feedback,
   LearningRecordPage,
+  NewFeedback,
   LearningRecordState,
 } from "../types/learning";
 
@@ -294,6 +296,23 @@ export async function listExtractions(entryId: number, fetchImpl: typeof fetch =
 // getCurrentExtraction reads which extraction the backend treats as current.
 export function getCurrentExtraction(entryId: number, fetchImpl: typeof fetch = fetch): Promise<CurrentExtraction> {
   return request<CurrentExtraction>("GET", `/entries/${entryId}/current-extraction`, undefined, fetchImpl);
+}
+
+// listFeedback reads every immutable feedback record for one analysis, in the
+// backend's order (oldest first). 404 means the analysis does not exist.
+export async function listFeedback(analysisId: number, fetchImpl: typeof fetch = fetch): Promise<Feedback[]> {
+  const data = await request<{ feedback: Feedback[] }>("GET", `/analyses/${analysisId}/feedback`, undefined, fetchImpl);
+  return data.feedback ?? [];
+}
+
+// createFeedback appends one human judgment to an analysis. It never changes the
+// analysis or the entry; the latest feedback decides the effective interpretation.
+export function createFeedback(
+  analysisId: number,
+  feedback: NewFeedback,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Feedback> {
+  return request<Feedback>("POST", `/analyses/${analysisId}/feedback`, feedback, fetchImpl);
 }
 
 // getLearningRecord re-reads one inventory row through the existing cursor: the

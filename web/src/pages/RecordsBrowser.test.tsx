@@ -17,6 +17,8 @@ function noExtractionDefault(url: string): Reply | undefined {
   const current = url.match(/^\/api\/entries\/(\d+)\/current-extraction$/);
   if (current) return { body: { entry_id: Number(current[1]), current_extraction_id: null } };
   if (/^\/api\/entries\/\d+\/extractions$/.test(url)) return { body: { extractions: [] } };
+  // Record detail also reads the selected version's feedback history.
+  if (/^\/api\/analyses\/\d+\/feedback$/.test(url)) return { body: { feedback: [] } };
   return undefined;
 }
 
@@ -404,7 +406,7 @@ describe("RecordDetail states", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Could not load the effective interpretation: (500) could not resolve effective analysis",
     );
-    expect(screen.getByRole("heading", { name: "Analysis v1" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Analysis v1\b/ })).toBeInTheDocument();
   });
 });
 
@@ -432,7 +434,7 @@ describe("RecordDetail historical interpretation retry", () => {
     expect(await screen.findByText("feedback #5")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "v1" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "v2 (latest)" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("heading", { name: "Analysis v1" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Analysis v1\b/ })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(calls.filter((c) => c.url === "/api/analyses/41/effective")).toHaveLength(2);
     expect(calls.filter((c) => c.url === "/api/analyses/42/effective")).toHaveLength(1);

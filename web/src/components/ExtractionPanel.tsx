@@ -25,7 +25,14 @@ function describeError(error: unknown): string {
 // ExtractionPanel shows the backend's stored extraction versions for one record,
 // the current one's units, and an explicit request for a new extraction. The
 // backend decides eligibility, runs the provider, and chooses the current version.
-export function ExtractionPanel({ entryId }: { entryId: number }) {
+export function ExtractionPanel({
+  entryId,
+  latestVersion = null,
+}: {
+  entryId: number;
+  // The record's latest analysis version, only to explain the extraction source.
+  latestVersion?: number | null;
+}) {
   const [state, setState] = useState<Load<ExtractionState>>({ status: "loading" });
   const [reloadCount, setReloadCount] = useState(0);
   const [pending, setPending] = useState(false);
@@ -94,6 +101,12 @@ export function ExtractionPanel({ entryId }: { entryId: number }) {
   return (
     <section className="panel" aria-label="Knowledge extraction">
       <h2>Knowledge extraction</h2>
+      <p className="hint">
+        Stored extractions are historical evidence: feedback never changes or regenerates them. A new
+        extraction uses the record&apos;s latest analysis{latestVersion !== null ? ` (v${latestVersion})` : ""} and
+        its latest feedback as the server resolves them when you request it, not the version selected
+        above.
+      </p>
       <ExtractionState load={state} onRetry={() => setReloadCount((n) => n + 1)} />
       <div className="workflow-action">
         <ExplicitAction

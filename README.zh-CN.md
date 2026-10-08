@@ -425,7 +425,8 @@ CURRENT SAME 只来自 `unit_concept_memberships`。`unit_concept_links` 是只�
   - **请求结果与后续刷新分开显示**：结果只陈述服务端的回答；刷新行先显示“正在从服务端重新读取…”，只有 GET 成功后才显示“已从服务端重新读取”，失败则提示“无法重新读取，显示内容可能已过期”。Analysis 的 Retry 与 Extraction 的“Reload extractions”可完成失败的刷新；列表行重新读取失败时会标记为可能过期。
   - 错误按状态与原始信息显示，且只陈述后端契约支持的内容：任何错误响应都表示未保存任何数据。只有 Extraction 的 `503`（未启用）在调用任何 Provider 之前返回。`409` 既可能来自 Provider 运行前的资格检查，也可能来自 Provider 返回后的来源变更检查（出现更新的分析或反馈，或分析被拒绝），因此提示 Provider 可能已被调用；`422`、`502`/`504` 等错误同样提示 Provider（或所配置的 Analyzer）可能已被调用。
   - **未收到响应**（网络故障）时显示“结果未知”，从不声称失败或自动重提；在成功重新读取已保存状态之前，同一操作保持不可用并显示原因，避免在核对前发送重复请求。Capture 导入提供只读的“检查导入状态”，重新导入相同内容是幂等的。
-  - 按钮在所有状态下保持可读：彩色与已选按钮悬停时保留颜色；禁用按钮使用灰底虚线边框而非降低透明度；键盘焦点显示带间隙的深色焦点环。工作台尚不支持 Feedback，请使用 `POST /analyses/{id}/feedback`。
+  - 按钮在所有状态下保持可读：彩色与已选按钮悬停时保留颜色；禁用按钮使用灰底虚线边框而非降低透明度；键盘焦点显示带间隙的深色焦点环。
+  - **人工 Feedback**：记录详情通过 `POST /analyses/{id}/feedback` 显式记录 Accept、Correct 或 Reject，并通过 `GET /analyses/{id}/feedback` 显示每个版本的历史（按后端顺序，最早在前，后端 Effective 解释所引用的一条标记为 “in effect”）。Feedback 只作用于所选 Analysis 版本，标题会注明是最新版本还是历史版本；记录状态与新的 Extraction 始终使用最新 Analysis 及其最新 Feedback，对历史版本的 Feedback 不会改变它们。只发送契约允许的字段：`status`、可选 `user_note`，以及仅在 Correct 时的 `corrected_category` 和/或 `corrected_explanation`；改为 Accept 或 Reject 时草稿中的修正字段不会发送。类别选项镜像 `fr_l2_taxonomy_v1`（后端没有分类端点），服务端仍会校验并在 `422` 时保留草稿。原始 Entry、Analysis 与已保存的 Extraction 均不改变，Extraction 作为历史证据保留、不会自动重新生成。成功后清空该版本草稿，并分别重新读取 Feedback 历史、Effective 解释与列表行，各自报告成功或失败；未收到响应时显示“结果未知”，保留草稿并在该版本历史重新读取成功前禁止再次提交。草稿、进行中请求、结果与历史按版本隔离，在同一记录刷新与切换版本时保留，打开其他记录时从空白开始。
 - **Concept Review**：写入显式人工 SAME、DISTINCT、关系、INVALID 或新 Concept。
 - **Annotation Inspector**：只读显示当前 Effective Annotation。
 - **Experiment Dashboard**：只读显示 Dataset 结构质量、人工监督规模与固定顺序的检索基线指标。

@@ -668,3 +668,13 @@ button.invalid:hover:not(:disabled) { background: #912018; border-color: #912018
 .workflow-action { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .explicit-action { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
 .explicit-action-explanation p { margin: 4px 0; }
+
+/* Human feedback form */
+.feedback-form fieldset { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin: 12px 0 8px; }
+.feedback-form legend { font-weight: 600; padding: 0 4px; }
+.feedback-decision { display: block; margin: 4px 0; }
+.feedback-correction { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.feedback-form textarea,
+.feedback-form select { font: inherit; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; }
+.feedback-form label[for] { display: block; margin-top: 8px; font-size: 13px; }
+.feedback-form textarea { width: 100%; box-sizing: border-box; }
