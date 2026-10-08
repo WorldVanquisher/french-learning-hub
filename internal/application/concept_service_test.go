@@ -129,6 +129,12 @@ func (f *fakeConceptRepo) ListDistinctions(context.Context, int64) ([]domain.Uni
 func (f *fakeConceptRepo) GetCurrentExtractionID(context.Context, int64) (*int64, error) {
 	return nil, nil
 }
+func (f *fakeConceptRepo) GetCurrentExtractionSelection(context.Context, int64) (domain.CurrentExtractionSelection, error) {
+	return domain.CurrentExtractionSelection{Mode: domain.ExtractionSelectionAutomatic}, nil
+}
+func (f *fakeConceptRepo) ClearCurrentExtraction(context.Context, int64) (domain.CurrentExtractionSelection, error) {
+	return domain.CurrentExtractionSelection{Mode: domain.ExtractionSelectionAutomatic}, nil
+}
 func (f *fakeConceptRepo) SetCurrentExtraction(context.Context, int64, int64) error { return nil }
 
 func sampleUnit() *domain.KnowledgeUnit {

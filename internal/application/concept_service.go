@@ -250,9 +250,19 @@ func (s *ConceptService) GetCurrentExtraction(ctx context.Context, entryID int64
 	return s.current.GetCurrentExtractionID(ctx, entryID)
 }
 
-// SetCurrentExtraction explicitly selects a successful extraction as current
-// (human rollback). The extraction must belong to the entry. Concept support is
-// recomputed by the repository.
+// GetCurrentExtractionSelection returns the repository's coherent ID/mode snapshot.
+func (s *ConceptService) GetCurrentExtractionSelection(ctx context.Context, entryID int64) (domain.CurrentExtractionSelection, error) {
+	return s.current.GetCurrentExtractionSelection(ctx, entryID)
+}
+
+// ClearCurrentExtraction clears only the pin and resumes automatic latest.
+func (s *ConceptService) ClearCurrentExtraction(ctx context.Context, entryID int64) (domain.CurrentExtractionSelection, error) {
+	return s.current.ClearCurrentExtraction(ctx, entryID)
+}
+
+// SetCurrentExtraction explicitly selects a successful extraction
+// as a persistent pin. The extraction must belong to the entry. Concept support
+// remains derived at read time.
 func (s *ConceptService) SetCurrentExtraction(ctx context.Context, entryID, extractionID int64) error {
 	return s.current.SetCurrentExtraction(ctx, entryID, extractionID)
 }

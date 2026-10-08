@@ -333,6 +333,17 @@ v1.0 personal-use release packaging:
   (default `data/release`). `docs/RELEASE.md` owns start/stop, backup/restore,
   and migration-rollback limits.
 
+FLH-023 extraction selection mode:
+
+- GET/PUT/DELETE `/entries/{id}/current-extraction` retain `entry_id` and nullable
+  `current_extraction_id`, adding `selection_mode` (`automatic`/`pinned`).
+- PUT is a persistent pin, including a pin to latest. DELETE atomically removes
+  only the mutable selection row and resumes latest-successful selection;
+  repeated clear is 200 for an existing entry, unknown entry is 404. No successful
+  extraction means automatic with null ID. No migration or label/history rewrite.
+- Derived support/reviewability follow existing selection authority; the browser
+  boundary covers DELETE on root and workbench-prefixed routes.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

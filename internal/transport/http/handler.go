@@ -181,6 +181,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /reviewable-units", h.handleListReviewableUnits)
 	mux.HandleFunc("GET /entries/{id}/current-extraction", h.handleGetCurrentExtraction)
 	mux.HandleFunc("PUT /entries/{id}/current-extraction", h.handleSetCurrentExtraction)
+	mux.HandleFunc("DELETE /entries/{id}/current-extraction", h.handleClearCurrentExtraction)
 	// M11-B read-only effective annotation inspector. Both routes delegate to the
 	// existing M11-A projection and create no annotation authority.
 	mux.HandleFunc("GET /knowledge-units/{id}/effective-annotation", h.handleGetEffectiveAnnotation)

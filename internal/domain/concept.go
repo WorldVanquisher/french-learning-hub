@@ -689,17 +689,40 @@ type ConceptRepository interface {
 	GetCurrentMembership(ctx context.Context, unitID int64) (*CurrentConceptMembership, error)
 }
 
+// ExtractionSelectionMode distinguishes an explicit persistent pin from automatic
+// latest-successful selection, even when both select the same extraction.
+type ExtractionSelectionMode string
+
+const (
+	ExtractionSelectionAutomatic ExtractionSelectionMode = "automatic"
+	ExtractionSelectionPinned    ExtractionSelectionMode = "pinned"
+)
+
+// CurrentExtractionSelection is a snapshot of selected extraction and its mode.
+// ExtractionID is nil only in automatic mode before any successful extraction.
+type CurrentExtractionSelection struct {
+	ExtractionID *int64
+	Mode         ExtractionSelectionMode
+}
+
 // CurrentExtractionRepository is the persistence boundary for the explicit
 // per-entry current-extraction selection. The current extraction is the one whose
 // units feed the live concept pool; historical extractions remain fully
 // queryable but do not.
 type CurrentExtractionRepository interface {
+	// GetCurrentExtractionSelection reads ID and mode from one snapshot.
+	// Returns ErrNotFound for an unknown entry.
+	GetCurrentExtractionSelection(ctx context.Context, entryID int64) (CurrentExtractionSelection, error)
+	// ClearCurrentExtraction removes only the explicit selection projection and
+	// returns the resulting automatic snapshot atomically. Idempotent for an
+	// existing entry; unknown entry returns ErrNotFound. No history is changed.
+	ClearCurrentExtraction(ctx context.Context, entryID int64) (CurrentExtractionSelection, error)
 	// GetCurrentExtractionID returns the entry's currently selected extraction id,
 	// or (nil, nil) when the entry has no successful extraction yet. Returns
 	// ErrNotFound if the entry does not exist.
 	GetCurrentExtractionID(ctx context.Context, entryID int64) (*int64, error)
 	// SetCurrentExtraction explicitly points the entry at an existing successful
-	// extraction (e.g. a human rollback to an older version). The extraction must
+	// extraction as a persistent pin (even the latest version). The extraction must
 	// belong to the entry, else ErrValidation. It only updates the pointer: concept
 	// support is DERIVED at read time, so no per-concept recompute is needed and the
 	// next read of any affected concept reflects the change immediately.
