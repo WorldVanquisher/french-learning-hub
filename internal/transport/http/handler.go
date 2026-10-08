@@ -78,7 +78,15 @@ type Handler struct {
 	annotationQuality   AnnotationDatasetQualityService
 	retrievalEvaluation RetrievalEvaluationService
 	retrievalComparison RetrievalComparisonService
+	// readiness reports whether the backing store can serve requests. It is
+	// optional; without it /readyz reports not ready rather than guessing.
+	readiness        func(context.Context) error
+	readinessTimeout time.Duration
 }
+
+// defaultReadinessTimeout bounds one readiness check so a stuck database
+// connection cannot hang the probe.
+const defaultReadinessTimeout = 2 * time.Second
 
 // HandlerOption wires optional read-only milestone services without forcing
 // unrelated focused handler tests to construct every dependency.
@@ -96,9 +104,15 @@ func WithRetrievalComparison(service RetrievalComparisonService) HandlerOption {
 	return func(handler *Handler) { handler.retrievalComparison = service }
 }
 
+// WithReadiness wires the check behind GET /readyz. The check receives a context
+// bounded by the readiness timeout and must not mutate state.
+func WithReadiness(check func(context.Context) error) HandlerOption {
+	return func(handler *Handler) { handler.readiness = check }
+}
+
 // NewHandler builds a Handler over the given services.
 func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackService, effective EffectiveService, inventory InventoryService, capture CaptureService, knowledge KnowledgeService, concept ConceptService, effectiveAnnotation EffectiveAnnotationInspectorService, annotationDataset AnnotationDatasetService, options ...HandlerOption) *Handler {
-	handler := &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept, effectiveAnnotation: effectiveAnnotation, annotationDataset: annotationDataset}
+	handler := &Handler{svc: svc, analysis: analysis, feedback: feedback, effective: effective, inventory: inventory, capture: capture, knowledge: knowledge, concept: concept, effectiveAnnotation: effectiveAnnotation, annotationDataset: annotationDataset, readinessTimeout: defaultReadinessTimeout}
 	for _, option := range options {
 		option(handler)
 	}
@@ -109,6 +123,7 @@ func NewHandler(svc EntryService, analysis AnalysisService, feedback FeedbackSer
 func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", h.handleHealth)
+	mux.HandleFunc("GET /readyz", h.handleReady)
 	mux.HandleFunc("POST /entries", h.handleCreateEntry)
 	mux.HandleFunc("GET /entries", h.handleListEntries)
 	mux.HandleFunc("GET /entries/{id}", h.handleGetEntry)
@@ -450,8 +465,26 @@ func toCaptureLookupResponse(c *domain.LearningCapture) captureLookupResponse {
 
 // ---- handlers ----
 
+// handleHealth is liveness only: the process is serving HTTP. It does not touch
+// the database.
 func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleReady is readiness: the database answers within a bounded time. A
+// failure reports 503 without the underlying error, which may name paths.
+func (h *Handler) handleReady(w http.ResponseWriter, r *http.Request) {
+	if h.readiness == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), h.readinessTimeout)
+	defer cancel()
+	if err := h.readiness(ctx); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
 
 func (h *Handler) handleCreateEntry(w http.ResponseWriter, r *http.Request) {

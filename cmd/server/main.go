@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -28,6 +29,12 @@ func main() {
 }
 
 func run() error {
+	// -web-dir enables the production workbench: the server then also serves the
+	// built frontend at / and the API under /api, beside the unchanged root API
+	// routes. Without it the server is API-only, as before.
+	webDir := flag.String("web-dir", "", "directory containing the built workbench (index.html, assets/); empty serves the API only")
+	flag.Parse()
+
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -111,11 +118,21 @@ func run() error {
 		transporthttp.WithAnnotationDatasetQuality(annotationQualitySvc),
 		transporthttp.WithRetrievalEvaluation(retrievalEvaluationSvc),
 		transporthttp.WithRetrievalComparison(retrievalComparisonSvc),
+		transporthttp.WithReadiness(db.PingContext),
 	)
+
+	routes := handler.Routes()
+	if *webDir != "" {
+		routes, err = transporthttp.NewWorkbenchHandler(routes, *webDir)
+		if err != nil {
+			return err
+		}
+		log.Printf("workbench enabled from %s (API also under %s/)", *webDir, transporthttp.WorkbenchAPIPrefix)
+	}
 
 	srv := &http.Server{
 		Addr:         cfg.Addr,
-		Handler:      handler.Routes(),
+		Handler:      routes,
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	}

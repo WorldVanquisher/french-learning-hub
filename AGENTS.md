@@ -318,6 +318,21 @@ v1.0 release verification:
   vet, server/capture builds, and frontend typecheck/tests/production build. It
   expects `web/node_modules` to have been installed separately with `npm ci`.
 
+v1.0 personal-use release packaging:
+
+- `Dockerfile` and `compose.yaml` build one image containing the Go server and the
+  built workbench. The build context is an allowlist `.dockerignore`; base images
+  are pinned by digest; builds use `npm ci` and verified Go modules. Images
+  contain no `.env`, credentials, or databases.
+- `cmd/server -web-dir <dir>` serves the workbench at `/` and `/assets/`, the API
+  under `/api` with the prefix stripped, and every root API route unchanged.
+  Without the flag the server is API-only. There is no SPA fallback.
+- `/healthz` is liveness only; `/readyz` is bounded SQLite readiness.
+- Compose binds `127.0.0.1` only, fixes container `PORT`/`DB_PATH`, forwards only
+  listed provider variables with existing defaults, and mounts `FLH_DATA_DIR`
+  (default `data/release`). `docs/RELEASE.md` owns start/stop, backup/restore,
+  and migration-rollback limits.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

@@ -1,0 +1,46 @@
+# Personal-use release of French Learning Hub. See docs/RELEASE.md.
+#
+# One service, bound to 127.0.0.1 only: the service has no authentication.
+# Configuration is passed explicitly. PORT and DB_PATH are fixed for the
+# container; only the provider variables listed below are forwarded, with the
+# server's existing defaults. No .env file is copied or mounted into the image
+# or container. Compose itself may read a .env file next to this file to
+# substitute ${...} values; see docs/RELEASE.md for its quoting rules.
+name: french-learning-hub
+
+services:
+  app:
+    build:
+      context: .
+    image: french-learning-hub:local
+    user: "${FLH_UID:-1000}:${FLH_GID:-1000}"
+    ports:
+      - "127.0.0.1:${FLH_HOST_PORT:-8080}:8080"
+    environment:
+      PORT: "8080"
+      DB_PATH: /data/app.db
+      AI_PROVIDER: ${AI_PROVIDER:-rule-based}
+      EXTRACTOR_PROVIDER: ${EXTRACTOR_PROVIDER:-disabled}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-disabled}
+      # Empty means unset: the server applies its own defaults.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_TIMEOUT: ${OPENAI_TIMEOUT:-}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
+      EMBEDDING_TIMEOUT: ${EMBEDDING_TIMEOUT:-}
+      HTTP_READ_TIMEOUT: ${HTTP_READ_TIMEOUT:-}
+      HTTP_WRITE_TIMEOUT: ${HTTP_WRITE_TIMEOUT:-}
+    volumes:
+      # Persistent SQLite directory. It must already exist and be writable by
+      # FLH_UID; it is never created automatically (Docker would create it as
+      # root) and the daily database is never moved into it automatically.
+      - type: bind
+        source: ${FLH_DATA_DIR:-./data/release}
+        target: /data
+        bind:
+          create_host_path: false
+    stop_grace_period: 15s
+    restart: unless-stopped
