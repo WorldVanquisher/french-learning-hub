@@ -183,12 +183,31 @@ button {
   cursor: pointer;
 }
 button:hover:not(:disabled) { background: #f2f4f7; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button.same { background: var(--same); border-color: var(--same); color: #fff; }
 button.invalid { background: var(--invalid); border-color: var(--invalid); color: #fff; }
 button.ghost { background: #fff; }
+
+/* Disabled buttons stay legible (opacity made white-on-green labels about 2:1)
+   and look clearly different from enabled ones: grey fill, dashed border. The
+   colored variants are listed so their own background never wins. */
+button:disabled,
+button.primary:disabled,
+button.same:disabled,
+button.invalid:disabled {
+  background: #f2f4f7;
+  border: 1px dashed var(--border-strong);
+  color: #475467;
+  cursor: not-allowed;
+}
+
+/* Keyboard focus is an explicit dark ring with a gap, visible next to white,
+   blue, green, and red buttons alike. */
+button:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
+}
 
 .hint {
   font-size: 12px;

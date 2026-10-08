@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError, NetworkError } from "../api/client";
 import type { CurrentExtraction, Extraction } from "../types/learning";
-import { ExplicitAction, OutcomeBanner, type Outcome } from "./ExplicitAction";
+import {
+  ExplicitAction,
+  OutcomeBanner,
+  RefreshBanner,
+  type Outcome,
+  type RefreshState,
+} from "./ExplicitAction";
 
 type Load<T> =
   | { status: "loading" }
@@ -24,6 +30,8 @@ export function ExtractionPanel({ entryId }: { entryId: number }) {
   const [reloadCount, setReloadCount] = useState(0);
   const [pending, setPending] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // The re-read after a request, reported separately from the request's outcome.
+  const [refresh, setRefresh] = useState<RefreshState>({ kind: "idle" });
   const mounted = useRef(true);
   useEffect(() => () => {
     mounted.current = false;
@@ -32,12 +40,20 @@ export function ExtractionPanel({ entryId }: { entryId: number }) {
   useEffect(() => {
     let active = true;
     setState({ status: "loading" });
+    // Any reload (after a request, or the reader's own "Reload extractions") also
+    // settles an outstanding post-request refresh.
+    setRefresh((r) => (r.kind === "idle" ? r : { kind: "refreshing" }));
     Promise.all([api.listExtractions(entryId), api.getCurrentExtraction(entryId)])
       .then(([extractions, current]) => {
-        if (active) setState({ status: "ready", data: { extractions, current } });
+        if (!active) return;
+        setState({ status: "ready", data: { extractions, current } });
+        setRefresh((r) => (r.kind === "idle" ? r : { kind: "refreshed" }));
       })
       .catch((error: unknown) => {
-        if (active) setState({ status: "error", message: describeError(error) });
+        if (!active) return;
+        const message = describeError(error);
+        setState({ status: "error", message });
+        setRefresh((r) => (r.kind === "idle" ? r : { kind: "failed", message }));
       });
     return () => {
       active = false;
@@ -47,6 +63,7 @@ export function ExtractionPanel({ entryId }: { entryId: number }) {
   async function submit() {
     setPending(true);
     setOutcome(null);
+    setRefresh({ kind: "idle" });
     let next: Outcome;
     try {
       const created = await api.createExtraction(entryId);
@@ -61,9 +78,18 @@ export function ExtractionPanel({ entryId }: { entryId: number }) {
     if (!mounted.current) return;
     setOutcome(next);
     setPending(false);
-    // Always re-read: what is shown below is the backend's stored state.
+    // Always re-read the stored extractions; RefreshBanner reports whether that
+    // GET succeeded, so the outcome above never claims it.
+    setRefresh({ kind: "refreshing" });
     setReloadCount((n) => n + 1);
   }
+
+  // After an unknown outcome a new request could duplicate a stored (and possibly
+  // billed) extraction, so it stays unavailable until stored state was re-read.
+  const disabledReason =
+    outcome?.kind === "uncertain" && refresh.kind !== "refreshed"
+      ? "Unavailable until the stored extractions have been re-read after the unknown outcome. Reload them and check for a new version first."
+      : null;
 
   return (
     <section className="panel" aria-label="Knowledge extraction">
@@ -74,25 +100,28 @@ export function ExtractionPanel({ entryId }: { entryId: number }) {
           label="Request extraction"
           confirmLabel="Send to the extraction provider"
           pending={pending}
+          disabledReason={disabledReason}
           onConfirm={submit}
           explanation={
             <>
               <p>
                 The server sends this record&apos;s original input and its current effective
-                interpretation to the configured extraction provider. That provider is an
-                external service and may be billed. Extraction is disabled by default; the server
-                then refuses without sending anything.
+                interpretation to the configured extraction provider, which may be an external,
+                billed service. Extraction is disabled by default; the server then refuses before
+                calling any provider.
               </p>
               <p>
                 The server decides eligibility: a record without an analysis, or whose latest
-                analysis was rejected, is refused. A successful request stores a new, immutable
-                extraction version (zero units is a valid result), which normally becomes current.
-                The request is sent once and never retried automatically.
+                analysis was rejected, is refused. If the interpretation changes while the provider
+                runs, the server refuses to store the result. A successful request stores a new,
+                immutable extraction version (zero units is a valid result), which normally becomes
+                current. The request is sent once and never retried automatically.
               </p>
             </>
           }
         />
         <OutcomeBanner outcome={outcome} />
+        <RefreshBanner refresh={refresh} what="stored extractions" />
       </div>
     </section>
   );
@@ -194,12 +223,17 @@ function CurrentExtractionView({ extraction }: { extraction: Extraction }) {
   );
 }
 
+// describeExtractionFailure states only what the backend contract supports. Every
+// error response means nothing was stored. Only 503 (extraction disabled) is
+// returned before any provider call; a 409 can come from the eligibility check
+// before the provider runs or from the source-changed check after it returns, so
+// it never implies that no provider was called.
 function describeExtractionFailure(error: unknown): Outcome {
   if (error instanceof NetworkError) {
     return {
       kind: "uncertain",
       text:
-        "No response was received, so a new extraction may or may not have been stored, and the provider may have been called. The stored extractions were re-read from the server; check them before requesting again.",
+        "No response was received, so a new extraction may or may not have been stored, and the extraction provider may have been called.",
     };
   }
   if (!(error instanceof ApiError)) {
@@ -210,25 +244,28 @@ function describeExtractionFailure(error: unknown): Outcome {
     case 503:
       return {
         kind: "rejected",
-        text: `Extraction is not enabled on this server ${detail}. Nothing was sent to a provider or stored.`,
+        text: `Extraction is not enabled on this server ${detail}. The server refuses before calling any extraction provider; nothing was stored.`,
       };
     case 409:
       return {
         kind: "rejected",
-        text: `The server refused extraction for this record ${detail}. Nothing was sent to a provider or stored.`,
+        text: `The server did not store an extraction ${detail}. This conflict can be detected before the provider runs or after it returns, so the extraction provider may have been called. Check the record's current analysis before requesting again.`,
       };
     case 422:
       return {
         kind: "rejected",
-        text: `The provider's output failed validation ${detail}. The provider was called; nothing was stored.`,
+        text: `The server rejected the extraction result ${detail}. Nothing was stored; the extraction provider may have been called.`,
       };
     case 502:
     case 504:
       return {
         kind: "rejected",
-        text: `The extraction provider failed ${detail}. The provider may have been called; nothing was stored.`,
+        text: `The extraction provider failed ${detail}. Nothing was stored; the provider may have been called.`,
       };
     default:
-      return { kind: "rejected", text: `No extraction was stored ${detail}.` };
+      return {
+        kind: "rejected",
+        text: `No extraction was stored ${detail}. The extraction provider may have been called.`,
+      };
   }
 }

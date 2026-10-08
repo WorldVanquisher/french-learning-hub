@@ -41,6 +41,8 @@ export function RecordsBrowser() {
   const [reloadCount, setReloadCount] = useState(0);
   const [openEntryId, setOpenEntryId] = useState<number | null>(null);
   const [showImport, setShowImport] = useState(false);
+  // Rows whose re-read after a write failed: their shown state is unconfirmed.
+  const [unconfirmed, setUnconfirmed] = useState<ReadonlySet<number>>(new Set());
   const [returnFocusEntryId, setReturnFocusEntryId] = useState<number | null>(null);
 
   // generation identifies the current filter/reload. A "load older" response that
@@ -57,6 +59,7 @@ export function RecordsBrowser() {
       .then((page) => {
         if (generation.current !== current) return;
         setRecords(page.records);
+        setUnconfirmed(new Set());
         setNextCursor(page.next_before_entry_id);
         setList({ status: "ready" });
       })
@@ -89,15 +92,30 @@ export function RecordsBrowser() {
 
   // refreshRecord re-reads one changed record's inventory row from the backend after
   // a write in its detail, so the list never derives a state itself. A row read for
-  // a superseded filter/reload is discarded; a failed read leaves the row as loaded.
+  // a superseded filter/reload is discarded. If the read fails the row keeps its
+  // loaded values but is marked unconfirmed, never silently presented as current.
   const refreshRecord = useCallback((entryId: number) => {
     const current = generation.current;
+    const mark = (stale: boolean) =>
+      setUnconfirmed((rows) => {
+        const next = new Set(rows);
+        if (stale) next.add(entryId);
+        else next.delete(entryId);
+        return next;
+      });
     api.getLearningRecord(entryId)
       .then((fresh) => {
-        if (generation.current !== current || fresh === null) return;
+        if (generation.current !== current) return;
+        if (fresh === null) {
+          mark(true);
+          return;
+        }
         setRecords((loaded) => loaded.map((r) => (r.entry_id === entryId ? fresh : r)));
+        mark(false);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (generation.current === current) mark(true);
+      });
   }, []);
 
   const openRecord = useCallback((entryId: number) => {
@@ -184,6 +202,7 @@ export function RecordsBrowser() {
                   key={record.entry_id}
                   record={record}
                   filter={filter}
+                  unconfirmed={unconfirmed.has(record.entry_id)}
                   onOpen={() => openRecord(record.entry_id)}
                 />
               ))}
@@ -225,10 +244,12 @@ export function RecordsBrowser() {
 function RecordRow({
   record,
   filter,
+  unconfirmed,
   onOpen,
 }: {
   record: LearningRecord;
   filter: StateFilter;
+  unconfirmed: boolean;
   onOpen: () => void;
 }) {
   return (
@@ -247,6 +268,12 @@ function RecordRow({
             : "No analysis"}
         {record.analysis_version !== null ? ` · latest analysis v${record.analysis_version}` : ""}
       </p>
+      {unconfirmed ? (
+        <p className="banner error" role="alert">
+          This record changed, but its row could not be re-read from the server. The state shown
+          may be out of date; reload the list.
+        </p>
+      ) : null}
       {filter !== "all" && record.state !== filter ? (
         <p className="hint">
           Changed since this list loaded: now &quot;{record.state}&quot;, which no longer matches the

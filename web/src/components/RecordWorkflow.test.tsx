@@ -105,6 +105,19 @@ function recordHandlers(entryId: number, analyses: Array<ReturnType<typeof analy
   return handlers;
 }
 
+// banner finds the outcome or refresh banner whose text matches, so a separate
+// refresh status next to an outcome never makes a lookup ambiguous.
+async function banner(role: "status" | "alert", text: string | RegExp): Promise<HTMLElement> {
+  const matches = (el: HTMLElement) =>
+    typeof text === "string" ? (el.textContent ?? "").includes(text) : text.test(el.textContent ?? "");
+  let found: HTMLElement | undefined;
+  await waitFor(() => {
+    found = screen.queryAllByRole(role).find(matches);
+    expect(found, `no ${role} containing ${String(text)}`).toBeDefined();
+  });
+  return found as HTMLElement;
+}
+
 async function confirmAction(label: string, confirmLabel: string) {
   fireEvent.click(await screen.findByRole("button", { name: `${label}…` }));
   const group = screen.getByRole("group", { name: label });
@@ -118,7 +131,7 @@ describe("Explicit analysis request", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Request analysis…" }));
     const group = screen.getByRole("group", { name: "Request analysis" });
     expect(group).toHaveTextContent("stores the result as a new, immutable analysis version");
-    expect(group).toHaveTextContent("may be billed");
+    expect(group).toHaveTextContent("this request calls it and may be billed");
     expect(group).toHaveTextContent("never retried automatically");
     expect(within(group).getByRole("button", { name: "Create a new analysis version" })).toHaveFocus();
 
@@ -141,7 +154,8 @@ describe("Explicit analysis request", () => {
     expect(await screen.findByText("No analysis.")).toBeInTheDocument();
 
     await confirmAction("Request analysis", "Create a new analysis version");
-    expect(await screen.findByRole("status")).toHaveTextContent("Created analysis v1 with rule-based:v2:fr_l2_taxonomy_v1.");
+    await banner("status", "Created analysis v1 with rule-based:v2:fr_l2_taxonomy_v1.");
+    await banner("status", "Analysis versions re-read from the server.");
     expect(await screen.findByRole("button", { name: "v1 (latest)" })).toHaveAttribute("aria-pressed", "true");
     expect(await screen.findByLabelText("Effective interpretation")).toHaveTextContent("explanation v1");
     expect(count(calls, "POST", "/api/entries/1/analysis")).toBe(1);
@@ -158,7 +172,8 @@ describe("Explicit analysis request", () => {
 
     await confirmAction("Request analysis", "Create a new analysis version");
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("No analysis was stored (502): analysis provider unavailable. The analysis provider may have been contacted.");
+    expect(alert).toHaveTextContent("No analysis was stored (502): analysis provider unavailable. The configured analyzer may have been called.");
+    expect(screen.queryByText(/re-read from the server/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "v1" })).toHaveAttribute("aria-pressed", "true");
     expect(count(calls, "GET", "/api/entries/2/analyses")).toBe(1);
     expect(onRecordChanged).not.toHaveBeenCalled();
@@ -174,8 +189,8 @@ describe("Explicit analysis request", () => {
 
     await confirmAction("Request analysis", "Create a new analysis version");
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Outcome unknown. No response was received, so a new analysis may or may not have been created.");
-    expect(alert).not.toHaveTextContent(/failed/i);
+    expect(alert).toHaveTextContent("Outcome unknown. No response was received, so a new analysis may or may not have been created, and the configured analyzer may have been called.");
+    expect(alert).not.toHaveTextContent(/failed|re-read/i);
     await waitFor(() => expect(count(calls, "GET", "/api/entries/3/analyses")).toBe(2));
     expect(count(calls, "POST", "/api/entries/3/analysis")).toBe(1);
     expect(onRecordChanged).toHaveBeenCalledWith(3);
@@ -234,17 +249,17 @@ describe("Extraction panel", () => {
     {
       status: 503,
       error: "knowledge extraction is not enabled",
-      expected: "Extraction is not enabled on this server (503) knowledge extraction is not enabled. Nothing was sent to a provider or stored.",
+      expected: "Extraction is not enabled on this server (503) knowledge extraction is not enabled. The server refuses before calling any extraction provider; nothing was stored.",
     },
     {
       status: 409,
       error: "entry not eligible for extraction: latest analysis is rejected",
-      expected: "The server refused extraction for this record (409) entry not eligible for extraction: latest analysis is rejected. Nothing was sent to a provider or stored.",
+      expected: "The server did not store an extraction (409) entry not eligible for extraction: latest analysis is rejected. This conflict can be detected before the provider runs or after it returns, so the extraction provider may have been called.",
     },
     {
       status: 504,
       error: "extraction provider timed out",
-      expected: "The extraction provider failed (504) extraction provider timed out. The provider may have been called; nothing was stored.",
+      expected: "The extraction provider failed (504) extraction provider timed out. Nothing was stored; the provider may have been called.",
     },
   ])("reports a $status answer with the backend message and re-reads stored extractions", async ({ status, error, expected }) => {
     const handlers = recordHandlers(9, [analysis(91, 9, 1)]);
@@ -253,7 +268,8 @@ describe("Extraction panel", () => {
     render(<RecordDetail entryId={9} onBack={() => {}} />);
     await screen.findByText("No extraction stored.");
     await confirmAction("Request extraction", "Send to the extraction provider");
-    expect(await screen.findByRole("alert")).toHaveTextContent(expected);
+    await banner("alert", expected);
+    await banner("status", "Stored extractions re-read from the server.");
     await waitFor(() => expect(count(calls, "GET", "/api/entries/9/extractions")).toBe(2));
     expect(count(calls, "POST", "/api/entries/9/extractions")).toBe(1);
   });
@@ -271,11 +287,13 @@ describe("Extraction panel", () => {
     render(<RecordDetail entryId={10} onBack={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: "Request extraction…" }));
     const group = screen.getByRole("group", { name: "Request extraction" });
-    expect(group).toHaveTextContent("external service and may be billed");
+    expect(group).toHaveTextContent("may be an external, billed service");
+    expect(group).toHaveTextContent("If the interpretation changes while the provider runs, the server refuses to store the result.");
     expect(group).toHaveTextContent("The server decides eligibility");
     fireEvent.click(within(group).getByRole("button", { name: "Send to the extraction provider" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Stored extraction v1 with 1 unit.");
+    await banner("status", "Stored extraction v1 with 1 unit.");
+    await banner("status", "Stored extractions re-read from the server.");
     expect(await screen.findByLabelText("Current extraction")).toHaveTextContent("Vouloir se conjugue");
   });
 
@@ -288,6 +306,7 @@ describe("Extraction panel", () => {
     await confirmAction("Request extraction", "Send to the extraction provider");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Outcome unknown. No response was received, so a new extraction may or may not have been stored");
+    expect(alert).not.toHaveTextContent(/re-read/);
     await waitFor(() => expect(count(calls, "GET", "/api/entries/11/extractions")).toBe(2));
     expect(count(calls, "POST", "/api/entries/11/extractions")).toBe(1);
   });
@@ -355,7 +374,7 @@ describe("Records list refresh after writes", () => {
     fireEvent.change(screen.getByLabelText("Record state"), { target: { value: "unanalyzed" } });
     fireEvent.click(await screen.findByRole("button", { name: /^Open record #1$/ }));
     await confirmAction("Request analysis", "Create a new analysis version");
-    await screen.findByRole("status");
+    await banner("status", "Created analysis v1");
     await waitFor(() => expect(count(calls, "GET", "/api/learning-records?limit=1&before_entry_id=2")).toBe(1));
 
     fireEvent.click(screen.getByRole("button", { name: "← Back to records" }));
@@ -386,5 +405,205 @@ describe("Records list refresh after writes", () => {
     expect(await screen.findByText("Showing 1 record.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Open imported record #2" }));
     expect(await screen.findByText("Pourquoi 2 ?")).toBeInTheDocument();
+  });
+});
+
+// ---- FLH-015: contract-accurate wording, refresh distinct from mutation outcome ----
+
+describe("FLH-015 extraction outcome wording", () => {
+  it("does not claim a post-provider 409 skipped the provider", async () => {
+    const handlers = recordHandlers(20, [analysis(201, 20, 1)]);
+    handlers["POST /api/entries/20/extractions"] = () => ({
+      status: 409,
+      body: { error: "extraction source changed: a newer analysis exists for this entry" },
+    });
+    routeFetch(handlers);
+    render(<RecordDetail entryId={20} onBack={() => {}} />);
+    await screen.findByText("No extraction stored.");
+    await confirmAction("Request extraction", "Send to the extraction provider");
+
+    const alert = await banner("alert", "extraction source changed");
+    expect(alert).toHaveTextContent("The server did not store an extraction (409) extraction source changed: a newer analysis exists for this entry.");
+    expect(alert).toHaveTextContent("the extraction provider may have been called");
+    expect(alert).not.toHaveTextContent(/not (sent|called)|nothing was sent|before calling/i);
+  });
+
+  it("only the disabled-extractor 503 says no provider was called", async () => {
+    const handlers = recordHandlers(21, [analysis(211, 21, 1)]);
+    handlers["POST /api/entries/21/extractions"] = () => ({ status: 503, body: { error: "knowledge extraction is not enabled" } });
+    routeFetch(handlers);
+    render(<RecordDetail entryId={21} onBack={() => {}} />);
+    await screen.findByText("No extraction stored.");
+    await confirmAction("Request extraction", "Send to the extraction provider");
+    const alert = await banner("alert", "(503)");
+    expect(alert).toHaveTextContent("The server refuses before calling any extraction provider; nothing was stored.");
+  });
+});
+
+describe("FLH-015 refresh after a mutation is reported separately", () => {
+  it("keeps a confirmed extraction distinct from a failed re-read, then recovers on reload", async () => {
+    let stored = false;
+    let listCalls = 0;
+    const handlers = recordHandlers(22, [analysis(221, 22, 1)]);
+    handlers["GET /api/entries/22/extractions"] = () => {
+      listCalls += 1;
+      if (listCalls === 2) return { status: 500, body: { error: "could not list extractions" } };
+      return { body: { extractions: stored ? [extraction(6, 22, 1, [unit(11)])] : [] } };
+    };
+    handlers["GET /api/entries/22/current-extraction"] = () => ({ body: { entry_id: 22, current_extraction_id: stored ? 6 : null } });
+    handlers["POST /api/entries/22/extractions"] = () => {
+      stored = true;
+      return { status: 201, body: extraction(6, 22, 1, [unit(11)]) };
+    };
+    routeFetch(handlers);
+    render(<RecordDetail entryId={22} onBack={() => {}} />);
+    await screen.findByText("No extraction stored.");
+    await confirmAction("Request extraction", "Send to the extraction provider");
+
+    await banner("status", "Stored extraction v1 with 1 unit.");
+    const failed = await banner("alert", "Could not re-read stored extractions from the server ((500) could not list extractions)");
+    expect(failed).toHaveTextContent("What is shown may be out of date");
+    expect(screen.queryByText("Stored extractions re-read from the server.")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reload extractions" }));
+    await banner("status", "Stored extractions re-read from the server.");
+    expect(screen.queryByText(/Could not re-read stored extractions/)).not.toBeInTheDocument();
+    expect(await screen.findByLabelText("Current extraction")).toHaveTextContent("Vouloir se conjugue");
+  });
+
+  it("keeps a confirmed analysis distinct from a failed re-read of its versions", async () => {
+    let created = false;
+    let listCalls = 0;
+    const handlers = recordHandlers(23, []);
+    handlers["GET /api/entries/23/analyses"] = () => {
+      listCalls += 1;
+      if (listCalls === 2) return { status: 500, body: { error: "could not list analyses" } };
+      return { body: { analyses: created ? [analysis(231, 23, 1)] : [] } };
+    };
+    handlers["GET /api/analyses/231/effective"] = { body: effective(231, 23, 1) };
+    handlers["POST /api/entries/23/analysis"] = () => {
+      created = true;
+      return { status: 201, body: analysis(231, 23, 1) };
+    };
+    routeFetch(handlers);
+    render(<RecordDetail entryId={23} onBack={() => {}} />);
+    await screen.findByText("No analysis.");
+    await confirmAction("Request analysis", "Create a new analysis version");
+
+    await banner("status", "Created analysis v1");
+    await banner("alert", "Could not re-read analysis versions from the server ((500) could not list analyses)");
+    expect(screen.queryByText("Analysis versions re-read from the server.")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await banner("status", "Analysis versions re-read from the server.");
+    expect(await screen.findByRole("button", { name: "v1 (latest)" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("blocks another analysis after an unknown outcome until a re-read succeeds, without resubmitting", async () => {
+    let listCalls = 0;
+    const handlers = recordHandlers(24, [analysis(241, 24, 1)]);
+    handlers["GET /api/entries/24/analyses"] = () => {
+      listCalls += 1;
+      if (listCalls === 2) return { status: 500, body: { error: "could not list analyses" } };
+      return { body: { analyses: [analysis(241, 24, 1)] } };
+    };
+    handlers["POST /api/entries/24/analysis"] = "network-error";
+    const calls = routeFetch(handlers);
+    render(<RecordDetail entryId={24} onBack={() => {}} />);
+    await screen.findByRole("button", { name: "v1 (latest)" });
+    await confirmAction("Request analysis", "Create a new analysis version");
+
+    await banner("alert", "Outcome unknown.");
+    await banner("alert", "Could not re-read analysis versions");
+    expect(screen.getByRole("button", { name: "Request analysis…" })).toBeDisabled();
+    expect(screen.getByText(/Unavailable until the analysis versions have been re-read/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await banner("status", "Analysis versions re-read from the server.");
+    expect(screen.getByRole("button", { name: "Request analysis…" })).toBeEnabled();
+    // The outcome stays unknown (it was never confirmed) and nothing was resent.
+    await banner("alert", "Outcome unknown.");
+    expect(count(calls, "POST", "/api/entries/24/analysis")).toBe(1);
+  });
+
+  it("blocks another extraction after an unknown outcome while the re-read is pending", async () => {
+    const slowList = deferred();
+    let listCalls = 0;
+    const handlers = recordHandlers(25, [analysis(251, 25, 1)]);
+    handlers["GET /api/entries/25/extractions"] = () => {
+      listCalls += 1;
+      return listCalls === 2 ? slowList.promise : { body: { extractions: [] } };
+    };
+    handlers["POST /api/entries/25/extractions"] = "network-error";
+    const calls = routeFetch(handlers);
+    render(<RecordDetail entryId={25} onBack={() => {}} />);
+    await screen.findByText("No extraction stored.");
+    await confirmAction("Request extraction", "Send to the extraction provider");
+
+    await banner("alert", "Outcome unknown.");
+    await banner("status", "Re-reading stored extractions from the server…");
+    expect(screen.getByRole("button", { name: "Request extraction…" })).toBeDisabled();
+
+    await act(async () => {
+      slowList.resolve({ body: { extractions: [] } });
+    });
+    await banner("status", "Stored extractions re-read from the server.");
+    expect(screen.getByRole("button", { name: "Request extraction…" })).toBeEnabled();
+    expect(count(calls, "POST", "/api/entries/25/extractions")).toBe(1);
+  });
+});
+
+describe("FLH-015 stale refresh responses", () => {
+  it("does not apply a late extraction re-read to a different record", async () => {
+    const slowList = deferred();
+    let listCalls = 0;
+    const handlers = { ...recordHandlers(26, [analysis(261, 26, 1)]), ...recordHandlers(27, []) };
+    handlers["GET /api/entries/26/extractions"] = () => {
+      listCalls += 1;
+      return listCalls === 2 ? slowList.promise : { body: { extractions: [] } };
+    };
+    handlers["POST /api/entries/26/extractions"] = () => ({ status: 201, body: extraction(8, 26, 1, [unit(12)]) });
+    routeFetch(handlers);
+    const { rerender } = render(<RecordDetail entryId={26} onBack={() => {}} />);
+    await screen.findByText("No extraction stored.");
+    await confirmAction("Request extraction", "Send to the extraction provider");
+    await banner("status", "Re-reading stored extractions from the server…");
+
+    rerender(<RecordDetail entryId={27} onBack={() => {}} />);
+    await screen.findByText("Pourquoi 27 ?");
+    await act(async () => {
+      slowList.resolve({ body: { extractions: [extraction(8, 26, 1, [unit(12)])] } });
+    });
+    expect(screen.queryByText(/re-read from the server|Stored extraction v1/)).not.toBeInTheDocument();
+    expect(await screen.findByText("No extraction stored.")).toBeInTheDocument();
+  });
+
+  it("marks a list row unconfirmed when its re-read after a write fails", async () => {
+    const handlers = recordHandlers(1, []);
+    handlers["POST /api/entries/1/analysis"] = () => ({ status: 201, body: analysis(11, 1, 1) });
+    handlers["GET /api/analyses/11/effective"] = { body: effective(11, 1, 1) };
+    handlers[`GET /api/learning-records?limit=${RECORDS_PAGE_SIZE}`] = {
+      body: {
+        records: [{
+          entry_id: 1, original_input: "Pourquoi 1 ?", original_context: "", entry_created_at: "t", state: "unanalyzed",
+          analysis_id: null, analysis_version: null, analyzer: null, confidence: null, uncertainty: null,
+          analysis_created_at: null, original: null, effective: null, feedback_id: null,
+        }],
+        next_before_entry_id: null,
+      },
+    };
+    handlers["GET /api/learning-records?limit=1&before_entry_id=2"] = () => ({ status: 500, body: { error: "could not list learning records" } });
+    routeFetch(handlers);
+    render(<RecordsBrowser />);
+    fireEvent.click(await screen.findByRole("button", { name: /^Open record #1$/ }));
+    await confirmAction("Request analysis", "Create a new analysis version");
+    await banner("status", "Created analysis v1");
+    fireEvent.click(screen.getByRole("button", { name: "← Back to records" }));
+
+    const row = screen.getByRole("list", { name: "Learning records" });
+    await waitFor(() =>
+      expect(row).toHaveTextContent("This record changed, but its row could not be re-read from the server."),
+    );
+    expect(within(row).getByText("unanalyzed")).toBeInTheDocument();
   });
 });
