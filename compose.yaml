@@ -2,8 +2,8 @@
 #
 # One service, bound to 127.0.0.1 only: the service has no authentication.
 # Configuration is passed explicitly. PORT and DB_PATH are fixed for the
-# container; only the provider variables listed below are forwarded, with the
-# server's existing defaults. No .env file is copied or mounted into the image
+# container; only the boundary and provider variables listed below are forwarded
+# with the server's existing defaults. No .env file is copied or mounted into the image
 # or container. Compose itself may read a .env file next to this file to
 # substitute ${...} values; see docs/RELEASE.md for its quoting rules.
 name: french-learning-hub
@@ -19,6 +19,8 @@ services:
     environment:
       PORT: "8080"
       DB_PATH: /data/app.db
+      HTTP_ALLOWED_HOSTS: ${HTTP_ALLOWED_HOSTS:-}
+      HTTP_TRUSTED_ORIGINS: ${HTTP_TRUSTED_ORIGINS:-}
       AI_PROVIDER: ${AI_PROVIDER:-rule-based}
       EXTRACTOR_PROVIDER: ${EXTRACTOR_PROVIDER:-disabled}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-disabled}

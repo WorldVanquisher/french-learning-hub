@@ -53,6 +53,8 @@ answers.
 - `PORT=8080` and `DB_PATH=/data/app.db` are fixed. A host `DB_PATH` or `PORT`
   is ignored, so the container cannot be pointed at another database by
   accident.
+- `HTTP_ALLOWED_HOSTS` and `HTTP_TRUSTED_ORIGINS` are forwarded for the browser
+  boundary described below. Empty values use the server defaults.
 - Only these provider variables are forwarded, with the server's defaults:
   `AI_PROVIDER` (`rule-based`), `EXTRACTOR_PROVIDER` (`disabled`),
   `EMBEDDING_PROVIDER` (`disabled`), and `OPENAI_API_KEY`, `OPENAI_MODEL`,
@@ -86,6 +88,70 @@ docker compose config --format json | python3 -c 'import json,sys; e=json.load(s
 
 Do not run a bare `docker compose config` where its output might be logged or
 shared, because it prints values in full.
+
+## Browser-request boundary and NAS access
+
+The complete HTTP handler validates Host before serving either the workbench
+or the API, including both root and `/api/` routes. Unapproved or malformed
+Host values return `403` with `request host is not allowed`, including reads.
+This prevents an arbitrary rebinding hostname from reaching the service;
+blocking `text/plain` alone would not prevent DNS rebinding.
+
+- `HTTP_ALLOWED_HOSTS`: empty/unset means only `localhost`, `127.0.0.1`, and
+  `::1`. A nonempty comma-separated list **adds** exact NAS DNS names or IP
+  addresses to those loopback defaults. Names are case-insensitive ASCII DNS
+  labels (letters, digits, internal hyphens; up to 63 bytes per label and 253
+  total). No wildcard, URL scheme, port, path, trailing dot, empty list item,
+  underscore, network range or IPv6 zone is accepted. IPv6 addresses in this
+  setting are unbracketed and canonicalized. Request Host IPv6 literals must
+  use brackets; request ports, when present, must be numeric 1–65535. An allowed
+  hostname/IP is accepted on any valid port; no DNS resolution or suffix match
+  grants access. Invalid configuration stops startup with a value-free error.
+- `HTTP_TRUSTED_ORIGINS`: empty/unset defaults to
+  `http://localhost:5173,http://127.0.0.1:5173,http://[::1]:5173` for the existing
+  Vite proxy, which rewrites Host but retains Origin. A nonempty comma-separated
+  list **replaces** these defaults. Entries must be exact `http://host[:port]`
+  or `https://host[:port]` origins, with the same hostname/port rules above:
+  no credentials, path (including trailing `/`), query, fragment, wildcard,
+  `null`, or empty item. IPv6 origin literals require brackets. Surrounding list
+  whitespace is trimmed; DNS names are lowercased, IP literals canonicalized,
+  and default HTTP/HTTPS ports omitted. A trusted origin does not add an allowed
+  Host. Each listed origin is deliberately trusted to issue mutations. For a
+  release-only process, set this explicitly to its own browser origin to remove
+  the development exceptions, e.g. `http://127.0.0.1:8080`.
+
+Mutations (all methods except GET/HEAD/OPTIONS) check Origin and Go's standard
+CrossOriginProtection/Fetch Metadata before application services run. Malformed,
+multiple, `null`, or mismatched origins return `403` unless a valid origin is an
+explicit trusted exception. Same-origin comparison includes scheme and port;
+the scheme comes from the direct connection's TLS state. Cross-site/same-site
+Fetch Metadata without a trusted Origin is rejected; same-site alone is not
+same-origin. Browser mutation bodies require `application/json` (parameters
+such as `charset=utf-8` are allowed), otherwise `415`. Bodyless workbench
+analysis/extraction POSTs remain supported. Existing CLI requests with neither
+Origin nor Fetch Metadata retain their content-type behavior; the capture CLI
+already sends JSON. Safe methods do not mutate data and need no Origin check.
+No CORS response permissions are added, including for OPTIONS preflights.
+
+For direct API-only NAS use, set the actual names/IPs clients use before starting,
+for example `HTTP_ALLOWED_HOSTS=nas.home,192.168.1.20,fd00::20`. Access at an
+unlisted NAS address returns an explicit `403`; it is not silently accepted.
+The setting does not change listening addresses or Compose's loopback-only
+publish rule. Keep any separately arranged NAS exposure restricted to a trusted
+network. For Vite on another port, set `HTTP_TRUSTED_ORIGINS` to the actual
+frontend origin(s), e.g. `http://localhost:5174`; include :5173 entries too if
+both are used. No frontend proxy change is required.
+
+Forwarded, X-Forwarded-Host, and X-Forwarded-Proto headers are ignored for trust.
+For an explicitly deployed TLS reverse proxy, preserve an allowed Host and
+configure the externally advertised HTTPS origin in `HTTP_TRUSTED_ORIGINS`;
+forwarded headers alone cannot make an insecure backend connection HTTPS.
+
+This is **browser-request protection, not authentication**. Native clients can
+supply their own headers or omit browser headers, and anyone with network access
+can still use the CLI/API. An approved hostname and each trusted-origin site
+remain part of the trust boundary. Protect the network and trusted development
+server; these checks do not authorize exposure to an untrusted network.
 
 ## First start
 
