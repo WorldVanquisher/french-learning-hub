@@ -3,6 +3,7 @@ module french-learning-app
 go 1.26.5
 
 require (
+	github.com/joho/godotenv v1.5.1
 	golang.org/x/text v0.38.0
 	modernc.org/sqlite v1.54.0
 )
