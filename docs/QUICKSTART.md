@@ -99,7 +99,8 @@ Analysis is versioned metadata; it never overwrites the Entry. The learning
 inventory is a read-only projection over Entries, their latest Analysis, and
 latest Feedback.
 
-Alternatively, import the maintained example through the thin capture CLI:
+Alternatively, import the maintained example through the thin capture CLI (or
+paste it into **Import a capture** in the workbench's Learning Records view):
 
 ```bash
 make capture ARGS="-file examples/captures/manual-example.json"
@@ -143,10 +144,13 @@ npm run dev
 Open `http://localhost:5173` (or the URL printed by Vite). The workbench has
 four views with different ownership boundaries:
 
-- **Learning Records** is read-only: it lists records with the state filter and
-  cursor pagination of `GET /learning-records`, and a record's detail shows its
-  original input and context, analysis versions, and the backend-owned effective
-  interpretation of the selected version.
+- **Learning Records** lists records with the state filter and cursor
+  pagination of `GET /learning-records`. It can import a `learning_capture_v1`
+  document (**Import a capture**), and a record's detail shows its original input
+  and context, analysis versions, the backend-owned effective interpretation, and
+  stored extractions. Analysis and extraction run only after an explicit,
+  confirmed request; with the default configuration extraction answers that it
+  is not enabled.
 - **Concept Review** is write-capable: explicit human actions record Concept
   annotations and resolution decisions.
 - **Annotation Inspector** is read-only and displays backend-owned effective

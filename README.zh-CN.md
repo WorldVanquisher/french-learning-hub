@@ -70,7 +70,7 @@ Extraction 和人工 Concept Review 是单独的可选步骤，全新数据的�
 13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
 14. 使用精确签名、加权词法余弦、corpus-aware BM25 和可选语义 embedding 基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
 15. 通过 `concept_retrieval_comparison_v1` 在同一 M12 实验契约下对比四种基线的顶层指标。
-16. 在内部工作台使用只读 **Learning Records**（记录、Analysis 版本与 Effective 解释）、可写入的 **Concept Review**、只读 **Annotation Inspector**，以及只读 **Experiment Dashboard**。
+16. 在内部工作台使用 **Learning Records**（导入 Capture、浏览记录、Analysis 版本与 Effective 解释，并显式请求 Analysis 与 Extraction）、可写入的 **Concept Review**、只读 **Annotation Inspector**，以及只读 **Experiment Dashboard**。
 
 ## 研究与评估
 
@@ -419,7 +419,10 @@ CURRENT SAME 只来自 `unit_concept_memberships`。`unit_concept_links` 是只�
 
 `web/` 提供四个本地视图：
 
-- **Learning Records**：只读浏览 `GET /learning-records`，支持状态筛选与游标分页；详情显示原始输入与上下文、全部 Analysis 版本，以及所选版本由后端解析的 Effective 解释。区分加载中、请求失败、无记录、无 Analysis、未审核与被拒绝的解释；过期响应会被丢弃，返回列表时保留已加载页面与筛选条件。
+- **Learning Records**：浏览 `GET /learning-records`，支持状态筛选与游标分页；详情显示原始输入与上下文、全部 Analysis 版本，以及所选版本由后端解析的 Effective 解释。区分加载中、请求失败、无记录、无 Analysis、未审核与被拒绝的解释；过期响应会被丢弃，返回列表时保留已加载页面与筛选条件。
+  - **导入 Capture**：把粘贴或载入的 `learning_capture_v1` JSON 原样提交到 `POST /captures`（与 CLI 相同，不调用模型）。浏览器只检查 JSON 语法，内容校验由服务端负责并显示其 `400`/`422` 信息。新导入（`201`）会刷新列表并可打开记录；相同内容重放（`200`）显示已有记录且不新增；冲突重放（`409`）说明未做任何修改，并通过 `GET /captures/{capture_id}` 提供打开已有记录的入口。
+  - **显式请求 Analysis 与 Extraction**：在记录详情中分两步操作，先说明请求的效果、是否可能调用并计费外部 Provider、以及不会自动重试，确认后才发送且只发送一次；请求进行中控件被禁用。成功的 Analysis 会重新读取记录并选中新的最新版本，列表行也从后端刷新；不再符合当前筛选的行会明确提示。Extraction 面板显示已保存版本、后端认定的当前版本及其 Unit 与 Admission 状态，零 Unit 被视为有效结果。
+  - 服务端错误按状态与原始信息显示：Extraction 未启用（`503`）或不符合条件（`409`）时不会发送也不会保存；Provider 输出无效（`422`）或失败（`502`/`504`）时可能已调用 Provider 但未保存。**未收到响应**（网络故障）时显示“结果未知”，从不声称失败或自动重提：Analysis 与 Extraction 会重新读取记录供核对，Capture 导入提供只读的“检查导入状态”。工作台尚不支持 Feedback，请使用 `POST /analyses/{id}/feedback`。
 - **Concept Review**：写入显式人工 SAME、DISTINCT、关系、INVALID 或新 Concept。
 - **Annotation Inspector**：只读显示当前 Effective Annotation。
 - **Experiment Dashboard**：只读显示 Dataset 结构质量、人工监督规模与固定顺序的检索基线指标。

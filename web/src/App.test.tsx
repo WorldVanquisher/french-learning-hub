@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe("App annotation views", () => {
-  it("opens the read-only Learning Records view through the local view switch", async () => {
+  it("opens the Learning Records view with GET requests only", async () => {
     const calls: Array<{ method: string; path: string }> = [];
     globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       const method = (init?.method ?? "GET").toUpperCase();

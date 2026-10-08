@@ -283,3 +283,60 @@ describe("learning record read endpoints", () => {
     await expect(api.listLearningRecords({}, impl)).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+describe("capture, analysis, and extraction workflow endpoints", () => {
+  it("posts a capture document byte-for-byte as JSON", async () => {
+    const raw = '{ "capture_id": "c-1",\n  "source": "manual" }';
+    const { impl, calls } = stubFetch(201, { capture_id: "c-1", entry_id: 4, analysis_id: null, created: true });
+    const result = await api.importCapture(raw, impl);
+    expect(calls[0].url).toBe("/api/captures");
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].init.body).toBe(raw);
+    expect((calls[0].init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
+    expect(result.created).toBe(true);
+  });
+
+  it("encodes a capture_id when reading its receipt", async () => {
+    const { impl, calls } = stubFetch(200, { capture_id: "a b/c", entry_id: 1 });
+    await api.getCaptureReceipt("a b/c", impl);
+    expect(calls[0].url).toBe("/api/captures/a%20b%2Fc");
+  });
+
+  it("uses the existing analysis and extraction endpoints", async () => {
+    const post = stubFetch(201, { id: 1 });
+    await api.createAnalysis(3, post.impl);
+    await api.createExtraction(3, post.impl);
+    expect(post.calls.map((c) => `${c.init.method} ${c.url}`)).toEqual([
+      "POST /api/entries/3/analysis",
+      "POST /api/entries/3/extractions",
+    ]);
+    expect(post.calls.every((c) => c.init.body === undefined)).toBe(true);
+
+    const list = stubFetch(200, { extractions: [{ id: 9 }] });
+    expect(await api.listExtractions(3, list.impl)).toHaveLength(1);
+    expect(list.calls[0].url).toBe("/api/entries/3/extractions");
+    const current = stubFetch(200, { entry_id: 3, current_extraction_id: null });
+    expect((await api.getCurrentExtraction(3, current.impl)).current_extraction_id).toBeNull();
+    expect(current.calls[0].url).toBe("/api/entries/3/current-extraction");
+  });
+
+  it("re-reads one inventory row through the exclusive descending cursor", async () => {
+    const hit = stubFetch(200, { records: [{ entry_id: 7, state: "unreviewed" }], next_before_entry_id: 7 });
+    expect((await api.getLearningRecord(7, hit.impl))?.state).toBe("unreviewed");
+    expect(hit.calls[0].url).toBe("/api/learning-records?limit=1&before_entry_id=8");
+
+    const miss = stubFetch(200, { records: [{ entry_id: 5 }], next_before_entry_id: 5 });
+    expect(await api.getLearningRecord(7, miss.impl)).toBeNull();
+  });
+
+  it("turns a missing HTTP response into a NetworkError, distinct from an ApiError", async () => {
+    const impl = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    }) as unknown as typeof fetch;
+    const error = await api.createExtraction(1, impl).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(api.NetworkError);
+    expect(error).not.toBeInstanceOf(ApiError);
+    expect((error as api.NetworkError).method).toBe("POST");
+    expect((error as Error).message).toBe("no response from the server (network error)");
+  });
+});

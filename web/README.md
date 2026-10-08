@@ -1,7 +1,8 @@
 # Annotation Workbench
 
-An internal frontend with four views: the read-only **Learning Records** browser
-for learner-authored records and their interpretations, the write-capable
+An internal frontend with four views: the **Learning Records** view for importing
+captures, browsing learner-authored records and their interpretations, and
+explicitly requesting analysis or extraction; the write-capable
 **Concept Review** workflow for `KnowledgeUnit → KnowledgeConcept` annotation,
 the read-only **Annotation Inspector** for viewing M11-A effective annotation
 state over current-extraction units, and the read-only **Experiment Dashboard**
@@ -36,7 +37,9 @@ npm run dev
 
 Open the printed Vite URL and use the local view switch to move between
 **Learning Records**, **Concept Review**, **Annotation Inspector**, and
-**Experiment Dashboard**. Concept Review remains the view shown on load. If the backend
+**Experiment Dashboard**. Concept Review remains the view shown on load.
+In the release image the same workbench is served at `http://127.0.0.1:8080`
+without Vite (see `docs/RELEASE.md`). If the backend
 is not on `:8080`, point the proxy at it:
 
 ```sh
@@ -135,7 +138,8 @@ resolution-history panel for exactly this reason.
 
 ## Learning Records
 
-The Learning Records view is a GET-only browser over existing endpoints:
+Browsing the Learning Records view uses only GET requests to existing endpoints.
+Writes happen only through the explicit actions described in the next section.
 
 - `GET /learning-records` supplies the list, newest first, 20 records per
   request. The **Record state** filter (`unanalyzed`, `unreviewed`, `accepted`,
@@ -166,7 +170,51 @@ interpretation for a version that is no longer selected. Returning from a detail
 keeps the loaded pages and filter and moves focus back to the record's **Open**
 button. Switching to another workbench tab still resets the view.
 
-This view does not analyze, give feedback, import captures, or run extraction.
+## Capture import, analysis, and extraction (FLH-014)
+
+The daily path capture → record → analysis → extraction runs in the Learning
+Records view through existing endpoints only. The browser never decides
+interpretation or eligibility.
+
+- **Import a capture** (`POST /captures`) sends one pasted or loaded
+  `learning_capture_v1` JSON document unchanged, like the capture CLI. The browser
+  checks only JSON syntax (invalid JSON is never sent); the server validates
+  content and its `400`/`422` message is shown. A new import (`201`) reloads the
+  list and offers **Open imported record #N**. An identical replay (`200`,
+  `created: false`) is reported as the existing record, with nothing new stored.
+  A conflicting replay (`409`) states that nothing changed and looks up the
+  existing receipt (`GET /captures/{capture_id}`) to offer **Open existing
+  record #N**. Import makes no AI call.
+- **Request analysis** (`POST /entries/{id}/analysis`) and **Request extraction**
+  (`POST /entries/{id}/extractions`) live in a record's detail. Each is a
+  two-step control: the first button explains what the request does, whether a
+  provider may be called and billed, and that it is never retried; only the
+  confirm button sends it, once. While a request is pending the control is
+  disabled.
+- After a confirmed analysis the record is re-read: the new version becomes the
+  selected latest version and its effective interpretation is shown. The list row
+  is refreshed from the backend (`GET /learning-records?before_entry_id=<id+1>&limit=1`),
+  and a row that no longer matches the active state filter says so instead of
+  disappearing.
+- The extraction panel shows the stored versions, the version the backend reports
+  as current, and its units with their admission state. Zero units is shown as a
+  valid result, distinct from "No extraction stored." It is re-read after every
+  extraction request.
+- Server answers are reported with the backend status and message: extraction
+  disabled (`503`, nothing sent or stored), not eligible (`409`, nothing sent or
+  stored), provider output rejected (`422`) or provider failure (`502`/`504`;
+  the provider may have been called, nothing stored).
+- **No response** (a network failure) is reported as **Outcome unknown**, never
+  as a failure, and nothing is resubmitted. Analysis and extraction re-read the
+  record so the reader can check before asking again; capture import offers
+  **Check import status**, which reads the receipt (`GET` only).
+- A result that arrives after the reader has opened another record is not shown
+  on that record.
+
+Feedback (accept, correct, reject) is not yet available in the workbench; use
+`POST /analyses/{id}/feedback`. The browser cannot tell which analyzer or
+extractor the server is configured with, so the explanations describe both the
+local default and the provider-backed case.
 
 ## Effective Annotation Inspector (milestone 11-B)
 
@@ -209,9 +257,11 @@ web/src/
   api/         fetch client (client.ts) — all request logic lives here
   components/  UnitCard, CandidateConceptCard, IdentityEditor,
                MembershipPanel, HistoryPanel, ResolutionActions,
-               RecordDetail
+               RecordDetail, CaptureImport, AnalysisRequest,
+               ExtractionPanel, ExplicitAction
   conceptSearch.ts  deterministic retrieval-only catalog filtering
-  pages/       RecordsBrowser — read-only learning-record list and detail
+  pages/       RecordsBrowser — learning-record list, detail, capture import,
+               explicit analysis and extraction requests
                ReviewQueue — write-capable annotation workflow
                AnnotationInspector — read-only effective-state view
                ExperimentDashboard — read-only quality/comparison summary

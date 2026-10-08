@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
+import { CaptureImport } from "../components/CaptureImport";
 import { RecordDetail } from "../components/RecordDetail";
 import {
   LEARNING_RECORD_STATES,
@@ -39,6 +40,7 @@ export function RecordsBrowser() {
   const [more, setMore] = useState<MoreStatus>({ status: "idle" });
   const [reloadCount, setReloadCount] = useState(0);
   const [openEntryId, setOpenEntryId] = useState<number | null>(null);
+  const [showImport, setShowImport] = useState(false);
   const [returnFocusEntryId, setReturnFocusEntryId] = useState<number | null>(null);
 
   // generation identifies the current filter/reload. A "load older" response that
@@ -85,6 +87,24 @@ export function RecordsBrowser() {
       });
   }, [filter, more.status, nextCursor]);
 
+  // refreshRecord re-reads one changed record's inventory row from the backend after
+  // a write in its detail, so the list never derives a state itself. A row read for
+  // a superseded filter/reload is discarded; a failed read leaves the row as loaded.
+  const refreshRecord = useCallback((entryId: number) => {
+    const current = generation.current;
+    api.getLearningRecord(entryId)
+      .then((fresh) => {
+        if (generation.current !== current || fresh === null) return;
+        setRecords((loaded) => loaded.map((r) => (r.entry_id === entryId ? fresh : r)));
+      })
+      .catch(() => {});
+  }, []);
+
+  const openRecord = useCallback((entryId: number) => {
+    setReturnFocusEntryId(entryId);
+    setOpenEntryId(entryId);
+  }, []);
+
   // Returning from a detail moves focus back to the record's Open button, which
   // also scrolls the preserved list back to where the reader left it.
   useEffect(() => {
@@ -96,14 +116,35 @@ export function RecordsBrowser() {
     <>
       {openEntryId !== null ? (
         // Keyed by entry so every record starts from a fresh detail state.
-        <RecordDetail key={openEntryId} entryId={openEntryId} onBack={() => setOpenEntryId(null)} />
+        <RecordDetail
+          key={openEntryId}
+          entryId={openEntryId}
+          onBack={() => setOpenEntryId(null)}
+          onRecordChanged={refreshRecord}
+        />
       ) : null}
 
       {/* The list stays mounted while a detail is open, so its pages and filter survive. */}
       <main hidden={openEntryId !== null}>
         <div className="banner info">
-          Read-only view of the learning inventory. Opening a record does not analyze,
-          review, or extract anything.
+          Opening a record does not analyze, review, or extract anything. Analysis and
+          extraction run only when you explicitly request them in a record&apos;s detail.
+        </div>
+
+        <div className="queue-nav">
+          <button
+            type="button"
+            className="ghost"
+            aria-expanded={showImport}
+            aria-controls="capture-import"
+            onClick={() => setShowImport((v) => !v)}
+          >
+            {showImport ? "Hide capture import" : "Import a capture"}
+          </button>
+        </div>
+        {/* Kept mounted while hidden so a pending import and its outcome survive. */}
+        <div id="capture-import" hidden={!showImport}>
+          <CaptureImport onImported={() => setReloadCount((n) => n + 1)} onOpenRecord={openRecord} />
         </div>
 
         <div className="inspector-filters" aria-label="Record filters">
@@ -142,10 +183,8 @@ export function RecordsBrowser() {
                 <RecordRow
                   key={record.entry_id}
                   record={record}
-                  onOpen={() => {
-                    setReturnFocusEntryId(record.entry_id);
-                    setOpenEntryId(record.entry_id);
-                  }}
+                  filter={filter}
+                  onOpen={() => openRecord(record.entry_id)}
                 />
               ))}
             </ul>
@@ -183,7 +222,15 @@ export function RecordsBrowser() {
   );
 }
 
-function RecordRow({ record, onOpen }: { record: LearningRecord; onOpen: () => void }) {
+function RecordRow({
+  record,
+  filter,
+  onOpen,
+}: {
+  record: LearningRecord;
+  filter: StateFilter;
+  onOpen: () => void;
+}) {
   return (
     <li className="record-row">
       <div className="inspector-card-head">
@@ -200,6 +247,12 @@ function RecordRow({ record, onOpen }: { record: LearningRecord; onOpen: () => v
             : "No analysis"}
         {record.analysis_version !== null ? ` · latest analysis v${record.analysis_version}` : ""}
       </p>
+      {filter !== "all" && record.state !== filter ? (
+        <p className="hint">
+          Changed since this list loaded: now &quot;{record.state}&quot;, which no longer matches the
+          &quot;{filter}&quot; filter.
+        </p>
+      ) : null}
       <button
         type="button"
         className="ghost"
