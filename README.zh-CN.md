@@ -315,6 +315,8 @@ Knowledge Extraction 把一个学习交互显式转换为零个或多个不可�
 
 条目只有在当前分析状态为 `unreviewed`、`accepted` 或 `corrected` 时才可抽取；`unanalyzed` 和 `rejected` 返回 `409`。
 
+来源在调用 Provider 之前读取，Provider 运行期间不持有数据库事务。写入事务内，服务端会再次确认来源 analysis 仍是该条目的最新分析、来源 feedback 仍是该分析的最新反馈（与读取使用相同的最新记录排序）。如果期间出现了新的分析或反馈，或当前分析变为 `rejected`，结果会被丢弃并返回 `409`，不写入任何 Extraction、Unit 或推荐；原有的当前 Extraction 和全部历史保持不变。重新发起抽取即可使用更新后的解释。
+
 ```bash
 curl -sS -X POST http://localhost:8080/entries/1/extractions
 curl -sS http://localhost:8080/entries/1/extractions

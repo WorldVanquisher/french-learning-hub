@@ -123,8 +123,18 @@ func (r *FeedbackRepository) GetLatestByAnalysis(ctx context.Context, analysisID
 	if err := analysisExists(ctx, r.db, analysisID); err != nil {
 		return nil, err
 	}
+	// Existing analysis, no feedback yet: (nil, nil), distinct from a missing
+	// analysis.
+	return latestFeedback(ctx, r.db, analysisID)
+}
 
-	row := r.db.QueryRowContext(ctx,
+// latestFeedback selects the latest feedback for analysisID with the shared
+// latest-record ordering (created_at as an instant, then id). It accepts a
+// transaction so writers that must agree with GetLatestByAnalysis, such as the
+// extraction currency check, use exactly the same rule. Returns (nil, nil) when
+// the analysis has no feedback; it does not check that the analysis exists.
+func latestFeedback(ctx context.Context, q querier, analysisID int64) (*domain.Feedback, error) {
+	row := q.QueryRowContext(ctx,
 		`SELECT id, analysis_id, status, corrected_category, corrected_explanation, user_note, created_at
 		 FROM analysis_feedback
 		 WHERE analysis_id = ?
@@ -132,7 +142,6 @@ func (r *FeedbackRepository) GetLatestByAnalysis(ctx context.Context, analysisID
 		 LIMIT 1`, analysisID)
 	f, err := scanFeedback(row)
 	if errors.Is(err, sql.ErrNoRows) {
-		// Existing analysis, no feedback yet: distinct from a missing analysis.
 		return nil, nil
 	}
 	if err != nil {

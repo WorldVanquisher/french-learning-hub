@@ -52,11 +52,18 @@ func NewKnowledgeService(
 // source, validate the result, apply the admission ruleset, and persist
 // everything in one atomic transaction.
 //
+// No transaction or connection is held across the provider call. Instead the
+// repository re-checks, inside the write transaction, that the source analysis
+// and feedback are still the entry's current, eligible interpretation, and
+// discards the result otherwise.
+//
 // Errors:
 //   - domain.ErrExtractorDisabled when no extractor is configured.
 //   - domain.ErrNotFound when the entry does not exist.
 //   - domain.ErrNotEligible when the entry is unanalyzed or its current analysis
 //     is rejected.
+//   - a wrapped domain.ErrExtractionSourceChanged when a newer analysis or
+//     feedback was recorded while the provider ran; nothing is persisted.
 //   - a wrapped provider error (timeout/unavailable) on extractor failure.
 //   - a wrapped domain.ErrValidation when the extractor returns invalid units.
 func (s *KnowledgeService) Extract(ctx context.Context, entryID int64) (*domain.ExtractionView, error) {

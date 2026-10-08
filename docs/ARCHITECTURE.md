@@ -653,7 +653,18 @@ analysis and feedback it was derived from, and the repository rejects an
 extraction whose provenance is inconsistent (a source analysis from another
 entry, or source feedback from another analysis) so a recorded provenance is
 always trustworthy. A later analysis or feedback never mutates an existing
-extraction — a new run appends a new version. There is deliberately no stored
+extraction — a new run appends a new version.
+
+The source is read before the provider call and no transaction or connection is
+held while the provider runs, so the interpretation can move during the call.
+The repository therefore also checks *currency* inside the write transaction,
+after the ownership checks and before any insert: the source analysis must still
+be the entry's latest analysis (by version) and the source feedback must still be
+that analysis's latest feedback (by the shared `flh_timestamp_v1` latest-record
+ordering; both absent is a match), and that feedback must not be `rejected`.
+Otherwise `domain.ErrExtractionSourceChanged` (`409`) discards the result before
+anything is written. SQLite serializes writers, so the check and the inserts see
+one consistent state. There is deliberately no stored
 `stale` boolean and no staleness feature in this milestone; the recorded
 provenance is *sufficient to derive staleness later* by comparing it against the
 entry's current effective interpretation, but nothing here computes or exposes
