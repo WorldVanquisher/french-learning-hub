@@ -55,7 +55,9 @@ function Provenance({
   );
 }
 
-function InspectorItem({
+// InspectorItem renders one unit's backend-derived effective annotation. It is
+// shared with the focused unit inspection opened from a record.
+export function InspectorItem({
   item,
   concepts,
 }: {

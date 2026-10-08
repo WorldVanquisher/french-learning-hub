@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnnotationInspector } from "./pages/AnnotationInspector";
 import { ExperimentDashboard } from "./pages/ExperimentDashboard";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue } from "./pages/ReviewQueue";
+import { UnitInspection } from "./pages/UnitInspection";
+import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 
 type View = "records" | "review" | "inspector" | "experiments";
 
@@ -26,12 +28,56 @@ const viewCopy: Record<View, { title: string; subtitle: string }> = {
 };
 
 // App keeps the internal workbench views behind a local tab switch. Learning
-// Records writes only through explicit capture import, analysis, and extraction
-// requests; the Inspector and Experiment Dashboard are read-only; Concept Review
-// records annotation decisions.
+// Records writes only through explicit capture import, analysis, feedback, and
+// extraction requests; the Inspector and Experiment Dashboard are read-only;
+// Concept Review records annotation decisions.
+//
+// A record's extracted unit can be opened in Concept Review or a focused
+// inspection. Learning Records stays mounted (hidden) meanwhile, so returning
+// restores the record, its viewed extraction, filters, drafts, and position.
 export default function App() {
   const [view, setView] = useState<View>("review");
-  const copy = viewCopy[view];
+  const [recordsMounted, setRecordsMounted] = useState(false);
+  // The unit opened from a record, or null for the ordinary tab views.
+  const [focus, setFocus] = useState<UnitTarget | null>(null);
+  // Bumped on return so the record re-reads what may have changed elsewhere.
+  const [returnEpoch, setReturnEpoch] = useState(0);
+  const [returnFocus, setReturnFocus] = useState<UnitTarget | null>(null);
+  // A unit opened from a record may be historical, so the inspector's general
+  // description ("current-extraction units") would not fit it.
+  const copy =
+    view === "inspector" && focus
+      ? {
+          title: "Unit Inspection",
+          subtitle: "Read-only inspection of one unit opened from a record, including whether it belongs to the record's current extraction.",
+        }
+      : viewCopy[view];
+
+  const show = (next: View) => {
+    setFocus(null);
+    setView(next);
+    if (next === "records") setRecordsMounted(true);
+  };
+  const openUnit = (target: UnitTarget) => {
+    setFocus(target);
+    setView(target.kind === "review" ? "review" : "inspector");
+  };
+  const backToRecord = () => {
+    setReturnFocus(focus);
+    setFocus(null);
+    setView("records");
+    setReturnEpoch((n) => n + 1);
+  };
+
+  // Put keyboard focus back on the unit the reader left from, or the record.
+  useEffect(() => {
+    if (view !== "records" || !returnFocus) return;
+    const target =
+      document.getElementById(unitFocusId(returnFocus.unitId)) ??
+      document.getElementById(recordHeadingId(returnFocus.entryId));
+    target?.focus();
+    setReturnFocus(null);
+  }, [view, returnFocus]);
 
   return (
     <div className="app">
@@ -45,41 +91,62 @@ export default function App() {
         <button
           type="button"
           aria-pressed={view === "records"}
-          onClick={() => setView("records")}
+          onClick={() => show("records")}
         >
           Learning Records
         </button>
         <button
           type="button"
           aria-pressed={view === "review"}
-          onClick={() => setView("review")}
+          onClick={() => show("review")}
         >
           Concept Review
         </button>
         <button
           type="button"
           aria-pressed={view === "inspector"}
-          onClick={() => setView("inspector")}
+          onClick={() => show("inspector")}
         >
           Annotation Inspector
         </button>
         <button
           type="button"
           aria-pressed={view === "experiments"}
-          onClick={() => setView("experiments")}
+          onClick={() => show("experiments")}
         >
           Experiment Dashboard
         </button>
       </nav>
-      {view === "records" ? (
-        <RecordsBrowser />
-      ) : view === "review" ? (
-        <ReviewQueue />
+      {recordsMounted ? (
+        <div hidden={view !== "records"}>
+          <RecordsBrowser returnEpoch={returnEpoch} onNavigateToUnit={openUnit} />
+        </div>
+      ) : null}
+      {view === "review" ? (
+        focus ? (
+          <ReviewQueue
+            key={`review-${focus.entryId}-${focus.unitId}`}
+            focus={focus}
+            onBack={backToRecord}
+            onInspect={(unitId) => openUnit({ ...focus, kind: "inspect", unitId })}
+          />
+        ) : (
+          <ReviewQueue />
+        )
       ) : view === "inspector" ? (
-        <AnnotationInspector />
-      ) : (
+        focus ? (
+          <UnitInspection
+            key={`inspect-${focus.entryId}-${focus.unitId}`}
+            focus={focus}
+            onBack={backToRecord}
+            onReview={() => openUnit({ ...focus, kind: "review" })}
+          />
+        ) : (
+          <AnnotationInspector />
+        )
+      ) : view === "experiments" ? (
         <ExperimentDashboard />
-      )}
+      ) : null}
     </div>
   );
 }

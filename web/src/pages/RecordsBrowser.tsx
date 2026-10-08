@@ -3,6 +3,7 @@ import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import { CaptureImport } from "../components/CaptureImport";
 import { RecordDetail } from "../components/RecordDetail";
+import type { UnitTarget } from "../navigation";
 import {
   LEARNING_RECORD_STATES,
   type LearningRecord,
@@ -32,7 +33,15 @@ function describeError(error: unknown): string {
 // cursor-paginated list and a per-record detail. The list's loaded pages, filter,
 // and position live here, so opening a record and returning keeps them intact.
 // Responses for a superseded filter are discarded.
-export function RecordsBrowser() {
+export function RecordsBrowser({
+  returnEpoch = 0,
+  onNavigateToUnit,
+}: {
+  // Changes when the reader returns from another workbench view.
+  returnEpoch?: number;
+  // Opens an extracted unit in Concept Review or the Inspector.
+  onNavigateToUnit?: (target: UnitTarget) => void;
+} = {}) {
   const [filter, setFilter] = useState<StateFilter>("all");
   const [records, setRecords] = useState<LearningRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
@@ -139,6 +148,8 @@ export function RecordsBrowser() {
           entryId={openEntryId}
           onBack={() => setOpenEntryId(null)}
           onRecordChanged={refreshRecord}
+          returnEpoch={returnEpoch}
+          onNavigateToUnit={onNavigateToUnit}
         />
       ) : null}
 

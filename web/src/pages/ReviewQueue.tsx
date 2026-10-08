@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import type {
@@ -15,6 +15,7 @@ import { MembershipPanel } from "../components/MembershipPanel";
 import { HistoryPanel } from "../components/HistoryPanel";
 import { ResolutionActions, type ActionKind } from "../components/ResolutionActions";
 import { discoverConcepts } from "../conceptSearch";
+import type { UnitTarget } from "../navigation";
 
 type Notice = { kind: "success" | "error" | "info"; text: string } | null;
 
@@ -29,8 +30,26 @@ type IdentityDraft = { unitId: number; value: ConceptIdentity };
 // a candidate records nothing; only one of the seven explicit human actions writes
 // annotation data. After a successful explicit decision it advances the queue
 // without a page refresh.
-export function ReviewQueue() {
+//
+// With `focus` (opened from a record's extracted unit) it shows only that record's
+// units the backend lists as awaiting review, opens the focused unit when it is
+// listed, and otherwise explains why it is not, without presenting it as a queue
+// candidate. Writes are unchanged.
+export function ReviewQueue({
+  focus = null,
+  onBack,
+  onInspect,
+}: {
+  focus?: UnitTarget | null;
+  onBack?: () => void;
+  onInspect?: (unitId: number) => void;
+} = {}) {
   const [queue, setQueue] = useState<ReviewableUnit[]>([]);
+  // Set after the first focused load when the focused unit is not reviewable now.
+  const [focusMissing, setFocusMissing] = useState(false);
+  // Only the latest queue read is applied (StrictMode replays and reloads overlap).
+  const queueRequest = useRef(0);
+  const focusHeadingRef = useRef<HTMLHeadingElement>(null);
   const [index, setIndex] = useState(0);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -59,17 +78,28 @@ export function ReviewQueue() {
 
   // loadQueue fetches the reviewable units. Any error is surfaced, never swallowed.
   const loadQueue = useCallback(async () => {
+    const request = ++queueRequest.current;
     setLoadingQueue(true);
     try {
-      const units = await api.listReviewableUnits();
+      // Backend eligibility only: a focused view reads the record's reviewable units.
+      const units = await api.listReviewableUnits(focus?.entryId);
+      if (request !== queueRequest.current) return;
       setQueue(units);
-      setIndex(0);
+      const focusedIndex = focus ? units.findIndex((u) => u.unit_id === focus.unitId) : -1;
+      setIndex(Math.max(0, focusedIndex));
+      setFocusMissing(focus !== null && focusedIndex < 0);
     } catch (e) {
+      if (request !== queueRequest.current) return;
       setNotice({ kind: "error", text: describe(e, "Could not load the review queue.") });
     } finally {
-      setLoadingQueue(false);
+      if (request === queueRequest.current) setLoadingQueue(false);
     }
-  }, []);
+  }, [focus]);
+
+  // Opened from a record: move keyboard focus to the record context.
+  useEffect(() => {
+    if (focus) focusHeadingRef.current?.focus();
+  }, [focus]);
 
   // The durable concept catalog is discovery input only. Loading it records no
   // annotation and does not affect deterministic exact-signature resolution.
@@ -277,16 +307,54 @@ export function ReviewQueue() {
     }
   }
 
+  const context = focus ? (
+    <section className="panel record-context" aria-label="Record context">
+      <h2 ref={focusHeadingRef} tabIndex={-1}>
+        Concept Review for record #{focus.entryId}
+      </h2>
+      <p className="hint">
+        Opened from unit #{focus.unitId} of extraction v{focus.extractionVersion}. Only this record&apos;s
+        units that the server lists as awaiting review are shown here.
+      </p>
+      {onBack ? (
+        <button type="button" className="ghost" onClick={onBack}>
+          ← Back to record #{focus.entryId}
+        </button>
+      ) : null}
+    </section>
+  ) : null;
+
+  const missing =
+    focus && focusMissing ? (
+      <div className="banner info" role="alert">
+        <strong>Unit #{focus.unitId} is not awaiting review.</strong> The server does not list it as
+        reviewable now: it may already be resolved or marked INVALID, or its extraction is no longer
+        current. It is not shown as a review candidate.{" "}
+        {onInspect ? (
+          <button type="button" className="ghost" onClick={() => onInspect(focus.unitId)}>
+            Inspect unit #{focus.unitId}
+          </button>
+        ) : null}
+      </div>
+    ) : null;
+
   if (loadingQueue) {
-    return <p className="empty">Loading review queue…</p>;
+    return (
+      <div>
+        {context}
+        <p className="empty">Loading review queue…</p>
+      </div>
+    );
   }
 
   if (!current) {
     return (
       <div>
+        {context}
+        {missing}
         {notice ? <div className={`banner ${notice.kind}`}>{notice.text}</div> : null}
         <div className="empty">
-          <p>No units are awaiting review. 🎉</p>
+          <p>{focus ? `No units of record #${focus.entryId} are awaiting review.` : "No units are awaiting review. 🎉"}</p>
           <button
             className="ghost"
             onClick={() => {
@@ -306,6 +374,11 @@ export function ReviewQueue() {
 
   return (
     <div>
+      {context}
+      {missing}
+      {focus && focusMissing ? (
+        <p className="hint">Other units of record #{focus.entryId} are awaiting review below.</p>
+      ) : null}
       {notice ? <div className={`banner ${notice.kind}`}>{notice.text}</div> : null}
 
       <div className="queue-nav">

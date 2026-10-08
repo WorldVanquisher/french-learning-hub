@@ -15,7 +15,7 @@ type Handler = Reply | (() => Reply | Promise<Reply>);
 // reads, they answer "no extraction stored" so they do not add unrelated alerts.
 function noExtractionDefault(url: string): Reply | undefined {
   const current = url.match(/^\/api\/entries\/(\d+)\/current-extraction$/);
-  if (current) return { body: { entry_id: Number(current[1]), current_extraction_id: null } };
+  if (current) return { body: { entry_id: Number(current[1]), current_extraction_id: null, selection_mode: "automatic" } };
   if (/^\/api\/entries\/\d+\/extractions$/.test(url)) return { body: { extractions: [] } };
   // Record detail also reads the selected version's feedback history.
   if (/^\/api\/analyses\/\d+\/feedback$/.test(url)) return { body: { feedback: [] } };

@@ -383,3 +383,19 @@ describe("current extraction selection", () => {
     });
   });
 });
+
+describe("automatic current-extraction selection", () => {
+  it("DELETEs the selection without a body and returns the reported mode", async () => {
+    const { impl, calls } = stubFetch(200, { entry_id: 4, current_extraction_id: 12, selection_mode: "automatic" });
+    const result = await api.clearCurrentExtraction(4, impl);
+    expect(calls[0].url).toBe("/api/entries/4/current-extraction");
+    expect(calls[0].init.method).toBe("DELETE");
+    expect(calls[0].init.body).toBeUndefined();
+    expect(result.selection_mode).toBe("automatic");
+  });
+
+  it("surfaces an unknown entry as a 404 ApiError", async () => {
+    const { impl } = stubFetch(404, { error: "entry not found" });
+    await expect(api.clearCurrentExtraction(99, impl)).rejects.toMatchObject({ status: 404, isNotFound: true });
+  });
+});

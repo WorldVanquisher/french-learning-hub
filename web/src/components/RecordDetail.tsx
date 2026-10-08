@@ -6,6 +6,7 @@ import { AnalysisRequest } from "./AnalysisRequest";
 import type { RefreshState } from "./ExplicitAction";
 import { ExtractionPanel } from "./ExtractionPanel";
 import { FeedbackPanel } from "./FeedbackPanel";
+import { recordHeadingId, type UnitTarget } from "../navigation";
 
 // Load is the lifecycle of one independent read. Each section of the detail has its
 // own Load so a failure in one read never hides the data of another.
@@ -40,10 +41,15 @@ export function RecordDetail({
   entryId,
   onBack,
   onRecordChanged,
+  returnEpoch = 0,
+  onNavigateToUnit,
 }: {
   entryId: number;
   onBack: () => void;
   onRecordChanged?: (entryId: number) => void;
+  // Changes when the reader returns from Concept Review or the Inspector.
+  returnEpoch?: number;
+  onNavigateToUnit?: (target: UnitTarget) => void;
 }) {
   const [entry, setEntry] = useState<Load<Entry>>({ status: "loading" });
   const [analyses, setAnalyses] = useState<Load<Analysis[]>>({ status: "loading" });
@@ -179,7 +185,7 @@ export function RecordDetail({
         ) : null}
       </div>
 
-      <h2 ref={headingRef} tabIndex={-1} className="record-detail-heading">
+      <h2 ref={headingRef} id={recordHeadingId(entryId)} tabIndex={-1} className="record-detail-heading">
         Record #{entryId}
       </h2>
 
@@ -286,7 +292,13 @@ export function RecordDetail({
       />
 
       {/* Keyed by entry so a late response for another record never reaches it. */}
-      <ExtractionPanel key={`extraction-${entryId}`} entryId={entryId} latestVersion={latest?.version ?? null} />
+      <ExtractionPanel
+        key={`extraction-${entryId}`}
+        entryId={entryId}
+        latestVersion={latest?.version ?? null}
+        returnEpoch={returnEpoch}
+        onNavigateToUnit={onNavigateToUnit}
+      />
     </main>
   );
 }

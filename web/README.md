@@ -229,43 +229,84 @@ The browser cannot tell which analyzer or
 extractor the server is configured with, so the explanations describe both the
 local default and the provider-backed case.
 
-## Extraction history and current selection (FLH-022)
+## Extraction history and current selection (FLH-022, FLH-025)
 
 The extraction panel reads `GET /entries/{id}/extractions` and
-`GET /entries/{id}/current-extraction`.
+`GET /entries/{id}/current-extraction`, whose `selection_mode` is `automatic`
+(the latest stored version is current) or `pinned` (an explicitly selected
+version stays current).
 
-- **Viewed, current, latest.** A summary line shows the current version (as the
-  backend reports it), the latest stored version (highest number), and how many
-  versions exist. Version buttons are labelled "current" and/or "latest", and the
-  viewed one is pressed. The current version is viewed by default; a version the
+- **Viewed, current, mode, latest.** A summary line shows the current version and
+  selection mode (as the backend reports them), the latest stored version
+  (highest number), and how many versions exist. A mode line explains automatic
+  selection, a pin to an older version, and a pin to the version that is also the
+  latest. Version buttons are labelled "current" (with "pinned" when pinned)
+  and/or "latest", and the viewed one is pressed. The current version is viewed by default; a version the
   reader picks stays viewed through the record's own re-reads, and another record
   starts fresh.
 - **Browsing is read-only.** Viewing a version sends nothing. Each version shows
   its units with admission state, or "Zero units." for an empty successful
   result, plus its provenance (extractor, source analysis, feedback, time) and
   whether it is current.
-- **Explicit selection.** For a viewed version that is not current, "Make vN the
-  current extraction…" explains the effect before anything is sent: its units
+- **Pin a version.** "Pin vN as the current extraction…" (offered for any viewed
+  version except one that is already the pinned current version, so the latest
+  can be pinned too) explains the effect before anything is sent: its units
   become the ones offered in Concept Review and counted as concept support;
   other versions' units stay stored but give no support while it is current;
   nothing is deleted or rewritten (units, SAME memberships, DISTINCT and
-  relation labels, INVALID judgments); no extraction is run. Confirming sends
+  relation labels, INVALID judgments); no extraction is run; a pinned version
+  stays current when the record is extracted again. Confirming sends
   `PUT /entries/{id}/current-extraction` with only `extraction_id`, once.
-- **Selection pins.** The backend keeps an explicitly selected version current,
-  even when a newer extraction is stored later, and the panel says so when the
-  current version is not the latest. The existing API has no way to return a
-  record to automatic latest selection.
-- **Backend state, not local state.** The `PUT` response only echoes the
-  request, so it is reported as "The server accepted vN …". The re-read then
-  either confirms it ("Confirmed by re-read …") or reports what the server
-  actually stores. A `422` (version missing or from another entry) and other
-  errors say the current extraction was not changed. No response is reported as
+- **Resume automatic latest selection.** Shown only while pinned. It explains
+  that the latest stored version becomes current and later extractions are
+  followed again, that nothing is deleted or rewritten, and that no extraction
+  runs and no provider is called. Confirming sends
+  `DELETE /entries/{id}/current-extraction` once. Pinning and resuming share one
+  pending state, so they never overlap.
+- **Backend state, not local state.** The `PUT` response is built from the
+  request and the `DELETE` response is the server's report, so both are shown
+  only as the server's answer. The re-read then either confirms the requested
+  version and mode ("Confirmed by re-read: … v3 (automatic) …") or reports what
+  the server actually stores, for example a pin applied again elsewhere. A `422`
+  (version missing or from another entry), `404`, and other errors say the
+  selection was not changed. No response is reported as
   **Outcome unknown**, the version list is hidden until the re-read, and nothing
   is resubmitted. An older re-read that finishes after a newer one is ignored.
 
 When the dev server runs on a port other than `:5173`, start the backend with
 that origin in `HTTP_TRUSTED_ORIGINS`; otherwise its browser boundary refuses
 the workbench's writes with `403`, which the panel reports as not changed.
+
+## From a record to Concept Review and the Inspector (FLH-025)
+
+Each unit of the viewed extraction can be opened elsewhere without losing the
+record. There is no router: App keeps the Learning Records view mounted (hidden)
+while another view is shown.
+
+- **Eligibility comes from the backend.** For the current extraction the panel
+  reads `GET /reviewable-units?entry_id=…`. Only units listed there get
+  "Review unit #N in Concept Review"; others say "Not awaiting review (already
+  resolved or marked INVALID)". Units of other versions are labelled historical
+  and can only be inspected. If the status cannot be read, the panel says so and
+  offers "Recheck review status"; no review link is shown meanwhile.
+- **Concept Review for one record.** The queue shows "Concept Review for record
+  #N" and only that record's reviewable units, starting at the chosen unit. If
+  the unit stopped awaiting review in the meantime, it is not shown as a
+  candidate; the view explains why and offers "Inspect unit #N". All decisions
+  are the existing explicit human actions.
+- **Unit inspection.** A read-only view of one unit's effective annotation
+  (`GET /knowledge-units/{id}/effective-annotation`) with the record's current
+  selection. It states whether the unit belongs to the current extraction; a
+  historical unit's stored labels are shown for reference only, never as a
+  review candidate. A current unit that is unresolved links to Concept Review,
+  which checks eligibility again. A unit that no longer exists is reported.
+- **Back to record #N** returns to the same record, viewed extraction version,
+  list filter, loaded pages, feedback drafts, and moves keyboard focus to the
+  unit (or the record heading). Review status is read again on return. Choosing
+  a tab directly leaves the record-scoped mode.
+- **Not covered.** Correcting a unit that already has a CURRENT SAME membership
+  or an INVALID judgment is not offered: the existing review queue only serves
+  units awaiting review.
 
 ## Human feedback (FLH-018)
 
