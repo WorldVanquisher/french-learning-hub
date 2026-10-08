@@ -130,6 +130,11 @@ func run() error {
 		log.Printf("workbench enabled from %s (API also under %s/)", *webDir, transporthttp.WorkbenchAPIPrefix)
 	}
 
+	routes, err = transporthttp.NewBrowserBoundary(routes, cfg.HTTPBoundary)
+	if err != nil {
+		return err
+	}
+
 	srv := &http.Server{
 		Addr:         cfg.Addr,
 		Handler:      routes,

@@ -57,6 +57,8 @@ type Config struct {
 	Addr string
 	// DBPath is the filesystem path to the SQLite database file.
 	DBPath string
+	// HTTPBoundary protects browser requests and validates destination hosts.
+	HTTPBoundary HTTPBoundaryConfig
 	// ReadTimeout and WriteTimeout bound HTTP request handling.
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
@@ -142,6 +144,8 @@ const (
 //
 //	PORT             -> Addr (":" + PORT), default ":8080"
 //	DB_PATH          -> DBPath, default "data/app.db"
+//	HTTP_ALLOWED_HOSTS -> additional exact hosts; loopback hosts always allowed
+//	HTTP_TRUSTED_ORIGINS -> exact browser-origin exceptions; default loopback :5173
 //	AI_PROVIDER      -> AI.Provider, default "rule-based"
 //	OPENAI_API_KEY   -> AI.OpenAIAPIKey (required for openai; never logged)
 //	OPENAI_MODEL     -> AI.OpenAIModel (required for openai)
@@ -205,6 +209,11 @@ func load(src source) (Config, error) {
 		},
 	}
 
+	boundary, err := loadHTTPBoundary(src)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.HTTPBoundary = boundary
 	if err := cfg.AI.validate(); err != nil {
 		return Config{}, err
 	}
