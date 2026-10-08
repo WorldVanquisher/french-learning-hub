@@ -9,7 +9,12 @@ commands or branch inspection. Date: 2026-10-08 (America/Toronto).
 
 Read AGENTS.md, FLH-013 X1/X2, HTTP wiring, capture client, Vite proxy, release
 documentation. No FLH-017 report was present at initial inspection or after the
-first full test run; no dependency on its completion. No subagents spawned.
+first full test run. On continuation, the human reported FLH-017 merged as
+PR #42, but `docs/validation/FLH-017-browser-request-boundary.md` was still
+absent in the supplied working tree. The supplied findings about bodyless
+provider/judgment POSTs, insufficient Content-Type enforcement, the successful
+CrossOriginProtection prototype, and its DNS/Vite limitations informed the
+additional checks below. No dependency on FLH-020. No subagents spawned.
 
 ## Ownership and acceptance
 
@@ -97,7 +102,11 @@ Forwarded/X-Forwarded headers alone do not grant access.
 
 This is browser protection, **not authentication**. Non-browser clients can
 forge/omit these headers. An approved host and explicitly trusted development
-origins remain trusted; network restrictions still matter.
+origins remain trusted; network restrictions still matter. The Host allowlist
+rejects arbitrary unapproved rebinding names, but performs no DNS pinning or
+DNS-control verification. An attacker-controlled explicitly approved hostname
+can still rebind and pass Host/same-origin checks. Only approve names you control;
+literal IP entries avoid that DNS-name gap.
 
 ## Validation evidence
 
@@ -131,7 +140,9 @@ matching, IPv4/IPv6, bodyless and chunked requests, media types, invalid/null/
 duplicate origins, Fetch Metadata, forwarded-header spoofing, OPTIONS, Host
 suffix attacks, unknown/malformed hosts, and unchanged capture client calls.
 The SQLite integration suite exercises all 16 mutation routes with both root
-and /api prefixes and six blocked variants (192 requests). `total_changes()`
+and /api prefixes and nine blocked variants (288 requests), including
+bodyless requests with cross Origin, cross-site Fetch Metadata alone, and null
+Origin plus misleading same-origin Metadata. `total_changes()`
 on the repository's single SQLite connection stays unchanged after each
 request; counted fake analyzer and extractor calls stay zero. Allowed analyzer
 and extractor calls increment their counters and persist, proving those fakes
@@ -188,6 +199,65 @@ legacy builder. These limits do not change the confirmed server probe results.
 
 Implementation is complete and editing stops for human review. Existing FLH-013
 build-context/permission findings and unrelated release work are outside scope.
+
+## Continuation: exact project Go version and bodyless evidence
+
+Verified the updated working tree using Go **1.26.5**, as declared in go.mod,
+not just host Go 1.27.1. `/tmp/flh019-go126.py` made a fresh isolated backend
+source copy and invoked the digest-pinned Dockerfile toolchain image:
+
+```text
+golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2
+```
+
+The container ran with `--rm --network none`, read-only source/module-cache
+mounts, writable isolated output, `GOTOOLCHAIN=local`, `GOPROXY=off`,
+`GOFLAGS="-mod=readonly -buildvcs=false"`, and `CGO_ENABLED=0`. Provider
+credentials/settings were empty; the analyzer was local rule-based, extraction
+and embedding disabled. Tests use fake/local providers inside the container.
+The shell used `set -eu`; all commands below actually completed with exit 0:
+
+```sh
+go version                         # go1.26.5 linux/amd64
+test "$(go env GOVERSION)" = go1.26.5
+go mod verify                      # all modules verified
+go test ./... -count=1
+go vet ./...
+go build -o /checks/server ./cmd/server
+go build -o /checks/capture ./cmd/capture
+go version -m /checks/server        # executable records go1.26.5
+go version -m /checks/capture       # executable records go1.26.5
+```
+
+Fresh evidence: `/tmp/flh-019-go126-hay02zbn/go126.log`, source and output
+binaries. The auto-removed test container exposed no host ports or external
+network access. All six owned Go files match the verified source byte-for-byte;
+formatting and release Bash syntax checks passed. Production implementation
+and configuration behavior remain the existing FLH-019 changes; this
+continuation adds rejection tests and clarifies documentation only. The earlier
+packaging build already used that same Go 1.26.5 base; its HTTP/Vite/CLI/health
+smoke evidence remains applicable to the unchanged production code.
+
+`TestBrowserBoundaryBodylessProvidersAndJudgments` additionally creates a real
+extracted unit with valid source analysis/admission evidence, then issues
+bodyless analysis, extraction, INVALID, restore and RejectSame POSTs through
+both route prefixes. Four origin/metadata combinations (40 requests) yield
+403, unchanged SQLite total_changes and zero analyzer/extractor calls. An
+additional blocked restore preserves an already recorded INVALID judgment.
+Allowed bodyless controls record exactly two human judgments and call each fake
+provider exactly once; this proves rejected targets were real and reachable.
+The larger rejection matrix also adds the three bodyless variants to every
+mutation route. No Content-Type header is used for these bodyless probes.
+
+Vite compatibility was exercised through the actual unchanged proxy with HTTP
+clients and exact trusted frontend Origin, **not a real browser**. Browser
+executables remain unavailable; real-browser and actual DNS-rebinding attacks
+are NOT RUN. Explicit NAS names/IPs were verified as server Host/Origin probes,
+not off-host network deployment. DNS control of approved names remains the
+operator's responsibility. No frontend/shared README edits, Git/GitHub commands,
+new branch, subagents, daily database access or paid provider calls.
+
+Editing stops for human review with the existing FLH-019 ownership unchanged.
 
 ## README handoff (outside this task's ownership)
 

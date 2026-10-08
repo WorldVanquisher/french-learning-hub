@@ -191,7 +191,7 @@ func TestBrowserBoundaryBlockedRequestsHaveNoSideEffects(t *testing.T) {
 	}
 	for _, prefix := range []string{"", "/api"} {
 		for _, route := range paths {
-			for _, variant := range []string{"cross plain", "cross JSON", "null", "rebind", "form", "fetch only"} {
+			for _, variant := range []string{"cross plain", "cross JSON", "null", "rebind", "form", "fetch only", "cross bodyless", "fetch bodyless", "null bodyless"} {
 				t.Run(prefix+route.path+"/"+variant, func(t *testing.T) {
 					req := httptest.NewRequest(route.method, prefix+route.path, strings.NewReader(`{"original_input":"must not write"}`))
 					req.Host = "localhost:8080"
@@ -212,6 +212,18 @@ func TestBrowserBoundaryBlockedRequestsHaveNoSideEffects(t *testing.T) {
 						req.Header.Set("Origin", "http://localhost:8080")
 						req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 						want = 415
+					case "cross bodyless", "fetch bodyless", "null bodyless":
+						req.Body = http.NoBody
+						req.ContentLength = 0
+						req.Header.Del("Content-Type")
+						if variant == "fetch bodyless" {
+							req.Header.Del("Origin")
+							req.Header.Set("Sec-Fetch-Site", "cross-site")
+						}
+						if variant == "null bodyless" {
+							req.Header.Set("Origin", "null")
+							req.Header.Set("Sec-Fetch-Site", "same-origin")
+						}
 					case "fetch only":
 						req.Header.Del("Origin")
 						req.Header.Set("Sec-Fetch-Site", "cross-site")
@@ -351,5 +363,78 @@ func TestBrowserBoundaryRejectsBeforeReadingChunkedBody(t *testing.T) {
 		if rec.Code < 400 || body.reads != 0 {
 			t.Fatalf("status=%d body reads=%d", rec.Code, body.reads)
 		}
+	}
+}
+
+// Bodyless endpoints can invoke providers and record judgments without any
+// Content-Type header. Seed a real unit so absence of a valid target cannot hide
+// a boundary bypass, and run allowed controls after the rejected probes.
+func TestBrowserBoundaryBodylessProvidersAndJudgments(t *testing.T) {
+	handler, db, provider := boundaryIntegration(t)
+	units := []domain.ExtractedUnit{{Kind: domain.KindGrammar, Canonical: "synthetic unit", Statement: "synthetic evidence", Confidence: .9}}
+	view, err := sqlite.NewKnowledgeRepository(db).Create(context.Background(), domain.NewExtractionInput{
+		EntryID: 1, SourceAnalysisID: 1, Extractor: "fake:seed", Units: units, Recommendations: domain.ApplyAdmissionV1(units),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	unitID := view.Units[0].Unit.ID
+	before := totalChanges(t, db)
+	paths := []string{"/entries/1/analysis", "/entries/1/extractions", fmt.Sprintf("/knowledge-units/%d/invalid", unitID), fmt.Sprintf("/knowledge-units/%d/invalid/restore", unitID), fmt.Sprintf("/knowledge-units/%d/concept-membership/reject", unitID)}
+	for _, prefix := range []string{"", "/api"} {
+		for _, path := range paths {
+			for _, headers := range []map[string]string{
+				{"Origin": "https://attacker.example"},
+				{"Sec-Fetch-Site": "cross-site"},
+				{"Origin": "https://attacker.example", "Sec-Fetch-Site": "same-origin"},
+				{"Origin": "null", "Sec-Fetch-Site": "same-origin"},
+			} {
+				req := httptest.NewRequest("POST", prefix+path, nil)
+				req.Host = "localhost:8080"
+				for key, value := range headers {
+					req.Header.Set(key, value)
+				}
+				rec := httptest.NewRecorder()
+				handler.ServeHTTP(rec, req)
+				if rec.Code != 403 || totalChanges(t, db) != before || provider.analysisCalls != 0 || provider.extractionCalls != 0 {
+					t.Fatalf("bodyless %s: status=%d; rejected request must not write or call providers", prefix+path, rec.Code)
+				}
+			}
+		}
+	}
+	allowed := func(path string, status int) {
+		t.Helper()
+		req := httptest.NewRequest("POST", path, nil)
+		req.Host = "localhost:8080"
+		req.Header.Set("Origin", "http://localhost:8080")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != status {
+			t.Fatalf("allowed %s: status=%d body=%s", path, rec.Code, rec.Body.String())
+		}
+	}
+	allowed(fmt.Sprintf("/knowledge-units/%d/invalid", unitID), 200)
+	if totalChanges(t, db) == before {
+		t.Fatal("allowed judgment control must actually write")
+	}
+	// Rejecting a restore must preserve an existing INVALID judgment too.
+	before = totalChanges(t, db)
+	req := httptest.NewRequest("POST", fmt.Sprintf("/api/knowledge-units/%d/invalid/restore", unitID), nil)
+	req.Host = "localhost:8080"
+	req.Header.Set("Origin", "https://attacker.example")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != 403 || totalChanges(t, db) != before {
+		t.Fatal("cross-site bodyless restore changed the existing judgment")
+	}
+	allowed(fmt.Sprintf("/api/knowledge-units/%d/invalid/restore", unitID), 200)
+	var judgments int
+	if err := db.QueryRow("SELECT COUNT(*) FROM unit_resolution_judgments").Scan(&judgments); err != nil || judgments != 2 {
+		t.Fatalf("expected only the two allowed human judgments: count=%d err=%v", judgments, err)
+	}
+	allowed("/entries/1/extractions", 201)
+	allowed("/api/entries/1/analysis", 201)
+	if provider.analysisCalls != 1 || provider.extractionCalls != 1 {
+		t.Fatalf("allowed provider controls must execute exactly once: %+v", provider)
 	}
 }
