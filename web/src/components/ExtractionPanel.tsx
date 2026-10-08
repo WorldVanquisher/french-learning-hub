@@ -40,8 +40,13 @@ export function ExtractionPanel({
   // The re-read after a request, reported separately from the request's outcome.
   const [refresh, setRefresh] = useState<RefreshState>({ kind: "idle" });
   const mounted = useRef(true);
-  useEffect(() => () => {
-    mounted.current = false;
+  // Set in setup, cleared in cleanup: StrictMode's development effect replay
+  // (setup, cleanup, setup) must leave it true, while a real unmount clears it.
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   useEffect(() => {
