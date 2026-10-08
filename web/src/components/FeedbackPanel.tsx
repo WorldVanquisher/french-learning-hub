@@ -87,8 +87,13 @@ export function FeedbackPanel({
   const [slots, setSlots] = useState<Record<number, Slot>>({});
   const inFlight = useRef(new Set<number>());
   const mounted = useRef(true);
-  useEffect(() => () => {
-    mounted.current = false;
+  // Set in setup, cleared in cleanup: StrictMode's development effect replay
+  // (setup, cleanup, setup) must leave it true, while a real unmount clears it.
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   const update = (id: number, change: (slot: Slot) => Slot) =>

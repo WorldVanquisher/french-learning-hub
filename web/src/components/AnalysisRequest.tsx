@@ -32,8 +32,13 @@ export function AnalysisRequest({
   const [pending, setPending] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const mounted = useRef(true);
-  useEffect(() => () => {
-    mounted.current = false;
+  // Set in setup, cleared in cleanup: StrictMode's development effect replay
+  // (setup, cleanup, setup) must leave it true, while a real unmount clears it.
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   async function submit() {

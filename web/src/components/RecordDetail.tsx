@@ -60,6 +60,10 @@ export function RecordDetail({
   // The selection at the moment an asynchronous feedback result arrives.
   const selectedRef = useRef<number | null>(null);
   selectedRef.current = selectedAnalysisId;
+  // The record shown now. A write callback created for an earlier record may
+  // still refresh that record's list row, but must not touch this one.
+  const entryRef = useRef(entryId);
+  entryRef.current = entryId;
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Move focus to the detail heading so keyboard and screen-reader users land on
@@ -143,11 +147,11 @@ export function RecordDetail({
       refresh={analysisRefresh}
       onStart={() => setAnalysisRefresh({ kind: "idle" })}
       onSettled={(_created, reread) => {
-        if (reread) {
-          setAnalysisRefresh({ kind: "refreshing" });
-          setReloadCount((n) => n + 1);
-          onRecordChanged?.(entryId);
-        }
+        if (!reread) return;
+        onRecordChanged?.(entryId);
+        if (entryRef.current !== entryId) return;
+        setAnalysisRefresh({ kind: "refreshing" });
+        setReloadCount((n) => n + 1);
       }}
     />
   );
@@ -274,9 +278,10 @@ export function RecordDetail({
         onRecorded={(analysisId) => {
           // Feedback can change this version's effective interpretation and, for
           // the latest version, the record's inventory state.
+          onRecordChanged?.(entryId);
+          if (entryRef.current !== entryId) return;
           setEffectiveRefresh({ analysisId, state: { kind: "refreshing" } });
           if (selectedRef.current === analysisId) setEffectiveReloadCount((n) => n + 1);
-          onRecordChanged?.(entryId);
         }}
       />
 
