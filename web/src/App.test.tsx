@@ -8,6 +8,32 @@ afterEach(() => {
 });
 
 describe("App annotation views", () => {
+  it("opens the read-only Learning Records view through the local view switch", async () => {
+    const calls: Array<{ method: string; path: string }> = [];
+    globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      const path = new URL(String(url), "http://localhost").pathname;
+      calls.push({ method, path });
+      const body = path === "/api/reviewable-units"
+        ? { reviewable_units: [] }
+        : path === "/api/learning-records"
+          ? { records: [], next_before_entry_id: null }
+          : { concepts: [] };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Learning Records" }));
+
+    expect(await screen.findByRole("heading", { name: "Learning Records" })).toBeInTheDocument();
+    expect(await screen.findByText(/No learning records exist yet/)).toBeInTheDocument();
+    expect(calls.some((call) => call.path === "/api/learning-records")).toBe(true);
+    expect(calls.every((call) => call.method === "GET")).toBe(true);
+  });
+
   it("opens the read-only inspector through the local view switch", async () => {
     const calls: Array<{ method: string; path: string }> = [];
     globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {

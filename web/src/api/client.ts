@@ -21,6 +21,13 @@ import type {
   AnnotationDatasetQualityReport,
   RetrievalComparisonReport,
 } from "../types/experiment";
+import type {
+  Analysis,
+  EffectiveAnalysis,
+  Entry,
+  LearningRecordPage,
+  LearningRecordState,
+} from "../types/learning";
 
 // ApiError carries the HTTP status so callers can react specifically — most
 // importantly to 409 Conflict, after which the UI must refresh the unit's current
@@ -82,6 +89,52 @@ async function request<T>(
 }
 
 // ---- read endpoints ----
+
+// LearningRecordQuery selects one page of the read-only learning inventory. The
+// state filter and cursor are passed through unchanged; the backend validates
+// them and owns the page-size bounds.
+export interface LearningRecordQuery {
+  state?: LearningRecordState;
+  limit?: number;
+  beforeEntryId?: number;
+}
+
+// listLearningRecords reads one page of GET /learning-records (newest first). The
+// returned cursor is passed back as beforeEntryId to read the next, older page.
+export async function listLearningRecords(
+  query: LearningRecordQuery = {},
+  fetchImpl: typeof fetch = fetch,
+): Promise<LearningRecordPage> {
+  const params = new URLSearchParams();
+  if (query.state) params.set("state", query.state);
+  if (query.limit !== undefined) params.set("limit", String(query.limit));
+  if (query.beforeEntryId !== undefined) params.set("before_entry_id", String(query.beforeEntryId));
+  const q = params.toString();
+  const data = await request<LearningRecordPage>(
+    "GET",
+    `/learning-records${q ? `?${q}` : ""}`,
+    undefined,
+    fetchImpl,
+  );
+  return { records: data.records ?? [], next_before_entry_id: data.next_before_entry_id ?? null };
+}
+
+// getEntry reads the learner-authored source record (original input and context).
+export function getEntry(entryId: number, fetchImpl: typeof fetch = fetch): Promise<Entry> {
+  return request<Entry>("GET", `/entries/${entryId}`, undefined, fetchImpl);
+}
+
+// listAnalyses reads every immutable analysis version for an entry, oldest first.
+export async function listAnalyses(entryId: number, fetchImpl: typeof fetch = fetch): Promise<Analysis[]> {
+  const data = await request<{ analyses: Analysis[] }>("GET", `/entries/${entryId}/analyses`, undefined, fetchImpl);
+  return data.analyses ?? [];
+}
+
+// getEffectiveAnalysis reads the backend-resolved interpretation of one analysis
+// (original values plus its latest feedback). The frontend never recomputes it.
+export function getEffectiveAnalysis(analysisId: number, fetchImpl: typeof fetch = fetch): Promise<EffectiveAnalysis> {
+  return request<EffectiveAnalysis>("GET", `/analyses/${analysisId}/effective`, undefined, fetchImpl);
+}
 
 // listReviewableUnits returns current-extraction units with no CURRENT SAME
 // membership that are not effectively INVALID. Optionally scoped to one entry.

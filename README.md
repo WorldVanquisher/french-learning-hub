@@ -16,8 +16,8 @@ machine interpretations are versioned metadata and never overwrite it.
 - Explicit extraction produces immutable `KnowledgeUnit` evidence; durable
   `KnowledgeConcept` identity and human annotation remain separate authorities.
 - Dataset quality, retrieval evaluation, and comparison reports are read-only,
-  and the three-view workbench keeps annotation actions separate from inspection
-  and experiment display.
+  and the four-view workbench keeps annotation actions separate from record
+  browsing, inspection, and experiment display.
 - OpenAI extraction/analysis and HTTP embeddings are optional, independently
   configured capabilities with no silent fallback.
 
@@ -79,8 +79,10 @@ retrieval metrics.
 - Evaluate exact-signature, weighted lexical cosine, corpus-aware BM25, and
   optional semantic embedding retrievers under one controlled experiment
   population, then compare their Recall@K and MRR.
-- Use the internal React workbench's write-capable **Concept Review**, read-only
-  **Annotation Inspector**, and read-only **Experiment Dashboard** views.
+- Use the internal React workbench's read-only **Learning Records** browser
+  (records, analysis versions, and effective interpretations), write-capable
+  **Concept Review**, read-only **Annotation Inspector**, and read-only
+  **Experiment Dashboard** views.
 
 ## Research and evaluation
 
@@ -204,7 +206,7 @@ internal/transport/http  HTTP handlers and routing
 internal/config       environment-based configuration
 migrations            embedded .sql migrations
 examples/captures     example learning_capture_v1 documents
-web                   internal annotation, inspection, and experiment dashboard workbench (React + Vite + TS)
+web                   internal record-browsing, annotation, inspection, and experiment dashboard workbench (React + Vite + TS)
 ```
 
 Layers are kept separate: HTTP handlers hold no database logic, and the

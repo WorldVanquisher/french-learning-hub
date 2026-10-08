@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { AnnotationInspector } from "./pages/AnnotationInspector";
 import { ExperimentDashboard } from "./pages/ExperimentDashboard";
+import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue } from "./pages/ReviewQueue";
 
-type View = "review" | "inspector" | "experiments";
+type View = "records" | "review" | "inspector" | "experiments";
 
 const viewCopy: Record<View, { title: string; subtitle: string }> = {
+  records: {
+    title: "Learning Records",
+    subtitle: "Read-only browsing of learner-authored records, their analysis versions, and backend-owned effective interpretations.",
+  },
   review: {
     title: "Concept Review",
     subtitle: "Experimental human annotation for KnowledgeUnit → KnowledgeConcept resolution. Every explicit decision is recorded as backend data.",
@@ -20,9 +25,9 @@ const viewCopy: Record<View, { title: string; subtitle: string }> = {
   },
 };
 
-// App keeps the three internal workbench views behind a local tab switch. The
-// Inspector and Experiment Dashboard remain separate from the write-capable
-// Concept Review workflow.
+// App keeps the internal workbench views behind a local tab switch. Learning
+// Records, the Inspector, and the Experiment Dashboard are read-only and remain
+// separate from the write-capable Concept Review workflow.
 export default function App() {
   const [view, setView] = useState<View>("review");
   const copy = viewCopy[view];
@@ -36,6 +41,13 @@ export default function App() {
         </div>
       </header>
       <nav className="view-tabs" aria-label="Workbench views">
+        <button
+          type="button"
+          aria-pressed={view === "records"}
+          onClick={() => setView("records")}
+        >
+          Learning Records
+        </button>
         <button
           type="button"
           aria-pressed={view === "review"}
@@ -58,7 +70,9 @@ export default function App() {
           Experiment Dashboard
         </button>
       </nav>
-      {view === "review" ? (
+      {view === "records" ? (
+        <RecordsBrowser />
+      ) : view === "review" ? (
         <ReviewQueue />
       ) : view === "inspector" ? (
         <AnnotationInspector />

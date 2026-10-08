@@ -586,3 +586,43 @@ details.raw pre {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Learning Records (read-only inventory browser) */
+.records-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.record-row {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.record-row h3 { margin: 0; font-size: 15px; }
+.record-input { margin: 8px 0 4px; font-size: 16px; }
+.records-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+}
+.record-state {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.record-state.accepted,
+.record-state.corrected { color: var(--same); }
+.record-state.unreviewed,
+.record-state.unanalyzed { color: var(--muted); }
+.record-state.rejected { color: var(--invalid); }
+.record-detail-heading { margin: 12px 0; }
+.version-list { display: flex; flex-wrap: wrap; gap: 8px; }
