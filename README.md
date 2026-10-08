@@ -84,7 +84,8 @@ retrieval metrics.
   population, then compare their Recall@K and MRR.
 - Use the internal React workbench's **Learning Records** view (capture import,
   records, analysis versions, effective interpretations, explicit human feedback
-  with its history, and explicit Analysis and Extraction requests), write-capable
+  with its history, explicit Analysis and Extraction requests, and extraction
+  history with explicit current-version selection), write-capable
   **Concept Review**, read-only **Annotation Inspector**, and read-only
   **Experiment Dashboard** views.
 

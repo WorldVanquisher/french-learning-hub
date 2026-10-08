@@ -202,10 +202,8 @@ interpretation or eligibility.
   (`GET /learning-records?before_entry_id=<id+1>&limit=1`). A row that no longer
   matches the active state filter says so instead of disappearing, and a row
   whose re-read failed is marked as possibly out of date.
-- The extraction panel shows the stored versions, the version the backend reports
-  as current, and its units with their admission state. Zero units is shown as a
-  valid result, distinct from "No extraction stored." It is re-read after every
-  extraction request.
+- The extraction panel lists every stored version and is re-read after every
+  write; see **Extraction history and current selection** below.
 - Error answers show the backend status and message, and claim only what the
   backend contract supports. Every error response means nothing was stored.
   Only extraction `503` (not enabled) is returned before any provider call. A
@@ -230,6 +228,44 @@ instead of reduced opacity, and keyboard focus shows a dark ring with a gap.
 The browser cannot tell which analyzer or
 extractor the server is configured with, so the explanations describe both the
 local default and the provider-backed case.
+
+## Extraction history and current selection (FLH-022)
+
+The extraction panel reads `GET /entries/{id}/extractions` and
+`GET /entries/{id}/current-extraction`.
+
+- **Viewed, current, latest.** A summary line shows the current version (as the
+  backend reports it), the latest stored version (highest number), and how many
+  versions exist. Version buttons are labelled "current" and/or "latest", and the
+  viewed one is pressed. The current version is viewed by default; a version the
+  reader picks stays viewed through the record's own re-reads, and another record
+  starts fresh.
+- **Browsing is read-only.** Viewing a version sends nothing. Each version shows
+  its units with admission state, or "Zero units." for an empty successful
+  result, plus its provenance (extractor, source analysis, feedback, time) and
+  whether it is current.
+- **Explicit selection.** For a viewed version that is not current, "Make vN the
+  current extraction…" explains the effect before anything is sent: its units
+  become the ones offered in Concept Review and counted as concept support;
+  other versions' units stay stored but give no support while it is current;
+  nothing is deleted or rewritten (units, SAME memberships, DISTINCT and
+  relation labels, INVALID judgments); no extraction is run. Confirming sends
+  `PUT /entries/{id}/current-extraction` with only `extraction_id`, once.
+- **Selection pins.** The backend keeps an explicitly selected version current,
+  even when a newer extraction is stored later, and the panel says so when the
+  current version is not the latest. The existing API has no way to return a
+  record to automatic latest selection.
+- **Backend state, not local state.** The `PUT` response only echoes the
+  request, so it is reported as "The server accepted vN …". The re-read then
+  either confirms it ("Confirmed by re-read …") or reports what the server
+  actually stores. A `422` (version missing or from another entry) and other
+  errors say the current extraction was not changed. No response is reported as
+  **Outcome unknown**, the version list is hidden until the re-read, and nothing
+  is resubmitted. An older re-read that finishes after a newer one is ignored.
+
+When the dev server runs on a port other than `:5173`, start the backend with
+that origin in `HTTP_TRUSTED_ORIGINS`; otherwise its browser boundary refuses
+the workbench's writes with `403`, which the panel reports as not changed.
 
 ## Human feedback (FLH-018)
 

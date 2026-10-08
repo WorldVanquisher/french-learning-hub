@@ -228,13 +228,13 @@ describe("Extraction panel", () => {
     handlers["GET /api/entries/5/current-extraction"] = { body: { entry_id: 5, current_extraction_id: 2 } };
     routeFetch(handlers);
     render(<RecordDetail entryId={5} onBack={() => {}} />);
-    const current = await screen.findByLabelText("Current extraction");
-    expect(current).toHaveTextContent("Current extraction v2");
+    const current = await screen.findByLabelText("Viewed extraction");
+    expect(current).toHaveTextContent("Viewing extraction v2 (current, latest stored)");
     expect(current).toHaveTextContent("from analysis #10");
     const units = within(current).getByRole("list", { name: "Extracted units" });
     expect(units).toHaveTextContent("vouloir au présent");
     expect(units).toHaveTextContent("needs_review (machine: low_confidence)");
-    expect(screen.getByText("1 other stored version.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Extraction summary")).toHaveTextContent("Current: v2 · Latest stored: v2 · 2 versions stored");
   });
 
   it("says when the current extraction produced zero units, and when none is stored", async () => {
@@ -297,7 +297,7 @@ describe("Extraction panel", () => {
 
     await banner("status", "Stored extraction v1 with 1 unit.");
     await banner("status", "Stored extractions re-read from the server.");
-    expect(await screen.findByLabelText("Current extraction")).toHaveTextContent("Vouloir se conjugue");
+    expect(await screen.findByLabelText("Viewed extraction")).toHaveTextContent("Vouloir se conjugue");
   });
 
   it("shows an unknown extraction outcome after a network failure without resubmitting", async () => {
@@ -471,7 +471,7 @@ describe("FLH-015 refresh after a mutation is reported separately", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reload extractions" }));
     await banner("status", "Stored extractions re-read from the server.");
     expect(screen.queryByText(/Could not re-read stored extractions/)).not.toBeInTheDocument();
-    expect(await screen.findByLabelText("Current extraction")).toHaveTextContent("Vouloir se conjugue");
+    expect(await screen.findByLabelText("Viewed extraction")).toHaveTextContent("Vouloir se conjugue");
   });
 
   it("keeps a confirmed analysis distinct from a failed re-read of its versions", async () => {

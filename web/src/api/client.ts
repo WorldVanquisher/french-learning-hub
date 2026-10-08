@@ -315,6 +315,24 @@ export function createFeedback(
   return request<Feedback>("POST", `/analyses/${analysisId}/feedback`, feedback, fetchImpl);
 }
 
+// setCurrentExtraction explicitly selects one stored extraction version as the
+// entry's current extraction (PUT /entries/{id}/current-extraction). The 200 body
+// only echoes the request; callers must re-read with getCurrentExtraction before
+// presenting the stored state. 422 means the version does not exist or belongs to
+// another entry.
+export function setCurrentExtraction(
+  entryId: number,
+  extractionId: number,
+  fetchImpl: typeof fetch = fetch,
+): Promise<CurrentExtraction> {
+  return request<CurrentExtraction>(
+    "PUT",
+    `/entries/${entryId}/current-extraction`,
+    { extraction_id: extractionId },
+    fetchImpl,
+  );
+}
+
 // getLearningRecord re-reads one inventory row through the existing cursor: the
 // inventory is ordered by entry_id descending and before_entry_id is exclusive,
 // so the first row before entryId + 1 is that entry. Returns null if absent.

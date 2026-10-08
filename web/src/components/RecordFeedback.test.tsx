@@ -285,13 +285,13 @@ describe("Historical analysis targets", () => {
     withStoredFeedback(handlers, v1);
     const calls = routeFetch(handlers);
     render(<RecordDetail entryId={7} onBack={() => {}} />);
-    expect(await screen.findByLabelText("Current extraction")).toHaveTextContent("Current extraction v1");
+    expect(await screen.findByLabelText("Viewed extraction")).toHaveTextContent("Viewing extraction v1 (current, latest stored)");
     await screen.findByText("No feedback yet.");
 
     decide("Reject");
     fireEvent.click(submitButton());
     await banner("status", "Effective interpretation re-read from the server.");
-    expect(screen.getByLabelText("Current extraction")).toHaveTextContent("Current extraction v1");
+    expect(screen.getByLabelText("Viewed extraction")).toHaveTextContent("Viewing extraction v1 (current, latest stored)");
     expect(calls.some((c) => c.method === "POST" && c.url.endsWith("/extractions"))).toBe(false);
     expect(screen.getByLabelText("Knowledge extraction")).toHaveTextContent("feedback never changes or regenerates them");
   });
