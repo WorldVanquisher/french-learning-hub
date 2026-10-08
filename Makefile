@@ -50,7 +50,7 @@ verify:
 	fi
 	go test ./...
 	go vet ./...
-	@verify_dir="$$(mktemp -d)"; \
+	@set -e; verify_dir="$$(mktemp -d)"; \
 	trap 'rm -rf "$$verify_dir"' EXIT; \
 	go build -o "$$verify_dir/server" ./cmd/server; \
 	go build -o "$$verify_dir/capture" ./cmd/capture
