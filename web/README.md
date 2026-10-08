@@ -102,12 +102,43 @@ search query belong to the unit being reviewed:
   one concept and then create a NEW CONCEPT from the edited identity. The
   selection is cleared so the concept just judged is not reused by accident.
 
-When the backend rejects a decision with `409 Conflict`, the banner shows the
-backend's own message (for example, an identity that already exists versus an
-existing membership) and the UI re-reads the unit's current membership before
-the reviewer tries again. If that re-read fails, the banner keeps the backend
-message and says the membership could not be refreshed, so the membership shown
-must not be treated as confirmed. Nothing is recorded by the rejected request.
+### Decision outcomes (FLH-027)
+
+Every Concept Review decision (SAME or REASSIGN SAME, NEW CONCEPT,
+BROADER/NARROWER/RELATED, DISTINCT, INVALID) is sent once and reported by what
+the server actually answered. The decision outcome and any re-read that follows
+are shown separately.
+
+- **Confirmed.** A resolving decision (SAME, NEW CONCEPT with SAME, INVALID)
+  removes that unit, by ID, from the in-memory queue. A non-resolving one
+  (DISTINCT, relations) keeps the unit, re-reads its membership and exact
+  matches, keeps the identity draft and search, and clears the selection.
+- **Rejected by the server** (any HTTP error, e.g. `409` or `422`): "The server
+  did not record …" with the backend's message. A `409` also re-reads the unit's
+  current membership; that re-read is reported on its own line ("… re-read from
+  the server" or "Could not re-read …").
+- **No response** (the request may never have arrived, or may have been stored
+  with its answer lost): **Outcome unknown**, never "could not be recorded", and
+  nothing is resent. The workbench then checks the authority or history the
+  decision would have changed:
+  - SAME / REASSIGN: the unit's current membership is the requested concept.
+  - NEW CONCEPT with SAME: the unit belongs to a concept whose identity matches
+    the draft (a different identity does not count).
+  - DISTINCT and relations: an event newer than the newest one read just before
+    sending exists (they append events, so older events never count).
+  - INVALID: the unit is INVALID.
+  When the check finds the decision, a resolving one removes the unit from the
+  queue with a note; otherwise decisions continue. When it does not, the
+  workbench says the decision is not visible yet, that the original request may
+  still be in progress on the server or may never have arrived, and keeps every
+  decision for that unit blocked. **Check again** repeats the check; **Allow
+  another decision for unit #N…** is an explicit confirmation that explains the
+  duplicate risk (DISTINCT and relations would be recorded twice).
+- While a decision is being sent, other decisions, previous/skip, and reload
+  wait. An unknown outcome stays with its unit: other units can be reviewed, and
+  a check that finishes later never changes the unit being shown.
+- DISTINCT and relation decisions first read the existing events; if that read
+  fails, nothing is sent and the reason is shown.
 
 ## Candidate sources and authority
 
