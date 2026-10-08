@@ -399,6 +399,73 @@ describe("RecordDetail states", () => {
   });
 });
 
+describe("RecordDetail historical interpretation retry", () => {
+  it("retries the failed historical version without selecting or requesting the latest", async () => {
+    let historicalAttempts = 0;
+    const calls = routeFetch({
+      "/api/entries/4": { body: entry(4) },
+      "/api/entries/4/analyses": { body: { analyses: [analysis(41, 4, 1), analysis(42, 4, 2)] } },
+      "/api/analyses/42/effective": { body: effective(42, 4, 2) },
+      "/api/analyses/41/effective": () => {
+        historicalAttempts += 1;
+        return historicalAttempts === 1
+          ? { status: 500, body: { error: "historical interpretation failed" } }
+          : { body: effective(41, 4, 1, { resolution: "accepted", feedback_id: 5 }) };
+      },
+    });
+
+    render(<RecordDetail entryId={4} onBack={() => {}} />);
+    await screen.findByText("analysis #42");
+    fireEvent.click(screen.getByRole("button", { name: "v1" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("historical interpretation failed");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByText("feedback #5")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "v1" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "v2 (latest)" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("heading", { name: "Analysis v1" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(calls.filter((c) => c.url === "/api/analyses/41/effective")).toHaveLength(2);
+    expect(calls.filter((c) => c.url === "/api/analyses/42/effective")).toHaveLength(1);
+  });
+
+  it("discards a pending historical retry when switching entries and selects the new latest version", async () => {
+    const slowRetry = deferred();
+    let historicalAttempts = 0;
+    const calls = routeFetch({
+      "/api/entries/4": { body: entry(4) },
+      "/api/entries/4/analyses": { body: { analyses: [analysis(41, 4, 1), analysis(42, 4, 2)] } },
+      "/api/analyses/42/effective": { body: effective(42, 4, 2) },
+      "/api/analyses/41/effective": () => {
+        historicalAttempts += 1;
+        return historicalAttempts === 1
+          ? { status: 500, body: { error: "historical interpretation failed" } }
+          : slowRetry.promise;
+      },
+      "/api/entries/6": { body: entry(6) },
+      "/api/entries/6/analyses": { body: { analyses: [analysis(61, 6, 1), analysis(62, 6, 2)] } },
+      "/api/analyses/62/effective": { body: effective(62, 6, 2, { feedback_id: 9 }) },
+    });
+
+    const { rerender } = render(<RecordDetail entryId={4} onBack={() => {}} />);
+    await screen.findByText("analysis #42");
+    fireEvent.click(screen.getByRole("button", { name: "v1" }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(calls.filter((c) => c.url === "/api/analyses/41/effective")).toHaveLength(2));
+
+    rerender(<RecordDetail entryId={6} onBack={() => {}} />);
+    await screen.findByText("feedback #9");
+    await act(async () => {
+      slowRetry.resolve({ body: effective(41, 4, 1, { feedback_id: 5 }) });
+    });
+    expect(screen.getByText("analysis #62")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "v2 (latest)" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByText("feedback #5")).not.toBeInTheDocument();
+    expect(calls.some((c) => c.url === "/api/analyses/61/effective")).toBe(false);
+  });
+});
+
 describe("RecordDetail stale responses without remounting", () => {
   it("discards an earlier entry's responses when the same detail switches entries", async () => {
     const slowEntry1 = deferred();
