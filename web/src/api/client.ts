@@ -85,8 +85,10 @@ async function request<T>(
   path: string,
   body?: unknown,
   fetchImpl: typeof fetch = fetch,
+  operationId?: string,
 ): Promise<T> {
   const init: RequestInit = { method, headers: {} };
+  if (operationId) (init.headers as Record<string, string>)["Idempotency-Key"] = operationId;
   if (body !== undefined) {
     (init.headers as Record<string, string>)["Content-Type"] = "application/json";
     init.body = body instanceof RawJsonBody ? body.text : JSON.stringify(body);
@@ -399,12 +401,14 @@ export function recordRelation(
   conceptId: number,
   relation: RelationKind,
   fetchImpl: typeof fetch = fetch,
+  operationId?: string,
 ): Promise<UnitConceptLink> {
   return request<UnitConceptLink>(
     "POST",
     `/knowledge-units/${unitId}/concept-links/relation`,
     { concept_id: conceptId, relation },
     fetchImpl,
+    operationId,
   );
 }
 
@@ -468,11 +472,25 @@ export function recordDistinction(
   unitId: number,
   conceptId: number,
   fetchImpl: typeof fetch = fetch,
+  operationId?: string,
 ): Promise<UnitDistinction> {
   return request<UnitDistinction>(
     "POST",
     `/knowledge-units/${unitId}/concept-distinctions`,
     { concept_id: conceptId },
     fetchImpl,
+    operationId,
   );
+}
+
+export type AnnotationOperationReceipt = {
+  schema_version: "annotation_operation_v1";
+  id: string;
+  state: "committed";
+  request: { action: "distinct" | "relation"; unit_id: number; concept_id: number; relation?: RelationKind };
+  status: 201;
+  result: UnitConceptLink | UnitDistinction;
+};
+export function getAnnotationOperation(id: string, fetchImpl: typeof fetch = fetch): Promise<AnnotationOperationReceipt> {
+  return request("GET", `/annotation-operations/${encodeURIComponent(id)}`, undefined, fetchImpl);
 }

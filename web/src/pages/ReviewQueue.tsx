@@ -34,6 +34,8 @@ import {
   type Decision,
 } from "./reviewOutcome";
 
+import { loadOperations, saveOperation, clearOperation, newOperation } from "./annotationOperation";
+
 type Notice = { kind: "success" | "error" | "info"; text: string } | null;
 
 // The latest decision outcome and the re-read that followed it, per unit.
@@ -97,6 +99,7 @@ export function ReviewQueue({
   reconciliationsRef.current = reconciliations;
   // Only the latest check per unit is applied.
   const checkRequest = useRef(new Map<number, number>());
+  const unitContextRequest = useRef(0);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -105,6 +108,18 @@ export function ReviewQueue({
     };
   }, []);
   const [notice, setNotice] = useState<Notice>(null);
+  const [storageFailure, setStorageFailure] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const saved = loadOperations();
+      const restored: Record<number, Reconciliation> = {};
+      for (const decision of saved) restored[decision.unitId] = {
+        decision, baseline: null, check: "not-found", text: "Restored unresolved operation. Check its receipt or explicitly retry the saved payload.", acknowledged: false,
+      };
+      setReconciliations(restored);
+      reconciliationsRef.current = restored;
+    } catch { setStorageFailure("Browser storage is unavailable or invalid. Unresolved identity cannot be recovered across reload; new keyed annotations are blocked."); }
+  }, []);
   const [catalog, setCatalog] = useState<Concept[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
 
@@ -179,11 +194,13 @@ export function ReviewQueue({
   // membership (the authority) and any exact-signature candidate concepts. It never
   // touches the reviewer's identity draft or search query.
   const readUnitAuthority = useCallback(async (unit: ReviewableUnit, preselectLoneMatch: boolean) => {
+    const request = ++unitContextRequest.current;
     try {
       const [mEnv, outcome] = await Promise.all([
         api.getCurrentMembership(unit.unit_id),
         api.resolveUnit(unit.unit_id),
       ]);
+      if (!mounted.current || currentUnitRef.current !== unit.unit_id || unitContextRequest.current !== request) return;
       setMembership(mEnv.current_membership);
       setCandidates(outcome.matches);
       // Pre-select a lone exact match to speed up the common SAME decision.
@@ -252,21 +269,24 @@ export function ReviewQueue({
   // kept (e.g. DISTINCT A, then NEW CONCEPT B from the edited identity); the
   // selection is cleared so the concept just judged is not re-targeted by accident.
   const rereadUnit = useCallback(
-    async (unit: ReviewableUnit, what: string) => {
+    async (unit: ReviewableUnit, what: string, effective = false) => {
       const id = unit.unit_id;
+      const request = checkRequest.current.get(id);
       setStatus(id, { refresh: { what, state: { kind: "refreshing" } } });
       try {
         const [env, outcome] = await Promise.all([api.getCurrentMembership(id), api.resolveUnit(id)]);
-        if (!mounted.current) return;
+        if (!mounted.current || checkRequest.current.get(id) !== request) return;
         if (currentUnitRef.current === id) {
           setMembership(env.current_membership);
           setCandidates(outcome.matches);
           setSelectedConceptId(null);
           setLoadedUnitContextId(id);
         }
+        if (effective) await api.getEffectiveAnnotation(id);
+        if (!mounted.current || checkRequest.current.get(id) !== request) return;
         setStatus(id, { refresh: { what, state: { kind: "refreshed" } } });
       } catch (e) {
-        if (mounted.current) setStatus(id, { refresh: { what, state: { kind: "failed", message: errorText(e) } } });
+        if (mounted.current && checkRequest.current.get(id) === request) setStatus(id, { refresh: { what, state: { kind: "failed", message: errorText(e) } } });
       }
     },
     [setStatus],
@@ -295,6 +315,12 @@ export function ReviewQueue({
           return;
         }
         updateReconciliation(unitId, { check: "found", text: evidence.text });
+        if (rec.decision.operationId) {
+          setStatus(unitId, { outcome: { kind: "succeeded", text: evidence.text } });
+          try { clearOperation(rec.decision.operationId); }
+          catch { setStorageFailure("The receipt is committed, but browser storage cleanup failed. Reload may show it again; receipt lookup remains safe."); }
+          if (stale()) return;
+        }
         const label = describeDecision(rec.decision);
         if (resolvesUnit(rec.decision)) {
           removeUnit(unitId);
@@ -304,13 +330,13 @@ export function ReviewQueue({
           });
         } else {
           const unit = queueRef.current.find((u) => u.unit_id === unitId);
-          if (unit) await rereadUnit(unit, `unit #${unitId}'s membership and exact matches`);
+          if (unit) await rereadUnit(unit, `unit #${unitId}'s membership and exact matches`, !!rec.decision.operationId);
         }
       } catch (e) {
         if (!stale()) updateReconciliation(unitId, { check: "failed", text: errorText(e) });
       }
     },
-    [removeUnit, rereadUnit, updateReconciliation],
+    [removeUnit, rereadUnit, updateReconciliation, setStatus],
   );
 
   const blockedFor = (unitId: number) => {
@@ -341,15 +367,36 @@ export function ReviewQueue({
   // act sends one explicit human decision once. A server answer is either a
   // confirmed success or a rejection; no answer is an unknown outcome, which is
   // reconciled against backend state and never resent automatically.
-  async function act(action: ActionKind) {
-    if (!current || writeInFlight.current || blockedFor(current.unit_id)) return;
+  async function act(action: ActionKind, retry?: Decision) {
+    if (!current || writeInFlight.current || (!retry && blockedFor(current.unit_id))) return;
     const unit = current;
     const unitId = unit.unit_id;
-    const decision = buildDecision(action, unit);
+    const draft = retry ?? buildDecision(action, unit);
+    if (!draft) return;
+    let decision: Decision;
+    if ((draft.kind === "distinct" || draft.kind === "relation") && storageFailure) return;
+    try {
+      decision = retry ?? newOperation(draft);
+    } catch {
+      setNotice({ kind: "error", text: "Could not generate an annotation operation key. Nothing was sent." });
+      return;
+    }
+    try {
+      saveOperation(decision);
+    } catch {
+      setStorageFailure("Browser storage failed. Nothing was sent; reload persistence cannot be guaranteed. Restore storage before submitting an annotation.");
+      return;
+    }
     if (!decision) return;
     const label = describeDecision(decision);
+    checkRequest.current.set(unitId, (checkRequest.current.get(unitId) ?? 0) + 1);
     writeInFlight.current = true;
     setPendingWrite({ unitId, label });
+    if (!retry) setReconciliations((all) => {
+      const next = { ...all };
+      delete next[unitId];
+      return next;
+    });
     setNotice(null);
     setStatus(unitId, { outcome: null, refresh: null });
     try {
@@ -364,21 +411,28 @@ export function ReviewQueue({
       }
       try {
         const text = await sendDecision(decision);
+        if (decision.operationId) {
+          try { clearOperation(decision.operationId); }
+          catch { setStorageFailure("Request committed, but browser storage cleanup failed. Reload may show it again; check the receipt."); }
+          updateReconciliation(unitId, { check: "found", text: "This request committed. Current authority is refreshed separately." });
+        }
         if (!mounted.current) return;
         if (resolvesUnit(decision)) {
           removeUnit(unitId);
           setNotice({ kind: "success", text: `Unit #${unitId}: ${text}` });
         } else {
           setStatus(unitId, { outcome: { kind: "succeeded", text } });
-          await rereadUnit(unit, `unit #${unitId}'s membership and exact matches`);
+          await rereadUnit(unit, `unit #${unitId}'s membership and exact matches`, !!decision.operationId);
         }
       } catch (e) {
         if (!mounted.current) return;
-        if (e instanceof NetworkError || !(e instanceof ApiError)) {
+        if (e instanceof NetworkError || !(e instanceof ApiError) || (decision.operationId && e.status >= 500)) {
           setStatus(unitId, {
             outcome: {
               kind: "uncertain",
-              text: `No response was received for ${label} on unit #${unitId}, so it may or may not have been recorded. It was not sent again.`,
+              text: decision.operationId
+                ? `No committed result was confirmed for ${label} on unit #${unitId}, so its outcome is unknown. It was not sent again.`
+                : `No response was received for ${label} on unit #${unitId}, so it may or may not have been recorded. It was not sent again.`,
             },
           });
           setReconciliations((all) => ({
@@ -391,9 +445,15 @@ export function ReviewQueue({
           };
           void runCheck(unitId);
         } else {
+          if (decision.operationId && !retry) {
+            try { clearOperation(decision.operationId); } catch { setStorageFailure("Browser storage cleanup failed; saved operation remains available for receipt checks."); }
+          }
           setStatus(unitId, {
             outcome: { kind: "rejected", text: `The server did not record ${label} ${errorText(e)}.` },
           });
+          if (retry?.operationId) {
+            updateReconciliation(unitId, { check: "not-found", text: "Retry rejected; this does not cancel the original unresolved request. Check its receipt again." });
+          }
           // A conflict means authority may have changed underneath; re-read it.
           if (e.isConflict) await rereadUnit(unit, `unit #${unitId}'s current membership`);
         }
@@ -600,6 +660,7 @@ export function ReviewQueue({
         </div>
       </div>
 
+      {storageFailure ? <p role="alert">{storageFailure}</p> : null}
       <ResolutionActions
         membership={membership}
         selectedConceptId={selectedConceptId}
@@ -626,6 +687,8 @@ export function ReviewQueue({
           rec={reconciliations[current.unit_id]}
           onCheck={() => void runCheck(current.unit_id)}
           onAllow={async () => updateReconciliation(current.unit_id, { acknowledged: true })}
+          onRetry={() => void act("distinct", reconciliations[current.unit_id].decision)}
+          busy={pendingWrite !== null}
         />
       ) : null}
 
@@ -668,11 +731,15 @@ function ReconciliationPanel({
   rec,
   onCheck,
   onAllow,
+  onRetry,
+  busy,
 }: {
   unitId: number;
   rec: Reconciliation;
   onCheck: () => void;
   onAllow: () => Promise<void>;
+  onRetry: () => void;
+  busy: boolean;
 }) {
   const label = describeDecision(rec.decision);
   if (rec.check === "checking") {
@@ -689,6 +756,15 @@ function ReconciliationPanel({
       </p>
     );
   }
+  if (rec.decision.operationId) return (
+    <section className="panel reconciliation" aria-label="Unknown decision outcome">
+      <h2>Outcome of {label} still unknown</h2>
+      <p>{rec.text}</p>
+      <p>Saved operation {rec.decision.operationId}. Editing the selection does not change this saved payload.</p>
+      <button disabled={busy} onClick={onCheck}>Check receipt</button>
+      <button disabled={busy} onClick={onRetry}>Retry saved operation</button>
+    </section>
+  );
   return (
     <section className="panel reconciliation" aria-label="Unknown decision outcome">
       <h2>Outcome of {label} still unknown</h2>

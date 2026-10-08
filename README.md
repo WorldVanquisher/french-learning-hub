@@ -88,9 +88,8 @@ retrieval metrics.
   history with automatic or pinned current-version selection, and links from
   extracted units to record-scoped Concept Review or unit inspection),
   write-capable
-  **Concept Review** (each decision is sent once; when no response arrives, the
-  outcome is reported as unknown and checked against backend state instead of
-  being resent), read-only **Annotation Inspector**, and read-only
+  **Concept Review** (no automatic write retries; unknown DISTINCT/relation
+  outcomes survive reload and offer receipt lookup or explicit same-key retry), read-only **Annotation Inspector**, and read-only
   **Experiment Dashboard** views.
 
 ## Research and evaluation
@@ -1513,3 +1512,28 @@ make fmt           # gofmt -w .
 make build         # compile the server to bin/server
 make build-capture # compile the capture CLI to bin/capture
 ```
+
+## Annotation request recovery (FLH-029)
+
+DISTINCT and BROADER/NARROWER/RELATED POSTs accept an optional UUID
+`Idempotency-Key`. The key is global to the database across both endpoints and
+root/`/api` aliases. Equivalent action, unit, concept and relation replay the
+original HTTP 201 event; changed payload/action returns 409 without writes.
+Unkeyed requests retain append-per-submission behavior.
+
+`GET /annotation-operations/{uuid}` returns a committed historical receipt;
+404 means unknown, never canceled or safe to duplicate with a new key. Receipts
+and events commit atomically and persist across restart (migration 009).
+Receipt attribution is separate from current effective annotation authority.
+
+Concept Review saves only the versioned key/action/target IDs/relation before
+sending. Reload restores unresolved operations without writing. **Retry saved
+operation** sends that exact payload/key once; editing selection does not alter
+it. Unknown keyed operations block new decisions for that unit until confirmed.
+A subsequent deliberate decision gets a fresh key. Failed browser storage blocks
+new keyed submissions with an honest notice; clearing storage or changing browser
+origin loses recovery identity. After commit/receipt confirmation the browser
+refreshes backend authority separately. Multi-tab locking and recovery controls
+for units no longer in the review queue are not provided.
+
+Full contract: [FLH-029](docs/plans/FLH-029-annotation-idempotency.md).

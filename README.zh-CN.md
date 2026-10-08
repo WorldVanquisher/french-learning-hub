@@ -788,3 +788,24 @@ npm run build
 go build -o /tmp/french-learning-hub-server ./cmd/server
 go build -o /tmp/french-learning-hub-capture ./cmd/capture
 ```
+
+## 标注请求恢复（FLH-029）
+
+DISTINCT 和 BROADER/NARROWER/RELATED 的 POST 接口支持可选 UUID
+`Idempotency-Key`。键在整个数据库内共享，跨两个接口、Unit、Concept 和
+根路径／`/api` 别名。相同动作、Unit、Concept 与 relation 重放原始 HTTP 201
+事件；复用键但改变有效载荷或动作返回 409，不追加记录。不带键的请求保持
+每次成功提交追加一条事件的行为。
+
+`GET /annotation-operations/{uuid}` 返回已提交的历史回执；404 只表示未知，
+不表示已取消，也不能据此换新键重复提交。迁移 009 将回执与标注事件置于同一
+SQLite 事务，重启后仍可查询。历史回执与当前有效标注权威是两个独立概念。
+
+Concept Review 在发送前仅保存带版本号的键、动作、目标 ID 与 relation。
+刷新页面后恢复未解决操作，不自动重试写入。“Retry saved operation”明确
+重试原始键与原始载荷；编辑当前选择不会改变它。确认前阻止该 Unit 的新决定，
+其他 Unit 可独立使用。确认后的新决定生成新键；随后单独刷新后端当前权威。
+浏览器存储失败时如实提示并阻止新带键提交。清除存储或更换页面源会丢失恢复
+身份；不提供跨标签页锁，也不提供已离开审核队列的 Unit 的恢复控件。
+
+完整协议见 [FLH-029](docs/plans/FLH-029-annotation-idempotency.md)。

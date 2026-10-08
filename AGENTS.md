@@ -344,6 +344,19 @@ FLH-023 extraction selection mode:
 - Derived support/reviewability follow existing selection authority; the browser
   boundary covers DELETE on root and workbench-prefixed routes.
 
+FLH-029 annotation idempotency:
+
+- Optional database-global UUID `Idempotency-Key` applies only to DISTINCT and
+  BROADER/NARROWER/RELATED POSTs. Migration 009 stores committed receipts atomically
+  with events. Equivalent replay returns the original historical result; conflicting
+  payload/action returns 409. Unkeyed behavior is preserved.
+- `GET /annotation-operations/{id}` returns committed attribution, not current
+  authority. 404 is unknown, never canceled or safe to duplicate with a new key.
+- Concept Review persists minimal versioned unresolved identity before sending,
+  offers explicit same-key/payload retry, and refreshes current authority separately.
+  No automatic write retries. Browser storage failure must be reported honestly.
+- Exact contract: `docs/plans/FLH-029-annotation-idempotency.md`.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

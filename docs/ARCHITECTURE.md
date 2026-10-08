@@ -1710,3 +1710,22 @@ return an error. External database tools must register the collation to execute
 these application queries; ordinary database reads and stored schema are unchanged.
 Timestamp parsing during sorting may cost more than binary text sorting, and
 existing binary timestamp indexes cannot supply the custom ordering directly.
+
+## FLH-029 annotation operations
+
+Optional database-global UUID request identities cover DISTINCT and non-SAME
+relation POSTs only. Migration 009 adds committed `annotation_operations`
+receipts containing canonical semantic payload and the original domain result.
+The application supplies the existing human evidence; SQLite transaction-local
+annotation helpers preserve existing semantics. A writer lock precedes receipt
+lookup; event and receipt commit together. Replay returns the historical result
+without reevaluating current state. Conflicting payloads return 409. Receipt
+lookup is transport-only wiring through existing browser protection and exposes
+no new annotation authority. Unkeyed paths retain their existing contracts.
+
+The review UI persists minimal versioned unresolved request identity before
+sending and offers explicit saved-key retries and committed receipt attribution.
+Current effective annotation and membership are refreshed separately. Storage
+failure is visible and blocks new keyed writes. No automatic retry, cancellation
+fence, provider call or other mutation is introduced. See the exact
+[contract and limits](plans/FLH-029-annotation-idempotency.md).

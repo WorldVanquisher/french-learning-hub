@@ -124,3 +124,21 @@ TLS are outside this investigation.
 
 The backend gap and minimal proposed receipt/idempotency contract are reported
 in `docs/validation/FLH-028-review-response-loss.md`; no proposal is implemented.
+
+## FLH-029 integrated keyed checks
+
+The original 104 unkeyed cases remain. An additional 24 cases cover the four
+in-scope annotations, both aliases and all three fault modes. UUID keys are
+forwarded through the real proxy. Checks assert committed receipt attribution,
+unknown lookup before delayed forwarding, same-key retry winning before delayed
+original forwarding, eight concurrent replays, cross-action/target conflicts,
+browser-blocked requests with unchanged database, fresh-key later decisions,
+original historical results and unchanged current projection rules. Commit/drop
+cases replace the owned service process and verify durable receipt lookup.
+All-table snapshots and provider counters assert zero extra writes/calls.
+Go storage tests separately cover first-arrival concurrency and forced receipt
+INSERT rollback; the proxy matrix uses concurrent replays after initial commit.
+
+Total successful cases: 128. These remain backend/proxy evidence, not browser
+acceptance. The FLH-029 contract is now implemented; the historical FLH-028 report
+continues to document the earlier unkeyed investigation.

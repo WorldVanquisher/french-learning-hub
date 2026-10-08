@@ -439,6 +439,7 @@ describe("ReviewQueue unit-scoped editing state", () => {
 
   function unitContextHandlers(unitId: number, matches: unknown[] = []) {
     return {
+      [`GET /api/knowledge-units/${unitId}/effective-annotation`]: {unit:{id:unitId}, snapshot:{}},
       [`GET /api/knowledge-units/${unitId}/concept-membership`]: { unit_id: unitId, current_membership: null },
       [`GET /api/knowledge-units/${unitId}/concept-resolution`]: {
         unit_id: unitId,

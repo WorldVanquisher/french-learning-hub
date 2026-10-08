@@ -8,7 +8,7 @@ import { checkDecision } from "./reviewOutcome";
 // stateful fixture backend lets a write either never arrive ("not sent"), or be
 // committed and then lose its response ("lost response"), the case browser
 // acceptance reproduced.
-afterEach(cleanup);
+afterEach(() => { cleanup(); window.localStorage.clear(); vi.restoreAllMocks(); });
 
 type Reply = { status?: number; body: unknown } | "network-error";
 type Handler = (body: unknown) => Reply | Promise<Reply>;
@@ -67,6 +67,7 @@ function backend() {
   let nextId = 100;
   const writeMode = new Map<string, Mode>();
   const calls: Array<{ method: string; path: string }> = [];
+  const receipts = new Map<string, unknown>();
   const reads = new Map<string, Mode>();
 
   // commit applies a write to the fixture state, as the real backend would.
@@ -149,6 +150,7 @@ function backend() {
       matches: id === 5 ? [concepts[0]] : [],
     }));
     handlers[`GET /api/knowledge-units/${id}/concept-distinctions`] = read(`distinctions${id}`, () => ({ unit_id: id, distinctions: distinctions.filter((d) => d.unit_id === id) }));
+    handlers[`GET /api/knowledge-units/${id}/effective-annotation`] = async () => ({body:{unit_id:id, effective_annotation:{}}});
     handlers[`GET /api/knowledge-units/${id}/invalid`] = read(`invalid${id}`, () => ({ unit_id: id, invalid: invalid.has(id), history: invalid.has(id) ? [{ id: 99, judgment: "invalid" }] : [] }));
     for (const suffix of ["concept-links/same", "concept-distinctions", "concept-links/relation", "invalid"]) {
       handlers[`POST /api/knowledge-units/${id}/${suffix}`] = write(`POST /api/knowledge-units/${id}/${suffix}`);
@@ -167,7 +169,18 @@ function backend() {
     if (!handler && method === "GET" && byId && conceptById(Number(byId[1]))) {
       handler = async () => ({ body: { concept: conceptById(Number(byId[1])), links: [] } });
     }
+    const operationId = new Headers(init?.headers).get("Idempotency-Key");
+    const lookup = path.match(/^\/api\/annotation-operations\/(.+)$/);
+    if (lookup) handler = read("receipt", () => receipts.get(lookup[1]));
+    if (lookup && !receipts.has(lookup[1])) handler = async () => ({status:404, body:{error:"unknown"}});
+    if (operationId && receipts.has(operationId)) handler = async () => ({status:201, body:(receipts.get(operationId) as {result:unknown}).result});
+    const beforeEvents = nextId;
     const reply = handler ? await handler(body) : { status: 404, body: { error: "not found" } };
+    if (operationId && nextId > beforeEvents) {
+      const event = [...distinctions, ...links].find((e) => e.id === beforeEvents)!;
+      receipts.set(operationId, {schema_version:"annotation_operation_v1", id:operationId, state:"committed", status:201,
+        request:{action:path.endsWith("concept-distinctions") ? "distinct" : "relation", unit_id:event.unit_id, concept_id:event.concept_id, ...(body.relation ? {relation:body.relation} : {})}, result:event});
+    }
     if (reply === "network-error") throw new TypeError("Failed to fetch");
     return new Response(JSON.stringify(reply.body), { status: reply.status ?? 200, headers: { "Content-Type": "application/json" } });
   }) as unknown as typeof fetch;
@@ -254,13 +267,13 @@ describe("Missing response: never reported as failure", () => {
     expect(b.posts(`/api/knowledge-units/5${suffix}`)).toBe(1);
   });
 
-  it("committed DISTINCT with a lost response: only an event newer than the baseline counts", async () => {
+  it("committed DISTINCT with a lost response: receipt attributes this request", async () => {
     const b = backend();
     b.writeMode.set("POST /api/knowledge-units/5/concept-distinctions", "lost");
     await renderQueue();
     fireEvent.click(decision("DISTINCT"));
-    // Event #3 existed before sending; the stored new event must be newer.
-    await banner("status", /Found on the server: A new DISTINCT event #\d+ is stored\. DISTINCT from concept #42 is stored\./);
+    // The older event is not this request; the keyed receipt attributes the new event.
+    await banner("status", /Found on the server: This request committed event #\d+/);
     // A DISTINCT does not change membership; the unit stays and decisions are possible again.
     expect(screen.getByText("Énoncé 5")).toBeInTheDocument();
     await waitFor(() => expect(decision("NEW CONCEPT")).toBeEnabled());
@@ -273,16 +286,16 @@ describe("Missing response: never reported as failure", () => {
     b.writeMode.set("POST /api/knowledge-units/5/concept-distinctions", "not-sent");
     await renderQueue();
     fireEvent.click(decision("DISTINCT"));
-    await waitFor(() => expect(panel()).toHaveTextContent("No DISTINCT event newer than the one before sending is stored."));
+    await waitFor(() => expect(panel()).toHaveTextContent("Receipt unknown."));
     expect(decision("NEW CONCEPT")).toBeDisabled();
   });
 
-  it("committed relation with a lost response is found in the concept's event history", async () => {
+  it("committed relation with a lost response is attributed by receipt", async () => {
     const b = backend();
     b.writeMode.set("POST /api/knowledge-units/5/concept-links/relation", "lost");
     await renderQueue();
     fireEvent.click(decision("BROADER"));
-    await banner("status", /Found on the server: A new BROADER event #\d+ for this unit is stored\./);
+    await banner("status", /Found on the server: This request committed event #\d+/);
     expect(b.links).toHaveLength(1);
     expect(b.posts("/concept-links/relation")).toBe(1);
   });
@@ -293,13 +306,13 @@ describe("Informed recovery", () => {
     const b = backend();
     b.writeMode.set("POST /api/knowledge-units/5/concept-distinctions", "lost");
     await renderQueue();
-    // The baseline read happens first; fail only the check's read that follows the POST.
+    // Fail the receipt lookup following the lost POST.
     const original = globalThis.fetch;
     let failNextDistinctionRead = false;
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input), "http://localhost").pathname;
       if ((init?.method ?? "GET") === "POST" && path.endsWith("/concept-distinctions")) failNextDistinctionRead = true;
-      else if (failNextDistinctionRead && path.endsWith("/concept-distinctions")) {
+      else if (failNextDistinctionRead && path.includes("/annotation-operations/")) {
         failNextDistinctionRead = false;
         return new Response(JSON.stringify({ error: "could not fetch distinctions" }), { status: 500, headers: { "Content-Type": "application/json" } });
       }
@@ -307,29 +320,66 @@ describe("Informed recovery", () => {
     }) as typeof fetch;
 
     fireEvent.click(decision("DISTINCT"));
-    const failed = await banner("alert", "Could not check the server for DISTINCT from concept #42: (500) could not fetch distinctions");
+    const failed = await screen.findByText(/could not fetch distinctions/);
     expect(failed).toBeInTheDocument();
     expect(decision("NEW CONCEPT")).toBeDisabled();
 
-    fireEvent.click(within(panel() as HTMLElement).getByRole("button", { name: "Check again" }));
-    await banner("status", /Found on the server: A new DISTINCT event #\d+ is stored\./);
+    fireEvent.click(within(panel() as HTMLElement).getByRole("button", { name: "Check receipt" }));
+    await banner("status", /Found on the server: This request committed event #\d+/);
     expect(b.posts("/concept-distinctions")).toBe(1);
   });
 
-  it("allowing another decision is explicit, explains the duplicate risk, and resends nothing", async () => {
+  it("explicit retry keeps the saved operation, and a new decision uses a fresh key", async () => {
     const b = backend();
     b.writeMode.set("POST /api/knowledge-units/5/concept-distinctions", "not-sent");
-    await renderQueue();
+    const first = await renderQueue();
     fireEvent.click(decision("DISTINCT"));
-    await waitFor(() => expect(panel()).toHaveTextContent("Not visible on the server yet"));
-
-    fireEvent.click(screen.getByRole("button", { name: "Allow another decision for unit #5…" }));
-    const group = screen.getByRole("group", { name: "Allow another decision for unit #5" });
-    expect(group).toHaveTextContent("appends a new event, so sending it again after the first was stored records it twice");
-    fireEvent.click(within(group).getByRole("button", { name: "Allow another decision" }));
-
+    await waitFor(() => expect(panel()).toHaveTextContent("Receipt unknown"));
+    const saved = window.localStorage.getItem("flh.annotation-operations.v1");
+    first.unmount();
+    render(<StrictMode><ReviewQueue /></StrictMode>);
+    await screen.findByText("Énoncé 5");
+    expect(panel()).toHaveTextContent("Restored unresolved operation");
+    expect(decision("NEW CONCEPT")).toBeDisabled();
+    expect(b.posts("/concept-distinctions")).toBe(1);
+    b.writeMode.delete("POST /api/knowledge-units/5/concept-distinctions");
+    await waitFor(() => expect(screen.getByRole("button", {name:"selected"})).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", {name:"selected"}));
+    fireEvent.click(screen.getByRole("button", {name:"Retry saved operation"}));
+    await banner("status", "Recorded DISTINCT");
+    expect(b.posts("/concept-distinctions")).toBe(2);
+    expect(b.distinctions).toHaveLength(2);
+    const posts = vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === "POST");
+    const keys = posts.map(([,init]) => new Headers(init?.headers).get("Idempotency-Key"));
+    expect(keys[0]).toBe(keys[1]);
+    expect(posts[0][1]?.body).toBe(posts[1][1]?.body);
+    expect(saved).toContain(keys[0]!);
     await waitFor(() => expect(decision("NEW CONCEPT")).toBeEnabled());
-    expect(panel()).toHaveTextContent("You allowed another decision for unit #5 although the outcome of DISTINCT from concept #42 is still unknown.");
+    fireEvent.click(screen.getByRole("button", {name:"select this concept"}));
+    fireEvent.click(decision("DISTINCT"));
+    await waitFor(() => expect(b.posts("/concept-distinctions")).toBe(3));
+    const last = vi.mocked(fetch).mock.calls.filter(([,init]) => init?.method === "POST").at(-1)!;
+    expect(new Headers(last[1]?.headers).get("Idempotency-Key")).not.toBe(keys[0]);
+  });
+
+  it("storage failure prevents a new keyed POST and says reload recovery is unavailable", async () => {
+    const b = backend();
+    await renderQueue();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {throw new Error("quota");});
+    fireEvent.click(decision("DISTINCT"));
+    await screen.findByText(/Browser storage failed. Nothing was sent/);
+    expect(b.posts("/concept-distinctions")).toBe(0);
+  });
+
+  it("committed receipt remains attributed even when current-authority refresh fails", async () => {
+    const b = backend();
+    b.writeMode.set("POST /api/knowledge-units/5/concept-distinctions", "lost");
+    await renderQueue();
+    b.reads.set("membership5", {reject:500,error:"refresh unavailable"});
+    fireEvent.click(decision("DISTINCT"));
+    await banner("status", /This request committed event/);
+    await banner("alert", /refresh unavailable/);
+    expect(screen.queryByText("Outcome unknown.")).not.toBeInTheDocument();
     expect(b.posts("/concept-distinctions")).toBe(1);
   });
 
@@ -360,7 +410,7 @@ describe("Slow writes, unit switches, and unmount", () => {
     await act(async () => {
       slow.resolve({ status: 201, body: { id: 7 } });
     });
-    await banner("status", "Recorded DISTINCT: unit is NOT concept #42.");
+    await banner("status", "Recorded DISTINCT event");
     expect(screen.getByRole("button", { name: "skip →" })).toBeEnabled();
     expect(b.posts("/concept-distinctions")).toBe(1);
   });
@@ -370,14 +420,14 @@ describe("Slow writes, unit switches, and unmount", () => {
     b.writeMode.set("POST /api/knowledge-units/5/concept-distinctions", "lost");
     const slowCheck = deferred();
     await renderQueue();
-    // Delay the check's read (the second distinctions read after the baseline).
+    // Delay this request's receipt lookup.
     let distinctionReads = 0;
     const original = globalThis.fetch;
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input), "http://localhost").pathname;
-      if ((init?.method ?? "GET") === "GET" && path === "/api/knowledge-units/5/concept-distinctions") {
+      if ((init?.method ?? "GET") === "GET" && path.includes("/annotation-operations/")) {
         distinctionReads += 1;
-        if (distinctionReads === 2) await slowCheck.promise;
+        if (distinctionReads === 1) await slowCheck.promise;
       }
       return original(input, init);
     }) as typeof fetch;
@@ -400,7 +450,7 @@ describe("Slow writes, unit switches, and unmount", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "← previous" }));
     await screen.findByText("Énoncé 5");
-    await banner("status", /Found on the server: A new DISTINCT event #\d+ is stored\./);
+    await banner("status", /Found on the server: This request committed event #\d+/);
     expect(b.posts("/concept-distinctions")).toBe(1);
   });
 
@@ -447,7 +497,7 @@ describe("Evidence must match the decision, not just any change", () => {
     b.writeMode.set("POST /api/knowledge-units/5/concept-links/relation", "not-sent");
     await renderQueue();
     fireEvent.click(decision("BROADER"));
-    await waitFor(() => expect(panel()).toHaveTextContent("No BROADER event newer than the one before sending is stored."));
+    await waitFor(() => expect(panel()).toHaveTextContent("Receipt unknown."));
     expect(decision("NEW CONCEPT")).toBeDisabled();
   });
 
