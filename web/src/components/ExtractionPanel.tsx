@@ -17,14 +17,24 @@ type Load<T> =
 
 type ExtractionState = { extractions: Extraction[]; current: CurrentExtraction };
 
+// The selection the reader asked the server to make, kept until the re-read
+// shows what the server actually stores.
+type Requested = { extractionId: number; version: number };
+
 function describeError(error: unknown): string {
   if (error instanceof ApiError) return `(${error.status}) ${error.message}`;
   return error instanceof Error ? error.message : String(error);
 }
 
-// ExtractionPanel shows the backend's stored extraction versions for one record,
-// the current one's units, and an explicit request for a new extraction. The
-// backend decides eligibility, runs the provider, and chooses the current version.
+const latestOf = (extractions: Extraction[]) =>
+  extractions.reduce<Extraction | undefined>((a, b) => (a === undefined || b.version > a.version ? b : a), undefined);
+
+// ExtractionPanel shows every stored extraction version of one record, keeps the
+// version being viewed separate from the backend's current version and from the
+// latest stored version, and offers two explicit writes: request a new
+// extraction, and select a stored version as current. Viewing is read-only. The
+// backend decides eligibility, runs the provider, and owns which version is
+// current; the panel re-reads it after every write instead of assuming.
 export function ExtractionPanel({
   entryId,
   latestVersion = null,
@@ -37,8 +47,18 @@ export function ExtractionPanel({
   const [reloadCount, setReloadCount] = useState(0);
   const [pending, setPending] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
-  // The re-read after a request, reported separately from the request's outcome.
+  // The version being viewed; null follows the current version. A reader's pick
+  // survives this record's re-reads.
+  const [viewedId, setViewedId] = useState<number | null>(null);
+  const [selectPending, setSelectPending] = useState(false);
+  const [selectOutcome, setSelectOutcome] = useState<Outcome | null>(null);
+  const [requested, setRequested] = useState<Requested | null>(null);
+  // The re-read after a write, reported separately from the write's outcome.
   const [refresh, setRefresh] = useState<RefreshState>({ kind: "idle" });
+  // Set when an action's outcome is unknown; cleared only by a later successful
+  // re-read. Kept per action so one action's refresh never unblocks or blocks the other.
+  const [extractionNeedsCheck, setExtractionNeedsCheck] = useState(false);
+  const [selectionNeedsCheck, setSelectionNeedsCheck] = useState(false);
   const mounted = useRef(true);
   // Set in setup, cleared in cleanup: StrictMode's development effect replay
   // (setup, cleanup, setup) must leave it true, while a real unmount clears it.
@@ -52,14 +72,18 @@ export function ExtractionPanel({
   useEffect(() => {
     let active = true;
     setState({ status: "loading" });
-    // Any reload (after a request, or the reader's own "Reload extractions") also
-    // settles an outstanding post-request refresh.
+    // Any reload (after a write, or the reader's own "Reload extractions") also
+    // settles an outstanding post-write refresh.
     setRefresh((r) => (r.kind === "idle" ? r : { kind: "refreshing" }));
     Promise.all([api.listExtractions(entryId), api.getCurrentExtraction(entryId)])
       .then(([extractions, current]) => {
         if (!active) return;
         setState({ status: "ready", data: { extractions, current } });
         setRefresh((r) => (r.kind === "idle" ? r : { kind: "refreshed" }));
+        // Only the latest read gets here (the active guard), so it reflects any
+        // write whose outcome was unknown.
+        setExtractionNeedsCheck(false);
+        setSelectionNeedsCheck(false);
       })
       .catch((error: unknown) => {
         if (!active) return;
@@ -75,6 +99,7 @@ export function ExtractionPanel({
   async function submit() {
     setPending(true);
     setOutcome(null);
+    setRequested(null);
     setRefresh({ kind: "idle" });
     let next: Outcome;
     try {
@@ -90,17 +115,49 @@ export function ExtractionPanel({
     if (!mounted.current) return;
     setOutcome(next);
     setPending(false);
+    if (next.kind === "uncertain") setExtractionNeedsCheck(true);
     // Always re-read the stored extractions; RefreshBanner reports whether that
     // GET succeeded, so the outcome above never claims it.
     setRefresh({ kind: "refreshing" });
     setReloadCount((n) => n + 1);
   }
 
-  // After an unknown outcome a new request could duplicate a stored (and possibly
-  // billed) extraction, so it stays unavailable until stored state was re-read.
-  const disabledReason =
-    outcome?.kind === "uncertain" && refresh.kind !== "refreshed"
+  async function selectCurrent(target: Extraction) {
+    const wanted: Requested = { extractionId: target.id, version: target.version };
+    setSelectPending(true);
+    setSelectOutcome(null);
+    setRequested(null);
+    setRefresh({ kind: "idle" });
+    let next: Outcome;
+    let confirmable = false;
+    try {
+      // The 200 body only echoes the request, so it is not read as stored state.
+      await api.setCurrentExtraction(entryId, target.id);
+      confirmable = true;
+      next = { kind: "succeeded", text: `The server accepted v${target.version} as the current extraction.` };
+    } catch (error) {
+      next = describeSelectionFailure(error, target.version);
+      // An unknown outcome is also checked against the re-read.
+      confirmable = error instanceof NetworkError;
+    }
+    if (!mounted.current) return;
+    setSelectOutcome(next);
+    setSelectPending(false);
+    if (next.kind === "uncertain") setSelectionNeedsCheck(true);
+    setRequested(confirmable ? wanted : null);
+    setRefresh({ kind: "refreshing" });
+    setReloadCount((n) => n + 1);
+  }
+
+  // After an unknown outcome a new write could repeat it, so the same action
+  // stays unavailable until stored state was re-read.
+  const extractionBlocked =
+    extractionNeedsCheck
       ? "Unavailable until the stored extractions have been re-read after the unknown outcome. Reload them and check for a new version first."
+      : null;
+  const selectionBlocked =
+    selectionNeedsCheck
+      ? "Unavailable until the current extraction has been re-read after the unknown outcome. Reload extractions and check which version is current first."
       : null;
 
   return (
@@ -112,13 +169,23 @@ export function ExtractionPanel({
         its latest feedback as the server resolves them when you request it, not the version selected
         above.
       </p>
-      <ExtractionState load={state} onRetry={() => setReloadCount((n) => n + 1)} />
+      <ExtractionBrowser
+        load={state}
+        viewedId={viewedId}
+        onView={setViewedId}
+        onRetry={() => setReloadCount((n) => n + 1)}
+        selectPending={selectPending}
+        selectionBlocked={selectionBlocked}
+        onSelect={selectCurrent}
+      />
+      <OutcomeBanner outcome={selectOutcome} />
+      <SelectionCheck requested={requested} load={state} refresh={refresh} />
       <div className="workflow-action">
         <ExplicitAction
           label="Request extraction"
           confirmLabel="Send to the extraction provider"
           pending={pending}
-          disabledReason={disabledReason}
+          disabledReason={extractionBlocked}
           onConfirm={submit}
           explanation={
             <>
@@ -132,20 +199,67 @@ export function ExtractionPanel({
                 The server decides eligibility: a record without an analysis, or whose latest
                 analysis was rejected, is refused. If the interpretation changes while the provider
                 runs, the server refuses to store the result. A successful request stores a new,
-                immutable extraction version (zero units is a valid result), which normally becomes
-                current. The request is sent once and never retried automatically.
+                immutable extraction version (zero units is a valid result). It becomes current only
+                while no version has been selected as current for this record. The request is sent
+                once and never retried automatically.
               </p>
             </>
           }
         />
         <OutcomeBanner outcome={outcome} />
-        <RefreshBanner refresh={refresh} what="stored extractions" />
       </div>
+      <RefreshBanner refresh={refresh} what="stored extractions" />
     </section>
   );
 }
 
-function ExtractionState({ load, onRetry }: { load: Load<ExtractionState>; onRetry: () => void }) {
+// SelectionCheck compares a selection the server accepted (or whose outcome is
+// unknown) with the re-read, so the panel reports stored state rather than its own
+// request. It says nothing until the re-read has succeeded.
+function SelectionCheck({
+  requested,
+  load,
+  refresh,
+}: {
+  requested: Requested | null;
+  load: Load<ExtractionState>;
+  refresh: RefreshState;
+}) {
+  if (!requested || refresh.kind !== "refreshed" || load.status !== "ready") return null;
+  const currentId = load.data.current.current_extraction_id;
+  if (currentId === requested.extractionId) {
+    return (
+      <p className="hint" role="status">
+        Confirmed by re-read: the server reports v{requested.version} as the current extraction.
+      </p>
+    );
+  }
+  const actual = load.data.extractions.find((e) => e.id === currentId);
+  return (
+    <div className="banner error" role="alert">
+      The re-read shows {actual ? `v${actual.version}` : currentId === null ? "no extraction" : `extraction #${currentId}`} as
+      current, not v{requested.version}. It may have been changed again elsewhere; check before acting.
+    </div>
+  );
+}
+
+function ExtractionBrowser({
+  load,
+  viewedId,
+  onView,
+  onRetry,
+  selectPending,
+  selectionBlocked,
+  onSelect,
+}: {
+  load: Load<ExtractionState>;
+  viewedId: number | null;
+  onView: (id: number) => void;
+  onRetry: () => void;
+  selectPending: boolean;
+  selectionBlocked: string | null;
+  onSelect: (target: Extraction) => Promise<void>;
+}) {
   if (load.status === "loading") {
     return <p className="value">Loading extractions…</p>;
   }
@@ -167,40 +281,119 @@ function ExtractionState({ load, onRetry }: { load: Load<ExtractionState>; onRet
       </p>
     );
   }
-  const selected = extractions.find((e) => e.id === current.current_extraction_id);
-  const latest = extractions.reduce((a, b) => (b.version > a.version ? b : a));
-  const others = extractions.length - (selected ? 1 : 0);
+  const versions = [...extractions].sort((a, b) => a.version - b.version);
+  const latest = latestOf(extractions) as Extraction;
+  const currentExtraction = extractions.find((e) => e.id === current.current_extraction_id);
+  // A reader's pick stays while it exists; otherwise follow the current version.
+  const viewed =
+    extractions.find((e) => e.id === viewedId) ?? currentExtraction ?? latest;
+
   return (
     <>
-      {selected ? (
-        <CurrentExtractionView extraction={selected} />
-      ) : (
-        <p className="value">
-          <strong>No current extraction.</strong> Stored versions exist, but the server reports
-          none as current.
-        </p>
-      )}
-      {selected && latest.id !== selected.id ? (
+      <p className="value" aria-label="Extraction summary">
+        Current: {currentExtraction ? `v${currentExtraction.version}` : "none"} · Latest stored: v
+        {latest.version} · {extractions.length} version{extractions.length === 1 ? "" : "s"} stored
+      </p>
+      {currentExtraction && currentExtraction.id !== latest.id ? (
         <p className="hint">
-          A newer version (v{latest.version}) is stored, but the server keeps v{selected.version} as
+          A newer version (v{latest.version}) is stored, but the server keeps v{currentExtraction.version} as
+          current. Once a version has been selected as current, later extractions do not replace it
+          automatically.
+        </p>
+      ) : null}
+      {!currentExtraction ? (
+        <p className="hint">
+          <strong>No current extraction.</strong> Stored versions exist, but the server reports none as
           current.
         </p>
       ) : null}
-      {others > 0 ? (
-        <p className="hint">
-          {others} other stored version{others === 1 ? "" : "s"}.
-        </p>
+      <p className="hint">Choosing a version below only changes what is shown; it changes nothing on the server.</p>
+      <div className="version-list" role="group" aria-label="Stored extraction versions">
+        {versions.map((e) => {
+          const tags = [e.id === currentExtraction?.id ? "current" : null, e.id === latest.id ? "latest" : null].filter(Boolean);
+          return (
+            <button
+              key={e.id}
+              type="button"
+              className={e.id === viewed.id ? "primary" : "ghost"}
+              aria-pressed={e.id === viewed.id}
+              onClick={() => onView(e.id)}
+            >
+              v{e.version}
+              {tags.length ? ` (${tags.join(", ")})` : ""}
+            </button>
+          );
+        })}
+      </div>
+      <ExtractionVersionView
+        extraction={viewed}
+        isCurrent={viewed.id === currentExtraction?.id}
+        isLatest={viewed.id === latest.id}
+        currentVersion={currentExtraction?.version ?? null}
+      />
+      {viewed.id !== currentExtraction?.id ? (
+        <div className="workflow-action">
+          <ExplicitAction
+            // Keyed by version so an open confirmation never carries over to another one.
+            key={viewed.id}
+            label={`Make v${viewed.version} the current extraction`}
+            confirmLabel={`Set v${viewed.version} as current`}
+            pending={selectPending}
+            disabledReason={selectionBlocked}
+            onConfirm={() => onSelect(viewed)}
+            explanation={
+              <>
+                <p>
+                  The server will treat v{viewed.version} as this record&apos;s current extraction. Its
+                  units become the ones offered in Concept Review and counted as concept support; units of
+                  other versions stay stored but are not reviewable and give no support while v
+                  {viewed.version} is current.
+                </p>
+                <p>
+                  Nothing is deleted or rewritten: every version&apos;s units, SAME memberships, DISTINCT
+                  and relation labels, and INVALID judgments stay stored and apply again if their version
+                  becomes current later. No extraction is run.
+                </p>
+                <p>
+                  A selected version stays current even when the record is extracted again; later
+                  versions will not replace it automatically. The workbench cannot yet return a record to
+                  automatic latest selection. The request is sent once and never retried automatically.
+                </p>
+              </>
+            }
+          />
+        </div>
       ) : null}
     </>
   );
 }
 
-function CurrentExtractionView({ extraction }: { extraction: Extraction }) {
+function ExtractionVersionView({
+  extraction,
+  isCurrent,
+  isLatest,
+  currentVersion,
+}: {
+  extraction: Extraction;
+  isCurrent: boolean;
+  isLatest: boolean;
+  currentVersion: number | null;
+}) {
   return (
-    <div className="annotation-section" aria-label="Current extraction">
+    <div className="annotation-section" aria-label="Viewed extraction">
       <h3>
-        Current extraction v{extraction.version}
+        Viewing extraction v{extraction.version}{" "}
+        <span className="hint">
+          ({[isCurrent ? "current" : "not current", isLatest ? "latest stored" : null].filter(Boolean).join(", ")})
+        </span>
       </h3>
+      <p className="hint">
+        {isCurrent
+          ? "This is the current extraction: its units are the ones offered for concept review and counted as concept support."
+          : `Not current: its units stay stored as history but are not offered for review and give no concept support${
+              currentVersion !== null ? ` while v${currentVersion} is current` : ""
+            }.`}
+      </p>
       <div className="annotation-provenance">
         <span className="mono">{extraction.extractor}</span>
         <span>from analysis #{extraction.source_analysis_id}</span>
@@ -239,6 +432,25 @@ function CurrentExtractionView({ extraction }: { extraction: Extraction }) {
       )}
     </div>
   );
+}
+
+// describeSelectionFailure reports a rejected selection. Every error from the PUT
+// is returned before its transaction commits, so the current extraction was not
+// changed; a missing response leaves the outcome unknown.
+function describeSelectionFailure(error: unknown, version: number): Outcome {
+  if (error instanceof NetworkError) {
+    return {
+      kind: "uncertain",
+      text: `No response was received, so v${version} may or may not have become the current extraction.`,
+    };
+  }
+  if (error instanceof ApiError) {
+    return {
+      kind: "rejected",
+      text: `The server did not change the current extraction (${error.status}): ${error.message}.`,
+    };
+  }
+  return { kind: "rejected", text: `The selection request failed: ${String(error)}` };
 }
 
 // describeExtractionFailure states only what the backend contract supports. Every

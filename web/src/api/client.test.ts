@@ -364,3 +364,22 @@ describe("feedback endpoints", () => {
     });
   });
 });
+
+describe("current extraction selection", () => {
+  it("PUTs only extraction_id to the existing current-extraction endpoint", async () => {
+    const { impl, calls } = stubFetch(200, { entry_id: 4, current_extraction_id: 9 });
+    const echoed = await api.setCurrentExtraction(4, 9, impl);
+    expect(calls[0].url).toBe("/api/entries/4/current-extraction");
+    expect(calls[0].init.method).toBe("PUT");
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({ extraction_id: 9 });
+    expect(echoed.current_extraction_id).toBe(9);
+  });
+
+  it("surfaces a 422 for a version of another entry as an ApiError", async () => {
+    const { impl } = stubFetch(422, { error: "validation error\nextraction does not belong to this entry" });
+    await expect(api.setCurrentExtraction(4, 99, impl)).rejects.toMatchObject({
+      status: 422,
+      message: expect.stringContaining("does not belong to this entry"),
+    });
+  });
+});
