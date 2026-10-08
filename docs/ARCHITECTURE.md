@@ -1658,3 +1658,25 @@ These are not part of the first milestone:
   retry path, e.g. reclassifying when output fails schema/taxonomy validation).
   Deliberately not implemented in this milestone: a failed OpenAI request
   currently surfaces `502`/`504` and stores nothing, with no retry.
+
+## Timestamp ordering in SQLite (FLH-004)
+
+Persisted timestamps retain their RFC3339Nano representation. SQLite queries that
+order timestamps use `COLLATE flh_timestamp_v1`, registered once with the SQLite
+Go driver for all subsequently opened connections. The collation parses each
+value with Go's RFC3339Nano parser and compares instants without dropping
+nanoseconds; equal instants fall through to the query's ID tie-break. This covers
+latest feedback (including the inventory window), admission overrides and derived
+support, unit judgments and reviewability, and chronological event histories.
+Version-based analysis/extraction selection and CURRENT SAME membership authority
+are unchanged.
+
+The comparison supports existing variable-width fractions and timezone offsets
+without migration, backfill, or mutation of immutable history. Clock rollback
+retains chronological semantics rather than insertion-order semantics. Malformed
+values sort above valid values so latest-record scanners report their parse errors;
+two malformed values use deterministic text ordering. The collation cannot itself
+return an error. External database tools must register the collation to execute
+these application queries; ordinary database reads and stored schema are unchanged.
+Timestamp parsing during sorting may cost more than binary text sorting, and
+existing binary timestamp indexes cannot supply the custom ordering directly.

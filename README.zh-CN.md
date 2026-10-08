@@ -233,6 +233,10 @@ curl localhost:8080/analyses/1/effective
 
 有效分析是只读投影。只有最新反馈（按 `created_at`、再按 `id`）决定当前状态：
 
+时间排序按解析后的 RFC3339 时间点比较，保留纳秒精度；仅在时间点相等时选择更大的 ID。
+Admission Override、Unit Judgment、学习清单及可审阅队列使用相同规则。历史可变宽度时间
+文本在读取时正确比较，不重写历史记录；系统时钟回退时，后插入但时间更早的记录不会成为最新记录。
+
 - `unreviewed`：没有反馈，当前值等于原分析。
 - `accepted`：保留原分析。
 - `corrected`：存在的纠正字段覆盖原字段。

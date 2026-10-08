@@ -3,6 +3,8 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -10,8 +12,8 @@ import (
 )
 
 // FLH-004: assert chronological created_at ordering, with ID only for equal
-// instants. Variable-width cases intentionally fail until storage ordering is
-// corrected. Equal-time and wall-clock rollback cases are independent controls.
+// instants. Variable-width cases cover historical timestamp text.
+// Equal-time and wall-clock rollback cases are independent controls.
 // Existing helpers create migrated databases exclusively in t.TempDir().
 func TestLatestRecordOrderingRegression(t *testing.T) {
 	base := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
@@ -21,6 +23,8 @@ func TestLatestRecordOrderingRegression(t *testing.T) {
 	}{
 		{"whole_second_then_fraction", base, base.Add(100 * time.Millisecond)},
 		{"fraction_prefix", base.Add(100 * time.Millisecond), base.Add(110 * time.Millisecond)},
+		{"nanosecond_prefix", base.Add(100 * time.Millisecond), base.Add(100*time.Millisecond + time.Nanosecond)},
+		{"equal_instant_offset", base, base.In(time.FixedZone("plus_one", 3600))},
 		{"equal_timestamp", base.Add(123 * time.Millisecond), base.Add(123 * time.Millisecond)},
 		// A later insertion with an earlier wall time is NOT chronologically latest.
 		// Switching to ID-only ordering would change this existing contract.
@@ -60,6 +64,23 @@ func TestLatestRecordOrderingRegression(t *testing.T) {
 				if gotEffective.Resolution != wantEffective.Resolution {
 					t.Errorf("effective analysis = %s, chronological resolution = %s", gotEffective.Resolution, wantEffective.Resolution)
 				}
+				inventory := NewInventoryRepository(repo.db)
+				state := domain.StateFromResolution(wantEffective.Resolution)
+				records, err := inventory.ListLearningRecords(ctx, domain.LearningRecordQuery{State: &state, Limit: 10})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(records) != 1 || records[0].FeedbackID == nil || *records[0].FeedbackID != wantID || records[0].State != state {
+					t.Errorf("filtered inventory must select chronological feedback %d, state %s: %+v", wantID, state, records)
+				}
+				summary, err := inventory.SummarizeLearningRecords(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if summary.ByState[state] != 1 {
+					t.Errorf("inventory summary = %+v; want one %s", summary.ByState, state)
+				}
+
 			})
 			t.Run("admission_override", func(t *testing.T) {
 				ctx := context.Background()
@@ -102,6 +123,29 @@ func TestLatestRecordOrderingRegression(t *testing.T) {
 				if supportAdmission != wantEffective {
 					t.Errorf("concept support admission = %s, chronological admission = %s", supportAdmission, wantEffective)
 				}
+				concept := mustConcept(t, concepts, domain.DeriveCandidateIdentity(view.Units[0].Unit))
+				if _, err := concepts.LinkSame(ctx, unitID, concept.ID, domain.SourceHuman, nil, ""); err != nil {
+					t.Fatal(err)
+				}
+				support, err := concepts.ActiveSupportUnitIDs(ctx, concept.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				wantSupport := 0
+				if wantEffective == domain.AdmissionActive {
+					wantSupport = 1
+				}
+				if len(support) != wantSupport {
+					t.Errorf("support units = %v; want count %d", support, wantSupport)
+				}
+				history, err := repo.ListByUnit(ctx, unitID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(history) != 2 || history[1].ID != wantID {
+					t.Errorf("admission history must end with chronological latest %d: %+v", wantID, history)
+				}
+
 			})
 			t.Run("invalid_restore", func(t *testing.T) {
 				ctx := context.Background()
@@ -147,6 +191,25 @@ func TestLatestRecordOrderingRegression(t *testing.T) {
 				if gotSnapshot.Status != wantSnapshot.Status {
 					t.Errorf("annotation = %s, chronological annotation = %s", gotSnapshot.Status, wantSnapshot.Status)
 				}
+				queue, err := repo.ListReviewableUnits(ctx, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				wantCount := 1
+				if domain.EffectiveUnitInvalid(want) {
+					wantCount = 0
+				}
+				if len(queue) != wantCount {
+					t.Errorf("review queue count = %d, want %d", len(queue), wantCount)
+				}
+				history, err := repo.ListUnitJudgments(ctx, unitID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(history) != 2 || history[0].ID != wantID {
+					t.Errorf("judgment history must start with chronological latest %d: %+v", wantID, history)
+				}
+
 			})
 		})
 	}
@@ -194,5 +257,82 @@ func flh004AssertLatest(t *testing.T, gotID, wantID int64) {
 	t.Helper()
 	if gotID != wantID {
 		t.Errorf("SQL selected id=%d; parsed chronological ordering (created_at, then id) selects id=%d", gotID, wantID)
+	}
+}
+
+// Existing timestamps remain unchanged across reads/reopen. This also exercises
+// registration on a new connection, historical fixed-width fractions, offsets,
+// and differences smaller than SQLite date functions' millisecond precision.
+func TestTimestampOrderingHistoricalRows(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "historical.db")
+	db, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	if _, err := db.Exec(`CREATE TABLE ordering_evidence (id INTEGER PRIMARY KEY, created_at TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	timestamps := []string{
+		"2026-10-07T12:00:00.100000001Z",
+		"2026-10-07T12:00:00.1Z",
+		"2026-10-07T13:00:00.100000000+01:00",
+		"2026-10-07T12:00:00Z",
+	}
+	for i, raw := range timestamps {
+		if _, err := db.Exec(`INSERT INTO ordering_evidence VALUES (?, ?)`, i+1, raw); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := db.Query(`SELECT id, created_at FROM ordering_evidence ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var ids []int
+	for rows.Next() {
+		var id int
+		var raw string
+		if err := rows.Scan(&id, &raw); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+		if raw != timestamps[id-1] {
+			t.Errorf("timestamp rewritten: %q, want %q", raw, timestamps[id-1])
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(ids, []int{1, 3, 2, 4}) {
+		t.Errorf("historical order = %v, want [1 3 2 4]", ids)
+	}
+}
+
+func TestTimestampOrderingInvalidLatestFailsRead(t *testing.T) {
+	entries, analyses, repo := newTestFeedbackRepos(t)
+	analysis := seedAnalysis(t, entries, analyses)
+	ctx := context.Background()
+	bad, err := repo.Create(ctx, analysis.ID, domain.NewFeedbackInput{Status: domain.FeedbackRejected})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Create(ctx, analysis.ID, domain.NewFeedbackInput{Status: domain.FeedbackAccepted}); err != nil {
+		t.Fatal(err)
+	}
+	// Corrupt only this isolated fixture; the collation must not hide the malformed
+	// timestamp by preferring a valid row and silently returning effective state.
+	if _, err := repo.db.Exec(`UPDATE analysis_feedback SET created_at = ? WHERE id = ?`, "!invalid", bad.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.GetLatestByAnalysis(ctx, analysis.ID); err == nil {
+		t.Fatal("expected timestamp parse error")
 	}
 }

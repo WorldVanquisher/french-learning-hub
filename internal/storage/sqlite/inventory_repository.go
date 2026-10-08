@@ -52,7 +52,7 @@ lf AS (
     SELECT id, analysis_id, status, corrected_category, corrected_explanation, created_at
     FROM (
         SELECT id, analysis_id, status, corrected_category, corrected_explanation, created_at,
-               ROW_NUMBER() OVER (PARTITION BY analysis_id ORDER BY created_at DESC, id DESC) AS rn
+               ROW_NUMBER() OVER (PARTITION BY analysis_id ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC) AS rn
         FROM analysis_feedback
     )
     WHERE rn = 1
