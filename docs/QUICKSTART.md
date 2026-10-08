@@ -137,8 +137,12 @@ npm run dev
 ```
 
 Open `http://localhost:5173` (or the URL printed by Vite). The workbench has
-three views with different ownership boundaries:
+four views with different ownership boundaries:
 
+- **Learning Records** is read-only: it lists records with the state filter and
+  cursor pagination of `GET /learning-records`, and a record's detail shows its
+  original input and context, analysis versions, and the backend-owned effective
+  interpretation of the selected version.
 - **Concept Review** is write-capable: explicit human actions record Concept
   annotations and resolution decisions.
 - **Annotation Inspector** is read-only and displays backend-owned effective

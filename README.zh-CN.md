@@ -11,7 +11,7 @@
   confidence 只属于版本化 `Analysis` 及其 Effective Analysis / Inventory 只读投影。
 - 默认后端不需要 API key：SQLite 为嵌入式数据库，本地确定性规则 Analyzer 可直接运行。
 - 显式抽取产生不可变 `KnowledgeUnit` 证据；`KnowledgeConcept` 长期身份与人工标注各有清晰权威边界，`unit_concept_memberships` 是 CURRENT SAME 的唯一当前权威。
-- Dataset 质量、检索评估与比较报告均为只读；三视图工作台把写入型标注与只读检查、实验展示分开。
+- Dataset 质量、检索评估与比较报告均为只读；四视图工作台把写入型标注与只读记录浏览、检查、实验展示分开。
 - OpenAI 分析/抽取与 HTTP embedding 都是相互独立、必须显式配置的可选能力，不会静默回退。
 
 本项目不是聊天机器人、消费者课程 UI、间隔复习调度器、掌握度系统或自动 ML Resolver。
@@ -41,7 +41,7 @@ make verify
 make run
 ```
 
-然后运行 `curl -sS http://localhost:8080/healthz`。从首次 Capture、启动三视图工作台，到配置可选 Provider 和理解空实验结果的完整流程，请阅读 [docs/QUICKSTART.md](docs/QUICKSTART.md)。
+然后运行 `curl -sS http://localhost:8080/healthz`。从首次 Capture、启动四视图工作台，到配置可选 Provider 和理解空实验结果的完整流程，请阅读 [docs/QUICKSTART.md](docs/QUICKSTART.md)。
 
 面试前可按[可重复的本地学习流程](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md)，配合
 [可复制的 Capture 提示词](docs/CAPTURE_PROMPT.zh-CN.md)反复使用产品。手册先讲解一次完整的
@@ -68,7 +68,7 @@ Extraction 和人工 Concept Review 是单独的可选步骤，全新数据的�
 13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
 14. 使用精确签名、加权词法余弦、corpus-aware BM25 和可选语义 embedding 基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
 15. 通过 `concept_retrieval_comparison_v1` 在同一 M12 实验契约下对比四种基线的顶层指标。
-16. 在内部工作台使用可写入的 **Concept Review**、只读 **Annotation Inspector**，以及只读 **Experiment Dashboard**。
+16. 在内部工作台使用只读 **Learning Records**（记录、Analysis 版本与 Effective 解释）、可写入的 **Concept Review**、只读 **Annotation Inspector**，以及只读 **Experiment Dashboard**。
 
 ## 研究与评估
 
@@ -109,7 +109,7 @@ internal/transport/http  HTTP DTO、Handler 和路由
 internal/config          环境变量配置
 migrations               嵌入式 SQL 迁移
 examples/captures        learning_capture_v1 示例
-web                      React + Vite + TypeScript 标注工作台
+web                      React + Vite + TypeScript 记录浏览与标注工作台
 ```
 
 ## 配置
@@ -387,8 +387,9 @@ CURRENT SAME 只来自 `unit_concept_memberships`。`unit_concept_links` 是只�
 
 ### 标注工作台
 
-`web/` 提供三个本地视图：
+`web/` 提供四个本地视图：
 
+- **Learning Records**：只读浏览 `GET /learning-records`，支持状态筛选与游标分页；详情显示原始输入与上下文、全部 Analysis 版本，以及所选版本由后端解析的 Effective 解释。区分加载中、请求失败、无记录、无 Analysis、未审核与被拒绝的解释；过期响应会被丢弃，返回列表时保留已加载页面与筛选条件。
 - **Concept Review**：写入显式人工 SAME、DISTINCT、关系、INVALID 或新 Concept。
 - **Annotation Inspector**：只读显示当前 Effective Annotation。
 - **Experiment Dashboard**：只读显示 Dataset 结构质量、人工监督规模与固定顺序的检索基线指标。

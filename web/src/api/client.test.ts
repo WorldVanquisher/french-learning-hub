@@ -237,3 +237,49 @@ describe("api client request shapes", () => {
     }
   });
 });
+
+describe("learning record read endpoints", () => {
+  it("lists learning records with the state filter, limit, and cursor as query parameters", async () => {
+    const { impl, calls } = stubFetch(200, { records: [{ entry_id: 9 }], next_before_entry_id: 9 });
+    const page = await api.listLearningRecords({ state: "rejected", limit: 20, beforeEntryId: 30 }, impl);
+    expect(calls[0].url).toBe("/api/learning-records?state=rejected&limit=20&before_entry_id=30");
+    expect(calls[0].init.method).toBe("GET");
+    expect(page.records[0].entry_id).toBe(9);
+    expect(page.next_before_entry_id).toBe(9);
+  });
+
+  it("omits absent query parameters and keeps a null cursor", async () => {
+    const { impl, calls } = stubFetch(200, { records: [], next_before_entry_id: null });
+    const page = await api.listLearningRecords({}, impl);
+    expect(calls[0].url).toBe("/api/learning-records");
+    expect(page).toEqual({ records: [], next_before_entry_id: null });
+  });
+
+  it("reads an entry, its analysis versions, and one effective interpretation via GET", async () => {
+    const entry = stubFetch(200, { id: 4, original_input: "je veux", original_context: "c" });
+    await api.getEntry(4, entry.impl);
+    expect(entry.calls[0].url).toBe("/api/entries/4");
+
+    const analyses = stubFetch(200, { analyses: [{ id: 1, version: 1 }] });
+    expect(await api.listAnalyses(4, analyses.impl)).toHaveLength(1);
+    expect(analyses.calls[0].url).toBe("/api/entries/4/analyses");
+
+    const effective = stubFetch(200, { analysis_id: 1, resolution: "rejected", effective: null });
+    const eff = await api.getEffectiveAnalysis(1, effective.impl);
+    expect(effective.calls[0].url).toBe("/api/analyses/1/effective");
+    expect(eff.effective).toBeNull();
+
+    for (const call of [...entry.calls, ...analyses.calls, ...effective.calls]) {
+      expect(call.init.method).toBe("GET");
+    }
+  });
+
+  it("surfaces a backend validation error for an invalid filter as an ApiError", async () => {
+    const { impl } = stubFetch(400, { error: "state must be one of: unanalyzed, unreviewed, accepted, corrected, rejected" });
+    await expect(api.listLearningRecords({ state: "rejected" }, impl)).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining("state must be one of"),
+    });
+    await expect(api.listLearningRecords({}, impl)).rejects.toBeInstanceOf(ApiError);
+  });
+});

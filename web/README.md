@@ -1,10 +1,11 @@
 # Annotation Workbench
 
-An internal frontend with three views: the write-capable **Concept Review**
-workflow for `KnowledgeUnit → KnowledgeConcept` annotation, the read-only
-**Annotation Inspector** for viewing M11-A effective annotation state over
-current-extraction units, and the read-only **Experiment Dashboard** for M11-D
-dataset quality and M13-A0 retrieval comparison summaries.
+An internal frontend with four views: the read-only **Learning Records** browser
+for learner-authored records and their interpretations, the write-capable
+**Concept Review** workflow for `KnowledgeUnit → KnowledgeConcept` annotation,
+the read-only **Annotation Inspector** for viewing M11-A effective annotation
+state over current-extraction units, and the read-only **Experiment Dashboard**
+for M11-D dataset quality and M13-A0 retrieval comparison summaries.
 
 It is **not** the Review Engine, mastery, scheduling, or an ML resolver. There is no
 authentication in this milestone.
@@ -33,8 +34,9 @@ npm run dev
 # Vite dev server on http://localhost:5173, proxying /api → http://localhost:8080
 ```
 
-Open the printed Vite URL and use the local view switch to move between **Concept
-Review**, **Annotation Inspector**, and **Experiment Dashboard**. If the backend
+Open the printed Vite URL and use the local view switch to move between
+**Learning Records**, **Concept Review**, **Annotation Inspector**, and
+**Experiment Dashboard**. Concept Review remains the view shown on load. If the backend
 is not on `:8080`, point the proxy at it:
 
 ```sh
@@ -131,6 +133,41 @@ from the append-only resolution events, which may still show a superseded decisi
 as `accepted`. The current-membership panel is visually distinct from the collapsible
 resolution-history panel for exactly this reason.
 
+## Learning Records
+
+The Learning Records view is a GET-only browser over existing endpoints:
+
+- `GET /learning-records` supplies the list, newest first, 20 records per
+  request. The **Record state** filter (`unanalyzed`, `unreviewed`, `accepted`,
+  `corrected`, `rejected`) is sent to the backend as `state`; **Load older
+  records** passes the returned `next_before_entry_id` cursor back as
+  `before_entry_id` and appends the next page. "End of records." appears when the
+  cursor is null.
+- Opening a record reads `GET /entries/{id}` for the original input and context
+  and `GET /entries/{id}/analyses` for every immutable analysis version. The
+  latest version is selected by default; choosing another version only changes
+  what is displayed.
+- The selected version's interpretation comes from `GET /analyses/{id}/effective`
+  exactly as the backend resolves it. The browser never recomputes state or
+  effective values.
+
+States stay distinct: loading; request failure (with the backend status and
+message, and a retry); an empty inventory versus a filter with no matches; a
+record with **no analysis**; an **unreviewed** interpretation that no human has
+confirmed; a **corrected** interpretation shown beside its original values; and a
+**rejected** interpretation, which has no effective values and shows the original
+only as rejected evidence. Each detail read is independent, so one failure does
+not hide another section.
+
+Responses that arrive after the reader has moved on are discarded: a list
+response for a superseded filter, an older page requested under a previous
+filter, a detail read for a record that is no longer open, and an effective
+interpretation for a version that is no longer selected. Returning from a detail
+keeps the loaded pages and filter and moves focus back to the record's **Open**
+button. Switching to another workbench tab still resets the view.
+
+This view does not analyze, give feedback, import captures, or run extraction.
+
 ## Effective Annotation Inspector (milestone 11-B)
 
 The Inspector calls `GET /effective-annotations` and loads `GET /concepts` once to
@@ -171,9 +208,11 @@ compact presentation of backend-owned experiment state.
 web/src/
   api/         fetch client (client.ts) — all request logic lives here
   components/  UnitCard, CandidateConceptCard, IdentityEditor,
-               MembershipPanel, HistoryPanel, ResolutionActions
+               MembershipPanel, HistoryPanel, ResolutionActions,
+               RecordDetail
   conceptSearch.ts  deterministic retrieval-only catalog filtering
-  pages/       ReviewQueue — write-capable annotation workflow
+  pages/       RecordsBrowser — read-only learning-record list and detail
+               ReviewQueue — write-capable annotation workflow
                AnnotationInspector — read-only effective-state view
                ExperimentDashboard — read-only quality/comparison summary
   types/       wire types mirroring the Go transport DTOs
