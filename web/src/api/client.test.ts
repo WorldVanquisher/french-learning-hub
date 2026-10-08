@@ -409,3 +409,14 @@ describe("DISTINCT history", () => {
     expect(list.map((d) => d.id)).toEqual([3]);
   });
 });
+
+it("sends optional annotation keys and looks up receipts", async () => {
+  const fake = vi.fn(async () => new Response(JSON.stringify({id:17}), {status:201})) as unknown as typeof fetch;
+  const key = "01234567-89ab-cdef-0123-456789abcdef";
+  await api.recordDistinction(5,42,fake,key);
+  expect(new Headers(vi.mocked(fake).mock.calls[0][1]?.headers).get("Idempotency-Key")).toBe(key);
+  await api.recordRelation(5,42,"related",fake,key);
+  expect(new Headers(vi.mocked(fake).mock.calls[1][1]?.headers).get("Idempotency-Key")).toBe(key);
+  await api.getAnnotationOperation(key,fake);
+  expect(vi.mocked(fake).mock.calls[2][0]).toBe(`/api/annotation-operations/${key}`);
+});

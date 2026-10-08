@@ -178,6 +178,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /knowledge-units/{id}/concept-distinctions", h.handleRecordDistinction)
 	mux.HandleFunc("GET /knowledge-units/{id}/concept-distinctions", h.handleListDistinctions)
 	mux.HandleFunc("POST /knowledge-units/{id}/concept-links/relation", h.handleRecordRelation)
+	mux.HandleFunc("GET /annotation-operations/{id}", h.handleGetAnnotationOperation)
 	mux.HandleFunc("GET /reviewable-units", h.handleListReviewableUnits)
 	mux.HandleFunc("GET /entries/{id}/current-extraction", h.handleGetCurrentExtraction)
 	mux.HandleFunc("PUT /entries/{id}/current-extraction", h.handleSetCurrentExtraction)

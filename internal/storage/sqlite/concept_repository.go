@@ -928,6 +928,17 @@ func (r *ConceptRepository) RecordDistinction(ctx context.Context, unitID, conce
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	result, err := r.recordDistinctionTx(ctx, tx, unitID, conceptID, source, evidence)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r *ConceptRepository) recordDistinctionTx(ctx context.Context, tx *sql.Tx, unitID, conceptID int64, source domain.DecisionSource, evidence string) (*domain.UnitConceptDistinction, error) {
 	if err := unitExists(ctx, tx, unitID); err != nil {
 		return nil, err
 	}
@@ -958,9 +969,6 @@ func (r *ConceptRepository) RecordDistinction(ctx context.Context, unitID, conce
 	id, err := res.LastInsertId()
 	if err != nil {
 		return nil, fmt.Errorf("distinction last insert id: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	return &domain.UnitConceptDistinction{
 		ID: id, UnitID: unitID, ConceptID: conceptID, DecisionSource: source,
@@ -1040,6 +1048,17 @@ func (r *ConceptRepository) LinkRelation(ctx context.Context, unitID, conceptID 
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	result, err := r.linkRelationTx(ctx, tx, unitID, conceptID, relation, source, evidence)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r *ConceptRepository) linkRelationTx(ctx context.Context, tx *sql.Tx, unitID, conceptID int64, relation domain.ConceptRelation, source domain.DecisionSource, evidence string) (*domain.UnitConceptLink, error) {
 	if err := unitExists(ctx, tx, unitID); err != nil {
 		return nil, err
 	}
@@ -1050,7 +1069,7 @@ func (r *ConceptRepository) LinkRelation(ctx context.Context, unitID, conceptID 
 	// Find the current (newest, not-yet-superseded) event for this exact triple to
 	// record as the one being superseded. We never rewrite it.
 	var prior sql.NullInt64
-	err = tx.QueryRowContext(ctx,
+	err := tx.QueryRowContext(ctx,
 		`SELECT id FROM unit_concept_links
 		 WHERE unit_id = ? AND concept_id = ? AND relation = ? AND status = 'accepted'
 		   AND id NOT IN (SELECT supersedes_link_id FROM unit_concept_links WHERE supersedes_link_id IS NOT NULL)
@@ -1071,9 +1090,6 @@ func (r *ConceptRepository) LinkRelation(ctx context.Context, unitID, conceptID 
 	link, err := insertLink(ctx, tx, unitID, conceptID, relation, domain.LinkAccepted, source, domain.ConceptResolverVersion, nil, evidence, supersedes, r.now())
 	if err != nil {
 		return nil, err
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	return link, nil
 }

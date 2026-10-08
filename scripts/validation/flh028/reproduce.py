@@ -10,6 +10,8 @@ import signal
 import sys
 import threading
 import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 from proxy import LossProxy, public_job
 
@@ -45,10 +47,10 @@ class Investigation:
         finally:
             conn.close()
 
-    def api(self, method, path, body=None, expected=200):
+    def api(self, method, path, body=None, expected=200, headers=None):
         return self.harness.http(self.port, method, path, body, expected=expected,
                                  headers={"Origin": f"http://127.0.0.1:{self.port}",
-                                          "Sec-Fetch-Site": "same-origin"})
+                                          "Sec-Fetch-Site": "same-origin", **(headers or {})})
 
     def fixture(self, operation, prefix):
         self.sequence += 1
@@ -136,7 +138,7 @@ class Investigation:
     def lost(self, spec, mode):
         job = self.proxy.arm(mode, spec["method"], spec["path"])
         try:
-            self.api(spec["method"], spec["path"], spec["body"], expected=spec["expected_status"])
+            self.api(spec["method"], spec["path"], spec["body"], expected=spec["expected_status"], headers=spec.get("headers"))
         except (http.client.HTTPException, OSError) as exc:
             client = {"status": None, "error_type": type(exc).__name__, "message": str(exc)}
         else:
@@ -281,6 +283,71 @@ class Investigation:
                                       "final_history": history, "provider_calls": calls}})
         print(f"PASS {prefix or 'root'} {operation} desired state precedes delayed duplicate commit", flush=True)
 
+    def keyed(self, operation, prefix, mode):
+        spec = self.fixture(operation, prefix)
+        key = str(uuid.uuid4())
+        spec["headers"] = {"Idempotency-Key": key}
+        lookup = prefix + "/annotation-operations/" + key
+        calls = self.harness.calls()
+        before = snapshot(self.harness.active / "app.db")
+        self.api("GET", lookup, expected=404)
+        job, client = self.lost(spec, mode)
+        if mode == "delay-drop":
+            unknown = self.api("GET", lookup, expected=404)
+            require(not job["forwarded"] and snapshot(self.harness.active / "app.db") == before,
+                    "unknown lookup changed or fenced delayed operation")
+            # Retry may win while the original request is still gated.
+            original = self.api("POST", spec["path"], spec["body"], expected=201, headers=spec["headers"])
+            job["release"].set()
+        require(job["done"].wait(3) and job["error"] is None, "keyed proxy job failed")
+        if mode == "never":
+            self.api("GET", lookup, expected=404)
+            require(snapshot(self.harness.active / "app.db") == before, "never request wrote")
+            original = self.api("POST", spec["path"], spec["body"], expected=201, headers=spec["headers"])
+        elif mode == "commit-drop":
+            original = job["upstream_body"]
+        else:
+            require(job["upstream_body"] == original, "delayed original did not replay retry result")
+        receipt = self.api("GET", lookup)
+        require(receipt["state"] == "committed" and receipt["result"] == original, "receipt attribution mismatch")
+        committed = snapshot(self.harness.active / "app.db")
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            replays = list(pool.map(lambda _: self.api("POST", spec["path"], spec["body"], expected=201,
+                                                      headers=spec["headers"]), range(8)))
+        require(all(result == original for result in replays), "concurrent replay changed result")
+        require(snapshot(self.harness.active / "app.db") == committed, "replay wrote")
+        self.api("POST", spec["path"], spec["body"] | {"concept_id": spec["b"]}, expected=409, headers=spec["headers"])
+        other_path = prefix + f"/knowledge-units/{spec['unit']}/" + ("concept-links/relation" if operation == "distinct" else "concept-distinctions")
+        other_body = {"concept_id":spec["a"]} | ({"relation":"related"} if operation == "distinct" else {})
+        self.api("POST", other_path, other_body, expected=409, headers=spec["headers"])
+        require(snapshot(self.harness.active / "app.db") == committed, "conflict wrote")
+        self.api("POST", spec["path"], spec["body"], expected=403,
+                 headers={"Idempotency-Key":str(uuid.uuid4()), "Origin":"http://evil.invalid", "Sec-Fetch-Site":"cross-site"})
+        self.api("GET", lookup, expected=403, headers={"Host":"evil.invalid"})
+        require(snapshot(self.harness.active / "app.db") == committed, "browser-blocked request wrote")
+        # Later deliberate decision changes effective history but never the receipt.
+        later = self.api("POST", spec["path"], spec["body"], expected=201, headers={"Idempotency-Key":str(uuid.uuid4())})
+        require(later["id"] != original["id"], "new key did not append")
+        latest = self.read(spec)
+        if operation == "distinct":
+            events = latest["distinctions"]["distinctions"]
+            projection = self.api("GET", prefix + f"/knowledge-units/{spec['unit']}/effective-annotation")["snapshot"]["distinctions"]
+        else:
+            events = [e for e in latest["concept_a"]["links"] if e["relation"] == operation and e["unit_id"] == spec["unit"]]
+            projection = self.api("GET", prefix + f"/knowledge-units/{spec['unit']}/effective-annotation")["snapshot"]["relations"]
+        require(len(events) == 2 and any(e == original for e in events), "history changed")
+        require(len(projection) == 1 and projection[0]["id"] == later["id"], "current projection wrong")
+        replay = self.api("POST", spec["path"], spec["body"], expected=201, headers=spec["headers"])
+        require(replay == original and self.api("GET", lookup) == receipt, "historical replay changed")
+        if mode == "commit-drop":
+            self.harness.replace()
+            require(self.api("GET", lookup) == receipt, "restart lost receipt")
+        require(self.harness.calls() == calls, "keyed annotation called provider")
+        self.cases.append({"spec":spec, "mode":"keyed-"+mode, "result":"PASS",
+                           "actual":{"client":client,"proxy":public_job(job),"receipt":receipt,"later":later,
+                                     "concurrent_replays":replays,"history":events,"provider_calls":calls}})
+        print(f"PASS {prefix or 'root'} {operation} keyed {mode}: attribution, replay, conflict, boundary, history", flush=True)
+
     def run(self):
         for prefix in ("", "/api"):
             for operation in OPERATIONS:
@@ -289,6 +356,8 @@ class Investigation:
             for operation in ("distinct", "broader", "narrower", "related"):
                 self.repeated(operation, prefix)
                 self.delayed_existing_pair(operation, prefix)
+                for mode in ("never", "commit-drop", "delay-drop"):
+                    self.keyed(operation, prefix, mode)
 
 
 def main():

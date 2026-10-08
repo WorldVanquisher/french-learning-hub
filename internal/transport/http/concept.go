@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"time"
 
@@ -653,6 +654,16 @@ func (h *Handler) handleRecordDistinction(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
+	if len(r.Header.Values("Idempotency-Key")) > 0 {
+		var extra any
+		if err := dec.Decode(&extra); err != io.EOF {
+			writeError(w, 400, "invalid JSON body")
+			return
+		}
+	}
+	if h.keyedAnnotation(w, r, domain.AnnotationOperationInput{Action: "distinct", UnitID: unitID, ConceptID: req.ConceptID}) {
+		return
+	}
 	d, err := h.concept.RecordDistinction(r.Context(), unitID, req.ConceptID)
 	if errors.Is(err, domain.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "unit or concept not found")
@@ -733,6 +744,16 @@ func (h *Handler) handleRecordRelation(w http.ResponseWriter, r *http.Request) {
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if len(r.Header.Values("Idempotency-Key")) > 0 {
+		var extra any
+		if err := dec.Decode(&extra); err != io.EOF {
+			writeError(w, 400, "invalid JSON body")
+			return
+		}
+	}
+	if h.keyedAnnotation(w, r, domain.AnnotationOperationInput{Action: "relation", UnitID: unitID, ConceptID: req.ConceptID, Relation: domain.ConceptRelation(req.Relation)}) {
 		return
 	}
 	link, err := h.concept.RecordRelation(r.Context(), unitID, req.ConceptID, domain.ConceptRelation(req.Relation))
