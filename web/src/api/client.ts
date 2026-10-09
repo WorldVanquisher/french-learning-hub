@@ -34,6 +34,7 @@ import type {
   NewFeedback,
   LearningRecordState,
 } from "../types/learning";
+import type { LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource } from "../types/library";
 
 // ApiError carries the HTTP status so callers can react specifically — most
 // importantly to 409 Conflict, after which the UI must refresh the unit's current
@@ -190,6 +191,25 @@ export async function listReviewableUnits(
 export async function listConcepts(fetchImpl: typeof fetch = fetch): Promise<Concept[]> {
   const data = await request<{ concepts: Concept[] }>("GET", "/concepts", undefined, fetchImpl);
   return data.concepts ?? [];
+}
+
+// ---- Knowledge Library (read-only; the backend owns matching, ordering, limits) ----
+
+// searchLibrary searches (non-empty q) or browses (empty q) Concepts.
+export function searchLibrary(query: LibraryQuery, fetchImpl: typeof fetch = fetch): Promise<LibrarySearch> {
+  const params = new URLSearchParams();
+  if (query.q.trim()) params.set("q", query.q.trim());
+  if (query.state !== "all") params.set("state", query.state);
+  const qs = params.toString();
+  return request<LibrarySearch>("GET", `/knowledge-library/concepts${qs ? `?${qs}` : ""}`, undefined, fetchImpl);
+}
+
+export function getLibraryConcept(conceptId: number, fetchImpl: typeof fetch = fetch): Promise<LibraryConcept> {
+  return request<LibraryConcept>("GET", `/knowledge-library/concepts/${conceptId}`, undefined, fetchImpl);
+}
+
+export function getLibraryUnitSource(unitId: number, fetchImpl: typeof fetch = fetch): Promise<LibrarySource> {
+  return request<LibrarySource>("GET", `/knowledge-library/units/${unitId}/source`, undefined, fetchImpl);
 }
 
 // listEffectiveAnnotations reads every unit from the current extraction(s) with

@@ -678,3 +678,23 @@ button.invalid:hover:not(:disabled) { background: #912018; border-color: #912018
 .feedback-form select { font: inherit; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; }
 .feedback-form label[for] { display: block; margin-top: 8px; font-size: 13px; }
 .feedback-form textarea { width: 100%; box-sizing: border-box; }
+
+/* FLH-034 Knowledge Library: current facts and history are visually distinct. */
+.library-search label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.library-search input[type="search"] { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px; font: inherit; }
+.library-search select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px; font: inherit; }
+.library-results { list-style: none; padding: 0; margin: 0; }
+.library-result { margin-bottom: 10px; }
+.panel h2.library-title { text-transform: none; letter-spacing: 0; font-size: 18px; color: inherit; }
+.library-section h3 { font-size: 14px; margin: 0 0 8px; }
+.library-section.current { border-left: 4px solid var(--same); }
+.library-section.history { border-left: 4px solid var(--history); }
+.library-unit { border-top: 1px solid var(--border); padding: 8px 0; }
+.library-unit:first-of-type { border-top: 0; }
+.library-unit p { margin: 4px 0; }
+button.link-button { background: none; border: 0; padding: 0; color: #175cd3; text-decoration: underline; cursor: pointer; font: inherit; }
+button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
+@media (max-width: 640px) {
+  .library-search .discovery-search-row { flex-wrap: wrap; }
+  .library-search input[type="search"] { flex-basis: 100%; }
+}

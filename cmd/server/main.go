@@ -118,6 +118,9 @@ func run() error {
 		transporthttp.WithAnnotationDatasetQuality(annotationQualitySvc),
 		transporthttp.WithRetrievalEvaluation(retrievalEvaluationSvc),
 		transporthttp.WithRetrievalComparison(retrievalComparisonSvc),
+		transporthttp.WithKnowledgeLibrary(application.NewKnowledgeLibraryService(
+			conceptRepo, knowledgeRepo, entryRepo, analysisRepo, feedbackRepo, effectiveAnnotationSvc,
+		)),
 		transporthttp.WithReadiness(db.PingContext),
 	)
 

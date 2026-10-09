@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { AnnotationInspector } from "./pages/AnnotationInspector";
 import { ExperimentDashboard } from "./pages/ExperimentDashboard";
+import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue } from "./pages/ReviewQueue";
 import { UnitInspection } from "./pages/UnitInspection";
 import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 
-type View = "records" | "review" | "inspector" | "experiments";
+type View = "records" | "library" | "review" | "inspector" | "experiments";
 
 const viewCopy: Record<View, { title: string; subtitle: string }> = {
   records: {
     title: "Learning Records",
     subtitle: "Import captures, browse learner-authored records, and explicitly request analysis or extraction. Interpretations and eligibility stay backend-owned.",
+  },
+  library: {
+    title: "Knowledge Library",
+    subtitle: "Search curated Concepts, see their current support, and follow evidence back to the original record. Read-only.",
   },
   review: {
     title: "Concept Review",
@@ -29,7 +34,8 @@ const viewCopy: Record<View, { title: string; subtitle: string }> = {
 
 // App keeps the internal workbench views behind a local tab switch. Learning
 // Records writes only through explicit capture import, analysis, feedback, and
-// extraction requests; the Inspector and Experiment Dashboard are read-only;
+// extraction requests; the Knowledge Library, Inspector and Experiment Dashboard
+// are read-only;
 // Concept Review records annotation decisions.
 //
 // A record's extracted unit can be opened in Concept Review or a focused
@@ -38,6 +44,9 @@ const viewCopy: Record<View, { title: string; subtitle: string }> = {
 export default function App() {
   const [view, setView] = useState<View>("review");
   const [recordsMounted, setRecordsMounted] = useState(false);
+  // The library stays mounted once opened, so its query, results and open
+  // Concept survive switching to another view and back.
+  const [libraryMounted, setLibraryMounted] = useState(false);
   // The unit opened from a record, or null for the ordinary tab views.
   const [focus, setFocus] = useState<UnitTarget | null>(null);
   // Bumped on return so the record re-reads what may have changed elsewhere.
@@ -57,6 +66,7 @@ export default function App() {
     setFocus(null);
     setView(next);
     if (next === "records") setRecordsMounted(true);
+    if (next === "library") setLibraryMounted(true);
   };
   const openUnit = (target: UnitTarget) => {
     setFocus(target);
@@ -97,6 +107,13 @@ export default function App() {
         </button>
         <button
           type="button"
+          aria-pressed={view === "library"}
+          onClick={() => show("library")}
+        >
+          Knowledge Library
+        </button>
+        <button
+          type="button"
           aria-pressed={view === "review"}
           onClick={() => show("review")}
         >
@@ -120,6 +137,11 @@ export default function App() {
       {recordsMounted ? (
         <div hidden={view !== "records"}>
           <RecordsBrowser returnEpoch={returnEpoch} onNavigateToUnit={openUnit} />
+        </div>
+      ) : null}
+      {libraryMounted ? (
+        <div hidden={view !== "library"}>
+          <KnowledgeLibrary />
         </div>
       ) : null}
       {view === "review" ? (
