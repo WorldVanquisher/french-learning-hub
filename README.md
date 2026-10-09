@@ -1530,8 +1530,13 @@ Concept Review saves only the versioned key/action/target IDs/relation before
 sending. Reload restores unresolved operations without writing. **Retry saved
 operation** sends that exact payload/key once; editing selection does not alter
 it. Unknown keyed operations block new decisions for that unit until confirmed.
-A subsequent deliberate decision gets a fresh key. Failed browser storage blocks
-new keyed submissions with an honest notice; clearing storage or changing browser
+A subsequent deliberate decision gets a fresh key. A definite rejection removes
+exactly its saved operation, even after leaving Concept Review. An unresolved
+operation another tab saved for the same unit is kept unchanged and shown on that
+unit only, with the same check/retry controls. Failed browser storage disables
+the keyed decisions with an honest notice until an explicit **Recheck browser
+storage** succeeds; nothing is resent, and an unreadable saved value must be
+removed before the recheck can pass. Clearing storage or changing browser
 origin loses recovery identity. After commit/receipt confirmation the browser
 refreshes backend authority separately. Multi-tab locking and recovery controls
 for units no longer in the review queue are not provided.

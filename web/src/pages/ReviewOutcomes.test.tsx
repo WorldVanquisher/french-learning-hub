@@ -544,3 +544,186 @@ describe("Evidence must match the decision, not just any change", () => {
     expect(screen.getByText("unit 1 of 1")).toBeInTheDocument();
   });
 });
+
+describe("FLH-032 recovery fixes", () => {
+  const storageKey = "flh.annotation-operations.v1";
+  const stored = () => JSON.parse(window.localStorage.getItem(storageKey) ?? '{"operations":[]}').operations;
+  const keyOf = (call: [unknown, RequestInit?] | undefined) => new Headers(call?.[1]?.headers).get("Idempotency-Key");
+  // Every POST seen by the outermost fetch, including ones a test holds.
+  const keyedPosts = () => vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === "POST");
+  const postsTo = (suffix: string) => keyedPosts().filter(([url]) => String(url).endsWith(suffix)).length;
+
+  // Wraps the fixture so the next POST to one path waits for an explicit reply.
+  function holdNextPost(suffix: string) {
+    const gate = deferred();
+    const original = globalThis.fetch;
+    let held = false;
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input), "http://localhost").pathname;
+      if (!held && init?.method === "POST" && path.endsWith(suffix)) {
+        held = true;
+        const reply = await gate.promise;
+        if (reply === "network-error") throw new TypeError("Failed to fetch");
+        return new Response(JSON.stringify(reply.body), { status: reply.status ?? 200, headers: { "Content-Type": "application/json" } });
+      }
+      return original(input, init);
+    }) as unknown as typeof fetch;
+    return gate;
+  }
+
+  it("F1: another tab's unresolved operation is a per-unit conflict, not a storage failure", async () => {
+    const b = backend();
+    await renderQueue();
+    // Another tab saves an unresolved DISTINCT for unit 5 after this page loaded.
+    const other = { kind: "distinct", unitId: 5, conceptId: 42, operationId: "11111111-2222-4333-8444-555555555555" };
+    window.localStorage.setItem(storageKey, JSON.stringify({ version: 1, operations: [other] }));
+
+    fireEvent.click(decision("RELATED"));
+    await waitFor(() => expect(panel()).toHaveTextContent("this browser already has an unresolved DISTINCT from concept #42 saved for unit #5, probably from another tab"));
+    expect(panel()).toHaveTextContent(`Saved operation ${other.operationId}`);
+    expect(screen.queryByText(/Browser storage/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Recheck browser storage" })).not.toBeInTheDocument();
+    expect(b.posts("/concept-links/relation")).toBe(0);
+    expect(stored()).toEqual([other]);
+    for (const name of ["SAME → selected", "NEW CONCEPT", "DISTINCT", "INVALID"]) expect(decision(name)).toBeDisabled();
+
+    // An unrelated unit keeps keyed decisions.
+    fireEvent.click(screen.getByRole("button", { name: "skip →" }));
+    await screen.findByText("Énoncé 6");
+    expect(panel()).toBeNull();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search existing concepts" }), { target: { value: "cible 5" } });
+    fireEvent.click(await screen.findByRole("button", { name: "select this concept" }));
+    await waitFor(() => expect(decision("DISTINCT")).toBeEnabled());
+    fireEvent.click(decision("DISTINCT"));
+    await banner("status", "Recorded DISTINCT");
+    expect(b.distinctions.filter((d) => d.unit_id === 6)).toHaveLength(1);
+    expect(keyOf(keyedPosts().at(-1))).not.toBe(other.operationId);
+
+    // Back on unit 5 the kept operation is retried with its own key and payload.
+    fireEvent.click(screen.getByRole("button", { name: "← previous" }));
+    await screen.findByText("Énoncé 5");
+    fireEvent.click(within(panel() as HTMLElement).getByRole("button", { name: "Retry saved operation" }));
+    await banner("status", "Recorded DISTINCT");
+    const retry = keyedPosts().at(-1)!;
+    expect(keyOf(retry)).toBe(other.operationId);
+    expect(retry[0]).toContain("/knowledge-units/5/concept-distinctions");
+    expect(JSON.parse(String(retry[1]?.body))).toEqual({ concept_id: 42 });
+    expect(b.posts("/concept-links/relation")).toBe(0);
+    expect(stored()).toEqual([]);
+  });
+
+  it("F2: a definite rejection after leaving cleans up exactly that operation; a reload shows nothing unresolved", async () => {
+    const b = backend();
+    const first = await renderQueue();
+    const gate = holdNextPost("/knowledge-units/5/concept-distinctions");
+    fireEvent.click(decision("DISTINCT"));
+    await waitFor(() => expect(stored()).toHaveLength(1));
+    first.unmount();
+    await act(async () => {
+      gate.resolve({ status: 422, body: { error: "validation error" } });
+    });
+    expect(stored()).toEqual([]);
+    await renderQueue();
+    expect(panel()).toBeNull();
+    expect(decision("DISTINCT")).toBeEnabled();
+    expect(postsTo("/concept-distinctions")).toBe(1);
+    expect(b.distinctions.filter((d) => d.unit_id === 5)).toHaveLength(1);
+  });
+
+  it("F2: an old operation's late rejection never clears a newer operation for the unit", async () => {
+    backend();
+    const first = await renderQueue();
+    const gate = holdNextPost("/knowledge-units/5/concept-distinctions");
+    fireEvent.click(decision("DISTINCT"));
+    await waitFor(() => expect(stored()).toHaveLength(1));
+    first.unmount();
+    const newer = { kind: "relation", unitId: 5, conceptId: 42, relation: "broader", operationId: "99999999-8888-4777-8666-555555555555" };
+    window.localStorage.setItem(storageKey, JSON.stringify({ version: 1, operations: [newer] }));
+    await act(async () => {
+      gate.resolve({ status: 422, body: { error: "validation error" } });
+    });
+    expect(stored()).toEqual([newer]);
+  });
+
+  it("F2: an unknown outcome after leaving stays recoverable with the original key and payload", async () => {
+    const b = backend();
+    const first = await renderQueue();
+    const gate = holdNextPost("/knowledge-units/5/concept-distinctions");
+    fireEvent.click(decision("DISTINCT"));
+    await waitFor(() => expect(stored()).toHaveLength(1));
+    const saved = stored()[0];
+    first.unmount();
+    await act(async () => {
+      gate.resolve("network-error");
+    });
+    expect(stored()).toEqual([saved]);
+    render(<StrictMode><ReviewQueue /></StrictMode>);
+    await screen.findByText("Énoncé 5");
+    await waitFor(() => expect(panel()).toHaveTextContent("Restored unresolved operation"));
+    expect(decision("NEW CONCEPT")).toBeDisabled();
+    fireEvent.click(within(panel() as HTMLElement).getByRole("button", { name: "Retry saved operation" }));
+    await banner("status", "Recorded DISTINCT");
+    expect(keyOf(keyedPosts().at(-1))).toBe(saved.operationId);
+    expect(postsTo("/concept-distinctions")).toBe(2);
+    expect(b.distinctions.filter((d) => d.unit_id === 5)).toHaveLength(2);
+  });
+
+  it("F3: storage failure disables keyed controls visibly; an explicit recheck re-enables them without sending", async () => {
+    const b = backend();
+    await renderQueue();
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
+    fireEvent.click(decision("DISTINCT"));
+    await banner("alert", /Browser storage failed. Nothing was sent/);
+    for (const name of ["DISTINCT", "BROADER", "NARROWER", "RELATED"]) expect(decision(name)).toBeDisabled();
+    for (const name of ["SAME → selected", "NEW CONCEPT", "INVALID"]) expect(decision(name)).toBeEnabled();
+    expect(screen.getByText(/disabled while browser storage cannot keep their operation keys/)).toBeInTheDocument();
+
+    // Still failing: honest message, nothing sent.
+    fireEvent.click(screen.getByRole("button", { name: "Recheck browser storage" }));
+    await banner("alert", /still unavailable or unreadable/);
+    expect(decision("DISTINCT")).toBeDisabled();
+
+    setItem.mockRestore();
+    fireEvent.click(screen.getByRole("button", { name: "Recheck browser storage" }));
+    await banner("status", "Browser storage works again. Keyed decisions are enabled; nothing was sent.");
+    expect(screen.queryByRole("button", { name: "Recheck browser storage" })).not.toBeInTheDocument();
+    expect(b.posts("/concept-distinctions")).toBe(0);
+    await waitFor(() => expect(decision("DISTINCT")).toBeEnabled());
+    fireEvent.click(decision("DISTINCT"));
+    await banner("status", "Recorded DISTINCT");
+    expect(b.posts("/concept-distinctions")).toBe(1);
+  });
+
+  it("F3: an unreadable saved value on load keeps keyed controls disabled; recheck says reloading does not repair it", async () => {
+    backend();
+    window.localStorage.setItem(storageKey, "bad json");
+    await renderQueue();
+    await banner("alert", /Browser storage is unavailable or invalid/);
+    expect(decision("BROADER")).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Recheck browser storage" }));
+    await banner("alert", /Reloading does not repair an unreadable saved value/);
+    expect(window.localStorage.getItem(storageKey)).toBe("bad json");
+  });
+
+  it("F3: a failed cleanup after commit is retried by the recheck, leaving nothing unresolved", async () => {
+    const b = backend();
+    await renderQueue();
+    const realSet = Storage.prototype.setItem;
+    let writes = 0;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, k: string, v: string) {
+      writes += 1;
+      if (writes > 1) throw new Error("quota");
+      realSet.call(this, k, v);
+    });
+    fireEvent.click(decision("DISTINCT"));
+    await banner("alert", /Request committed, but browser storage cleanup failed/);
+    await banner("status", "Recorded DISTINCT");
+    expect(stored()).toHaveLength(1);
+    vi.mocked(Storage.prototype.setItem).mockRestore();
+    fireEvent.click(screen.getByRole("button", { name: "Recheck browser storage" }));
+    await banner("status", "Browser storage works again.");
+    expect(stored()).toEqual([]);
+    expect(panel()).toBeNull();
+    expect(b.posts("/concept-distinctions")).toBe(1);
+  });
+});

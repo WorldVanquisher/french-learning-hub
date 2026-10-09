@@ -19,15 +19,19 @@ export type ActionKind =
 // unresolved unit, not gated on membership); DISTINCT records an explicit negative
 // pair against the selected concept without changing membership. The parent performs
 // the request; this component only decides which decisions are currently valid.
+// keyedUnavailable disables the keyed decisions (relations and DISTINCT) when the
+// browser cannot keep their operation keys; SAME, NEW CONCEPT and INVALID are unkeyed.
 export function ResolutionActions({
   membership,
   selectedConceptId,
   busy,
+  keyedUnavailable = false,
   onAct,
 }: {
   membership: CurrentMembership | null;
   selectedConceptId: number | null;
   busy: boolean;
+  keyedUnavailable?: boolean;
   onAct: (action: ActionKind) => void;
 }) {
   const hasSelection = selectedConceptId !== null;
@@ -42,7 +46,7 @@ export function ResolutionActions({
     : "SAME → selected";
 
   const relation = (kind: RelationKind) => (
-    <button className="ghost" disabled={busy || !hasSelection} onClick={() => onAct(kind)}>
+    <button className="ghost" disabled={busy || keyedUnavailable || !hasSelection} onClick={() => onAct(kind)}>
       {kind.toUpperCase()}
     </button>
   );
@@ -79,7 +83,7 @@ export function ResolutionActions({
 
         <button
           className="ghost"
-          disabled={busy || !hasSelection}
+          disabled={busy || keyedUnavailable || !hasSelection}
           onClick={() => onAct("distinct")}
           title="Record that this unit is NOT the same learning identity as the selected concept (an explicit negative pair). Does not create or change SAME membership; the unit stays reviewable."
         >
@@ -107,6 +111,9 @@ export function ResolutionActions({
         unit itself an invalid candidate (clearing any current SAME membership) and
         removes it from the queue. All decisions wait while one is being sent or while
         an earlier decision&apos;s outcome is still unknown.
+        {keyedUnavailable
+          ? " BROADER / NARROWER / RELATED / DISTINCT are disabled while browser storage cannot keep their operation keys."
+          : null}
       </p>
     </div>
   );

@@ -1,17 +1,52 @@
 import type { Decision } from "./reviewOutcome";
 
 const storageKey = "flh.annotation-operations.v1";
-type StoredDecision = Extract<Decision, { kind: "distinct" | "relation" }> & { operationId: string };
+export type StoredDecision = Extract<Decision, { kind: "distinct" | "relation" }> & { operationId: string };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// Browser storage could not be read, parsed or written. Page-wide: reload
+// recovery of unresolved identity cannot be guaranteed.
+export class OperationStorageError extends Error {}
+
+// The unit already has a different unresolved saved operation (for example from
+// another tab), or the saved payload under this key differs. Per unit: storage
+// works, and the existing operation is kept unchanged.
+export class OperationConflictError extends Error {
+  constructor(message: string, readonly existing: StoredDecision) {
+    super(message);
+  }
+}
+
+function unreadable(): never {
+  throw new OperationStorageError("Saved annotation operations cannot be read. Nothing new was sent.");
+}
+
+function samePayload(a: StoredDecision, b: Decision): boolean {
+  return a.kind === b.kind && a.unitId === b.unitId && a.conceptId === (b as StoredDecision).conceptId &&
+    (a.kind !== "relation" || (b.kind === "relation" && a.relation === b.relation));
+}
+
+function write(operations: StoredDecision[]): void {
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify({ version: 1, operations }));
+  } catch {
+    throw new OperationStorageError("Browser storage could not be written.");
+  }
+}
 
 // Only in-scope action, IDs, relation and key are stored. Storage is origin-local,
 // versioned, and written before sending. No credentials or learning text.
 export function loadOperations(): StoredDecision[] {
-  const raw = window.localStorage.getItem(storageKey);
-  if (raw === null) return [];
-  const parsed: unknown = JSON.parse(raw);
+  let parsed: unknown;
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (raw === null) return [];
+    parsed = JSON.parse(raw);
+  } catch {
+    unreadable();
+  }
   if (!parsed || typeof parsed !== "object" || !("version" in parsed) || parsed.version !== 1 ||
-      !("operations" in parsed) || !Array.isArray(parsed.operations)) throw new Error("Saved annotation operations cannot be read. Nothing new was sent.");
+      !("operations" in parsed) || !Array.isArray(parsed.operations)) unreadable();
   const operations: StoredDecision[] = [];
   for (const value of parsed.operations) {
     if (!value || typeof value !== "object" || !uuid.test(value.operationId) ||
@@ -19,7 +54,7 @@ export function loadOperations(): StoredDecision[] {
         !Number.isSafeInteger(value.conceptId) || value.conceptId <= 0 ||
         !["distinct", "relation"].includes(value.kind) ||
         (value.kind === "relation" && !["broader", "narrower", "related"].includes(value.relation))) {
-      throw new Error("Saved annotation operations cannot be read. Nothing new was sent.");
+      unreadable();
     }
     operations.push(value.kind === "distinct"
       ? { kind: "distinct", unitId: value.unitId, conceptId: value.conceptId, operationId: value.operationId }
@@ -31,15 +66,27 @@ export function saveOperation(d: Decision): void {
   if (!d.operationId || (d.kind !== "distinct" && d.kind !== "relation")) return;
   const operations = loadOperations();
   const prior = operations.find((op) => op.operationId === d.operationId);
-  if (prior && (prior.kind !== d.kind || prior.unitId !== d.unitId || prior.conceptId !== d.conceptId || (prior.kind === "relation" && d.kind === "relation" && prior.relation !== d.relation))) throw new Error("Saved operation payload changed. Nothing was sent.");
+  if (prior && !samePayload(prior, d)) throw new OperationConflictError("Saved operation payload changed. Nothing was sent.", prior);
   if (!prior) {
-    if (operations.some((op) => op.unitId === d.unitId)) throw new Error("Another operation for this unit is unresolved. Nothing was sent.");
+    const other = operations.find((op) => op.unitId === d.unitId);
+    if (other) throw new OperationConflictError("Another operation for this unit is unresolved. Nothing was sent.", other);
     operations.push(d as StoredDecision);
   }
-  window.localStorage.setItem(storageKey, JSON.stringify({ version: 1, operations }));
+  write(operations);
 }
-export function clearOperation(id: string): void {
-  window.localStorage.setItem(storageKey, JSON.stringify({ version: 1, operations: loadOperations().filter((d) => d.operationId !== id) }));
+// clearOperation removes only the saved operation with this exact key and
+// payload. A newer operation (another key) or a changed payload is never removed.
+export function clearOperation(d: Decision): void {
+  const operations = loadOperations();
+  const kept = operations.filter((op) => !(op.operationId === d.operationId && samePayload(op, d)));
+  if (kept.length !== operations.length) write(kept);
+}
+// recheckStorage proves the saved operations can be read and written again,
+// rewriting the same validated content. It sends nothing.
+export function recheckStorage(): StoredDecision[] {
+  const operations = loadOperations();
+  write(operations);
+  return operations;
 }
 export function newOperation(d: Decision): Decision {
   if (d.kind !== "distinct" && d.kind !== "relation") return d;
