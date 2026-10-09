@@ -34,7 +34,13 @@ Each fixture imports synthetic source plus a valid analysis through `/captures`,
 then explicitly extracts one unit using the local provider. Annotation requests
 and reconciliation GETs go through a new loopback proxy. It preserves actual
 Host/Origin for same-origin browser-shaped requests; forwarded headers do not
-grant trust. The upstream callback verifies the listener belongs to the owned
+grant trust. Duplicate end-to-end request headers remain ordered pairs, including
+Idempotency-Key and Origin; they are never converted to a dictionary. The
+HTTPConnection-compatible pair collection exposes `keys()` and `items()` while
+preserving multiplicity. Hop-by-hop and Connection-nominated headers are removed.
+Only fixed-length request bodies are supported: Transfer-Encoding, repeated
+Content-Length and malformed lengths return 400 without upstream forwarding.
+The upstream client generates framing from the buffered body. The upstream callback verifies the listener belongs to the owned
 server PID before connecting. The CLI has no target URL, database, port, provider
 or project option, and never discovers existing instances. No actual `.env`,
 provider secret, daily data, paid API, production source change or Git operation
@@ -142,3 +148,10 @@ INSERT rollback; the proxy matrix uses concurrent replays after initial commit.
 Total successful cases: 128. These remain backend/proxy evidence, not browser
 acceptance. The FLH-029 contract is now implemented; the historical FLH-028 report
 continues to document the earlier unkeyed investigation.
+
+The proxy test suite includes an owned native server build with synthetic fixtures.
+It verifies duplicate keys (400) and duplicate Origins (403) through both aliases,
+with unchanged all-table snapshots and provider counters. Fast mechanism tests
+also verify ordered pairs and framing rejection before forwarding. Compiler
+selection and evidence follow the FLH-026 launcher; caller PATH wrappers do not
+select its compiler.

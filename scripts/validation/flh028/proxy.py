@@ -7,6 +7,21 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
+class HeaderPairs:
+    """HTTPConnection iterates names and calls items(); retain every raw pair."""
+    def __init__(self, pairs):
+        self.pairs = tuple(pairs)
+
+    def __iter__(self):
+        return (key for key, _ in self.pairs)
+
+    def items(self):
+        return iter(self.pairs)
+
+    def keys(self):
+        return list(self)
+
+
 class LossProxy(ThreadingHTTPServer):
     def __init__(self, forward):
         # forward is an ownership-checking callback, never a configurable URL.
@@ -60,9 +75,21 @@ class Handler(BaseHTTPRequestHandler):
         self.connection.close()
 
     def handle_request(self):
-        body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
-        headers = {key: value for key, value in self.headers.items()
-                   if key.lower() not in {"connection", "content-length", "transfer-encoding"}}
+        lengths = self.headers.get_all("Content-Length", [])
+        # This fixture supports fixed-length bodies only. Reject ambiguous framing
+        # before consuming a body or invoking the ownership-checking callback.
+        if (self.headers.get_all("Transfer-Encoding") or len(lengths) > 1
+                or (lengths and (not lengths[0].isascii() or not lengths[0].isdigit()))):
+            self.send_error(400, "unsupported request framing")
+            self.close_connection = True
+            return
+        body = self.rfile.read(int(lengths[0]) if lengths else 0)
+        excluded = {"connection", "content-length", "transfer-encoding", "keep-alive",
+                    "proxy-authenticate", "proxy-authorization", "te", "trailer", "upgrade"}
+        for value in self.headers.get_all("Connection", []):
+            excluded.update(token.strip().lower() for token in value.split(","))
+        headers = HeaderPairs((key, value) for key, value in self.headers.raw_items()
+                              if key.lower() not in excluded)
         with self.server.lock:
             job = self.server.pending
             if job is not None and (job["method"], job["path"]) == (self.command, self.path):
