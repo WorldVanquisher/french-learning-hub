@@ -17,8 +17,19 @@ toolchain compatible with `go.mod`, and the project's modules already available
 in its normal Go module cache. Builds use `GOTOOLCHAIN=local`, `GOENV=off`,
 `GOPROXY=off`, `GOSUMDB=off`, `CGO_ENABLED=0`, and `-mod=readonly
 -buildvcs=false`. The harness runs `go mod verify` and records the compiler and
-binary build information. It does not install dependencies or download a Go
-toolchain. Its Go build cache and HOME are temporary. Only the module-cache
+binary build information, the resolved compiler path and SHA-256, and built-server
+SHA-256. Default selection resolves `go` only from the isolated
+`/usr/local/bin:/usr/bin:/bin` PATH. An explicit native selection is available:
+
+```sh
+python3 -B scripts/validation/flh026/run.py --go-binary /usr/bin/go --report /tmp/flh033-explicit-example.json
+```
+
+The argument must be an absolute executable file and is rejected in container
+mode. It does not inherit caller PATH or other environment settings. A wrapper
+path or version-looking filename alone is not pinned-toolchain evidence: inspect
+the recorded compiler version and built-binary metadata before attributing a run.
+It does not install dependencies or download a Go toolchain. Its Go build cache and HOME are temporary. Only the module-cache
 location is queried using the user's HOME, with all Go environment-file loading
 disabled; provider variables are never inherited.
 
@@ -39,7 +50,8 @@ settings and authentication are not inherited. Missing prerequisites fail
 preflight; they are not a passing application test.
 
 Container mode uses the copied release `compose.yaml` plus a generated JSON
-override, always `--env-file /dev/null` and a unique `flh026-*` project/image.
+override, always `--env-file /dev/null` and a unique `flh026-<UUID hex>` project/image, independent of temporary-directory
+suffixes (including suffixes beginning with underscore).
 Provider choices are explicit: analyzer/extractor `openai`, both pointing only
 to the isolated fake service with a public fixture key; embedding `disabled`.
 There is no fallback. The app and fixture ports are chosen for this run and
@@ -74,7 +86,8 @@ python3 -B scripts/validation/flh026/test_harness.py
 
 These check environment isolation, refusal of an unowned native target, exact
 SQLite integrity results, fail-fast copy/checksum errors, and process/provider/
-directory cleanup after a controlled assertion failure. They also need local
+directory cleanup after a controlled assertion failure, explicit isolated compiler
+selection, and Docker-safe names with an underscore-prefixed directory suffix. They also need local
 socket permission. They use no application database or Docker.
 
 ## Assertions
@@ -120,7 +133,8 @@ Unknown CLI options fail before launch. The harness never probes for a running
 personal instance. Native requests require the listener's socket inode to
 belong to the child PID under `/proc`. Container mode verifies its own project's
 container labels, data mount and published port before HTTP requests. A port
-collision fails startup. A new report path is the only user-supplied output.
+collision fails startup. A new report path is the only user-supplied output; `--go-binary` selects only
+the native compiler executable.
 
 Source copying is limited to known backend source trees and, for container
 builds, frontend source/lockfiles plus release packaging. Symlinks, hidden files,

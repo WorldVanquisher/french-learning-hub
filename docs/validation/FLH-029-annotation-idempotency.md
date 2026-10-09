@@ -40,7 +40,7 @@ backend-authority refresh are separate, including refresh failure after commit.
 | Final root `make verify`, using Go 1.26.5 | PASS: formatting, all Go tests/vet, both builds, frontend typecheck/tests/build |
 | Frontend test suite | PASS: 16 files, 198 tests |
 | FLH-028 proxy unit tests | PASS: 5 tests |
-| Updated FLH-028 response-loss harness | PASS: 128 cases using Go 1.26.5; cleanup verified |
+| Updated FLH-028 response-loss harness | PASS: 128 cases using native Go 1.27.1-X:nodwarf5; cleanup verified |
 | Real-browser verification | **NOT RUN**: no Chromium/Chrome/Firefox executable, Playwright package or browser tool available |
 
 Commands executed included:
@@ -64,6 +64,13 @@ The isolated Go verification script copied only backend source, migrations and
 module manifests. Its full uncached check log is in
 `/tmp/flh-029-go126-4jdroogq/go126.log`. Final release-check output is in
 `/tmp/flh029-verify-final.log`.
+
+Evidence correction (FLH-033): the response-loss command above did **not** use
+that wrapper. FLH-026 resets PATH to `/usr/local/bin:/usr/bin:/bin`; retained
+`/tmp/flh029-response-loss-pinned.json` records `go version
+go1.27.1-X:nodwarf5 linux/amd64`. Its filename and caller PATH do not establish
+pinning. The observed 128 passing cases and cleanup remain valid native evidence;
+the separately recorded Go 1.26.5 checks remain distinct.
 
 Host Go is 1.27.1; targeted native checks were supplemental. Node is 26.9.0.
 Node's experimental native Web Storage shadows jsdom storage in this older
@@ -89,7 +96,7 @@ concurrent replays, conflict snapshots, browser-blocked zero-write requests,
 fresh-key later decisions, original historical payloads, current projections and
 process replacement. An initial run found an incorrect new assertion using the
 wrong response property; that harness assertion was corrected and the complete
-pinned-toolchain run passed. No backend behavior was patched to force that pass.
+native-toolchain run passed. No backend behavior was patched to force that pass.
 
 Retained synthetic evidence: `/tmp/flh029-response-loss-pinned.json`:
 `status=PASS`, 128 cases, `cleanup_errors=[]`,

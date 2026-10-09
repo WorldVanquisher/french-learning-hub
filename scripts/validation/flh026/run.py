@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 import threading
 import time
+import uuid
 
 from fake_provider import Provider
 
@@ -43,6 +44,21 @@ def clean_env(home):
             "HTTP_ALLOWED_HOSTS": "nas.flh026.test,192.0.2.26",
             "HTTP_TRUSTED_ORIGINS": "", "EMBEDDING_API_KEY": "",
             "EMBEDDING_BASE_URL": "", "EMBEDDING_MODEL": "", "EMBEDDING_TIMEOUT": ""}
+
+
+def docker_names():
+    project = "flh026-" + uuid.uuid4().hex
+    return project, project + ":local"
+
+
+def native_compiler(env, selected=None):
+    # Resolve only the isolated PATH unless explicitly selected; never inherit caller PATH.
+    candidate = str(selected) if selected is not None else shutil.which("go", path=env["PATH"])
+    require(candidate is not None, "native Go compiler not found")
+    path = Path(candidate)
+    require(path.is_absolute() and path.is_file() and os.access(path, os.X_OK),
+            "native Go compiler must be an absolute executable file")
+    return str(path.resolve())
 
 
 def reserve_port():
@@ -137,8 +153,9 @@ def restore(active, source):
 
 
 class Harness:
-    def __init__(self, mode):
+    def __init__(self, mode, go_binary=None):
         self.mode = mode
+        self.go_binary = go_binary
         self.run_dir = Path(tempfile.mkdtemp(prefix="flh026-"))
         self.source = self.run_dir / "source"
         self.active = self.run_dir / "custom-private-data"
@@ -148,8 +165,7 @@ class Harness:
         self.env = clean_env(self.home)
         self.env.update(FLH_DATA_DIR=str(self.active), FLH_UID=str(os.getuid()),
                         FLH_GID=str(os.getgid()), GOCACHE=str(self.run_dir / "gocache"))
-        self.project = "flh026-" + self.run_dir.name.split("-", 1)[1]
-        self.image = self.project + ":local"
+        self.project, self.image = docker_names()
         try:
             self.port_socket, self.port = reserve_port()
         except BaseException:
@@ -207,13 +223,16 @@ class Harness:
                          for p in sorted(self.source.rglob("*")) if p.is_file()}
         if self.mode == "native":
             # A known cache location is queried with only HOME/PATH, without shell startup.
+            compiler = native_compiler(self.env, self.go_binary)
+            self.compiler = {"path": compiler, "sha256": hashlib.sha256(Path(compiler).read_bytes()).hexdigest()}
             cache_env = {"HOME": str(Path.home()), "PATH": self.env["PATH"],
                          "GOTOOLCHAIN": "local", "GOENV": "off"}
-            self.env["GOMODCACHE"] = self.command(["go", "env", "GOMODCACHE"], env=cache_env).stdout.strip()
-            self.command(["go", "version"])
-            self.command(["go", "mod", "verify"])
-            self.command(["go", "build", "-o", str(self.run_dir / "server"), "./cmd/server"])
-            self.command(["go", "version", "-m", str(self.run_dir / "server")])
+            self.env["GOMODCACHE"] = self.command([compiler, "env", "GOMODCACHE"], env=cache_env).stdout.strip()
+            self.compiler["version"] = self.command([compiler, "version"]).stdout.strip()
+            self.command([compiler, "mod", "verify"])
+            self.command([compiler, "build", "-o", str(self.run_dir / "server"), "./cmd/server"])
+            self.compiler["binary_metadata"] = self.command([compiler, "version", "-m", str(self.run_dir / "server")]).stdout
+            self.compiler["binary_sha256"] = hashlib.sha256((self.run_dir / "server").read_bytes()).hexdigest()
             web = self.run_dir / "test-web"
             web.mkdir()
             (web / "index.html").write_text("<!doctype html><title>FLH026 transport fixture</title>")
@@ -591,6 +610,7 @@ class Harness:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("native", "container"), default="native")
+    parser.add_argument("--go-binary", type=Path, help="absolute native compiler executable; isolated environment still applies")
     parser.add_argument("--report", type=Path, help="new JSON evidence file outside repository; no overwrite")
     args = parser.parse_args()
     if args.report:
@@ -598,7 +618,10 @@ def main():
         require(not target.exists() and ROOT not in target.parents and target.parent.is_dir(),
                 "report must be a new file outside repository in an existing directory")
     os.umask(0o077)
+    require(args.go_binary is None or args.mode == "native", "--go-binary requires native mode")
+    # Keep the established single-argument launcher hook used by read-only adapters.
     harness = Harness(args.mode)
+    harness.go_binary = args.go_binary
     print(f"MODE={args.mode} ISOLATED_RUN={harness.run_dir}", flush=True)
     error = None
     def interrupted(signum, _frame):
@@ -615,7 +638,7 @@ def main():
         evidence = {"mode": args.mode, "status": "FAIL" if error else "PASS", "error": error,
                     "harness_sha256": harness.harness_manifest,
                     "source_sha256": getattr(harness, "manifest", {}), "cases": harness.results,
-                    "commands": harness.commands, "service_log": (harness.run_dir / "service.log").read_text(),
+                    "commands": harness.commands, "native_compiler": getattr(harness, "compiler", None), "service_log": (harness.run_dir / "service.log").read_text(),
                     "limits": ["No real browser/DOM checks; Vite headers simulated",
                                "FLH-025 frontend behavior excluded", "Browser boundary is not authentication"]}
         cleanup_errors = harness.cleanup()
