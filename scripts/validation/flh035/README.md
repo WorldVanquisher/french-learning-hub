@@ -1,0 +1,70 @@
+# FLH-035 Phase A — existing-contract acceptance preparation
+
+This directory does not implement the Knowledge Library, guess its endpoints,
+or seed the FLH-034 demo. Phase B requires the human-supplied integrated checkout.
+The [acceptance matrix](../../../docs/validation/FLH-035-knowledge-library-acceptance.md)
+records the pending integration and demo requirements.
+
+Run from the repository root:
+
+```sh
+python3 -B scripts/validation/flh035/test_expectations.py
+python3 -B scripts/validation/flh035/verify_existing.py --report /tmp/flh035-my-existing-contract-run.json
+```
+
+The report must be a new file outside the repository in an existing directory;
+existing evidence is never overwritten. Exit zero means all reached assertions
+and cleanup passed. Failure records reached cases and the actual error; it is
+not passing acceptance. No Python packages or project dependencies are installed.
+
+The thirteen oracle tests use in-memory HTTP-shaped dictionaries. They test the
+acceptance assertions, not a mocked Library UI. The integration probe runs real
+HTTP against an owned native Go process, with a fresh isolated SQLite database,
+synthetic static index, and the counted local FLH-026 fake Responses provider.
+Only explicit fixture extractions call that fake. Captures include prepared
+analyses; annotation, selection, browsing and restart must make no provider call.
+
+The launcher and provider in `../flh026/` are reused without modification.
+Prerequisites: Linux `/proc`, Python 3.10+ with SQLite, a Go compiler compatible
+with the repository's module declaration on the launcher's isolated PATH, and
+already-installed verified modules in the normal Go module cache. Socket/process
+permissions are necessary. Compiler path/version/hash and built-binary metadata
+are retained. Caller PATH wrappers do not select the compiler. Builds are offline,
+using temporary HOME/cache, GOENV off, GOTOOLCHAIN local and no VCS inspection.
+
+The probe has no target URL, database, port, provider or demo-fixture options.
+Every request uses the launcher's child-listener ownership guard. Its only
+retained output is the chosen evidence JSON (plus logs redirected by the caller).
+It creates two entries, three Concepts and three Units through existing APIs,
+then applies narrowly scoped test transitions. This is a disposable contract
+probe, not a public demo seed, reset command or second implementation of FLH-034.
+Every fresh invocation starts from an empty private database.
+
+Fourteen checkpoint groups exercise actual root and production `/api` reads,
+state filters, deterministic catalog ID ordering, preferred IDs, immutable
+extraction/Unit/source evidence, current SAME versus accepted history, and
+expected supporting fixture Unit sets. Complete SQLite table snapshots and
+provider counters must stay unchanged across each GET sequence. Process
+replacement must preserve all tables and HTTP models. The `expectations.py`
+reader accepts an ownership-checked GET callback and ID expectations captured
+from API responses; it cannot discover or select an arbitrary service.
+
+`verify_view` is a bounded independent test oracle: it checks fixture support
+against current selection, current membership and effective admission. It does
+not implement browser business rules or infer membership from historical links.
+Preferred Units need current SAME membership, not current-extraction support.
+The fixtures cover both null and accepted-feedback extraction provenance.
+
+Cleanup stops the owned server/provider and removes its private source, data,
+cache and static fixture. SIGINT/SIGTERM and ordinary assertion/build failures
+unwind through cleanup; SIGKILL/power loss cannot guarantee cleanup. Cleanup
+failure marks the run failed and may retain its private directory for diagnosis.
+No secret files, daily databases, paid providers, frontend output, Docker images
+or permanent dependencies are used by this Phase A probe.
+
+The probe is **HTTP + SQLite evidence for existing contracts**. It does not test
+Library search/rendering, entry-navigation return context, compiled frontend
+assets, container deployment, a real browser, or the author's two-minute demo.
+Do not turn its result into FLH-034 acceptance. In Phase B, map the implemented
+demo's receipt/manifest IDs into expectations, inspect its documented startup and
+cleanup instructions, and verify the integrated contract before adding checks.
