@@ -78,6 +78,7 @@ type Handler struct {
 	annotationQuality   AnnotationDatasetQualityService
 	retrievalEvaluation RetrievalEvaluationService
 	retrievalComparison RetrievalComparisonService
+	library             KnowledgeLibraryService
 	// readiness reports whether the backing store can serve requests. It is
 	// optional; without it /readyz reports not ready rather than guessing.
 	readiness        func(context.Context) error
@@ -194,6 +195,10 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /annotation-dataset/v1/quality", h.handleGetAnnotationDatasetQualityV1)
 	mux.HandleFunc("GET /retrieval-evaluation/v1", h.handleGetRetrievalEvaluationV1)
 	mux.HandleFunc("GET /retrieval-comparison/v1", h.handleGetRetrievalComparisonV1)
+	// FLH-034 read-only Knowledge Library over existing authority projections.
+	mux.HandleFunc("GET /knowledge-library/concepts", h.handleSearchLibrary)
+	mux.HandleFunc("GET /knowledge-library/concepts/{id}", h.handleGetLibraryConcept)
+	mux.HandleFunc("GET /knowledge-library/units/{id}/source", h.handleGetLibraryUnitSource)
 	return mux
 }
 

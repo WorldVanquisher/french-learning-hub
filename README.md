@@ -1542,3 +1542,37 @@ refreshes backend authority separately. Multi-tab locking and recovery controls
 for units no longer in the review queue are not provided.
 
 Full contract: [FLH-029](docs/plans/FLH-029-annotation-idempotency.md).
+
+## Knowledge Library (FLH-034)
+
+The workbench's **Knowledge Library** tab lets you search what you have learned.
+You open a curated Concept, see its current representation and support, and
+follow its evidence back to the original learning record and the versioned
+interpretation it came from. It is read-only: it makes no analysis, extraction,
+annotation or provider call. Its query and open screen survive switching tabs.
+
+| Endpoint (GET, also under `/api`) | Returns |
+| --- | --- |
+| `/knowledge-library/concepts?q=&state=&limit=` | Search or browse; `knowledge_library_search_v1` |
+| `/knowledge-library/concepts/{id}` | Identity, status, preferred unit, supporting units, non-supporting current members, current relations, historical units |
+| `/knowledge-library/units/{id}/source` | Original entry, extraction, current-extraction selection, and the interpretation (analysis + feedback then) the extraction used |
+
+How search works:
+
+- **Fields.** It searches Concept target, intent, scope and identity features,
+  plus the wording of units that are CURRENT SAME members. Historical, INVALID
+  or reassigned units and source text are not searched.
+- **Matching.** Accents and case are ignored, and each word must match the start
+  of a word. It is deterministic keyword matching only, with no semantic
+  retrieval.
+- **Ordering.** Identity matches come before unit-wording matches. Then active
+  comes before orphaned and retired, then target, then id.
+- **Limits.** 20 results by default, at most 50. A query is at most 200 bytes
+  and 8 terms.
+
+On each Concept page, current support, current non-supporting members (with the
+reason), current relations and historical evidence are kept in separate,
+labelled sections. Orphaned Concepts stay inspectable.
+
+- Two-minute synthetic demo: [docs/DEMO.md](docs/DEMO.md).
+- Contract and limits: [FLH-034](docs/plans/FLH-034-knowledge-library.md).

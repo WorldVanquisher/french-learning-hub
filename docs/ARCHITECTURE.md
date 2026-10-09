@@ -1729,3 +1729,53 @@ Current effective annotation and membership are refreshed separately. Storage
 failure is visible and blocks new keyed writes. No automatic retry, cancellation
 fence, provider call or other mutation is introduced. See the exact
 [contract and limits](plans/FLH-029-annotation-idempotency.md).
+
+## Knowledge Library (FLH-034)
+
+`KnowledgeLibraryService` is a read-only composition over existing authority. It
+holds only read interfaces, so it cannot write:
+
+- Concept storage: list, get, current membership, active support units, unit
+  lookup, current-extraction selection;
+- extraction, entry, analysis and feedback reads;
+- the M11-A effective annotation snapshot.
+
+It adds no table, migration, index or provider. Three GET routes expose it:
+
+- `/knowledge-library/concepts` for search and browse;
+- `/knowledge-library/concepts/{id}` for Concept detail;
+- `/knowledge-library/units/{id}/source` for unit provenance.
+
+They are available at the root and under `/api` through the existing workbench
+prefix and browser boundary.
+
+**Search** is deterministic keyword matching, kept separate from the M12
+experiment retrievers. It reuses only the `concept_lexical_normalization_v1`
+tokenizer:
+
+- every query token must prefix a token of the searched fields;
+- the searched fields are Concept identity, plus the wording of CURRENT SAME
+  members;
+- ranking is by tier (identity before unit evidence), then effective state,
+  target and id;
+- results are bounded (default 20, maximum 50).
+
+**Concept detail** places each unit in one section, by priority:
+
+1. supporting (from `ActiveSupportUnitIDs`);
+2. current SAME member that does not provide support (projection-based, with the
+   extraction and admission facts that explain why);
+3. current effective relation (M11-A, current-extraction units that are not
+   INVALID);
+4. historical.
+
+History is labelled as such and never shown as current authority.
+
+**Source view** resolves the interpretation the extraction used: its
+`source_analysis_id` with `source_feedback_id`, through `domain.ResolveEffective`.
+It reports the entry's latest analysis separately, so later reinterpretation is
+visible without rewriting provenance.
+
+The workbench tab stays mounted while hidden, so the query and open screen
+survive view switches. There is no router and no URL state. See
+[FLH-034](plans/FLH-034-knowledge-library.md).

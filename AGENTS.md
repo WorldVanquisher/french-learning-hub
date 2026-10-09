@@ -357,6 +357,21 @@ FLH-029 annotation idempotency:
   No automatic write retries. Browser storage failure must be reported honestly.
 - Exact contract: `docs/plans/FLH-029-annotation-idempotency.md`.
 
+FLH-034 Knowledge Library:
+
+- Read-only GET `/knowledge-library/concepts` (search/browse),
+  `/knowledge-library/concepts/{id}`, `/knowledge-library/units/{id}/source`.
+  The service holds read interfaces only and makes no provider call.
+- Search is deterministic keyword prefix matching over Concept identity and
+  CURRENT SAME member wording (`concept_lexical_normalization_v1`), bounded
+  (default 20, max 50). It is not an experiment retriever and adds no semantic
+  retrieval.
+- Support, membership and relations come from existing authority (derived
+  support, membership projection, M11-A). Historical, INVALID, reassigned or
+  non-current-extraction units are never presented as current support.
+- Demo fixture: `scripts/demo/flh034/` (isolated directory, local stub
+  extractor); contract: `docs/plans/FLH-034-knowledge-library.md`.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

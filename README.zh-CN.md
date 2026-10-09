@@ -812,3 +812,32 @@ browser storage” 成功；不会重新发送，无法读取的已保存值需�
 清除存储或更换页面源会丢失恢复身份；不提供跨标签页锁，也不提供已离开审核队列的 Unit 的恢复控件。
 
 完整协议见 [FLH-029](docs/plans/FLH-029-annotation-idempotency.md)。
+
+## 知识库（FLH-034）
+
+工作台的 **Knowledge Library** 标签页用于检索已学内容：打开经过整理的
+Concept，查看其当前代表单元与支撑情况，并沿证据回溯到原始学习记录及其所依据的
+版本化解释。该视图只读：不触发分析、抽取、标注或任何提供方调用。切换标签页后，
+查询与当前打开的页面保持不变。
+
+| 端点（GET，亦可加 `/api` 前缀） | 返回 |
+| --- | --- |
+| `/knowledge-library/concepts?q=&state=&limit=` | 检索或浏览；`knowledge_library_search_v1` |
+| `/knowledge-library/concepts/{id}` | 身份、状态、首选单元、支撑单元、不提供支撑的当前成员、当前关系、历史单元 |
+| `/knowledge-library/units/{id}/source` | 原始记录、抽取版本、当前抽取选择，以及该抽取所用的解释（分析及当时的反馈） |
+
+检索规则：
+
+- **字段**：检索 Concept 的 target、intent、scope、identity features，以及当前 SAME
+  成员单元的文本。历史、INVALID 或已改派的单元以及原始记录文本不参与检索。
+- **匹配**：忽略重音与大小写，每个词须匹配某个词的开头。仅为确定性关键词匹配，
+  不做语义检索。
+- **排序**：身份字段命中优先于单元文本命中；其次 active 先于 orphaned 与 retired；
+  再按 target 和 id。
+- **上限**：默认 20 条，最多 50 条；查询不超过 200 字节、8 个词。
+
+在每个 Concept 页面中，当前支撑、不提供支撑的当前成员（附原因）、当前关系与历史
+证据分区标注，互不混淆；orphaned 的 Concept 仍可查看。
+
+- 两分钟合成数据演示：[docs/DEMO.md](docs/DEMO.md)。
+- 协议与限制：[FLH-034](docs/plans/FLH-034-knowledge-library.md)。
