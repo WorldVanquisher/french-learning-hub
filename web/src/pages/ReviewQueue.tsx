@@ -34,7 +34,15 @@ import {
   type Decision,
 } from "./reviewOutcome";
 
-import { loadOperations, saveOperation, clearOperation, newOperation } from "./annotationOperation";
+import {
+  clearOperation,
+  loadOperations,
+  newOperation,
+  OperationConflictError,
+  recheckStorage,
+  saveOperation,
+  type StoredDecision,
+} from "./annotationOperation";
 
 type Notice = { kind: "success" | "error" | "info"; text: string } | null;
 
@@ -51,6 +59,10 @@ type Reconciliation = {
   text: string;
   acknowledged: boolean;
 };
+
+const restoredText = "Restored unresolved operation. Check its receipt or explicitly retry the saved payload.";
+const storageStillFailing =
+  "Browser storage is still unavailable or unreadable. Nothing was sent; keyed decisions (BROADER, NARROWER, RELATED, DISTINCT) stay disabled. Allow site storage and recheck. Reloading does not repair an unreadable saved value.";
 
 function errorText(e: unknown): string {
   if (e instanceof ApiError) return `(${e.status}) ${e.message}`;
@@ -108,17 +120,35 @@ export function ReviewQueue({
     };
   }, []);
   const [notice, setNotice] = useState<Notice>(null);
+  // Page-wide: browser storage cannot be read or written, so keyed decisions are
+  // disabled until an explicit recheck succeeds. A per-unit conflict never sets it.
   const [storageFailure, setStorageFailure] = useState<string | null>(null);
+  // Exact saved operations whose cleanup failed; an explicit recheck retries them.
+  const pendingCleanup = useRef(new Map<string, Decision>());
   useEffect(() => {
     try {
       const saved = loadOperations();
       const restored: Record<number, Reconciliation> = {};
       for (const decision of saved) restored[decision.unitId] = {
-        decision, baseline: null, check: "not-found", text: "Restored unresolved operation. Check its receipt or explicitly retry the saved payload.", acknowledged: false,
+        decision, baseline: null, check: "not-found", text: restoredText, acknowledged: false,
       };
       setReconciliations(restored);
       reconciliationsRef.current = restored;
-    } catch { setStorageFailure("Browser storage is unavailable or invalid. Unresolved identity cannot be recovered across reload; new keyed annotations are blocked."); }
+    } catch { setStorageFailure("Browser storage is unavailable or invalid. Unresolved identity cannot be recovered across reload; new keyed annotations are blocked. Keyed decisions (BROADER, NARROWER, RELATED, DISTINCT) stay disabled until browser storage is rechecked."); }
+  }, []);
+
+  // cleanUp removes exactly this saved operation (key and payload), also after the
+  // page was left, so a newer operation is never removed. A failure is reported
+  // and kept for the explicit storage recheck.
+  const cleanUp = useCallback((decision: Decision, failure: string) => {
+    if (!decision.operationId) return;
+    try {
+      clearOperation(decision);
+      pendingCleanup.current.delete(decision.operationId);
+    } catch {
+      pendingCleanup.current.set(decision.operationId, decision);
+      if (mounted.current) setStorageFailure(failure);
+    }
   }, []);
   const [catalog, setCatalog] = useState<Concept[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -317,8 +347,7 @@ export function ReviewQueue({
         updateReconciliation(unitId, { check: "found", text: evidence.text });
         if (rec.decision.operationId) {
           setStatus(unitId, { outcome: { kind: "succeeded", text: evidence.text } });
-          try { clearOperation(rec.decision.operationId); }
-          catch { setStorageFailure("The receipt is committed, but browser storage cleanup failed. Reload may show it again; receipt lookup remains safe."); }
+          cleanUp(rec.decision, "The receipt is committed, but browser storage cleanup failed. Reload may show it again; receipt lookup remains safe. Keyed decisions are disabled until browser storage is rechecked.");
           if (stale()) return;
         }
         const label = describeDecision(rec.decision);
@@ -336,8 +365,47 @@ export function ReviewQueue({
         if (!stale()) updateReconciliation(unitId, { check: "failed", text: errorText(e) });
       }
     },
-    [removeUnit, rereadUnit, updateReconciliation, setStatus],
+    [cleanUp, removeUnit, rereadUnit, updateReconciliation, setStatus],
   );
+
+  // adoptConflict keeps the unresolved operation already saved for this unit (for
+  // example by another tab) and shows it for this unit only. Nothing is sent and
+  // other units are unaffected.
+  function adoptConflict(unitId: number, decision: Decision, existing: StoredDecision) {
+    const label = describeDecision(existing);
+    const text = existing.operationId === decision.operationId
+      ? `Nothing was sent: the payload saved under this key is ${label}, which differs from this page's copy. The saved payload is kept; check its receipt or retry it explicitly.`
+      : `Nothing was sent: this browser already has an unresolved ${label} saved for unit #${unitId}, probably from another tab. It is kept unchanged; check its receipt or retry it explicitly before deciding again.`;
+    const rec: Reconciliation = { decision: existing, baseline: null, check: "not-found", text, acknowledged: false };
+    reconciliationsRef.current = { ...reconciliationsRef.current, [unitId]: rec };
+    setReconciliations((all) => ({ ...all, [unitId]: rec }));
+  }
+
+  // recheckStorageNow is the explicit recovery from a storage failure: it retries
+  // failed cleanups, proves storage can be read and written, and restores saved
+  // operations for units this page is not already tracking. It never sends.
+  function recheckStorageNow() {
+    let saved: StoredDecision[];
+    try {
+      for (const d of [...pendingCleanup.current.values()]) {
+        clearOperation(d);
+        pendingCleanup.current.delete(d.operationId!);
+      }
+      saved = recheckStorage();
+    } catch {
+      setStorageFailure(storageStillFailing);
+      return;
+    }
+    const next = { ...reconciliationsRef.current };
+    for (const decision of saved) {
+      const rec = next[decision.unitId];
+      if (!rec || rec.check === "found") next[decision.unitId] = { decision, baseline: null, check: "not-found", text: restoredText, acknowledged: false };
+    }
+    reconciliationsRef.current = next;
+    setReconciliations(next);
+    setStorageFailure(null);
+    setNotice({ kind: "info", text: "Browser storage works again. Keyed decisions are enabled; nothing was sent." });
+  }
 
   const blockedFor = (unitId: number) => {
     const rec = reconciliations[unitId];
@@ -374,7 +442,10 @@ export function ReviewQueue({
     const draft = retry ?? buildDecision(action, unit);
     if (!draft) return;
     let decision: Decision;
-    if ((draft.kind === "distinct" || draft.kind === "relation") && storageFailure) return;
+    if ((draft.kind === "distinct" || draft.kind === "relation") && storageFailure) {
+      setNotice({ kind: "error", text: "Nothing was sent: browser storage is unavailable, so keyed decisions are disabled. Recheck browser storage first." });
+      return;
+    }
     try {
       decision = retry ?? newOperation(draft);
     } catch {
@@ -383,8 +454,9 @@ export function ReviewQueue({
     }
     try {
       saveOperation(decision);
-    } catch {
-      setStorageFailure("Browser storage failed. Nothing was sent; reload persistence cannot be guaranteed. Restore storage before submitting an annotation.");
+    } catch (e) {
+      if (e instanceof OperationConflictError) adoptConflict(unitId, decision, e.existing);
+      else setStorageFailure("Browser storage failed. Nothing was sent; reload recovery cannot be guaranteed. Keyed decisions (BROADER, NARROWER, RELATED, DISTINCT) are disabled until browser storage is rechecked.");
       return;
     }
     if (!decision) return;
@@ -412,8 +484,7 @@ export function ReviewQueue({
       try {
         const text = await sendDecision(decision);
         if (decision.operationId) {
-          try { clearOperation(decision.operationId); }
-          catch { setStorageFailure("Request committed, but browser storage cleanup failed. Reload may show it again; check the receipt."); }
+          cleanUp(decision, "Request committed, but browser storage cleanup failed. Reload may show it again; check the receipt. Keyed decisions are disabled until browser storage is rechecked.");
           updateReconciliation(unitId, { check: "found", text: "This request committed. Current authority is refreshed separately." });
         }
         if (!mounted.current) return;
@@ -425,8 +496,15 @@ export function ReviewQueue({
           await rereadUnit(unit, `unit #${unitId}'s membership and exact matches`, !!decision.operationId);
         }
       } catch (e) {
+        const unknown = e instanceof NetworkError || !(e instanceof ApiError) || (!!decision.operationId && e.status >= 500);
+        // A definite rejection stored nothing under this key: remove exactly this
+        // saved operation, even if Concept Review was left meanwhile. A rejected
+        // retry does not cancel the original request, so it is kept.
+        if (!unknown && decision.operationId && !retry) {
+          cleanUp(decision, "Browser storage cleanup failed; the rejected operation remains saved and may be shown again after reload. Keyed decisions are disabled until browser storage is rechecked.");
+        }
         if (!mounted.current) return;
-        if (e instanceof NetworkError || !(e instanceof ApiError) || (decision.operationId && e.status >= 500)) {
+        if (unknown || !(e instanceof ApiError)) {
           setStatus(unitId, {
             outcome: {
               kind: "uncertain",
@@ -445,9 +523,6 @@ export function ReviewQueue({
           };
           void runCheck(unitId);
         } else {
-          if (decision.operationId && !retry) {
-            try { clearOperation(decision.operationId); } catch { setStorageFailure("Browser storage cleanup failed; saved operation remains available for receipt checks."); }
-          }
           setStatus(unitId, {
             outcome: { kind: "rejected", text: `The server did not record ${label} ${errorText(e)}.` },
           });
@@ -660,11 +735,19 @@ export function ReviewQueue({
         </div>
       </div>
 
-      {storageFailure ? <p role="alert">{storageFailure}</p> : null}
+      {storageFailure ? (
+        <div className="banner error" role="alert">
+          {storageFailure}{" "}
+          <button type="button" className="ghost" onClick={recheckStorageNow}>
+            Recheck browser storage
+          </button>
+        </div>
+      ) : null}
       <ResolutionActions
         membership={membership}
         selectedConceptId={selectedConceptId}
         busy={pendingWrite !== null || blockedFor(current.unit_id)}
+        keyedUnavailable={storageFailure !== null}
         onAct={act}
       />
       {pendingWrite ? (
@@ -689,6 +772,7 @@ export function ReviewQueue({
           onAllow={async () => updateReconciliation(current.unit_id, { acknowledged: true })}
           onRetry={() => void act("distinct", reconciliations[current.unit_id].decision)}
           busy={pendingWrite !== null}
+          storageUnavailable={storageFailure !== null}
         />
       ) : null}
 
@@ -733,6 +817,7 @@ function ReconciliationPanel({
   onAllow,
   onRetry,
   busy,
+  storageUnavailable,
 }: {
   unitId: number;
   rec: Reconciliation;
@@ -740,6 +825,7 @@ function ReconciliationPanel({
   onAllow: () => Promise<void>;
   onRetry: () => void;
   busy: boolean;
+  storageUnavailable: boolean;
 }) {
   const label = describeDecision(rec.decision);
   if (rec.check === "checking") {
@@ -762,7 +848,8 @@ function ReconciliationPanel({
       <p>{rec.text}</p>
       <p>Saved operation {rec.decision.operationId}. Editing the selection does not change this saved payload.</p>
       <button disabled={busy} onClick={onCheck}>Check receipt</button>
-      <button disabled={busy} onClick={onRetry}>Retry saved operation</button>
+      <button disabled={busy || storageUnavailable} onClick={onRetry}>Retry saved operation</button>
+      {storageUnavailable ? <p className="hint">Retry waits until browser storage is rechecked; checking the receipt sends nothing.</p> : null}
     </section>
   );
   return (

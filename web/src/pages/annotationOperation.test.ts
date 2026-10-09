@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clearOperation, loadOperations, newOperation, saveOperation } from "./annotationOperation";
+import { clearOperation, loadOperations, newOperation, OperationConflictError, OperationStorageError, recheckStorage, saveOperation } from "./annotationOperation";
 import { checkDecision, sendDecision } from "./reviewOutcome";
 import { ApiError } from "../api/client";
 
@@ -14,15 +14,52 @@ describe("durable annotation identity", () => {
     expect(loadOperations()).toHaveLength(1);
     expect(() => saveOperation({...d, conceptId:43} as typeof d)).toThrow("payload changed");
     expect(newOperation({kind:"distinct",unitId:5,conceptId:42}).operationId).not.toBe(d.operationId);
-    clearOperation(d.operationId!);
+    clearOperation(d);
     expect(loadOperations()).toEqual([]);
+  });
+  it("an existing unresolved operation is a per-unit conflict carrying that operation, not a storage failure", () => {
+    const a = newOperation({kind:"distinct",unitId:5,conceptId:2});
+    saveOperation(a);
+    const b = newOperation({kind:"relation",unitId:5,conceptId:3,relation:"related"});
+    let err: unknown;
+    try { saveOperation(b); } catch (e) { err = e; }
+    expect(err).toBeInstanceOf(OperationConflictError);
+    expect(err).not.toBeInstanceOf(OperationStorageError);
+    expect((err as OperationConflictError).existing).toEqual(a);
+    // A different unit is unaffected and the existing operation is kept unchanged.
+    const other = newOperation({kind:"distinct",unitId:6,conceptId:2});
+    saveOperation(other);
+    expect(loadOperations()).toEqual([a, other]);
+    // Same key with a changed payload also reports the saved payload.
+    expect(() => saveOperation({...a, conceptId:9} as typeof a)).toThrow(OperationConflictError);
+  });
+  it("clearing removes only the exact key and payload; a newer operation for the unit survives", () => {
+    const old = newOperation({kind:"distinct",unitId:5,conceptId:2});
+    saveOperation(old);
+    clearOperation(old);
+    const newer = newOperation({kind:"relation",unitId:5,conceptId:3,relation:"broader"});
+    saveOperation(newer);
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    clearOperation(old); // late response for the old key
+    expect(loadOperations()).toEqual([newer]);
+    expect(setItem).not.toHaveBeenCalled();
+    clearOperation({...newer, relation:"related"} as typeof newer); // same key, other payload
+    expect(loadOperations()).toEqual([newer]);
   });
   it("does not pretend failed or corrupt storage is reload-safe", () => {
     window.localStorage.setItem("flh.annotation-operations.v1", "bad json");
     expect(loadOperations).toThrow();
+    expect(loadOperations).toThrow(OperationStorageError);
+    expect(recheckStorage).toThrow(OperationStorageError);
     window.localStorage.clear();
-    vi.spyOn(Storage.prototype,"setItem").mockImplementation(() => { throw new Error("quota"); });
-    expect(() => saveOperation(newOperation({kind:"distinct",unitId:5,conceptId:42}))).toThrow();
+    const setItem = vi.spyOn(Storage.prototype,"setItem").mockImplementation(() => { throw new Error("quota"); });
+    expect(() => saveOperation(newOperation({kind:"distinct",unitId:5,conceptId:42}))).toThrow(OperationStorageError);
+    vi.spyOn(Storage.prototype,"getItem").mockImplementation(() => { throw new Error("blocked"); });
+    expect(loadOperations).toThrow(OperationStorageError);
+    vi.mocked(Storage.prototype.getItem).mockRestore();
+    expect(recheckStorage).toThrow(OperationStorageError);
+    setItem.mockRestore();
+    expect(recheckStorage()).toEqual([]);
   });
   it("404 is unknown; committed lookup is historical attribution; mismatch is refused", async () => {
     const d = newOperation({kind:"distinct",unitId:5,conceptId:42});
