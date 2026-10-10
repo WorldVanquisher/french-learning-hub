@@ -51,6 +51,35 @@ class IntegratedChecksTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "exactly one"):
             check_detail(data, [], members=[1], historical=[1], preferred=1)
 
+    def relations(self):
+        data = self.detail()
+        data["current_relations"] = [
+            {"link_id": lid, "relation": relation,
+             "unit": {"unit_id": 9, "in_current_extraction": True, "admission": "active"}}
+            for lid, relation in ((10, "related"), (11, "broader"))]
+        return data
+
+    def test_multiple_legal_relations_share_one_unit(self):
+        check_detail(self.relations(), [], [1], [9, 9], preferred=1)
+
+    def test_duplicate_relation_event_rejected(self):
+        data = self.relations()
+        data["current_relations"][1]["link_id"] = 10
+        with self.assertRaisesRegex(AssertionError, "duplicate relation link"):
+            check_detail(data, [], [1], [9, 9], preferred=1)
+
+    def test_duplicate_unit_relation_pair_rejected(self):
+        data = self.relations()
+        data["current_relations"][1]["relation"] = "related"
+        with self.assertRaisesRegex(AssertionError, "duplicate unit/relation"):
+            check_detail(data, [], [1], [9, 9], preferred=1)
+
+    def test_relation_cannot_also_be_support(self):
+        data = self.relations()
+        data["supporting_units"] = [data["current_relations"][0]["unit"]]
+        with self.assertRaisesRegex(AssertionError, "exactly one"):
+            check_detail(data, [9], [1], [9, 9], preferred=1)
+
 
 if __name__ == "__main__":
     unittest.main()

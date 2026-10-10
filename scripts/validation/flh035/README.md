@@ -87,15 +87,15 @@ Prerequisites additionally include npm, curl and public npm artifacts cached in
 is copied into the owned run directory before offline `npm ci`; absence fails
 rather than downloading or inheriting credentials. npm uses separate empty user
 and global config files. Frontend source/lockfiles/config are copied privately;
-production build, the author's four Library jsdom tests, and one independent
-mocked duplicate-relation UI probe run there. No repository `node_modules`, dist,
+production build, the author's five Library jsdom tests, and one independent
+mocked multiple-relation acceptance UI probe run there. No repository `node_modules`, dist,
 TypeScript output, dependency manifest, demo file or production file is changed.
 
 The runner reserves unique loopback ports and supplies only the documented
 `DEMO_PORT`/`STUB_PORT` overrides to the unchanged demo. Every API request requires
-the server listener's socket inode to belong to the attributed child PID. The
-unchanged demo itself binds its app listener to a wildcard address, recorded as
-a finding; requests still target only the owned loopback service. Native builds
+the server listener's socket inode to belong to the attributed child PID. Both demo listeners must bind only to IPv4 loopback. Independent Linux /proc
+socket-inode inspection requires the recorded PID to own exactly 127.0.0.1;
+kernel start time and full command must equal the identity record. Native builds
 use the isolated offline environment and `-buildvcs=false`; no Git command runs.
 
 The author's stub does not expose counters. A temporary `sitecustomize.py` startup
@@ -114,20 +114,57 @@ introduce tier/ID ties, preferred historical membership, INVALID, multiple sourc
 entries, later feedback/analysis, and multiple relation types. Those are edge
 probes, not a replacement or edited demo fixture.
 
-Owned safety probes test normal refusals, a misattributed PID with a disposable
-sleep sentinel, and an occupied port with an owned HTTP fixture that rejects seed
-writes. They never contact an existing/personal service or kill an unrelated user
+Owned safety probes test normal refusals, dead/misattributed records, a newer
+identity mismatch with task-owned sleep sentinels, both occupied ports with an
+owned HTTP fixture, partial startup and injected seed failure. They never contact an existing/personal service or kill an unrelated user
 process. The runner attributes PID command lines before calling author cleanup,
 then requires all reserved ports closed. All data/builds/dependencies/hooks are
 removed; only the chosen JSON and redirected logs remain outside the repository.
 Cleanup cannot be guaranteed after SIGKILL or power loss. A command timeout or
 failed prerequisite remains a failure, not acceptance.
 
-Exit zero requires no runner error, cleanup error **or recorded defect**. Completed
-checks with findings use JSON state `CHECKS_COMPLETE` and exit one; this is not a
-passing release acceptance. Failed intermediate attempts are retained separately
+Exit zero and JSON state `PASS` require all expected-state assertions and cleanup
+to pass. Errors or defects produce `FAIL` and exit one. Multiple legal relations
+retain distinct event IDs and both rendered cards with no React duplicate-key
+warning. CURRENT SAME historical/suppressed members remain searchable, without
+being labelled supporting evidence. These FLH-037 acceptance checks replace
+defect reproduction; the historical FLH-035 report is preserved. Failed intermediate attempts are retained separately
 with new report names. Actual browser interaction and the timed human two-minute
 presentation remain NOT RUN when no browser is available. HTTP traversal time,
 frontend setup time and Go/demo build-start-seed time are recorded separately.
 The independent React probe is explicitly mocked API + real React/jsdom evidence;
 it is not a browser. The full findings and limits are in the acceptance report.
+
+
+## FLH-037 Linux integrated acceptance
+
+The owned files are `verify_integrated.py`, `integrated_checks.py`,
+`test_integrated_checks.py`, `linux_demo_checks.py` and this README; Phase A
+helpers and the author demo remain unchanged. Run the commands above with new
+report filenames. Socket/process permissions may require execution outside a
+restricted sandbox. No arbitrary target URL or database option is accepted.
+The lifecycle helper runs only under the verifier's private resource root.
+
+Ten integrated oracle tests preserve section exclusivity while allowing a Unit
+in multiple distinct legal relation rows. Duplicate relation event IDs, duplicate
+Unit/relation pairs, and a Unit appearing across support/relation sections fail.
+The mock React probe checks both relation labels and two cards, not just absence
+of a warning. The author's five component tests additionally check corrected
+member-wording labels and CURRENT SAME counts.
+
+The newer-identity probe launches and reaps a predecessor and starts a replacement
+sentinel using the same owned executable. It combines the new PID with an older
+start tick (simulated if both launches fall in one tick). Stop must preserve the
+replacement and refuse success; cleanup must retain its directory. Restoring the
+exact live identity must permit SIGTERM and cleanup. This is controlled stale
+identity evidence, not a claim to force kernel PID reuse.
+
+Seed failure is injected with a private PATH shim that exits 7 only for the
+author's seed.py and delegates all other Python invocations unchanged. Partial
+startup uses an absent workbench directory after stub launch. Both must exit
+nonzero, omit seed.json, close both ports, leave no directory-attributed process,
+and permit cleanup. Occupied-port fixtures must receive zero HTTP requests and
+setup must fail before even building a server.
+
+The [FLH-037 report](../../../docs/validation/FLH-037-knowledge-demo-final.md)
+records actual results, baseline hashes, evidence limits and human handoff.
