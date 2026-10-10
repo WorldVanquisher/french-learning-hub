@@ -83,7 +83,12 @@ describe("Knowledge Library", () => {
     fireEvent.change(screen.getByLabelText("Search learned material"), { target: { value: "subj" } });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     expect(await screen.findByText("2 concepts matching “subj”.")).toBeInTheDocument();
-    expect(screen.getByText("Matched in current unit statement (not in the concept identity)")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Matched in member unit statement — not in the concept identity. A CURRENT SAME member matched; membership is not support.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Concept #1 · grammar · 1 supporting unit, 2 CURRENT SAME members")).toBeInTheDocument();
     expect(calls.some((c) => c.search === "?q=subj")).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "subjonctif après il faut que" }));
@@ -120,6 +125,31 @@ describe("Knowledge Library", () => {
     expect(screen.getByText("2 concepts matching “subj”.")).toBeInTheDocument();
     expect(calls.every((c) => c.method === "GET")).toBe(true);
     expect(calls.some((c) => /analysis|extractions|concept-links|invalid|distinctions/.test(c.path))).toBe(false);
+  });
+
+  it("keeps every relation one unit holds to a concept, with no duplicate React keys", async () => {
+    // Two legitimate, distinct relations recorded from the same unit (#13).
+    const detail = {
+      schema_version: "knowledge_library_concept_v1", concept: concept(1, "subjonctif après il faut que", "active"),
+      preferred_unit: null, supporting_units: [unit(12, true)], non_supporting_members: [],
+      current_relations: [
+        { relation: "related", link_id: 7, decision_source: "human", decided_at: "t", unit: unit(13, true) },
+        { relation: "broader", link_id: 8, decision_source: "human", decided_at: "t", unit: unit(13, true) },
+      ],
+      historical_units: [], history_event_count: 3,
+    };
+    library({ "/api/knowledge-library/concepts/1": () => ({ body: detail }) });
+    const errors = vi.spyOn(console, "error");
+    await openLibrary();
+    fireEvent.click(await screen.findByRole("button", { name: "subjonctif après il faut que" }));
+    const relations = await screen.findByRole("region", { name: "Current relations (2)" });
+    expect(within(relations).getByText("RELATED")).toBeInTheDocument();
+    expect(within(relations).getByText("BROADER")).toBeInTheDocument();
+    expect(within(relations).getAllByRole("button", { name: /View source record #130/ })).toHaveLength(2);
+    expect(within(relations).getByText(/link #7,/)).toBeInTheDocument();
+    expect(within(relations).getByText(/link #8,/)).toBeInTheDocument();
+    const keyWarnings = errors.mock.calls.filter((args) => args.some((a) => String(a).includes("same key")));
+    expect(keyWarnings).toEqual([]);
   });
 
   it("shows an orphaned concept honestly", async () => {

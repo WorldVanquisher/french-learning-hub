@@ -365,12 +365,25 @@ FLH-034 Knowledge Library:
 - Search is deterministic keyword prefix matching over Concept identity and
   CURRENT SAME member wording (`concept_lexical_normalization_v1`), bounded
   (default 20, max 50). It is not an experiment retriever and adds no semantic
-  retrieval.
+  retrieval. Membership is not support: members from a historical extraction or
+  with suppressed admission match and are labelled as member-wording matches;
+  former members never match under the Concept they left.
 - Support, membership and relations come from existing authority (derived
   support, membership projection, M11-A). Historical, INVALID, reassigned or
   non-current-extraction units are never presented as current support.
 - Demo fixture: `scripts/demo/flh034/` (isolated directory, local stub
   extractor); contract: `docs/plans/FLH-034-knowledge-library.md`.
+
+FLH-036 listener and demo processes:
+
+- Optional `LISTEN_HOST` (IP literal only) makes the server listen on
+  `LISTEN_HOST:PORT`. Empty or unset keeps `":" + PORT` (all interfaces), so
+  Compose and the default behaviour are unchanged.
+- The FLH-034 demo binds `127.0.0.1` and refuses occupied ports before any
+  launch or seed. It signals only processes whose PID, start time and command
+  line match its records (`proc_guard.py`; Linux or macOS). Any failure stops
+  its own children and exits non-zero. Contract:
+  `docs/plans/FLH-036-knowledge-demo.md`.
 
 ## Design Priorities
 

@@ -122,6 +122,7 @@ web                      React + Vite + TypeScript 记录浏览与标注工作�
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `PORT` | `8080` | HTTP 监听端口 |
+| `LISTEN_HOST` | 空（监听所有接口） | 可选的绑定 IP，例如 `127.0.0.1`；不接受主机名 |
 | `DB_PATH` | `data/app.db` | SQLite 文件路径 |
 | `HTTP_READ_TIMEOUT` | `10` | 读取超时（秒） |
 | `HTTP_WRITE_TIMEOUT` | `10` | 写入超时（秒） |
@@ -828,8 +829,10 @@ Concept，查看其当前代表单元与支撑情况，并沿证据回溯到原�
 
 检索规则：
 
-- **字段**：检索 Concept 的 target、intent、scope、identity features，以及当前 SAME
-  成员单元的文本。历史、INVALID 或已改派的单元以及原始记录文本不参与检索。
+- **字段**：检索 Concept 的 target、intent、scope、identity features，以及持有该
+  Concept 当前 SAME 成员关系的单元文本。成员关系不等于支撑：来自旧抽取版本或准入被
+  抑制的成员仍会命中，结果会注明是通过成员单元文本命中。已离开的成员（改派、拒绝或
+  INVALID）、仅有关系的单元、原始记录与分析不参与检索。
 - **匹配**：忽略重音与大小写，每个词须匹配某个词的开头。仅为确定性关键词匹配，
   不做语义检索。
 - **排序**：身份字段命中优先于单元文本命中；其次 active 先于 orphaned 与 retired；

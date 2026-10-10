@@ -58,9 +58,9 @@ const fieldLabels: Record<string, string> = {
   pedagogical_intent: "intent",
   scope: "scope",
   identity_features: "identity features",
-  unit_canonical: "current unit wording",
-  unit_statement: "current unit statement",
-  unit_example: "current unit example",
+  unit_canonical: "member unit wording",
+  unit_statement: "member unit statement",
+  unit_example: "member unit example",
 };
 
 // KnowledgeLibrary is a GET-only view of curated Concepts. Searching, opening a
@@ -130,9 +130,10 @@ export function KnowledgeLibrary() {
             </button>
           </div>
           <p className="hint">
-            Keyword search over Concept identity (target, intent, scope, features) and the wording of units that are
-            CURRENT members. Accents and case are ignored; each word matches the start of a word. Read-only: searching
-            records nothing.
+            Keyword search over Concept identity (target, intent, scope, features) and the wording of units that hold
+            the Concept's CURRENT SAME membership, including members from an older extraction or with suppressed
+            admission (membership is not support). Former members are not searched. Accents and case are ignored; each
+            word matches the start of a word. Read-only: searching records nothing.
           </p>
         </form>
         <Results
@@ -216,13 +217,15 @@ function Results({
             <div className="hint">
               Concept #{r.concept.id} · {r.concept.pedagogical_intent}
               {r.concept.scope ? ` · ${r.concept.scope}` : ""} · {r.supporting_unit_count} supporting unit
-              {r.supporting_unit_count === 1 ? "" : "s"}, {r.current_member_count} current member
+              {r.supporting_unit_count === 1 ? "" : "s"}, {r.current_member_count} CURRENT SAME member
               {r.current_member_count === 1 ? "" : "s"}
             </div>
             {r.match_tier !== "browse" ? (
               <div className="hint">
                 Matched in {r.matched_fields.map((f) => fieldLabels[f] ?? f).join(", ")}
-                {r.match_tier === "unit_evidence" ? " (not in the concept identity)" : ""}
+                {r.match_tier === "unit_evidence"
+                  ? " — not in the concept identity. A CURRENT SAME member matched; membership is not support."
+                  : ""}
               </div>
             ) : null}
           </li>
@@ -287,8 +290,10 @@ function ConceptScreen({
   const d = load.data;
   const c = d.concept;
   const features = Object.entries(c.identity_features);
-  const unit = (u: LibraryUnit, note?: ReactNode) => (
-    <UnitCard key={u.unit_id} unit={u} note={note} onOpenSource={() => onOpenSource(u.unit_id)} />
+  // Within a section a unit appears once, except relations: one unit may hold
+  // several distinct relations to this concept, so those rows key by link ID.
+  const unit = (u: LibraryUnit, note?: ReactNode, key: string | number = u.unit_id) => (
+    <UnitCard key={key} unit={u} note={note} onOpenSource={() => onOpenSource(u.unit_id)} />
   );
   return (
     <div>
@@ -342,6 +347,7 @@ function ConceptScreen({
                 <strong>{r.relation.toUpperCase()}</strong> recorded between unit #{r.unit.unit_id} and this concept
                 (link #{r.link_id}, {r.decision_source}). A relation is not membership and gives no support.
               </span>,
+              `relation-${r.link_id}`,
             ),
           )
         ) : (

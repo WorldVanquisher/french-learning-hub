@@ -2,10 +2,13 @@
 // temporary directory; not a project dependency). It follows docs/DEMO.md against
 // a freshly seeded demo, asserts what each step shows, saves screenshots, and
 // fails if the browser sends any non-GET request.
-// Usage: node walkthrough.mjs ORIGIN SHOTS_DIR LABEL   (CHROME=/path overrides Chrome)
+// Usage: node walkthrough.mjs ORIGIN SHOTS_DIR LABEL [--multi-relation]   (CHROME=/path overrides Chrome)
+//   --multi-relation  after the read-only steps, record two relations from one unit
+//                     to one Concept through the API (outside the browser; this
+//                     writes to the demo database) and check both render (W11).
 import { chromium } from "playwright-core";
 
-const [, , ORIGIN, SHOTS, LABEL] = process.argv;
+const [, , ORIGIN, SHOTS, LABEL, OPTION] = process.argv;
 const T = { timeout: 8000 };
 const results = [];
 const writes = [];
@@ -108,10 +111,11 @@ await step("W5 back to concept, then back to results: query and focus preserved"
   return `query "${value}", focus on "${focused}"`;
 });
 
-await step("W6 search “fasse”: matched only through current unit wording; orphaned concept is honest", async () => {
+await step("W6 search “fasse”: matched through CURRENT SAME member wording, not support; orphaned concept is honest", async () => {
   await search("fasse");
   const rows = (await page.locator(".library-result").allInnerTexts()).map((r) => r.replace(/\s+/g, " "));
-  assert(rows.length === 2 && rows.every((r) => r.includes("(not in the concept identity)")), JSON.stringify(rows));
+  const label = "not in the concept identity. A CURRENT SAME member matched; membership is not support.";
+  assert(rows.length === 2 && rows.every((r) => r.includes(label) && !r.includes("current unit")), JSON.stringify(rows));
   await openConcept("subjonctif de faire");
   const status = await text(page.locator("dl.unit-evidence"));
   assert(status.includes("Orphaned: no unit currently supports this concept"), status);
@@ -166,6 +170,32 @@ await step("W10 read-only: no non-GET request; no failed API request", async () 
   assert(unexpected.length === 0, `failed responses: ${unexpected.join(", ")} | console: ${consoleErrors.join(" | ")}`);
   return `0 non-GET requests | failed responses: ${JSON.stringify(failedResponses)} | console errors: ${JSON.stringify(consoleErrors)}`;
 });
+
+if (OPTION === "--multi-relation") {
+  await step("W11 two relations from one unit to one concept both render (written via API, outside the browser)", async () => {
+    // FLH-035 B3 reproduction on a fresh seed: unit 9 → concept 3, RELATED and BROADER.
+    // `/api` works for both the production server and the Vite proxy.
+    const detail = async () => (await (await fetch(`${ORIGIN}/api/knowledge-library/concepts/3`)).json()).current_relations;
+    const have = new Set((await detail()).filter((r) => r.unit.unit_id === 9).map((r) => r.relation));
+    for (const relation of ["related", "broader"].filter((r) => !have.has(r))) {
+      const res = await fetch(`${ORIGIN}/api/knowledge-units/9/concept-links/relation`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ concept_id: 3, relation }),
+      });
+      assert(res.status === 201, `POST ${relation}: ${res.status}`);
+    }
+    const before = consoleErrors.length;
+    await search("bien que");
+    await openConcept("subjonctif après « bien que »");
+    const rows = await page.locator("section[aria-labelledby=lib-relations] .library-unit").allInnerTexts();
+    const flat = rows.map((r) => r.replace(/\s+/g, " "));
+    const fromUnit9 = flat.filter((r) => r.includes("between unit #9 "));
+    assert(fromUnit9.some((r) => r.includes("RELATED")) && fromUnit9.some((r) => r.includes("BROADER")), JSON.stringify(flat));
+    const keyWarnings = consoleErrors.slice(before).filter((m) => m.includes("same key"));
+    assert(keyWarnings.length === 0, keyWarnings.join(" | "));
+    await page.screenshot({ path: `${SHOTS}/${LABEL}-6-relations.png`, fullPage: true });
+    return `${flat.length} relation rows; unit #9 rows: ${fromUnit9.map((r) => r.match(/(RELATED|BROADER|NARROWER)/)?.[0]).join(", ")} | duplicate-key warnings: 0`;
+  });
+}
 
 await browser.close();
 console.log(`FLH-034 walkthrough ${LABEL} ${ORIGIN}\n${results.join("\n")}`);

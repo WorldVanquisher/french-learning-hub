@@ -32,6 +32,9 @@ type libraryFixture struct {
 	db   *sql.DB
 	ids  map[string]int64
 	path string
+	// Write services, used only by tests that change state before reading.
+	concepts  *application.ConceptService
+	knowledge *application.KnowledgeService
 }
 
 // setupLibrary builds a real stack and this scenario:
@@ -153,7 +156,7 @@ func setupLibrary(t *testing.T) *libraryFixture {
 	must(err)
 	apiSrv := httptest.NewServer(wb)
 	t.Cleanup(apiSrv.Close)
-	return &libraryFixture{srv: srv, api: apiSrv, db: db, ids: ids, path: dbPath}
+	return &libraryFixture{srv: srv, api: apiSrv, db: db, ids: ids, path: dbPath, concepts: conceptSvc, knowledge: knowledgeSvc}
 }
 
 func libraryGet(t *testing.T, url string, want int, v any) {
@@ -268,6 +271,40 @@ func TestKnowledgeLibrary_SearchTiersOrderingAndBounds(t *testing.T) {
 	}
 	for _, bad := range []string{"?limit=0", "?limit=51", "?limit=x", "?state=gone", "?q=%21+a"} {
 		libraryGet(t, f.srv.URL+"/knowledge-library/concepts"+bad, 400, nil)
+	}
+}
+
+// The search contract is CURRENT SAME membership, not current extraction or
+// support: a member from a historical extraction or with suppressed admission
+// still contributes its wording, while a former member contributes nothing to
+// the Concept it left.
+func TestKnowledgeLibrary_SearchFollowsCurrentSameMembership(t *testing.T) {
+	f := setupLibrary(t)
+	ctx := context.Background()
+	var s libSearch
+	// uA2 ("Faire : verbe irrégulier.") is C3's CURRENT SAME member from historical extraction v1.
+	libraryGet(t, f.srv.URL+"/knowledge-library/concepts?q=irregulier", 200, &s)
+	if s.TotalMatches != 1 || s.Results[0].Concept.ID != f.ids["C3"] || s.Results[0].MatchTier != "unit_evidence" ||
+		s.Results[0].Concept.State != "orphaned" || s.Results[0].SupportingCount != 0 || s.Results[0].CurrentMemberCount != 1 {
+		t.Fatalf("historical-extraction member: %+v", s.Results)
+	}
+	// Reassign uA2 to C1: its wording now matches C1 only, never its former Concept C3.
+	if _, err := f.concepts.ReassignSame(ctx, f.ids["uA2"], f.ids["C1"]); err != nil {
+		t.Fatal(err)
+	}
+	libraryGet(t, f.srv.URL+"/knowledge-library/concepts?q=irregulier", 200, &s)
+	if s.TotalMatches != 1 || s.Results[0].Concept.ID != f.ids["C1"] || s.Results[0].MatchTier != "unit_evidence" {
+		t.Fatalf("reassigned member must match only its new concept: %+v", s.Results)
+	}
+	// Suppress uB1, C1's only supporting unit: C1 loses support but uB1 is still
+	// its CURRENT SAME member, so its wording still matches.
+	if _, err := f.knowledge.AddOverride(ctx, f.ids["uB1"], domain.NewAdmissionOverrideInput{Decision: domain.HumanAdmitSuppressed, Reason: "ignored"}); err != nil {
+		t.Fatal(err)
+	}
+	libraryGet(t, f.srv.URL+"/knowledge-library/concepts?q=necessite", 200, &s)
+	if s.TotalMatches != 1 || s.Results[0].Concept.ID != f.ids["C1"] || s.Results[0].Concept.State != "orphaned" ||
+		s.Results[0].SupportingCount != 0 || s.Results[0].MatchedFields[0] != "unit_statement" {
+		t.Fatalf("suppressed member: %+v", s.Results)
 	}
 }
 
