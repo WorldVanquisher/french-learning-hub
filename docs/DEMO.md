@@ -61,73 +61,80 @@ FRENCH_HUB_URL=http://127.0.0.1:18934 npm --prefix web run dev
 
 ## What the fixture contains
 
-There are four synthetic learning records:
+The demo is English-first (FLH-038): concept titles, rule explanations and the
+learner's questions are in English. Every example sentence stays French, and so
+do the grammar terms a learner meets in class (subjonctif, passé composé,
+« bien que », malgré), usually with an English gloss.
 
-1. « il faut que je fasse »
-2. « bien que »
-3. « je suis allé »
-4. « I miss you »
+There are four synthetic learning records, each an English question about French:
+
+1. Why do we say « il faut que je fasse » and not « il faut que je fais »?
+2. Bien que + subjunctive or indicative? I wrote « bien qu'il pleut ».
+3. I wrote « je suis allé au cinéma hier ». Is that correct?
+4. How do I say « I miss you » in French?
 
 And seven Concepts, which together cover every case:
 
 | Concept | What it demonstrates |
 | --- | --- |
-| subjonctif après « il faut que » | Supported; preferred unit from the current extraction; a member from historical extraction v1; a RELATED relation |
-| subjonctif de faire | **Orphaned**: its only member is from a historical extraction |
-| subjonctif après « bien que » | Supported; a member suppressed by the learner (admission); record analysis corrected before extraction |
-| mode subjonctif | Orphaned, never supported; relation only (NARROWER) |
-| passé composé avec être | Supported; history: a unit that was reassigned to another Concept |
-| accord du participe passé avec être | Supported by that reassigned unit |
-| tu me manques | Supported; history: a unit later marked INVALID |
+| subjunctive after « il faut que » | Supported; best explanation from the current extraction; a unit from an older extraction is still filed here but no longer supports it; a RELATED link |
+| subjunctive forms of faire | **Orphaned**: its only filed unit comes from an older extraction |
+| subjunctive after « bien que » | Supported; a filed unit the learner hid (admission suppressed); the record's interpretation was corrected before extraction |
+| overview of the subjunctive mood | Orphaned, never supported; linked only (NARROWER) |
+| passé composé with être | Supported; history: a unit that was moved to another Concept |
+| agreement of the past participle with être | Supported by that moved unit |
+| tu me manques: saying you miss someone | Supported; history: a unit later marked INVALID |
 
-## Walkthrough
+Titles are stored in lower case because Concept identity is normalized. The
+fixture changes only freshly seeded demo databases: no existing record, Concept
+or translation is created, rewritten or migrated.
 
-1. **Open the library.** Click **Knowledge Library** to browse all seven
-   Concepts. Active ones come first, and every result shows its status.
-2. **Search.** Type `subjonctif` and press **Search**.
-   - Four Concepts match.
-   - Each result says where it matched (target, identity features), and how
-     many CURRENT SAME members and supporting units it has.
-   - The two orphaned Concepts are listed last, honestly labelled.
-3. **Open « il faut que ».**
-   - *Status:* active, with the support rule explained.
-   - *Preferred representation:* the reworded unit from the current extraction.
-   - *Current support:* 1 unit.
-   - *Current members that do not provide support:* the v1 unit. Its record was
-     re-extracted, so it is shown as historical extraction v1 and not counted as
-     support.
-   - *Current relations:* RELATED, which is explicitly not membership or support.
-4. **Follow the evidence.** On the v1 member, click **View source record #1**.
-   - The original learner question and its context are shown.
-   - The extraction is marked *Historical*, naming the current one.
-   - The interpretation this extraction used is analysis v1, with a note that a
-     newer analysis (v2) exists.
+## Walkthrough (about two minutes)
+
+Two ideas carry the demo:
+
+- A **unit is filed under a Concept** when it was judged to be the same idea
+  (technically, its CURRENT SAME membership).
+- A unit **supports** the Concept only while it also comes from its record's
+  current extraction and the learner has not hidden it.
+
+1. **Open the library.** Click **Knowledge Library**. All seven Concepts are
+   listed, active ones first, each with how many units are filed there and how
+   many currently support it.
+2. **Search.** Type `subjunctive` and press **Search**. Four Concepts match by
+   title, and the two orphaned ones are listed last. (`subjonctif` finds the
+   same four.)
+3. **Open “subjunctive after « il faut que »”.**
+   - *Status* says in plain English why it is active.
+   - *Best explanation* is the reworded unit from the current extraction, with
+     its French example « Il faut que tu viennes demain. »
+   - *Filed here but not supporting* shows the older v1 unit and why it no
+     longer counts.
+   - *Linked units* shows a RELATED link, which gives no support.
+4. **Follow the evidence.** On the v1 unit, click **View source record #1**.
+   The page shows what the learner wrote, marks extraction v1 as *Historical*,
+   and shows the interpretation it used (analysis v1, with a newer v2 noted).
 5. **Return.** Click **← Back to concept #1**, then **← Back to results for
-   “subjonctif”**. The query and results are unchanged, and focus is back on the
-   Concept you opened.
-6. **Search the wording.** Search `fasse`.
-   - Two Concepts match only through **member unit wording**: "not in the
-     concept identity. A CURRENT SAME member matched; membership is not
-     support."
-   - Search follows CURRENT SAME membership, not support. Here both matching
-     members come from record #1's historical extraction v1.
-   - Open **subjonctif de faire**: it is *Orphaned*, has no current support, and
-     its member is shown with the reason. It stays inspectable.
-   - A unit that was reassigned away no longer matches under its former
-     Concept (step 7's reassigned unit matches only concept #6).
+   “subjunctive”**. The query and results are unchanged, and focus is back on
+   the Concept you opened.
+6. **Search a French word.** Search `fasse`. Two Concepts match only through
+   the French examples of units filed under them, and each result says that
+   being filed is not support. Open **subjunctive forms of faire**: it is
+   *Orphaned*, with its filed unit and the reason shown.
 7. **History is never current.**
-   - Search `être` and open **passé composé avec être**. *Historical evidence*
-     shows a unit that "now belongs to concept #6". Click the link to open it.
-   - Search `manques` and open **tu me manques**. The history shows a unit that
-     is "now marked INVALID".
-8. **Corrected interpretation.** Search `bien que` and open the Concept.
-   - One member is listed as not providing support because its admission is
-     suppressed.
-   - View the source of record #2: the interpretation is **corrected** by
-     feedback, showing the corrected and original explanation.
+   - Search `être` and open **passé composé with être**. *History* says the
+     unit "was moved: it is now filed under concept #6"; click the link.
+   - Search `manques` and open **tu me manques: saying you miss someone**. Its
+     history shows a unit "later marked INVALID".
+8. **Corrected interpretation.** Search `bien que` and open the Concept. One
+   unit is filed but not supporting because "the learner hid it". View the
+   source of record #2: the interpretation was **corrected by a person**, and
+   both the explanation used and the one before correction are shown.
 
-Nothing in this walkthrough writes data or calls a provider. Open the browser's
-network panel to confirm that only GET requests are sent.
+Concept, unit, record and extraction numbers stay visible in small print for
+tracing, but the main text reads without them. Nothing in this walkthrough
+writes data or calls a provider. Open the browser's network panel to confirm
+that only GET requests are sent.
 
 ## Restart and cleanup
 

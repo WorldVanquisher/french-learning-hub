@@ -17,6 +17,7 @@ const browser = await chromium.launch({
   headless: true,
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+page.setDefaultTimeout(T.timeout); // a failed step reports in seconds, not 30 s
 const consoleErrors = [];
 page.on("console", (m) => m.type() === "error" && consoleErrors.push(m.text()));
 const failedResponses = [];
@@ -57,38 +58,46 @@ await step("W1 open the Knowledge Library tab: browse all concepts", async () =>
   return `7 concepts; order ${JSON.stringify(order)}`;
 });
 
-await step("W2 search “subjonctif”: active before orphaned, identity matches", async () => {
+await step("W2 search “subjunctive”: active before orphaned, identity matches; “subjonctif” finds the same", async () => {
   await search("subjonctif");
+  const french = (await page.locator(".library-result .link-button").allInnerTexts()).join(" | ");
+  await search("subjunctive");
   const rows = await page.locator(".library-result").allInnerTexts();
   const flat = rows.map((r) => r.replace(/\s+/g, " "));
   assert(flat.length === 4 && /active/.test(flat[0]) && /active/.test(flat[1]) && /orphaned/.test(flat[3]), JSON.stringify(flat));
-  assert(flat.every((r) => r.includes("Matched in")), "match explanation missing");
+  assert(flat.every((r) => r.includes("Found in") && r.includes("filed here")), "match explanation missing");
+  const english = (await page.locator(".library-result .link-button").allInnerTexts()).join(" | ");
+  assert(french === english, `subjonctif: ${french} / subjunctive: ${english}`);
   await page.screenshot({ path: `${SHOTS}/${LABEL}-1-search.png`, fullPage: true });
   return flat.map((r) => r.slice(0, 90)).join(" || ");
 });
 
 let historicalUnitRecord = "";
-await step("W3 open “il faut que”: preferred, current support, non-supporting member, relation", async () => {
-  await openConcept("subjonctif après « il faut que »");
+await step("W3 open “il faut que”: best explanation, current support, filed-but-not-supporting member, link", async () => {
+  await openConcept("subjunctive after « il faut que »");
   const heading = page.getByRole("heading", { level: 2 }).first();
   assert(await heading.evaluate((el) => el === document.activeElement), "heading not focused");
   const status = await text(page.locator("dl.unit-evidence"));
   assert(status.includes("Active: at least one unit currently supports"), status);
-  const preferred = await text(region("Preferred representation"));
-  assert(preferred.includes("exprime une nécessité") && preferred.includes("current extraction"), preferred);
-  const support = await text(region("Current support (1)"));
-  const members = await text(region("Current members that do not provide support (1)"));
-  assert(members.includes("historical extraction v1") && members.includes("is no longer record #1's current extraction"), members);
-  const relations = await text(region("Current relations (1)"));
-  assert(relations.includes("RELATED recorded between unit"), relations);
-  historicalUnitRecord = members;
+  const explainer = await text(page.getByText(/A unit is filed under a concept when/));
+  const preferred = await text(region("Best explanation (preferred unit)"));
+  assert(preferred.includes("expresses necessity") && preferred.includes("current extraction"), preferred);
+  assert(preferred.includes("French example: Il faut que tu viennes demain."), preferred);
+  const frenchLang = await region("Best explanation (preferred unit)").locator("[lang=fr]").first().innerText();
+  const support = await text(region("Currently supporting this concept (1)"));
+  const members = await text(region("Filed here but not supporting (1)"));
+  assert(members.includes("older extraction v1") && members.includes("which is no longer that record's current extraction"), members);
+  assert(members.includes("Il faut que je fasse mes devoirs."), members);
+  const relations = await text(region("Linked units (1)"));
+  assert(relations.includes("RELATED link from unit"), relations);
+  historicalUnitRecord = `${explainer.slice(0, 80)} | lang=fr "${frenchLang}"`;
   await page.screenshot({ path: `${SHOTS}/${LABEL}-2-concept.png`, fullPage: true });
-  return `support: "${support.slice(0, 110)}" | member: "${members.slice(0, 160)}" | relation: "${relations.slice(0, 90)}"`;
+  return `support: "${support.slice(0, 110)}" | member: "${members.slice(0, 160)}" | relation: "${relations.slice(0, 120)}" | ${historicalUnitRecord}`;
 });
 
 await step("W4 follow the historical member to its source record and interpretation", async () => {
-  await region("Current members that do not provide support (1)").getByRole("button", { name: "View source record #1" }).click();
-  await page.getByRole("heading", { name: /Source of unit #\d+: record #1/ }).waitFor(T);
+  await region("Filed here but not supporting (1)").getByRole("button", { name: "View source record #1" }).click();
+  await page.getByRole("heading", { name: /Where unit #\d+ came from: learning record #1/ }).waitFor(T);
   const entry = await text(region("Original learning record #1"));
   assert(entry.includes("il faut que je fasse"), entry);
   const extraction = await text(region("Extraction v1"));
@@ -101,56 +110,57 @@ await step("W4 follow the historical member to its source record and interpretat
 
 await step("W5 back to concept, then back to results: query and focus preserved", async () => {
   await page.getByRole("button", { name: "← Back to concept #1" }).click();
-  await region("Current support (1)").waitFor(T);
-  await page.getByRole("button", { name: "← Back to results for “subjonctif”" }).click();
-  await page.getByText("4 concepts matching “subjonctif”.").waitFor(T);
+  await region("Currently supporting this concept (1)").waitFor(T);
+  await page.getByRole("button", { name: "← Back to results for “subjunctive”" }).click();
+  await page.getByText("4 concepts matching “subjunctive”.").waitFor(T);
   await page.waitForTimeout(150);
   const focused = await page.evaluate(() => document.activeElement?.textContent);
   const value = await page.getByLabel("Search learned material").inputValue();
-  assert(focused === "subjonctif après « il faut que »" && value === "subjonctif", `${focused} / ${value}`);
+  assert(focused === "subjunctive after « il faut que »" && value === "subjunctive", `${focused} / ${value}`);
   return `query "${value}", focus on "${focused}"`;
 });
 
-await step("W6 search “fasse”: matched through CURRENT SAME member wording, not support; orphaned concept is honest", async () => {
+await step("W6 search “fasse”: found in the French examples of filed units, not support; orphaned concept is honest", async () => {
   await search("fasse");
   const rows = (await page.locator(".library-result").allInnerTexts()).map((r) => r.replace(/\s+/g, " "));
-  const label = "not in the concept identity. A CURRENT SAME member matched; membership is not support.";
-  assert(rows.length === 2 && rows.every((r) => r.includes(label) && !r.includes("current unit")), JSON.stringify(rows));
-  await openConcept("subjonctif de faire");
+  const label = "not in the concept's title. Being filed here does not mean the unit supports the concept";
+  assert(rows.length === 2 && rows.every((r) => r.includes(label)), JSON.stringify(rows));
+  await openConcept("subjunctive forms of faire");
   const status = await text(page.locator("dl.unit-evidence"));
   assert(status.includes("Orphaned: no unit currently supports this concept"), status);
-  assert((await text(region("Current support (0)"))).includes("No unit currently supports"), "support");
-  const members = await text(region("Current members that do not provide support (1)"));
+  assert((await text(region("Currently supporting this concept (0)"))).includes("No unit currently supports"), "support");
+  const members = await text(region("Filed here but not supporting (1)"));
+  assert(members.includes("que je fasse") && members.includes("Il faut que nous fassions attention."), members);
   await page.screenshot({ path: `${SHOTS}/${LABEL}-4-orphaned.png`, fullPage: true });
   await page.getByRole("button", { name: "← Back to results for “fasse”" }).click();
   return `results ${rows.length}, both via unit wording | orphaned: "${members.slice(0, 140)}"`;
 });
 
-await step("W7 history: corrected membership and INVALID unit are never current", async () => {
+await step("W7 history: a moved unit and an INVALID unit are never current", async () => {
   await search("être");
-  await openConcept("passé composé avec être");
-  const history = await text(region("Historical evidence — not current (1)"));
-  assert(history.includes("now belongs to concept #6"), history);
-  await region("Historical evidence — not current (1)").getByRole("button", { name: "concept #6" }).click();
-  await region("Current support (1)").waitFor(T);
+  await openConcept("passé composé with être");
+  const history = await text(region("History: no longer current (1)"));
+  assert(history.includes("This unit was moved: it is now filed under concept #6."), history);
+  await region("History: no longer current (1)").getByRole("button", { name: "concept #6" }).click();
+  await region("Currently supporting this concept (1)").waitFor(T);
   const accord = await page.getByRole("heading", { level: 2 }).first().evaluate((el) => el.textContent);
   await search("manques");
-  await openConcept("tu me manques");
-  const invalid = await text(region("Historical evidence — not current (1)"));
-  assert(invalid.includes("The unit is now marked INVALID."), invalid);
-  assert((await text(region("Current support (1)"))).includes("tu me manques"), "support");
+  await openConcept("tu me manques: saying you miss someone");
+  const invalid = await text(region("History: no longer current (1)"));
+  assert(invalid.includes("This unit was later marked INVALID"), invalid);
+  assert((await text(region("Currently supporting this concept (1)"))).includes("Tu me manques beaucoup."), "support");
   await page.screenshot({ path: `${SHOTS}/${LABEL}-5-history.png`, fullPage: true });
   return `passé composé history: "${history.slice(0, 150)}" → opened "${accord}" | tu me manques history: "${invalid.slice(0, 150)}"`;
 });
 
 await step("W8 source of a record whose analysis was corrected before extraction", async () => {
   await search("bien que");
-  await openConcept("subjonctif après « bien que »");
-  const members = await text(region("Current members that do not provide support (1)"));
-  assert(members.includes("Its admission is suppressed."), members);
-  await region("Preferred representation").getByRole("button", { name: "View source record #2" }).click();
+  await openConcept("subjunctive after « bien que »");
+  const members = await text(region("Filed here but not supporting (1)"));
+  assert(members.includes("The learner hid it (admission suppressed)."), members);
+  await region("Best explanation (preferred unit)").getByRole("button", { name: "View source record #2" }).click();
   const interp = await text(region("Interpretation this extraction used: analysis v1"));
-  assert(interp.includes("corrected (feedback #") && interp.includes("Concession"), interp);
+  assert(interp.includes("corrected by a person (feedback #") && interp.includes("Concession") && interp.includes("Before correction"), interp);
   return `suppressed member: "${members.slice(0, 120)}" | interpretation: "${interp.slice(0, 200)}"`;
 });
 
@@ -159,7 +169,7 @@ await step("W9 switching views keeps the library where the reader left it", asyn
   await page.getByRole("heading", { name: "Concept Review" }).waitFor(T);
   await page.getByRole("button", { name: "Knowledge Library" }).click();
   const heading = await page.getByRole("heading", { level: 2 }).first().evaluate((el) => el.textContent);
-  assert(heading.startsWith("Source of unit"), heading);
+  assert(heading.startsWith("Where unit"), heading);
   return `returned to "${heading}"`;
 });
 
@@ -185,10 +195,10 @@ if (OPTION === "--multi-relation") {
     }
     const before = consoleErrors.length;
     await search("bien que");
-    await openConcept("subjonctif après « bien que »");
+    await openConcept("subjunctive after « bien que »");
     const rows = await page.locator("section[aria-labelledby=lib-relations] .library-unit").allInnerTexts();
     const flat = rows.map((r) => r.replace(/\s+/g, " "));
-    const fromUnit9 = flat.filter((r) => r.includes("between unit #9 "));
+    const fromUnit9 = flat.filter((r) => r.includes("link from unit #9 "));
     assert(fromUnit9.some((r) => r.includes("RELATED")) && fromUnit9.some((r) => r.includes("BROADER")), JSON.stringify(flat));
     const keyWarnings = consoleErrors.slice(before).filter((m) => m.includes("same key"));
     assert(keyWarnings.length === 0, keyWarnings.join(" | "));

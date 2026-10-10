@@ -5,7 +5,7 @@ Usage: python3 -B stub_extractor.py PORT [WORK_DIR]
 WORK_DIR is not used by the stub; demo.sh passes it so that proc_guard.py can
 attribute this process to one demo directory before signalling it.
 
-Returns fixed synthetic French-learning units for the FLH-034 demo records,
+Returns fixed synthetic French-learning units, explained in English, for the FLH-034 demo records,
 chosen by a phrase in the learner's original input. The second extraction of
 the "il faut que" record returns a reworded version, so the demo has a
 historical extraction. It makes no network call and needs no key.
@@ -19,45 +19,50 @@ def unit(kind, canonical, statement, example=None):
     return {"kind": kind, "canonical": canonical, "statement": statement, "example": example, "confidence": 0.9}
 
 
+# Rule names and explanations are English for an English-speaking audience;
+# examples and the grammar terms a learner meets in class stay French.
 SCRIPTS = {
     "il faut que je": [
         [
-            unit("grammar", "subjonctif après il faut que",
-                 "Après « il faut que », le verbe se met au subjonctif.", "Il faut que je fasse mes devoirs."),
-            unit("morphology", "subjonctif de faire",
-                 "Le subjonctif présent de « faire » est irrégulier : que je fasse, que nous fassions.",
+            unit("grammar", "subjunctive after il faut que",
+                 "After « il faut que » (it is necessary that), the verb goes into the subjunctive (subjonctif).",
+                 "Il faut que je fasse mes devoirs."),
+            unit("morphology", "subjunctive of faire",
+                 "The present subjunctive of « faire » (to do) is irregular: que je fasse, que nous fassions.",
                  "Il faut que nous fassions attention."),
         ],
         [
-            unit("grammar", "subjonctif après il faut que",
-                 "« Il faut que » exprime une nécessité et déclenche toujours le subjonctif.",
+            unit("grammar", "subjunctive after il faut que",
+                 "« Il faut que » expresses necessity, so it always triggers the subjunctive.",
                  "Il faut que tu viennes demain."),
-            unit("morphology", "subjonctif de faire",
-                 "Que je fasse, que tu fasses, qu'il fasse : radical « fass- » au subjonctif.", None),
+            unit("morphology", "subjunctive of faire",
+                 "Que je fasse, que tu fasses, qu'il fasse: the subjunctive stem of « faire » is « fass- ».", None),
         ],
     ],
     "Bien que": [
         [
-            unit("grammar", "subjonctif après bien que",
-                 "« Bien que » introduit une concession et exige le subjonctif.", "Bien qu'il pleuve, nous sortons."),
-            unit("usage", "bien que ou malgré",
-                 "« Malgré » est suivi d'un nom, « bien que » d'une proposition au subjonctif.",
+            unit("grammar", "subjunctive after bien que",
+                 "« Bien que » (although) introduces a concession and requires the subjunctive.",
+                 "Bien qu'il pleuve, nous sortons."),
+            unit("usage", "bien que or malgré",
+                 "« Malgré » (despite) is followed by a noun; « bien que » by a clause in the subjunctive.",
                  "Malgré la pluie, nous sortons."),
         ],
     ],
     "suis allé": [
         [
-            unit("grammar", "passé composé avec être",
-                 "Les verbes de mouvement comme « aller » forment le passé composé avec « être ».",
+            unit("grammar", "passé composé with être",
+                 "Verbs of movement such as « aller » (to go) form the passé composé (compound past) with « être », not « avoir ».",
                  "Je suis allé au cinéma hier."),
-            unit("orthography", "accord du participe passé avec être",
-                 "Avec « être », le participe passé s'accorde avec le sujet.", "Elle est allée au cinéma."),
+            unit("orthography", "past participle agreement with être",
+                 "With « être », the past participle takes the gender and number of the person or thing doing the action.",
+                 "Elle est allée au cinéma."),
         ],
     ],
     "I miss you": [
         [
             unit("expression", "tu me manques",
-                 "Avec « manquer », la personne qui manque est le sujet : « tu me manques » = I miss you.",
+                 "With « manquer », the roles are reversed: « tu me manques » means “I miss you” (literally “you are missing to me”).",
                  "Tu me manques beaucoup."),
             unit("vocabulary", "manquer", "Manquer = to miss.", None),
         ],

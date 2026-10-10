@@ -842,5 +842,7 @@ Concept，查看其当前代表单元与支撑情况，并沿证据回溯到原�
 在每个 Concept 页面中，当前支撑、不提供支撑的当前成员（附原因）、当前关系与历史
 证据分区标注，互不混淆；orphaned 的 Concept 仍可查看。
 
-- 两分钟合成数据演示：[docs/DEMO.md](docs/DEMO.md)。
+- 两分钟合成数据演示：[docs/DEMO.md](docs/DEMO.md)。演示以英文为主：Concept 标题与讲解为英文，
+  法语例句和语法术语保留；页面用平实的英文区分“归入”某 Concept 的单元（当前 SAME 成员关系）
+  与“支撑”该 Concept 的单元。界面目前仅提供英文。
 - 协议与限制：[FLH-034](docs/plans/FLH-034-knowledge-library.md)。

@@ -1578,5 +1578,9 @@ On each Concept page, current support, current non-supporting members (with the
 reason), current relations and historical evidence are kept in separate,
 labelled sections. Orphaned Concepts stay inspectable.
 
-- Two-minute synthetic demo: [docs/DEMO.md](docs/DEMO.md).
+- Two-minute synthetic demo: [docs/DEMO.md](docs/DEMO.md). The demo is
+  English-first: Concept titles and explanations are English, French examples
+  and grammar terms are kept, and the page explains in plain words the
+  difference between a unit *filed* under a Concept (CURRENT SAME membership)
+  and a unit that *supports* it.
 - Contract and limits: [FLH-034](docs/plans/FLH-034-knowledge-library.md).
