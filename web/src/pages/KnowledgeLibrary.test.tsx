@@ -85,33 +85,34 @@ describe("Knowledge Library", () => {
     expect(await screen.findByText("2 concepts matching “subj”.")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Matched in member unit statement — not in the concept identity. A CURRENT SAME member matched; membership is not support.",
+        "Found in the explanation of a unit filed here, not in the concept's title. Being filed here does not mean the unit supports the concept; open it to see.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Concept #1 · grammar · 1 supporting unit, 2 CURRENT SAME members")).toBeInTheDocument();
+    expect(screen.getByText("grammar · 2 units filed here, 1 currently supporting · concept #1")).toBeInTheDocument();
     expect(calls.some((c) => c.search === "?q=subj")).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "subjonctif après il faut que" }));
     const heading = await screen.findByRole("heading", { name: /subjonctif après il faut que/ });
     await waitFor(() => expect(heading).toHaveFocus());
-    const support = screen.getByRole("region", { name: "Current support (1)" });
+    const support = screen.getByRole("region", { name: "Currently supporting this concept (1)" });
     expect(within(support).getByText("forme 12")).toBeInTheDocument();
     // A current member from a historical extraction is never shown as support.
     expect(within(support).queryByText("forme 11")).toBeNull();
-    const members = screen.getByRole("region", { name: "Current members that do not provide support (1)" });
-    expect(within(members).getByText(/no longer record #110's current extraction/)).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Preferred representation" })).toHaveTextContent("does not provide support");
-    expect(screen.getByRole("region", { name: "Current relations (1)" })).toHaveTextContent("BROADER recorded between unit #13 and this concept");
-    const history = screen.getByRole("region", { name: "Historical evidence — not current (1)" });
-    expect(history).toHaveTextContent("The unit is now marked INVALID.");
-    expect(history).toHaveTextContent("6 append-only events");
+    const members = screen.getByRole("region", { name: "Filed here but not supporting (1)" });
+    expect(within(members).getByText(/extraction v1 of record #110, which is no longer that record's current extraction/)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Best explanation (preferred unit)" })).toHaveTextContent("still filed here, but it does not support the concept");
+    expect(screen.getByRole("region", { name: "Linked units (1)" })).toHaveTextContent("BROADER link from unit #13 to this concept (link #7, decided by human).");
+    const history = screen.getByRole("region", { name: "History: no longer current (1)" });
+    expect(history).toHaveTextContent("This unit was later marked INVALID");
+    expect(history).toHaveTextContent("6 decisions recorded for this concept");
 
-    fireEvent.click(within(screen.getByRole("region", { name: "Preferred representation" })).getByRole("button", { name: "View source record #110" }));
-    expect(await screen.findByRole("heading", { name: "Source of unit #11: record #110" })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("region", { name: "Best explanation (preferred unit)" })).getByRole("button", { name: "View source record #110" }));
+    expect(await screen.findByRole("heading", { name: "Where unit #11 came from: learning record #110" })).toBeInTheDocument();
     expect(screen.getByText("Pourquoi « il faut que je fasse » ?")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Extraction v1" })).toHaveTextContent("Historical: this is not the record's current extraction (current is extraction #1200, automatic)");
+    expect(screen.getByRole("region", { name: "Extraction v1" })).toHaveTextContent("Historical: this is not the record's current extraction (the current one is extraction #1200, selected automatically)");
     const interp = screen.getByRole("region", { name: "Interpretation this extraction used: analysis v1" });
-    expect(interp).toHaveTextContent("corrected (feedback #8, corrected)");
+    expect(interp).toHaveTextContent("corrected by a person (feedback #8, corrected)");
+    expect(interp).toHaveTextContent("Before correction");
     expect(interp).toHaveTextContent("corrigée");
     expect(interp).toHaveTextContent("newer analysis (v2)");
 
@@ -142,14 +143,42 @@ describe("Knowledge Library", () => {
     const errors = vi.spyOn(console, "error");
     await openLibrary();
     fireEvent.click(await screen.findByRole("button", { name: "subjonctif après il faut que" }));
-    const relations = await screen.findByRole("region", { name: "Current relations (2)" });
+    const relations = await screen.findByRole("region", { name: "Linked units (2)" });
     expect(within(relations).getByText("RELATED")).toBeInTheDocument();
     expect(within(relations).getByText("BROADER")).toBeInTheDocument();
     expect(within(relations).getAllByRole("button", { name: /View source record #130/ })).toHaveLength(2);
-    expect(within(relations).getByText(/link #7,/)).toBeInTheDocument();
-    expect(within(relations).getByText(/link #8,/)).toBeInTheDocument();
+    expect(relations).toHaveTextContent("RELATED link from unit #13 to this concept (link #7, decided by human).");
+    expect(relations).toHaveTextContent("BROADER link from unit #13 to this concept (link #8, decided by human).");
     const keyWarnings = errors.mock.calls.filter((args) => args.some((a) => String(a).includes("same key")));
     expect(keyWarnings).toEqual([]);
+  });
+
+  it("explains filing versus support in plain English and keeps French examples marked as French", async () => {
+    const detail = {
+      schema_version: "knowledge_library_concept_v1", concept: concept(1, "subjonctif après il faut que", "active"),
+      preferred_unit: unit(12, true), supporting_units: [unit(12, true, { example: "Il faut que tu viennes demain." })],
+      non_supporting_members: [unit(15, true, { admission: "suppressed" })], current_relations: [],
+      historical_units: [{ unit: unit(16, true), latest_event: { id: 4, unit_id: 16, concept_id: 1, relation: "same", status: "accepted", decision_source: "human", resolver_version: "", score: null, evidence: "", supersedes_link_id: null, created_at: "t" }, effective_status: "resolved", current_concept_id: 6 }],
+      history_event_count: 4,
+    };
+    library({ "/api/knowledge-library/concepts/1": () => ({ body: detail }) });
+    await openLibrary();
+    expect(screen.getByText(/is one idea you have learned, such as a grammar rule/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "subjonctif après il faut que" }));
+    expect(await screen.findByText(/A unit is filed under a concept when it was judged to be the same idea/)).toBeInTheDocument();
+    expect(screen.getByText(/^Active: at least one unit currently supports this concept/)).toBeInTheDocument();
+    // Technical identifiers stay available, but secondary.
+    expect(screen.getByText("Concept #1 · lifecycle normal · support supported")).toBeInTheDocument();
+    const support = screen.getByRole("region", { name: "Currently supporting this concept (1)" });
+    const example = within(support).getByText("Il faut que tu viennes demain.");
+    expect(example).toHaveAttribute("lang", "fr");
+    expect(example.parentElement).toHaveTextContent("French example: Il faut que tu viennes demain.");
+    expect(screen.getByRole("region", { name: "Filed here but not supporting (1)" })).toHaveTextContent(
+      "The learner hid it (admission suppressed).",
+    );
+    const history = screen.getByRole("region", { name: "History: no longer current (1)" });
+    expect(history).toHaveTextContent("This unit was moved: it is now filed under concept #6.");
+    expect(within(history).getByRole("button", { name: "concept #6" })).toBeInTheDocument();
   });
 
   it("shows an orphaned concept honestly", async () => {
@@ -158,7 +187,7 @@ describe("Knowledge Library", () => {
     fireEvent.click(await screen.findByRole("button", { name: "faire" }));
     expect(await screen.findByText(/Orphaned: no unit currently supports this concept/)).toBeInTheDocument();
     expect(screen.getByText("No unit currently supports this concept.")).toBeInTheDocument();
-    expect(screen.getByText("No preferred unit is set.")).toBeInTheDocument();
+    expect(screen.getByText("No unit has been chosen as the best explanation.")).toBeInTheDocument();
   });
 
   it("never labels earlier results with a new query while it is searching", async () => {

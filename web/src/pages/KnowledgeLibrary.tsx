@@ -54,13 +54,13 @@ function useFocusedHeading(status: string) {
 }
 
 const fieldLabels: Record<string, string> = {
-  target: "target",
-  pedagogical_intent: "intent",
+  target: "title",
+  pedagogical_intent: "type",
   scope: "scope",
-  identity_features: "identity features",
-  unit_canonical: "member unit wording",
-  unit_statement: "member unit statement",
-  unit_example: "member unit example",
+  identity_features: "identity details",
+  unit_canonical: "the name of a unit filed here",
+  unit_statement: "the explanation of a unit filed here",
+  unit_example: "the example of a unit filed here",
 };
 
 // KnowledgeLibrary is a GET-only view of curated Concepts. Searching, opening a
@@ -130,10 +130,15 @@ export function KnowledgeLibrary() {
             </button>
           </div>
           <p className="hint">
-            Keyword search over Concept identity (target, intent, scope, features) and the wording of units that hold
-            the Concept's CURRENT SAME membership, including members from an older extraction or with suppressed
-            admission (membership is not support). Former members are not searched. Accents and case are ignored; each
-            word matches the start of a word. Read-only: searching records nothing.
+            A <strong>concept</strong> is one idea you have learned, such as a grammar rule. A <strong>unit</strong> is a
+            short rule taken from one of your learning records; units are filed under concepts and always link back to
+            the record they came from.
+          </p>
+          <p className="hint">
+            Search looks at concept titles and identity details, and at the name, explanation and French example of every
+            unit filed under a concept (its CURRENT SAME members), even units that no longer support it. Units that were
+            moved away are not searched. Accents and case are ignored, and each word matches the start of a word.
+            Read-only: searching records nothing.
           </p>
         </form>
         <Results
@@ -215,16 +220,16 @@ function Results({
             </button>{" "}
             <StateTag state={r.concept.state} />
             <div className="hint">
-              Concept #{r.concept.id} · {r.concept.pedagogical_intent}
-              {r.concept.scope ? ` · ${r.concept.scope}` : ""} · {r.supporting_unit_count} supporting unit
-              {r.supporting_unit_count === 1 ? "" : "s"}, {r.current_member_count} CURRENT SAME member
-              {r.current_member_count === 1 ? "" : "s"}
+              {r.concept.pedagogical_intent}
+              {r.concept.scope ? ` · ${r.concept.scope}` : ""} · {r.current_member_count} unit
+              {r.current_member_count === 1 ? "" : "s"} filed here, {r.supporting_unit_count} currently supporting ·
+              concept #{r.concept.id}
             </div>
             {r.match_tier !== "browse" ? (
               <div className="hint">
-                Matched in {r.matched_fields.map((f) => fieldLabels[f] ?? f).join(", ")}
+                Found in {r.matched_fields.map((f) => fieldLabels[f] ?? f).join(", ")}
                 {r.match_tier === "unit_evidence"
-                  ? " — not in the concept identity. A CURRENT SAME member matched; membership is not support."
+                  ? ", not in the concept's title. Being filed here does not mean the unit supports the concept; open it to see."
                   : ""}
               </div>
             ) : null}
@@ -241,11 +246,15 @@ function StateTag({ state }: { state: "active" | "orphaned" | "retired" }) {
 
 const supportText: Record<string, string> = {
   active:
-    "Active: at least one unit currently supports this concept (its CURRENT SAME member, from its record's current extraction, with active admission).",
+    "Active: at least one unit currently supports this concept. It is filed here, comes from its record's current extraction, and has not been hidden by the learner.",
   orphaned:
-    "Orphaned: no unit currently supports this concept. It is kept with its identity and history, and remains inspectable.",
-  retired: "Retired by an explicit human decision. Its history remains inspectable.",
+    "Orphaned: no unit currently supports this concept. It keeps its identity and history, can still be inspected, and becomes active again if a supporting unit returns.",
+  retired: "Retired by a person. Its history can still be inspected.",
 };
+
+// Membership versus support, in the words used on the concept page.
+const filedVersusSupporting =
+  "A unit is filed under a concept when it was judged to be the same idea (its CURRENT SAME membership). It supports the concept only while it also comes from its record's current extraction and the learner has not hidden it (admission active).";
 
 function ConceptScreen({
   conceptId,
@@ -303,25 +312,30 @@ function ConceptScreen({
         </h2>
         {back}
         <dl className="unit-evidence">
-          <Row label="Concept">#{c.id}</Row>
-          <Row label="Intent">{c.pedagogical_intent}</Row>
-          <Row label="Scope">{c.scope || <em>unset</em>}</Row>
-          <Row label="Features">
+          <Row label="Status">{supportText[c.state]}</Row>
+          <Row label="Type">{c.pedagogical_intent}</Row>
+          <Row label="Scope">{c.scope || <em>not set</em>}</Row>
+          <Row label="Identity details">
             {features.length ? features.map(([k, v]) => `${k}: ${v}`).join(" · ") : <em>none</em>}
           </Row>
-          <Row label="Status">
-            {supportText[c.state]} (lifecycle {c.lifecycle_state}, support {c.support_state})
-          </Row>
         </dl>
+        <p className="hint">{filedVersusSupporting}</p>
+        <p className="hint">
+          Concept #{c.id} · lifecycle {c.lifecycle_state} · support {c.support_state}
+        </p>
       </section>
 
       <section className="panel library-section current" aria-labelledby="lib-preferred">
-        <h3 id="lib-preferred">Preferred representation</h3>
-        {d.preferred_unit ? unit(d.preferred_unit, preferredNote(d.preferred_unit, d)) : <p className="hint">No preferred unit is set.</p>}
+        <h3 id="lib-preferred">Best explanation (preferred unit)</h3>
+        {d.preferred_unit ? (
+          unit(d.preferred_unit, preferredNote(d.preferred_unit, d))
+        ) : (
+          <p className="hint">No unit has been chosen as the best explanation.</p>
+        )}
       </section>
 
       <section className="panel library-section current" aria-labelledby="lib-support">
-        <h3 id="lib-support">Current support ({d.supporting_units.length})</h3>
+        <h3 id="lib-support">Currently supporting this concept ({d.supporting_units.length})</h3>
         {d.supporting_units.length ? (
           d.supporting_units.map((u) => unit(u))
         ) : (
@@ -331,40 +345,44 @@ function ConceptScreen({
 
       {d.non_supporting_members.length ? (
         <section className="panel library-section" aria-labelledby="lib-members">
-          <h3 id="lib-members">Current members that do not provide support ({d.non_supporting_members.length})</h3>
-          <p className="hint">These units still hold the CURRENT SAME membership, but are not counted as support.</p>
+          <h3 id="lib-members">Filed here but not supporting ({d.non_supporting_members.length})</h3>
+          <p className="hint">These units are still filed under this concept, but they do not count as support, for the reason shown.</p>
           {d.non_supporting_members.map((u) => unit(u, <span>{notSupportingReasons(u).join(" ")}</span>))}
         </section>
       ) : null}
 
       <section className="panel library-section" aria-labelledby="lib-relations">
-        <h3 id="lib-relations">Current relations ({d.current_relations.length})</h3>
+        <h3 id="lib-relations">Linked units ({d.current_relations.length})</h3>
+        <p className="hint">
+          A link records that a unit is BROADER, NARROWER or RELATED to this concept. A link is not filing and gives no
+          support.
+        </p>
         {d.current_relations.length ? (
           d.current_relations.map((r) =>
             unit(
               r.unit,
               <span>
-                <strong>{r.relation.toUpperCase()}</strong> recorded between unit #{r.unit.unit_id} and this concept
-                (link #{r.link_id}, {r.decision_source}). A relation is not membership and gives no support.
+                <strong>{r.relation.toUpperCase()}</strong> link from unit #{r.unit.unit_id} to this concept
+                {` (link #${r.link_id}, decided by ${r.decision_source}).`}
               </span>,
               `relation-${r.link_id}`,
             ),
           )
         ) : (
-          <p className="hint">No current BROADER / NARROWER / RELATED relations.</p>
+          <p className="hint">No units are linked to this concept.</p>
         )}
       </section>
 
       <section className="panel library-section history" aria-labelledby="lib-history">
-        <h3 id="lib-history">Historical evidence — not current ({d.historical_units.length})</h3>
+        <h3 id="lib-history">History: no longer current ({d.historical_units.length})</h3>
         <p className="hint">
-          Units that once had an event for this concept but hold no current membership or relation to it now. Shown for
-          provenance only. {d.history_event_count} append-only event{d.history_event_count === 1 ? "" : "s"} recorded for this concept in
-          total.
+          Units that were once filed or linked here but are not any more. They are shown so you can trace past decisions,
+          and never count as support. {d.history_event_count} decision{d.history_event_count === 1 ? "" : "s"} recorded for
+          this concept in total (append-only).
         </p>
         {d.historical_units.length
           ? d.historical_units.map((h) => unit(h.unit, <HistoricalNote h={h} onOpenConcept={onOpenConcept} />))
-          : <p className="hint">No historical units.</p>}
+          : <p className="hint">No earlier units.</p>}
       </section>
     </div>
   );
@@ -373,15 +391,18 @@ function ConceptScreen({
 function preferredNote(u: LibraryUnit, d: LibraryConcept): string {
   const supporting = d.supporting_units.some((s) => s.unit_id === u.unit_id);
   return supporting
-    ? "Chosen as the preferred representation; it also currently supports the concept."
-    : `Chosen as the preferred representation and still the CURRENT SAME member, but it does not provide support: ${notSupportingReasons(u).join(" ")}`;
+    ? "Chosen as the best explanation; it also currently supports the concept."
+    : `Chosen as the best explanation and still filed here, but it does not support the concept: ${notSupportingReasons(u).join(" ")}`;
 }
 
 function notSupportingReasons(u: LibraryUnit): string[] {
   const reasons: string[] = [];
   if (!u.in_current_extraction)
-    reasons.push(`It comes from extraction v${u.extraction_version}, which is no longer record #${u.entry_id}'s current extraction.`);
-  if (u.admission !== "active") reasons.push(`Its admission is ${u.admission.replace("_", " ")}.`);
+    reasons.push(
+      `It comes from extraction v${u.extraction_version} of record #${u.entry_id}, which is no longer that record's current extraction.`,
+    );
+  if (u.admission === "suppressed") reasons.push("The learner hid it (admission suppressed).");
+  else if (u.admission !== "active") reasons.push(`It is waiting for review (admission ${u.admission.replace("_", " ")}).`);
   return reasons;
 }
 
@@ -389,21 +410,21 @@ function HistoricalNote({ h, onOpenConcept }: { h: LibraryHistoricalUnit; onOpen
   const e = h.latest_event;
   return (
     <span>
-      Last event for this concept: <strong>{e.relation.toUpperCase()}</strong> {e.status} ({e.decision_source}, event #{e.id}).{" "}
       {h.effective_status === "invalid" ? (
-        "The unit is now marked INVALID."
+        "This unit was later marked INVALID: judged not to be a usable unit."
       ) : h.current_concept_id !== null ? (
         <>
-          The unit now belongs to{" "}
+          This unit was moved: it is now filed under{" "}
           <button type="button" className="link-button" onClick={() => onOpenConcept(h.current_concept_id!)}>
             concept #{h.current_concept_id}
           </button>
           .
         </>
       ) : (
-        "The unit has no current SAME membership."
+        "This unit is no longer filed under any concept."
       )}
-      {!h.unit.in_current_extraction ? ` Its extraction v${h.unit.extraction_version} is not the record's current one.` : ""}
+      {!h.unit.in_current_extraction ? ` Its extraction v${h.unit.extraction_version} is not the record's current one.` : ""}{" "}
+      Last decision here: {e.relation.toUpperCase()} {e.status} ({e.decision_source}, event #{e.id}).
     </span>
   );
 }
@@ -412,13 +433,13 @@ function UnitCard({ unit, note, onOpenSource }: { unit: LibraryUnit; note?: Reac
   return (
     <article className="library-unit" aria-label={`Unit #${unit.unit_id}`}>
       <div className="library-unit-head">
-        <strong className="french">{unit.canonical}</strong>{" "}
+        <strong>{unit.canonical}</strong>{" "}
         <span className={`tag ${unit.in_current_extraction ? "active" : "retired"}`}>
-          {unit.in_current_extraction ? "current extraction" : `historical extraction v${unit.extraction_version}`}
+          {unit.in_current_extraction ? "current extraction" : `older extraction v${unit.extraction_version}`}
         </span>
       </div>
-      <p className="french">{unit.statement}</p>
-      {unit.example ? <p className="hint">Example: {unit.example}</p> : null}
+      <p>{unit.statement}</p>
+      {unit.example ? <FrenchExample text={unit.example} /> : null}
       {note ? <p className="hint">{note}</p> : null}
       <div className="hint">
         Unit #{unit.unit_id} · {unit.kind} · record #{unit.entry_id}, extraction v{unit.extraction_version} · admission{" "}
@@ -431,6 +452,17 @@ function UnitCard({ unit, note, onOpenSource }: { unit: LibraryUnit; note?: Reac
   );
 }
 
+function FrenchExample({ text }: { text: string }) {
+  return (
+    <p className="hint">
+      French example:{" "}
+      <span lang="fr" className="french">
+        {text}
+      </span>
+    </p>
+  );
+}
+
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
@@ -439,6 +471,13 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
     </div>
   );
 }
+
+const resolutionText: Record<string, string> = {
+  unreviewed: "not reviewed by a person",
+  accepted: "accepted by a person",
+  corrected: "corrected by a person",
+  rejected: "rejected by a person",
+};
 
 function SourceScreen({
   unitId,
@@ -472,7 +511,7 @@ function SourceScreen({
     return (
       <section className="panel" aria-label="Source">
         <h2 ref={headingRef} tabIndex={-1}>
-          Source of unit #{unitId}
+          Where unit #{unitId} came from
         </h2>
         {nav}
         {load.status === "loading" ? (
@@ -494,40 +533,45 @@ function SourceScreen({
   return (
     <div>
       <section className="panel" aria-label="Source">
-        <h2 ref={headingRef} tabIndex={-1}>
-          Source of unit #{s.unit.unit_id}: record #{s.entry.id}
+        <h2 ref={headingRef} tabIndex={-1} className="library-title">
+          Where unit #{s.unit.unit_id} came from: learning record #{s.entry.id}
         </h2>
         {nav}
-        <p className="hint">Read-only provenance. Opening it records nothing and runs no analysis or extraction.</p>
+        <p className="hint">
+          The trail from what the learner wrote, through how it was interpreted, to the unit. Read-only: opening it
+          records nothing and runs no analysis or extraction.
+        </p>
       </section>
 
       <section className="panel library-section" aria-labelledby="src-unit">
-        <h3 id="src-unit">Knowledge unit #{s.unit.unit_id}</h3>
-        <p className="french">
-          <strong>{s.unit.canonical}</strong> — {s.unit.statement}
+        <h3 id="src-unit">The unit (#{s.unit.unit_id})</h3>
+        <p>
+          <strong>{s.unit.canonical}</strong>: {s.unit.statement}
         </p>
-        {s.unit.example ? <p className="hint">Example: {s.unit.example}</p> : null}
+        {s.unit.example ? <FrenchExample text={s.unit.example} /> : null}
         <p className="hint">
-          {s.unit.kind} · admission {s.unit.admission.replace("_", " ")} · annotation now:{" "}
+          Now:{" "}
           {s.annotation.status === "invalid" ? (
-            "marked INVALID"
+            "marked INVALID (not a usable unit)"
           ) : s.annotation.current_concept_id !== null ? (
             <>
-              CURRENT SAME member of{" "}
+              filed under{" "}
               <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
                 concept #{s.annotation.current_concept_id}
-              </button>
+              </button>{" "}
+              (CURRENT SAME)
             </>
           ) : (
-            "no current SAME membership"
-          )}
+            "not filed under any concept"
+          )}{" "}
+          · {s.unit.kind} · admission {s.unit.admission.replace("_", " ")}
         </p>
       </section>
 
       <section className="panel library-section current" aria-labelledby="src-entry">
         <h3 id="src-entry">Original learning record #{s.entry.id}</h3>
         <dl className="unit-evidence">
-          <Row label="Learner input">
+          <Row label="What the learner wrote">
             <span className="french">{s.entry.original_input}</span>
           </Row>
           <Row label="Context">{s.entry.original_context || <em>none</em>}</Row>
@@ -537,14 +581,17 @@ function SourceScreen({
 
       <section className={`panel library-section ${isCurrent ? "current" : "history"}`} aria-labelledby="src-extraction">
         <h3 id="src-extraction">Extraction v{s.extraction.version}</h3>
+        <p className="hint">An extraction is the step that turned this record into units. A record can be extracted more than once.</p>
         <p>
           {isCurrent
             ? "This is the record's current extraction."
             : `Historical: this is not the record's current extraction${
                 s.current_extraction.extraction_id !== null
-                  ? ` (current is extraction #${s.current_extraction.extraction_id}, ${s.current_extraction.selection_mode})`
+                  ? ` (the current one is extraction #${s.current_extraction.extraction_id}, ${
+                      s.current_extraction.selection_mode === "pinned" ? "pinned by a person" : "selected automatically"
+                    })`
                   : ""
-              }. The unit is kept as evidence but does not count as current support.`}
+              }. The unit is kept as evidence but does not count as support.`}
         </p>
         <p className="hint">
           Extraction #{s.extraction.id} by {s.extraction.extractor}, {s.extraction.created_at}.
@@ -553,25 +600,26 @@ function SourceScreen({
 
       <section className="panel library-section" aria-labelledby="src-interp">
         <h3 id="src-interp">Interpretation this extraction used: analysis v{interp.analysis.version}</h3>
+        <p className="hint">How the record was understood at the time the units were made, including any human correction then in force.</p>
         <dl className="unit-evidence">
-          <Row label="Resolution">
-            {interp.effective.resolution}
+          <Row label="Review">
+            {resolutionText[interp.effective.resolution] ?? interp.effective.resolution}
             {interp.feedback ? ` (feedback #${interp.feedback.id}, ${interp.feedback.status})` : " (no feedback at extraction time)"}
           </Row>
           {interp.effective.effective ? (
             <>
               <Row label="Category">{interp.effective.effective.category}</Row>
-              <Row label="Explanation">{interp.effective.effective.explanation}</Row>
+              <Row label="Explanation used">{interp.effective.effective.explanation}</Row>
             </>
           ) : (
-            <Row label="Effective">rejected: no effective interpretation</Row>
+            <Row label="Explanation used">none: the interpretation was rejected</Row>
           )}
           {interp.effective.resolution === "corrected" ? (
-            <Row label="Original">
+            <Row label="Before correction">
               {interp.effective.original.category}: {interp.effective.original.explanation}
             </Row>
           ) : null}
-          <Row label="Analyzer">{interp.analysis.analyzer}</Row>
+          <Row label="Produced by">{interp.analysis.analyzer}</Row>
         </dl>
         <p className="hint">
           {newer

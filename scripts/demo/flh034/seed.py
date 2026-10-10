@@ -5,7 +5,8 @@ Usage: python3 -B seed.py http://127.0.0.1:18934
 Refuses a non-loopback backend and any backend that already holds entries or
 concepts, so it can only fill a fresh, isolated demo database. Every write goes
 through the normal endpoints, so all domain invariants apply. All content is
-synthetic.
+synthetic. Concept titles, explanations and the learner's questions are in
+English; French examples and grammar terms are kept.
 """
 import json
 import sys
@@ -53,33 +54,37 @@ same = lambda unit, cid: call("POST", f"/knowledge-units/{unit}/concept-links/sa
 relation = lambda unit, cid, rel: call("POST", f"/knowledge-units/{unit}/concept-links/relation", {"concept_id": cid, "relation": rel})
 
 # Four synthetic learning records.
-e1 = record("faut", "Pourquoi dit-on « il faut que je fasse » et pas « il faut que je fais » ?", "Cours du mardi, exercice sur la nécessité.")
-e2 = record("bien", "Bien que + subjonctif ou indicatif ? J'ai écrit « bien qu'il pleut ».", "Rédaction corrigée par la professeure.")
-e3 = record("aller", "J'ai écrit « je suis allé au cinéma hier », c'est correct ?", "Journal personnel.")
-e4 = record("miss", "Comment dire « I miss you » en français ?", "Message à une amie.")
+e1 = record("faut", "Why do we say « il faut que je fasse » and not « il faut que je fais »?", "Tuesday class, exercise on expressing necessity.")
+e2 = record("bien", "Bien que + subjunctive or indicative? I wrote « bien qu'il pleut ».", "Essay corrected by my teacher.")
+e3 = record("aller", "I wrote « je suis allé au cinéma hier ». Is that correct?", "Personal journal.")
+e4 = record("miss", "How do I say « I miss you » in French?", "Message to a friend.")
 
 # A human correction on record 2's analysis, in force when it is extracted.
 a2 = call("GET", f"/entries/{e2}/analyses")["analyses"][0]
-call("POST", f"/analyses/{a2['id']}/feedback", {"status": "corrected", "corrected_explanation": "Concession : « bien que » exige le subjonctif (bien qu'il pleuve)."})
+call("POST", f"/analyses/{a2['id']}/feedback", {"status": "corrected", "corrected_explanation": "Concession: « bien que » (although) always takes the subjunctive, so « bien qu'il pleuve », not « bien qu'il pleut »."})
 
 u_faut1, u_faire1 = extract(e1)
 u_bien, u_malgre = extract(e2)
 u_aller, u_accord = extract(e3)
 u_manques, u_manquer = extract(e4)
 
-subj = {"mode": "subjonctif"}
-c_faut = concept("subjonctif après « il faut que »", "grammar", {**subj, "déclencheur": "il faut que"}, seed=u_faut1)
-c_faire = concept("subjonctif de faire", "morphology", subj, seed=u_faire1)
-c_bien = concept("subjonctif après « bien que »", "grammar", {**subj, "déclencheur": "bien que"}, seed=u_bien)
-c_mode = concept("mode subjonctif", "grammar", subj, scope="vue d'ensemble")
-c_pc = concept("passé composé avec être", "grammar", {"auxiliaire": "être"}, seed=u_aller)
-c_accord = concept("accord du participe passé avec être", "orthography", {"auxiliaire": "être"})
-c_manque = concept("tu me manques", "expression", seed=u_manques)
+# English titles, stored lower-case because concept identity is normalized.
+# French terms stay in the identity (mood, trigger, scope), so "subjonctif",
+# "déclencheur" and "vue d'ensemble" still find the same Concepts, and the
+# titles sort as the earlier French ones did (browse and tie order unchanged).
+subj = {"mood": "subjunctive (subjonctif)"}
+c_faut = concept("subjunctive after « il faut que »", "grammar", {**subj, "trigger (déclencheur)": "il faut que (it is necessary that)"}, seed=u_faut1)
+c_faire = concept("subjunctive forms of faire", "morphology", {**subj, "verb": "faire (to do)"}, seed=u_faire1)
+c_bien = concept("subjunctive after « bien que »", "grammar", {**subj, "trigger (déclencheur)": "bien que (although)"}, seed=u_bien)
+c_mode = concept("overview of the subjunctive mood", "grammar", subj, scope="overview (vue d'ensemble)")
+c_pc = concept("passé composé with être", "grammar", {"auxiliary": "être (to be)"}, seed=u_aller)
+c_accord = concept("agreement of the past participle with être", "orthography", {"auxiliary": "être (to be)"})
+c_manque = concept("tu me manques: saying you miss someone", "expression", seed=u_manques)
 call("POST", f"/concepts/{c_bien}/preferred-unit", {"unit_id": u_bien})
 
 # Record 2's "malgré" note is a member, but suppressed by the learner (mastered).
 same(u_malgre, c_bien)
-call("POST", f"/knowledge-units/{u_malgre}/admission-overrides", {"decision": "suppressed", "reason": "mastered", "note": "déjà acquis"})
+call("POST", f"/knowledge-units/{u_malgre}/admission-overrides", {"decision": "suppressed", "reason": "mastered", "note": "already mastered"})
 # Relations are not membership and give no support.
 relation(u_bien, c_faut, "related")
 # Record 3: the agreement unit was first linked to the wrong concept, then corrected.
