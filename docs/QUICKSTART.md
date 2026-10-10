@@ -142,7 +142,7 @@ npm run dev
 ```
 
 Open `http://localhost:5173` (or the URL printed by Vite). The workbench has
-four views with different ownership boundaries:
+five views with different ownership boundaries:
 
 - **Learning Records** lists records with the state filter and cursor
   pagination of `GET /learning-records`. It can import a `learning_capture_v1`
@@ -151,6 +151,9 @@ four views with different ownership boundaries:
   stored extractions. Analysis and extraction run only after an explicit,
   confirmed request; with the default configuration extraction answers that it
   is not enabled.
+- **Knowledge Library** is read-only: it searches curated Concepts and traces
+  each one back to its source record. A fresh database has no Concepts; use the
+  [synthetic demo](DEMO.md) to see it populated.
 - **Concept Review** is write-capable: explicit human actions record Concept
   annotations and resolution decisions.
 - **Annotation Inspector** is read-only and displays backend-owned effective
@@ -215,7 +218,11 @@ paste them into learning payloads.
 
 ## Next references
 
-- [README](../README.md) — capabilities, API examples, and milestone history
+- [README](../README.md) — overview, capabilities, configuration defaults
 - [中文 README](../README.zh-CN.md) — maintained Simplified Chinese companion
-- [Architecture](ARCHITECTURE.md) — ownership boundaries and workflow details
+- [Architecture](ARCHITECTURE.md) — how the system works; HTTP API reference
+  and request/response examples in
+  [Appendix A](ARCHITECTURE.md#appendix-a-http-api-reference)
+- [Synthetic demo](DEMO.md) — the two-minute Knowledge Library walkthrough
 - [Workbench guide](../web/README.md) — frontend behavior and annotation semantics
+- [Development history](history/README.md) — how the design evolved

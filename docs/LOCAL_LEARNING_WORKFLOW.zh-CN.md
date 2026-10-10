@@ -189,7 +189,7 @@ go run ./cmd/capture -url "$FRENCH_HUB_URL" -file "$CAPTURE_FILE"
 不要再次请求模型生成，也不要只保留 ID 后重写内容。
 
 Capture 没有覆盖更新操作。若导入后发现候选分析需要接受、纠正或拒绝，应使用现有的
-`POST /analyses/{id}/feedback` 流程，参见[人工反馈](../README.zh-CN.md#人工反馈和有效分析)。
+`POST /analyses/{id}/feedback` 流程，参见[人工反馈](ARCHITECTURE.md#35-human-feedback)与[有效分析](ARCHITECTURE.md#36-effective-analysis)（英文）。
 不要以新 ID 重新导入同一次交互来假装更新，也不要修改原文件再用同一个 ID 提交。
 
 若要专门验证 409，复制 Capture 文件并只改副本，再提交副本；这只是一次冲突探针，
