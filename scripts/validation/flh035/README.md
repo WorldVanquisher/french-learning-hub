@@ -68,3 +68,66 @@ assets, container deployment, a real browser, or the author's two-minute demo.
 Do not turn its result into FLH-034 acceptance. In Phase B, map the implemented
 demo's receipt/manifest IDs into expectations, inspect its documented startup and
 cleanup instructions, and verify the integrated contract before adding checks.
+
+
+## Phase B — integrated author demo
+
+Phase B preserves the Phase A scripts above. It runs the merged author's
+`scripts/demo/flh034/demo.sh`, `seed.py` and `stub_extractor.py` unchanged, with
+an isolated demo directory and generated production assets. It does not use the
+Phase A fixture as a demo substitute.
+
+```sh
+python3 -B scripts/validation/flh035/test_integrated_checks.py
+python3 -B scripts/validation/flh035/verify_integrated.py --report /tmp/flh035-integrated-my-run.json
+```
+
+Prerequisites additionally include npm, curl and public npm artifacts cached in
+`/tmp/flh029-npm-cache/_cacache` from earlier authorized verification. The cache
+is copied into the owned run directory before offline `npm ci`; absence fails
+rather than downloading or inheriting credentials. npm uses separate empty user
+and global config files. Frontend source/lockfiles/config are copied privately;
+production build, the author's four Library jsdom tests, and one independent
+mocked duplicate-relation UI probe run there. No repository `node_modules`, dist,
+TypeScript output, dependency manifest, demo file or production file is changed.
+
+The runner reserves unique loopback ports and supplies only the documented
+`DEMO_PORT`/`STUB_PORT` overrides to the unchanged demo. Every API request requires
+the server listener's socket inode to belong to the attributed child PID. The
+unchanged demo itself binds its app listener to a wildcard address, recorded as
+a finding; requests still target only the owned loopback service. Native builds
+use the isolated offline environment and `-buildvcs=false`; no Git command runs.
+
+The author's stub does not expose counters. A temporary `sitecustomize.py` startup
+hook observes completed POSTs at its stdlib HTTP handler boundary. It records
+only `POST`, changes no request/response, and applies only to `stub_extractor.py`.
+The hook text is retained in JSON evidence. Stub POST count must remain unchanged
+around browsing and restart; fixture setup legitimately makes five local calls.
+No analyzer/external provider counter is invented: analysis is local rule-based,
+embedding disabled, and the Library depends on read interfaces only.
+
+Search checks use the implemented AND-prefix contract, not Phase A discovery
+semantics. The pristine author's demo runs first, including HTTP content checks,
+production asset-byte verification, root/`/api` parity, before/after whole-table
+snapshots, and documented stop/start. Only afterward do supported public APIs
+introduce tier/ID ties, preferred historical membership, INVALID, multiple source
+entries, later feedback/analysis, and multiple relation types. Those are edge
+probes, not a replacement or edited demo fixture.
+
+Owned safety probes test normal refusals, a misattributed PID with a disposable
+sleep sentinel, and an occupied port with an owned HTTP fixture that rejects seed
+writes. They never contact an existing/personal service or kill an unrelated user
+process. The runner attributes PID command lines before calling author cleanup,
+then requires all reserved ports closed. All data/builds/dependencies/hooks are
+removed; only the chosen JSON and redirected logs remain outside the repository.
+Cleanup cannot be guaranteed after SIGKILL or power loss. A command timeout or
+failed prerequisite remains a failure, not acceptance.
+
+Exit zero requires no runner error, cleanup error **or recorded defect**. Completed
+checks with findings use JSON state `CHECKS_COMPLETE` and exit one; this is not a
+passing release acceptance. Failed intermediate attempts are retained separately
+with new report names. Actual browser interaction and the timed human two-minute
+presentation remain NOT RUN when no browser is available. HTTP traversal time,
+frontend setup time and Go/demo build-start-seed time are recorded separately.
+The independent React probe is explicitly mocked API + real React/jsdom evidence;
+it is not a browser. The full findings and limits are in the acceptance report.
