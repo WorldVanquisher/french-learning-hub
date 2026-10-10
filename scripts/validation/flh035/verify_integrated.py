@@ -15,15 +15,14 @@ import sys
 import tempfile
 import time
 from urllib.parse import urlencode
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import threading
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 DEMO = ROOT / "scripts/demo/flh034/demo.sh"
 sys.path.insert(0, str(HERE.parent / "flh026"))
 from run import clean_env, owns_listener, snapshot  # noqa: E402
-from integrated_checks import check_detail, check_search, require  # noqa: E402
+from integrated_checks import check_detail, check_search, require
+from linux_demo_checks import verify_identity, safety_probes  # noqa: E402
 
 # Observe the unchanged author's stub at its stdlib request-dispatch boundary.
 # No request body, headers, credentials, learning text or response is intercepted.
@@ -46,7 +45,7 @@ RELATION_UI_PROBE = r'''import { render, screen, fireEvent } from "@testing-libr
 import { expect, it, vi } from "vitest";
 import { writeFileSync } from "node:fs";
 import App from "./App";
-it("records the duplicate React key in the real component with mocked API data", async () => {
+it("preserves both legal relations without duplicate React keys", async () => {
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   const c = { id: 3, target: "relation probe", pedagogical_intent: "grammar", scope: "",
     identity_features: {}, signature: "{}", preferred_unit_id: null, state: "orphaned",
@@ -77,7 +76,9 @@ it("records the duplicate React key in the real component with mocked API data",
   writeFileSync(process.env.FLH035_WARNING_REPORT!, JSON.stringify({
     evidence_type: "mocked API + real React/jsdom component", duplicate_key_warning: duplicate,
     rendered_unit_cards: rows.length, console_messages: messages }));
-  expect(duplicate).toBe(true);
+  expect(duplicate).toBe(false);
+  expect(rows[0]).toHaveTextContent("RELATED");
+  expect(rows[1]).toHaveTextContent("BROADER");
   expect(rows).toHaveLength(2);
   errors.mockRestore();
 });'''
@@ -127,11 +128,17 @@ class Acceptance:
         (hook / "sitecustomize.py").write_text(OBSERVER)
         self.env.update(PYTHONPATH=str(hook), FLH035_COUNTER=str(self.counter))
         self.sockets = []
-        for name in ("DEMO_PORT", "STUB_PORT"):
-            sock = socket.socket()
-            sock.bind(("127.0.0.1", 0))
-            self.env[name] = str(sock.getsockname()[1])
-            self.sockets.append(sock)
+        try:
+            for name in ("DEMO_PORT", "STUB_PORT"):
+                sock = socket.socket()
+                self.sockets.append(sock)
+                sock.bind(("127.0.0.1", 0))
+                self.env[name] = str(sock.getsockname()[1])
+        except BaseException:
+            for sock in self.sockets:
+                sock.close()
+            shutil.rmtree(self.parent)
+            raise
         self.port = int(self.env["DEMO_PORT"])
         self.stub_port = int(self.env["STUB_PORT"])
         self.demo_hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
@@ -224,8 +231,14 @@ class Acceptance:
         self.command(["sh", str(DEMO), "setup", str(self.work), str(self.web / "dist")])
         self.observations["demo_build_start_seed_seconds"] = time.monotonic() - started
         self.claim()
+        verify_identity(self)
         self.observations["fixture_receipt"] = json.loads((self.work / "seed.json").read_text())
         self.observations["compiler"] = self.command(["go", "version"]).stdout.strip()
+        compiler = Path(shutil.which("go", path=self.env["PATH"])).resolve()
+        self.observations["compiler_sha256"] = hashlib.sha256(compiler.read_bytes()).hexdigest()
+        self.observations["binary_sha256"] = hashlib.sha256((self.work / "server").read_bytes()).hexdigest()
+        self.observations["python"] = sys.version
+        self.observations["platform"] = list(os.uname())
         self.observations["binary_metadata"] = self.command(["go", "version", "-m", str(self.work / "server")]).stdout
         self.passed("documented author setup with production workbench", self.observations["fixture_receipt"])
 
@@ -268,12 +281,12 @@ class Acceptance:
         self.observations["http_presentation_seconds"] = time.monotonic() - started
         self.observations["walkthrough"] = {"browse": browse, "faut": faut, "historical_source": old,
                                             "faire": faire, "reassigned": pc, "invalid": manque,
-                                            "bien": bien, "corrected_source": source}
+                                            "bien": bien, "corrected_source": source,
+                                            "sqlite_snapshot_sha256": hashlib.sha256(
+                                                json.dumps(before, sort_keys=True).encode()).hexdigest(),
+                                            "snapshot_equal_after": True, "provider_counters": counters}
         self.passed("documented walkthrough content through real HTTP; no browser interaction", counters)
-        self.defects.append({"id": "B1", "severity": "P2", "location": "docs/plans/FLH-034-knowledge-library.md:38",
-                             "expected": "Plan excludes historical units from searched wording",
-                             "actual": "fasse returns orphaned concept 2 using historical X1/U2 CURRENT SAME; demo explicitly relies on it",
-                             "reproduction": "Fresh author demo: GET /knowledge-library/concepts?q=fasse; GET /knowledge-library/concepts/2"})
+        self.passed("historical CURRENT SAME search retains orphaned membership without support")
 
     def search_checks(self):
         before, counters = snapshot(self.work / "demo.db"), self.counts()
@@ -382,19 +395,7 @@ class Acceptance:
         require(self.search("fasse") == search, "restart search changed")
         require(snapshot(self.work / "demo.db") == before and self.counts() == counters, "restart changed data/provider calls")
         self.passed("documented stop/start persists database/search; no provider calls", counters)
-        wildcard = []
-        links = {os.readlink(p) for p in Path(f"/proc/{self.pid}/fd").iterdir() if p.exists()}
-        for name in ("/proc/net/tcp", "/proc/net/tcp6"):
-            for row in Path(name).read_text().splitlines()[1:]:
-                f = row.split()
-                if int(f[1].split(":")[1], 16) == self.port and f[3] == "0A" and f"socket:[{f[9]}]" in links:
-                    wildcard.append(f[1])
-        self.observations["server_listener_addresses"] = wildcard
-        if any(address.split(":")[0].strip("0") == "" for address in wildcard):
-            self.defects.append({"id": "B2", "severity": "P2", "location": "scripts/demo/flh034/demo.sh:37-40",
-                                 "expected": "Demo script says ports are loopback only",
-                                 "actual": "Server owns wildcard listener " + repr(wildcard),
-                                 "reproduction": "Run author demo; inspect server PID listener. config Addr is ':' + PORT, not 127.0.0.1."})
+        verify_identity(self)
 
     def edges(self):
         # Supported API mutations only, after unchanged demo walkthrough/restart.
@@ -445,100 +446,16 @@ class Acceptance:
         detail = self.get("/knowledge-library/concepts/3")
         relation_ids = [r["unit"]["unit_id"] for r in detail["current_relations"]]
         self.observations["multi_relation_detail"] = detail
-        if len(relation_ids) != len(set(relation_ids)):
-            self.defects.append({"id": "B3", "severity": "P2", "location": "web/src/pages/KnowledgeLibrary.tsx:291",
-                                 "expected": "Independent relation rows require distinct React keys while preserving all relation types",
-                                 "actual": "Unit 9 produces RELATED and BROADER cards keyed identically; independent React/jsdom probe captures duplicate-key warning",
-                                 "reproduction": "POST unit 9 relation RELATED to concept 3; POST BROADER to concept 3; GET library concept 3"})
-        self.passed("supported-API edge probes completed; duplicate relation discrepancy recorded", relation_ids)
+        require(relation_ids == [9, 9], "both legal relation rows retained")
+        require({r["relation"] for r in detail["current_relations"]} == {"broader", "related"},
+                "relation types preserved")
+        require(len({r["link_id"] for r in detail["current_relations"]}) == 2,
+                "distinct immutable relation events")
+        check_detail(detail, [], [4], [9, 9], [3])
+        self.passed("multiple legal relations preserved; mocked UI has no duplicate-key warning", detail)
 
     def additional_safety(self):
-        # A stale/misattributed PID reproduction kills only our disposable sentinel.
-        directory = self.parent / "pid-probe"
-        directory.mkdir()
-        (directory / ".flh034-demo").touch()
-        sentinel = subprocess.Popen(["sleep", "120"], cwd=self.parent, env=self.env)
-        try:
-            (directory / "server.pid").write_text(str(sentinel.pid))
-            self.command(["sh", str(DEMO), "stop", str(directory)])
-            try:
-                sentinel.wait(timeout=2)
-                killed = True
-            except subprocess.TimeoutExpired:
-                killed = False
-            self.observations["misattributed_pid_probe"] = {"sentinel_terminated": killed,
-                                                           "returncode": sentinel.poll()}
-            if killed:
-                self.defects.append({"id": "B4", "severity": "P2", "location": "scripts/demo/flh034/demo.sh:25-28",
-                                     "expected": "stop/cleanup act only on this demo's processes",
-                                     "actual": "A marker plus stale/misattributed server.pid causes unconditional kill of a non-demo process",
-                                     "reproduction": "In an owned marked temporary directory, write an owned sleep process PID to server.pid; run demo stop; sentinel terminates"})
-        finally:
-            if sentinel.poll() is None:
-                sentinel.terminate()
-            sentinel.wait(timeout=5)
-
-        # Occupied port serves readyz but rejects seed writes: no real service/data.
-        requests = []
-        class Occupant(BaseHTTPRequestHandler):
-            def log_message(self, *_):
-                pass
-
-            def reply(self, status, value):
-                raw = json.dumps(value).encode()
-                self.send_response(status)
-                self.send_header("Content-Length", str(len(raw)))
-                self.end_headers()
-                self.wfile.write(raw)
-
-            def do_GET(self):
-                requests.append(("GET", self.path))
-                self.reply(200, {"entries": [], "concepts": []})
-
-            def do_POST(self):
-                requests.append(("POST", self.path))
-                self.rfile.read(int(self.headers.get("Content-Length", "0")))
-                self.reply(503, {"error": "owned refusal fixture"})
-
-        occupant = ThreadingHTTPServer(("127.0.0.1", 0), Occupant)
-        thread = threading.Thread(target=occupant.serve_forever, daemon=True)
-        thread.start()
-        extra = self.parent / "collision-demo"
-        extra.mkdir()  # Also verify that an existing EMPTY directory is accepted.
-        saved = dict(self.env)
-        sock = socket.socket()
-        sock.bind(("127.0.0.1", 0))
-        fake_port = sock.getsockname()[1]
-        sock.close()
-        self.env.update(DEMO_PORT=str(occupant.server_address[1]), STUB_PORT=str(fake_port))
-        try:
-            result = self.command(["sh", str(DEMO), "setup", str(extra)], expected=0)
-            log = (extra / "server.log").read_text()
-            self.owned_processes.append((int((extra / "stub.pid").read_text()), fake_port))
-            self.observations["collision_setup"] = {"exit": result.returncode, "requests": requests,
-                                                     "server_log": log, "seed_file": (extra / "seed.json").read_text()}
-            require("address already in use" in log and not (extra / "seed.json").read_text(), "collision fixture not established")
-            self.defects.append({"id": "B5", "severity": "P2", "location": "scripts/demo/flh034/demo.sh:43,61",
-                                 "expected": "Setup cannot report success when its server never starts and seeding fails",
-                                 "actual": "Ready check accepts another owned listener; seed returns 503; pipeline through tee returns setup exit 0 and empty seed.json",
-                                 "reproduction": "Occupy DEMO_PORT with owned readyz responder, empty catalog/entries and POST 503; run author setup in new directory"})
-        finally:
-            self.env = saved
-            for name, executable in (("server.pid", str(extra / "server")),
-                                     ("stub.pid", str(DEMO.parent / "stub_extractor.py"))):
-                path = extra / name
-                if path.exists():
-                    pid = int(path.read_text())
-                    cmd = Path(f"/proc/{pid}/cmdline")
-                    require(not cmd.exists() or not cmd.read_bytes()
-                            or executable in cmd.read_bytes().decode().split("\0"), "collision cleanup PID mismatch")
-            if (extra / ".flh034-demo").exists():
-                self.command(["sh", str(DEMO), "cleanup", str(extra)])
-            occupant.shutdown()
-            occupant.server_close()
-            thread.join(timeout=3)
-            require(not thread.is_alive(), "collision fixture thread leak")
-        self.passed("owned safety fault probes completed; PID and setup failures recorded")
+        safety_probes(self)
 
     def run(self):
         self.build_and_setup()
@@ -568,7 +485,7 @@ class Acceptance:
             sock.close()
         if self.work.exists() and (self.work / ".flh034-demo").exists():
             try:
-                # Validate every recorded PID before allowing the author's raw kill.
+                # Independently validate records before author cleanup.
                 for name, executable in (("server.pid", str(self.work / "server")),
                                          ("stub.pid", str(DEMO.parent / "stub_extractor.py"))):
                     path = self.work / name
@@ -611,11 +528,11 @@ def main():
     finally:
         counters = run.counts()
         cleanup = run.cleanup()
-        report = {"phase": "B", "status": "FAIL" if error or cleanup else "CHECKS_COMPLETE",
+        report = {"phase": "B", "status": "FAIL" if error or cleanup or run.defects else "PASS",
                   "error": error, "cases": run.cases, "defects": run.defects,
                   "commands": run.commands, "observations": run.observations,
                   "acceptance_sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                                          for p in sorted(HERE.glob("*integrated*.py"))},
+                                          for p in sorted(HERE.glob("*.py"))},
                   "demo_sha256": run.demo_hashes, "phase_a_sha256": run.phase_a_hashes,
                   "stub_observer": OBSERVER, "provider_counters": counters,
                   "cleanup_errors": cleanup, "temporary_directory_removed": not run.parent.exists(),

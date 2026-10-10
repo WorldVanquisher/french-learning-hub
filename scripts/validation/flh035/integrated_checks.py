@@ -30,8 +30,18 @@ def check_detail(data, supporting, members=(), relations=(), historical=(), pref
               [h["unit"] for h in data["historical_units"]]]
     for group, expected in zip(groups, (supporting, members, relations, historical)):
         require(sorted(u["unit_id"] for u in group) == sorted(expected), "detail section membership")
-    flat = [u["unit_id"] for group in groups for u in group]
-    require(len(flat) == len(set(flat)), "each Unit appears in exactly one section")
+    # Multiple independent relations may share a Unit within the relation section.
+    section_ids = [set(u["unit_id"] for u in group) for group in groups]
+    for index, ids in enumerate(section_ids):
+        require(all(not ids.intersection(other) for other in section_ids[index + 1:]),
+                "each Unit appears in exactly one section")
+    for index in (0, 1, 3):
+        require(len(groups[index]) == len(section_ids[index]), "duplicate Unit within section")
+    relations_data = data["current_relations"]
+    require(len({r["link_id"] for r in relations_data}) == len(relations_data),
+            "duplicate relation link")
+    require(len({(r["unit"]["unit_id"], r["relation"]) for r in relations_data}) == len(relations_data),
+            "duplicate unit/relation pair")
     actual_preferred = data["preferred_unit"]["unit_id"] if data["preferred_unit"] else None
     require(actual_preferred == preferred, "preferred representation")
     require(data["concept"]["preferred_unit_id"] == preferred, "preferred ID parity")
