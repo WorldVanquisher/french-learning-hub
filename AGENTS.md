@@ -539,9 +539,17 @@ multi-agent loop unless explicitly requested for that task.
 
 Use:
 
-* `README.md` for setup and user-facing project information
-* `docs/ARCHITECTURE.md` for architectural decisions
-* `docs/plans/` for temporary implementation plans when useful
+* `README.md` for setup and user-facing project information (concise; no
+  milestone history or full API reference)
+* `docs/ARCHITECTURE.md` for the canonical current design, one section per
+  topic, with the HTTP API reference in its Appendix A
+* `docs/RELEASE.md`, `docs/QUICKSTART.md`, `docs/DEMO.md` for operations,
+  first run and the synthetic demo
+* `docs/plans/` for temporary implementation plans when useful, and
+  `docs/validation/` for task evidence; both are historical records, kept in
+  place and not rewritten
+* `docs/history/` for the evidence-linked development history, and
+  `docs/blog/` for retrospective article drafts (not published posts)
 * `AGENTS.md` for durable instructions to coding agents
 
 Documentation should describe the implemented system, not an imaginary future

@@ -1,848 +1,196 @@
-# French Learning Hub（法语学习中心）
+# French Learning Hub
 
 [English](README.md)
 
-这是一个本地优先的 Go + SQLite 服务：把法语学习问题逐步转化为可追溯的学习记录、经过人工审阅的 KnowledgeConcept，以及可复现的检索实验。学习者原始输入始终是真实来源；机器解释属于独立的版本化元数据，绝不会覆盖原始输入。
+一个本地优先的 Go、SQLite 与 React 服务，用于把法语学习中的问题保存为可追溯的记录。每条记录之后可以被解释、
+由人工更正、拆分为可复习的知识单元，并整理为长期稳定的 Concept；这些 Concept 可以被检索，并能追溯回原始问题。
 
-## v1.0 概览
+## 要解决的问题
 
-- 原始输入始终是真实来源，不会被 AI 生成内容覆盖。
-- 活跃 `Entry` 只包含学习者提供的输入/上下文、ID 与时间戳；category、explanation、
-  confidence 只属于版本化 `Analysis` 及其 Effective Analysis / Inventory 只读投影。
-- 默认后端不需要 API key：SQLite 为嵌入式数据库，本地确定性规则 Analyzer 可直接运行。
-- 显式抽取产生不可变 `KnowledgeUnit` 证据；`KnowledgeConcept` 长期身份与人工标注各有清晰权威边界，`unit_concept_memberships` 是 CURRENT SAME 的唯一当前权威。
-- Dataset 质量、检索评估与比较报告均为只读；四视图工作台把写入型标注与只读记录浏览、检查、实验展示分开。
-- OpenAI 分析/抽取与 HTTP embedding 都是相互独立、必须显式配置的可选能力，不会静默回退。
+学习语言时提出的问题——在课堂上、日记里，或与 AI 助手的对话中——往往散落在一次次对话里。即使保存下来，
+机器给出的解释也容易被误当成学习者自己的记录；后来的更正会悄悄覆盖先前的答案；而且没有人说得清哪条证据
+支撑了哪个已学到的概念。
 
-本项目不是聊天机器人、消费者课程 UI、间隔复习调度器、掌握度系统或自动 ML Resolver。
+French Learning Hub 以学习者的原话为唯一事实来源，把关于它的一切——分析、人工更正、抽取的知识单元和
+Concept 判断——作为独立的、版本化或只追加的记录保存。当前状态由这些历史推导得出，而不是覆盖历史。
 
-## 核心流程
+## 工作流程
 
 ```text
-学习者输入
-  -> Entry
-  -> Analysis
-  -> Feedback / Effective Analysis
-  -> 显式 Knowledge Extraction
-  -> KnowledgeConcept / 人工标注
-  -> Dataset v1 / Quality Report
-  -> Retrieval Evaluation / Comparison
-  -> Experiment Dashboard
+学习者的问题（直接输入，或导入事先准备好的 capture 文档）
+  -> Entry                    学习者的原始输入与上下文，永不改写
+  -> Analysis（版本化）       默认本地规则分析器，可选 OpenAI
+  -> Feedback（只追加）       接受 / 更正 / 拒绝；有效解释由此推导
+  -> 知识抽取                 显式触发、依赖外部提供方；产生不可变的单元
+  -> Concept Review          由人工把单元归入长期稳定的 Concept
+  -> Knowledge Library       检索 Concept，并逐一追溯到来源
+  -> 数据集与检索报告         只读的研究工具
 ```
 
-默认配置可以完成 Entry、本地 Analysis、Capture 和只读 Inventory 流程。
-`EXTRACTOR_PROVIDER=disabled` 时 Knowledge Extraction 不可用；全新数据库必须先产生抽取数据并记录明确的人工 Concept 标注，才能形成有意义的 Dataset 和检索实验。
+整个系统贯穿两个区分：
+
+- **证据与身份。** 抽取得到的单元是某次抽取的不可变证据；Concept 是长期的学习身份。重新抽取一条记录会产生
+  新单元，而不会改写旧单元。
+- **成员关系与支撑。** 一个单元可以*归入*某个 Concept（当前 SAME 成员关系）却不*支撑*它：支撑还要求该单元
+  来自其记录的当前抽取版本，且未被学习者隐藏。支撑在读取时推导，从不存储。
+
+完整说明见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（英文）。
+
+## 当前功能
+
+- 保存学习 **Entry**，并追加版本化的 **Analysis**：默认使用本地确定性规则分析器（无需 API key），也可选用
+  OpenAI 分析器。
+- 记录不可变的人工 **Feedback**，读取推导出的有效解释，以及支持 JSONL 导出的跨条目**学习清单**。
+- 通过 API、工作台或 `cmd/capture` 命令行幂等导入事先准备好的 `learning_capture_v1` 文档。导入从不调用模型。
+- 显式运行**知识抽取**（OpenAI 适配器，默认关闭），配合固定的准入规则集和只追加的人工覆盖。
+- 在 **Concept Review** 工作台中审核单元：SAME、NEW CONCEPT、BROADER、NARROWER、RELATED、DISTINCT 与
+  INVALID 判断，保留只追加的历史和显式更正；DISTINCT 与关系类请求在响应丢失时可幂等恢复。
+- 在只读的 **Knowledge Library** 中检索和浏览已整理的 Concept：以平实的英文显示状态，并能从每个单元链接到
+  它所来自的记录及当时使用的确切解释。
+- 查看有效标注，导出版本化的 Concept Annotation Dataset v1，检查其质量报告，并在同一评估样本上比较
+  精确匹配、加权词法、BM25 以及可选嵌入检索基线。
+- 将服务端与构建好的工作台打包成一个 Docker 镜像，带健康与就绪检查，并提供有文档的备份、恢复和升级流程。
+
+## 它不是什么
+
+这是一个单用户的学习数据服务和研究工具，不是聊天机器人、面向消费者的课程、间隔重复调度器或掌握度追踪器，
+也不是自动的机器学习消解器。系统没有身份认证：只在 localhost 或可信网络中运行。知识抽取与语义检索需要你自行
+配置外部提供方；没有基于规则的抽取器，也不会静默回退。Library 检索是关键词前缀匹配，而不是语义检索。
+参见[有意不实现的内容](docs/ARCHITECTURE.md#12-deliberately-not-built)。
+
+## 环境要求
+
+- Go 1.26.5（以 `go.mod` 为准）。SQLite 通过纯 Go 驱动 `modernc.org/sqlite` 内嵌，不需要 SQLite 服务器或
+  CGO 工具链。
+- `web/` 工作台需要 Node.js 与 npm。项目未声明最低版本；CI 使用 Node 22。
+- HTTP 示例需要 `curl`，合成演示需要 Python 3。
+- 仅在打包发布时需要带 Compose 插件的 Docker。
 
 ## 快速开始
 
 ```bash
-cd web && npm ci && cd ..
-make verify
-make run
+cd web && npm ci && cd ..   # 首次安装锁定版本的前端依赖
+make verify                 # 格式、Go 测试与 vet、构建、前端检查
+make run                    # API 位于 http://localhost:8080，数据库为 data/app.db
 ```
 
-然后运行 `curl -sS http://localhost:8080/healthz`。从首次 Capture、启动四视图工作台，到配置可选 Provider 和理解空实验结果的完整流程，请阅读 [docs/QUICKSTART.md](docs/QUICKSTART.md)。
-
-如需在一个本地容器中同时运行 API 和构建后的工作台，请阅读 [docs/RELEASE.md](docs/RELEASE.md)。
-
-面试前可按[可重复的本地学习流程](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md)，配合
-[可复制的 Capture 提示词](docs/CAPTURE_PROMPT.zh-CN.md)反复使用产品。手册先讲解一次完整的
-真实对话循环，再明确以后每次讨论需要重复哪些步骤。记录跨重启累积在独立的
-`data/local-trial/app.db`，不影响 `data/app.db`。基础流程无需 API key；Knowledge
-Extraction 和人工 Concept Review 是单独的可选步骤，全新数据的检索指标可能为 `null`。
-
-## 当前能力
-
-项目目前支持：
-
-1. 保存学习条目及其原始上下文。
-2. 为同一条目追加多个版本化分析。
-3. 追加接受、纠正或拒绝分析的人工反馈。
-4. 根据最新反馈只读计算当前有效分析。
-5. 查询、汇总和 JSONL 导出跨条目的学习清单。
-6. 原子、幂等地导入 `learning_capture_v1` 结构化学习记录。
-7. 使用 `cmd/capture` 从文件或标准输入提交 Capture。
-8. 从条目的当前有效解释中显式抽取不可变 `KnowledgeUnit`。
-9. 通过固定规则和人工覆盖计算 Admission 状态。
-10. 使用持久化 `KnowledgeConcept`、保守的精确签名解析器和人工标注工作台管理 Concept 身份。
-11. 只读查看 M11-A Effective Annotation 状态。
-12. 通过 JSON 或 NDJSON 获取 `concept_annotation_dataset_v1` 当前快照。
-13. 通过 `concept_annotation_quality_report_v1` 验证并汇总 Dataset v1 的质量。
-14. 使用精确签名、加权词法余弦、corpus-aware BM25 和可选语义 embedding 基线评估 CURRENT Concept catalog 的 Recall@K 和 MRR。
-15. 通过 `concept_retrieval_comparison_v1` 在同一 M12 实验契约下对比四种基线的顶层指标。
-16. 在内部工作台使用 **Learning Records**（导入 Capture、浏览记录、Analysis 版本与 Effective 解释，并显式请求 Analysis 与 Extraction）、可写入的 **Concept Review**、只读 **Annotation Inspector**，以及只读 **Experiment Dashboard**。
-
-## 研究与评估
-
-`GET /annotation-dataset/v1/quality` 报告当前 Dataset v1 是否通过结构校验；
-`GET /retrieval-evaluation/v1?retriever=...` 评估一个已注册基线；
-`GET /retrieval-comparison/v1` 在不让浏览器重算实验样本或指标的前提下比较固定的基线集合。
-
-检索使用当前未 retired 的 Concept catalog，而不是历史 catalog 重建。排名与指标只属于检索证据，绝不会创建 SAME/DISTINCT 标注或执行 Concept resolution。embedding 默认禁用时，比较报告会如实显示一行 `unavailable` 的语义基线，本地基线仍可正常工作。
-
-各检索器共享同一实验样本，但语义表示还包含 query example 和 candidate-identity target，词法/BM25 query 表示不包含这些字段；因此该比较并不是在完全相同证据上只替换 scorer 的消融实验。
-
-## 文档导航
-
-- [快速入门](docs/QUICKSTART.md)
-- [个人使用发布（Docker、备份与恢复，英文）](docs/RELEASE.md)
-- [架构与权威边界](docs/ARCHITECTURE.md)
-- [标注工作台说明](web/README.md)
-- [环境变量参考](.env.example)
-
-## 环境要求
-
-- Go 1.26.5（由 `go.mod` 声明；使用 `net/http` 基于方法的路由）
-- 不需要 CGO；SQLite 使用纯 Go 的 `modernc.org/sqlite` 驱动
-- 只有运行 `web/` 时才需要 Node.js/npm；项目未声明最低 Node 版本，当前 CI 使用 Node 22
-
-## 目录结构
-
-```text
-cmd/server               服务端入口和优雅关闭
-cmd/capture              向 POST /captures 提交文件或 stdin 的轻量 CLI
-internal/domain          领域实体、验证、仓库与 Analyzer/Extractor 接口
-internal/application     应用用例和只读投影
-internal/analyzer        本地规则 Analyzer 与可选 OpenAI Analyzer
-internal/extractor       可选 OpenAI Knowledge Extractor
-internal/embedding       M12-D 可选 HTTP 文本向量 Provider
-internal/captureclient   Capture CLI 使用的 HTTP 客户端
-internal/storage/sqlite  SQLite 仓库与迁移执行器
-internal/transport/http  HTTP DTO、Handler 和路由
-internal/config          环境变量配置
-migrations               嵌入式 SQL 迁移
-examples/captures        learning_capture_v1 示例
-web                      React + Vite + TypeScript 记录浏览与标注工作台
-```
-
-## 配置
-
-配置来自进程环境变量，以及服务工作目录中可选的 `.env` 文件（`make run` 时为仓库根目录）。进程中已存在的变量优先于 `.env`，即使其值为空；空值视为未设置。`.env` 不存在不影响启动；格式错误会阻止启动，且错误信息不显示其中的值。包含 `$` 或 `#` 的值请使用单引号。不要把凭据放入 Git。默认配置可直接启动本地服务：
-
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `PORT` | `8080` | HTTP 监听端口 |
-| `LISTEN_HOST` | 空（监听所有接口） | 可选的绑定 IP，例如 `127.0.0.1`；不接受主机名 |
-| `DB_PATH` | `data/app.db` | SQLite 文件路径 |
-| `HTTP_READ_TIMEOUT` | `10` | 读取超时（秒） |
-| `HTTP_WRITE_TIMEOUT` | `10` | 写入超时（秒） |
-| `AI_PROVIDER` | `rule-based` | `rule-based` 或 `openai` |
-| `EXTRACTOR_PROVIDER` | `disabled` | `disabled` 或 `openai` |
-| `OPENAI_API_KEY` | 无 | 启用 OpenAI 时必需；不会被记录 |
-| `OPENAI_MODEL` | 无 | 启用 OpenAI 时必需 |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | API 基础地址 |
-| `OPENAI_TIMEOUT` | `8` | 单次 Provider 请求超时（秒） |
-| `EMBEDDING_PROVIDER` | `disabled` | `disabled` 或 `http` |
-| `EMBEDDING_MODEL` | 无 | embedding provider 为 `http` 时必需 |
-| `EMBEDDING_BASE_URL` | 无 | `http` Provider 的 OpenAI-compatible API 基础地址 |
-| `EMBEDDING_API_KEY` | 无 | 可选 bearer token；不会被记录 |
-| `EMBEDDING_TIMEOUT` | `8` | 单次 embedding 请求超时（秒） |
-
-`AI_PROVIDER` 和 `EXTRACTOR_PROVIDER` 相互独立。例如，可以使用本地规则分析器，同时单独启用 OpenAI 知识抽取器。
-
-`EMBEDDING_PROVIDER` 是第三个独立边界，只服务于 M12-D 只读检索评估。默认
-`disabled` 不需要 key、model、GPU 或 embedding 服务，也不会注册
-`embedding_retriever_v1`；显式选择该名称时沿用 registry 的 HTTP `400` unknown-
-retriever 行为。`http` 要求 `EMBEDDING_MODEL` 与 `EMBEDDING_BASE_URL`，通过一次 batch
-调用 `POST <base-url>/embeddings`，仅在需要 bearer token 时使用可选
-`EMBEDDING_API_KEY`。该 OpenAI-compatible adapter 可指向远程 API、租用算力或另一台机器
-上的服务，与 Analyzer/Extractor 的 OpenAI 配置无关。超时返回 `504`，其他 embedding
-故障返回 `502`，且不会回退到其他检索器。
-
-### Analyzer
-
-- `rule-based`：默认、本地、确定性、无 API 费用。命名规则引擎会记录命中的规则、不确定性原因和启发式置信度。`NeedsAI` 只是一项建议，不会自动调用 OpenAI。
-- `openai`：显式启用后调用 OpenAI Responses API。每条分析都会保存 `openai:<model>:fr_l2_taxonomy_v1` 来源信息。
-
-配置错误会阻止服务启动，不会静默回退。Provider 超时返回 `504`，其他 Provider 故障返回 `502`，失败时不会写入分析记录。
-
-## 启动
+在另一个终端中：
 
 ```bash
-make run
-# 或
-go run ./cmd/server
+curl -sS http://localhost:8080/healthz
+curl -sS -X POST http://localhost:8080/entries \
+  -H 'Content-Type: application/json' \
+  -d '{"original_input":"Pourquoi dit-on je vais ?","original_context":"Étude du verbe aller."}'
+curl -sS -X POST http://localhost:8080/entries/1/analysis
+make capture ARGS="-file examples/captures/manual-example.json"
 ```
 
-首次启动时会自动创建数据库目录、数据库文件并执行迁移。默认监听 `http://localhost:8080`。
+用 `cd web && npm run dev` 启动工作台，然后打开 `http://localhost:5173`。
+[docs/QUICKSTART.md](docs/QUICKSTART.md)（英文）完整介绍首次运行，包括可选提供方，以及为什么全新数据库上的
+研究报告为空。
 
-如需由同一服务提供构建后的工作台（无需 Vite 开发服务器），先构建前端并传入 `-web-dir`：
+## 两分钟合成演示
+
+Knowledge Library 演示会构建服务端，用一个全新的隔离数据库在回环地址上启动，并通过公开 API 写入四条合成学习
+记录和七个 Concept。它使用本地分析器和本地桩抽取器：不涉及 API key、付费提供方或个人数据库。
 
 ```bash
-cd web && npm ci && npm run build && cd ..
-go run ./cmd/server -web-dir web/dist
+npm --prefix web ci && npm --prefix web run build
+WORK=$(mktemp -d)/flh034-demo
+sh scripts/demo/flh034/demo.sh setup "$WORK" "$PWD/web/dist"
+# 打开 http://127.0.0.1:18934/，并按 docs/DEMO.md 操作
+sh scripts/demo/flh034/demo.sh cleanup "$WORK"
 ```
 
-此时 `/` 提供工作台，`/assets/...` 提供构建产物，`/api/...` 去掉前缀后转发到 API（工作台使用的路径）。所有现有 API 路由保持原有根路径，curl 和 Capture CLI 不受影响。不传 `-web-dir` 时服务只提供 API。
+演示步骤、数据内容、重启行为以及支持的平台（Linux 与 macOS）见 [docs/DEMO.md](docs/DEMO.md)（英文）。
+准备步骤不计入两分钟的演示时间。
 
-## 个人使用发布（Docker）
+## 个人使用发布
 
-`Dockerfile` 与 `compose.yaml` 把服务和构建后的工作台打包为一个镜像，在 `http://127.0.0.1:8080` 提供服务（只绑定本机；服务没有认证），SQLite 数据保存在 `./data/release`：
+`Dockerfile` 与 `compose.yaml` 把 API 和构建好的工作台打包为一个镜像，仅发布在 `http://127.0.0.1:8080`，
+SQLite 数据位于 `./data/release`：
 
 ```bash
 mkdir -p data/release
-docker compose up -d --build     # 启动；用 docker compose ps 等待 "(healthy)"
-docker compose stop              # 停止（数据保留）；也可使用 start / restart / down
+docker compose up -d --build   # 等待 docker compose ps 显示 "(healthy)"
+docker compose stop
 ```
 
-容器固定 `PORT` 与 `DB_PATH`，只转发列出的 Provider 变量并保持其默认值，镜像和容器中不包含 `.env`、凭据或数据库。现有数据库不会被自动移动到 `./data/release`。只在服务停止时备份，只恢复到空目录，并在每次升级镜像前备份：迁移只能向前执行，旧镜像不得运行在新版本数据库上。完整步骤见 [docs/RELEASE.md](docs/RELEASE.md)。
-
-## 基础 API
-
-### 健康检查
-
-```bash
-curl localhost:8080/healthz
-# {"status":"ok"}
-curl localhost:8080/readyz
-# {"status":"ready"}
-```
-
-`/healthz` 只表示存活，不访问数据库。`/readyz` 表示就绪：以 2 秒上限 ping SQLite，返回 `200`，或返回不含错误细节的 `503 {"status":"not_ready"}`。
-
-### 学习条目
-
-创建条目：
-
-```bash
-curl -X POST localhost:8080/entries \
-  -H 'Content-Type: application/json' \
-  -d '{"original_input":"Je suis fatigué","original_context":"给朋友发消息"}'
-```
-
-读取和列出条目：
-
-```bash
-curl localhost:8080/entries/1
-curl 'localhost:8080/entries?limit=20'
-```
-
-`original_input` 必填。未知 JSON 字段和空输入返回 `400`。
-
-`POST /entries`、`GET /entries` 与 `GET /entries/{id}` 的 Entry 响应不会包含
-`category`、`explanation` 或 `confidence`。需要机器解释时应读取下方的版本化 Analysis
-端点；需要经人工反馈解析后的当前解释时应读取 Effective Analysis 或学习清单。
-migration 001 创建的同名 nullable SQLite 列仍保留，以保证历史数据库 schema 兼容，但
-活跃 Entry domain、读写查询与 API 都会忽略它们；这些物理列不再是第二套解释权威。
-
-### 分析
-
-```bash
-curl -X POST localhost:8080/entries/1/analysis
-curl localhost:8080/entries/1/analyses
-```
-
-分析使用共享的 `fr_l2_taxonomy_v1` 分类词表：
-
-```text
-vocabulary, grammar, morphology, orthography, pronunciation,
-pragmatics, discourse, comprehension, translation, mixed, other
-```
-
-重复分析同一条目会追加版本 2、3 等，不会修改旧版本。
-
-### 人工反馈和有效分析
-
-反馈状态为 `accepted`、`corrected` 或 `rejected`：
-
-```bash
-curl -X POST localhost:8080/analyses/1/feedback \
-  -H 'Content-Type: application/json' \
-  -d '{"status":"accepted","user_note":"正确"}'
-
-curl -X POST localhost:8080/analyses/1/feedback \
-  -H 'Content-Type: application/json' \
-  -d '{"status":"corrected","corrected_category":"grammar","corrected_explanation":"manger 的现在时"}'
-```
-
-```bash
-curl localhost:8080/analyses/1/feedback
-curl localhost:8080/analyses/1/effective
-```
-
-有效分析是只读投影。只有最新反馈（按 `created_at`、再按 `id`）决定当前状态：
-
-时间排序按解析后的 RFC3339 时间点比较，保留纳秒精度；仅在时间点相等时选择更大的 ID。
-Admission Override、Unit Judgment、学习清单及可审阅队列使用相同规则。历史可变宽度时间
-文本在读取时正确比较，不重写历史记录；系统时钟回退时，后插入但时间更早的记录不会成为最新记录。
-
-- `unreviewed`：没有反馈，当前值等于原分析。
-- `accepted`：保留原分析。
-- `corrected`：存在的纠正字段覆盖原字段。
-- `rejected`：`effective` 为 `null`，但原分析仍保留供审计。
-
-## 学习清单
-
-学习清单为每个条目选择最新分析及其最新反馈，并形成一个只读当前行。它不会写入数据，也不会调用 AI。
-
-```bash
-curl 'localhost:8080/learning-records?state=corrected&limit=50'
-curl localhost:8080/learning-records/summary
-curl 'localhost:8080/learning-records/export?state=accepted'
-```
-
-支持的状态：`unanalyzed`、`unreviewed`、`accepted`、`corrected`、`rejected`。列表支持 `state`、有效 `category`、`analyzer`、`limit` 和 `before_entry_id` 过滤/分页。
-
-导出端点返回 `application/x-ndjson; charset=utf-8`，每行一个记录，不包含外层数组。
-
-## 结构化 Capture 导入
-
-`POST /captures` 接收 `learning_capture_v1` 文档，把在其他地方完成的法语讨论导入为普通学习条目和可选的版本 1 分析。
-
-它不是聊天机器人：不会联系 ChatGPT 或其他模型，不抓取网页或对话，也不解析 HTML/Markdown。服务只保存客户端显式提供的结构化字段。
-
-```bash
-curl -X POST localhost:8080/captures \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "schema_version":"learning_capture_v1",
-    "capture_id":"manual-2026-08-04-001",
-    "source":"manual",
-    "original_input":"Comment dit-on apple ?",
-    "original_context":"词汇查询",
-    "discussion_summary":"询问 apple 的法语表达。"
-  }'
-```
-
-导入按 `capture_id` 幂等：
-
-- 新 ID：`201 Created`，`created: true`。
-- 相同 ID、相同规范化内容：`200 OK`，`created: false`，不新增记录。
-- 相同 ID、不同内容：`409 Conflict`，不会覆盖已有数据。
-
-读取 Capture 元数据：
-
-```bash
-curl localhost:8080/captures/manual-2026-08-04-001
-```
-
-`source` 只是描述性元数据，不授予信任。该服务与其他端点一样没有内置认证，不应在没有外部认证保护的情况下直接暴露给不可信网络。
-
-## Capture CLI
-
-`cmd/capture` 是纯传输客户端。它不会分析、规范化、重写或指纹化负载，也不会调用模型。
-
-```bash
-# 从文件读取
-go run ./cmd/capture -file examples/captures/manual-example.json
-
-# 从 stdin 读取
-go run ./cmd/capture < examples/captures/manual-example.json
-```
-
-后端地址优先级：
-
-```text
--url 参数  ->  FRENCH_HUB_URL  ->  http://localhost:8080
-```
-
-幂等重放也返回成功退出码。冲突、验证错误或服务端错误会使用非零退出码和安全的简短错误消息，不会输出学习内容或凭据。
-
-## Knowledge Extraction 与 Admission
-
-Knowledge Extraction 把一个学习交互显式转换为零个或多个不可变 `KnowledgeUnit`。零个 Unit 是合法结果。抽取只在调用下列端点时发生，不会因创建条目、分析、反馈或 Capture 而自动运行。
-
-条目只有在当前分析状态为 `unreviewed`、`accepted` 或 `corrected` 时才可抽取；`unanalyzed` 和 `rejected` 返回 `409`。
-
-来源在调用 Provider 之前读取，Provider 运行期间不持有数据库事务。写入事务内，服务端会再次确认来源 analysis 仍是该条目的最新分析、来源 feedback 仍是该分析的最新反馈（与读取使用相同的最新记录排序）。如果期间出现了新的分析或反馈，或当前分析变为 `rejected`，结果会被丢弃并返回 `409`，不写入任何 Extraction、Unit 或推荐；原有的当前 Extraction 和全部历史保持不变。重新发起抽取即可使用更新后的解释。
-
-```bash
-curl -sS -X POST http://localhost:8080/entries/1/extractions
-curl -sS http://localhost:8080/entries/1/extractions
-curl -sS http://localhost:8080/extractions/10
-```
-
-每次成功抽取都会追加一个按条目版本化的 `KnowledgeExtraction`，保存来源 analysis、feedback、extractor 和时间戳。后续分析或反馈不会修改旧 Extraction。
-
-知识类型使用独立的 `fr_l2_knowledge_v1` 词表：
-
-```text
-vocabulary, grammar, morphology, orthography,
-pronunciation, usage, expression
-```
-
-### Extractor
-
-唯一语义 Extractor 是显式启用的 OpenAI Extractor：
-
-```bash
-export EXTRACTOR_PROVIDER=openai
-export OPENAI_API_KEY=replace-with-your-key
-export OPENAI_MODEL=replace-with-your-model
-go run ./cmd/server
-```
-
-默认 `EXTRACTOR_PROVIDER=disabled`；此时服务仍可运行，但抽取端点返回 `503`。没有规则式语义 Extractor，也没有静默回退。
-
-### Admission
-
-固定规则集 `knowledge_admission_v1` 为每个 Unit 生成：
-
-- `active`：默认进入活动学习池。
-- `suppressed`：例如同一 Extraction 中同 kind、同规范化 canonical 的后续精确重复项。
-- `needs_review`：置信度低，需要人工判断。
-
-Unit 不会因为被 suppressed 而删除。人工可以追加 `active` 或 `suppressed` Override，最新人工 Override 决定有效状态，机器建议和全部 Override 历史仍保留。
-
-```bash
-curl -X POST localhost:8080/knowledge-units/100/admission-overrides \
-  -H 'Content-Type: application/json' \
-  -d '{"decision":"suppressed","reason":"mastered","note":"已经掌握"}'
-
-curl localhost:8080/knowledge-units/100/admission
-curl localhost:8080/knowledge-units/100/admission-overrides
-```
-
-## KnowledgeConcept 与人工标注
-
-`KnowledgeUnit` 是某一次 Extraction 的不可变证据；`KnowledgeConcept` 是跨 Extraction 的持久学习身份。Concept 身份使用版本化 schema `fr_l2_concept_identity_v1`，包含：
-
-- `target`
-- `pedagogical_intent`
-- `scope`
-- `identity_features`
-
-确定性 resolver 只在完整规范化签名精确匹配且唯一时允许自动 SAME。它不使用 embedding、向量、LLM 相似度，也不会自动推断 BROADER/NARROWER。
-
-CURRENT SAME 只来自 `unit_concept_memberships`。`unit_concept_links` 是只追加历史事件，不能单独证明当前成员关系。
-
-人工标注词汇：
-
-- `SAME`：Unit 与 Concept 是同一学习身份。
-- `DISTINCT`：显式负身份对，Unit 不是该 Concept；它不是关系，也不是 INVALID。
-- `BROADER` / `NARROWER` / `RELATED`：非成员关系。
-- `INVALID`：Unit 本身不应参加 Concept 解析；这是 Unit 级判断。
-- `RejectSame`：清除错误 CURRENT SAME 的成员级历史纠正，不自动等于 DISTINCT。
-
-候选展示、搜索、选择、跳过或创建界面状态都不是标签。只有显式人工操作创建标注权威。
-
-### 标注工作台
-
-`web/` 提供四个本地视图：
-
-- **Learning Records**：浏览 `GET /learning-records`，支持状态筛选与游标分页；详情显示原始输入与上下文、全部 Analysis 版本，以及所选版本由后端解析的 Effective 解释。区分加载中、请求失败、无记录、无 Analysis、未审核与被拒绝的解释；过期响应会被丢弃，返回列表时保留已加载页面与筛选条件。
-  - **导入 Capture**：把粘贴或载入的 `learning_capture_v1` JSON 原样提交到 `POST /captures`（与 CLI 相同，不调用模型）。浏览器只检查 JSON 语法，内容校验由服务端负责并显示其 `400`/`422` 信息。新导入（`201`）会刷新列表并可打开记录；相同内容重放（`200`）显示已有记录且不新增；冲突重放（`409`）说明未做任何修改，并通过 `GET /captures/{capture_id}` 提供打开已有记录的入口。
-  - **显式请求 Analysis 与 Extraction**：在记录详情中分两步操作，先说明请求的效果、是否可能调用并计费外部 Provider、以及不会自动重试，确认后才发送且只发送一次；请求进行中控件被禁用。成功的 Analysis 会重新读取记录并选中新的最新版本，列表行也从后端刷新；不再符合当前筛选的行会明确提示。Extraction 面板显示已保存版本、后端认定的当前版本及其 Unit 与 Admission 状态，零 Unit 被视为有效结果。
-  - **Extraction 历史与当前版本选择**：通过 `GET /entries/{id}/extractions` 与 `GET /entries/{id}/current-extraction` 浏览全部已保存版本。摘要分别显示后端认定的当前版本、最新保存版本（版本号最大）与版本数；版本按钮标注“current”或“latest”，被查看的版本处于按下状态。默认查看当前版本；读者选中的查看版本在同一记录刷新时保留，打开其他记录时重新开始。浏览只读，不发送任何写请求，并显示每个版本的 Unit、Admission、来源（Extractor、来源 Analysis、Feedback、时间）以及是否为当前版本；零 Unit 显示为有效结果。对非当前版本可显式“设为当前版本”：发送前说明其 Unit 将成为 Concept Review 中可审核、并计入 Concept 支持的 Unit，其他版本的 Unit 仍保存但不再提供支持；不会删除或改写任何 Unit、SAME 成员关系、DISTINCT 与关系标注或 INVALID 判断，也不会运行 Extraction。确认后只发送一次仅含 `extraction_id` 的 `PUT /entries/{id}/current-extraction`。`selection_mode` 区分 `automatic`（最新保存版本为当前版本）与 `pinned`（显式固定的版本保持为当前版本）；摘要与模式说明分别显示自动选择、固定为较旧版本，以及固定的版本同时也是最新版本的情况。“Pin vN”可固定任一查看中的版本（包括最新版本），之后新的 Extraction 不会替换它；仅在固定状态下显示“Resume automatic latest selection”，发送前说明最新保存版本将成为当前版本并继续跟随之后的 Extraction、不会删除或改写任何数据、不会运行 Extraction 也不会调用 Provider，确认后只发送一次 `DELETE /entries/{id}/current-extraction`；固定与恢复共享同一进行中状态，不会重叠。`PUT` 的响应由请求构造，`DELETE` 的响应是服务端报告，因此都只显示为服务端的回答，再由重新读取确认所请求的版本与模式，或报告服务端实际保存的状态（例如在其他地方再次固定）；`422`、`404` 等错误表示未改变选择；未收到响应时显示“结果未知”，在重新读取完成前隐藏版本列表且不自动重提；较早的重新读取若晚于较新的返回会被忽略。Vite 开发服务器不在 `:5173` 时，需要把其来源加入后端的 `HTTP_TRUSTED_ORIGINS`，否则写请求会被浏览器边界以 `403` 拒绝。
-  - **从记录进入 Concept Review 与 Inspector**：当前 Extraction 的可审核状态只来自 `GET /reviewable-units?entry_id=…`；只有其中列出的 Unit 显示“Review unit #N in Concept Review”，其他当前 Unit 显示“未等待审核（已解析或已标记 INVALID）”，其他版本的 Unit 标为历史版本，只能查看。无法读取状态时提示并提供“Recheck review status”，期间不显示审核入口。Concept Review 进入单记录模式，只显示该记录的可审核 Unit 并定位到所选 Unit；若该 Unit 已不再等待审核，则不作为候选显示，说明原因并提供查看入口；所有决定仍是现有的显式人工操作。单个 Unit 的只读查看通过 `GET /knowledge-units/{id}/effective-annotation` 与当前选择说明它是否属于当前 Extraction；历史 Unit 的已保存标注仅供参考，绝不作为审核候选；不存在的 Unit 会明确报告。“Back to record #N”返回同一记录、查看中的 Extraction 版本、列表筛选与已加载页面、Feedback 草稿，并把键盘焦点移回该 Unit（或记录标题），同时重新读取审核状态；直接点击标签页会退出单记录模式。工作台的审核队列只服务等待审核的 Unit，因此尚不能纠正已有 CURRENT SAME 或 INVALID 的 Unit。
-  - **请求结果与后续刷新分开显示**：结果只陈述服务端的回答；刷新行先显示“正在从服务端重新读取…”，只有 GET 成功后才显示“已从服务端重新读取”，失败则提示“无法重新读取，显示内容可能已过期”。Analysis 的 Retry 与 Extraction 的“Reload extractions”可完成失败的刷新；列表行重新读取失败时会标记为可能过期。
-  - 错误按状态与原始信息显示，且只陈述后端契约支持的内容：任何错误响应都表示未保存任何数据。只有 Extraction 的 `503`（未启用）在调用任何 Provider 之前返回。`409` 既可能来自 Provider 运行前的资格检查，也可能来自 Provider 返回后的来源变更检查（出现更新的分析或反馈，或分析被拒绝），因此提示 Provider 可能已被调用；`422`、`502`/`504` 等错误同样提示 Provider（或所配置的 Analyzer）可能已被调用。
-  - **未收到响应**（网络故障）时显示“结果未知”，从不声称失败或自动重提；在成功重新读取已保存状态之前，同一操作保持不可用并显示原因，避免在核对前发送重复请求。Capture 导入提供只读的“检查导入状态”，重新导入相同内容是幂等的。
-  - 按钮在所有状态下保持可读：彩色与已选按钮悬停时保留颜色；禁用按钮使用灰底虚线边框而非降低透明度；键盘焦点显示带间隙的深色焦点环。
-  - **人工 Feedback**：记录详情通过 `POST /analyses/{id}/feedback` 显式记录 Accept、Correct 或 Reject，并通过 `GET /analyses/{id}/feedback` 显示每个版本的历史（按后端顺序，最早在前，后端 Effective 解释所引用的一条标记为 “in effect”）。Feedback 只作用于所选 Analysis 版本，标题会注明是最新版本还是历史版本；记录状态与新的 Extraction 始终使用最新 Analysis 及其最新 Feedback，对历史版本的 Feedback 不会改变它们。只发送契约允许的字段：`status`、可选 `user_note`，以及仅在 Correct 时的 `corrected_category` 和/或 `corrected_explanation`；改为 Accept 或 Reject 时草稿中的修正字段不会发送。类别选项镜像 `fr_l2_taxonomy_v1`（后端没有分类端点），服务端仍会校验并在 `422` 时保留草稿。原始 Entry、Analysis 与已保存的 Extraction 均不改变，Extraction 作为历史证据保留、不会自动重新生成。成功后清空该版本草稿，并分别重新读取 Feedback 历史、Effective 解释与列表行，各自报告成功或失败；未收到响应时显示“结果未知”，保留草稿并在该版本历史重新读取成功前禁止再次提交。草稿、进行中请求、结果与历史按版本隔离，在同一记录刷新与切换版本时保留，打开其他记录时从空白开始。
-- **Concept Review**：写入显式人工 SAME、DISTINCT、关系、INVALID 或新 Concept。每个决定只发送一次，并按服务端的实际回答显示结果，结果与之后的重新读取分别显示：确认成功时，解决性决定（SAME、带 SAME 的新 Concept、INVALID）按 Unit ID 将该 Unit 移出队列，非解决性决定（DISTINCT、关系）保留 Unit 并重新读取其成员关系与精确匹配；服务端返回任何 HTTP 错误（如 `409`、`422`）时显示“服务端未记录”及其原始信息，`409` 另行重新读取当前成员关系并单独报告。**未收到响应**时显示“结果未知”，绝不显示“未能记录”，也不自动重发；随后检查该决定会改变的权威或历史：SAME/REASSIGN 检查当前成员关系，带 SAME 的新 Concept 检查 Unit 所属 Concept 的身份是否与草稿一致，DISTINCT 与关系检查是否存在比发送前读取的最新事件更新的事件（它们会追加事件，旧事件不算），INVALID 检查 Unit 是否为 INVALID。找到时，解决性决定将 Unit 移出队列并说明；找不到时说明原请求可能仍在服务端处理或从未到达，并阻止该 Unit 的所有决定，直到“Check again”找到它，或通过说明重复风险的显式确认“Allow another decision for unit #N…”放行。发送期间其他决定、上一/下一单元与重新加载都会等待；未知结果只属于对应 Unit，稍后完成的检查不会改变当前显示的 Unit。DISTINCT 与关系决定发送前先读取已有事件，读取失败则不发送并说明原因。
-- **Annotation Inspector**：只读显示当前 Effective Annotation。
-- **Experiment Dashboard**：只读显示 Dataset 结构质量、人工监督规模与固定顺序的检索基线指标。
-
-启动方法见 [web/README.md](web/README.md)。该前端是内部标注/数据收集工具，不是最终 Review Engine。
-
-## Effective Annotation（M11-A）
-
-M11-A 从已持久化事实按需构建 `EffectiveAnnotationSnapshot`：
-
-```text
-只追加 judgment / distinction / concept-link 历史
-                    +
-unit_concept_memberships 的 CURRENT SAME 权威
-                    ↓
-        EffectiveAnnotationSnapshot
-```
-
-关键语义：
-
-- 最新 Unit Judgment 决定 INVALID；INVALID 优先并抑制 SAME、DISTINCT 和关系输出。
-- CURRENT SAME 只由 membership projection 决定，并保留对应 decision 的完整来源。
-- DISTINCT 只来自显式 distinction 事件，并受更新 SAME 纠正的抑制规则约束。
-- BROADER/NARROWER/RELATED 只保留已接受且未被结构性取代的有效事件。
-- 所有输出保留 ID、source、resolver version、evidence 和时间戳。
-
-M11-B 通过以下只读端点公开该投影：
-
-```bash
-curl localhost:8080/knowledge-units/101/effective-annotation
-curl localhost:8080/effective-annotations
-```
-
-集合只包含每个条目的 CURRENT Extraction Unit，包括 resolved、unresolved 和 invalid，排除历史 Extraction Unit。
-
-## Concept Annotation Dataset v1（M11-C）
-
-Dataset v1 是稳定、版本化、只读的当前快照。它消费 M11-A 权威，不重新计算 SAME、INVALID、DISTINCT 或关系语义。
-
-```bash
-# JSON envelope
-curl -sS localhost:8080/annotation-dataset/v1
-
-# 相同逻辑记录、相同顺序的 NDJSON
-curl -sS localhost:8080/annotation-dataset/v1/export
-```
-
-Schema version：
-
-```text
-concept_annotation_dataset_v1
-```
-
-每条记录包含：
-
-- 原始 `KnowledgeUnit` 证据；
-- `entry_id`、Extraction 版本、analysis/feedback/extractor 来源；
-- 机器 Admission、最新 Override 和有效 Admission；
-- 带完整 Concept 身份快照的有效 SAME、DISTINCT 和关系；
-- 最新 Unit Judgment；
-- 保守的显式 `human_labels`。
-
-`human_labels` 与有效系统状态不是同一概念：
-
-- 人工 CURRENT SAME 产生 human SAME。
-- `resolver:automatic` SAME 可以使状态为 resolved，但不会成为人工 gold。
-- 显式有效人工 DISTINCT 是负身份证据。
-- BROADER/NARROWER/RELATED 保持关系类型，不转换为 DISTINCT。
-- 有效人工 INVALID 是 Unit 级排除证据，不恢复旧的 pair-level 标签。
-
-记录按 `entry_id`、Extraction version、Unit ordinal、Unit ID 升序排列。JSON 和 NDJSON 使用同一应用层表示；每行 NDJSON 都重复 `schema_version`。
-
-Dataset v1 不决定 `gold` 或 `training_ready`，不生成训练/验证/测试切分，不计算指标，不训练模型，也不实现候选检索。
-
-## Dataset Validation & Quality Report v1（M11-D）
-
-后端通过一个只读端点验证并描述 M11-C 应用层表示：
-
-```bash
-curl -sS localhost:8080/annotation-dataset/v1/quality
-```
-
-响应 schema 为 `concept_annotation_quality_report_v1`，其
-`dataset_schema_version` 为 `concept_annotation_dataset_v1`。Quality Report 只消费
-M11-C 的 `ListV1` 边界，不读取 SQLite 标注历史，也不重新计算 CURRENT SAME、
-INVALID、DISTINCT 或关系权威。
-
-报告检查记录与来源/Extraction 的一致性、Effective 状态和人工标签投影、Concept
-身份快照字段、矛盾状态以及 active Unit 的 Concept support。`valid` 仅表示不存在
-结构性验证错误。保守警告（目前包括非 active Admission 上的人工标签，以及指向已
-retired Concept 的人工 CURRENT SAME）不会让报告失效，也不会删除或改写标签。因此，
-发现结构错误时端点仍返回 HTTP `200`；只有报告构建失败才返回 HTTP `500`。
-
-报告还提供 Effective 状态、Admission 与权威来源计数；明确区分人工 SAME 与自动
-SAME 的人工标签清单；按值稳定排序的 extractor、Concept identity schema 和 resolver
-来源分布；以及量化 Entry/Concept 分组泄漏风险的统计。Issue 也按固定规则稳定排序。
-M11-D 不声明通用训练资格，不生成 train/test split，不计算检索指标，不训练模型，也
-不实现检索。
-
-## Retrieval Evaluation Foundation v1（M12-A）
-
-M12-A 通过只读端点评估检索基线能否把当前显式人工 SAME 目标排入前 K 个候选：
-
-```bash
-curl -sS localhost:8080/retrieval-evaluation/v1
-```
-
-报告使用 schema `concept_retrieval_evaluation_v1`、policy
-`concept_retrieval_eval_policy_v1` 和 retriever
-`exact_signature_retriever_v1`。Ground truth 只来自 M11-C 的有效 CURRENT 人工 SAME
-及其匹配的 `human_labels.same`；自动 SAME 永远不作为评估 gold。评估首先运行 M11-D；
-若 Dataset 存在结构错误，端点仍返回 HTTP `200`，但 state 为
-`blocked_invalid_dataset`，指标为 `null`，samples 为 `[]`。Quality warning 不阻塞评估。
-
-通过 NEW CONCEPT 产生的 `seed_unit_same` 必须排除，因为检索 seed Unit 时目标 Concept
-尚不存在。指向已有 Concept 的普通 `human_same` 和纠正型
-`human_same_correction` 才可能符合资格。排除顺序固定为：无法分类的 SAME provenance、
-seed creation、非 active Admission、retired target、目标不在当前 catalog；每条人工
-SAME 记录只计数一次。
-
-v1 使用当前（而非历史时点）Concept catalog，并按 Concept ID 排序。retired Concept
-不参与候选；lifecycle 为 normal 的 supported 和 orphaned Concept 都保留。因此后来创建
-的 Concept 可能成为当前评估中的额外竞争候选，这是 v1 明确记录的限制。
-
-精确基线只返回完整 candidate identity signature 相等的 Concept，score 为 `1.0`，不做
-模糊、token 或语义匹配。若人工 SAME Unit 的措辞导致签名不同，baseline miss 是预期
-测量结果，不是错误。报告计算 Recall@1、Recall@3、Recall@5 和 MRR，并为每个样本公开
-query、目标 Concept、候选排名、target rank、reciprocal rank 与 hit flags。没有符合
-资格的样本时所有指标为 `null`，不会把“没有数据”误报为 `0.0` 性能。
-
-检索结果不会被持久化，也不会创建标注权威。
-
-## 加权词法排序检索器 v1（M12-B）
-
-M12-B 完整复用 M12-A 的 schema、policy、质量门、样本资格规则、当前非 retired 候选
-全集、最大 K=5 以及 Recall/MRR 定义；只有所选检索算法及其排名输出可以变化。端点为
-向后兼容仍默认精确检索，也可显式选择已注册的检索器（BM25 见 M12-C）：
-
-```bash
-curl -sS localhost:8080/retrieval-evaluation/v1
-curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=exact_signature_retriever_v1'
-curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=weighted_lexical_retriever_v1'
-curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=bm25_retriever_v1'
-curl -sS 'localhost:8080/retrieval-evaluation/v1?retriever=embedding_retriever_v1'
-```
-
-未知检索器返回 HTTP `400` 和 `{"error":"unknown retriever"}`。检索器选择由应用层
-registry 负责；HTTP 层只读取并传递名称。
-
-`weighted_lexical_retriever_v1` 是确定性的加权词袋 baseline。规范化版本
-`concept_lexical_normalization_v1` 执行 Unicode 小写化与规范分解，移除组合附加符号，
-把标点和分隔符作为 token 边界，并丢弃空 token 与单 rune token。v1 刻意不使用法语
-停用词表，也不做 stemming 或 lemmatization。每个字段内部先去重；同一 token 出现在
-不同字段时可累加权重。
-
-| 表示 | 字段 | 权重 |
-| --- | --- | ---: |
-| Unit query | canonical | 4.0 |
-| Unit query | statement | 2.0 |
-| Unit query | candidate intent、scope、feature keys、feature values | 各 1.0 |
-| Concept document | target | 4.0 |
-| Concept document | intent、scope、feature keys、feature values | 各 1.0 |
-
-由于 candidate identity target 由 canonical 证据派生，Unit query 不会再次加入它。
-Concept lifecycle、support 和 state 也不作为词法内容。检索器对每个当前非 retired
-Concept 计算加权余弦相似度，只返回正重叠结果，先按 score 降序、再按 Concept ID
-升序稳定排序，最后截取请求数量。score 是长度归一化的词法相似度，不是校准概率，
-更不是 SAME 的证明。候选 evidence 是稳定 JSON，包含评分原因、规范化版本，以及唯一、
-按字典序排列的匹配 token。
-
-选择余弦是因为它透明、确定性强，不需要 corpus 统计或训练，并避免长字段仅因词更多
-而获胜。词法检索器不会给精确 signature 特殊加分，从而能与
-`exact_signature_retriever_v1` 公平比较。M12-B 算法本身仍不使用 IDF、TF-IDF 或 BM25。
-M12-B 算法本身也不调用 embedding provider。整个检索实验仍不使用倒排索引、SQLite FTS、
-vector database、模糊编辑匹配、reranking、自动标签、持久化、migration 或前端改动；
-M12-D 在下文加入独立的 embedding baseline，但不改变 M12-B 算法。
-
-## Corpus-aware BM25 排序检索器 v1（M12-C）
-
-M12-C 在同一个应用层 registry 和同一个评估端点中加入 `bm25_retriever_v1`。空 selector
-继续选择 `exact_signature_retriever_v1`，未知名称继续返回 HTTP `400`。因此 M12-A 是精确
-身份 baseline，M12-B 是不依赖 corpus 统计的加权词法余弦 baseline，M12-C 是 corpus-aware
-词法 baseline。
-
-BM25 复用 `concept_lexical_normalization_v1` 以及 M12-B 的字段和固定权重，但保留字段内
-原始 token 次数。candidate identity 的 target 仍不加入 query，因为 canonical 已是 Unit
-的主要证据。Concept lifecycle、support、effective state、人工标签、target rank 和评估
-结果都不参与打分。
-
-| 表示 | 字段 | 权重 |
-| --- | --- | ---: |
-| Unit query | canonical | 4.0 |
-| Unit query | statement | 2.0 |
-| Unit query | candidate intent、scope、feature keys、feature values | 各 1.0 |
-| Concept document | target | 4.0 |
-| Concept document | intent、scope、feature keys、feature values | 各 1.0 |
-
-每次检索只从调用方提供的 Concept documents 计算统计。令 `q_w(t)` 为 query 各字段的原始
-词频乘字段权重后求和，`tf_w(t,D)` 为 document 的对应加权词频，`|D|_w` 为 document 的
-加权规范化 token 总数；`N` 是 document 数，`df(t)` 是包含 token `t` 的 document 数，
-`avgdl_w` 是平均 `|D|_w`。v1 使用：
-
-```text
-IDF(t) = ln(1 + (N - df(t) + 0.5) / (df(t) + 0.5))
-
-score(D,Q) = Σ[t in Q] q_w(t) * IDF(t) *
-             tf_w(t,D) * (k1 + 1)
-             -----------------------------------------------
-             tf_w(t,D) + k1 * (1 - b + b * |D|_w / avgdl_w)
-```
-
-固定且未根据现有人工数据调参的 v1 参数是 `k1=1.2`（词频饱和）和 `b=0.75`（文档长度
-归一化）。这是简单的字段加权 BM25 变体，不是逐字段分别归一化的完整 BM25F：各字段先以
-显式权重合并为一个 query/document 表示，再执行 BM25 饱和与长度归一化。由 corpus 导出的
-IDF 让稀有词比常见词更有区分力；重复 document token 的收益递减；`b` 防止更长的 Concept
-文本仅因包含更多词而获胜。
-
-检索器只返回有限且为正的 score，按 score 降序、Concept ID 升序稳定排序，赋予从 1 开始
-的 rank，并遵守请求 limit。稳定 JSON evidence 包含 `reason: "bm25"`、规范化版本、参数、
-corpus/document 长度、唯一且排序的 matched tokens，以及按 token 排序的紧凑贡献明细。
-score 是词法相关性，不是概率，也不是 SAME 的证明。
-
-所有 corpus 统计都在内存中从评估服务提供的当前非 retired Concept 全集重新计算。精确、
-余弦和 BM25 评估保持完全相同的 M11-D 质量门、M11-C CURRENT 人工 SAME truth、来源与
-Admission 排除、seed-unit 泄漏排除、候选全集、合格样本、targets、排序、最大 K 和
-Recall/MRR 定义；只有检索器拥有的排名输出及相应指标可以不同。M12-C 不增加持久化、
-migration、索引、cache、SQLite FTS、标注权威、Concept resolution 或前端行为。BM25 算法
-本身不调用 embedding/model/provider；M12-D 在下文加入与它分离的 baseline。
-
-## 语义 Embedding 排序检索器 v1（M12-D）
-
-M12-D 完成当前四个 baseline 的递进：M12-A 是精确身份检索，M12-B 是加权词法余弦，
-M12-C 是 corpus-aware BM25 词法检索，M12-D 是语义 embedding 检索。
-`embedding_retriever_v1` 继续实现同一个 `ConceptRetriever`，并依赖一个小型、批量化的应用层
-边界：
-
-```go
-type EmbeddingProvider interface {
-    Name() string
-    Embed(ctx context.Context, texts []string) ([][]float64, error)
-}
-```
-
-检索器负责稳定语义文本、向量验证、余弦打分、evidence、limit 和排序；provider 只负责
-text-to-vector 推理以及 provider/model 来源名称。一次检索按 `query, Concept documents...`
-的确定顺序发出一个合并 batch，不会为每个 Concept 单独远程调用。provider 无权读取
-repository、SQLite、标注历史、lifecycle policy、人工 labels、targets 或 metrics。
-
-版本化的 `concept_embedding_text_v1` 是紧凑的确定性 JSON。query 包含 canonical、
-statement、可空 example、candidate identity 的 target、pedagogical intent、scope，以及按 key
-字典序排列的 identity feature 键值对；Concept 文本包含 target、intent、scope 和同样排序的
-features。ID、signature、identity schema version、lifecycle/support/effective state、人工
-SAME/DISTINCT、标注原因、target rank、hits 和 metrics 都被排除。因此 query 只来自 Unit
-证据，document 只来自 Concept 表示，构建向量和排序时不可访问评估 truth。
-
-余弦计算要求向量非空、维度一致且所有值有限。zero-norm 向量和非正相似度不产生候选；
-batch 数量错误、空向量、维度不一致或 NaN/Inf 会使请求明确失败，而不是伪造排名。正分结果
-按 score 降序、Concept ID 升序稳定排序，rank 从 1 开始并遵守 limit。score 只是语义相关
-性，不是校准概率或 SAME 证明，也不存在自动阈值、resolution 或 fallback。稳定 JSON
-evidence 包含 `reason: "embedding_cosine"`、provider/model 名称、表示版本、相似度和向量
-维度；不暴露原始向量或人工标签。
-
-生产配置独立于 `AI_PROVIDER` 和 `EXTRACTOR_PROVIDER`。默认
-`EMBEDDING_PROVIDER=disabled` 不需要 embedding 基础设施，也不注册语义检索器；显式选择其
-名称因此沿用 registry 的 HTTP `400` unknown-name 行为。设置
-`EMBEDDING_PROVIDER=http` 后，registry 暴露四个检索器，但空 selector 仍默认精确签名。
-HTTP provider 使用 `EMBEDDING_MODEL`、可选 bearer `EMBEDDING_API_KEY` 和
-`EMBEDDING_TIMEOUT`，向 `<EMBEDDING_BASE_URL>/embeddings` 发送 OpenAI-compatible batch；
-它按响应中的显式 index 恢复顺序。超时以不泄密的 HTTP `504` 返回，其他 provider 不可用
-错误返回 `502`，且不静默回退到词法或精确检索。
-
-精确、加权词法、BM25 和 embedding 评估仍共享同一个 M11-D gate、M11-C CURRENT 显式人工
-SAME truth、provenance 分类、seed/admission/retired/missing-target 排除、当前非 retired
-候选全集、合格 Units、targets、排序、最大 K 和 Recall@1/3/5 与 MRR 定义。只有检索器或
-provider 拥有的 candidates、scores、evidence/provenance、target ranks/hits 及最终 metrics
-可以不同。固定向量测试验证架构和确定性排名，不代表任何真实 embedding model 的质量。
-
-M12-D 在请求时对当前小型评估 corpus 做 embedding，不增加 migration、向量持久化/cache/
-database、ANN/HNSW/FAISS 索引、hybrid fusion、reranking、cross-encoder、LLM judge、学习式
-SAME classifier、校准阈值、训练、本地 runtime、模型权重、GPU 检测或 NAS 推理要求。远程
-API、租用 GPU 或 RTX 4070 工作站上的服务都可实现同一 provider 边界；本地推理优化留待
-后续里程碑。
-
-## 检索基线比较 v1（M13-A0）
-
-M12 逐个建立并审计检索 baseline。M13-A0 是第一个 experiment-analysis 层：它在完全不改变
-M12 实验契约的情况下，把四种 baseline 的顶层指标放入一个紧凑报告。
-
-```bash
-curl -sS localhost:8080/retrieval-comparison/v1
-```
-
-`GET /retrieval-comparison/v1` 返回 schema `concept_retrieval_comparison_v1`、共享的 Dataset
-有效性、候选 Concept 数、合格样本数，并按以下固定顺序返回行：
-
-```text
-exact_signature_retriever_v1
-weighted_lexical_retriever_v1
-bm25_retriever_v1
-embedding_retriever_v1
-```
-
-每个已评估行都直接复制现有 `ConceptRetrievalEvaluationService` 的 state、Recall@1、
-Recall@3、Recall@5 和 MRR；比较层不计算排名或指标。完整 per-sample audit 仍由
-`GET /retrieval-evaluation/v1?retriever=...` 提供，不进入这个紧凑响应。
-
-可选 embedding 行不会被静默省略或替换。生产环境默认
-`EMBEDDING_PROVIDER=disabled` 时，该行明确为 `state: "unavailable"`，四个指标均为
-`null`。配置 provider 后则正常评估；provider timeout/unavailable 仍返回不泄密的 HTTP
-`504`/`502`，不会 fallback 到其他算法。
-
-展示指标前，M13-A0 会检查所有已评估报告是否共享 M12 schema/policy/state、Dataset
-有效性、完整 exclusion inventory、候选全集、按顺序排列的合格 Units、queries、target
-Concepts 和人工 SAME provenance。任何不一致都会明确失败并返回 HTTP `500`，不会混合
-不同 population。若 M11-D 判定 Dataset 无效，报告继续沿用现有
-`blocked_invalid_dataset` 成功状态和 null metrics；底层 M12 质量门保证不会调用检索器。
-
-M13-A0 不增加新 retriever、ground truth、候选规则、持久化、migration、cache、hybrid
-retrieval、score fusion、reranking、统计分析、图表、dashboard、标注写入或 Concept
-resolution 行为。
-
-## 实验仪表板 v1（M13-A1）
-
-现有 `web/` 工作台新增第三个本地视图 **Experiment Dashboard**。它只读取两个已有端点：
-
-- `GET /annotation-dataset/v1/quality`：展示 M11-D 的结构有效性、error/warning 数、记录与
-  Entry 总数、人工 SAME/DISTINCT/INVALID、未标注 unresolved 数，以及人工 SAME 与自动 SAME
-  的 resolution authority 计数；
-- `GET /retrieval-comparison/v1`：按照后端原始顺序展示 exact signature、weighted lexical、
-  BM25 与 embedding 的 state、Recall@1/3/5 和 MRR。
-
-非空指标统一格式化为百分比；`null` 显示为 `—`，不会误显示为 `0%`。不可用的 embedding
-行仍然可见，`blocked_invalid_dataset` 保留后端原始状态。两个区块独立加载；其中一个请求
-失败时，另一个成功报告仍可查看。
-
-该页面只负责展示，不获取 per-sample 详细评估，不重新计算 Dataset 有效性、eligible sample、
-Recall 或 MRR，不自行选择/运行检索器，不配置 embedding provider，也不写入标注或创建
-Concept resolution 权威。M11-D 与 M13-A0 仍是唯一真实来源。
-
-## 开发与验证
-
-```bash
-make test          # 全部 Go 测试
-make vet           # go vet
-make fmt           # gofmt -w .
-make build         # 构建服务端到 bin/server
-make build-capture # 构建 Capture CLI 到 bin/capture
-
-cd web
-npm test
-npm run build
-```
-
-验证 Go 二进制时，建议输出到临时目录，避免在仓库根目录产生构建产物：
-
-```bash
-go build -o /tmp/french-learning-hub-server ./cmd/server
-go build -o /tmp/french-learning-hub-capture ./cmd/capture
-```
-
-## 标注请求恢复（FLH-029）
-
-DISTINCT 和 BROADER/NARROWER/RELATED 的 POST 接口支持可选 UUID
-`Idempotency-Key`。键在整个数据库内共享，跨两个接口、Unit、Concept 和
-根路径／`/api` 别名。相同动作、Unit、Concept 与 relation 重放原始 HTTP 201
-事件；复用键但改变有效载荷或动作返回 409，不追加记录。不带键的请求保持
-每次成功提交追加一条事件的行为。
-
-`GET /annotation-operations/{uuid}` 返回已提交的历史回执；404 只表示未知，
-不表示已取消，也不能据此换新键重复提交。迁移 009 将回执与标注事件置于同一
-SQLite 事务，重启后仍可查询。历史回执与当前有效标注权威是两个独立概念。
-
-Concept Review 在发送前仅保存带版本号的键、动作、目标 ID 与 relation。
-刷新页面后恢复未解决操作，不自动重试写入。“Retry saved operation”明确
-重试原始键与原始载荷；编辑当前选择不会改变它。确认前阻止该 Unit 的新决定，
-其他 Unit 可独立使用。确认后的新决定生成新键；随后单独刷新后端当前权威。
-明确拒绝会精确移除对应的已保存操作，即使已离开 Concept Review。其他标签页为
-同一 Unit 保存的未解决操作保持不变，仅在该 Unit 显示，并提供相同的回执检查与
-重试控件。浏览器存储失败时如实提示并禁用带键决定，直到显式点击 “Recheck
-browser storage” 成功；不会重新发送，无法读取的已保存值需先移除才能通过检查。
-清除存储或更换页面源会丢失恢复身份；不提供跨标签页锁，也不提供已离开审核队列的 Unit 的恢复控件。
-
-完整协议见 [FLH-029](docs/plans/FLH-029-annotation-idempotency.md)。
-
-## 知识库（FLH-034）
-
-工作台的 **Knowledge Library** 标签页用于检索已学内容：打开经过整理的
-Concept，查看其当前代表单元与支撑情况，并沿证据回溯到原始学习记录及其所依据的
-版本化解释。该视图只读：不触发分析、抽取、标注或任何提供方调用。切换标签页后，
-查询与当前打开的页面保持不变。
-
-| 端点（GET，亦可加 `/api` 前缀） | 返回 |
+现有的 `data/app.db` 不会被自动迁移。只在服务停止时备份，通过暂存目录恢复，并在每次升级前备份：迁移只能向前
+执行，旧镜像不得运行在新版本数据库上。完整流程见 [docs/RELEASE.md](docs/RELEASE.md)（英文）。
+
+## 配置默认值
+
+服务读取进程环境变量，以及其工作目录中可选的、未纳入版本控制的 `.env` 文件；进程环境变量优先。默认配置不需要
+任何凭据：
+
+| 变量 | 默认值 | 含义 |
+| --- | --- | --- |
+| `PORT` | `8080` | HTTP 端口 |
+| `LISTEN_HOST` | 空（所有接口） | 可选的绑定 IP 字面量，例如 `127.0.0.1` |
+| `DB_PATH` | `data/app.db` | SQLite 数据库文件 |
+| `AI_PROVIDER` | `rule-based` | 分析器：`rule-based` 或 `openai` |
+| `EXTRACTOR_PROVIDER` | `disabled` | 知识抽取器：`disabled` 或 `openai` |
+| `EMBEDDING_PROVIDER` | `disabled` | 语义检索器：`disabled` 或 `http` |
+| `HTTP_ALLOWED_HOSTS` | 仅回环名称 | 额外允许的精确 Host 名称或 IP |
+| `HTTP_TRUSTED_ORIGINS` | 5173 端口的 Vite 开发源 | 允许发送写请求的浏览器源 |
+
+提供方设置（`OPENAI_*`、`EMBEDDING_*`）与超时见 [`.env.example`](.env.example)，说明见
+[ARCHITECTURE §10.2](docs/ARCHITECTURE.md#102-configuration)。无效配置会阻止启动，不会静默回退。
+不要提交凭据。
+
+## 项目状态
+
+上文描述的服务、工作台与打包均已在本仓库中实现。[docs/validation/](docs/validation/) 中带日期的验证报告记录了
+检查内容、执行者与局限——例如 Docker 发布验收、工作台的浏览器验收、标注写请求的响应丢失调查，以及
+Knowledge Library 在 Linux 上的验收和在 macOS 真实浏览器中的演练。报告会区分作者自验与独立评审；通过的报告
+并不代表适用于所有环境。按主题整理、并链接到这些证据的开发历程见 [docs/history/](docs/history/README.md)（英文）。
+
+## 文档
+
+| 文档 | 用途 |
 | --- | --- |
-| `/knowledge-library/concepts?q=&state=&limit=` | 检索或浏览；`knowledge_library_search_v1` |
-| `/knowledge-library/concepts/{id}` | 身份、状态、首选单元、支撑单元、不提供支撑的当前成员、当前关系、历史单元 |
-| `/knowledge-library/units/{id}/source` | 原始记录、抽取版本、当前抽取选择，以及该抽取所用的解释（分析及当时的反馈） |
+| [docs/QUICKSTART.md](docs/QUICKSTART.md) | 从全新检出开始的首次运行 |
+| [docs/DEMO.md](docs/DEMO.md) | 合成数据的 Knowledge Library 演示 |
+| [docs/RELEASE.md](docs/RELEASE.md) | Docker 发布、备份、恢复、升级、浏览器边界设置 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 系统如何工作；附录 A 为 HTTP API 参考 |
+| [web/README.md](web/README.md) | 工作台各视图与标注行为 |
+| [docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md) | 可重复的本地学习流程（简体中文），配合[捕获提示词](docs/CAPTURE_PROMPT.zh-CN.md) |
+| [docs/history/](docs/history/README.md) | 设计如何演进，附日期与证据 |
+| [docs/blog/](docs/blog/README.md) | 回顾性文章草稿 |
+| [docs/plans/](docs/plans/)、[docs/validation/](docs/validation/) | 原始任务约定与验证报告 |
+| [AGENTS.md](AGENTS.md) | 面向在本仓库工作的编码代理的说明 |
 
-检索规则：
+除 `docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md` 与 `docs/CAPTURE_PROMPT.zh-CN.md` 外，上述文档均为英文。
 
-- **字段**：检索 Concept 的 target、intent、scope、identity features，以及持有该
-  Concept 当前 SAME 成员关系的单元文本。成员关系不等于支撑：来自旧抽取版本或准入被
-  抑制的成员仍会命中，结果会注明是通过成员单元文本命中。已离开的成员（改派、拒绝或
-  INVALID）、仅有关系的单元、原始记录与分析不参与检索。
-- **匹配**：忽略重音与大小写，每个词须匹配某个词的开头。仅为确定性关键词匹配，
-  不做语义检索。
-- **排序**：身份字段命中优先于单元文本命中；其次 active 先于 orphaned 与 retired；
-  再按 target 和 id。
-- **上限**：默认 20 条，最多 50 条；查询不超过 200 字节、8 个词。
+## 仓库结构
 
-在每个 Concept 页面中，当前支撑、不提供支撑的当前成员（附原因）、当前关系与历史
-证据分区标注，互不混淆；orphaned 的 Concept 仍可查看。
+```text
+cmd/server, cmd/capture    服务端入口；轻量 capture 命令行
+internal/                  domain、application、storage/sqlite、transport/http、
+                           analyzer、extractor、embedding、config、captureclient
+migrations/                内嵌、只向前的 SQL 迁移
+web/                       React + Vite + TypeScript 工作台
+examples/captures/         learning_capture_v1 示例文档
+captures/, seed_demo.py    16 个合成 capture 及其导入脚本，脚本会写入你指定的
+                           运行中后端
+scripts/demo/flh034/       合成数据的 Knowledge Library 演示
+scripts/validation/        各验证报告使用的隔离验证脚本
+docs/                      上面列出的文档
+```
 
-- 两分钟合成数据演示：[docs/DEMO.md](docs/DEMO.md)。演示以英文为主：Concept 标题与讲解为英文，
-  法语例句和语法术语保留；页面用平实的英文区分“归入”某 Concept 的单元（当前 SAME 成员关系）
-  与“支撑”该 Concept 的单元。界面目前仅提供英文。
-- 协议与限制：[FLH-034](docs/plans/FLH-034-knowledge-library.md)。
+## 开发
+
+```bash
+make test           # go test ./...
+make vet            # go vet ./...
+make fmt            # gofmt -w .
+make build          # bin/server
+make build-capture  # bin/capture
+make verify         # 不修改文件的发布检查；需要 web/node_modules（npm ci）
+```
+
+## 许可证
+
+本项目以 [MIT 许可证](LICENSE)发布。Copyright (c) 2026 Sirui Liu。该许可证适用于本仓库自身的代码与文档；
+第三方依赖保留各自的许可证。
