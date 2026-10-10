@@ -1,6 +1,9 @@
 """Local stand-in for the extraction provider (OpenAI Responses-compatible shape).
 
-Usage: python3 -B stub_extractor.py PORT
+Usage: python3 -B stub_extractor.py PORT [WORK_DIR]
+
+WORK_DIR is not used by the stub; demo.sh passes it so that proc_guard.py can
+attribute this process to one demo directory before signalling it.
 
 Returns fixed synthetic French-learning units for the FLH-034 demo records,
 chosen by a phrase in the learner's original input. The second extraction of

@@ -5,6 +5,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -53,7 +54,8 @@ const (
 
 // Config holds the server's runtime settings.
 type Config struct {
-	// Addr is the TCP address the HTTP server listens on (e.g. ":8080").
+	// Addr is the TCP address the HTTP server listens on (e.g. ":8080", or
+	// "127.0.0.1:8080" when LISTEN_HOST is set).
 	Addr string
 	// DBPath is the filesystem path to the SQLite database file.
 	DBPath string
@@ -143,6 +145,8 @@ const (
 // message never contains file contents. Empty values behave as unset.
 //
 //	PORT             -> Addr (":" + PORT), default ":8080"
+//	LISTEN_HOST      -> optional IP literal for Addr (LISTEN_HOST:PORT); empty
+//	                    keeps ":" + PORT (all interfaces); a hostname is rejected
 //	DB_PATH          -> DBPath, default "data/app.db"
 //	HTTP_ALLOWED_HOSTS -> additional exact hosts; loopback hosts always allowed
 //	HTTP_TRUSTED_ORIGINS -> exact browser-origin exceptions; default loopback :5173
@@ -181,8 +185,12 @@ func load(src source) (Config, error) {
 		return def
 	}
 
+	addr, err := listenAddr(src.get("LISTEN_HOST"), getenv("PORT", "8080"))
+	if err != nil {
+		return Config{}, err
+	}
 	cfg := Config{
-		Addr:         ":" + getenv("PORT", "8080"),
+		Addr:         addr,
 		DBPath:       getenv("DB_PATH", "data/app.db"),
 		ReadTimeout:  getdur("HTTP_READ_TIMEOUT", 10*time.Second),
 		WriteTimeout: getdur("HTTP_WRITE_TIMEOUT", 10*time.Second),
@@ -224,6 +232,20 @@ func load(src source) (Config, error) {
 		return Config{}, err
 	}
 	return cfg, nil
+}
+
+// listenAddr returns ":"+port when host is empty, preserving the default
+// all-interfaces listener. A non-empty host must be an IP literal (for example
+// 127.0.0.1 or ::1), so the bound interface never depends on name resolution.
+func listenAddr(host, port string) (string, error) {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return ":" + port, nil
+	}
+	if net.ParseIP(host) == nil {
+		return "", fmt.Errorf("LISTEN_HOST must be an IP address such as 127.0.0.1 or ::1")
+	}
+	return net.JoinHostPort(host, port), nil
 }
 
 // validate checks provider selection and required OpenAI settings. Error

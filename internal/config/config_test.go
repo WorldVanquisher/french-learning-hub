@@ -219,3 +219,47 @@ func TestLoad_UnknownEmbeddingProviderFailsWithoutSecretLeak(t *testing.T) {
 		t.Fatalf("error leaked embedding API key: %q", err.Error())
 	}
 }
+
+func TestLoad_ListenHostDefaultsToAllInterfaces(t *testing.T) {
+	clearAIEnv(t)
+	t.Setenv("PORT", "18080")
+	t.Setenv("LISTEN_HOST", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Addr != ":18080" {
+		t.Fatalf("addr = %q, want :18080 (unchanged default)", cfg.Addr)
+	}
+}
+
+func TestLoad_ListenHostBindsExplicitIP(t *testing.T) {
+	for host, want := range map[string]string{
+		"127.0.0.1":   "127.0.0.1:18080",
+		" 127.0.0.1 ": "127.0.0.1:18080",
+		"::1":         "[::1]:18080",
+		"0.0.0.0":     "0.0.0.0:18080",
+	} {
+		clearAIEnv(t)
+		t.Setenv("PORT", "18080")
+		t.Setenv("LISTEN_HOST", host)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("LISTEN_HOST=%q: unexpected error: %v", host, err)
+		}
+		if cfg.Addr != want {
+			t.Fatalf("LISTEN_HOST=%q: addr = %q, want %q", host, cfg.Addr, want)
+		}
+	}
+}
+
+func TestLoad_ListenHostRejectsNonIP(t *testing.T) {
+	for _, host := range []string{"localhost", "example.com", "127.0.0.1:80", "[::1]", "256.0.0.1"} {
+		clearAIEnv(t)
+		t.Setenv("LISTEN_HOST", host)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "LISTEN_HOST") {
+			t.Fatalf("LISTEN_HOST=%q: err = %v, want LISTEN_HOST error", host, err)
+		}
+	}
+}

@@ -34,8 +34,10 @@ Schema `knowledge_library_search_v1`.
 
 **Searched fields**
 - Concept `target`, `pedagogical_intent`, `scope`, and identity feature keys and values.
-- The `canonical`, `statement` and `example` of units holding the Concept's CURRENT SAME membership.
-- Not searched: historical, invalid or reassigned units, relation-only units, source entry text and analyses.
+- The `canonical`, `statement` and `example` of units holding the Concept's CURRENT SAME membership (the `unit_concept_memberships` projection).
+- Membership is not current extraction and not support. A CURRENT SAME member from a historical extraction, or with suppressed admission, still contributes its wording. Its result is labelled as a member-wording match, and the Concept page shows why it does not support.
+- Not searched: former members (reassigned, rejected or INVALID) under the Concept they left, relation-only units, history-only units, source entry text and analyses. A reassigned unit's wording matches only its new Concept.
+- Corrected in FLH-036: this section previously listed "historical units" as excluded, which wrongly suggested members from a historical extraction were not searched.
 
 **Matching**
 - Text is normalized with `concept_lexical_normalization_v1`: Unicode lowercase, accents removed, punctuation and separators split tokens, and one-character tokens are dropped.
@@ -97,7 +99,9 @@ Returns:
 - Results from a previous request are never shown under a new query.
 
 **Labels**
+- A `unit_evidence` result says it matched through "member unit wording/statement/example", not in the Concept identity, and that membership is not support. Counts read "CURRENT SAME members".
 - Current sections and history are visually and textually distinct.
+- A unit may hold several relations to one Concept; relation rows are keyed by `link_id`, so every relation is shown.
 - Orphaned and retired status is explained.
 - Non-support reasons are given from backend facts.
 
@@ -116,7 +120,7 @@ Returns:
 - `web/src/App.tsx`
 - `web/src/styles.css`
 
-**Demo:** `scripts/demo/flh034/` and `docs/DEMO.md`.
+**Demo:** `scripts/demo/flh034/` and `docs/DEMO.md`. FLH-036 hardened the demo's binding and process ownership: [FLH-036](FLH-036-knowledge-demo.md).
 
 **Docs:** `README.md`, `README.zh-CN.md`, `docs/ARCHITECTURE.md`, and one durable AGENTS.md contract entry.
 

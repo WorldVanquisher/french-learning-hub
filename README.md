@@ -236,6 +236,7 @@ empty values behave as unset. Defaults work out of the box:
 | Variable             | Default                     | Description                                   |
 | -------------------- | --------------------------- | --------------------------------------------- |
 | `PORT`               | `8080`                      | HTTP listen port                              |
+| `LISTEN_HOST`        | _(empty: all interfaces)_   | Optional IP literal to bind, e.g. `127.0.0.1`; hostnames are rejected |
 | `DB_PATH`            | `data/app.db`               | SQLite database file path                     |
 | `HTTP_READ_TIMEOUT`  | `10`                        | Read timeout (seconds)                        |
 | `HTTP_WRITE_TIMEOUT` | `10`                        | Write timeout (seconds)                       |
@@ -1560,8 +1561,11 @@ annotation or provider call. Its query and open screen survive switching tabs.
 How search works:
 
 - **Fields.** It searches Concept target, intent, scope and identity features,
-  plus the wording of units that are CURRENT SAME members. Historical, INVALID
-  or reassigned units and source text are not searched.
+  plus the wording of units that hold the Concept's CURRENT SAME membership.
+  Membership is not support: a member from an older extraction or with
+  suppressed admission still matches, and the result says it matched through
+  member wording. Former members (reassigned, rejected or INVALID),
+  relation-only units, source records and analyses are not searched.
 - **Matching.** Accents and case are ignored, and each word must match the start
   of a word. It is deterministic keyword matching only, with no semantic
   retrieval.
