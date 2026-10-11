@@ -1,4 +1,4 @@
-# Semantic search (FLH-040, run consistency FLH-042)
+# Semantic search (FLH-040, run consistency FLH-042, recovery FLH-044)
 
 An optional **Semantic** mode in the Knowledge Library ranks Concepts by
 embedding similarity to a free-text query, using a persistent, rebuildable
@@ -63,7 +63,7 @@ missing, and search drops stale hits.
 
 | Exit | Meaning |
 | --- | --- |
-| `0` | Published a new collection, or `sync` verified the publication healthy and wrote nothing |
+| `0` | Published a new collection, or `sync` verified the publication healthy and published nothing (it may still have removed recorded leftovers) |
 | `1` | Error (provider, Qdrant, invalid vectors, interruption, sources kept changing); the previous publication is unchanged |
 | `2` | Usage |
 | `3` | Ownership lost: another run took over; this run published nothing |
@@ -87,11 +87,26 @@ missing, and search drops stale hits.
   reads that pointer.
 - **Old collections are removed afterwards.** The replaced collection is
   deleted after publication; if that fails it stays recorded as `retired` and
-  the next run removes it. Collections of interrupted or superseded runs are
-  removed the same way.
+  the next run removes it, including a `sync` that finds the publication
+  healthy (FLH-044). Such a no-op `sync` removes only `retired` and `abandoned`
+  collections, which no run writes or publishes again. `writing` collections of
+  other (dead or superseded) runs are removed only by a run that has just
+  published. Each deletion is gated by the lease, and the record is forgotten
+  by a fenced write only after the deletion succeeded.
+- **Incomplete cleanup is reported.** A run whose cleanup failed or stopped still
+  succeeds (the publication is unaffected), but its report lists
+  `cleanup_pending` and `cleanup_error`, and its `last_error` reads
+  `cleanup incomplete: N leftover collection(s) remain (...)`.
 - **No cross-store atomicity is claimed.** The SQLite switch is the single
-  publication point; search re-checks every hit against SQLite. A search racing
-  a publication retries once on the new collection.
+  publication point; search re-checks every hit against SQLite. A search can
+  read the pointer just before a newer run publishes and deletes that
+  collection, so the collection is missing either at its metadata check or at
+  the query. Search then re-reads the pointer. If it changed, search retries
+  once on the new collection (reusing the query vector if it already embedded
+  one); if it did not change, the collection really is lost and search reports
+  that. One retry per search in total: a second replacement ends the search
+  with "publication changed during the search" (HTTP `500`, generic message);
+  searching again works.
 
 With Docker (release image and the `semantic` profile):
 
@@ -114,10 +129,10 @@ Set the variables above in the shell or Compose `.env`. Inside Compose
 | Section | Meaning |
 | --- | --- |
 | `published` | The collection search uses, and the run and time that published it (recorded history). |
-| `last run` | The outcome of the latest run that still owned the space when it finished: `published`, `verified_unchanged`, `failed`, `interrupted` or `sources_changed`, with its error. History, not health. |
+| `last run` | The outcome of the latest run that still owned the space when it finished: `published`, `verified_unchanged`, `failed`, `interrupted` or `sources_changed`, with its error. A successful run whose cleanup was incomplete shows `cleanup incomplete: …` as its error. History, not health. |
 | `lease` | A run currently holding the space, or an EXPIRED lease left by a killed run. |
 | `verification` | Live check of the published collection, computed now: existence, vector size and distance, and every point's id, payload (content hash, model, representation, dimensions) and vector compared with SQLite's current documents and the cached embeddings. `HEALTHY` only if all match; a point count alone is never enough. |
-| `leftover` / `unrecorded` | Collections awaiting removal by the next run, or present in Qdrant without a record (for example an FLH-040 collection); `rebuild` removes unrecorded ones. |
+| `leftover` / `unrecorded` | Collections awaiting removal by the next run (`retired`/`abandoned` also by a healthy `sync`; other runs' `writing` collections by the next publishing run), or present in Qdrant without a record (for example an FLH-040 collection); `rebuild` removes unrecorded ones. |
 | `other space` | Spaces for other model identities; not used by the current configuration. |
 
 Search responses (schema `knowledge_library_semantic_search_v2`) carry the
@@ -134,6 +149,8 @@ verify is in its per-hit counts (`skipped.missing`, `stale`, `incompatible`).
 | Process killed with SIGKILL or power loss | Its lease stays until it expires (120 s); its collection may stay as a leftover | Wait for expiry, or run with `-takeover` if you are sure it is dead; the next run removes leftovers |
 | Another run is in progress | New run exits `4` | Wait; check `status` |
 | A run was taken over | The superseded run stops at its next step (exit `3`); its writes went only to its own collection | Nothing; `status` shows the newer run |
+| Deleting the replaced collection failed | Publication succeeds; the old collection stays recorded as `retired`; the report lists it in `cleanup_pending` and `last_error` says `cleanup incomplete` | Fix Qdrant; run `sync` (no re-embedding, publication unchanged) |
+| A search raced a publication | Search retries once on the new collection; if a second publication replaces that one too, the search fails with `500` | Search again |
 | Concepts change during a run | Absorbed by catch-up; if they keep changing, `sources_changed` and nothing is published | Run `sync` again |
 | One point missing, replaced, stale or foreign in the published collection | `status` shows it under `verification` | Run `sync` (republishes from cache, no re-embedding) |
 | Published collection lost entirely | `status`: collection missing; search `409` | Run `sync` |
@@ -225,8 +242,9 @@ There are no goroutines in indexing or search, and batches are sequential:
 - **Batch size.** Each provider call, upsert, delete and scroll page handles at
   most `batchSize` items (1–256).
 - **Catch-up.** It is limited to two passes.
-- **Search.** It embeds one text, asks Qdrant for `min(limit*4, 200)` hits, and
-  retries at most once.
+- **Search.** It embeds one text at most once, asks Qdrant for
+  `min(limit*4, 200)` hits, and retries at most once in total when the
+  publication was replaced (before the metadata check or before the query).
 - **Response bodies** are read through `io.LimitReader`.
 - **Timeouts** bound every Qdrant and provider request.
 
@@ -257,8 +275,24 @@ A positive control shows the probe fails when a lock is held.
   collection, or marks it `abandoned` if deletion fails. It then records the
   outcome with `CompleteRun`, a fenced write, so a superseded run records
   nothing.
-- **`cleanup()`** removes retired, abandoned and stale writing collections while
-  the run still holds the lease, plus unrecorded ones on `rebuild`.
+- **`cleanup()`** runs under the lease with one of three scopes:
+  - `cleanupLeftovers` (healthy `sync`): retired and abandoned collections;
+  - `cleanupRecorded` (after publishing): also other runs' writing collections;
+  - `cleanupUnrecorded` (after `rebuild`): also unrecorded collections of the
+    space.
+
+  Every deletion is preceded by a lease checkpoint. If the lease is lost, the
+  remaining collections are not touched and the run ends with ownership lost.
+  A deletion already past its gate can still complete; that is harmless because
+  retired and abandoned collections are never read or published again, and
+  their records stay (fenced) until a later run. What remains is reported in
+  `CleanupPending`/`CleanupError`.
+- **Search's replacement recovery** (`SemanticSearchService.Search`) runs at
+  most two attempts. Each attempt reads the pointer, checks the collection's
+  shape, embeds the query once per search and queries. After a "missing" error
+  it re-reads the pointer and retries only if the pointer changed; a second
+  change returns `ErrSemanticPublicationChanged`. It never writes, never loops
+  and never falls back to keyword search.
 - **`ValidateEmbedding`** rejects wrong dimensions, NaN/Inf, values outside
   float32 and zero vectors before anything is cached.
 
@@ -266,10 +300,9 @@ A positive control shows the probe fails when a lock is held.
 
 Migration 010's `semantic_index_collections` and `semantic_index_points` are no
 longer read or written. `internal/storage/sqlite/semantic_index_legacy.go`
-keeps their old, unfenced methods only so that the FLH-041 diagnostic
-(`scripts/validation/flh041/ownership_probe`, owned by another task) still
-compiles. Running it still shows the FLH-040 defect on those dead tables; it
-says nothing about current indexing. After upgrading from FLH-040, run `build`
+keeps their old, unfenced methods. They were kept so that the FLH-041
+diagnostic compiled; FLH-043 retargeted that probe to the current API, so no
+code calls them any more. Removing them is left to a separate cleanup task. After upgrading from FLH-040, run `build`
 once: the old collection is unrecorded and `rebuild` removes it. Cached
 embeddings are reused, so nothing is re-embedded.
 

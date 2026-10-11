@@ -19,6 +19,11 @@ const (
 	semanticSearchOverfetch = 4
 )
 
+// ErrSemanticPublicationChanged means the published collection was replaced
+// again after this search had already used its one replacement retry. The
+// index is not known to be broken; the caller may simply search again.
+var ErrSemanticPublicationChanged = errors.New("semantic index publication changed during the search")
+
 // ConceptSummarizer provides the same per-Concept counts as keyword search.
 type ConceptSummarizer interface {
 	ConceptCounts(ctx context.Context, conceptID int64) (currentMembers, supportingUnits int, err error)
@@ -78,7 +83,9 @@ func NewSemanticSearchService(concepts SemanticConceptReader, summarizer Concept
 }
 
 // published returns the space record and its published collection, checking
-// that the collection exists with the configured shape.
+// that the collection exists with the configured shape. A missing collection
+// returns the state it was read from, so the caller can tell replacement from
+// loss.
 func (s *SemanticSearchService) published(ctx context.Context) (*SemanticIndexSpaceState, error) {
 	state, err := s.store.SpaceState(ctx, s.space.Collection)
 	if err != nil {
@@ -100,44 +107,79 @@ func (s *SemanticSearchService) published(ctx context.Context) (*SemanticIndexSp
 	return state, nil
 }
 
-// Search requires a non-empty query; browsing remains keyword search's job.
-func (s *SemanticSearchService) Search(ctx context.Context, q LibrarySearchQuery) (*SemanticSearchReport, error) {
-	if q.Text == "" {
-		return nil, fmt.Errorf("%w: semantic search needs a non-empty q", ErrKnowledgeLibraryQuery)
-	}
-	state, err := s.published(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	raw, err := s.provider.Embed(ctx, []string{q.Text})
+// embedQuery makes the search's single provider call.
+func (s *SemanticSearchService) embedQuery(ctx context.Context, text string) ([]float32, error) {
+	raw, err := s.provider.Embed(ctx, []string{text})
 	if err != nil {
 		return nil, fmt.Errorf("embed search query: %w", err)
 	}
 	if len(raw) != 1 {
 		return nil, fmt.Errorf("%w: provider returned %d vectors for 1 text", ErrEmbeddingProviderUnavailable, len(raw))
 	}
-	queryVector, err := ValidateEmbedding(raw[0], s.space.Dimensions)
+	v, err := ValidateEmbedding(raw[0], s.space.Dimensions)
 	if err != nil {
 		return nil, fmt.Errorf("%w: query %v", ErrEmbeddingProviderUnavailable, err)
 	}
-	k := min(q.Limit*semanticSearchOverfetch, SemanticSearchMaxCandidates)
-	hits, err := s.index.Query(ctx, state.PublishedCollection, queryVector, k)
-	if errors.Is(err, ErrSemanticIndexNotBuilt) {
-		// A newer run may have published and removed this collection between
-		// our read and the query. Re-read the pointer once; never loop.
-		again, perr := s.published(ctx)
-		if perr != nil {
-			return nil, perr
+	return v, nil
+}
+
+// attempt reads the publication, embeds the query unless *vector is already
+// set, and queries the published collection. On a missing collection it
+// returns the state that named it.
+func (s *SemanticSearchService) attempt(ctx context.Context, text string, vector *[]float32, k int) (*SemanticIndexSpaceState, []VectorHit, error) {
+	state, err := s.published(ctx)
+	if err != nil {
+		return state, nil, err
+	}
+	if *vector == nil {
+		v, err := s.embedQuery(ctx, text)
+		if err != nil {
+			return nil, nil, err
 		}
-		if again.PublishedCollection == state.PublishedCollection {
+		*vector = v
+	}
+	hits, err := s.index.Query(ctx, state.PublishedCollection, *vector, k)
+	return state, hits, err
+}
+
+// Search requires a non-empty query; browsing remains keyword search's job.
+//
+// A run may publish a new collection and delete the one this search read from
+// SQLite, either before the collection's metadata is read or before the query
+// runs. Both windows report the collection as missing. Search then re-reads
+// the pointer: if it is unchanged the collection really is lost and that is
+// reported; if it changed, search retries once on the new publication, reusing
+// the query vector if it was already computed. One retry per search in total;
+// a second replacement ends with ErrSemanticPublicationChanged.
+func (s *SemanticSearchService) Search(ctx context.Context, q LibrarySearchQuery) (*SemanticSearchReport, error) {
+	if q.Text == "" {
+		return nil, fmt.Errorf("%w: semantic search needs a non-empty q", ErrKnowledgeLibraryQuery)
+	}
+	k := min(q.Limit*semanticSearchOverfetch, SemanticSearchMaxCandidates)
+	var queryVector []float32
+	retried := false
+	var state *SemanticIndexSpaceState
+	var hits []VectorHit
+	for {
+		var err error
+		state, hits, err = s.attempt(ctx, q.Text, &queryVector, k)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, ErrSemanticIndexNotBuilt) || state == nil {
 			return nil, err
 		}
-		state = again
-		hits, err = s.index.Query(ctx, state.PublishedCollection, queryVector, k)
-	}
-	if err != nil {
-		return nil, err
+		current, rerr := s.store.SpaceState(ctx, s.space.Collection)
+		if rerr != nil {
+			return nil, rerr
+		}
+		if current == nil || current.PublishedCollection == "" || current.PublishedCollection == state.PublishedCollection {
+			return nil, err // the pointer did not change: a real loss
+		}
+		if retried {
+			return nil, fmt.Errorf("%w: %s was replaced by %s after one retry; search again", ErrSemanticPublicationChanged, state.PublishedCollection, current.PublishedCollection)
+		}
+		retried = true
 	}
 
 	// Re-read current authority after the vector-store call.
