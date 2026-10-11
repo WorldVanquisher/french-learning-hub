@@ -110,3 +110,58 @@ The synthetic snapshot tests are not database acceptance; fake reproducibility
 across provider instances is not persisted cache reuse; a timed-out fixture client
 is not production context-cancellation evidence. Actual Qdrant and browser tests
 remain Phase B work after the human supplies the integrated implementation.
+
+## Phase B prerequisite-limited diagnostics
+
+The historical Phase A text above is preserved. The integrated handoff was
+received, but this machine has no local Qdrant binary or cached Qdrant image.
+`phase_b_checks.py` records available native/SQLite/packaging checks; it is **not
+a P01–P18 real-Qdrant acceptance runner**. It refuses this limited workflow if
+Qdrant is subsequently available rather than silently certifying it.
+
+Run from the repository root with a new report path outside the repository:
+
+```sh
+python3 -B scripts/validation/flh041/phase_b_checks.py --report /tmp/flh041-phase-b-human.json
+```
+
+This requires socket permission, the existing local Go module cache, Docker
+daemon access and all pinned Dockerfile bases/dependency layers already cached.
+No package or image is downloaded. The runner verifies local base-image presence
+before building with `--pull=false --network none`. It copies bounded source to
+a private directory, disables Go network/module updates and VCS stamping, uses a
+sanitized environment and an empty Compose env file, and never reads repository
+credentials. It imports the existing FLH-026 environment helper read-only; it
+does not modify that harness.
+
+The runner executes Phase A self-tests, focused production tests, native builds
+and the real SQLite repository diagnostic. It then builds the unchanged
+Dockerfile under a unique tag, attempts the actual Compose semantic profile
+with `--pull never`, and separately starts only the owned app. It verifies
+readiness, `/app/semantic-index -json status`, empty keyword browsing, all-table
+SQLite equality and cleanup. An image-only Compose override prevents replacing
+the user's application tag. Qdrant runtime/storage permissions and semantic
+search remain NOT RUN. `--docker-only` repeats packaging checks while recording
+that native checks were not repeated.
+
+Every invocation exits **1**: missing prerequisites and a completed diagnostic
+must not become green release acceptance. Inspect `errors`, `cleanup_errors`,
+`status` and individual commands in the JSON; exit 1 alone does not identify a
+production defect. A failed packaging command or cleanup is recorded separately.
+Reports contain exact argv/output, source/fixture hashes and toolchains. Owned
+Compose containers/networks, the CLI name, image tag and temporary data are
+removed; shared Docker build cache is retained. No interrupted Docker-build
+cleanup guarantee is established by the completed-build evidence.
+
+`ownership_probe/main.go` invokes the actual integrated SQLite repository through
+two database handles. Newer ownership completes, then older bookkeeping calls
+overwrite, clear and remove newer points; the old `FinishRun` is rejected. It
+also checks cache persistence on reopen and model/dimension/representation key
+isolation. Opaque point hashes and alternate representation are repository fault
+fixtures, not production serialization or a supported version-upgrade command.
+Its exit 0 means the diagnostic executed; the JSON reports observed unfenced
+mutations. It uses no provider/vector store and proves no real Qdrant race.
+
+See the appended Phase B report for reproduced expected/actual behavior,
+P01–P18 coverage limits and the remaining integration work. Fake vectors and
+mocked production tests establish no semantic relevance or performance gains.
