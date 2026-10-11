@@ -1,4 +1,4 @@
-.PHONY: help tidy build build-capture build-semantic-index run capture test fmt vet verify clean
+.PHONY: help tidy build build-capture build-semantic-index run capture test fmt vet verify qdrant-regression clean
 
 BINARY := bin/server
 CAPTURE_BINARY := bin/capture
@@ -14,7 +14,10 @@ help:
 	@echo "  test          - run all tests"
 	@echo "  fmt           - format all Go files"
 	@echo "  vet           - run go vet"
-	@echo "  verify        - run non-mutating release verification"
+	@echo "  verify        - run non-mutating release verification (starts no containers)"
+	@echo "  qdrant-regression - run the real-Qdrant integration suite in a disposable"
+	@echo "                  pinned Qdrant container (needs Docker), or against"
+	@echo "                  QDRANT_REGRESSION_ARGS=\"--endpoint URL\"; see docs/SEMANTIC_SEARCH.md"
 	@echo "  clean         - remove build artifacts"
 
 tidy:
@@ -66,6 +69,11 @@ verify:
 	cd web && npm run typecheck
 	cd web && npm test
 	cd web && npm run build
+
+# Real-Qdrant regression (FLH-046). Not part of verify: it needs Docker or a
+# running Qdrant, and it never starts anything unless invoked explicitly.
+qdrant-regression:
+	python3 -B scripts/ci/flh046/qdrant_regression.py $(QDRANT_REGRESSION_ARGS)
 
 clean:
 	rm -rf bin
