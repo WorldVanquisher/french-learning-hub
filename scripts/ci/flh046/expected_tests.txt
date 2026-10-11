@@ -1,0 +1,11 @@
+# Real-Qdrant integration tests the FLH-046 regression must see pass.
+# Must equal the TestQdrantIntegration_* functions declared in internal/vectorindex;
+# the helper fails on any drift. One name per line; '#' starts a comment.
+TestQdrantIntegration_BuildSyncRebuildRestartAndCacheReuse
+TestQdrantIntegration_SupersededRunCannotMutateNewerPublication
+TestQdrantIntegration_FencedPublishAfterNoOpTakeover
+TestQdrantIntegration_PointLossAndSameCountReplacementAreDetectedAndRepaired
+TestQdrantIntegration_WholeCollectionLossAndIncompatibleShape
+TestQdrantIntegration_InterruptionKeepsPreviousPublication
+TestQdrantIntegration_NoSQLiteWriteLockDuringNetworkCalls
+TestQdrantIntegration_UnavailableQdrant

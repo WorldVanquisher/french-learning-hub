@@ -47,6 +47,55 @@ jobs:
       - name: Build capture CLI
         run: go build ./cmd/capture
 
+      - name: Build semantic-index CLI
+        run: go build -o "$RUNNER_TEMP/semantic-index" ./cmd/semantic-index
+
+  # Real-Qdrant regression (FLH-046). The `ci` job runs `go test ./...` without
+  # FLH_QDRANT_URL, so the real-Qdrant integration tests skip there. This job
+  # starts the Qdrant image pinned by digest in compose.yaml (tmpfs storage,
+  # loopback port) and fails unless every expected integration test ran and
+  # passed. Embeddings are deterministic fakes: no external service or secret.
+  qdrant-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Helper self-tests
+        timeout-minutes: 2
+        run: python3 -B -m unittest discover -s scripts/ci/flh046 -p 'test_*.py'
+
+      - name: Real Qdrant integration suite
+        timeout-minutes: 22
+        run: >-
+          python3 -B scripts/ci/flh046/qdrant_regression.py
+          --artifacts "$RUNNER_TEMP/flh046"
+          --pull-timeout 300 --ready-timeout 90 --test-timeout 600
+
+      - name: Upload regression artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qdrant-regression
+          path: ${{ runner.temp }}/flh046
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Safety net if the helper itself was killed before its own cleanup.
+      - name: Remove leftover task containers
+        if: always()
+        run: |
+          ids="$(docker ps -aq --filter label=org.flh.task=flh046)"
+          if [ -n "$ids" ]; then docker rm -f -v $ids; fi
+
   # Frontend checks for the human concept-review UI (milestone 10.6). This job does
   # NOT depend on any external service (no running backend, no OpenAI API): it only
   # typechecks, builds, and unit-tests the web app against mocked fetch.

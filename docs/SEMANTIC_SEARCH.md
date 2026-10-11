@@ -161,6 +161,73 @@ verify is in its per-hit counts (`skipped.missing`, `stale`, `incompatible`).
 There is no automatic retry anywhere. Backups need only the SQLite database:
 the embedding cache lives there, and Qdrant can always be rebuilt from it.
 
+## Real-Qdrant regression tests (FLH-046)
+
+`go test ./...` and `make verify` skip the real-Qdrant integration tests
+(`internal/vectorindex/qdrant_integration_test.go`) unless `FLH_QDRANT_URL` is
+set, and they never start a container. Run the suite explicitly:
+
+```bash
+make qdrant-regression                       # disposable container (needs Docker)
+make qdrant-regression QDRANT_REGRESSION_ARGS="--endpoint http://127.0.0.1:6333"
+python3 -B scripts/ci/flh046/qdrant_regression.py --help
+```
+
+CI's `qdrant-integration` job runs the same helper,
+`scripts/ci/flh046/qdrant_regression.py` (Python standard library only).
+
+**Container mode (the default)**
+- **Image.** It pulls the image pinned by digest in `compose.yaml`. If there is
+  not exactly one digest-pinned Qdrant image there, it refuses.
+- **Container.** It starts a uniquely named container labelled
+  `org.flh.task=flh046`, with tmpfs storage and a random port on `127.0.0.1`.
+- **Readiness.** It waits for `/readyz` within `--ready-timeout` and checks that
+  the reported version matches the pinned tag.
+- **Cleanup.** It always saves the container's logs and `docker inspect`, then
+  removes the container, including after a failure or SIGINT/SIGTERM.
+
+**Endpoint mode (`--endpoint URL`)**
+- It uses an existing Qdrant and starts nothing.
+- Afterwards it deletes only collections with the integration tests' prefix
+  (`flh042_it_`) that appeared during its own run. These are what a killed or
+  timed-out test binary leaves behind.
+- Don't point two concurrent runs at the same endpoint.
+
+**What the run asserts**
+
+It runs
+`go test -json -count=1 -timeout=<s>s -run '^TestQdrantIntegration_' ./internal/vectorindex`
+with `FLH_QDRANT_URL` set. It passes only if all of these hold:
+- every test in `scripts/ci/flh046/expected_tests.txt` ran and passed;
+- that list equals the `TestQdrantIntegration_*` functions declared in the
+  package (add or remove names there when tests change);
+- nothing was skipped, including subtests;
+- no test collection was left behind.
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | All expected tests passed |
+| `1` | Failed, skipped, missing, unexpected or zero tests; list drift; build failure; leftover test collections |
+| `2` | Usage |
+| `3` | Environment: Docker or Qdrant unavailable, pull or readiness failed, interrupted, cleanup failed |
+| `4` | The test command timed out (Go's `-timeout`, plus a watchdog that kills the process group) |
+
+**Artifacts** go to `--artifacts DIR` (default: a new temp directory):
+- `summary.json`: mode, image, URL, Qdrant version, per-test results, reasons,
+  cleanup;
+- `go-test.jsonl` and `go-test.txt`;
+- in container mode, `qdrant.log` and `docker-inspect.json`.
+
+CI uploads them as the `qdrant-regression` artifact, even on failure.
+
+**Scope**
+- There is no fallback. Without Docker or a reachable Qdrant the run fails; it
+  never reports success from skipped tests or from mocks.
+- The suite uses deterministic fake embeddings: no embedding service, secret or
+  paid call.
+- `scripts/ci/flh046/test_qdrant_regression.py` unit-tests the helper's verdict
+  logic with synthetic events. It certifies nothing about Qdrant.
+
 ## Synthetic demo
 
 [`scripts/demo/flh040/`](../scripts/demo/flh040/README.md) seeds the FLH-034
