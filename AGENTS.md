@@ -385,6 +385,23 @@ FLH-036 listener and demo processes:
   its own children and exits non-zero. Contract:
   `docs/plans/FLH-036-knowledge-demo.md`.
 
+FLH-040 persistent semantic search (owner-authorized for that milestone only):
+
+- Optional `SEMANTIC_SEARCH=qdrant` (default `disabled`) adds
+  GET `/knowledge-library/semantic-search`. SQLite stays the authority; one
+  Qdrant instance is a disposable, rebuildable index. Search re-reads every hit
+  against SQLite, drops missing/stale/foreign hits without substitution, never
+  writes, and never falls back to keyword search.
+- Migration 010 caches document vectors keyed by content hash, representation,
+  the explicit `EMBEDDING_MODEL_ID` and `EMBEDDING_DIMENSIONS`; collections are
+  per (representation, model, dimensions). Indexing happens only through the
+  `semantic-index` CLI (build/sync/rebuild/status): bounded sequential batches,
+  context cancellation, no network call inside a SQLite transaction, `complete`
+  only after re-validation by the owning run. No cross-store atomicity is claimed.
+- Fake-vector tests prove mechanics, not semantic quality. Further retrieval
+  experiments, hybrid ranking, RAG, training and automatic SAME remain deferred.
+  Contract: `docs/ARCHITECTURE.md` §9.3 and `docs/SEMANTIC_SEARCH.md`.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

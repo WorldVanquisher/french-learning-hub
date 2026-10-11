@@ -16,6 +16,8 @@ func clearAIEnv(t *testing.T) {
 		"OPENAI_BASE_URL", "OPENAI_TIMEOUT",
 		"EMBEDDING_PROVIDER", "EMBEDDING_API_KEY", "EMBEDDING_MODEL",
 		"EMBEDDING_BASE_URL", "EMBEDDING_TIMEOUT",
+		"SEMANTIC_SEARCH", "QDRANT_URL", "QDRANT_API_KEY", "QDRANT_TIMEOUT", "QDRANT_COLLECTION_PREFIX",
+		"EMBEDDING_MODEL_ID", "EMBEDDING_DIMENSIONS", "SEMANTIC_BATCH_SIZE",
 	} {
 		t.Setenv(k, "")
 	}
@@ -261,5 +263,74 @@ func TestLoad_ListenHostRejectsNonIP(t *testing.T) {
 		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "LISTEN_HOST") {
 			t.Fatalf("LISTEN_HOST=%q: err = %v, want LISTEN_HOST error", host, err)
 		}
+	}
+}
+
+func setSemanticEnv(t *testing.T) {
+	t.Helper()
+	clearAIEnv(t)
+	t.Setenv("EMBEDDING_PROVIDER", "http")
+	t.Setenv("EMBEDDING_MODEL", "m")
+	t.Setenv("EMBEDDING_BASE_URL", "http://127.0.0.1:9/v1")
+	t.Setenv("SEMANTIC_SEARCH", "qdrant")
+	t.Setenv("QDRANT_URL", "http://127.0.0.1:6333")
+	t.Setenv("EMBEDDING_MODEL_ID", "org/model@2026-01")
+	t.Setenv("EMBEDDING_DIMENSIONS", "384")
+}
+
+func TestLoad_SemanticDefaultsToDisabled(t *testing.T) {
+	clearAIEnv(t)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Semantic.Mode != SemanticDisabled {
+		t.Fatalf("mode = %q", cfg.Semantic.Mode)
+	}
+}
+
+func TestLoad_SemanticQdrantLoads(t *testing.T) {
+	setSemanticEnv(t)
+	t.Setenv("QDRANT_API_KEY", "qdrant-secret")
+	t.Setenv("SEMANTIC_BATCH_SIZE", "16")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := cfg.Semantic
+	if s.Mode != SemanticQdrant || s.QdrantURL != "http://127.0.0.1:6333" || s.ModelID != "org/model@2026-01" ||
+		s.Dimensions != 384 || s.BatchSize != 16 || s.CollectionPrefix != "flh_concepts" || s.QdrantTimeout != 5*time.Second || s.QdrantAPIKey != "qdrant-secret" {
+		t.Fatalf("semantic = %+v", s)
+	}
+}
+
+func TestLoad_SemanticRejectsIncompleteOrUnsafeConfig(t *testing.T) {
+	cases := map[string]map[string]string{
+		"unknown mode":        {"SEMANTIC_SEARCH": "faiss"},
+		"missing url":         {"QDRANT_URL": ""},
+		"relative url":        {"QDRANT_URL": "qdrant:6333"},
+		"missing model id":    {"EMBEDDING_MODEL_ID": ""},
+		"control in model id": {"EMBEDDING_MODEL_ID": "a\nb"},
+		"missing dimensions":  {"EMBEDDING_DIMENSIONS": ""},
+		"zero dimensions":     {"EMBEDDING_DIMENSIONS": "0"},
+		"huge dimensions":     {"EMBEDDING_DIMENSIONS": "9000"},
+		"bad prefix":          {"QDRANT_COLLECTION_PREFIX": "a/b"},
+		"bad batch":           {"SEMANTIC_BATCH_SIZE": "1000"},
+		"provider disabled":   {"EMBEDDING_PROVIDER": "disabled"},
+	}
+	for name, env := range cases {
+		t.Run(name, func(t *testing.T) {
+			setSemanticEnv(t)
+			for k, v := range env {
+				t.Setenv(k, strings.ReplaceAll(v, "\\n", "\n"))
+			}
+			_, err := Load()
+			if err == nil {
+				t.Fatal("expected a configuration error")
+			}
+			if strings.Contains(err.Error(), "qdrant-secret") {
+				t.Fatal("error leaked a secret")
+			}
+		})
 	}
 }

@@ -20,6 +20,7 @@ import (
 	"french-learning-app/internal/extractor"
 	"french-learning-app/internal/storage/sqlite"
 	transporthttp "french-learning-app/internal/transport/http"
+	"french-learning-app/internal/vectorindex"
 )
 
 func main() {
@@ -112,16 +113,37 @@ func run() error {
 	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
 	log.Printf("embedding provider: %s", cfg.Embedding.Provider)
 
-	handler := transporthttp.NewHandler(
-		entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc,
-		knowledgeSvc, conceptSvc, effectiveAnnotationSvc, annotationDatasetSvc,
+	libraryService := application.NewKnowledgeLibraryService(
+		conceptRepo, knowledgeRepo, entryRepo, analysisRepo, feedbackRepo, effectiveAnnotationSvc,
+	)
+	options := []transporthttp.HandlerOption{
 		transporthttp.WithAnnotationDatasetQuality(annotationQualitySvc),
 		transporthttp.WithRetrievalEvaluation(retrievalEvaluationSvc),
 		transporthttp.WithRetrievalComparison(retrievalComparisonSvc),
-		transporthttp.WithKnowledgeLibrary(application.NewKnowledgeLibraryService(
-			conceptRepo, knowledgeRepo, entryRepo, analysisRepo, feedbackRepo, effectiveAnnotationSvc,
-		)),
+		transporthttp.WithKnowledgeLibrary(libraryService),
 		transporthttp.WithReadiness(db.PingContext),
+	}
+	// Semantic search is opt-in (SEMANTIC_SEARCH=qdrant). The server only reads
+	// the index; building it is an explicit operator command (semantic-index).
+	if cfg.Semantic.Mode == config.SemanticQdrant {
+		space, err := application.NewSemanticIndexSpace(cfg.Semantic.CollectionPrefix, cfg.Semantic.ModelID, cfg.Semantic.Dimensions)
+		if err != nil {
+			return err
+		}
+		options = append(options, transporthttp.WithSemanticSearch(application.NewSemanticSearchService(
+			conceptRepo, libraryService, sqlite.NewSemanticIndexRepository(db),
+			vectorindex.NewQdrant(cfg.Semantic.QdrantURL, cfg.Semantic.QdrantAPIKey, cfg.Semantic.QdrantTimeout),
+			selectedEmbeddingProvider, space,
+		)))
+		log.Printf("semantic search: qdrant collection %s (model %s, %d dimensions)", space.Collection, space.ModelID, space.Dimensions)
+	} else {
+		log.Printf("semantic search: %s", cfg.Semantic.Mode)
+	}
+
+	handler := transporthttp.NewHandler(
+		entrySvc, analysisSvc, feedbackSvc, effectiveSvc, inventorySvc, captureSvc,
+		knowledgeSvc, conceptSvc, effectiveAnnotationSvc, annotationDatasetSvc,
+		options...,
 	)
 
 	routes := handler.Routes()

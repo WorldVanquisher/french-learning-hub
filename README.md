@@ -61,7 +61,9 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   responses.
 - Search and browse curated Concepts in the read-only **Knowledge Library**,
   with plain-English status and links from each unit to the record and the exact
-  interpretation it came from.
+  interpretation it came from. An optional **semantic search** mode ranks
+  Concepts by embedding similarity using a persistent, rebuildable Qdrant index
+  and an embedding cache in SQLite, built only by an explicit operator command.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation
@@ -76,7 +78,9 @@ chatbot, a consumer course, a spaced-repetition scheduler or mastery tracker, or
 an automatic ML resolver. There is no authentication: run it on localhost or a
 trusted network only. Knowledge extraction and the semantic retriever need an
 external provider that you configure; there is no rule-based extractor and no
-silent fallback. Library search is keyword prefix matching, not semantic search.
+silent fallback. Library search is keyword prefix matching by default; the
+optional semantic mode needs an embedding service and a Qdrant index you build,
+and its similarity scores are not probabilities or identity judgments.
 See [what is deliberately not built](docs/ARCHITECTURE.md#12-deliberately-not-built).
 
 ## Prerequisites
@@ -161,11 +165,12 @@ credentials:
 | `DB_PATH` | `data/app.db` | SQLite database file |
 | `AI_PROVIDER` | `rule-based` | Analyzer: `rule-based` or `openai` |
 | `EXTRACTOR_PROVIDER` | `disabled` | Knowledge extractor: `disabled` or `openai` |
-| `EMBEDDING_PROVIDER` | `disabled` | Semantic retriever: `disabled` or `http` |
+| `EMBEDDING_PROVIDER` | `disabled` | Embedding service: `disabled` or `http` |
+| `SEMANTIC_SEARCH` | `disabled` | Persistent semantic index: `disabled` or `qdrant` |
 | `HTTP_ALLOWED_HOSTS` | loopback names only | Extra exact Host names or IPs to accept |
 | `HTTP_TRUSTED_ORIGINS` | Vite dev origins on port 5173 | Browser origins allowed to send mutations |
 
-Provider settings (`OPENAI_*`, `EMBEDDING_*`) and timeouts are listed in
+Provider settings (`OPENAI_*`, `EMBEDDING_*`, `QDRANT_*`) and timeouts are listed in
 [`.env.example`](.env.example) and explained in
 [ARCHITECTURE §10.2](docs/ARCHITECTURE.md#102-configuration). Invalid
 configuration stops startup; nothing falls back silently. Never commit
@@ -189,6 +194,7 @@ The development history, organized by theme and linked to that evidence, is in
 | --- | --- |
 | [docs/QUICKSTART.md](docs/QUICKSTART.md) | First run from a fresh checkout |
 | [docs/DEMO.md](docs/DEMO.md) | The synthetic Knowledge Library demo |
+| [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | Optional semantic search: setup, index operations, recovery, Go walkthrough |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker release, backup, restore, upgrades, browser boundary settings |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the system works, with the HTTP API reference in Appendix A |
 | [web/README.md](web/README.md) | Workbench views and annotation behaviour |
@@ -202,6 +208,7 @@ The development history, organized by theme and linked to that evidence, is in
 
 ```text
 cmd/server, cmd/capture    server entry point; thin capture CLI
+cmd/semantic-index         operator CLI for the optional semantic index
 internal/                  domain, application, storage/sqlite, transport/http,
                            analyzer, extractor, embedding, config, captureclient
 migrations/                embedded, forward-only SQL migrations
@@ -222,6 +229,7 @@ make vet            # go vet ./...
 make fmt            # gofmt -w .
 make build          # bin/server
 make build-capture  # bin/capture
+make build-semantic-index  # bin/semantic-index
 make verify         # non-mutating release check; needs web/node_modules (npm ci)
 ```
 

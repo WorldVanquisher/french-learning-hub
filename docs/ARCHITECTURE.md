@@ -76,12 +76,14 @@ selected at startup.
 ```text
 cmd/server            program entry point + graceful shutdown
 cmd/capture           thin CLI that posts a learning_capture_v1 file/stdin to POST /captures
+cmd/semantic-index    operator CLI for the optional semantic index (build/sync/rebuild/status)
 internal/domain       entities from Entry to Concept and annotation, small interfaces, validation
 internal/application  use cases: entries, analysis, feedback, effective views, inventory, capture,
                       extraction, concepts and annotation, dataset/quality/retrieval, Knowledge Library
 internal/analyzer     local rule-based Analyzer + OpenAI Analyzer + named rule engine (assessment)
 internal/extractor    OpenAI knowledge Extractor (opt-in) selected by EXTRACTOR_PROVIDER
-internal/embedding    optional HTTP text-to-vector provider for M12-D evaluation
+internal/embedding    optional HTTP text-to-vector provider (M12-D evaluation, FLH-040 index)
+internal/vectorindex  single-instance Qdrant REST adapter for the optional semantic index
 internal/captureclient   thin HTTP client for POST /captures (used by cmd/capture)
 internal/storage/sqlite  SQLite repositories + migration runner
 internal/transport/http  HTTP handlers and routing
@@ -1739,6 +1741,10 @@ requirement. A remote API, rented GPU, or a service hosted on an RTX 4070
 workstation can implement the same boundary; local-inference optimization remains
 deferred.
 
+FLH-040 later added a separate, persistent index for user-facing search
+([§9.3](#93-optional-semantic-search-flh-040)). This evaluation retriever is
+unchanged: it still embeds its corpus per request and never reads that index.
+
 ### 8.7 Retrieval baseline comparison v1
 
 M13-A0 is the first experiment-analysis layer after M12's four individual
@@ -1868,7 +1874,8 @@ token must be a prefix of some token in the searched fields (AND semantics).
 Known limitations:
 
 - Prefix matching only: no stemming, synonyms, typo tolerance or semantic
-  retrieval. One-character words such as « à » or « y » cannot be searched.
+  retrieval in keyword mode (the optional semantic mode is a separate endpoint,
+  [§9.3](#93-optional-semantic-search-flh-040)). One-character words such as « à » or « y » cannot be searched.
 - Entry text and analyses are not searched.
 - Each request scans all Concepts and derives support per Concept; there is no
   index. This is adequate at personal scale, not for a large library.
@@ -1901,6 +1908,60 @@ The workbench wording is plain English: a CURRENT SAME member is shown as a
 unit *filed under* the Concept, and support as *currently supporting* it
 ([§6.1](#61-membership-versus-support-canonical-summary)). The synthetic demo
 fixture and walkthrough are in [DEMO.md](DEMO.md).
+
+### 9.3 Optional semantic search (FLH-040)
+
+An explicit **Semantic** mode in the Knowledge Library ranks Concepts by
+embedding similarity to a free-text query. It is off by default
+(`SEMANTIC_SEARCH=disabled`) and never replaces or silently falls back to
+keyword search. Operator procedures, recovery steps and a code walkthrough are
+in [SEMANTIC_SEARCH.md](SEMANTIC_SEARCH.md); the contract is:
+
+- **Authority.** SQLite remains the only authority for Concepts, membership,
+  support and history. One Qdrant instance holds a disposable, rebuildable
+  vector index. Search never writes annotations, memberships or index state.
+- **Indexed document.** The existing `concept_embedding_text_v1` Concept
+  document: deterministic JSON of the Concept's target, pedagogical intent,
+  scope and sorted identity features. No unit, history or source text is
+  indexed. Its content hash is SHA-256 of that text.
+- **Reusable embeddings.** `semantic_embedding_cache` (migration `010`) keys
+  each stored float32 vector by content hash, representation, the
+  operator-declared `EMBEDDING_MODEL_ID` and `EMBEDDING_DIMENSIONS`. The provider
+  display name is not an identity. Unchanged documents are never re-embedded,
+  across runs, restarts and rebuilds.
+- **No mixed vector spaces.** The Qdrant collection name is derived from
+  (representation, model identity, dimensions), so a model or representation
+  change uses a new collection; every point also carries that identity in its
+  payload and search drops any hit from another space.
+- **Explicit operations.** The `semantic-index` CLI runs `build`, `sync`,
+  `rebuild` and `status`. There is no background worker, no indexing during
+  browsing and no automatic retry. Work is sequential in bounded batches
+  (`SEMANTIC_BATCH_SIZE`, default 32, at most 256) and every call takes the
+  caller's context, so SIGINT/SIGTERM stops it.
+- **Consistency.** Provider and Qdrant calls happen outside SQLite
+  transactions; each bookkeeping write is its own short transaction. A run
+  marks its space `building` under a new run ID, re-reads the Concepts and skips
+  any whose hash changed immediately before publishing each batch, records points
+  only after Qdrant acknowledged them, and re-validates every published hash at
+  the end. It writes `complete` only if nothing is stale and its run ID still
+  owns the space; failures and interruptions leave `partial` with a sanitized
+  error, and a newer run supersedes an older one. **No atomicity across SQLite
+  and Qdrant is claimed**; instead search re-reads every hit.
+- **Search.** The query (trimmed text, `concept_search_query_v1`) is embedded
+  once and never stored. Qdrant returns up to four times the page size (at most
+  200) hits; each is re-read against SQLite and dropped if its Concept no longer
+  exists, its document hash is stale, its payload belongs to another space, or
+  its similarity is not positive. The `state` filter (all/active/orphaned/
+  retired, as in keyword mode) applies to current facts. Dropped hits are counted
+  in the response and never replaced by other candidates. Similarity is cosine
+  similarity — evidence, not a probability or a SAME judgment.
+- **Failures are explicit.** Not configured → `503`; index not built or
+  incompatible → `409`; provider or Qdrant timeout → `504`, unavailable or
+  malformed output → `502`. A partial index still answers, with
+  `index.complete: false` and its last error visible in the response and UI.
+
+Deterministic fake-embedding tests prove these mechanics only. No real model's
+semantic quality or Recall@K/MRR improvement has been measured.
 
 ## 10. Runtime, configuration and the HTTP boundary
 
@@ -1952,6 +2013,14 @@ empty values behave as unset. Defaults work out of the box:
 | `EMBEDDING_BASE_URL` | _(none)_                    | Required OpenAI-compatible API base for `http` |
 | `EMBEDDING_API_KEY`  | _(none)_                    | Optional bearer token; never logged           |
 | `EMBEDDING_TIMEOUT`  | `8`                         | Per-request embedding timeout (seconds)       |
+| `SEMANTIC_SEARCH`    | `disabled`                  | Persistent semantic index: `disabled` or `qdrant` (needs `EMBEDDING_PROVIDER=http`) |
+| `QDRANT_URL`         | _(none)_                    | Required for `qdrant`; absolute http(s) URL of one Qdrant instance |
+| `QDRANT_API_KEY`     | _(none)_                    | Optional; never logged                        |
+| `QDRANT_TIMEOUT`     | `5`                         | Per-request Qdrant timeout (seconds)          |
+| `QDRANT_COLLECTION_PREFIX` | `flh_concepts`        | Collection name prefix (letters, digits, `_`, `-`) |
+| `EMBEDDING_MODEL_ID` | _(none)_                    | Required for `qdrant`: explicit model and deployment identity keying cached vectors |
+| `EMBEDDING_DIMENSIONS` | _(none)_                  | Required for `qdrant`: vector dimensions (1–8192) |
+| `SEMANTIC_BATCH_SIZE` | `32`                       | Documents per provider/Qdrant call (1–256)    |
 
 `EXTRACTOR_PROVIDER` is independent of `AI_PROVIDER`: knowledge extraction is a
 separate, opt-in capability, so `AI_PROVIDER=rule-based` together with
@@ -2027,6 +2096,11 @@ forward-only; there are no down migrations.
 | `007_fix_concept_resolution` | `unit_concept_memberships`, `supersedes_link_id`, `lifecycle_state`, durable-identity index |
 | `008_unit_resolution_judgments` | `unit_resolution_judgments`, `unit_concept_distinctions` |
 | `009_annotation_operations` | `annotation_operations` idempotency receipts |
+| `010_semantic_index` | `semantic_embedding_cache`, `semantic_index_collections`, `semantic_index_points` (FLH-040 bookkeeping) |
+
+The optional Qdrant index is not part of the database: it holds no authority
+and is recreated with `semantic-index rebuild` from the embedding cache in
+SQLite, so only the SQLite database needs backing up.
 
 Consequences that operators must respect, documented with exact procedures in
 [RELEASE.md](RELEASE.md#upgrades-and-migration-rollback-limits):
@@ -2055,9 +2129,11 @@ committed roadmap items:
 - No spaced repetition, review scheduling, mastery estimation, CEFR or
   difficulty scoring.
 - No knowledge or prerequisite graph and no cross-interaction normalization.
-- No training, dataset splits, vector database, persistent index, SQLite FTS,
-  hybrid fusion or reranking; retrieval baselines are request-scoped
-  experiments only.
+- No training, dataset splits, SQLite FTS, hybrid fusion or reranking. The
+  retrieval-evaluation baselines are request-scoped experiments. The only
+  persistent vector index is the optional, disposable FLH-040 semantic search
+  index ([§9.3](#93-optional-semantic-search-flh-040)), with no RAG answer
+  generation and no automatic SAME decisions.
 - No authentication or multi-user support; the release binds to localhost.
 - No staleness signal for extractions (the stored provenance is sufficient to
   derive one later).
@@ -2792,3 +2868,11 @@ population mismatch.
 Search parameters and limits are in [§9.1](#91-search-contract-and-limitations).
 Invalid `q`, `state` or `limit` returns `400`; unknown ids return `404`; these
 routes accept GET only.
+
+`GET /knowledge-library/semantic-search?q=&state=&limit=` (FLH-040) returns
+schema `knowledge_library_semantic_search_v1`: the query, its representation,
+the index space and state (`complete` flag, last error), counts of considered,
+skipped (`missing`, `stale`, `incompatible`, `non_positive`) and state-filtered
+hits, and results with `concept`, `similarity`, `current_member_count` and
+`supporting_unit_count`. `q` is required. Status codes are listed in
+[§9.3](#93-optional-semantic-search-flh-040).

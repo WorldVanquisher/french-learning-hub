@@ -29,6 +29,43 @@ export interface LibrarySearch {
   results: LibrarySearchResult[];
 }
 
+// FLH-040 semantic search: an explicit, opt-in mode. The backend embeds the
+// query, reads stored concept vectors and re-checks every hit against SQLite.
+export type LibrarySearchMode = "keyword" | "semantic";
+
+export interface SemanticSearchResult {
+  concept: Concept;
+  // Cosine similarity between query and concept-document embeddings. Evidence
+  // only: not a probability and not a SAME judgment.
+  similarity: number;
+  current_member_count: number;
+  supporting_unit_count: number;
+}
+
+export interface SemanticSearch {
+  schema_version: "knowledge_library_semantic_search_v1";
+  query: string;
+  query_representation: string;
+  state: LibraryStateFilter;
+  limit: number;
+  index: {
+    collection: string;
+    representation: string;
+    model_id: string;
+    dimensions: number;
+    state: "building" | "complete" | "partial";
+    complete: boolean;
+    updated_at: string;
+    completed_at: string | null;
+    last_error: string;
+  };
+  considered: number;
+  skipped: { missing: number; stale: number; incompatible: number; non_positive: number };
+  filtered_by_state: number;
+  score_note: string;
+  results: SemanticSearchResult[];
+}
+
 // One unit with the provenance facts needed to label it honestly.
 export interface LibraryUnit {
   unit_id: number;

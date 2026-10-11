@@ -6,10 +6,19 @@ import type {
   LibraryHistoricalUnit,
   LibraryQuery,
   LibrarySearch,
+  LibrarySearchMode,
   LibrarySource,
   LibraryStateFilter,
   LibraryUnit,
+  SemanticSearch,
 } from "../types/library";
+
+// One search outcome per submitted query. Semantic mode needs a query; with an
+// empty one nothing is requested (browsing is keyword search's job).
+type SearchOutcome =
+  | { kind: "keyword"; data: LibrarySearch }
+  | { kind: "semantic"; data: SemanticSearch }
+  | { kind: "semantic-empty" };
 
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
 
@@ -69,11 +78,21 @@ const fieldLabels: Record<string, string> = {
 export function KnowledgeLibrary() {
   const [draft, setDraft] = useState<LibraryQuery>({ q: "", state: "all" });
   const [query, setQuery] = useState<LibraryQuery>({ q: "", state: "all" });
+  const [draftMode, setDraftMode] = useState<LibrarySearchMode>("keyword");
+  const [mode, setMode] = useState<LibrarySearchMode>("keyword");
   const [screen, setScreen] = useState<Screen>({ kind: "results" });
   const [retry, setRetry] = useState(0);
   const returnTo = useRef<number | null>(null);
 
-  const search = useLoad<LibrarySearch>(`${query.state}\u0000${query.q}`, () => api.searchLibrary(query), retry);
+  const search = useLoad<SearchOutcome>(
+    `${mode}\u0000${query.state}\u0000${query.q}`,
+    async (): Promise<SearchOutcome> => {
+      if (mode === "keyword") return { kind: "keyword", data: await api.searchLibrary(query) };
+      if (!query.q) return { kind: "semantic-empty" };
+      return { kind: "semantic", data: await api.semanticSearchLibrary(query) };
+    },
+    retry,
+  );
 
   // On return, focus the result the reader opened. Detail screens focus their own heading.
   useEffect(() => {
@@ -86,13 +105,18 @@ export function KnowledgeLibrary() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setQuery({ q: draft.q.trim(), state: draft.state });
+    setMode(draftMode);
   };
   const backToResults = (conceptId: number) => {
     returnTo.current = conceptId;
     setScreen({ kind: "results" });
   };
   const openConcept = (conceptId: number) => setScreen({ kind: "concept", conceptId });
-  const resultsLabel = query.q ? `results for “${query.q}”` : "all concepts";
+  const resultsLabel = query.q
+    ? `${mode === "semantic" ? "semantic " : ""}results for “${query.q}”`
+    : mode === "semantic"
+      ? "semantic search"
+      : "all concepts";
 
   return (
     <main className="library">
@@ -124,11 +148,36 @@ export function KnowledgeLibrary() {
               onClick={() => {
                 setDraft({ q: "", state: "all" });
                 setQuery({ q: "", state: "all" });
+                setDraftMode("keyword");
+                setMode("keyword");
               }}
             >
               clear
             </button>
           </div>
+          <fieldset className="library-mode">
+            <legend>Search mode</legend>
+            <label>
+              <input
+                type="radio"
+                name="library-mode"
+                value="keyword"
+                checked={draftMode === "keyword"}
+                onChange={() => setDraftMode("keyword")}
+              />{" "}
+              Keyword
+            </label>{" "}
+            <label>
+              <input
+                type="radio"
+                name="library-mode"
+                value="semantic"
+                checked={draftMode === "semantic"}
+                onChange={() => setDraftMode("semantic")}
+              />{" "}
+              Semantic
+            </label>
+          </fieldset>
           <p className="hint">
             A <strong>concept</strong> is one idea you have learned, such as a grammar rule. A <strong>unit</strong> is a
             short rule taken from one of your learning records; units are filed under concepts and always link back to
@@ -140,13 +189,34 @@ export function KnowledgeLibrary() {
             moved away are not searched. Accents and case are ignored, and each word matches the start of a word.
             Read-only: searching records nothing.
           </p>
+          <p className="hint">
+            <strong>Semantic</strong> mode compares the meaning of your query with each concept's title and identity
+            details, using embeddings stored in a separately built index. It needs that index and an embedding service; if
+            either is missing it says so and never falls back to keyword search. Its scores are similarity, not
+            probability, and every result is re-checked against the current database.
+          </p>
         </form>
-        <Results
-          search={search}
-          query={query}
-          onOpen={openConcept}
-          onRetry={() => setRetry((n) => n + 1)}
-        />
+        {search.status === "ready" && search.data.kind === "keyword" ? (
+          <Results
+            search={{ status: "ready", data: search.data.data }}
+            query={query}
+            onOpen={openConcept}
+            onRetry={() => setRetry((n) => n + 1)}
+          />
+        ) : search.status === "ready" && search.data.kind === "semantic" ? (
+          <SemanticResults data={search.data.data} query={query} onOpen={openConcept} />
+        ) : search.status === "ready" ? (
+          <p className="empty" role="status">Type a query, then Search, to run a semantic search.</p>
+        ) : search.status === "loading" ? (
+          <p className="empty" role="status">Searching the knowledge library…</p>
+        ) : (
+          <div className="banner error" role="alert">
+            Could not {mode === "semantic" ? "run the semantic search" : "search the knowledge library"}: {search.message}{" "}
+            <button type="button" className="ghost" onClick={() => setRetry((n) => n + 1)}>
+              Try again
+            </button>
+          </div>
+        )}
       </div>
       {screen.kind === "concept" ? (
         <ConceptScreen
@@ -236,6 +306,65 @@ function Results({
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+function SemanticResults({
+  data,
+  query,
+  onOpen,
+}: {
+  data: SemanticSearch;
+  query: LibraryQuery;
+  onOpen: (conceptId: number) => void;
+}) {
+  const dropped = data.skipped.stale + data.skipped.missing + data.skipped.incompatible;
+  return (
+    <section aria-label="Semantic results">
+      {!data.index.complete ? (
+        <div className="banner info" role="status">
+          The semantic index is {data.index.state}, so results may be missing or out of date
+          {data.index.last_error ? ` (last run: ${data.index.last_error})` : ""}. An operator can finish it with{" "}
+          <code>semantic-index sync</code>.
+        </div>
+      ) : null}
+      <p className="hint" role="status">
+        {data.results.length} concept{data.results.length === 1 ? "" : "s"} by similarity to “{data.query}”
+        {query.state === "all" ? "" : ` with status ${query.state}`} · model {data.index.model_id} ·{" "}
+        {data.index.complete ? "index complete" : "index incomplete"}.
+      </p>
+      {dropped > 0 || data.filtered_by_state > 0 ? (
+        <p className="hint">
+          After re-checking the database, {dropped} index entr{dropped === 1 ? "y was" : "ies were"} dropped as out of date
+          or no longer valid
+          {data.filtered_by_state > 0 ? `, and ${data.filtered_by_state} did not match the status filter` : ""}. Other
+          concepts are not substituted.
+        </p>
+      ) : null}
+      {data.results.length === 0 ? (
+        <p className="empty">No concept is similar enough to “{data.query}”.</p>
+      ) : (
+        <ol className="library-results">
+          {data.results.map((r) => (
+            <li key={r.concept.id} className="panel library-result">
+              <button type="button" className="link-button" id={resultButtonId(r.concept.id)} onClick={() => onOpen(r.concept.id)}>
+                {r.concept.target}
+              </button>{" "}
+              <StateTag state={r.concept.state} />
+              <div className="hint">
+                {r.concept.pedagogical_intent}
+                {r.concept.scope ? ` · ${r.concept.scope}` : ""} · {r.current_member_count} unit
+                {r.current_member_count === 1 ? "" : "s"} filed here, {r.supporting_unit_count} currently supporting ·
+                concept #{r.concept.id}
+              </div>
+              <div className="hint">
+                Similarity {r.similarity.toFixed(2)} (cosine; not a probability or a SAME judgment)
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
     </section>
   );
 }

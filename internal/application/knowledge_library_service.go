@@ -302,6 +302,21 @@ func (s *KnowledgeLibraryService) Search(ctx context.Context, q LibrarySearchQue
 	return report, nil
 }
 
+// ConceptCounts returns the CURRENT SAME member count and the supporting unit
+// count shown with a search result. Semantic search reuses it so both search
+// modes describe a Concept with the same facts.
+func (s *KnowledgeLibraryService) ConceptCounts(ctx context.Context, conceptID int64) (int, int, error) {
+	members, err := s.currentMembers(ctx, conceptID, newLibraryCache())
+	if err != nil {
+		return 0, 0, err
+	}
+	supporting, err := s.concepts.ActiveSupportUnitIDs(ctx, conceptID)
+	if err != nil {
+		return 0, 0, err
+	}
+	return len(members), len(supporting), nil
+}
+
 func domainUniqueTokens(text string) []string {
 	seen := map[string]bool{}
 	out := []string{}

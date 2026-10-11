@@ -46,7 +46,8 @@ Concept 判断——作为独立的、版本化或只追加的记录保存。当
 - 在 **Concept Review** 工作台中审核单元：SAME、NEW CONCEPT、BROADER、NARROWER、RELATED、DISTINCT 与
   INVALID 判断，保留只追加的历史和显式更正；DISTINCT 与关系类请求在响应丢失时可幂等恢复。
 - 在只读的 **Knowledge Library** 中检索和浏览已整理的 Concept：以平实的英文显示状态，并能从每个单元链接到
-  它所来自的记录及当时使用的确切解释。
+  它所来自的记录及当时使用的确切解释。可选的**语义检索**模式按嵌入相似度排序 Concept，使用持久、可重建的
+  Qdrant 索引和 SQLite 中的嵌入缓存，索引只能由显式的运维命令构建。
 - 查看有效标注，导出版本化的 Concept Annotation Dataset v1，检查其质量报告，并在同一评估样本上比较
   精确匹配、加权词法、BM25 以及可选嵌入检索基线。
 - 将服务端与构建好的工作台打包成一个 Docker 镜像，带健康与就绪检查，并提供有文档的备份、恢复和升级流程。
@@ -55,7 +56,8 @@ Concept 判断——作为独立的、版本化或只追加的记录保存。当
 
 这是一个单用户的学习数据服务和研究工具，不是聊天机器人、面向消费者的课程、间隔重复调度器或掌握度追踪器，
 也不是自动的机器学习消解器。系统没有身份认证：只在 localhost 或可信网络中运行。知识抽取与语义检索需要你自行
-配置外部提供方；没有基于规则的抽取器，也不会静默回退。Library 检索是关键词前缀匹配，而不是语义检索。
+配置外部提供方；没有基于规则的抽取器，也不会静默回退。Library 默认使用关键词前缀匹配；可选的语义模式需要嵌入服务和你构建的 Qdrant 索引，
+其相似度分数不是概率，也不是身份判断。
 参见[有意不实现的内容](docs/ARCHITECTURE.md#12-deliberately-not-built)。
 
 ## 环境要求
@@ -131,11 +133,12 @@ docker compose stop
 | `DB_PATH` | `data/app.db` | SQLite 数据库文件 |
 | `AI_PROVIDER` | `rule-based` | 分析器：`rule-based` 或 `openai` |
 | `EXTRACTOR_PROVIDER` | `disabled` | 知识抽取器：`disabled` 或 `openai` |
-| `EMBEDDING_PROVIDER` | `disabled` | 语义检索器：`disabled` 或 `http` |
+| `EMBEDDING_PROVIDER` | `disabled` | 嵌入服务：`disabled` 或 `http` |
+| `SEMANTIC_SEARCH` | `disabled` | 持久语义索引：`disabled` 或 `qdrant` |
 | `HTTP_ALLOWED_HOSTS` | 仅回环名称 | 额外允许的精确 Host 名称或 IP |
 | `HTTP_TRUSTED_ORIGINS` | 5173 端口的 Vite 开发源 | 允许发送写请求的浏览器源 |
 
-提供方设置（`OPENAI_*`、`EMBEDDING_*`）与超时见 [`.env.example`](.env.example)，说明见
+提供方设置（`OPENAI_*`、`EMBEDDING_*`、`QDRANT_*`）与超时见 [`.env.example`](.env.example)，说明见
 [ARCHITECTURE §10.2](docs/ARCHITECTURE.md#102-configuration)。无效配置会阻止启动，不会静默回退。
 不要提交凭据。
 
@@ -152,6 +155,7 @@ Knowledge Library 在 Linux 上的验收和在 macOS 真实浏览器中的演练
 | --- | --- |
 | [docs/QUICKSTART.md](docs/QUICKSTART.md) | 从全新检出开始的首次运行 |
 | [docs/DEMO.md](docs/DEMO.md) | 合成数据的 Knowledge Library 演示 |
+| [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | 可选语义检索：配置、索引操作、故障恢复、Go 代码导读 |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker 发布、备份、恢复、升级、浏览器边界设置 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 系统如何工作；附录 A 为 HTTP API 参考 |
 | [web/README.md](web/README.md) | 工作台各视图与标注行为 |
@@ -167,6 +171,7 @@ Knowledge Library 在 Linux 上的验收和在 macOS 真实浏览器中的演练
 
 ```text
 cmd/server, cmd/capture    服务端入口；轻量 capture 命令行
+cmd/semantic-index         可选语义索引的运维命令行
 internal/                  domain、application、storage/sqlite、transport/http、
                            analyzer、extractor、embedding、config、captureclient
 migrations/                内嵌、只向前的 SQL 迁移
@@ -187,6 +192,7 @@ make vet            # go vet ./...
 make fmt            # gofmt -w .
 make build          # bin/server
 make build-capture  # bin/capture
+make build-semantic-index  # bin/semantic-index
 make verify         # 不修改文件的发布检查；需要 web/node_modules（npm ci）
 ```
 

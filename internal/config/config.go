@@ -6,6 +6,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -74,6 +75,36 @@ type Config struct {
 	// Embedding holds semantic-retrieval provider configuration, independent of
 	// both the analyzer and extractor.
 	Embedding EmbeddingConfig
+
+	// Semantic holds the optional persistent semantic index (FLH-040).
+	Semantic SemanticConfig
+}
+
+// SemanticMode selects the optional persistent semantic search index.
+type SemanticMode string
+
+const (
+	// SemanticDisabled is the default: no vector store, no semantic search.
+	SemanticDisabled SemanticMode = "disabled"
+	// SemanticQdrant uses one Qdrant instance as a disposable vector index.
+	SemanticQdrant SemanticMode = "qdrant"
+)
+
+// SemanticConfig configures the persistent semantic index. ModelID is the
+// operator-declared identity of the embedding model and deployment (for
+// example "openai/text-embedding-3-small" or a local model name plus its
+// weights digest). It, not the provider display name, keys cached vectors, so
+// change it whenever the model, its version or its weights change.
+// QdrantAPIKey must never be logged.
+type SemanticConfig struct {
+	Mode             SemanticMode
+	QdrantURL        string
+	QdrantAPIKey     string
+	QdrantTimeout    time.Duration
+	CollectionPrefix string
+	ModelID          string
+	Dimensions       int
+	BatchSize        int
 }
 
 // AIConfig holds analyzer-provider selection and OpenAI settings. Secrets in
@@ -132,6 +163,12 @@ const (
 	// timeout (10s) so the provider request cannot normally exceed it.
 	defaultOpenAITimeout    = 8 * time.Second
 	defaultEmbeddingTimeout = 8 * time.Second
+	defaultQdrantTimeout    = 5 * time.Second
+	defaultCollectionPrefix = "flh_concepts"
+	defaultSemanticBatch    = 32
+	maxSemanticBatch        = 256
+	maxSemanticDimensions   = 8192
+	maxModelIDBytes         = 200
 )
 
 // Load builds a Config from environment variables, falling back to defaults
@@ -160,6 +197,14 @@ const (
 //	EMBEDDING_BASE_URL -> Embedding.BaseURL (required for http)
 //	EMBEDDING_API_KEY  -> Embedding.APIKey (optional; never logged)
 //	EMBEDDING_TIMEOUT  -> Embedding.Timeout (seconds), default 8
+//	SEMANTIC_SEARCH    -> Semantic.Mode, default disabled (or qdrant)
+//	QDRANT_URL         -> Semantic.QdrantURL (required for qdrant)
+//	QDRANT_API_KEY     -> Semantic.QdrantAPIKey (optional; never logged)
+//	QDRANT_TIMEOUT     -> Semantic.QdrantTimeout (seconds), default 5
+//	QDRANT_COLLECTION_PREFIX -> Semantic.CollectionPrefix, default flh_concepts
+//	EMBEDDING_MODEL_ID   -> Semantic.ModelID (required for qdrant)
+//	EMBEDDING_DIMENSIONS -> Semantic.Dimensions (required for qdrant)
+//	SEMANTIC_BATCH_SIZE  -> Semantic.BatchSize, default 32, max 256
 func Load() (Config, error) {
 	dotenv, err := readDotEnv(DotEnvFile)
 	if err != nil {
@@ -217,6 +262,12 @@ func load(src source) (Config, error) {
 		},
 	}
 
+	semantic, err := loadSemantic(src, getenv, getdur)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Semantic = semantic
+
 	boundary, err := loadHTTPBoundary(src)
 	if err != nil {
 		return Config{}, err
@@ -230,6 +281,9 @@ func load(src source) (Config, error) {
 	}
 	if err := cfg.Embedding.validate(); err != nil {
 		return Config{}, err
+	}
+	if cfg.Semantic.Mode == SemanticQdrant && cfg.Embedding.Provider != EmbeddingHTTP {
+		return Config{}, fmt.Errorf("SEMANTIC_SEARCH=qdrant requires EMBEDDING_PROVIDER=http")
 	}
 	return cfg, nil
 }
@@ -297,6 +351,62 @@ func (c *ExtractorConfig) validate() error {
 
 // validate checks semantic-retrieval provider selection independently. The
 // default requires no model, endpoint, key, GPU, or external service.
+// loadSemantic reads and validates the semantic index settings. With the
+// default SEMANTIC_SEARCH=disabled no other semantic variable is required.
+func loadSemantic(src source, getenv func(string, string) string, getdur func(string, time.Duration) time.Duration) (SemanticConfig, error) {
+	c := SemanticConfig{
+		Mode:             SemanticMode(getenv("SEMANTIC_SEARCH", string(SemanticDisabled))),
+		QdrantURL:        strings.TrimSpace(src.get("QDRANT_URL")),
+		QdrantAPIKey:     src.get("QDRANT_API_KEY"),
+		QdrantTimeout:    getdur("QDRANT_TIMEOUT", defaultQdrantTimeout),
+		CollectionPrefix: getenv("QDRANT_COLLECTION_PREFIX", defaultCollectionPrefix),
+		ModelID:          strings.TrimSpace(src.get("EMBEDDING_MODEL_ID")),
+		BatchSize:        defaultSemanticBatch,
+	}
+	switch c.Mode {
+	case SemanticDisabled:
+		return c, nil
+	case SemanticQdrant:
+	default:
+		return c, fmt.Errorf("unknown SEMANTIC_SEARCH %q (supported: disabled, qdrant)", string(c.Mode))
+	}
+	u, err := url.Parse(c.QdrantURL)
+	if c.QdrantURL == "" || err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return c, fmt.Errorf("SEMANTIC_SEARCH=qdrant requires QDRANT_URL to be an absolute http(s) URL")
+	}
+	if !validCollectionPrefix(c.CollectionPrefix) {
+		return c, fmt.Errorf("QDRANT_COLLECTION_PREFIX must be 1-48 letters, digits, '_' or '-'")
+	}
+	if c.ModelID == "" || len(c.ModelID) > maxModelIDBytes || strings.ContainsFunc(c.ModelID, func(r rune) bool { return r < 0x20 || r == 0x7f }) {
+		return c, fmt.Errorf("SEMANTIC_SEARCH=qdrant requires EMBEDDING_MODEL_ID (1-%d bytes, no control characters)", maxModelIDBytes)
+	}
+	dims, err := strconv.Atoi(strings.TrimSpace(src.get("EMBEDDING_DIMENSIONS")))
+	if err != nil || dims < 1 || dims > maxSemanticDimensions {
+		return c, fmt.Errorf("SEMANTIC_SEARCH=qdrant requires EMBEDDING_DIMENSIONS between 1 and %d", maxSemanticDimensions)
+	}
+	c.Dimensions = dims
+	if v := strings.TrimSpace(src.get("SEMANTIC_BATCH_SIZE")); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 || n > maxSemanticBatch {
+			return c, fmt.Errorf("SEMANTIC_BATCH_SIZE must be between 1 and %d", maxSemanticBatch)
+		}
+		c.BatchSize = n
+	}
+	return c, nil
+}
+
+func validCollectionPrefix(p string) bool {
+	if len(p) < 1 || len(p) > 48 {
+		return false
+	}
+	for _, r := range p {
+		if !(r == '_' || r == '-' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z') {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *EmbeddingConfig) validate() error {
 	switch c.Provider {
 	case EmbeddingDisabled:
