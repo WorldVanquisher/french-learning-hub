@@ -111,57 +111,82 @@ across provider instances is not persisted cache reuse; a timed-out fixture clie
 is not production context-cancellation evidence. Actual Qdrant and browser tests
 remain Phase B work after the human supplies the integrated implementation.
 
-## Phase B prerequisite-limited diagnostics
+## FLH-043 — active index consistency acceptance
 
-The historical Phase A text above is preserved. The integrated handoff was
-received, but this machine has no local Qdrant binary or cached Qdrant image.
-`phase_b_checks.py` records available native/SQLite/packaging checks; it is **not
-a P01–P18 real-Qdrant acceptance runner**. It refuses this limited workflow if
-Qdrant is subsequently available rather than silently certifying it.
+The runner and `ownership_probe/main.go` now target FLH-042's migration-011
+leases, private collections, manifests and publication pointer. They make no
+legacy `BeginRun`/`RecordPoints`/`FinishRun` calls. Historical FLH-041 reports and
+its four Phase A fixtures/oracles remain unchanged. The former prerequisite-only
+runner has been replaced; historical commands/results remain in the FLH-041 report.
 
-Run from the repository root with a new report path outside the repository:
+Run from the repository root with a new external output directory:
 
 ```sh
-python3 -B scripts/validation/flh041/phase_b_checks.py --report /tmp/flh041-phase-b-human.json
+python3 -B scripts/validation/flh041/phase_b_checks.py --output /tmp/flh043-human
+python3 -B scripts/validation/flh041/phase_b_checks.py --extra-only --output /tmp/flh043-human-extra
 ```
 
-This requires socket permission, the existing local Go module cache, Docker
-daemon access and all pinned Dockerfile bases/dependency layers already cached.
-No package or image is downloaded. The runner verifies local base-image presence
-before building with `--pull=false --network none`. It copies bounded source to
-a private directory, disables Go network/module updates and VCS stamping, uses a
-sanitized environment and an empty Compose env file, and never reads repository
-credentials. It imports the existing FLH-026 environment helper read-only; it
-does not modify that harness.
+The first command executes lease/fence races, repair, fake-provider failures,
+interruption, search, focused integrated Go tests and actual Compose. The second
+executes the complementary dimension, partial-upsert, expired-lease, unrecorded
+collection, state-filter and whole-collection-loss checks. Both are necessary
+for the coverage recorded in the FLH-043 report. Exit 1 means an assertion,
+prerequisite or cleanup failed; it is never reclassified as green acceptance.
 
-The runner executes Phase A self-tests, focused production tests, native builds
-and the real SQLite repository diagnostic. It then builds the unchanged
-Dockerfile under a unique tag, attempts the actual Compose semantic profile
-with `--pull never`, and separately starts only the owned app. It verifies
-readiness, `/app/semantic-index -json status`, empty keyword browsing, all-table
-SQLite equality and cleanup. An image-only Compose override prevents replacing
-the user's application tag. Qdrant runtime/storage permissions and semantic
-search remain NOT RUN. `--docker-only` repeats packaging checks while recording
-that native checks were not repeated.
+Requirements: local Go/module cache, Python stdlib/socket access, Docker daemon,
+the pinned Qdrant image in compose.yaml, every pinned Dockerfile base/dependency
+layer already cached, and the existing cached `python:3.12-slim` image for the
+owned Compose embedding fixture. Images are inspected locally; the latter is
+run by its inspected image ID. No pull or package installation is performed.
+Each run captures a bounded current-file baseline and source-copy hashes in
+its report. The separate `/tmp/flh043-baseline.json` preserves the original
+pre-edit task baseline; it is not required to rerun the harness. Historical
+results are never treated as measurements of a different checkout.
 
-Every invocation exits **1**: missing prerequisites and a completed diagnostic
-must not become green release acceptance. Inspect `errors`, `cleanup_errors`,
-`status` and individual commands in the JSON; exit 1 alone does not identify a
-production defect. A failed packaging command or cleanup is recorded separately.
-Reports contain exact argv/output, source/fixture hashes and toolchains. Owned
-Compose containers/networks, the CLI name, image tag and temporary data are
-removed; shared Docker build cache is retained. No interrupted Docker-build
-cleanup guarantee is established by the completed-build evidence.
+The runner copies bounded production source into private temporary output,
+disables Go module network/update and VCS stamping, uses sanitized environment
+and an empty Compose env file, and builds outside the shared checkout. It reads
+the existing FLH-026 environment/listener helpers without editing them. Provider
+inputs are classified from actual exported production document rendering, with
+IDs sorted to match the inspected indexing batch order. Fake values prove
+mechanics only; no semantic relevance, speed or ranking-metric claim follows.
 
-`ownership_probe/main.go` invokes the actual integrated SQLite repository through
-two database handles. Newer ownership completes, then older bookkeeping calls
-overwrite, clear and remove newer points; the old `FinishRun` is rejected. It
-also checks cache persistence on reopen and model/dimension/representation key
-isolation. Opaque point hashes and alternate representation are repository fault
-fixtures, not production serialization or a supported version-upgrade command.
-Its exit 0 means the diagnostic executed; the JSON reports observed unfenced
-mutations. It uses no provider/vector store and proves no real Qdrant race.
+`ownership_probe` modes:
 
-See the appended Phase B report for reproduced expected/actual behavior,
-P01–P18 coverage limits and the remaining integration work. Fake vectors and
-mocked production tests establish no semantic relevance or performance gains.
+- `seed`/`documents`: direct synthetic Concept fixtures in isolated SQLite and
+  actual production-rendered documents; no invented creation/edit endpoint;
+- `repository`: actual busy/expired/takeover and nine fenced-write refusals;
+- `upsert`, `record-manifest`, `publish`, `publish-noop`: exported gate hook
+  after lease renewal, real service/repository/provider/Qdrant, with complete
+  before/after active state, manifest and point/vector/payload equality;
+- `search-query-race`/`search-info-race`: delegate to the actual Qdrant adapter,
+  delaying one selected call while an independent rebuild publishes;
+- `source-change`: clearly labelled isolated SQLite source fault and catch-up;
+- `inventory`: actual current publication, manifest and full paginated points.
+
+Gate hooks are in-process service instrumentation. SIGINT/SIGTERM/SIGKILL tests
+also run the actual CLI process, while an owned HTTP proxy forwards real Qdrant
+requests and holds or loses their acknowledgements. The proxy never implements
+an index. Manifest/point inventories are captured at the held boundary. An
+independent `BEGIN IMMEDIATE` probes SQLite writes during held requests, with a
+positive control that holds a writer and must block it.
+
+`compose_embeddings.py` reuses the unchanged deterministic fixture inside one
+owned Docker network. Only that container listens on its container interface;
+it has no host-published port. The fixture ledger is written to task-owned
+output. App/Qdrant host ports bind 127.0.0.1. Compose uses an image-only app
+override and a unique project so the user's app tag/resources are not replaced.
+
+Evidence includes exact commands/toolchains, source/binary hashes, full SQLite
+schema/table rows, paginated published records/vectors/payloads, per-input
+provider ledgers, held private inventories, case assertions and cleanup.
+Qdrant telemetry may change autonomously: raw metadata is retained, while
+read-only equality asserts shape and actual vector records. Cleanup removes
+owned containers/networks/tags/processes and temporary storage. Qdrant writes
+root-owned nested files; an already cached Alpine image removes only the exact
+owned bind mounts after teardown. Shared Docker build cache remains. Output
+JSON/logs deliberately remain in the requested external evidence directory.
+
+See [FLH-043 acceptance](../../../docs/validation/FLH-043-index-consistency-acceptance.md)
+for reproducible failures and coverage limits. A successful diagnostic command
+or an owner's existing test does not replace these independent assertions.
