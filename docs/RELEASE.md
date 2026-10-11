@@ -320,6 +320,32 @@ integrity=$(sqlite3 -readonly "$backup/app.db" 'PRAGMA integrity_check;')
 # Continue with Restore only after this entire block succeeds.
 ```
 
+## Optional semantic search (Qdrant profile)
+
+Semantic search (FLH-040) is off unless you set `SEMANTIC_SEARCH=qdrant` and
+its required variables. The `semantic` profile adds one Qdrant container
+(`qdrant/qdrant:v1.19.1`, pinned by digest) published on
+`127.0.0.1:${FLH_QDRANT_PORT:-6333}` only, with its storage in
+`${FLH_QDRANT_DIR:-./data/qdrant}`, which must already exist:
+
+```bash
+mkdir -p data/qdrant
+docker compose --profile semantic up -d --build
+docker compose exec app /app/semantic-index build
+```
+
+Without the profile, `docker compose up` starts exactly the same single service
+as before. Configuration, operations and recovery are in
+[SEMANTIC_SEARCH.md](SEMANTIC_SEARCH.md). This profile was validated with
+`docker compose config` only; it was not started against a Docker daemon in
+FLH-040.
+
+**Backups.** Back up only the SQLite database as described above: it contains
+the reusable embedding cache and the index bookkeeping. The Qdrant directory is
+disposable. After restoring a database, run
+`docker compose exec app /app/semantic-index sync` (or `rebuild`); cached
+embeddings are reused, so no document is re-embedded.
+
 ## Upgrades and migration rollback limits
 
 Migrations are forward-only. On start, the server applies any embedded

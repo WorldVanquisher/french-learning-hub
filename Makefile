@@ -1,4 +1,4 @@
-.PHONY: help tidy build build-capture run capture test fmt vet verify clean
+.PHONY: help tidy build build-capture build-semantic-index run capture test fmt vet verify clean
 
 BINARY := bin/server
 CAPTURE_BINARY := bin/capture
@@ -8,6 +8,7 @@ help:
 	@echo "  tidy          - go mod tidy"
 	@echo "  build         - compile the server to $(BINARY)"
 	@echo "  build-capture - compile the capture CLI to $(CAPTURE_BINARY)"
+	@echo "  build-semantic-index - compile the semantic-index operator CLI to bin/semantic-index"
 	@echo "  run           - run the server"
 	@echo "  capture       - run the capture CLI (pass args via ARGS=...)"
 	@echo "  test          - run all tests"
@@ -24,6 +25,9 @@ build:
 
 build-capture:
 	go build -o $(CAPTURE_BINARY) ./cmd/capture
+
+build-semantic-index:
+	go build -o bin/semantic-index ./cmd/semantic-index
 
 run:
 	go run ./cmd/server
@@ -53,7 +57,8 @@ verify:
 	@set -e; verify_dir="$$(mktemp -d)"; \
 	trap 'rm -rf "$$verify_dir"' EXIT; \
 	go build -o "$$verify_dir/server" ./cmd/server; \
-	go build -o "$$verify_dir/capture" ./cmd/capture
+	go build -o "$$verify_dir/capture" ./cmd/capture; \
+	go build -o "$$verify_dir/semantic-index" ./cmd/semantic-index
 	@test -d web/node_modules || { \
 		echo "web/node_modules is missing; run 'cd web && npm ci' first"; \
 		exit 1; \

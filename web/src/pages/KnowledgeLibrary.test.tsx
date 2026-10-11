@@ -181,6 +181,55 @@ describe("Knowledge Library", () => {
     expect(within(history).getByRole("button", { name: "concept #6" })).toBeInTheDocument();
   });
 
+  it("runs an explicit semantic search, labels similarity and index state, and opens current concept details", async () => {
+    const semantic = {
+      schema_version: "knowledge_library_semantic_search_v1", query: "needing to do something", query_representation: "concept_search_query_v1",
+      state: "all", limit: 20,
+      index: { collection: "flh_concepts_x", representation: "concept_embedding_text_v1", model_id: "fake/bag-of-words@1", dimensions: 64,
+        state: "partial", complete: false, updated_at: "t", completed_at: null, last_error: "embedding provider unavailable" },
+      considered: 6, skipped: { missing: 1, stale: 1, incompatible: 0, non_positive: 0 }, filtered_by_state: 0,
+      score_note: "cosine similarity; not a probability",
+      results: [{ concept: concept(1, "subjonctif après il faut que", "active"), similarity: 0.4213, current_member_count: 2, supporting_unit_count: 1 }],
+    };
+    const calls = library({ "/api/knowledge-library/semantic-search?q=needing+to+do+something": () => ({ body: semantic }) });
+    await openLibrary();
+    expect(await screen.findByText("2 concepts.")).toBeInTheDocument();
+    const before = calls.length;
+    fireEvent.click(screen.getByRole("radio", { name: "Semantic" }));
+    fireEvent.change(screen.getByLabelText("Search learned material"), { target: { value: "needing to do something" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByText(/1 concept by similarity to “needing to do something”/)).toBeInTheDocument();
+    expect(screen.getByText(/Similarity 0\.42 \(cosine; not a probability or a SAME judgment\)/)).toBeInTheDocument();
+    expect(screen.getByText(/The semantic index is partial/)).toHaveTextContent("embedding provider unavailable");
+    expect(screen.getByText(/2 index entries were dropped as out of date or no longer valid/)).toBeInTheDocument();
+    // Only the semantic endpoint was called for this query: no keyword fallback.
+    const after = calls.slice(before);
+    expect(after.map((c) => c.path)).toEqual(["/api/knowledge-library/semantic-search"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "subjonctif après il faut que" }));
+    expect(await screen.findByRole("region", { name: "Currently supporting this concept (1)" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "← Back to semantic results for “needing to do something”" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "subjonctif après il faut que" })).toHaveFocus());
+    expect(calls.every((c) => c.method === "GET")).toBe(true);
+  });
+
+  it("reports an unconfigured semantic search explicitly and never searches by keyword instead", async () => {
+    const calls = library({
+      "/api/knowledge-library/semantic-search?q=subjonctif": () => ({ status: 503, body: { error: "semantic search is not configured" } }),
+    });
+    await openLibrary();
+    expect(await screen.findByText("2 concepts.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Semantic" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByText("Type a query, then Search, to run a semantic search.")).toBeInTheDocument();
+    const before = calls.length;
+    fireEvent.change(screen.getByLabelText("Search learned material"), { target: { value: "subjonctif" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not run the semantic search: (503) semantic search is not configured");
+    expect(calls.slice(before).some((c) => c.path === "/api/knowledge-library/concepts")).toBe(false);
+    expect(screen.queryByText(/concepts? matching/)).toBeNull();
+  });
+
   it("shows an orphaned concept honestly", async () => {
     library();
     await openLibrary();

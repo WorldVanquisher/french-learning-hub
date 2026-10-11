@@ -683,6 +683,9 @@ button.invalid:hover:not(:disabled) { background: #912018; border-color: #912018
 .library-search label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
 .library-search input[type="search"] { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px; font: inherit; }
 .library-search select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px; font: inherit; }
+.library-mode { border: 0; padding: 0; margin: 8px 0 0; font-size: 13px; }
+.library-mode legend { display: inline; float: left; margin-right: 8px; color: var(--muted); }
+.library-search .library-mode label { display: inline-flex; align-items: center; gap: 4px; margin: 0 12px 0 0; font-size: 13px; color: inherit; }
 .library-results { list-style: none; padding: 0; margin: 0; }
 .library-result { margin-bottom: 10px; }
 .panel h2.library-title { text-transform: none; letter-spacing: 0; font-size: 18px; color: inherit; }

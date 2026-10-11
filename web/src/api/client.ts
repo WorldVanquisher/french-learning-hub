@@ -34,7 +34,7 @@ import type {
   NewFeedback,
   LearningRecordState,
 } from "../types/learning";
-import type { LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource } from "../types/library";
+import type { LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, SemanticSearch } from "../types/library";
 
 // ApiError carries the HTTP status so callers can react specifically — most
 // importantly to 409 Conflict, after which the UI must refresh the unit's current
@@ -202,6 +202,15 @@ export function searchLibrary(query: LibraryQuery, fetchImpl: typeof fetch = fet
   if (query.state !== "all") params.set("state", query.state);
   const qs = params.toString();
   return request<LibrarySearch>("GET", `/knowledge-library/concepts${qs ? `?${qs}` : ""}`, undefined, fetchImpl);
+}
+
+// semanticSearchLibrary runs the opt-in FLH-040 semantic search. It needs a
+// non-empty query and never falls back to keyword search: a server without a
+// semantic index answers with an explicit error.
+export function semanticSearchLibrary(query: LibraryQuery, fetchImpl: typeof fetch = fetch): Promise<SemanticSearch> {
+  const params = new URLSearchParams({ q: query.q.trim() });
+  if (query.state !== "all") params.set("state", query.state);
+  return request<SemanticSearch>("GET", `/knowledge-library/semantic-search?${params.toString()}`, undefined, fetchImpl);
 }
 
 export function getLibraryConcept(conceptId: number, fetchImpl: typeof fetch = fetch): Promise<LibraryConcept> {

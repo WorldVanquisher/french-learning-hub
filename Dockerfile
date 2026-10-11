@@ -20,7 +20,8 @@ RUN go mod download && go mod verify
 COPY cmd ./cmd
 COPY internal ./internal
 COPY migrations ./migrations
-RUN go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server
+RUN go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server \
+ && go build -trimpath -ldflags="-s -w" -o /out/semantic-index ./cmd/semantic-index
 
 # --- Runtime -------------------------------------------------------------------
 FROM alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412
@@ -29,6 +30,8 @@ RUN addgroup -S -g 1000 flh \
  && mkdir -p /data \
  && chown 1000:1000 /data
 COPY --from=server /out/server /app/server
+# Operator CLI for the optional semantic index (FLH-040); never run automatically.
+COPY --from=server /out/semantic-index /app/semantic-index
 COPY --from=web /src/web/dist /app/web
 # The working directory holds no .env, so configuration comes only from the
 # container environment.

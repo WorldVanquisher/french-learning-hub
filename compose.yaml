@@ -6,6 +6,10 @@
 # with the server's existing defaults. No .env file is copied or mounted into the image
 # or container. Compose itself may read a .env file next to this file to
 # substitute ${...} values; see docs/RELEASE.md for its quoting rules.
+#
+# Optional semantic search (FLH-040): `docker compose --profile semantic up -d`
+# also starts one Qdrant instance, a disposable and rebuildable vector index.
+# Without the profile nothing about the default service changes.
 name: french-learning-hub
 
 services:
@@ -35,6 +39,15 @@ services:
       EMBEDDING_TIMEOUT: ${EMBEDDING_TIMEOUT:-}
       HTTP_READ_TIMEOUT: ${HTTP_READ_TIMEOUT:-}
       HTTP_WRITE_TIMEOUT: ${HTTP_WRITE_TIMEOUT:-}
+      # Semantic search: disabled unless SEMANTIC_SEARCH=qdrant (see docs/SEMANTIC_SEARCH.md).
+      SEMANTIC_SEARCH: ${SEMANTIC_SEARCH:-disabled}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_TIMEOUT: ${QDRANT_TIMEOUT:-}
+      QDRANT_COLLECTION_PREFIX: ${QDRANT_COLLECTION_PREFIX:-}
+      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-}
+      SEMANTIC_BATCH_SIZE: ${SEMANTIC_BATCH_SIZE:-}
     volumes:
       # Persistent SQLite directory. It must already exist and be writable by
       # FLH_UID; it is never created automatically (Docker would create it as
@@ -42,6 +55,27 @@ services:
       - type: bind
         source: ${FLH_DATA_DIR:-./data/release}
         target: /data
+        bind:
+          create_host_path: false
+    stop_grace_period: 15s
+    restart: unless-stopped
+
+  # Optional, profile "semantic" only. A disposable index: SQLite stays the
+  # authority and `docker compose exec app /app/semantic-index rebuild`
+  # recreates every point from cached embeddings.
+  qdrant:
+    profiles: ["semantic"]
+    image: qdrant/qdrant:v1.19.1@sha256:12364fe851b9f17356fc88189fc06d1b521262e04659ec7345975b00c9246a10
+    ports:
+      - "127.0.0.1:${FLH_QDRANT_PORT:-6333}:6333"
+    environment:
+      QDRANT__TELEMETRY_DISABLED: "true"
+      QDRANT__STORAGE__SNAPSHOTS_PATH: /qdrant/storage/snapshots
+    volumes:
+      # Must already exist; never created automatically.
+      - type: bind
+        source: ${FLH_QDRANT_DIR:-./data/qdrant}
+        target: /qdrant/storage
         bind:
           create_host_path: false
     stop_grace_period: 15s
