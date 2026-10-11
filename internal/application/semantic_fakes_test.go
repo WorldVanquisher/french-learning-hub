@@ -187,6 +187,8 @@ type memIndex struct {
 	failUpsert  int             // fail this upsert call number (1-based)
 	failDelete  map[string]bool // collections whose deletion fails
 	onQuery     func(collection string)
+	onInfo      func(collection string) // called before every CollectionInfo, outside the lock
+	queries     int
 }
 
 func newMemIndex() *memIndex {
@@ -201,6 +203,9 @@ func (m *memIndex) check() error {
 }
 
 func (m *memIndex) CollectionInfo(_ context.Context, name string) (application.VectorCollectionInfo, error) {
+	if m.onInfo != nil {
+		m.onInfo(name)
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.check(); err != nil {
@@ -303,6 +308,7 @@ func (m *memIndex) Query(_ context.Context, name string, vector []float32, limit
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.queries++
 	if err := m.check(); err != nil {
 		return nil, err
 	}

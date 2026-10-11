@@ -293,8 +293,13 @@ type SemanticIndexReport struct {
 	Replaced          string `json:"replaced"`            // previously published collection
 	Cleaned           int    `json:"cleaned_collections"` // leftover collections deleted
 	VerifiedUnchanged bool   `json:"verified_unchanged"`  // sync found the publication healthy
-	Outcome           string `json:"outcome"`
-	OwnershipLost     bool   `json:"ownership_lost"`
+	// CleanupPending lists recorded leftover collections still present after
+	// this run's cleanup (deletion failed, cleanup stopped, or not eligible
+	// for this operation); CleanupError says why cleanup was incomplete.
+	CleanupPending []string `json:"cleanup_pending"`
+	CleanupError   string   `json:"cleanup_error,omitempty"`
+	Outcome        string   `json:"outcome"`
+	OwnershipLost  bool     `json:"ownership_lost"`
 }
 
 // SemanticIndexService runs explicit, operator-initiated index operations.
@@ -411,7 +416,7 @@ func (s *SemanticIndexService) run(ctx context.Context, operation string, opts S
 	if err := s.store.AcquireLease(ctx, s.space, runID, operation, started, started.Add(s.leaseTTL), opts.Takeover); err != nil {
 		return nil, err
 	}
-	report = &SemanticIndexReport{Operation: operation, RunID: runID, Space: s.space.Collection}
+	report = &SemanticIndexReport{Operation: operation, RunID: runID, Space: s.space.Collection, CleanupPending: []string{}}
 	created := "" // this run's physical collection, once registered
 
 	defer func() {
@@ -434,9 +439,9 @@ func (s *SemanticIndexService) run(ctx context.Context, operation string, opts S
 		outcome := SemanticRunOutcome{StartedAt: started, FinishedAt: s.now()}
 		switch {
 		case err == nil && report.VerifiedUnchanged:
-			outcome.Outcome = RunOutcomeVerifiedUnchanged
+			outcome.Outcome, outcome.LastError = RunOutcomeVerifiedUnchanged, cleanupNote(report)
 		case err == nil:
-			outcome.Outcome = RunOutcomePublished
+			outcome.Outcome, outcome.LastError = RunOutcomePublished, cleanupNote(report)
 		case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
 			outcome.Outcome, outcome.LastError = RunOutcomeInterrupted, semanticErrorCategory(err)
 		case errors.Is(err, ErrSemanticSourcesChanged):
@@ -486,6 +491,11 @@ func (s *SemanticIndexService) run(ctx context.Context, operation string, opts S
 		if health.Healthy {
 			report.VerifiedUnchanged = true
 			report.Collection = state.PublishedCollection
+			// Nothing to publish, but leftovers recorded by earlier runs
+			// (a failed deletion, an abandoned collection) are retried now
+			// under this run's lease. Other runs' "writing" collections are
+			// left to a publishing run.
+			s.cleanup(ctx, runID, state.PublishedCollection, cleanupLeftovers, report)
 			return report, nil
 		}
 	}
@@ -580,7 +590,11 @@ func (s *SemanticIndexService) run(ctx context.Context, operation string, opts S
 	// Remove the replaced collection and leftovers. The new publication is
 	// already committed; a failure here only leaves recorded "retired" or
 	// "abandoned" collections that status lists and the next run removes.
-	report.Cleaned = s.cleanup(ctx, runID, collection, operation == "rebuild")
+	scope := cleanupRecorded
+	if operation == "rebuild" {
+		scope = cleanupUnrecorded
+	}
+	s.cleanup(ctx, runID, collection, scope, report)
 	return report, nil
 }
 
@@ -615,51 +629,105 @@ func (s *SemanticIndexService) writePoints(ctx context.Context, runID, collectio
 	return nil
 }
 
-// cleanup deletes the replaced collection and, while still holding the lease,
-// leftovers of this space: recorded retired/abandoned collections, "writing"
-// collections of dead or superseded runs, and on rebuild unrecorded Qdrant
-// collections named for this space (for example an FLH-040 collection).
-func (s *SemanticIndexService) cleanup(ctx context.Context, runID, keep string, includeUnrecorded bool) int {
-	cleaned := 0
+// cleanupScope selects which collections of this space a run may delete.
+type cleanupScope int
+
+const (
+	// cleanupLeftovers: recorded retired and abandoned collections. Neither
+	// status is ever published again or written by any run, so deleting them
+	// cannot affect a live run or the current publication.
+	cleanupLeftovers cleanupScope = iota
+	// cleanupRecorded adds "writing" collections of other runs. Only a run
+	// that has just published uses it: such a run held the lease throughout,
+	// so those runs are dead or superseded and can never publish.
+	cleanupRecorded
+	// cleanupUnrecorded adds Qdrant collections named for this space that
+	// SQLite does not record (rebuild only), for example an FLH-040 collection.
+	cleanupUnrecorded
+)
+
+// cleanup deletes collections of this space other than keep and the
+// published one, within scope. Each deletion is gated by the lease; each
+// record is forgotten by a fenced write only after its deletion succeeded.
+// Failures never undo the run's result: what remains is reported in
+// CleanupPending/CleanupError, stays recorded, and status lists it.
+func (s *SemanticIndexService) cleanup(ctx context.Context, runID, keep string, scope cleanupScope, report *SemanticIndexReport) {
+	fail := func(err error) {
+		if report.CleanupError == "" {
+			report.CleanupError = semanticErrorCategory(err)
+		}
+	}
 	recorded, err := s.store.PhysicalCollections(ctx, s.space.Collection)
 	if err != nil {
-		return 0
+		fail(err)
+		return
 	}
 	known := map[string]bool{}
+	var stopped error
 	for _, c := range recorded {
 		known[c.Collection] = true
 		if c.Collection == keep || c.Status == PhysicalPublished {
 			continue
 		}
-		if s.checkpoint(ctx, runID, "delete-collection") != nil {
-			return cleaned
-		}
-		if s.index.DeleteCollection(ctx, c.Collection) != nil {
+		eligible := c.Status == PhysicalRetired || c.Status == PhysicalAbandoned || (scope >= cleanupRecorded && c.RunID != runID)
+		if !eligible || stopped != nil {
+			report.CleanupPending = append(report.CleanupPending, c.Collection)
 			continue
 		}
-		if s.store.ForgetCollection(ctx, s.space.Collection, runID, c.Collection) == nil {
-			cleaned++
+		if stopped = s.checkpoint(ctx, runID, "delete-collection"); stopped != nil {
+			fail(stopped)
+			report.CleanupPending = append(report.CleanupPending, c.Collection)
+			continue
 		}
+		if err := s.index.DeleteCollection(ctx, c.Collection); err != nil {
+			fail(err)
+			report.CleanupPending = append(report.CleanupPending, c.Collection)
+			continue
+		}
+		if err := s.store.ForgetCollection(ctx, s.space.Collection, runID, c.Collection); err != nil {
+			// Deleted from Qdrant but still recorded (for example the lease
+			// was lost meanwhile); the next run's deletion is a no-op.
+			fail(err)
+			report.CleanupPending = append(report.CleanupPending, c.Collection)
+			continue
+		}
+		report.Cleaned++
 	}
-	if !includeUnrecorded {
-		return cleaned
+	if scope < cleanupUnrecorded || stopped != nil {
+		return
 	}
 	names, err := s.index.ListCollections(ctx)
 	if err != nil {
-		return cleaned
+		fail(err)
+		return
 	}
 	for _, name := range names {
 		if known[name] || !(name == s.space.Collection || strings.HasPrefix(name, s.space.Collection+"_r")) {
 			continue
 		}
-		if s.checkpoint(ctx, runID, "delete-collection") != nil {
-			return cleaned
+		if err := s.checkpoint(ctx, runID, "delete-collection"); err != nil {
+			fail(err)
+			return
 		}
-		if s.index.DeleteCollection(ctx, name) == nil {
-			cleaned++
+		if err := s.index.DeleteCollection(ctx, name); err != nil {
+			fail(err)
+			continue
 		}
+		report.Cleaned++
 	}
-	return cleaned
+}
+
+// cleanupNote is the last_error recorded for a successful run whose cleanup
+// was incomplete, so that `status` shows it next to the leftovers.
+func cleanupNote(r *SemanticIndexReport) string {
+	if len(r.CleanupPending) == 0 && r.CleanupError == "" {
+		return ""
+	}
+	note := fmt.Sprintf("cleanup incomplete: %d leftover collection(s) remain", len(r.CleanupPending))
+	if r.CleanupError != "" {
+		note += " (" + r.CleanupError + ")"
+	}
+	return note
 }
 
 func (s *SemanticIndexService) currentDocs(ctx context.Context) ([]SemanticIndexDocument, error) {
