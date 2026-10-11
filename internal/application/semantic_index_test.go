@@ -6,7 +6,9 @@ import (
 	"errors"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"french-learning-app/internal/application"
 	"french-learning-app/internal/domain"
@@ -59,53 +61,86 @@ func (f *semanticFixture) open() {
 }
 
 func (f *semanticFixture) service(batch int) *application.SemanticIndexService {
-	return application.NewSemanticIndexService(f.concepts, f.store, f.index, f.provider, f.space, batch).WithClock(fixedClock())
+	return application.NewSemanticIndexService(f.concepts, f.store, f.index, f.provider, f.space, batch)
 }
 
 func (f *semanticFixture) search() *application.SemanticSearchService {
 	return application.NewSemanticSearchService(f.concepts, fixedSummarizer{}, f.store, f.index, f.provider, f.space)
 }
 
-func mustSync(t *testing.T, svc *application.SemanticIndexService) *application.SemanticIndexReport {
-	t.Helper()
-	r, err := svc.Sync(context.Background())
+func (f *semanticFixture) state() *application.SemanticIndexSpaceState {
+	f.t.Helper()
+	s, err := f.store.SpaceState(context.Background(), f.space.Collection)
 	if err != nil {
-		t.Fatalf("sync: %v", err)
+		f.t.Fatal(err)
+	}
+	return s
+}
+
+func (f *semanticFixture) status() *application.SemanticIndexStatus {
+	f.t.Helper()
+	st, err := f.service(10).Status(context.Background())
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return st
+}
+
+var none = application.SemanticRunOptions{}
+
+func mustRun(t *testing.T, op string, svc *application.SemanticIndexService) *application.SemanticIndexReport {
+	t.Helper()
+	var r *application.SemanticIndexReport
+	var err error
+	switch op {
+	case "build":
+		r, err = svc.Build(context.Background(), none)
+	case "sync":
+		r, err = svc.Sync(context.Background(), none)
+	default:
+		r, err = svc.Rebuild(context.Background(), none)
+	}
+	if err != nil {
+		t.Fatalf("%s: %v", op, err)
 	}
 	return r
 }
 
-func TestSemanticIndex_EmbeddingsAreReusedAcrossRunsAndRestart(t *testing.T) {
+func TestSemanticIndex_ReuseVerifiedSyncAndRebuildAfterRestart(t *testing.T) {
 	f := newSemanticFixture(t)
-	r := mustSync(t, f.service(2))
-	if r.EmbeddedTexts != 5 || r.Upserted != 5 || r.State != application.SemanticIndexStateComplete {
-		t.Fatalf("first sync = %+v", r)
+	r := mustRun(t, "build", f.service(2))
+	if r.EmbeddedTexts != 5 || r.Upserted != 5 || !r.Published || r.Outcome != "published" {
+		t.Fatalf("build = %+v", r)
 	}
+	first := r.Collection
 	calls1, texts1 := f.provider.counts()
-	if calls1 != 3 || texts1 != 5 { // batches of 2: 2+2+1
-		t.Fatalf("provider calls/texts after first sync = %d/%d", calls1, texts1)
+
+	// A healthy publication: sync verifies the inventory and writes nothing.
+	r = mustRun(t, "sync", f.service(2))
+	if !r.VerifiedUnchanged || r.Published || r.Upserted != 0 || r.Outcome != "verified_unchanged" {
+		t.Fatalf("sync on healthy index = %+v", r)
+	}
+	if names := f.index.names(); len(names) != 1 || names[0] != first {
+		t.Fatalf("collections after no-op sync = %v", names)
 	}
 
-	r = mustSync(t, f.service(2))
-	if r.EmbeddedTexts != 0 || r.ReusedVectors != 5 || r.Upserted != 0 || r.Unchanged != 5 || r.State != "complete" {
-		t.Fatalf("second sync = %+v", r)
-	}
-
-	// Restart: reopen SQLite, drop the vector index entirely and rebuild.
+	// Restart and rebuild: a fresh collection from cached vectors only.
 	f.open()
-	f.index = newMemIndex()
-	r, err := f.service(2).Rebuild(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if r.EmbeddedTexts != 0 || r.ReusedVectors != 5 || r.Upserted != 5 || r.State != "complete" {
+	r = mustRun(t, "rebuild", f.service(2))
+	if r.EmbeddedTexts != 0 || r.ReusedVectors != 5 || !r.Published || r.Replaced != first {
 		t.Fatalf("rebuild after restart = %+v", r)
 	}
+	if names := f.index.names(); len(names) != 1 || names[0] != r.Collection {
+		t.Fatalf("replaced collection must be removed: %v", names)
+	}
 	if calls, texts := f.provider.counts(); calls != calls1 || texts != texts1 {
-		t.Fatalf("provider was called again: %d/%d", calls, texts)
+		t.Fatalf("documents were re-embedded: %d/%d", calls, texts)
+	}
+	st := f.status()
+	if !st.VerifiedHealthy || st.State.PublishedCollection != r.Collection || st.State.LastRunOutcome != "published" || len(st.Collections) != 1 {
+		t.Fatalf("status = %+v / %+v", st, st.State)
 	}
 
-	// Searches embed only the query and never re-embed documents.
 	before, _ := f.provider.counts()
 	for i := 0; i < 3; i++ {
 		if _, err := f.search().Search(context.Background(), application.LibrarySearchQuery{Text: "subjunctive", Limit: 5}); err != nil {
@@ -113,58 +148,246 @@ func TestSemanticIndex_EmbeddingsAreReusedAcrossRunsAndRestart(t *testing.T) {
 		}
 	}
 	if after, _ := f.provider.counts(); after != before+3 {
-		t.Fatalf("search provider calls = %d, want %d (one per query)", after-before, 3)
+		t.Fatalf("search provider calls = %d, want 3 (one per query)", after-before)
 	}
 }
 
-func TestSemanticIndex_ContentChangeReembedsOnlyThatDocument(t *testing.T) {
-	f := newSemanticFixture(t)
-	mustSync(t, f.service(10))
-	c := concept(2, "passé composé with avoir", domain.ConceptActive)
-	f.concepts.set(c)
-	st, err := f.service(10).Status(context.Background())
-	if err != nil {
-		t.Fatal(err)
+func TestSemanticIndex_HealthDetectsDamageThatPointCountHides(t *testing.T) {
+	cases := map[string]struct {
+		damage func(f *semanticFixture, col string)
+		check  func(h *application.SemanticIndexHealth) bool
+	}{
+		"one point removed": {
+			damage: func(f *semanticFixture, col string) { _ = f.index.Delete(context.Background(), col, []int64{2}) },
+			check:  func(h *application.SemanticIndexHealth) bool { return len(h.Missing) == 1 && h.Missing[0] == 2 },
+		},
+		"point replaced with another vector, count preserved": {
+			damage: func(f *semanticFixture, col string) {
+				doc, _ := application.BuildSemanticIndexDocument(concept(2, "passé composé with être", domain.ConceptActive))
+				v, _ := application.ValidateEmbedding(bagOfWords("completely different words", testDims), testDims)
+				f.index.injectPoint(col, 2, doc.ContentHash, f.space, v)
+			},
+			check: func(h *application.SemanticIndexHealth) bool { return len(h.VectorMismatch) == 1 && h.Points == 5 },
+		},
+		"point replaced with a stale document hash": {
+			damage: func(f *semanticFixture, col string) {
+				v, _ := application.ValidateEmbedding(bagOfWords("passé composé", testDims), testDims)
+				f.index.injectPoint(col, 2, "old-hash", f.space, v)
+			},
+			check: func(h *application.SemanticIndexHealth) bool { return len(h.Stale) == 1 && h.Points == 5 },
+		},
+		"point replaced by another model's payload": {
+			damage: func(f *semanticFixture, col string) {
+				other := f.space
+				other.ModelID = "someone-else"
+				v, _ := application.ValidateEmbedding(bagOfWords("x", testDims), testDims)
+				f.index.injectPoint(col, 2, "h", other, v)
+			},
+			check: func(h *application.SemanticIndexHealth) bool { return len(h.ForeignPayload) == 1 },
+		},
+		"extra point for an unknown id": {
+			damage: func(f *semanticFixture, col string) {
+				v, _ := application.ValidateEmbedding(bagOfWords("x", testDims), testDims)
+				f.index.injectPoint(col, 99, "h", f.space, v)
+			},
+			check: func(h *application.SemanticIndexHealth) bool { return len(h.Extra) == 1 && h.Extra[0] == 99 },
+		},
 	}
-	if st.Stale != 1 || st.UpToDate != 4 || st.SearchableComplete {
-		t.Fatalf("status after change = %+v", st)
-	}
-	r := mustSync(t, f.service(10))
-	if r.EmbeddedTexts != 1 || r.Upserted != 1 || r.Unchanged != 4 || r.State != "complete" {
-		t.Fatalf("sync after change = %+v", r)
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := newSemanticFixture(t)
+			col := mustRun(t, "build", f.service(10)).Collection
+			c.damage(f, col)
+			st := f.status()
+			if st.VerifiedHealthy || st.Health.Healthy || !c.check(st.Health) {
+				t.Fatalf("health = %+v", st.Health)
+			}
+			if st.State.LastRunOutcome != "published" {
+				t.Fatal("the last run record must stay separate from current health")
+			}
+			before, _ := f.provider.counts()
+			r := mustRun(t, "sync", f.service(10))
+			if !r.Published || r.Replaced != col || r.EmbeddedTexts != 0 {
+				t.Fatalf("repair sync = %+v", r)
+			}
+			if after, _ := f.provider.counts(); after != before {
+				t.Fatal("repair must reuse cached vectors")
+			}
+			if st := f.status(); !st.VerifiedHealthy {
+				t.Fatalf("after repair: %+v", st.Health)
+			}
+		})
 	}
 }
 
-func TestSemanticIndex_ModelChangeUsesSeparateSpace(t *testing.T) {
+func TestSemanticIndex_WholeCollectionLossAndIncompatibleShape(t *testing.T) {
 	f := newSemanticFixture(t)
-	mustSync(t, f.service(10))
-	old := f.space
-	space, err := application.NewSemanticIndexSpace("test", "fake/bag-of-words@2", testDims)
-	if err != nil {
-		t.Fatal(err)
+	col := mustRun(t, "build", f.service(10)).Collection
+	_ = f.index.DeleteCollection(context.Background(), col)
+	st := f.status()
+	if st.VerifiedHealthy || st.Health.Exists {
+		t.Fatalf("lost collection: %+v", st.Health)
 	}
-	if space.Collection == old.Collection {
-		t.Fatal("a different model identity must map to a different collection")
-	}
-	f.space = space
-	// Search before building the new space must not use the old vectors.
 	if _, err := f.search().Search(context.Background(), application.LibrarySearchQuery{Text: "subjunctive", Limit: 5}); !errors.Is(err, application.ErrSemanticIndexNotBuilt) {
-		t.Fatalf("search on unbuilt new space: %v", err)
+		t.Fatalf("search on lost collection: %v", err)
 	}
-	r := mustSync(t, f.service(10))
-	if r.EmbeddedTexts != 5 || r.ReusedVectors != 0 {
-		t.Fatalf("new model must re-embed everything: %+v", r)
+	r := mustRun(t, "sync", f.service(10))
+	if !r.Published || r.EmbeddedTexts != 0 {
+		t.Fatalf("sync after loss = %+v", r)
 	}
-	st, err := f.service(10).Status(context.Background())
-	if err != nil {
-		t.Fatal(err)
+
+	// Same name, wrong shape.
+	col = r.Collection
+	_ = f.index.DeleteCollection(context.Background(), col)
+	_ = f.index.CreateCollection(context.Background(), col, testDims+1)
+	st = f.status()
+	if st.Health.ShapeOK || st.VerifiedHealthy {
+		t.Fatalf("wrong shape: %+v", st.Health)
 	}
-	if len(st.OtherCollections) != 1 || st.OtherCollections[0].ModelID != old.ModelID || len(st.CacheCounts) != 2 {
-		t.Fatalf("status must show the old space separately: %+v", st)
+	if _, err := f.search().Search(context.Background(), application.LibrarySearchQuery{Text: "subjunctive", Limit: 5}); !errors.Is(err, application.ErrSemanticIndexIncompatible) {
+		t.Fatalf("search on wrong shape: %v", err)
+	}
+	if r := mustRun(t, "sync", f.service(10)); !r.Published {
+		t.Fatalf("sync must republish: %+v", r)
+	}
+	if st := f.status(); !st.VerifiedHealthy {
+		t.Fatalf("after repair: %+v", st.Health)
 	}
 }
 
-func TestSemanticIndex_RejectsDimensionMismatchAndMalformedVectors(t *testing.T) {
+// pausedRun starts run A in a goroutine and blocks it at the first gate whose
+// step equals pauseAt (after the ownership check, before the guarded action).
+type pausedRun struct {
+	reached chan struct{}
+	release chan struct{}
+	done    chan struct{}
+	report  *application.SemanticIndexReport
+	err     error
+}
+
+func startPaused(f *semanticFixture, op, pauseAt string) *pausedRun {
+	p := &pausedRun{reached: make(chan struct{}), release: make(chan struct{}), done: make(chan struct{})}
+	var once sync.Once
+	svc := f.service(2).WithGateHook(func(step string) {
+		if step == pauseAt {
+			once.Do(func() {
+				close(p.reached)
+				<-p.release
+			})
+		}
+	})
+	go func() {
+		defer close(p.done)
+		switch op {
+		case "sync":
+			p.report, p.err = svc.Sync(context.Background(), none)
+		default:
+			p.report, p.err = svc.Rebuild(context.Background(), none)
+		}
+	}()
+	return p
+}
+
+func TestSemanticIndex_SupersededRunCannotMutateNewerPublication(t *testing.T) {
+	for _, step := range []string{"embed", "register-collection", "create-collection", "upsert", "record-manifest", "publish", "delete-collection"} {
+		t.Run(step, func(t *testing.T) {
+			f := newSemanticFixture(t)
+			if step != "embed" { // "embed" needs cache misses, so do not prebuild
+				mustRun(t, "build", f.service(2))
+			}
+			if step == "delete-collection" {
+				// Make the paused run's cleanup have something to delete.
+				f.concepts.set(concept(2, "passé composé with avoir", domain.ConceptActive))
+			}
+			a := startPaused(f, "rebuild", step)
+			select {
+			case <-a.reached:
+			case <-a.done:
+				t.Fatalf("run A finished before reaching %s: %+v %v", step, a.report, a.err)
+			}
+
+			// B takes over (the operator asserts A is dead) and publishes.
+			b, err := f.service(2).Rebuild(context.Background(), application.SemanticRunOptions{Takeover: true})
+			if err != nil || !b.Published {
+				t.Fatalf("B: %+v %v", b, err)
+			}
+			manifestB, _ := f.store.Manifest(context.Background(), b.Collection)
+			close(a.release)
+			<-a.done
+
+			if step != "delete-collection" && !errors.Is(a.err, application.ErrSemanticIndexOwnershipLost) {
+				t.Fatalf("A must stop with ownership lost: %+v %v", a.report, a.err)
+			}
+			if a.report != nil && a.report.Published && step != "delete-collection" {
+				t.Fatalf("A must not publish: %+v", a.report)
+			}
+			s := f.state()
+			if s.PublishedCollection != b.Collection || s.PublishedRunID != b.RunID || s.LastRunID != b.RunID || s.LeaseRunID != "" {
+				t.Fatalf("B's publication or run record was changed: %+v", s)
+			}
+			if after, _ := f.store.Manifest(context.Background(), b.Collection); len(after) != len(manifestB) || len(after) != 5 {
+				t.Fatalf("B's manifest changed: %v -> %v", manifestB, after)
+			}
+			if f.index.pointCount(b.Collection) != 5 {
+				t.Fatalf("B's collection was mutated: %d points", f.index.pointCount(b.Collection))
+			}
+			if a.report != nil && a.report.Collection != "" && a.report.Collection != b.Collection && f.index.pointCount(a.report.Collection) != -1 {
+				t.Fatalf("A's private collection %s was left in the vector store", a.report.Collection)
+			}
+			st := f.status()
+			if !st.VerifiedHealthy {
+				t.Fatalf("published index must stay healthy: %+v", st.Health)
+			}
+			// Any record A could not clean up is a visible leftover the next run removes.
+			mustRun(t, "rebuild", f.service(2))
+			if names := f.index.names(); len(names) != 1 {
+				t.Fatalf("leftovers after next rebuild: %v", names)
+			}
+		})
+	}
+}
+
+func TestSemanticIndex_BusyLeaseAndExpiredLease(t *testing.T) {
+	f := newSemanticFixture(t)
+	a := startPaused(f, "rebuild", "upsert")
+	<-a.reached
+	if _, err := f.service(2).Sync(context.Background(), none); !errors.Is(err, application.ErrSemanticIndexBusy) {
+		t.Fatalf("second run must be busy: %v", err)
+	}
+	if st := f.status(); !st.LeaseActive || st.State.LeaseOperation != "rebuild" {
+		t.Fatalf("status must show the held lease: %+v", st.State)
+	}
+	close(a.release)
+	<-a.done
+	if a.err != nil || !a.report.Published {
+		t.Fatalf("A: %+v %v", a.report, a.err)
+	}
+
+	// An expired lease (holder silent beyond its TTL) can be taken without -takeover.
+	g := newSemanticFixture(t)
+	reached, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	done := make(chan error)
+	go func() {
+		_, err := g.service(2).WithLeaseTTL(50*time.Millisecond).WithGateHook(func(step string) {
+			if step == "upsert" {
+				once.Do(func() { close(reached); <-release })
+			}
+		}).Rebuild(context.Background(), none)
+		done <- err
+	}()
+	<-reached
+	time.Sleep(120 * time.Millisecond)
+	if r := mustRun(t, "rebuild", g.service(2)); !r.Published {
+		t.Fatalf("taking an expired lease: %+v", r)
+	}
+	close(release)
+	if err := <-done; !errors.Is(err, application.ErrSemanticIndexOwnershipLost) {
+		t.Fatalf("expired holder must lose ownership: %v", err)
+	}
+}
+
+func TestSemanticIndex_InvalidVectorsPublishNothing(t *testing.T) {
 	for name, mutate := range map[string]func(*fakeProvider){
 		"dimension mismatch": func(p *fakeProvider) { p.badDims = true },
 		"nan":                func(p *fakeProvider) { p.nan = true },
@@ -173,167 +396,142 @@ func TestSemanticIndex_RejectsDimensionMismatchAndMalformedVectors(t *testing.T)
 		t.Run(name, func(t *testing.T) {
 			f := newSemanticFixture(t)
 			mutate(f.provider)
-			r, err := f.service(10).Sync(context.Background())
-			if !errors.Is(err, application.ErrInvalidEmbedding) {
-				t.Fatalf("err = %v", err)
+			r, err := f.service(10).Build(context.Background(), none)
+			if !errors.Is(err, application.ErrInvalidEmbedding) || r.Published || r.Outcome != "failed" {
+				t.Fatalf("err=%v report=%+v", err, r)
 			}
-			if r.State != application.SemanticIndexStatePartial || r.Upserted != 0 {
-				t.Fatalf("report = %+v", r)
-			}
-			col, _ := f.store.Collection(context.Background(), f.space.Collection)
-			if col.State != "partial" || !strings.HasPrefix(col.LastError, "invalid embedding") {
-				t.Fatalf("collection = %+v", col)
+			s := f.state()
+			if s.PublishedCollection != "" || !strings.HasPrefix(s.LastError, "invalid embedding") || s.LeaseRunID != "" {
+				t.Fatalf("state = %+v", s)
 			}
 			if counts, _ := f.store.CacheCounts(context.Background()); len(counts) != 0 {
 				t.Fatalf("invalid vectors were cached: %+v", counts)
+			}
+			if names := f.index.names(); len(names) != 0 {
+				t.Fatalf("collections left: %v", names)
 			}
 		})
 	}
 }
 
-func TestSemanticIndex_PartialProviderFailureKeepsCompletedBatches(t *testing.T) {
+func TestSemanticIndex_FailureAndInterruptionKeepPreviousPublication(t *testing.T) {
 	f := newSemanticFixture(t)
-	f.provider.failCall = 2
-	r, err := f.service(2).Sync(context.Background())
-	if !errors.Is(err, application.ErrEmbeddingProviderUnavailable) || r.State != "partial" {
-		t.Fatalf("err=%v report=%+v", err, r)
-	}
-	if r.EmbeddedTexts != 2 || r.Upserted != 0 {
-		t.Fatalf("first batch should be cached but nothing published: %+v", r)
-	}
-	st, _ := f.service(2).Status(context.Background())
-	if st.SearchableComplete || st.Collection.State != "partial" || st.Collection.LastError != "embedding provider unavailable" {
-		t.Fatalf("status = %+v / %+v", st, st.Collection)
-	}
-	f.provider.failCall = 0
-	r = mustSync(t, f.service(2))
-	if r.EmbeddedTexts != 3 || r.ReusedVectors != 2 || r.State != "complete" {
-		t.Fatalf("recovery sync = %+v", r)
-	}
-}
+	col := mustRun(t, "build", f.service(2)).Collection
+	f.concepts.set(concept(6, "new concept one", domain.ConceptActive))
+	f.concepts.set(concept(7, "new concept two", domain.ConceptActive))
+	f.concepts.set(concept(8, "new concept three", domain.ConceptActive))
 
-func TestSemanticIndex_InterruptedRunIsPartialAndResumable(t *testing.T) {
-	f := newSemanticFixture(t)
+	// Provider fails on the second batch of misses.
+	f.provider.failCall = f.provider.calls + 2
+	r, err := f.service(2).Sync(context.Background(), none)
+	if !errors.Is(err, application.ErrEmbeddingProviderUnavailable) || r.Published || r.Outcome != "failed" {
+		t.Fatalf("failed sync: %v %+v", err, r)
+	}
+	if s := f.state(); s.PublishedCollection != col || s.LastRunOutcome != "failed" || s.LastError != "embedding provider unavailable" {
+		t.Fatalf("previous publication must stay: %+v", s)
+	}
+	if names := f.index.names(); len(names) != 1 || names[0] != col {
+		t.Fatalf("failed run's collection must be removed: %v", names)
+	}
+
+	// Interrupted during the next provider call.
+	f.provider.failCall = 0
 	ctx, cancel := context.WithCancel(context.Background())
-	f.provider.onEmbed = func(call int) {
-		if call == 2 {
-			cancel() // interrupt during the second provider call
-		}
+	f.provider.onEmbed = func(call int) { cancel() }
+	r, err = f.service(2).Sync(ctx, none)
+	if !errors.Is(err, context.Canceled) || r.Outcome != "interrupted" {
+		t.Fatalf("interrupted sync: %v %+v", err, r)
 	}
-	r, err := f.service(2).Sync(ctx)
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("err = %v", err)
-	}
-	if r.State != "partial" {
-		t.Fatalf("report = %+v", r)
-	}
-	col, _ := f.store.Collection(context.Background(), f.space.Collection)
-	if col.State != "partial" || col.LastError != "interrupted (canceled)" {
-		t.Fatalf("collection = %+v", col)
+	if s := f.state(); s.PublishedCollection != col || s.LastError != "interrupted (canceled)" {
+		t.Fatalf("state after interruption: %+v", s)
 	}
 	f.provider.onEmbed = nil
-	r = mustSync(t, f.service(2))
-	if r.ReusedVectors != 2 || r.EmbeddedTexts != 3 || r.State != "complete" {
-		t.Fatalf("resume = %+v", r)
+	r = mustRun(t, "sync", f.service(2))
+	if !r.Published || r.ReusedVectors != 7 || r.EmbeddedTexts != 1 {
+		t.Fatalf("recovery reuses the batches already embedded: %+v", r)
 	}
 }
 
-func TestSemanticIndex_SourceChangeBeforePublicationIsNotReportedComplete(t *testing.T) {
+func TestSemanticIndex_CatchUpAndContinuouslyChangingSources(t *testing.T) {
 	f := newSemanticFixture(t)
-	// ListConcepts call 1 = snapshot; call 2 = re-read before publishing.
-	f.concepts.onList = func(call int) {
-		if call == 2 {
+	changed := false
+	r, err := f.service(2).WithGateHook(func(step string) {
+		if step == "record-manifest" && !changed {
+			changed = true
 			f.concepts.set(concept(1, "subjunctive after il faut que (revised)", domain.ConceptActive))
 		}
+	}).Build(context.Background(), none)
+	if err != nil || !r.Published || r.CatchUpChanges != 1 {
+		t.Fatalf("catch-up: %+v %v", r, err)
 	}
-	r, err := f.service(10).Sync(context.Background())
+	if !f.status().VerifiedHealthy {
+		t.Fatal("published collection must match current sources")
+	}
+
+	col := r.Collection
+	n := 0
+	r, err = f.service(2).WithGateHook(func(step string) {
+		if step == "record-manifest" {
+			n++
+			f.concepts.set(concept(1, "revision "+strings.Repeat("x", n), domain.ConceptActive))
+		}
+	}).Rebuild(context.Background(), none)
+	if !errors.Is(err, application.ErrSemanticSourcesChanged) || r.Published || r.Outcome != "sources_changed" {
+		t.Fatalf("continuous change: %+v %v", r, err)
+	}
+	if s := f.state(); s.PublishedCollection != col {
+		t.Fatalf("previous publication must stay: %+v", s)
+	}
+}
+
+func TestSemanticIndex_BuildRefusesAndCleanupFailureIsVisible(t *testing.T) {
+	f := newSemanticFixture(t)
+	col := mustRun(t, "build", f.service(10)).Collection
+	if _, err := f.service(10).Build(context.Background(), none); !errors.Is(err, application.ErrSemanticIndexExists) {
+		t.Fatalf("second build: %v", err)
+	}
+	f.index.failDelete[col] = true
+	r := mustRun(t, "rebuild", f.service(10))
+	if !r.Published || r.Replaced != col {
+		t.Fatalf("rebuild: %+v", r)
+	}
+	st := f.status()
+	found := false
+	for _, c := range st.Collections {
+		if c.Collection == col && c.Status == "retired" {
+			found = true
+		}
+	}
+	if !found || !st.VerifiedHealthy {
+		t.Fatalf("an undeletable replaced collection must stay visible as retired: %+v", st.Collections)
+	}
+	delete(f.index.failDelete, col)
+	mustRun(t, "rebuild", f.service(10))
+	if names := f.index.names(); len(names) != 1 {
+		t.Fatalf("next run removes the leftover: %v", names)
+	}
+}
+
+func TestSemanticIndex_ModelChangeUsesSeparateSpace(t *testing.T) {
+	f := newSemanticFixture(t)
+	old := mustRun(t, "build", f.service(10))
+	space, err := application.NewSemanticIndexSpace("test", "fake/bag-of-words@2", testDims)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.ChangedDuringRun != 1 || r.Upserted != 4 || r.State != "partial" {
-		t.Fatalf("report = %+v", r)
+	f.space = space
+	if _, err := f.search().Search(context.Background(), application.LibrarySearchQuery{Text: "subjunctive", Limit: 5}); !errors.Is(err, application.ErrSemanticIndexNotBuilt) {
+		t.Fatalf("new space must not use old vectors: %v", err)
 	}
-	f.concepts.onList = nil
-	r = mustSync(t, f.service(10))
-	if r.Upserted != 1 || r.State != "complete" {
-		t.Fatalf("follow-up sync = %+v", r)
+	r := mustRun(t, "build", f.service(10))
+	if r.EmbeddedTexts != 5 || r.ReusedVectors != 0 {
+		t.Fatalf("new model re-embeds everything: %+v", r)
 	}
-}
-
-func TestSemanticIndex_SupersededRunDoesNotClaimCompletion(t *testing.T) {
-	f := newSemanticFixture(t)
-	f.provider.onEmbed = func(call int) {
-		if call == 1 { // another operator run takes ownership mid-run
-			if err := f.store.BeginRun(context.Background(), f.space, "other-run", "sync", fixedClock()()); err != nil {
-				t.Error(err)
-			}
-		}
+	st := f.status()
+	if len(st.OtherSpaces) != 1 || st.OtherSpaces[0].PublishedCollection != old.Collection || len(st.CacheCounts) != 2 {
+		t.Fatalf("status: %+v", st)
 	}
-	r := mustSync(t, f.service(10))
-	if !r.Superseded {
-		t.Fatalf("report = %+v", r)
-	}
-	col, _ := f.store.Collection(context.Background(), f.space.Collection)
-	if col.State != "building" || col.RunID != "other-run" {
-		t.Fatalf("the newer run's state must be preserved: %+v", col)
-	}
-}
-
-func TestSemanticIndex_VectorStoreFailureAndLostCollection(t *testing.T) {
-	f := newSemanticFixture(t)
-	f.index.failUpsert = 2
-	r, err := f.service(2).Sync(context.Background())
-	if !errors.Is(err, application.ErrVectorIndexUnavailable) || r.State != "partial" || r.Upserted != 2 {
-		t.Fatalf("err=%v report=%+v", err, r)
-	}
-	f.index.failUpsert = 0
-	r = mustSync(t, f.service(2))
-	if r.Upserted != 3 || r.EmbeddedTexts != 0 || r.State != "complete" {
-		t.Fatalf("recovery = %+v", r)
-	}
-
-	// The vector store lost its data: bookkeeping must not be trusted.
-	f.index = newMemIndex()
-	st, _ := f.service(2).Status(context.Background())
-	if st.SearchableComplete || st.VectorStore.Exists {
-		t.Fatalf("status must expose the lost collection: %+v", st)
-	}
-	r = mustSync(t, f.service(2))
-	if r.Upserted != 5 || r.EmbeddedTexts != 0 || r.State != "complete" {
-		t.Fatalf("sync after loss = %+v", r)
-	}
-
-	f.index.unavailable = true
-	st, err = f.service(2).Status(context.Background())
-	if err != nil || st.VectorStoreError != "vector index unavailable" || st.SearchableComplete {
-		t.Fatalf("status with unavailable store: err=%v %+v", err, st)
-	}
-}
-
-func TestSemanticIndex_BuildRefusesExistingIndexAndRemovedConceptsAreDeleted(t *testing.T) {
-	f := newSemanticFixture(t)
-	if _, err := f.service(10).Build(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := f.service(10).Build(context.Background()); !errors.Is(err, application.ErrSemanticIndexExists) {
-		t.Fatalf("second build: %v", err)
-	}
-	f.concepts.remove(5)
-	r := mustSync(t, f.service(10))
-	if r.Deleted != 1 || r.State != "complete" {
-		t.Fatalf("sync after removal = %+v", r)
-	}
-}
-
-func TestSemanticIndex_IncompatibleCollectionIsRefused(t *testing.T) {
-	f := newSemanticFixture(t)
-	if err := f.index.CreateCollection(context.Background(), f.space.Collection, testDims+1); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := f.service(10).Sync(context.Background()); !errors.Is(err, application.ErrSemanticIndexIncompatible) {
-		t.Fatalf("err = %v", err)
-	}
-	if _, err := f.service(10).Rebuild(context.Background()); err != nil {
-		t.Fatalf("rebuild must recover: %v", err)
+	if f.index.pointCount(old.Collection) != 5 {
+		t.Fatal("the old space's collection must be untouched")
 	}
 }

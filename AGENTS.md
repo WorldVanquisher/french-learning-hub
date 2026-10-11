@@ -402,6 +402,19 @@ FLH-040 persistent semantic search (owner-authorized for that milestone only):
   experiments, hybrid ranking, RAG, training and automatic SAME remain deferred.
   Contract: `docs/ARCHITECTURE.md` §9.3 and `docs/SEMANTIC_SEARCH.md`.
 
+FLH-042 semantic index run consistency:
+
+- Runs are serialized by a SQLite lease (busy unless expired or `-takeover`).
+  Each run writes only its own physical collection; publication is one fenced
+  SQLite switch of `published_collection` (migration 011). Every bookkeeping
+  write is fenced by the lease; superseded runs publish nothing.
+- Last-run history and verified health are separate. Health comes only from a
+  full inventory check (shape, ids, payloads, vectors vs cache), never a count;
+  `sync` repairs by republishing from cache. Search reports history with
+  `health_verified: false` (schema v2). No cross-store atomicity is claimed.
+- `semantic_index_legacy.go` keeps FLH-040's unfenced methods solely so the
+  FLH-041 probe compiles; production must not call them.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

@@ -43,21 +43,28 @@ export interface SemanticSearchResult {
 }
 
 export interface SemanticSearch {
-  schema_version: "knowledge_library_semantic_search_v1";
+  schema_version: "knowledge_library_semantic_search_v2";
   query: string;
   query_representation: string;
   state: LibraryStateFilter;
   limit: number;
+  // Recorded publication and last-run history (FLH-042). Not verified for this
+  // request: health_verified is always false; operators verify with
+  // `semantic-index status`.
   index: {
+    space: string;
     collection: string;
     representation: string;
     model_id: string;
     dimensions: number;
-    state: "building" | "complete" | "partial";
-    complete: boolean;
-    updated_at: string;
-    completed_at: string | null;
+    published_run_id: string;
+    published_at: string | null;
+    last_run_operation: string;
+    last_run_outcome: "" | "published" | "verified_unchanged" | "failed" | "interrupted" | "sources_changed";
+    last_run_finished_at: string | null;
     last_error: string;
+    health_verified: false;
+    note: string;
   };
   considered: number;
   skipped: { missing: number; stale: number; incompatible: number; non_positive: number };

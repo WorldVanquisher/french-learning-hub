@@ -28,10 +28,13 @@ func (f *fakeSemantic) Search(_ context.Context, q application.LibrarySearchQuer
 	if f.err != nil {
 		return nil, f.err
 	}
+	published := time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)
 	return &application.SemanticSearchReport{
-		Query: q.Text, State: q.State, Limit: q.Limit, IndexComplete: false, Considered: 4, SkippedStale: 1,
-		Index: application.SemanticIndexCollection{Collection: "c", Representation: "concept_embedding_text_v1", ModelID: "m",
-			Dimensions: 8, State: "partial", UpdatedAt: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC), LastError: "embedding provider unavailable"},
+		Query: q.Text, State: q.State, Limit: q.Limit, Considered: 4, SkippedStale: 1,
+		Space:      application.SemanticIndexSpace{Collection: "space", Representation: "concept_embedding_text_v1", ModelID: "m", Dimensions: 8},
+		Collection: "space_rabc",
+		Publication: application.SemanticIndexSpaceState{PublishedRunID: "abc", PublishedAt: &published,
+			LastRunOperation: "sync", LastRunOutcome: "failed", LastRunFinishedAt: &published, LastError: "embedding provider unavailable"},
 		Results: []application.SemanticSearchResult{{
 			Concept:    domain.KnowledgeConcept{ID: 3, Target: "subjunctive", PedagogicalIntent: "grammar", IdentityFeatures: map[string]string{}, State: domain.ConceptActive},
 			Similarity: 0.42, CurrentMemberCount: 2, SupportingUnitCount: 1,
@@ -80,11 +83,16 @@ func TestSemanticSearchHTTP_ResponseShapeAndAPIPrefix(t *testing.T) {
 	root, api := semanticServer(t, svc)
 	for _, base := range []string{root.URL, api.URL + "/api"} {
 		status, body := semanticGet(t, base+"/knowledge-library/semantic-search?q=subjonctif&state=active&limit=5")
-		if status != 200 || body["schema_version"] != "knowledge_library_semantic_search_v1" {
+		if status != 200 || body["schema_version"] != "knowledge_library_semantic_search_v2" {
 			t.Fatalf("%s: %d %v", base, status, body)
 		}
 		idx := body["index"].(map[string]any)
-		if idx["complete"] != false || idx["state"] != "partial" || idx["model_id"] != "m" || idx["last_error"] != "embedding provider unavailable" {
+		if _, ok := idx["complete"]; ok {
+			t.Fatal("v2 must not repeat run state as a completeness flag")
+		}
+		if idx["health_verified"] != false || idx["collection"] != "space_rabc" || idx["space"] != "space" ||
+			idx["last_run_outcome"] != "failed" || idx["published_run_id"] != "abc" || idx["model_id"] != "m" ||
+			!strings.Contains(idx["note"].(string), "not verified") {
 			t.Fatalf("index = %v", idx)
 		}
 		res := body["results"].([]any)[0].(map[string]any)

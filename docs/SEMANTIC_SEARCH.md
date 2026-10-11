@@ -1,4 +1,4 @@
-# Semantic search (FLH-040)
+# Semantic search (FLH-040, run consistency FLH-042)
 
 An optional **Semantic** mode in the Knowledge Library ranks Concepts by
 embedding similarity to a free-text query, using a persistent, rebuildable
@@ -50,17 +50,48 @@ Run from the directory whose `.env` the server uses (or export the variables):
 
 ```bash
 make build-semantic-index
-bin/semantic-index build     # first time; refuses if an index already exists
-bin/semantic-index status    # read-only; never calls the embedding service
-bin/semantic-index sync      # after Concepts change; embeds only new documents
-bin/semantic-index rebuild   # drop and republish; reuses cached embeddings
+bin/semantic-index build     # first publication; refuses if one exists
+bin/semantic-index status    # last run + live verification; read-only, no provider call
+bin/semantic-index sync      # verify; republish only if the publication is not healthy
+bin/semantic-index rebuild   # always republish; also removes leftover collections
 ```
 
 Add `-json` for machine-readable output and `-batch N` to override the batch
-size. Exit status: `0` complete, `3` finished but partial or superseded, `1`
-error, `2` usage. Nothing runs on a schedule: new or changed Concepts appear in
-semantic results only after you run `sync`. Until then `status` reports them
-as missing or stale, and search drops stale hits.
+size. Nothing runs on a schedule: new or changed Concepts appear in semantic
+results only after you run `sync`; until then `status` reports them as stale or
+missing, and search drops stale hits.
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | Published a new collection, or `sync` verified the publication healthy and wrote nothing |
+| `1` | Error (provider, Qdrant, invalid vectors, interruption, sources kept changing); the previous publication is unchanged |
+| `2` | Usage |
+| `3` | Ownership lost: another run took over; this run published nothing |
+| `4` | Busy: another run holds an unexpired lease |
+
+### How runs are serialized and published (FLH-042)
+
+- **One run per space at a time.** A run takes a lease in SQLite (120 s,
+  renewed at every step). A second run exits `4` while the lease is unexpired.
+  `-takeover` takes the lease anyway: use it only when the holder is known to be
+  dead (killed, crashed); a live holder stops at its next step without
+  publishing.
+- **Each run writes its own collection.** Every `build`, `sync` (when
+  repairing) or `rebuild` creates a new physical collection named
+  `<space>_r<run>` and fills it from the embedding cache (embedding only cache
+  misses). No run ever modifies a collection another run created or published.
+- **Publication is one SQLite step.** Before publishing, the run re-reads the
+  Concepts, catches up with changes (twice at most) and verifies its own
+  collection completely. It then switches the space's published collection in
+  one transaction that succeeds only while it still holds the lease. Search
+  reads that pointer.
+- **Old collections are removed afterwards.** The replaced collection is
+  deleted after publication; if that fails it stays recorded as `retired` and
+  the next run removes it. Collections of interrupted or superseded runs are
+  removed the same way.
+- **No cross-store atomicity is claimed.** The SQLite switch is the single
+  publication point; search re-checks every hit against SQLite. A search racing
+  a publication retries once on the new collection.
 
 With Docker (release image and the `semantic` profile):
 
@@ -74,33 +105,41 @@ docker compose exec app /app/semantic-index status
 Set the variables above in the shell or Compose `.env`. Inside Compose
 `QDRANT_URL` defaults to `http://qdrant:6333`; Qdrant is also published on
 `127.0.0.1:${FLH_QDRANT_PORT:-6333}` only. This Compose path was validated with
-`docker compose config` but not run against a Docker daemon in FLH-040.
+`docker compose config` only; it has not been run against a Docker daemon.
 
 ## Reading `status`
 
-| Line | Meaning |
+`status` reports three different things and never conflates them:
+
+| Section | Meaning |
 | --- | --- |
-| `state: complete` | The last run published every Concept's current document and re-validated it. |
-| `state: partial` + `last error` | The last run failed, was interrupted, or saw Concepts change. Run `sync`. |
-| `state: building` | A run is in progress, or one was killed without cleanup. If none is running, run `sync`. |
-| `stale` / `missing` / `orphaned points` | Concepts whose published hash is outdated, never published, or published for an ID that no longer exists. |
-| `vector store: … points` vs `concepts` | Qdrant's actual count; a mismatch means Qdrant lost or gained data. |
-| `other space` | Collections for other model identities; not used by the current configuration. |
-| `searchable: complete` | All of the above agree. |
+| `published` | The collection search uses, and the run and time that published it (recorded history). |
+| `last run` | The outcome of the latest run that still owned the space when it finished: `published`, `verified_unchanged`, `failed`, `interrupted` or `sources_changed`, with its error. History, not health. |
+| `lease` | A run currently holding the space, or an EXPIRED lease left by a killed run. |
+| `verification` | Live check of the published collection, computed now: existence, vector size and distance, and every point's id, payload (content hash, model, representation, dimensions) and vector compared with SQLite's current documents and the cached embeddings. `HEALTHY` only if all match; a point count alone is never enough. |
+| `leftover` / `unrecorded` | Collections awaiting removal by the next run, or present in Qdrant without a record (for example an FLH-040 collection); `rebuild` removes unrecorded ones. |
+| `other space` | Spaces for other model identities; not used by the current configuration. |
+
+Search responses (schema `knowledge_library_semantic_search_v2`) carry the
+publication and last-run fields as recorded history with
+`health_verified: false`; search does not verify the index. What a search did
+verify is in its per-hit counts (`skipped.missing`, `stale`, `incompatible`).
 
 ## Recovery
 
 | Situation | What happens | What to do |
 | --- | --- | --- |
-| Embedding service fails or returns malformed vectors during `build`/`sync` | Run stops; space `partial`; vectors from completed batches stay cached; nothing invalid is stored | Fix the service; run `sync` (only missing documents are embedded) |
-| Ctrl-C / SIGTERM during a run | Context canceled; space `partial` with `interrupted (canceled)` | Run `sync` |
-| Process killed with SIGKILL or power loss | Space stays `building` | Run `sync`; it takes over with a new run ID |
-| Two runs at once | The newer run owns the space; the older cannot mark it complete and exits `3` | Let the newer finish; run `status` |
-| Concepts change during a run | Changed documents are not published; space `partial` | Run `sync` |
-| Qdrant down | Search answers `502`; `status` shows `vector index unavailable`; keyword search unaffected | Start Qdrant; no sync needed if its storage survived |
-| Qdrant data lost | `status` shows a missing collection or a point-count mismatch | Run `sync` or `rebuild` (no re-embedding) |
-| Collection with the wrong vector size | `sync` refuses (`incompatible`) | Run `rebuild` |
-| Model changed | New `EMBEDDING_MODEL_ID` → new space, not built yet → search `409` | Run `build` for the new identity |
+| Embedding service fails or returns malformed vectors | Run stops before publishing (`failed`); its collection is removed; completed batches stay cached; search keeps using the previous publication | Fix the service; run `sync` |
+| Ctrl-C / SIGTERM | Run stops (`interrupted`); same as above | Run `sync` |
+| Process killed with SIGKILL or power loss | Its lease stays until it expires (120 s); its collection may stay as a leftover | Wait for expiry, or run with `-takeover` if you are sure it is dead; the next run removes leftovers |
+| Another run is in progress | New run exits `4` | Wait; check `status` |
+| A run was taken over | The superseded run stops at its next step (exit `3`); its writes went only to its own collection | Nothing; `status` shows the newer run |
+| Concepts change during a run | Absorbed by catch-up; if they keep changing, `sources_changed` and nothing is published | Run `sync` again |
+| One point missing, replaced, stale or foreign in the published collection | `status` shows it under `verification` | Run `sync` (republishes from cache, no re-embedding) |
+| Published collection lost entirely | `status`: collection missing; search `409` | Run `sync` |
+| Published collection has the wrong size or distance | `status`: shape mismatch; search `409` | Run `sync` |
+| Qdrant down | Search `502`; `status` cannot verify; keyword search unaffected | Start Qdrant; run `status` |
+| Model changed | New `EMBEDDING_MODEL_ID` → new space, not built → search `409` | Run `build` for the new identity |
 
 There is no automatic retry anywhere. Backups need only the SQLite database:
 the embedding cache lives there, and Qdrant can always be rebuilt from it.
@@ -122,104 +161,133 @@ Read the code in this order.
 
 `internal/application/semantic_index.go` defines the narrow boundaries:
 
-- `EmbeddingProvider` (existing): text in, vectors out. It knows nothing about
-  Concepts.
-- `VectorIndex`: create/inspect/delete a collection, upsert/delete points, query.
-  `internal/vectorindex/qdrant.go` implements it with `net/http` only.
+- `EmbeddingProvider` (existing): text in, vectors out.
+- `VectorIndex`: inspect, list, create and delete collections; upsert, delete
+  and scroll points; query. `internal/vectorindex/qdrant.go` implements it with
+  `net/http` only.
 - `SemanticIndexStore`: the SQLite bookkeeping
-  (`internal/storage/sqlite/semantic_index_repository.go`).
-- `SemanticConceptReader`: `ListConcepts` only, so indexing cannot modify
-  Concepts.
+  (`internal/storage/sqlite/semantic_index_repository.go`). Every method that
+  takes a run ID is *fenced*: it acts only while that run holds the lease.
+- `SemanticConceptReader`: `ListConcepts` only.
 
 `SemanticIndexService` (operations) and `SemanticSearchService` (queries,
-`semantic_search.go`) depend only on these interfaces. The tests swap in
-in-memory fakes (`semantic_fakes_test.go`) and the real SQLite store, and the
-integration tests (`internal/vectorindex/qdrant_integration_test.go`) use a real
-Qdrant.
+`semantic_search.go`) depend only on these. Tests use in-memory fakes
+(`semantic_fakes_test.go`) plus the real SQLite store, and the integration tests
+(`internal/vectorindex/qdrant_integration_test.go`) use a real Qdrant.
+
+### Ownership: lease, gates and the publication switch
+
+`run()` takes the lease with `AcquireLease` (busy unless expired or
+`-takeover`). From then on every guarded action goes through `checkpoint()`,
+which calls `RenewLease` (it fails with `ErrSemanticIndexOwnershipLost` if
+another run took over) before:
+
+- each provider batch (`embed`);
+- registering and creating the run's collection;
+- each upsert and each manifest write;
+- each point deletion during catch-up;
+- the publication switch;
+- each cleanup deletion.
+
+A checkpoint alone leaves a window between the check and the action. The
+design therefore never depends on it:
+
+- **Vector writes go only to the run's own collection.** A superseded run that
+  slips through the window can only write into a collection that is never
+  published.
+- **Bookkeeping writes are fenced inside their own transaction.** `fenced()`
+  begins with `UPDATE … WHERE lease_run_id = ?`. That statement both checks
+  ownership and takes SQLite's write lock, so the lease cannot change before the
+  transaction commits.
+- **`Publish` is that kind of fenced transaction.** It switches
+  `published_collection`, marks the new collection `published` and the previous
+  one `retired`. It is the only way to change what search reads.
+
+`TestQdrantIntegration_FencedPublishAfterNoOpTakeover` exercises the narrowest
+window, where only the fence stops the old run; disabling the fence makes that
+test fail.
 
 ### Cancellation
 
 Every call takes a `context.Context`:
 
-- `cmd/semantic-index/main.go` creates it with
-  `signal.NotifyContext(..., SIGINT, SIGTERM)`.
-- The provider and Qdrant adapters attach it to each HTTP request
-  (`http.NewRequestWithContext`), so Ctrl-C aborts an in-flight call.
-- `ensureVectors` also checks `ctx.Err()` before each batch.
-- The Qdrant adapter's `classify` preserves `context.Canceled` in the error
-  chain.
-- `run`'s deferred block adds the context error when an adapter reported a
-  canceled call only as "unavailable".
-
-The final bookkeeping write must happen even after cancellation, so the
-deferred block uses
-`context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)`. This is a
-new, short-lived context for exactly one SQLite update, not a way to keep
-working after the user pressed Ctrl-C.
+- **CLI.** `cmd/semantic-index/main.go` cancels it on SIGINT/SIGTERM.
+- **Adapters.** They attach it to every HTTP request.
+- **Checkpoints.** Each one checks `ctx.Err()` first.
+- **`run`'s deferred block** uses a fresh short context
+  (`context.WithoutCancel(ctx)` plus a 10 s timeout) only to remove the run's
+  own unpublished collection and record the outcome. It does not keep working
+  after Ctrl-C.
 
 ### Bounded work
 
-There are no goroutines in indexing or search: batches run one after another.
-
-- **Batch size.** Each provider call and each Qdrant upsert or delete handles at
-  most `batchSize` items, clamped to 1–256 in `NewSemanticIndexService` and
-  validated in configuration.
-- **Search.** It asks Qdrant for `min(limit*4, 200)` hits and embeds exactly one
-  text.
-- **Request size.** SQLite IN-lists are chunked (`sqliteMaxBatch`). Response
-  bodies are read through `io.LimitReader`: 32 MiB for Qdrant, 16 MiB for
-  embeddings.
-- **Timeouts.** Each Qdrant request is bounded by `QDRANT_TIMEOUT`, and each
-  provider request by `EMBEDDING_TIMEOUT`.
+There are no goroutines in indexing or search, and batches are sequential:
+- **Batch size.** Each provider call, upsert, delete and scroll page handles at
+  most `batchSize` items (1–256).
+- **Catch-up.** It is limited to two passes.
+- **Search.** It embeds one text, asks Qdrant for `min(limit*4, 200)` hits, and
+  retries at most once.
+- **Response bodies** are read through `io.LimitReader`.
+- **Timeouts** bound every Qdrant and provider request.
 
 ### Transactions: never across a network call
 
-Every `SemanticIndexRepository` method is one short transaction. The service
-never holds one while calling the provider or Qdrant. The order inside `run` is
-deliberate:
+Each repository method is one short transaction, and none is held while the
+provider or Qdrant is called.
+`TestQdrantIntegration_NoSQLiteWriteLockDuringNetworkCalls` proves it against
+a real Qdrant: during every provider call and every Qdrant HTTP request, an
+independent connection must take an immediate write transaction within 50 ms.
+A positive control shows the probe fails when a lock is held.
 
-1. `BeginRun` (one transaction) takes ownership of the space under a new run ID.
-2. `ensureCollection` and `ListConcepts` read state; then `ensureVectors`
-   embeds cache misses batch by batch, saving each batch with `SaveVectors`
-   (one transaction each) before the next provider call. Work already paid for
-   survives an interruption.
-3. `publish` re-reads the Concepts, skips any whose hash changed, calls
-   `Upsert`, and only after Qdrant acknowledged it calls `RecordPoints`.
-4. `staleCount` re-validates all published hashes.
-5. The deferred `FinishRun` writes `complete` or `partial` *only if this run
-   still owns the space* (`WHERE run_id = ?`).
+### Verification and repair
 
-Because SQLite and Qdrant cannot commit together, the design never relies on
-it. A crash between `Upsert` and `RecordPoints` leaves a point the bookkeeping
-does not know about. The next `sync` republishes that Concept: the upsert is
-idempotent because the point ID is the Concept ID. Search, in turn, trusts
-neither store alone: `SemanticSearchService.Search` re-reads every candidate
-from `ListConcepts`, recomputes its document hash, and drops mismatches.
+- **`verify()`** reads the collection's shape, then scrolls every point with its
+  payload and vector, comparing each with the current SQLite document and the
+  cached embedding. Qdrant normalizes cosine vectors, so the comparison
+  normalizes both. Problems are listed by kind: missing, extra, foreign payload,
+  stale, vector mismatch, unverifiable.
+- **`sync`** runs the same verification first and republishes when anything is
+  wrong. The cache makes repair free of provider calls.
 
 ### Failure recovery in code
 
-- `semanticErrorCategory` turns any error into the short, secret-free text
-  stored in `last_error` and shown by `status` and the UI.
-- `ensureCollection` treats a missing Qdrant collection as "everything
-  unpublished" (it clears the point records first) and refuses a collection
-  whose vector size or distance is wrong.
-- `ValidateEmbedding` rejects wrong dimensions, NaN/Inf, values outside float32
-  and zero vectors before anything is cached or published.
-- The HTTP layer (`internal/transport/http/semantic_search.go`) maps error
-  categories to `503`, `409`, `502` and `504`, and never falls back to keyword
-  search.
+- **`semanticErrorCategory`** maps every error to a short, secret-free text for
+  `last_error`.
+- **On failure, `run`'s deferred block** removes the run's unpublished
+  collection, or marks it `abandoned` if deletion fails. It then records the
+  outcome with `CompleteRun`, a fenced write, so a superseded run records
+  nothing.
+- **`cleanup()`** removes retired, abandoned and stale writing collections while
+  the run still holds the lease, plus unrecorded ones on `rebuild`.
+- **`ValidateEmbedding`** rejects wrong dimensions, NaN/Inf, values outside
+  float32 and zero vectors before anything is cached.
+
+### Legacy FLH-040 bookkeeping
+
+Migration 010's `semantic_index_collections` and `semantic_index_points` are no
+longer read or written. `internal/storage/sqlite/semantic_index_legacy.go`
+keeps their old, unfenced methods only so that the FLH-041 diagnostic
+(`scripts/validation/flh041/ownership_probe`, owned by another task) still
+compiles. Running it still shows the FLH-040 defect on those dead tables; it
+says nothing about current indexing. After upgrading from FLH-040, run `build`
+once: the old collection is unrecorded and `rebuild` removes it. Cached
+embeddings are reused, so nothing is re-embedded.
 
 ## Limits
 
 - **Quality.** The tests and the demo use a deterministic fake provider. No real
-  embedding model was evaluated in FLH-040; semantic quality and any Recall@K or
-  MRR change are a later evaluation task.
-- **Index content.** Only Concept identity text is indexed: unit wording, French
-  examples and source records are not. A Concept is found by what its identity
-  says.
-- **Scale.** Each search re-reads all Concepts from SQLite (fine at personal
-  scale) and every `sync` re-hashes all Concepts.
-- **Single instance.** One Qdrant instance, no replication. The index is
+  embedding model has been evaluated; semantic quality and any Recall@K or MRR
+  change are a later evaluation task.
+- **Index content.** Only Concept identity text is indexed; unit wording,
+  French examples and source records are not.
+- **Full republish.** Every repairing `sync` or `rebuild` republishes all points
+  from the cache: O(Concepts) upserts and a full verification scan. That is fine
+  at personal scale; the trade-off buys isolation between runs.
+- **Lease timing.** A lease assumes a run makes progress at least every 120 s
+  (each external call is bounded by its timeout, far below that). A process
+  paused for longer can be taken over; it then publishes nothing.
+- **Search does not verify.** Search re-checks each hit but does not scan the
+  collection; use `status` for health.
+- **Single instance.** One Qdrant instance, no replication; the index is
   disposable by design.
-- **Cache growth.** The cache is never pruned automatically; vectors for old
-  model identities stay until removed by hand.
+- **Cache growth.** The cache is never pruned automatically.

@@ -2,8 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
+	"time"
+
+	"french-learning-app/internal/application"
+	"french-learning-app/internal/storage/sqlite"
 )
 
 func TestRun_UsageAndConfigurationRefusals(t *testing.T) {
@@ -37,5 +42,30 @@ func TestRun_UsageAndConfigurationRefusals(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := run([]string{"-batch", "999", "sync"}, &out, &errOut); code != 2 || !strings.Contains(errOut.String(), "-batch must be between 1 and 256") {
 		t.Fatalf("batch bound: code %d stderr %q", code, errOut.String())
+	}
+}
+
+func TestRun_BusyLeaseExitsFour(t *testing.T) {
+	dbPath := t.TempDir() + "/busy.db"
+	for k, v := range map[string]string{
+		"SEMANTIC_SEARCH": "qdrant", "EMBEDDING_PROVIDER": "http", "EMBEDDING_MODEL": "m",
+		"EMBEDDING_BASE_URL": "http://127.0.0.1:9/v1", "QDRANT_URL": "http://127.0.0.1:9",
+		"EMBEDDING_MODEL_ID": "m@1", "EMBEDDING_DIMENSIONS": "8", "DB_PATH": dbPath,
+	} {
+		t.Setenv(k, v)
+	}
+	db, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	space, _ := application.NewSemanticIndexSpace("flh_concepts", "m@1", 8)
+	now := time.Now().UTC()
+	if err := sqlite.NewSemanticIndexRepository(db).AcquireLease(context.Background(), space, "other-run-000000", "rebuild", now, now.Add(time.Hour), false); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	var out, errOut bytes.Buffer
+	if code := run([]string{"sync"}, &out, &errOut); code != 4 || !strings.Contains(errOut.String(), "busy:") || !strings.Contains(errOut.String(), "other-run-000000") {
+		t.Fatalf("code %d stderr %q", code, errOut.String())
 	}
 }

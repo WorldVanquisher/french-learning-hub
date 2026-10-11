@@ -41,7 +41,7 @@ func TestQdrant_RequestShapesAndAPIKey(t *testing.T) {
 		t.Fatalf("info = %+v, %v", info, err)
 	}
 	space := application.SemanticIndexSpace{Collection: "c1", Representation: "r", ModelID: "m", Dimensions: 3}
-	if err := q.Upsert(ctx, space, []application.VectorPoint{{ConceptID: 7, ContentHash: "h", Vector: []float32{1, 0, 0}}}); err != nil {
+	if err := q.Upsert(ctx, "c1", space, []application.VectorPoint{{ConceptID: 7, ContentHash: "h", Vector: []float32{1, 0, 0}}}); err != nil {
 		t.Fatal(err)
 	}
 	hits, err := q.Query(ctx, "c1", []float32{1, 0, 0}, 5)
@@ -127,8 +127,52 @@ func TestQdrant_MissingCollectionAndErrorCategories(t *testing.T) {
 
 func TestQdrant_RejectsNonPositivePointIDs(t *testing.T) {
 	q := NewQdrant("http://127.0.0.1:1", "", time.Second)
-	err := q.Upsert(context.Background(), application.SemanticIndexSpace{Collection: "c"}, []application.VectorPoint{{ConceptID: 0, Vector: []float32{1}}})
+	err := q.Upsert(context.Background(), "c", application.SemanticIndexSpace{Collection: "c"}, []application.VectorPoint{{ConceptID: 0, Vector: []float32{1}}})
 	if !errors.Is(err, application.ErrVectorIndexUnavailable) {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestQdrant_ScrollPagesAndListCollections(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/collections":
+			io.WriteString(w, `{"result":{"collections":[{"name":"a"},{"name":"b_r1"}]},"status":"ok"}`)
+		case strings.HasSuffix(r.URL.Path, "/points/scroll") && !strings.Contains(string(body), `"offset"`):
+			if !strings.Contains(string(body), `"with_vector":true`) || !strings.Contains(string(body), `"with_payload":true`) {
+				t.Errorf("scroll must request payloads and vectors: %s", body)
+			}
+			io.WriteString(w, `{"result":{"points":[
+				{"id":1,"payload":{"concept_id":1,"content_hash":"h1","representation":"r","model_id":"m","dimensions":2},"vector":[0.6,0.8]},
+				{"id":2,"payload":{"concept_id":7,"content_hash":"h2"},"vector":[1,0]}],
+				"next_page_offset":3},"status":"ok"}`)
+		case strings.HasSuffix(r.URL.Path, "/points/scroll"):
+			if !strings.Contains(string(body), `"offset":3`) {
+				t.Errorf("second page must pass the offset: %s", body)
+			}
+			io.WriteString(w, `{"result":{"points":[{"id":3,"payload":{},"vector":[0,1]}],"next_page_offset":null},"status":"ok"}`)
+		}
+	}))
+	defer srv.Close()
+	q := NewQdrant(srv.URL, "", time.Second)
+	ctx := context.Background()
+	names, err := q.ListCollections(ctx)
+	if err != nil || len(names) != 2 || names[1] != "b_r1" {
+		t.Fatalf("names = %v %v", names, err)
+	}
+	page, next, err := q.Scroll(ctx, "c", nil, 2)
+	if err != nil || len(page) != 2 || next == nil || *next != 3 {
+		t.Fatalf("page 1 = %+v next %v err %v", page, next, err)
+	}
+	if !page[0].PayloadValid || page[0].ContentHash != "h1" || page[0].Vector[1] != 0.8 {
+		t.Fatalf("point 1 = %+v", page[0])
+	}
+	if page[1].PayloadValid {
+		t.Fatalf("a payload whose concept_id disagrees with the point id is invalid: %+v", page[1])
+	}
+	page, next, err = q.Scroll(ctx, "c", next, 2)
+	if err != nil || len(page) != 1 || next != nil || page[0].PayloadValid {
+		t.Fatalf("page 2 = %+v next %v err %v", page, next, err)
 	}
 }

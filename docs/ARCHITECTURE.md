@@ -1929,24 +1929,49 @@ in [SEMANTIC_SEARCH.md](SEMANTIC_SEARCH.md); the contract is:
   operator-declared `EMBEDDING_MODEL_ID` and `EMBEDDING_DIMENSIONS`. The provider
   display name is not an identity. Unchanged documents are never re-embedded,
   across runs, restarts and rebuilds.
-- **No mixed vector spaces.** The Qdrant collection name is derived from
-  (representation, model identity, dimensions), so a model or representation
-  change uses a new collection; every point also carries that identity in its
-  payload and search drops any hit from another space.
+- **No mixed vector spaces.** A space's name is derived from (representation,
+  model identity, dimensions), and each of its physical collections is named
+  after it, so a model or representation change uses a new space. Every point
+  also carries that identity in its payload, and search drops any hit from
+  another space.
 - **Explicit operations.** The `semantic-index` CLI runs `build`, `sync`,
   `rebuild` and `status`. There is no background worker, no indexing during
   browsing and no automatic retry. Work is sequential in bounded batches
   (`SEMANTIC_BATCH_SIZE`, default 32, at most 256) and every call takes the
   caller's context, so SIGINT/SIGTERM stops it.
-- **Consistency.** Provider and Qdrant calls happen outside SQLite
-  transactions; each bookkeeping write is its own short transaction. A run
-  marks its space `building` under a new run ID, re-reads the Concepts and skips
-  any whose hash changed immediately before publishing each batch, records points
-  only after Qdrant acknowledged them, and re-validates every published hash at
-  the end. It writes `complete` only if nothing is stale and its run ID still
-  owns the space; failures and interruptions leave `partial` with a sanitized
-  error, and a newer run supersedes an older one. **No atomicity across SQLite
-  and Qdrant is claimed**; instead search re-reads every hit.
+- **Run serialization and publication (FLH-042).**
+  - **Lease.** A run first takes the space's lease in SQLite (120 s, renewed at
+    every step). Another run is *busy* (CLI exit `4`) unless the lease expired
+    or the operator passes `-takeover`.
+  - **Private collection.** The run writes only into its own new physical
+    collection (`<space>_r<run>`), filled from the embedding cache, and never
+    mutates a collection another run created or published.
+  - **Gates.** Before every vector mutation and bookkeeping write it re-checks
+    the lease. Every bookkeeping write is a *fenced* transaction whose first
+    statement matches only while the run holds the lease.
+  - **Publication.** After catching up with source changes (at most twice) and
+    verifying its own collection completely, the run switches
+    `semantic_index_spaces.published_collection` in one fenced transaction. That
+    is the only way to change what search reads.
+  - **Superseded runs.** They stop at their next gate (exit `3`), and their
+    writes can reach only their own unpublished collection.
+  - **No provider or Qdrant call happens inside a SQLite transaction.** **No
+    atomicity across SQLite and Qdrant is claimed:** the fenced switch is the
+    single publication point, replaced collections are deleted afterwards (or
+    left recorded as `retired` for the next run), and search re-reads every hit.
+- **Run history versus verified health.** `semantic_index_spaces` records the
+  publication and the last run's outcome (`published`, `verified_unchanged`,
+  `failed`, `interrupted`, `sources_changed`); that is history, not health.
+  `semantic-index status` computes health live from the full Qdrant inventory:
+  - collection shape (vector size, cosine distance);
+  - every point's id, payload identity and content hash, and its vector against
+    the cached embedding;
+  - missing and extra ids.
+
+  The point count alone is never accepted. `sync` runs that verification first:
+  if healthy it writes nothing, otherwise it republishes from the cache. That
+  repairs a missing point, a point replaced with the count preserved, stale or
+  foreign payloads, a wrong shape and a lost collection.
 - **Search.** The query (trimmed text, `concept_search_query_v1`) is embedded
   once and never stored. Qdrant returns up to four times the page size (at most
   200) hits; each is re-read against SQLite and dropped if its Concept no longer
@@ -1955,10 +1980,13 @@ in [SEMANTIC_SEARCH.md](SEMANTIC_SEARCH.md); the contract is:
   retired, as in keyword mode) applies to current facts. Dropped hits are counted
   in the response and never replaced by other candidates. Similarity is cosine
   similarity — evidence, not a probability or a SAME judgment.
-- **Failures are explicit.** Not configured → `503`; index not built or
-  incompatible → `409`; provider or Qdrant timeout → `504`, unavailable or
-  malformed output → `502`. A partial index still answers, with
-  `index.complete: false` and its last error visible in the response and UI.
+- **Failures are explicit.** Not configured → `503`; nothing published, the
+  published collection missing, or an incompatible shape → `409`; provider or
+  Qdrant timeout → `504`, unavailable or malformed output → `502`. Search queries
+  the published collection; if a publication replaced it meanwhile, search
+  re-reads the pointer and retries once. The response (schema v2) reports
+  publication and last-run history with `health_verified: false` and never
+  presents stored run state as verified completeness.
 
 Deterministic fake-embedding tests prove these mechanics only. No real model's
 semantic quality or Recall@K/MRR improvement has been measured.
@@ -2096,7 +2124,8 @@ forward-only; there are no down migrations.
 | `007_fix_concept_resolution` | `unit_concept_memberships`, `supersedes_link_id`, `lifecycle_state`, durable-identity index |
 | `008_unit_resolution_judgments` | `unit_resolution_judgments`, `unit_concept_distinctions` |
 | `009_annotation_operations` | `annotation_operations` idempotency receipts |
-| `010_semantic_index` | `semantic_embedding_cache`, `semantic_index_collections`, `semantic_index_points` (FLH-040 bookkeeping) |
+| `010_semantic_index` | `semantic_embedding_cache` (still used); `semantic_index_collections`, `semantic_index_points` (FLH-040 bookkeeping, unused since FLH-042) |
+| `011_semantic_index_runs` | `semantic_index_spaces` (lease, publication, last run), `semantic_index_physical_collections`, `semantic_index_manifest` (FLH-042) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -2870,8 +2899,10 @@ Invalid `q`, `state` or `limit` returns `400`; unknown ids return `404`; these
 routes accept GET only.
 
 `GET /knowledge-library/semantic-search?q=&state=&limit=` (FLH-040) returns
-schema `knowledge_library_semantic_search_v1`: the query, its representation,
-the index space and state (`complete` flag, last error), counts of considered,
+schema `knowledge_library_semantic_search_v2` (FLH-042): the query, its
+representation, the space and the physical collection queried, the recorded
+publication and last-run history (`published_at`, `last_run_outcome`,
+`last_error`, `health_verified: false`), counts of considered,
 skipped (`missing`, `stale`, `incompatible`, `non_positive`) and state-filtered
 hits, and results with `concept`, `similarity`, `current_member_count` and
 `supporting_unit_count`. `q` is required. Status codes are listed in

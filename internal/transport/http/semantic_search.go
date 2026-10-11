@@ -10,8 +10,10 @@ import (
 	"french-learning-app/internal/application"
 )
 
-// KnowledgeLibrarySemanticSearchSchemaVersion names the FLH-040 response.
-const KnowledgeLibrarySemanticSearchSchemaVersion = "knowledge_library_semantic_search_v1"
+// KnowledgeLibrarySemanticSearchSchemaVersion names the response. v2 (FLH-042)
+// replaced v1's index.complete flag, which repeated stored run state as if it
+// were verified completeness, with explicit publication and last-run history.
+const KnowledgeLibrarySemanticSearchSchemaVersion = "knowledge_library_semantic_search_v2"
 
 // SemanticSearchService answers semantic Knowledge Library queries. It is
 // read-only: it embeds the query, reads stored vectors and re-reads SQLite.
@@ -26,16 +28,30 @@ func WithSemanticSearch(service SemanticSearchService) HandlerOption {
 	return func(handler *Handler) { handler.semantic = service }
 }
 
+// semanticIndexResponse reports recorded history only. health_verified is
+// always false: search does not verify the index (semantic-index status does).
 type semanticIndexResponse struct {
-	Collection     string  `json:"collection"`
-	Representation string  `json:"representation"`
-	ModelID        string  `json:"model_id"`
-	Dimensions     int     `json:"dimensions"`
-	State          string  `json:"state"`
-	Complete       bool    `json:"complete"`
-	UpdatedAt      string  `json:"updated_at"`
-	CompletedAt    *string `json:"completed_at"`
-	LastError      string  `json:"last_error"`
+	Space             string  `json:"space"`
+	Collection        string  `json:"collection"` // physical collection queried
+	Representation    string  `json:"representation"`
+	ModelID           string  `json:"model_id"`
+	Dimensions        int     `json:"dimensions"`
+	PublishedRunID    string  `json:"published_run_id"`
+	PublishedAt       *string `json:"published_at"`
+	LastRunOperation  string  `json:"last_run_operation"`
+	LastRunOutcome    string  `json:"last_run_outcome"`
+	LastRunFinishedAt *string `json:"last_run_finished_at"`
+	LastError         string  `json:"last_error"`
+	HealthVerified    bool    `json:"health_verified"`
+	Note              string  `json:"note"`
+}
+
+func optTime(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.Format(time.RFC3339Nano)
+	return &s
 }
 
 type semanticSearchResultResponse struct {
@@ -95,7 +111,7 @@ func (h *Handler) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
 	if state == "" {
 		state = "all"
 	}
-	idx := report.Index
+	pub := report.Publication
 	resp := semanticSearchResponse{
 		SchemaVersion: KnowledgeLibrarySemanticSearchSchemaVersion,
 		Query:         report.Query,
@@ -103,8 +119,13 @@ func (h *Handler) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
 		State:         state,
 		Limit:         report.Limit,
 		Index: semanticIndexResponse{
-			Collection: idx.Collection, Representation: idx.Representation, ModelID: idx.ModelID, Dimensions: idx.Dimensions,
-			State: idx.State, Complete: report.IndexComplete, UpdatedAt: idx.UpdatedAt.Format(time.RFC3339Nano), LastError: idx.LastError,
+			Space: report.Space.Collection, Collection: report.Collection, Representation: report.Space.Representation,
+			ModelID: report.Space.ModelID, Dimensions: report.Space.Dimensions,
+			PublishedRunID: pub.PublishedRunID, PublishedAt: optTime(pub.PublishedAt),
+			LastRunOperation: pub.LastRunOperation, LastRunOutcome: pub.LastRunOutcome,
+			LastRunFinishedAt: optTime(pub.LastRunFinishedAt), LastError: pub.LastError,
+			HealthVerified: false,
+			Note:           "publication and last-run fields are recorded history, not verified for this request; every returned hit was re-checked against the database",
 		},
 		Considered: report.Considered,
 		Skipped: semanticSkippedResponse{
@@ -113,10 +134,6 @@ func (h *Handler) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
 		FilteredByState: report.FilteredByState,
 		ScoreNote:       "cosine similarity between query and concept-document embeddings; not a probability and not a SAME judgment",
 		Results:         make([]semanticSearchResultResponse, 0, len(report.Results)),
-	}
-	if idx.CompletedAt != nil {
-		ts := idx.CompletedAt.Format(time.RFC3339Nano)
-		resp.Index.CompletedAt = &ts
 	}
 	for _, res := range report.Results {
 		resp.Results = append(resp.Results, semanticSearchResultResponse{

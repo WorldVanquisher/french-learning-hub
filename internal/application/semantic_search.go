@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"french-learning-app/internal/domain"
 )
@@ -24,7 +26,7 @@ type ConceptSummarizer interface {
 
 // SemanticSearchIndexReader is the read-only bookkeeping used by search.
 type SemanticSearchIndexReader interface {
-	Collection(ctx context.Context, collection string) (*SemanticIndexCollection, error)
+	SpaceState(ctx context.Context, space string) (*SemanticIndexSpaceState, error)
 }
 
 // SemanticSearchResult is one Concept found by vector similarity, with current
@@ -38,24 +40,28 @@ type SemanticSearchResult struct {
 	SupportingUnitCount int
 }
 
-// SemanticSearchReport is one bounded semantic search page.
+// SemanticSearchReport is one bounded semantic search page. Publication and
+// last-run fields are recorded history; search does not verify index health
+// (operators run `semantic-index status`). What this request did verify is
+// reported in the per-hit counters.
 type SemanticSearchReport struct {
 	Query               string
 	State               *domain.ConceptState
 	Limit               int
-	Index               SemanticIndexCollection
-	IndexComplete       bool
+	Space               SemanticIndexSpace
+	Publication         SemanticIndexSpaceState
+	Collection          string // the physical collection actually queried
 	Considered          int
 	SkippedMissing      int // hit for a Concept no longer in SQLite
-	SkippedStale        int // hit published with an outdated document hash
-	SkippedIncompatible int // hit payload from another model space
+	SkippedStale        int // hit whose document hash differs from the current Concept
+	SkippedIncompatible int // hit payload from another space or not written by this system
 	SkippedNonPositive  int // similarity <= 0
 	FilteredByState     int
 	Results             []SemanticSearchResult
 }
 
 // SemanticSearchService answers user semantic queries. It embeds the query
-// (one provider call, never persisted), queries stored document vectors, and
+// (one provider call, never persisted), queries the published collection, and
 // re-reads every candidate against SQLite before returning current facts. It
 // never writes annotations, memberships or index state.
 type SemanticSearchService struct {
@@ -71,27 +77,37 @@ func NewSemanticSearchService(concepts SemanticConceptReader, summarizer Concept
 	return &SemanticSearchService{concepts: concepts, summarizer: summarizer, store: store, index: index, provider: provider, space: space}
 }
 
+// published returns the space record and its published collection, checking
+// that the collection exists with the configured shape.
+func (s *SemanticSearchService) published(ctx context.Context) (*SemanticIndexSpaceState, error) {
+	state, err := s.store.SpaceState(ctx, s.space.Collection)
+	if err != nil {
+		return nil, err
+	}
+	if state == nil || state.PublishedCollection == "" {
+		return nil, fmt.Errorf("%w for model %q; run: semantic-index build", ErrSemanticIndexNotBuilt, s.space.ModelID)
+	}
+	info, err := s.index.CollectionInfo(ctx, state.PublishedCollection)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Exists {
+		return state, fmt.Errorf("%w: published collection %s is missing from the vector store; run: semantic-index sync", ErrSemanticIndexNotBuilt, state.PublishedCollection)
+	}
+	if info.Dimensions != s.space.Dimensions || !strings.EqualFold(info.Distance, "cosine") {
+		return nil, fmt.Errorf("%w: collection has %d dimensions (%s), configured %d (Cosine)", ErrSemanticIndexIncompatible, info.Dimensions, info.Distance, s.space.Dimensions)
+	}
+	return state, nil
+}
+
 // Search requires a non-empty query; browsing remains keyword search's job.
 func (s *SemanticSearchService) Search(ctx context.Context, q LibrarySearchQuery) (*SemanticSearchReport, error) {
 	if q.Text == "" {
 		return nil, fmt.Errorf("%w: semantic search needs a non-empty q", ErrKnowledgeLibraryQuery)
 	}
-	col, err := s.store.Collection(ctx, s.space.Collection)
+	state, err := s.published(ctx)
 	if err != nil {
 		return nil, err
-	}
-	if col == nil {
-		return nil, fmt.Errorf("%w for model %q; run: semantic-index build", ErrSemanticIndexNotBuilt, s.space.ModelID)
-	}
-	info, err := s.index.CollectionInfo(ctx, s.space.Collection)
-	if err != nil {
-		return nil, err
-	}
-	if !info.Exists {
-		return nil, fmt.Errorf("%w: collection %s is missing from the vector store; run: semantic-index rebuild", ErrSemanticIndexNotBuilt, s.space.Collection)
-	}
-	if info.Dimensions != s.space.Dimensions {
-		return nil, fmt.Errorf("%w: collection has %d dimensions, configured %d", ErrSemanticIndexIncompatible, info.Dimensions, s.space.Dimensions)
 	}
 
 	raw, err := s.provider.Embed(ctx, []string{q.Text})
@@ -106,7 +122,20 @@ func (s *SemanticSearchService) Search(ctx context.Context, q LibrarySearchQuery
 		return nil, fmt.Errorf("%w: query %v", ErrEmbeddingProviderUnavailable, err)
 	}
 	k := min(q.Limit*semanticSearchOverfetch, SemanticSearchMaxCandidates)
-	hits, err := s.index.Query(ctx, s.space.Collection, queryVector, k)
+	hits, err := s.index.Query(ctx, state.PublishedCollection, queryVector, k)
+	if errors.Is(err, ErrSemanticIndexNotBuilt) {
+		// A newer run may have published and removed this collection between
+		// our read and the query. Re-read the pointer once; never loop.
+		again, perr := s.published(ctx)
+		if perr != nil {
+			return nil, perr
+		}
+		if again.PublishedCollection == state.PublishedCollection {
+			return nil, err
+		}
+		state = again
+		hits, err = s.index.Query(ctx, state.PublishedCollection, queryVector, k)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +149,8 @@ func (s *SemanticSearchService) Search(ctx context.Context, q LibrarySearchQuery
 	for _, c := range concepts {
 		byID[c.ID] = c
 	}
-	report := &SemanticSearchReport{Query: q.Text, State: q.State, Limit: q.Limit, Index: *col,
-		IndexComplete: col.State == SemanticIndexStateComplete, Considered: len(hits), Results: []SemanticSearchResult{}}
+	report := &SemanticSearchReport{Query: q.Text, State: q.State, Limit: q.Limit, Space: s.space, Publication: *state,
+		Collection: state.PublishedCollection, Considered: len(hits), Results: []SemanticSearchResult{}}
 	for _, h := range hits {
 		if len(report.Results) == q.Limit {
 			break

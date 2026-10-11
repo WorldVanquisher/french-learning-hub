@@ -64,6 +64,8 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   interpretation it came from. An optional **semantic search** mode ranks
   Concepts by embedding similarity using a persistent, rebuildable Qdrant index
   and an embedding cache in SQLite, built only by an explicit operator command.
+  Index runs are serialized by a lease and publish a fully verified collection
+  in one step; `semantic-index status` verifies the live index point by point.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation
