@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FLH-043 active FLH-042 acceptance: actual pinned local Qdrant, no pulls.
+"""FLH-047 integrated FLH-044 recovery acceptance: actual pinned local Qdrant, no pulls.
 
 Historical FLH-041 reports/fixtures remain unchanged. Output is a new external
 folder. A nonzero exit reflects failed assertions or unavailable coverage.
@@ -85,6 +85,7 @@ class Proxy:
     def __init__(self, upstream):
         self.upstream = upstream
         self.rule = None
+        self.delete_failures = set()
         self.events = []
         self.reached, self.release = threading.Event(), threading.Event()
 
@@ -105,6 +106,8 @@ class Proxy:
                     rule[3] -= 1
                     if rule[3] == 0:
                         fault = rule[2]; owner.rule = None
+                if self.command == 'DELETE' and self.path in {'/collections/' + name for name in owner.delete_failures}:
+                    fault = 'fail'
                 event = {'method': self.command, 'path': self.path, 'body': data, 'fault': fault}
                 owner.events.append(event)
                 if fault == 'hold-before':
@@ -141,7 +144,7 @@ class Proxy:
 class Runner:
     def __init__(self, output):
         self.out = output; self.out.mkdir()
-        self.work = Path(tempfile.mkdtemp(prefix='flh043-work-'))
+        self.work = Path(tempfile.mkdtemp(prefix='flh047-work-'))
         self.home = self.work/'home'; self.home.mkdir()
         self.env = clean_env(self.home)
         self.env.update(AI_PROVIDER='rule-based',EXTRACTOR_PROVIDER='disabled',OPENAI_API_KEY='',
@@ -150,8 +153,8 @@ class Runner:
                         HTTP_ALLOWED_HOSTS='',TMPDIR=str(self.work),GOCACHE=str(self.work/'gocache'),DOCKER_BUILDKIT='0')
         self.env['GOMODCACHE'] = subprocess.check_output(['go','env','GOMODCACHE'],env={'PATH':self.env['PATH'],'HOME':str(Path.home()),'GOENV':'off','GOTOOLCHAIN':'local'},text=True).strip()
         self.source=self.work/'source'; self.source.mkdir()
-        self.id='flh043-'+uuid.uuid4().hex[:12]; self.children=[]; self.containers=[]
-        self.report={'task':'FLH-043','pwd':str(ROOT),'cases':[],'commands':[],'cleanup':[], 'limits':[]}
+        self.id='flh047-'+uuid.uuid4().hex[:12]; self.children=[]; self.containers=[]
+        self.report={'task':'FLH-047','pwd':str(ROOT),'cases':[],'commands':[],'cleanup':[], 'limits':[]}
         self.counter=0; self.tag=None; self.compose=None; self.used_ports=[]
 
     def command(self, argv, env=None, timeout=240, check=True):
@@ -255,7 +258,8 @@ class Runner:
             shutil.copy2(ROOT/'web'/file,self.source/'web'/file)
         baseline_paths=[ROOT/name for name in ['AGENTS.md','docs/SEMANTIC_SEARCH.md','docs/ARCHITECTURE.md',
                          'docs/plans/FLH-042-index-run-consistency.md','docs/validation/FLH-042-index-run-consistency.md',
-                         'docs/validation/FLH-041-vector-search-acceptance.md','Dockerfile','compose.yaml','.dockerignore','go.mod','go.sum','README.zh-CN.md']]
+                         'docs/validation/FLH-041-vector-search-acceptance.md','docs/validation/FLH-043-index-consistency-acceptance.md',
+                         'docs/plans/FLH-044-semantic-recovery.md','docs/validation/FLH-044-semantic-recovery.md','Dockerfile','compose.yaml','.dockerignore','go.mod','go.sum','README.zh-CN.md']]
         for folder in ['cmd','internal','migrations','scripts/validation/flh041']:
             baseline_paths.extend(p for p in (ROOT/folder).rglob('*') if p.is_file() and p.suffix in ['.go','.sql','.py','.json','.md'])
         self.report['baseline']={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(set(baseline_paths))}
@@ -316,9 +320,9 @@ class Runner:
         for gate in ['search-query-race','search-info-race']:
             def search_race(gate=gate):
                 before=provider.snapshot();r=self.probe(gate,self.env['DB_PATH']);assert provider.wait_idle()
-                # A CollectionInfo race occurs before query embedding; a Query
-                # race occurs afterwards and must reuse that one query vector.
-                assert_embedding_delta(before,provider.snapshot(),expected_queries=[] if gate=='search-info-race' else [text_digest('flh043 query')])
+                # Both recovered windows embed exactly once; the Query window
+                # must reuse its already computed vector on the retry.
+                assert_embedding_delta(before,provider.snapshot(),expected_queries=[text_digest('flh043 query')])
                 assert r['pass'],r
                 return r
             self.case(gate,'retry once on replacement, using one query embedding',search_race)
@@ -459,6 +463,8 @@ class Runner:
         def next_sync():
             noop=measured('sync');assert noop['verified_unchanged']
             remaining=self.cli('status')['collections']
+            code,_=request(self.qurl,'/collections/'+old)
+            assert code==404
             assert all(c['collection']!=old for c in remaining),{'actual_retired_records':remaining,'no_op':noop}
             return noop
         self.case('cleanup-next-healthy-sync','next run removes recorded retired collections even when publication is healthy',next_sync)
@@ -750,7 +756,10 @@ def main():
         with FakeEmbeddings(dimensions=8,gate_timeout=12) as provider, Proxy(r.qurl) as proxy:
             r.used_ports.extend([urllib.parse.urlparse(provider.base_url).port,urllib.parse.urlparse(proxy.base).port])
             if args.extra_only:r.extra(provider,proxy)
-            else:r.scenarios(provider,proxy)
+            else:
+                r.scenarios(provider,proxy)
+                import recovery_checks
+                recovery_checks.run(r,provider,proxy)
         if not args.extra_only:
             tests=r.command(['go','test','-json','./internal/application','./internal/storage/sqlite','./internal/vectorindex','./internal/embedding','./internal/transport/http','./internal/config','./cmd/semantic-index','-run','Test.*(Semantic|Qdrant|HTTPProvider|Embedding)','-count=1'],dict(r.env,FLH_QDRANT_URL=r.qurl))
             r.save('integrated-go-tests',tests)

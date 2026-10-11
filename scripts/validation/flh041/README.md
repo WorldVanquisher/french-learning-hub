@@ -190,3 +190,50 @@ JSON/logs deliberately remain in the requested external evidence directory.
 See [FLH-043 acceptance](../../../docs/validation/FLH-043-index-consistency-acceptance.md)
 for reproducible failures and coverage limits. A successful diagnostic command
 or an owner's existing test does not replace these independent assertions.
+
+## FLH-047 — integrated semantic recovery
+
+The same entrypoint now reports FLH-047 and uses unique `flh047-*` resources.
+It reuses all FLH-043 cases and adds `recovery_checks.py` plus
+`ownership_probe/recovery.go`. The historical FLH-041/043 reports and four
+Phase A fixture/oracle files remain unchanged.
+
+```sh
+python3 -B scripts/validation/flh041/phase_b_checks.py --output /tmp/flh047-human
+python3 -B scripts/validation/flh041/phase_b_checks.py --extra-only --output /tmp/flh047-human-extra
+python3 -B scripts/validation/flh041/test_fixtures.py
+```
+
+Use new external output paths. Existing cached images, Docker socket permission
+and cached Go modules are prerequisites; missing prerequisites produce failure,
+never downloads. The main run includes populated Linux Compose and focused Go
+checks; the complementary run covers the remaining six inherited scenarios.
+The new recovery cases retain full inventories and exact per-input ledgers:
+
+- Original metadata/Query races each require exactly one query embedding. The
+  original metadata expectation of zero recorded the early FLH-043 failure; it
+  is now one because the recovered search must reach the provider and succeed.
+- `recovery-search-{info,query,info-info,query-info,info-query,query-query,
+  loss-info,loss-query}` exercise the actual service/provider/Qdrant and actual
+  production HTTP handler via `httptest`. Two replacements must terminate with
+  the publication-changed error, HTTP 500, at most two metadata reads and one
+  query embedding. Unchanged-pointer loss remains HTTP 409. Each probe includes
+  a separate successful follow-up request, counted separately.
+- Persistent exact-collection DELETE faults are forwarded through the existing
+  owned proxy. Fault removal followed only by healthy `sync` must remove the
+  retired collection, physical record and manifest, while publication fields,
+  active physical record, every payload/vector and full cache remain equal.
+- Cleanup lease takeover permits the one already-gated terminal deletion but
+  forbids any later deletion or bookkeeping mutation. A subsequent healthy
+  sync reconciles both retained records without embeddings.
+- Another run's actual `writing` collection/point/manifest is retained across
+  healthy syncs, explicitly pending; only later publication removes it.
+
+Default CLI text omits pending cleanup and status text promises next-run removal
+for writing collections even though healthy sync deliberately retains them.
+The runner records these operator text limitations as observations; PASS refers
+to recovery mechanics and JSON/status bookkeeping, not corrected CLI wording.
+These findings and the scoped conclusion are in the
+[FLH-047 report](../../../docs/validation/FLH-047-semantic-recovery-acceptance.md).
+Fake vectors establish mechanics only. Browser interaction and real-model
+quality/performance evaluation are not run by this harness.

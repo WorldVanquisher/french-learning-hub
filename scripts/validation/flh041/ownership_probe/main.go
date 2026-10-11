@@ -11,6 +11,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -188,6 +189,10 @@ func (g *queryGate) CollectionInfo(ctx context.Context, c string) (application.V
 }
 
 func integrated(db *sql.DB, mode string) {
+	if strings.HasPrefix(mode, "recovery-") {
+		recovery(db, mode)
+		return
+	}
 	ctx := context.Background()
 	store := sqlite.NewSemanticIndexRepository(db)
 	space, err := application.NewSemanticIndexSpace(os.Getenv("QDRANT_COLLECTION_PREFIX"), os.Getenv("EMBEDDING_MODEL_ID"), 8)
