@@ -1,0 +1,2284 @@
+{
+  "schema_version": "flh045_retrieval_preparation_v1",
+  "label_status": "author_proposed_synthetic_awaiting_human_review",
+  "groups": [
+    {
+      "id": "F01",
+      "name": "past-narration",
+      "split": "development",
+      "rationale": "Keep both close identities and all their paraphrases together; Background or repeated circumstances differ from a bounded completed event."
+    },
+    {
+      "id": "F02",
+      "name": "object-pronouns",
+      "split": "development",
+      "rationale": "Keep both close identities and all their paraphrases together; The grammatical role and verb construction decide the pronoun, not whether the referent is a person."
+    },
+    {
+      "id": "F03",
+      "name": "y-en",
+      "split": "development",
+      "rationale": "Keep both close identities and all their paraphrases together; A destination and a quantity complement are distinct replacements."
+    },
+    {
+      "id": "F04",
+      "name": "adjective-adverb",
+      "split": "development",
+      "rationale": "Keep both close identities and all their paraphrases together; Noun modifiers agree; manner adverbs remain invariable in these examples."
+    },
+    {
+      "id": "F05",
+      "name": "negation",
+      "split": "development",
+      "rationale": "Keep both close identities and all their paraphrases together; Simple denial does not entail cessation; no-longer wording does."
+    },
+    {
+      "id": "F06",
+      "name": "question-form",
+      "split": "development",
+      "rationale": "Keep both close identities and all their paraphrases together; Both ask questions, but the requested construction is different."
+    },
+    {
+      "id": "F07",
+      "name": "obligation",
+      "split": "development",
+      "rationale": "Keep both close identities and all their paraphrases together; A personal obligation and an impersonal necessity have different subject structures."
+    },
+    {
+      "id": "F08",
+      "name": "relative-role",
+      "split": "development",
+      "rationale": "Keep both close identities and all their paraphrases together; Subject and object roles matter; a human referent does not by itself select qui."
+    },
+    {
+      "id": "F09",
+      "name": "politeness",
+      "split": "held_out",
+      "rationale": "Keep both close identities and all their paraphrases together; Verb mood softening and social choice of address are distinct, even in polite requests."
+    },
+    {
+      "id": "F10",
+      "name": "sound-spelling",
+      "split": "held_out",
+      "rationale": "Keep both close identities and all their paraphrases together; Written accent disambiguation is not the spoken u/ou vowel contrast."
+    },
+    {
+      "id": "F11",
+      "name": "time-span",
+      "split": "held_out",
+      "rationale": "Keep both close identities and all their paraphrases together; Continuing elapsed time differs from the duration of a bounded interval."
+    },
+    {
+      "id": "F12",
+      "name": "quantity-articles",
+      "split": "held_out",
+      "rationale": "Keep both close identities and all their paraphrases together; Positive indefinite quantity and a negated quantity select different determiner constructions."
+    },
+    {
+      "id": "F13",
+      "name": "out-of-domain",
+      "split": "held_out",
+      "rationale": "Reserve absent-objective cases; never tune an abstention threshold on this group."
+    },
+    {
+      "id": "F14",
+      "name": "in-domain-absent-objectives",
+      "split": "held_out",
+      "rationale": "Reserve absent-objective cases; never tune an abstention threshold on this group."
+    }
+  ],
+  "concepts": [
+    {
+      "id": "C001",
+      "group_id": "F01",
+      "identity": {
+        "target": "imparfait de description",
+        "pedagogical_intent": "grammar",
+        "scope": "arrière-plan passé",
+        "identity_features": {
+          "aspect": "background"
+        }
+      }
+    },
+    {
+      "id": "C002",
+      "group_id": "F01",
+      "identity": {
+        "target": "passé composé événement achevé",
+        "pedagogical_intent": "grammar",
+        "scope": "événement passé délimité",
+        "identity_features": {
+          "aspect": "bounded"
+        }
+      }
+    },
+    {
+      "id": "C003",
+      "group_id": "F02",
+      "identity": {
+        "target": "pronoms objets directs le la les",
+        "pedagogical_intent": "grammar",
+        "scope": "complément sans préposition",
+        "identity_features": {
+          "object_role": "direct"
+        }
+      }
+    },
+    {
+      "id": "C004",
+      "group_id": "F02",
+      "identity": {
+        "target": "pronoms objets indirects lui leur",
+        "pedagogical_intent": "grammar",
+        "scope": "destinataire introduit par à",
+        "identity_features": {
+          "object_role": "indirect"
+        }
+      }
+    },
+    {
+      "id": "C005",
+      "group_id": "F03",
+      "identity": {
+        "target": "y remplace un lieu",
+        "pedagogical_intent": "grammar",
+        "scope": "lieu introduit par à",
+        "identity_features": {
+          "replacement": "location"
+        }
+      }
+    },
+    {
+      "id": "C006",
+      "group_id": "F03",
+      "identity": {
+        "target": "en reprend une quantité",
+        "pedagogical_intent": "grammar",
+        "scope": "quantité avec de",
+        "identity_features": {
+          "replacement": "quantity"
+        }
+      }
+    },
+    {
+      "id": "C007",
+      "group_id": "F04",
+      "identity": {
+        "target": "accord de l’adjectif",
+        "pedagogical_intent": "grammar",
+        "scope": "adjectif qualifiant un nom",
+        "identity_features": {
+          "agreement": "noun_gender_number"
+        }
+      }
+    },
+    {
+      "id": "C008",
+      "group_id": "F04",
+      "identity": {
+        "target": "adverbe modifiant le verbe",
+        "pedagogical_intent": "grammar",
+        "scope": "manière de faire une action",
+        "identity_features": {
+          "agreement": "invariable_adverb"
+        }
+      }
+    },
+    {
+      "id": "C009",
+      "group_id": "F05",
+      "identity": {
+        "target": "négation ne pas",
+        "pedagogical_intent": "grammar",
+        "scope": "nier un fait présent",
+        "identity_features": {
+          "meaning": "not"
+        }
+      }
+    },
+    {
+      "id": "C010",
+      "group_id": "F05",
+      "identity": {
+        "target": "négation ne plus",
+        "pedagogical_intent": "grammar",
+        "scope": "cessation d’une habitude",
+        "identity_features": {
+          "meaning": "no_longer"
+        }
+      }
+    },
+    {
+      "id": "C011",
+      "group_id": "F06",
+      "identity": {
+        "target": "question avec est-ce que",
+        "pedagogical_intent": "grammar",
+        "scope": "interrogation sans inversion",
+        "identity_features": {
+          "construction": "est_ce_que"
+        }
+      }
+    },
+    {
+      "id": "C012",
+      "group_id": "F06",
+      "identity": {
+        "target": "inversion sujet verbe",
+        "pedagogical_intent": "grammar",
+        "scope": "interrogation avec pronom sujet",
+        "identity_features": {
+          "construction": "inversion"
+        }
+      }
+    },
+    {
+      "id": "C013",
+      "group_id": "F07",
+      "identity": {
+        "target": "devoir avec sujet personnel",
+        "pedagogical_intent": "grammar",
+        "scope": "obligation portée par une personne",
+        "identity_features": {
+          "subject": "personal"
+        }
+      }
+    },
+    {
+      "id": "C014",
+      "group_id": "F07",
+      "identity": {
+        "target": "falloir impersonnel",
+        "pedagogical_intent": "grammar",
+        "scope": "nécessité avec il impersonnel",
+        "identity_features": {
+          "subject": "impersonal"
+        }
+      }
+    },
+    {
+      "id": "C015",
+      "group_id": "F08",
+      "identity": {
+        "target": "relatif qui sujet",
+        "pedagogical_intent": "grammar",
+        "scope": "sujet de la proposition relative",
+        "identity_features": {
+          "relative_role": "subject"
+        }
+      }
+    },
+    {
+      "id": "C016",
+      "group_id": "F08",
+      "identity": {
+        "target": "relatif que objet",
+        "pedagogical_intent": "grammar",
+        "scope": "objet de la proposition relative",
+        "identity_features": {
+          "relative_role": "object"
+        }
+      }
+    },
+    {
+      "id": "C017",
+      "group_id": "F09",
+      "identity": {
+        "target": "conditionnel de demande polie",
+        "pedagogical_intent": "usage",
+        "scope": "adoucir une requête",
+        "identity_features": {
+          "strategy": "conditional"
+        }
+      }
+    },
+    {
+      "id": "C018",
+      "group_id": "F09",
+      "identity": {
+        "target": "choix tu vous",
+        "pedagogical_intent": "usage",
+        "scope": "relation sociale avec l’interlocuteur",
+        "identity_features": {
+          "strategy": "address_register"
+        }
+      }
+    },
+    {
+      "id": "C019",
+      "group_id": "F10",
+      "identity": {
+        "target": "ou où accent distinctif",
+        "pedagogical_intent": "orthography",
+        "scope": "choix entre alternative et lieu",
+        "identity_features": {
+          "contrast": "or_where"
+        }
+      }
+    },
+    {
+      "id": "C020",
+      "group_id": "F10",
+      "identity": {
+        "target": "sons u et ou",
+        "pedagogical_intent": "pronunciation",
+        "scope": "contraste voyelles françaises",
+        "identity_features": {
+          "contrast": "front_back_rounded"
+        }
+      }
+    },
+    {
+      "id": "C021",
+      "group_id": "F11",
+      "identity": {
+        "target": "depuis durée encore en cours",
+        "pedagogical_intent": "grammar",
+        "scope": "situation commencée et toujours vraie",
+        "identity_features": {
+          "time_span": "continuing"
+        }
+      }
+    },
+    {
+      "id": "C022",
+      "group_id": "F11",
+      "identity": {
+        "target": "pendant durée délimitée",
+        "pedagogical_intent": "grammar",
+        "scope": "intervalle achevé ou borné",
+        "identity_features": {
+          "time_span": "bounded"
+        }
+      }
+    },
+    {
+      "id": "C023",
+      "group_id": "F12",
+      "identity": {
+        "target": "article partitif affirmatif",
+        "pedagogical_intent": "grammar",
+        "scope": "quantité indéfinie positive",
+        "identity_features": {
+          "polarity": "affirmative"
+        }
+      }
+    },
+    {
+      "id": "C024",
+      "group_id": "F12",
+      "identity": {
+        "target": "de après négation de quantité",
+        "pedagogical_intent": "grammar",
+        "scope": "quantité niée sans contraste",
+        "identity_features": {
+          "polarity": "negative_quantity"
+        }
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "Q001",
+      "group_id": "F01",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Une habitude ou un décor dans le passé",
+        "statement": "Comment raconter le temps qu'il faisait pendant mon enfance ?",
+        "example": "Quand nous étions petits, il pleuvait souvent."
+      },
+      "free_text": "Comment raconter le temps qu'il faisait pendant mon enfance ?"
+    },
+    {
+      "id": "Q002",
+      "group_id": "F01",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Past background rather than a finished event",
+        "statement": "I need the tense for the weather that was going on behind the story.",
+        "example": "It was raining when the bus arrived."
+      },
+      "free_text": "I need the tense for the weather that was going on behind the story."
+    },
+    {
+      "id": "Q003",
+      "group_id": "F01",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Une action terminée hier",
+        "statement": "Quel temps choisir pour annoncer que mon train est arrivé hier ?",
+        "example": "Le train est arrivé à midi."
+      },
+      "free_text": "Quel temps choisir pour annoncer que mon train est arrivé hier ?"
+    },
+    {
+      "id": "Q004",
+      "group_id": "F01",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "One completed event in a past story",
+        "statement": "How do I report that I finished the call yesterday?",
+        "example": "I finished the call at noon."
+      },
+      "free_text": "How do I report that I finished the call yesterday?"
+    },
+    {
+      "id": "Q005",
+      "group_id": "F02",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Remplacer le livre par un petit mot",
+        "statement": "Dans je lis le livre, comment éviter de répéter le livre ?",
+        "example": "Je le lis."
+      },
+      "free_text": "Dans je lis le livre, comment éviter de répéter le livre ?"
+    },
+    {
+      "id": "Q006",
+      "group_id": "F02",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Replace a thing seen with a short object word",
+        "statement": "How can I avoid repeating the flowers in I see the flowers?",
+        "example": "Je les vois."
+      },
+      "free_text": "How can I avoid repeating the flowers in I see the flowers?"
+    },
+    {
+      "id": "Q007",
+      "group_id": "F02",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Remplacer à ma sœur après parler",
+        "statement": "Je parle à ma sœur : quel pronom garde le sens du destinataire ?",
+        "example": "Je lui parle."
+      },
+      "free_text": "Je parle à ma sœur : quel pronom garde le sens du destinataire ?"
+    },
+    {
+      "id": "Q008",
+      "group_id": "F02",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "A recipient after a verb of speaking",
+        "statement": "Which pronoun replaces to my friends after I speak?",
+        "example": "Je leur parle."
+      },
+      "free_text": "Which pronoun replaces to my friends after I speak?"
+    },
+    {
+      "id": "Q009",
+      "group_id": "F03",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Éviter de répéter au marché",
+        "statement": "Je vais au marché et mon ami aussi : comment remplacer ce lieu ?",
+        "example": "J’y vais demain."
+      },
+      "free_text": "Je vais au marché et mon ami aussi : comment remplacer ce lieu ?"
+    },
+    {
+      "id": "Q010",
+      "group_id": "F03",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Substitute for the place I am going to",
+        "statement": "What little word stands for to the museum after go?",
+        "example": "J’y vais avec elle."
+      },
+      "free_text": "What little word stands for to the museum after go?"
+    },
+    {
+      "id": "Q011",
+      "group_id": "F03",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Garder deux sans répéter les pommes",
+        "statement": "J’ai deux pommes : comment répondre en gardant seulement la quantité ?",
+        "example": "J’en ai deux."
+      },
+      "free_text": "J’ai deux pommes : comment répondre en gardant seulement la quantité ?"
+    },
+    {
+      "id": "Q012",
+      "group_id": "F03",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Keep a number while leaving out the noun",
+        "statement": "I have three tickets; how do I say I have three of them?",
+        "example": "J’en ai trois."
+      },
+      "free_text": "I have three tickets; how do I say I have three of them?"
+    },
+    {
+      "id": "Q013",
+      "group_id": "F04",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "La terminaison dans des maisons blanches",
+        "statement": "Pourquoi le mot qui décrit ces maisons prend-il un s ?",
+        "example": "Des maisons blanches."
+      },
+      "free_text": "Pourquoi le mot qui décrit ces maisons prend-il un s ?"
+    },
+    {
+      "id": "Q014",
+      "group_id": "F04",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Describing several feminine things",
+        "statement": "Does the describing word change when my small cars are feminine and plural?",
+        "example": "Des petites voitures."
+      },
+      "free_text": "Does the describing word change when my small cars are feminine and plural?"
+    },
+    {
+      "id": "Q015",
+      "group_id": "F04",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Parler doucement avec plusieurs personnes",
+        "statement": "Si plusieurs filles parlent doucement, faut-il ajouter un s au dernier mot ?",
+        "example": "Elles parlent doucement."
+      },
+      "free_text": "Si plusieurs filles parlent doucement, faut-il ajouter un s au dernier mot ?"
+    },
+    {
+      "id": "Q016",
+      "group_id": "F04",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "How an action is done by several people",
+        "statement": "Does slowly become plural when several women walk slowly?",
+        "example": "Elles marchent lentement."
+      },
+      "free_text": "Does slowly become plural when several women walk slowly?"
+    },
+    {
+      "id": "Q017",
+      "group_id": "F05",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Dire que je ne mange pas de viande",
+        "statement": "Comment nier simplement mon habitude de manger de la viande ?",
+        "example": "Je ne mange pas de viande."
+      },
+      "free_text": "Comment nier simplement mon habitude de manger de la viande ?"
+    },
+    {
+      "id": "Q018",
+      "group_id": "F05",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Deny a fact without implying a previous habit",
+        "statement": "How do I say I do not smoke without saying that I used to?",
+        "example": "Je ne fume pas."
+      },
+      "free_text": "How do I say I do not smoke without saying that I used to?"
+    },
+    {
+      "id": "Q019",
+      "group_id": "F05",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Dire que mon ancienne habitude a cessé",
+        "statement": "Je fumais auparavant et maintenant c’est fini : quel mot de négation exprime ce changement ?",
+        "example": "Je ne fume plus."
+      },
+      "free_text": "Je fumais auparavant et maintenant c’est fini : quel mot de négation exprime ce changement ?"
+    },
+    {
+      "id": "Q020",
+      "group_id": "F05",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Something used to happen and has now stopped",
+        "statement": "How can I say I no longer take the bus, although I did before?",
+        "example": "Je ne prends plus le bus."
+      },
+      "free_text": "How can I say I no longer take the bus, although I did before?"
+    },
+    {
+      "id": "Q021",
+      "group_id": "F06",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Poser une question en gardant tu viens",
+        "statement": "Je veux demander si tu viens sans inverser le sujet et le verbe : quelle formule ajouter ?",
+        "example": "Est-ce que tu viens ?"
+      },
+      "free_text": "Je veux demander si tu viens sans inverser le sujet et le verbe : quelle formule ajouter ?"
+    },
+    {
+      "id": "Q022",
+      "group_id": "F06",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Ask a yes or no question without swapping subject and verb",
+        "statement": "What introductory phrase lets me keep the order you are coming?",
+        "example": "Est-ce que tu viens ?"
+      },
+      "free_text": "What introductory phrase lets me keep the order you are coming?"
+    },
+    {
+      "id": "Q023",
+      "group_id": "F06",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Mettre le pronom après le verbe dans une question",
+        "statement": "Comment écrire une question où vous suit venez avec un trait d’union ?",
+        "example": "Venez-vous demain ?"
+      },
+      "free_text": "Comment écrire une question où vous suit venez avec un trait d’union ?"
+    },
+    {
+      "id": "Q024",
+      "group_id": "F06",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "A written question with the subject after the verb",
+        "statement": "How do I form a question by swapping arrive and you?",
+        "example": "Arrivez-vous demain ?"
+      },
+      "free_text": "How do I form a question by swapping arrive and you?"
+    },
+    {
+      "id": "Q025",
+      "group_id": "F07",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Exprimer ce que nous sommes obligés de faire",
+        "statement": "Je veux garder nous comme sujet en disant que nous sommes obligés de partir.",
+        "example": "Nous devons partir."
+      },
+      "free_text": "Je veux garder nous comme sujet en disant que nous sommes obligés de partir."
+    },
+    {
+      "id": "Q026",
+      "group_id": "F07",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "An obligation with we as the subject",
+        "statement": "Which verb lets I be the subject of an obligation to study?",
+        "example": "Je dois étudier."
+      },
+      "free_text": "Which verb lets I be the subject of an obligation to study?"
+    },
+    {
+      "id": "Q027",
+      "group_id": "F07",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Une nécessité générale introduite par il",
+        "statement": "Comment exprimer une nécessité de partir sans préciser qui doit partir ?",
+        "example": "Il faut partir."
+      },
+      "free_text": "Comment exprimer une nécessité de partir sans préciser qui doit partir ?"
+    },
+    {
+      "id": "Q028",
+      "group_id": "F07",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "A general need without a named person",
+        "statement": "How do I express that leaving is necessary using the impersonal it construction?",
+        "example": "Il faut partir."
+      },
+      "free_text": "How do I express that leaving is necessary using the impersonal it construction?"
+    },
+    {
+      "id": "Q029",
+      "group_id": "F08",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Le mot relatif fait lui-même l’action",
+        "statement": "Dans la femme ___ chante, le mot manquant représente celle qui fait l’action.",
+        "example": "La femme qui chante."
+      },
+      "free_text": "Dans la femme ___ chante, le mot manquant représente celle qui fait l’action."
+    },
+    {
+      "id": "Q030",
+      "group_id": "F08",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "The relative word is the one doing the action",
+        "statement": "Fill the gap in the man ___ is speaking: there is no other subject after the gap.",
+        "example": "L’homme qui parle."
+      },
+      "free_text": "Fill the gap in the man ___ is speaking: there is no other subject after the gap."
+    },
+    {
+      "id": "Q031",
+      "group_id": "F08",
+      "split": "development",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Le mot relatif reçoit l’action de je",
+        "statement": "Dans le livre ___ je lis, je est déjà le sujet : que remplace le mot manquant ?",
+        "example": "Le livre que je lis."
+      },
+      "free_text": "Dans le livre ___ je lis, je est déjà le sujet : que remplace le mot manquant ?"
+    },
+    {
+      "id": "Q032",
+      "group_id": "F08",
+      "split": "development",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "A relative gap before an already stated subject",
+        "statement": "Fill the gap in the song ___ she sings, where she does the singing.",
+        "example": "La chanson qu’elle chante."
+      },
+      "free_text": "Fill the gap in the song ___ she sings, where she does the singing."
+    },
+    {
+      "id": "Q033",
+      "group_id": "F09",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "usage",
+        "canonical": "Demander un café moins directement",
+        "statement": "Au lieu de je veux un café, comment atténuer ma demande avec une autre forme du verbe ?",
+        "example": "Je voudrais un café."
+      },
+      "free_text": "Au lieu de je veux un café, comment atténuer ma demande avec une autre forme du verbe ?"
+    },
+    {
+      "id": "Q034",
+      "group_id": "F09",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "usage",
+        "canonical": "Soften a request by changing the verb form",
+        "statement": "How can I make I want a coffee less blunt without changing who I address?",
+        "example": "Je voudrais un café."
+      },
+      "free_text": "How can I make I want a coffee less blunt without changing who I address?"
+    },
+    {
+      "id": "Q035",
+      "group_id": "F09",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "usage",
+        "canonical": "Choisir comment s’adresser à un inconnu",
+        "statement": "Quel pronom utiliser pour parler à une seule personne que je ne connais pas dans un cadre formel ?",
+        "example": "Vous pouvez m’aider ?"
+      },
+      "free_text": "Quel pronom utiliser pour parler à une seule personne que je ne connais pas dans un cadre formel ?"
+    },
+    {
+      "id": "Q036",
+      "group_id": "F09",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "usage",
+        "canonical": "Choose an address form for an unfamiliar adult",
+        "statement": "Should I address a stranger formally or use the familiar singular pronoun?",
+        "example": "Vous pouvez m’aider ?"
+      },
+      "free_text": "Should I address a stranger formally or use the familiar singular pronoun?"
+    },
+    {
+      "id": "Q037",
+      "group_id": "F10",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "orthography",
+        "canonical": "Un accent pour demander un endroit",
+        "statement": "Quel accent manque dans ou habites-tu lorsque je demande un lieu ?",
+        "example": "Où habites-tu ?"
+      },
+      "free_text": "Quel accent manque dans ou habites-tu lorsque je demande un lieu ?"
+    },
+    {
+      "id": "Q038",
+      "group_id": "F10",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "orthography",
+        "canonical": "Write the location question rather than an alternative",
+        "statement": "Which written form needs an accent when asking where someone lives?",
+        "example": "Où habites-tu ?"
+      },
+      "free_text": "Which written form needs an accent when asking where someone lives?"
+    },
+    {
+      "id": "Q039",
+      "group_id": "F10",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "pronunciation",
+        "canonical": "Entendre la différence entre tu et tout",
+        "statement": "Comment placer ma langue pour distinguer les voyelles de tu et tout ?",
+        "example": "Tu / tout."
+      },
+      "free_text": "Comment placer ma langue pour distinguer les voyelles de tu et tout ?"
+    },
+    {
+      "id": "Q040",
+      "group_id": "F10",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "pronunciation",
+        "canonical": "Pronounce the vowels in tu and tout differently",
+        "statement": "What mouth position separates the two rounded vowel sounds in tu and tout?",
+        "example": "Tu / tout."
+      },
+      "free_text": "What mouth position separates the two rounded vowel sounds in tu and tout?"
+    },
+    {
+      "id": "Q041",
+      "group_id": "F11",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Une activité commencée il y a deux ans continue",
+        "statement": "J’habite ici aujourd’hui et j’ai commencé il y a deux ans : quelle préposition lie la durée au présent ?",
+        "example": "J’habite ici depuis deux ans."
+      },
+      "free_text": "J’habite ici aujourd’hui et j’ai commencé il y a deux ans : quelle préposition lie la durée au présent ?"
+    },
+    {
+      "id": "Q042",
+      "group_id": "F11",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "An activity began earlier and is still happening",
+        "statement": "I started living here two years ago and still do. Which time preposition fits?",
+        "example": "J’habite ici depuis deux ans."
+      },
+      "free_text": "I started living here two years ago and still do. Which time preposition fits?"
+    },
+    {
+      "id": "Q043",
+      "group_id": "F11",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Un séjour de deux semaines déjà terminé",
+        "statement": "Mon voyage est fini : quelle préposition indique seulement la durée de ce séjour ?",
+        "example": "J’ai voyagé pendant deux semaines."
+      },
+      "free_text": "Mon voyage est fini : quelle préposition indique seulement la durée de ce séjour ?"
+    },
+    {
+      "id": "Q044",
+      "group_id": "F11",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "A trip lasted a week and is over",
+        "statement": "How do I mark the length of a finished stay, without saying it continues now?",
+        "example": "J’ai voyagé pendant une semaine."
+      },
+      "free_text": "How do I mark the length of a finished stay, without saying it continues now?"
+    },
+    {
+      "id": "Q045",
+      "group_id": "F12",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Une quantité de soupe sans la compter",
+        "statement": "Quel petit mot introduit soupe quand je dis que j’en mange une certaine quantité ?",
+        "example": "Je mange de la soupe."
+      },
+      "free_text": "Quel petit mot introduit soupe quand je dis que j’en mange une certaine quantité ?"
+    },
+    {
+      "id": "Q046",
+      "group_id": "F12",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Some uncounted bread in an affirmative sentence",
+        "statement": "How do I introduce bread when I am eating some rather than one whole loaf?",
+        "example": "Je mange du pain."
+      },
+      "free_text": "How do I introduce bread when I am eating some rather than one whole loaf?"
+    },
+    {
+      "id": "Q047",
+      "group_id": "F12",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Le déterminant change quand je n’ai aucun pain",
+        "statement": "Dans je n’ai pas ___ pain, pourquoi ne garde-t-on pas le mot de la phrase affirmative ?",
+        "example": "Je n’ai pas de pain."
+      },
+      "free_text": "Dans je n’ai pas ___ pain, pourquoi ne garde-t-on pas le mot de la phrase affirmative ?"
+    },
+    {
+      "id": "Q048",
+      "group_id": "F12",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "single_target",
+      "tags": [
+        "paraphrase",
+        "close_distinction",
+        "lexical_overlap_trap"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "No milk rather than some milk",
+        "statement": "What happens to the article in I do not have any milk, with no contrast or être?",
+        "example": "Je n’ai pas de lait."
+      },
+      "free_text": "What happens to the article in I do not have any milk, with no contrast or être?"
+    },
+    {
+      "id": "Q049",
+      "group_id": "F01",
+      "split": "development",
+      "language": "fr",
+      "bucket": "ambiguous",
+      "tags": [
+        "ambiguous"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Un temps pour raconter hier",
+        "statement": "Quel temps utiliser pour parler d’hier ?",
+        "example": null
+      },
+      "free_text": "Quel temps utiliser pour parler d’hier ?"
+    },
+    {
+      "id": "Q050",
+      "group_id": "F02",
+      "split": "development",
+      "language": "en",
+      "bucket": "ambiguous",
+      "tags": [
+        "ambiguous"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "A short word for a person",
+        "statement": "Which object pronoun replaces that person?",
+        "example": null
+      },
+      "free_text": "Which object pronoun replaces that person?"
+    },
+    {
+      "id": "Q051",
+      "group_id": "F11",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "ambiguous",
+      "tags": [
+        "ambiguous"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Une durée de trois jours",
+        "statement": "Quelle préposition va avec une durée de trois jours ?",
+        "example": null
+      },
+      "free_text": "Quelle préposition va avec une durée de trois jours ?"
+    },
+    {
+      "id": "Q052",
+      "group_id": "F12",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "ambiguous",
+      "tags": [
+        "ambiguous"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "An article before bread",
+        "statement": "Which article should I put before bread?",
+        "example": null
+      },
+      "free_text": "Which article should I put before bread?"
+    },
+    {
+      "id": "Q053",
+      "group_id": "F13",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "no_match",
+      "tags": [
+        "no_match"
+      ],
+      "unit_evidence": {
+        "kind": "vocabulary",
+        "canonical": "La température du four",
+        "statement": "À quelle température cuire une tarte aux pommes ?",
+        "example": null
+      },
+      "free_text": "À quelle température cuire une tarte aux pommes ?"
+    },
+    {
+      "id": "Q054",
+      "group_id": "F13",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "no_match",
+      "tags": [
+        "no_match"
+      ],
+      "unit_evidence": {
+        "kind": "vocabulary",
+        "canonical": "A database backup command",
+        "statement": "Which command exports a PostgreSQL database backup?",
+        "example": null
+      },
+      "free_text": "Which command exports a PostgreSQL database backup?"
+    },
+    {
+      "id": "Q055",
+      "group_id": "F14",
+      "split": "held_out",
+      "language": "fr",
+      "bucket": "no_match",
+      "tags": [
+        "no_match"
+      ],
+      "unit_evidence": {
+        "kind": "grammar",
+        "canonical": "Un mode après bien que",
+        "statement": "Quel mode employer après bien que ?",
+        "example": null
+      },
+      "free_text": "Quel mode employer après bien que ?"
+    },
+    {
+      "id": "Q056",
+      "group_id": "F14",
+      "split": "held_out",
+      "language": "en",
+      "bucket": "no_match",
+      "tags": [
+        "no_match"
+      ],
+      "unit_evidence": {
+        "kind": "morphology",
+        "canonical": "The future stem of aller",
+        "statement": "What stem does aller use in the simple future?",
+        "example": null
+      },
+      "free_text": "What stem does aller use in the simple future?"
+    }
+  ],
+  "judgments": [
+    {
+      "id": "J001",
+      "query_id": "Q001",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C001"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is imparfait de description; the wording specifies arrière-plan passé. Background or repeated circumstances differ from a bounded completed event.",
+      "hard_negatives": [
+        {
+          "concept_id": "C002",
+          "rationale": "Background or repeated circumstances differ from a bounded completed event."
+        }
+      ]
+    },
+    {
+      "id": "J002",
+      "query_id": "Q002",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C001"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is imparfait de description; the wording specifies arrière-plan passé. Background or repeated circumstances differ from a bounded completed event.",
+      "hard_negatives": [
+        {
+          "concept_id": "C002",
+          "rationale": "Background or repeated circumstances differ from a bounded completed event."
+        }
+      ]
+    },
+    {
+      "id": "J003",
+      "query_id": "Q003",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C002"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is passé composé événement achevé; the wording specifies événement passé délimité. Background or repeated circumstances differ from a bounded completed event.",
+      "hard_negatives": [
+        {
+          "concept_id": "C001",
+          "rationale": "Background or repeated circumstances differ from a bounded completed event."
+        }
+      ]
+    },
+    {
+      "id": "J004",
+      "query_id": "Q004",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C002"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is passé composé événement achevé; the wording specifies événement passé délimité. Background or repeated circumstances differ from a bounded completed event.",
+      "hard_negatives": [
+        {
+          "concept_id": "C001",
+          "rationale": "Background or repeated circumstances differ from a bounded completed event."
+        }
+      ]
+    },
+    {
+      "id": "J005",
+      "query_id": "Q005",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C003"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is pronoms objets directs le la les; the wording specifies complément sans préposition. The grammatical role and verb construction decide the pronoun, not whether the referent is a person.",
+      "hard_negatives": [
+        {
+          "concept_id": "C004",
+          "rationale": "The grammatical role and verb construction decide the pronoun, not whether the referent is a person."
+        }
+      ]
+    },
+    {
+      "id": "J006",
+      "query_id": "Q006",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C003"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is pronoms objets directs le la les; the wording specifies complément sans préposition. The grammatical role and verb construction decide the pronoun, not whether the referent is a person.",
+      "hard_negatives": [
+        {
+          "concept_id": "C004",
+          "rationale": "The grammatical role and verb construction decide the pronoun, not whether the referent is a person."
+        }
+      ]
+    },
+    {
+      "id": "J007",
+      "query_id": "Q007",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C004"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is pronoms objets indirects lui leur; the wording specifies destinataire introduit par à. The grammatical role and verb construction decide the pronoun, not whether the referent is a person.",
+      "hard_negatives": [
+        {
+          "concept_id": "C003",
+          "rationale": "The grammatical role and verb construction decide the pronoun, not whether the referent is a person."
+        }
+      ]
+    },
+    {
+      "id": "J008",
+      "query_id": "Q008",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C004"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is pronoms objets indirects lui leur; the wording specifies destinataire introduit par à. The grammatical role and verb construction decide the pronoun, not whether the referent is a person.",
+      "hard_negatives": [
+        {
+          "concept_id": "C003",
+          "rationale": "The grammatical role and verb construction decide the pronoun, not whether the referent is a person."
+        }
+      ]
+    },
+    {
+      "id": "J009",
+      "query_id": "Q009",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C005"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is y remplace un lieu; the wording specifies lieu introduit par à. A destination and a quantity complement are distinct replacements.",
+      "hard_negatives": [
+        {
+          "concept_id": "C006",
+          "rationale": "A destination and a quantity complement are distinct replacements."
+        }
+      ]
+    },
+    {
+      "id": "J010",
+      "query_id": "Q010",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C005"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is y remplace un lieu; the wording specifies lieu introduit par à. A destination and a quantity complement are distinct replacements.",
+      "hard_negatives": [
+        {
+          "concept_id": "C006",
+          "rationale": "A destination and a quantity complement are distinct replacements."
+        }
+      ]
+    },
+    {
+      "id": "J011",
+      "query_id": "Q011",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C006"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is en reprend une quantité; the wording specifies quantité avec de. A destination and a quantity complement are distinct replacements.",
+      "hard_negatives": [
+        {
+          "concept_id": "C005",
+          "rationale": "A destination and a quantity complement are distinct replacements."
+        }
+      ]
+    },
+    {
+      "id": "J012",
+      "query_id": "Q012",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C006"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is en reprend une quantité; the wording specifies quantité avec de. A destination and a quantity complement are distinct replacements.",
+      "hard_negatives": [
+        {
+          "concept_id": "C005",
+          "rationale": "A destination and a quantity complement are distinct replacements."
+        }
+      ]
+    },
+    {
+      "id": "J013",
+      "query_id": "Q013",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C007"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is accord de l’adjectif; the wording specifies adjectif qualifiant un nom. Noun modifiers agree; manner adverbs remain invariable in these examples.",
+      "hard_negatives": [
+        {
+          "concept_id": "C008",
+          "rationale": "Noun modifiers agree; manner adverbs remain invariable in these examples."
+        }
+      ]
+    },
+    {
+      "id": "J014",
+      "query_id": "Q014",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C007"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is accord de l’adjectif; the wording specifies adjectif qualifiant un nom. Noun modifiers agree; manner adverbs remain invariable in these examples.",
+      "hard_negatives": [
+        {
+          "concept_id": "C008",
+          "rationale": "Noun modifiers agree; manner adverbs remain invariable in these examples."
+        }
+      ]
+    },
+    {
+      "id": "J015",
+      "query_id": "Q015",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C008"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is adverbe modifiant le verbe; the wording specifies manière de faire une action. Noun modifiers agree; manner adverbs remain invariable in these examples.",
+      "hard_negatives": [
+        {
+          "concept_id": "C007",
+          "rationale": "Noun modifiers agree; manner adverbs remain invariable in these examples."
+        }
+      ]
+    },
+    {
+      "id": "J016",
+      "query_id": "Q016",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C008"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is adverbe modifiant le verbe; the wording specifies manière de faire une action. Noun modifiers agree; manner adverbs remain invariable in these examples.",
+      "hard_negatives": [
+        {
+          "concept_id": "C007",
+          "rationale": "Noun modifiers agree; manner adverbs remain invariable in these examples."
+        }
+      ]
+    },
+    {
+      "id": "J017",
+      "query_id": "Q017",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C009"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is négation ne pas; the wording specifies nier un fait présent. Simple denial does not entail cessation; no-longer wording does.",
+      "hard_negatives": [
+        {
+          "concept_id": "C010",
+          "rationale": "Simple denial does not entail cessation; no-longer wording does."
+        }
+      ]
+    },
+    {
+      "id": "J018",
+      "query_id": "Q018",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C009"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is négation ne pas; the wording specifies nier un fait présent. Simple denial does not entail cessation; no-longer wording does.",
+      "hard_negatives": [
+        {
+          "concept_id": "C010",
+          "rationale": "Simple denial does not entail cessation; no-longer wording does."
+        }
+      ]
+    },
+    {
+      "id": "J019",
+      "query_id": "Q019",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C010"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is négation ne plus; the wording specifies cessation d’une habitude. Simple denial does not entail cessation; no-longer wording does.",
+      "hard_negatives": [
+        {
+          "concept_id": "C009",
+          "rationale": "Simple denial does not entail cessation; no-longer wording does."
+        }
+      ]
+    },
+    {
+      "id": "J020",
+      "query_id": "Q020",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C010"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is négation ne plus; the wording specifies cessation d’une habitude. Simple denial does not entail cessation; no-longer wording does.",
+      "hard_negatives": [
+        {
+          "concept_id": "C009",
+          "rationale": "Simple denial does not entail cessation; no-longer wording does."
+        }
+      ]
+    },
+    {
+      "id": "J021",
+      "query_id": "Q021",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C011"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is question avec est-ce que; the wording specifies interrogation sans inversion. Both ask questions, but the requested construction is different.",
+      "hard_negatives": [
+        {
+          "concept_id": "C012",
+          "rationale": "Both ask questions, but the requested construction is different."
+        }
+      ]
+    },
+    {
+      "id": "J022",
+      "query_id": "Q022",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C011"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is question avec est-ce que; the wording specifies interrogation sans inversion. Both ask questions, but the requested construction is different.",
+      "hard_negatives": [
+        {
+          "concept_id": "C012",
+          "rationale": "Both ask questions, but the requested construction is different."
+        }
+      ]
+    },
+    {
+      "id": "J023",
+      "query_id": "Q023",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C012"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is inversion sujet verbe; the wording specifies interrogation avec pronom sujet. Both ask questions, but the requested construction is different.",
+      "hard_negatives": [
+        {
+          "concept_id": "C011",
+          "rationale": "Both ask questions, but the requested construction is different."
+        }
+      ]
+    },
+    {
+      "id": "J024",
+      "query_id": "Q024",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C012"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is inversion sujet verbe; the wording specifies interrogation avec pronom sujet. Both ask questions, but the requested construction is different.",
+      "hard_negatives": [
+        {
+          "concept_id": "C011",
+          "rationale": "Both ask questions, but the requested construction is different."
+        }
+      ]
+    },
+    {
+      "id": "J025",
+      "query_id": "Q025",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C013"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is devoir avec sujet personnel; the wording specifies obligation portée par une personne. A personal obligation and an impersonal necessity have different subject structures.",
+      "hard_negatives": [
+        {
+          "concept_id": "C014",
+          "rationale": "A personal obligation and an impersonal necessity have different subject structures."
+        }
+      ]
+    },
+    {
+      "id": "J026",
+      "query_id": "Q026",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C013"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is devoir avec sujet personnel; the wording specifies obligation portée par une personne. A personal obligation and an impersonal necessity have different subject structures.",
+      "hard_negatives": [
+        {
+          "concept_id": "C014",
+          "rationale": "A personal obligation and an impersonal necessity have different subject structures."
+        }
+      ]
+    },
+    {
+      "id": "J027",
+      "query_id": "Q027",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C014"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is falloir impersonnel; the wording specifies nécessité avec il impersonnel. A personal obligation and an impersonal necessity have different subject structures.",
+      "hard_negatives": [
+        {
+          "concept_id": "C013",
+          "rationale": "A personal obligation and an impersonal necessity have different subject structures."
+        }
+      ]
+    },
+    {
+      "id": "J028",
+      "query_id": "Q028",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C014"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is falloir impersonnel; the wording specifies nécessité avec il impersonnel. A personal obligation and an impersonal necessity have different subject structures.",
+      "hard_negatives": [
+        {
+          "concept_id": "C013",
+          "rationale": "A personal obligation and an impersonal necessity have different subject structures."
+        }
+      ]
+    },
+    {
+      "id": "J029",
+      "query_id": "Q029",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C015"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is relatif qui sujet; the wording specifies sujet de la proposition relative. Subject and object roles matter; a human referent does not by itself select qui.",
+      "hard_negatives": [
+        {
+          "concept_id": "C016",
+          "rationale": "Subject and object roles matter; a human referent does not by itself select qui."
+        }
+      ]
+    },
+    {
+      "id": "J030",
+      "query_id": "Q030",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C015"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is relatif qui sujet; the wording specifies sujet de la proposition relative. Subject and object roles matter; a human referent does not by itself select qui.",
+      "hard_negatives": [
+        {
+          "concept_id": "C016",
+          "rationale": "Subject and object roles matter; a human referent does not by itself select qui."
+        }
+      ]
+    },
+    {
+      "id": "J031",
+      "query_id": "Q031",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C016"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is relatif que objet; the wording specifies objet de la proposition relative. Subject and object roles matter; a human referent does not by itself select qui.",
+      "hard_negatives": [
+        {
+          "concept_id": "C015",
+          "rationale": "Subject and object roles matter; a human referent does not by itself select qui."
+        }
+      ]
+    },
+    {
+      "id": "J032",
+      "query_id": "Q032",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C016"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is relatif que objet; the wording specifies objet de la proposition relative. Subject and object roles matter; a human referent does not by itself select qui.",
+      "hard_negatives": [
+        {
+          "concept_id": "C015",
+          "rationale": "Subject and object roles matter; a human referent does not by itself select qui."
+        }
+      ]
+    },
+    {
+      "id": "J033",
+      "query_id": "Q033",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C017"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is conditionnel de demande polie; the wording specifies adoucir une requête. Verb mood softening and social choice of address are distinct, even in polite requests.",
+      "hard_negatives": [
+        {
+          "concept_id": "C018",
+          "rationale": "Verb mood softening and social choice of address are distinct, even in polite requests."
+        }
+      ]
+    },
+    {
+      "id": "J034",
+      "query_id": "Q034",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C017"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is conditionnel de demande polie; the wording specifies adoucir une requête. Verb mood softening and social choice of address are distinct, even in polite requests.",
+      "hard_negatives": [
+        {
+          "concept_id": "C018",
+          "rationale": "Verb mood softening and social choice of address are distinct, even in polite requests."
+        }
+      ]
+    },
+    {
+      "id": "J035",
+      "query_id": "Q035",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C018"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is choix tu vous; the wording specifies relation sociale avec l’interlocuteur. Verb mood softening and social choice of address are distinct, even in polite requests.",
+      "hard_negatives": [
+        {
+          "concept_id": "C017",
+          "rationale": "Verb mood softening and social choice of address are distinct, even in polite requests."
+        }
+      ]
+    },
+    {
+      "id": "J036",
+      "query_id": "Q036",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C018"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is choix tu vous; the wording specifies relation sociale avec l’interlocuteur. Verb mood softening and social choice of address are distinct, even in polite requests.",
+      "hard_negatives": [
+        {
+          "concept_id": "C017",
+          "rationale": "Verb mood softening and social choice of address are distinct, even in polite requests."
+        }
+      ]
+    },
+    {
+      "id": "J037",
+      "query_id": "Q037",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C019"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is ou où accent distinctif; the wording specifies choix entre alternative et lieu. Written accent disambiguation is not the spoken u/ou vowel contrast.",
+      "hard_negatives": [
+        {
+          "concept_id": "C020",
+          "rationale": "Written accent disambiguation is not the spoken u/ou vowel contrast."
+        }
+      ]
+    },
+    {
+      "id": "J038",
+      "query_id": "Q038",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C019"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is ou où accent distinctif; the wording specifies choix entre alternative et lieu. Written accent disambiguation is not the spoken u/ou vowel contrast.",
+      "hard_negatives": [
+        {
+          "concept_id": "C020",
+          "rationale": "Written accent disambiguation is not the spoken u/ou vowel contrast."
+        }
+      ]
+    },
+    {
+      "id": "J039",
+      "query_id": "Q039",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C020"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is sons u et ou; the wording specifies contraste voyelles françaises. Written accent disambiguation is not the spoken u/ou vowel contrast.",
+      "hard_negatives": [
+        {
+          "concept_id": "C019",
+          "rationale": "Written accent disambiguation is not the spoken u/ou vowel contrast."
+        }
+      ]
+    },
+    {
+      "id": "J040",
+      "query_id": "Q040",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C020"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is sons u et ou; the wording specifies contraste voyelles françaises. Written accent disambiguation is not the spoken u/ou vowel contrast.",
+      "hard_negatives": [
+        {
+          "concept_id": "C019",
+          "rationale": "Written accent disambiguation is not the spoken u/ou vowel contrast."
+        }
+      ]
+    },
+    {
+      "id": "J041",
+      "query_id": "Q041",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C021"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is depuis durée encore en cours; the wording specifies situation commencée et toujours vraie. Continuing elapsed time differs from the duration of a bounded interval.",
+      "hard_negatives": [
+        {
+          "concept_id": "C022",
+          "rationale": "Continuing elapsed time differs from the duration of a bounded interval."
+        }
+      ]
+    },
+    {
+      "id": "J042",
+      "query_id": "Q042",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C021"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is depuis durée encore en cours; the wording specifies situation commencée et toujours vraie. Continuing elapsed time differs from the duration of a bounded interval.",
+      "hard_negatives": [
+        {
+          "concept_id": "C022",
+          "rationale": "Continuing elapsed time differs from the duration of a bounded interval."
+        }
+      ]
+    },
+    {
+      "id": "J043",
+      "query_id": "Q043",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C022"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is pendant durée délimitée; the wording specifies intervalle achevé ou borné. Continuing elapsed time differs from the duration of a bounded interval.",
+      "hard_negatives": [
+        {
+          "concept_id": "C021",
+          "rationale": "Continuing elapsed time differs from the duration of a bounded interval."
+        }
+      ]
+    },
+    {
+      "id": "J044",
+      "query_id": "Q044",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C022"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is pendant durée délimitée; the wording specifies intervalle achevé ou borné. Continuing elapsed time differs from the duration of a bounded interval.",
+      "hard_negatives": [
+        {
+          "concept_id": "C021",
+          "rationale": "Continuing elapsed time differs from the duration of a bounded interval."
+        }
+      ]
+    },
+    {
+      "id": "J045",
+      "query_id": "Q045",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C023"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is article partitif affirmatif; the wording specifies quantité indéfinie positive. Positive indefinite quantity and a negated quantity select different determiner constructions.",
+      "hard_negatives": [
+        {
+          "concept_id": "C024",
+          "rationale": "Positive indefinite quantity and a negated quantity select different determiner constructions."
+        }
+      ]
+    },
+    {
+      "id": "J046",
+      "query_id": "Q046",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C023"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is article partitif affirmatif; the wording specifies quantité indéfinie positive. Positive indefinite quantity and a negated quantity select different determiner constructions.",
+      "hard_negatives": [
+        {
+          "concept_id": "C024",
+          "rationale": "Positive indefinite quantity and a negated quantity select different determiner constructions."
+        }
+      ]
+    },
+    {
+      "id": "J047",
+      "query_id": "Q047",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C024"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is de après négation de quantité; the wording specifies quantité niée sans contraste. Positive indefinite quantity and a negated quantity select different determiner constructions.",
+      "hard_negatives": [
+        {
+          "concept_id": "C023",
+          "rationale": "Positive indefinite quantity and a negated quantity select different determiner constructions."
+        }
+      ]
+    },
+    {
+      "id": "J048",
+      "query_id": "Q048",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [
+        "C024"
+      ],
+      "possible_concept_ids": [],
+      "rationale": "The requested objective is de après négation de quantité; the wording specifies quantité niée sans contraste. Positive indefinite quantity and a negated quantity select different determiner constructions.",
+      "hard_negatives": [
+        {
+          "concept_id": "C023",
+          "rationale": "Positive indefinite quantity and a negated quantity select different determiner constructions."
+        }
+      ]
+    },
+    {
+      "id": "J049",
+      "query_id": "Q049",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [],
+      "possible_concept_ids": [
+        "C001",
+        "C002"
+      ],
+      "rationale": "No event/background/aspect information selects one of the two past objectives.",
+      "hard_negatives": []
+    },
+    {
+      "id": "J050",
+      "query_id": "Q050",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [],
+      "possible_concept_ids": [
+        "C003",
+        "C004"
+      ],
+      "rationale": "The governing verb and direct/indirect role are unspecified.",
+      "hard_negatives": []
+    },
+    {
+      "id": "J051",
+      "query_id": "Q051",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [],
+      "possible_concept_ids": [
+        "C021",
+        "C022"
+      ],
+      "rationale": "Whether the situation continues now or is bounded is unspecified.",
+      "hard_negatives": []
+    },
+    {
+      "id": "J052",
+      "query_id": "Q052",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [],
+      "possible_concept_ids": [
+        "C023",
+        "C024"
+      ],
+      "rationale": "Polarity and quantity context are missing; these are plausible alternatives, not two SAME labels.",
+      "hard_negatives": []
+    },
+    {
+      "id": "J053",
+      "query_id": "Q053",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [],
+      "possible_concept_ids": [],
+      "rationale": "Cooking-temperature advice is outside all 24 proposed language objectives.",
+      "hard_negatives": []
+    },
+    {
+      "id": "J054",
+      "query_id": "Q054",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [],
+      "possible_concept_ids": [],
+      "rationale": "Computer administration is outside this closed synthetic French-learning catalog.",
+      "hard_negatives": []
+    },
+    {
+      "id": "J055",
+      "query_id": "Q055",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [],
+      "possible_concept_ids": [],
+      "rationale": "Subjunctive selection is a French-learning objective absent from this fixed catalog; grammar vocabulary overlap is not relevance.",
+      "hard_negatives": []
+    },
+    {
+      "id": "J056",
+      "query_id": "Q056",
+      "review_status": "awaiting_human_review",
+      "proposed_relevant_concept_ids": [],
+      "possible_concept_ids": [],
+      "rationale": "Future-tense irregular morphology is absent, despite overlap with going and tense wording.",
+      "hard_negatives": []
+    }
+  ]
+}
