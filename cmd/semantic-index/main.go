@@ -1,16 +1,21 @@
 // Command semantic-index runs the explicit, operator-initiated semantic index
-// operations (FLH-040). It reads the same configuration as the server
-// (environment plus optional .env in the working directory) and requires
-// SEMANTIC_SEARCH=qdrant.
+// operations (FLH-040; run consistency FLH-042). It reads the same
+// configuration as the server (environment plus optional .env in the working
+// directory) and requires SEMANTIC_SEARCH=qdrant.
 //
-//	semantic-index [-json] [-batch N] build    create the index (refuses if it exists)
-//	semantic-index [-json] [-batch N] sync     bring the index up to date incrementally
-//	semantic-index [-json] [-batch N] rebuild  drop and republish (reuses cached embeddings)
-//	semantic-index [-json] status              read-only health report; no provider call
+//	semantic-index [-json] [-batch N] [-takeover] build    publish the first collection
+//	semantic-index [-json] [-batch N] [-takeover] sync     verify; republish only if unhealthy
+//	semantic-index [-json] [-batch N] [-takeover] rebuild  always republish; remove leftovers
+//	semantic-index [-json] status                          last run + live verification; read-only
 //
-// Exit status: 0 complete, 3 finished but partial or superseded, 1 error,
-// 2 usage. SIGINT/SIGTERM cancel the run; the index is then marked partial.
-// There is no background worker and no automatic retry.
+// Every run takes the space's lease. While another run holds an unexpired
+// lease the command exits 4 (busy); -takeover takes it anyway and must only be
+// used when that run is known to be dead. A run that loses the lease stops at
+// its next gate, publishes nothing and exits 3.
+//
+// Exit status: 0 published or verified unchanged, 1 error, 2 usage,
+// 3 ownership lost, 4 busy. SIGINT/SIGTERM interrupt the run; the previously
+// published collection stays in use. There is no worker and no retry.
 package main
 
 import (
@@ -22,6 +27,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -41,11 +47,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(stderr)
 	asJSON := flags.Bool("json", false, "print the report as JSON")
 	batch := flags.Int("batch", 0, "batch size for provider and vector-store calls (default SEMANTIC_BATCH_SIZE)")
+	takeover := flags.Bool("takeover", false, "take the lease from another run (only if that run is dead)")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
 	if flags.NArg() != 1 {
-		fmt.Fprintln(stderr, "usage: semantic-index [-json] [-batch N] build|sync|rebuild|status")
+		fmt.Fprintln(stderr, "usage: semantic-index [-json] [-batch N] [-takeover] build|sync|rebuild|status")
 		return 2
 	}
 	operation := flags.Arg(0)
@@ -106,20 +113,21 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		if *asJSON {
-			return printJSON(stdout, stderr, statusJSON(st))
+			return printJSON(stdout, stderr, st)
 		}
 		printStatus(stdout, st)
 		return 0
 	}
 
+	opts := application.SemanticRunOptions{Takeover: *takeover}
 	var report *application.SemanticIndexReport
 	switch operation {
 	case "build":
-		report, err = svc.Build(ctx)
+		report, err = svc.Build(ctx, opts)
 	case "sync":
-		report, err = svc.Sync(ctx)
+		report, err = svc.Sync(ctx, opts)
 	case "rebuild":
-		report, err = svc.Rebuild(ctx)
+		report, err = svc.Rebuild(ctx, opts)
 	}
 	if report != nil {
 		if *asJSON {
@@ -128,110 +136,127 @@ func run(args []string, stdout, stderr io.Writer) int {
 			printReport(stdout, report)
 		}
 	}
-	if err != nil {
+	switch {
+	case errors.Is(err, application.ErrSemanticIndexBusy):
+		fmt.Fprintf(stderr, "busy: %v\n", err)
+		return 4
+	case errors.Is(err, application.ErrSemanticIndexOwnershipLost) && report != nil && report.Published:
+		fmt.Fprintln(stderr, "published, but another run took over before this run's record was written; run status")
+		return 3
+	case errors.Is(err, application.ErrSemanticIndexOwnershipLost):
+		fmt.Fprintln(stderr, "ownership lost: a newer run took over; this run published nothing")
+		return 3
+	case err != nil:
 		fmt.Fprintf(stderr, "%s failed: %v\n", operation, err)
 		if errors.Is(err, context.Canceled) {
-			fmt.Fprintln(stderr, "interrupted: the index is marked partial; run sync to finish (cached embeddings are kept)")
+			fmt.Fprintln(stderr, "interrupted: the previously published collection is unchanged; run sync to finish (cached embeddings are kept)")
 		}
 		return 1
-	}
-	if report.Superseded {
-		fmt.Fprintln(stderr, "another run took over this index; this run did not record a final state")
-		return 3
-	}
-	if report.State != application.SemanticIndexStateComplete {
-		fmt.Fprintf(stderr, "finished with state %s; run sync again\n", report.State)
-		return 3
 	}
 	return 0
 }
 
 func printReport(w io.Writer, r *application.SemanticIndexReport) {
-	fmt.Fprintf(w, "%s %s (run %s)\n", r.Operation, r.Collection, r.RunID)
+	fmt.Fprintf(w, "%s %s (run %s)\n", r.Operation, r.Space, r.RunID)
 	fmt.Fprintf(w, "  concepts:            %d\n", r.Concepts)
-	fmt.Fprintf(w, "  embedded (provider): %d texts\n", r.EmbeddedTexts)
-	fmt.Fprintf(w, "  reused from cache:   %d\n", r.ReusedVectors)
-	fmt.Fprintf(w, "  upserted:            %d\n", r.Upserted)
-	fmt.Fprintf(w, "  unchanged:           %d\n", r.Unchanged)
-	fmt.Fprintf(w, "  deleted:             %d\n", r.Deleted)
-	fmt.Fprintf(w, "  changed during run:  %d\n", r.ChangedDuringRun)
-	fmt.Fprintf(w, "  state:               %s\n", r.State)
+	if r.VerifiedUnchanged {
+		fmt.Fprintf(w, "  verified unchanged:  %s is healthy; nothing written\n", r.Collection)
+	} else {
+		fmt.Fprintf(w, "  embedded (provider): %d texts\n", r.EmbeddedTexts)
+		fmt.Fprintf(w, "  reused from cache:   %d\n", r.ReusedVectors)
+		fmt.Fprintf(w, "  new collection:      %s (%d points written)\n", r.Collection, r.Upserted)
+		if r.CatchUpChanges > 0 {
+			fmt.Fprintf(w, "  catch-up changes:    %d\n", r.CatchUpChanges)
+		}
+		if r.Published {
+			fmt.Fprintf(w, "  published:           yes (replaced %s, removed %d leftover collection(s))\n", orNone(r.Replaced), r.Cleaned)
+		} else {
+			fmt.Fprintln(w, "  published:           no (the previous publication is unchanged)")
+		}
+	}
+	fmt.Fprintf(w, "  outcome:             %s\n", r.Outcome)
 }
 
-type statusOutput struct {
-	Collection         string                                `json:"collection"`
-	Representation     string                                `json:"representation"`
-	ModelID            string                                `json:"model_id"`
-	Dimensions         int                                   `json:"dimensions"`
-	State              *string                               `json:"state"`
-	LastRun            *string                               `json:"last_run"`
-	LastError          string                                `json:"last_error"`
-	Concepts           int                                   `json:"concepts"`
-	UpToDate           int                                   `json:"up_to_date"`
-	Stale              int                                   `json:"stale"`
-	Missing            int                                   `json:"missing"`
-	Orphaned           int                                   `json:"orphaned"`
-	VectorStorePoints  *int64                                `json:"vector_store_points"`
-	VectorStoreError   string                                `json:"vector_store_error"`
-	SearchableComplete bool                                  `json:"searchable_complete"`
-	OtherCollections   []application.SemanticIndexCollection `json:"other_collections"`
-	CacheCounts        []application.SemanticCacheCount      `json:"cache_counts"`
+func orNone(s string) string {
+	if s == "" {
+		return "none"
+	}
+	return s
 }
 
-func statusJSON(st *application.SemanticIndexStatus) statusOutput {
-	out := statusOutput{
-		Collection: st.Space.Collection, Representation: st.Space.Representation, ModelID: st.Space.ModelID,
-		Dimensions: st.Space.Dimensions, Concepts: st.Concepts, UpToDate: st.UpToDate, Stale: st.Stale,
-		Missing: st.Missing, Orphaned: st.Orphaned, VectorStoreError: st.VectorStoreError,
-		SearchableComplete: st.SearchableComplete, OtherCollections: st.OtherCollections, CacheCounts: st.CacheCounts,
+func fmtTime(t *time.Time) string {
+	if t == nil {
+		return "-"
 	}
-	if st.Collection != nil {
-		out.State = &st.Collection.State
-		run := fmt.Sprintf("%s %s started %s", st.Collection.RunOperation, st.Collection.RunID, st.Collection.RunStartedAt.Format(time.RFC3339))
-		out.LastRun = &run
-		out.LastError = st.Collection.LastError
+	return t.Format(time.RFC3339)
+}
+
+func ids(list []int64) string {
+	if len(list) == 0 {
+		return "0"
 	}
-	if st.VectorStoreError == "" && st.VectorStore.Exists {
-		n := st.VectorStore.PointCount
-		out.VectorStorePoints = &n
+	parts := make([]string, 0, len(list))
+	for i, id := range list {
+		if i == 8 {
+			parts = append(parts, "…")
+			break
+		}
+		parts = append(parts, fmt.Sprint(id))
 	}
-	return out
+	return fmt.Sprintf("%d (%s)", len(list), strings.Join(parts, ", "))
 }
 
 func printStatus(w io.Writer, st *application.SemanticIndexStatus) {
-	fmt.Fprintf(w, "collection %s\n", st.Space.Collection)
-	fmt.Fprintf(w, "  model id:        %s (%d dimensions, %s)\n", st.Space.ModelID, st.Space.Dimensions, st.Space.Representation)
-	if st.Collection == nil {
-		fmt.Fprintln(w, "  state:           not built")
+	fmt.Fprintf(w, "space %s\n", st.Space.Collection)
+	fmt.Fprintf(w, "  model id:          %s (%d dimensions, %s)\n", st.Space.ModelID, st.Space.Dimensions, st.Space.Representation)
+	s := st.State
+	if s == nil {
+		fmt.Fprintln(w, "  nothing recorded:  never built; run build")
 	} else {
-		c := st.Collection
-		fmt.Fprintf(w, "  state:           %s (last run: %s %s, started %s)\n", c.State, c.RunOperation, c.RunID, c.RunStartedAt.Format(time.RFC3339))
-		if c.State == application.SemanticIndexStateBuilding {
-			fmt.Fprintln(w, "                   a run is in progress or was killed; if no run is active, run sync")
+		fmt.Fprintf(w, "  published:         %s (run %s at %s)\n", orNone(s.PublishedCollection), orNone(s.PublishedRunID), fmtTime(s.PublishedAt))
+		fmt.Fprintf(w, "  last run:          %s %s → %s at %s", orNone(s.LastRunOperation), orNone(s.LastRunID), orNone(s.LastRunOutcome), fmtTime(s.LastRunFinishedAt))
+		if s.LastError != "" {
+			fmt.Fprintf(w, " (%s)", s.LastError)
 		}
-		if c.LastError != "" {
-			fmt.Fprintf(w, "  last error:      %s\n", c.LastError)
+		fmt.Fprintln(w)
+		switch {
+		case st.LeaseActive:
+			fmt.Fprintf(w, "  lease:             held by %s run %s until %s\n", s.LeaseOperation, s.LeaseRunID, fmtTime(s.LeaseExpiresAt))
+		case s.LeaseRunID != "":
+			fmt.Fprintf(w, "  lease:             EXPIRED (%s run %s, %s); the next run may take it\n", s.LeaseOperation, s.LeaseRunID, fmtTime(s.LeaseExpiresAt))
 		}
 	}
-	fmt.Fprintf(w, "  concepts:        %d (up to date %d, stale %d, missing %d, orphaned points %d)\n", st.Concepts, st.UpToDate, st.Stale, st.Missing, st.Orphaned)
+	fmt.Fprintf(w, "  concepts:          %d\n", st.Concepts)
 	switch {
-	case st.VectorStoreError != "":
-		fmt.Fprintf(w, "  vector store:    %s\n", st.VectorStoreError)
-	case !st.VectorStore.Exists:
-		fmt.Fprintln(w, "  vector store:    collection absent")
+	case st.HealthError != "":
+		fmt.Fprintf(w, "  verification:      could not verify (%s)\n", st.HealthError)
+	case st.Health == nil:
+		fmt.Fprintln(w, "  verification:      nothing published")
 	default:
-		fmt.Fprintf(w, "  vector store:    %d points (%d dimensions, %s)\n", st.VectorStore.PointCount, st.VectorStore.Dimensions, st.VectorStore.Distance)
+		h := st.Health
+		fmt.Fprintf(w, "  verification:      %s — %s\n", map[bool]string{true: "HEALTHY", false: "UNHEALTHY"}[h.Healthy], h.Summary())
+		if h.Exists {
+			fmt.Fprintf(w, "    collection:      %d dims %s; %d points for %d concepts\n", h.Dimensions, h.Distance, h.Points, h.Expected)
+			fmt.Fprintf(w, "    missing %s · extra %s · foreign %s · stale %s · vector mismatch %s · unverifiable %s\n",
+				ids(h.Missing), ids(h.Extra), ids(h.ForeignPayload), ids(h.Stale), ids(h.VectorMismatch), ids(h.Unverifiable))
+		}
+		if !h.Healthy {
+			fmt.Fprintln(w, "    repair:          run sync (republishes a fresh collection from cached embeddings)")
+		}
 	}
-	for _, c := range st.OtherCollections {
-		fmt.Fprintf(w, "  other space:     %s model %s (%d dims) state %s — not used by the current configuration\n", c.Collection, c.ModelID, c.Dimensions, c.State)
+	for _, c := range st.Collections {
+		if c.Status != application.PhysicalPublished {
+			fmt.Fprintf(w, "  leftover:          %s (%s, run %s) — removed by the next run\n", c.Collection, c.Status, c.RunID)
+		}
+	}
+	for _, n := range st.Unrecorded {
+		fmt.Fprintf(w, "  unrecorded:        %s exists in Qdrant without a record — removed by rebuild\n", n)
+	}
+	for _, o := range st.OtherSpaces {
+		fmt.Fprintf(w, "  other space:       %s model %s (%d dims), published %s — not used by this configuration\n", o.Space, o.ModelID, o.Dimensions, orNone(o.PublishedCollection))
 	}
 	for _, c := range st.CacheCounts {
-		fmt.Fprintf(w, "  cached vectors:  %d for model %s (%d dims)\n", c.Vectors, c.ModelID, c.Dimensions)
-	}
-	if st.SearchableComplete {
-		fmt.Fprintln(w, "  searchable:      complete")
-	} else {
-		fmt.Fprintln(w, "  searchable:      NOT complete — results may be missing or stale (search fails while the vector store is unreachable); run sync")
+		fmt.Fprintf(w, "  cached vectors:    %d for model %s (%d dims)\n", c.Vectors, c.ModelID, c.Dimensions)
 	}
 }
 

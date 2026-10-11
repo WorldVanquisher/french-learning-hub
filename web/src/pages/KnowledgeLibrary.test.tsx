@@ -183,10 +183,12 @@ describe("Knowledge Library", () => {
 
   it("runs an explicit semantic search, labels similarity and index state, and opens current concept details", async () => {
     const semantic = {
-      schema_version: "knowledge_library_semantic_search_v1", query: "needing to do something", query_representation: "concept_search_query_v1",
+      schema_version: "knowledge_library_semantic_search_v2", query: "needing to do something", query_representation: "concept_search_query_v1",
       state: "all", limit: 20,
-      index: { collection: "flh_concepts_x", representation: "concept_embedding_text_v1", model_id: "fake/bag-of-words@1", dimensions: 64,
-        state: "partial", complete: false, updated_at: "t", completed_at: null, last_error: "embedding provider unavailable" },
+      index: { space: "flh_concepts_x", collection: "flh_concepts_x_rabc", representation: "concept_embedding_text_v1",
+        model_id: "fake/bag-of-words@1", dimensions: 64, published_run_id: "abc", published_at: "2026-10-10T12:00:00Z",
+        last_run_operation: "sync", last_run_outcome: "failed", last_run_finished_at: "2026-10-10T12:05:00Z",
+        last_error: "embedding provider unavailable", health_verified: false, note: "recorded history" },
       considered: 6, skipped: { missing: 1, stale: 1, incompatible: 0, non_positive: 0 }, filtered_by_state: 0,
       score_note: "cosine similarity; not a probability",
       results: [{ concept: concept(1, "subjonctif après il faut que", "active"), similarity: 0.4213, current_member_count: 2, supporting_unit_count: 1 }],
@@ -200,7 +202,11 @@ describe("Knowledge Library", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     expect(await screen.findByText(/1 concept by similarity to “needing to do something”/)).toBeInTheDocument();
     expect(screen.getByText(/Similarity 0\.42 \(cosine; not a probability or a SAME judgment\)/)).toBeInTheDocument();
-    expect(screen.getByText(/The semantic index is partial/)).toHaveTextContent("embedding provider unavailable");
+    expect(screen.getByText(/The last index run ended “failed”/)).toHaveTextContent("embedding provider unavailable");
+    expect(screen.getByText(/Index published 2026-10-10T12:00:00Z; last run: sync failed/)).toHaveTextContent(
+      "not re-verified for this search",
+    );
+    expect(screen.queryByText(/index complete/)).toBeNull();
     expect(screen.getByText(/2 index entries were dropped as out of date or no longer valid/)).toBeInTheDocument();
     // Only the semantic endpoint was called for this query: no keyword fallback.
     const after = calls.slice(before);

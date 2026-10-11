@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -52,63 +53,107 @@ func TestSemanticIndexRepository_CacheRoundTripAndKeying(t *testing.T) {
 	}
 }
 
-func TestSemanticIndexRepository_RunOwnershipAndPoints(t *testing.T) {
-	db, err := Open(filepath.Join(t.TempDir(), "s.db"))
+// The FLH-041 F1 sequence against the FLH-042 API: two database handles stand
+// for two processes. A superseded run's every bookkeeping write is refused and
+// leaves the newer run's records unchanged.
+func TestSemanticIndexRepository_FencedWritesRejectSupersededRun(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.db")
+	dbA, err := Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
-	r := NewSemanticIndexRepository(db)
+	defer dbA.Close()
+	dbB, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dbB.Close()
+	a, b := NewSemanticIndexRepository(dbA), NewSemanticIndexRepository(dbB)
 	ctx := context.Background()
-	now := time.Date(2026, 10, 10, 1, 2, 3, 0, time.UTC)
-	space := application.SemanticIndexSpace{Representation: "rep", ModelID: "m1", Dimensions: 3, Collection: "c_a"}
+	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	space := application.SemanticIndexSpace{Representation: "rep", ModelID: "m1", Dimensions: 2, Collection: "space"}
+	lost := application.ErrSemanticIndexOwnershipLost
 
-	if c, err := r.Collection(ctx, "c_a"); err != nil || c != nil {
-		t.Fatalf("absent collection = %+v %v", c, err)
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := r.BeginRun(ctx, space, "run1", "build", now); err != nil {
-		t.Fatal(err)
+	must(a.AcquireLease(ctx, space, "older", "rebuild", now, now.Add(time.Minute), false))
+	must(a.RegisterCollection(ctx, "space", "older", "space_rolder", now))
+	must(a.RecordManifest(ctx, "space", "older", "space_rolder", map[int64]string{1: "older-hash"}))
+
+	if err := b.AcquireLease(ctx, space, "newer", "sync", now, now.Add(time.Minute), false); !errors.Is(err, application.ErrSemanticIndexBusy) {
+		t.Fatalf("unexpired lease must be busy: %v", err)
 	}
-	if err := r.BeginRun(ctx, space, "run2", "sync", now); err != nil {
-		t.Fatal(err)
+	// Taking an expired lease needs no takeover.
+	must(b.AcquireLease(ctx, space, "newer", "sync", now.Add(2*time.Minute), now.Add(3*time.Minute), false))
+	must(b.RegisterCollection(ctx, "space", "newer", "space_rnewer", now))
+	must(b.RecordManifest(ctx, "space", "newer", "space_rnewer", map[int64]string{1: "newer-hash"}))
+	prev, err := b.Publish(ctx, "space", "newer", "space_rnewer", now)
+	must(err)
+	if prev != "" {
+		t.Fatalf("previous = %q", prev)
 	}
-	owned, err := r.FinishRun(ctx, "c_a", "run1", "complete", "", now)
-	if err != nil || owned {
-		t.Fatalf("superseded run must not finish: owned=%v err=%v", owned, err)
+	must(b.CompleteRun(ctx, "space", "newer", "sync", application.SemanticRunOutcome{Outcome: "published", StartedAt: now, FinishedAt: now}))
+
+	// Every write by the superseded run is refused.
+	for name, write := range map[string]func() error{
+		"renew":      func() error { return a.RenewLease(ctx, "space", "older", now.Add(time.Hour)) },
+		"record own": func() error { return a.RecordManifest(ctx, "space", "older", "space_rolder", map[int64]string{2: "x"}) },
+		"record newer's": func() error {
+			return a.RecordManifest(ctx, "space", "older", "space_rnewer", map[int64]string{1: "older-hash"})
+		},
+		"remove newer's": func() error { return a.RemoveManifest(ctx, "space", "older", "space_rnewer", []int64{1}) },
+		"publish":        func() error { _, err := a.Publish(ctx, "space", "older", "space_rolder", now); return err },
+		"mark newer's":   func() error { return a.MarkCollection(ctx, "space", "older", "space_rnewer", "abandoned", now) },
+		"forget newer's": func() error { return a.ForgetCollection(ctx, "space", "older", "space_rnewer") },
+		"register":       func() error { return a.RegisterCollection(ctx, "space", "older", "space_rolder2", now) },
+		"complete": func() error {
+			return a.CompleteRun(ctx, "space", "older", "rebuild", application.SemanticRunOutcome{Outcome: "published"})
+		},
+	} {
+		if err := write(); !errors.Is(err, lost) {
+			t.Fatalf("%s: err = %v, want ownership lost", name, err)
+		}
 	}
-	owned, err = r.FinishRun(ctx, "c_a", "run2", "complete", "", now)
-	if err != nil || !owned {
-		t.Fatalf("owner must finish: owned=%v err=%v", owned, err)
+	st, err := b.SpaceState(ctx, "space")
+	must(err)
+	if st.PublishedCollection != "space_rnewer" || st.PublishedRunID != "newer" || st.LastRunID != "newer" || st.LastRunOutcome != "published" || st.LeaseRunID != "" {
+		t.Fatalf("newer records changed: %+v", st)
 	}
-	c, err := r.Collection(ctx, "c_a")
-	if err != nil || c.State != "complete" || c.RunID != "run2" || c.RunOperation != "sync" || c.CompletedAt == nil {
-		t.Fatalf("collection = %+v %v", c, err)
-	}
-	if _, err := r.FinishRun(ctx, "c_a", "run2", "bogus", "", now); err == nil {
-		t.Fatal("state CHECK must reject unknown states")
+	m, err := b.Manifest(ctx, "space_rnewer")
+	must(err)
+	if len(m) != 1 || m[1] != "newer-hash" {
+		t.Fatalf("newer manifest changed: %v", m)
 	}
 
-	if err := r.RecordPoints(ctx, "c_a", map[int64]string{1: "h1", 2: "h2"}, now); err != nil {
-		t.Fatal(err)
+	// Even the lease holder cannot write another run's manifest, and a
+	// published record is never forgotten.
+	must(b.AcquireLease(ctx, space, "third", "rebuild", now, now.Add(time.Minute), true))
+	if err := b.RecordManifest(ctx, "space", "third", "space_rnewer", map[int64]string{1: "x"}); !errors.Is(err, lost) {
+		t.Fatalf("writing another run's manifest: %v", err)
 	}
-	if err := r.RecordPoints(ctx, "c_a", map[int64]string{2: "h2b"}, now); err != nil {
-		t.Fatal(err)
+	must(b.ForgetCollection(ctx, "space", "third", "space_rnewer"))
+	cols, err := b.PhysicalCollections(ctx, "space")
+	must(err)
+	statuses := map[string]string{}
+	for _, c := range cols {
+		statuses[c.Collection] = c.Status
 	}
-	if err := r.RemovePoints(ctx, "c_a", []int64{1}); err != nil {
-		t.Fatal(err)
+	if statuses["space_rnewer"] != "published" || statuses["space_rolder"] != "writing" {
+		t.Fatalf("collections = %v", statuses)
 	}
-	pts, err := r.PublishedPoints(ctx, "c_a")
-	if err != nil || len(pts) != 1 || pts[2] != "h2b" {
-		t.Fatalf("points = %v %v", pts, err)
+	// Publishing a new collection retires the previous one in the same transaction.
+	must(b.RegisterCollection(ctx, "space", "third", "space_rthird", now))
+	prev, err = b.Publish(ctx, "space", "third", "space_rthird", now)
+	must(err)
+	cols, _ = b.PhysicalCollections(ctx, "space")
+	for _, c := range cols {
+		statuses[c.Collection] = c.Status
 	}
-	if err := r.ClearPoints(ctx, "c_a"); err != nil {
-		t.Fatal(err)
-	}
-	if pts, _ := r.PublishedPoints(ctx, "c_a"); len(pts) != 0 {
-		t.Fatalf("clear left %v", pts)
-	}
-	all, err := r.Collections(ctx)
-	if err != nil || len(all) != 1 {
-		t.Fatalf("collections = %+v %v", all, err)
+	if prev != "space_rnewer" || statuses["space_rnewer"] != "retired" || statuses["space_rthird"] != "published" {
+		t.Fatalf("prev %q statuses %v", prev, statuses)
 	}
 }

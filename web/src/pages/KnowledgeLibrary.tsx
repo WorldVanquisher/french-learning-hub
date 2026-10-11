@@ -320,19 +320,26 @@ function SemanticResults({
   onOpen: (conceptId: number) => void;
 }) {
   const dropped = data.skipped.stale + data.skipped.missing + data.skipped.incompatible;
+  const idx = data.index;
+  const lastRunOk = idx.last_run_outcome === "published" || idx.last_run_outcome === "verified_unchanged";
   return (
     <section aria-label="Semantic results">
-      {!data.index.complete ? (
+      {!lastRunOk && idx.last_run_outcome ? (
         <div className="banner info" role="status">
-          The semantic index is {data.index.state}, so results may be missing or out of date
-          {data.index.last_error ? ` (last run: ${data.index.last_error})` : ""}. An operator can finish it with{" "}
+          The last index run ended “{idx.last_run_outcome.replace("_", " ")}”
+          {idx.last_error ? ` (${idx.last_error})` : ""}. Search still uses the earlier published index, which may be out of
+          date; an operator can check it with <code>semantic-index status</code> and repair it with{" "}
           <code>semantic-index sync</code>.
         </div>
       ) : null}
       <p className="hint" role="status">
         {data.results.length} concept{data.results.length === 1 ? "" : "s"} by similarity to “{data.query}”
-        {query.state === "all" ? "" : ` with status ${query.state}`} · model {data.index.model_id} ·{" "}
-        {data.index.complete ? "index complete" : "index incomplete"}.
+        {query.state === "all" ? "" : ` with status ${query.state}`} · model {idx.model_id}.
+      </p>
+      <p className="hint">
+        Index published {idx.published_at ?? "at an unknown time"}; last run: {idx.last_run_operation || "none"}{" "}
+        {idx.last_run_outcome ? idx.last_run_outcome.replace("_", " ") : ""}. This is recorded history, not re-verified
+        for this search; every result below was re-checked against the current database.
       </p>
       {dropped > 0 || data.filtered_by_state > 0 ? (
         <p className="hint">

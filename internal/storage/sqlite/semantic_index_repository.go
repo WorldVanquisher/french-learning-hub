@@ -11,9 +11,10 @@ import (
 	"french-learning-app/internal/application"
 )
 
-// SemanticIndexRepository stores the reusable embedding cache and the semantic
-// index bookkeeping (FLH-040). Every method is one short transaction; callers
-// never hold one across a provider or vector-store call.
+// SemanticIndexRepository stores the reusable embedding cache (FLH-040) and the
+// run/publication bookkeeping (FLH-042). Every method is one short transaction;
+// callers never hold one across a provider or vector-store call. Methods taking
+// a runID are fenced by the space's lease.
 type SemanticIndexRepository struct {
 	db *sql.DB
 }
@@ -84,56 +85,209 @@ func (r *SemanticIndexRepository) SaveVectors(ctx context.Context, space applica
 	return tx.Commit()
 }
 
-// BeginRun takes ownership of the space for a new run. A newer run always
-// takes over: an older process that is still running can no longer mark the
-// space complete because FinishRun checks the run id.
-func (r *SemanticIndexRepository) BeginRun(ctx context.Context, space application.SemanticIndexSpace, runID, operation string, now time.Time) error {
-	ts := now.Format(rfc3339)
-	_, err := r.db.ExecContext(ctx, `INSERT INTO semantic_index_collections
-		(collection, representation, model_id, dimensions, state, run_id, run_operation, run_started_at, updated_at, last_error)
-		VALUES (?, ?, ?, ?, 'building', ?, ?, ?, ?, '')
-		ON CONFLICT (collection) DO UPDATE SET state = 'building', run_id = excluded.run_id,
-			run_operation = excluded.run_operation, run_started_at = excluded.run_started_at,
-			updated_at = excluded.updated_at, last_error = ''`,
-		space.Collection, space.Representation, space.ModelID, space.Dimensions, runID, operation, ts, ts)
+// leaseTime is a fixed-width UTC layout, so lease expiry can be compared as
+// text inside SQL.
+const leaseTime = "2006-01-02T15:04:05.000000000Z"
+
+func fmtLease(t time.Time) string { return t.UTC().Format(leaseTime) }
+
+// AcquireLease takes the space's lease for runID. It fails with
+// ErrSemanticIndexBusy while another run holds an unexpired lease, unless
+// takeover is set. The space row is created on first use.
+func (r *SemanticIndexRepository) AcquireLease(ctx context.Context, space application.SemanticIndexSpace, runID, operation string, now, expires time.Time, takeover bool) error {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin semantic index run: %w", err)
+		return fmt.Errorf("begin lease: %w", err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO semantic_index_spaces (space, representation, model_id, dimensions)
+		VALUES (?, ?, ?, ?)`, space.Collection, space.Representation, space.ModelID, space.Dimensions); err != nil {
+		return fmt.Errorf("create semantic index space: %w", err)
+	}
+	cond := `lease_run_id IS NULL OR lease_expires_at IS NULL OR lease_expires_at < ?`
+	args := []any{runID, operation, fmtLease(now), fmtLease(expires), space.Collection, fmtLease(now)}
+	if takeover {
+		cond, args = `1`, args[:5]
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE semantic_index_spaces
+		SET lease_run_id = ?, lease_operation = ?, lease_started_at = ?, lease_expires_at = ?
+		WHERE space = ? AND (`+cond+`)`, args...)
+	if err != nil {
+		return fmt.Errorf("take semantic index lease: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		var holder, op, until sql.NullString
+		_ = tx.QueryRowContext(ctx, `SELECT lease_run_id, lease_operation, lease_expires_at FROM semantic_index_spaces WHERE space = ?`,
+			space.Collection).Scan(&holder, &op, &until)
+		return fmt.Errorf("%w: %s run %s until %s (use -takeover only if that run is dead)",
+			application.ErrSemanticIndexBusy, op.String, holder.String, until.String)
+	}
+	return tx.Commit()
+}
+
+// RenewLease extends the lease if runID still holds it.
+func (r *SemanticIndexRepository) RenewLease(ctx context.Context, space, runID string, expires time.Time) error {
+	res, err := r.db.ExecContext(ctx, `UPDATE semantic_index_spaces SET lease_expires_at = ?
+		WHERE space = ? AND lease_run_id = ?`, fmtLease(expires), space, runID)
+	if err != nil {
+		return fmt.Errorf("renew semantic index lease: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return application.ErrSemanticIndexOwnershipLost
 	}
 	return nil
 }
 
-// FinishRun records the run outcome only if runID still owns the space. It
-// reports whether it did.
-func (r *SemanticIndexRepository) FinishRun(ctx context.Context, collection, runID, state, lastError string, now time.Time) (bool, error) {
-	ts := now.Format(rfc3339)
-	var completed any
-	if state == application.SemanticIndexStateComplete {
-		completed = ts
-	}
-	res, err := r.db.ExecContext(ctx, `UPDATE semantic_index_collections
-		SET state = ?, updated_at = ?, last_error = ?, completed_at = COALESCE(?, completed_at)
-		WHERE collection = ? AND run_id = ?`, state, ts, lastError, completed, collection, runID)
+// fenced runs fn in one transaction whose first statement is a write that
+// matches only while runID holds the lease. That write takes SQLite's write
+// lock, so the lease cannot change before fn's statements commit.
+func (r *SemanticIndexRepository) fenced(ctx context.Context, space, runID string, fn func(*sql.Tx) error) error {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return false, fmt.Errorf("finish semantic index run: %w", err)
+		return fmt.Errorf("begin fenced write: %w", err)
 	}
-	n, err := res.RowsAffected()
+	defer tx.Rollback()
+	res, err := tx.ExecContext(ctx, `UPDATE semantic_index_spaces SET lease_run_id = lease_run_id
+		WHERE space = ? AND lease_run_id = ?`, space, runID)
 	if err != nil {
-		return false, err
+		return fmt.Errorf("check semantic index lease: %w", err)
 	}
-	return n == 1, nil
+	if n, _ := res.RowsAffected(); n != 1 {
+		return application.ErrSemanticIndexOwnershipLost
+	}
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
-func (r *SemanticIndexRepository) ClearPoints(ctx context.Context, collection string) error {
-	if _, err := r.db.ExecContext(ctx, `DELETE FROM semantic_index_points WHERE collection = ?`, collection); err != nil {
-		return fmt.Errorf("clear semantic index points: %w", err)
+// CompleteRun records the owning run's outcome and releases the lease.
+func (r *SemanticIndexRepository) CompleteRun(ctx context.Context, space, runID, operation string, o application.SemanticRunOutcome) error {
+	return r.fenced(ctx, space, runID, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE semantic_index_spaces SET
+			last_run_id = ?, last_run_operation = ?, last_run_outcome = ?, last_run_started_at = ?,
+			last_run_finished_at = ?, last_error = ?,
+			lease_run_id = NULL, lease_operation = NULL, lease_started_at = NULL, lease_expires_at = NULL
+			WHERE space = ?`, runID, operation, o.Outcome, fmtLease(o.StartedAt), fmtLease(o.FinishedAt), o.LastError, space)
+		if err != nil {
+			return fmt.Errorf("record semantic index run: %w", err)
+		}
+		return nil
+	})
+}
+
+// RegisterCollection records a run's physical collection before it is created
+// in the vector store, so every task-created collection is recorded.
+func (r *SemanticIndexRepository) RegisterCollection(ctx context.Context, space, runID, collection string, now time.Time) error {
+	return r.fenced(ctx, space, runID, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO semantic_index_physical_collections
+			(collection, space, run_id, status, created_at, updated_at) VALUES (?, ?, ?, 'writing', ?, ?)`,
+			collection, space, runID, fmtLease(now), fmtLease(now))
+		if err != nil {
+			return fmt.Errorf("register semantic index collection: %w", err)
+		}
+		return nil
+	})
+}
+
+// ownCollection checks that collection belongs to runID and is still being written.
+func ownCollection(ctx context.Context, tx *sql.Tx, space, runID, collection string) error {
+	var owner, status string
+	err := tx.QueryRowContext(ctx, `SELECT run_id, status FROM semantic_index_physical_collections WHERE collection = ? AND space = ?`,
+		collection, space).Scan(&owner, &status)
+	if err != nil || owner != runID || status != application.PhysicalWriting {
+		return fmt.Errorf("%w: collection %s is not this run's writing collection", application.ErrSemanticIndexOwnershipLost, collection)
 	}
 	return nil
 }
 
-func (r *SemanticIndexRepository) PublishedPoints(ctx context.Context, collection string) (map[int64]string, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT concept_id, content_hash FROM semantic_index_points WHERE collection = ?`, collection)
+func (r *SemanticIndexRepository) RecordManifest(ctx context.Context, space, runID, collection string, points map[int64]string) error {
+	return r.fenced(ctx, space, runID, func(tx *sql.Tx) error {
+		if err := ownCollection(ctx, tx, space, runID, collection); err != nil {
+			return err
+		}
+		for id, hash := range points {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO semantic_index_manifest (collection, concept_id, content_hash)
+				VALUES (?, ?, ?) ON CONFLICT (collection, concept_id) DO UPDATE SET content_hash = excluded.content_hash`,
+				collection, id, hash); err != nil {
+				return fmt.Errorf("record semantic index manifest: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
+func (r *SemanticIndexRepository) RemoveManifest(ctx context.Context, space, runID, collection string, conceptIDs []int64) error {
+	return r.fenced(ctx, space, runID, func(tx *sql.Tx) error {
+		if err := ownCollection(ctx, tx, space, runID, collection); err != nil {
+			return err
+		}
+		for _, id := range conceptIDs {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM semantic_index_manifest WHERE collection = ? AND concept_id = ?`, collection, id); err != nil {
+				return fmt.Errorf("remove semantic index manifest row: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
+// Publish is the single publication point: in one fenced transaction it makes
+// collection the space's published collection, marks it published and the
+// previous one retired, and returns the previous name.
+func (r *SemanticIndexRepository) Publish(ctx context.Context, space, runID, collection string, now time.Time) (string, error) {
+	var previous string
+	err := r.fenced(ctx, space, runID, func(tx *sql.Tx) error {
+		if err := ownCollection(ctx, tx, space, runID, collection); err != nil {
+			return err
+		}
+		var prev sql.NullString
+		if err := tx.QueryRowContext(ctx, `SELECT published_collection FROM semantic_index_spaces WHERE space = ?`, space).Scan(&prev); err != nil {
+			return fmt.Errorf("read publication: %w", err)
+		}
+		previous = prev.String
+		ts := fmtLease(now)
+		if _, err := tx.ExecContext(ctx, `UPDATE semantic_index_spaces SET published_collection = ?, published_run_id = ?, published_at = ?
+			WHERE space = ?`, collection, runID, ts, space); err != nil {
+			return fmt.Errorf("publish semantic index collection: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE semantic_index_physical_collections SET status = 'published', updated_at = ?
+			WHERE collection = ?`, ts, collection); err != nil {
+			return err
+		}
+		if previous != "" && previous != collection {
+			if _, err := tx.ExecContext(ctx, `UPDATE semantic_index_physical_collections SET status = 'retired', updated_at = ?
+				WHERE collection = ?`, ts, previous); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return previous, err
+}
+
+// MarkCollection changes the status of a collection that is not published.
+func (r *SemanticIndexRepository) MarkCollection(ctx context.Context, space, runID, collection, status string, now time.Time) error {
+	return r.fenced(ctx, space, runID, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE semantic_index_physical_collections SET status = ?, updated_at = ?
+			WHERE collection = ? AND space = ? AND status != 'published'`, status, fmtLease(now), collection, space)
+		return err
+	})
+}
+
+// ForgetCollection deletes the record (and manifest) of a collection that was
+// removed from the vector store. A published collection is never forgotten.
+func (r *SemanticIndexRepository) ForgetCollection(ctx context.Context, space, runID, collection string) error {
+	return r.fenced(ctx, space, runID, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM semantic_index_physical_collections
+			WHERE collection = ? AND space = ? AND status != 'published'`, collection, space)
+		return err
+	})
+}
+
+func (r *SemanticIndexRepository) Manifest(ctx context.Context, collection string) (map[int64]string, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT concept_id, content_hash FROM semantic_index_manifest WHERE collection = ?`, collection)
 	if err != nil {
-		return nil, fmt.Errorf("read semantic index points: %w", err)
+		return nil, fmt.Errorf("read semantic index manifest: %w", err)
 	}
 	defer rows.Close()
 	out := map[int64]string{}
@@ -148,86 +302,80 @@ func (r *SemanticIndexRepository) PublishedPoints(ctx context.Context, collectio
 	return out, rows.Err()
 }
 
-func (r *SemanticIndexRepository) RecordPoints(ctx context.Context, collection string, points map[int64]string, now time.Time) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin semantic index point write: %w", err)
+const spaceColumns = `space, representation, model_id, dimensions, lease_run_id, lease_operation, lease_started_at,
+	lease_expires_at, published_collection, published_run_id, published_at, last_run_id, last_run_operation,
+	last_run_outcome, last_run_started_at, last_run_finished_at, last_error`
+
+func scanSpace(row interface{ Scan(...any) error }) (application.SemanticIndexSpaceState, error) {
+	var s application.SemanticIndexSpaceState
+	var leaseRun, leaseOp, leaseStart, leaseExp, pubCol, pubRun, pubAt, lastRun, lastOp, lastOut, lastStart, lastEnd sql.NullString
+	if err := row.Scan(&s.Space, &s.Representation, &s.ModelID, &s.Dimensions, &leaseRun, &leaseOp, &leaseStart, &leaseExp,
+		&pubCol, &pubRun, &pubAt, &lastRun, &lastOp, &lastOut, &lastStart, &lastEnd, &s.LastError); err != nil {
+		return s, err
 	}
-	defer tx.Rollback()
-	for id, hash := range points {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO semantic_index_points (collection, concept_id, content_hash, published_at)
-			VALUES (?, ?, ?, ?) ON CONFLICT (collection, concept_id) DO UPDATE SET
-			content_hash = excluded.content_hash, published_at = excluded.published_at`,
-			collection, id, hash, now.Format(rfc3339)); err != nil {
-			return fmt.Errorf("record semantic index point: %w", err)
+	s.LeaseRunID, s.LeaseOperation, s.PublishedCollection, s.PublishedRunID = leaseRun.String, leaseOp.String, pubCol.String, pubRun.String
+	s.LastRunID, s.LastRunOperation, s.LastRunOutcome = lastRun.String, lastOp.String, lastOut.String
+	for _, f := range []struct {
+		src sql.NullString
+		dst **time.Time
+	}{{leaseStart, &s.LeaseStartedAt}, {leaseExp, &s.LeaseExpiresAt}, {pubAt, &s.PublishedAt}, {lastStart, &s.LastRunStartedAt}, {lastEnd, &s.LastRunFinishedAt}} {
+		if f.src.Valid {
+			t, err := time.Parse(leaseTime, f.src.String)
+			if err != nil {
+				return s, fmt.Errorf("parse semantic index time: %w", err)
+			}
+			*f.dst = &t
 		}
 	}
-	return tx.Commit()
+	return s, nil
 }
 
-func (r *SemanticIndexRepository) RemovePoints(ctx context.Context, collection string, conceptIDs []int64) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	for _, id := range conceptIDs {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM semantic_index_points WHERE collection = ? AND concept_id = ?`, collection, id); err != nil {
-			return fmt.Errorf("remove semantic index point: %w", err)
-		}
-	}
-	return tx.Commit()
-}
-
-const collectionColumns = `collection, representation, model_id, dimensions, state, run_id, run_operation,
-	run_started_at, updated_at, completed_at, last_error`
-
-func scanCollection(row interface{ Scan(...any) error }) (application.SemanticIndexCollection, error) {
-	var c application.SemanticIndexCollection
-	var started, updated string
-	var completed sql.NullString
-	if err := row.Scan(&c.Collection, &c.Representation, &c.ModelID, &c.Dimensions, &c.State, &c.RunID, &c.RunOperation,
-		&started, &updated, &completed, &c.LastError); err != nil {
-		return c, err
-	}
-	var err error
-	if c.RunStartedAt, err = time.Parse(rfc3339, started); err != nil {
-		return c, fmt.Errorf("parse run_started_at: %w", err)
-	}
-	if c.UpdatedAt, err = time.Parse(rfc3339, updated); err != nil {
-		return c, fmt.Errorf("parse updated_at: %w", err)
-	}
-	if completed.Valid {
-		t, err := time.Parse(rfc3339, completed.String)
-		if err != nil {
-			return c, fmt.Errorf("parse completed_at: %w", err)
-		}
-		c.CompletedAt = &t
-	}
-	return c, nil
-}
-
-func (r *SemanticIndexRepository) Collection(ctx context.Context, collection string) (*application.SemanticIndexCollection, error) {
-	c, err := scanCollection(r.db.QueryRowContext(ctx, `SELECT `+collectionColumns+` FROM semantic_index_collections WHERE collection = ?`, collection))
+func (r *SemanticIndexRepository) SpaceState(ctx context.Context, space string) (*application.SemanticIndexSpaceState, error) {
+	s, err := scanSpace(r.db.QueryRowContext(ctx, `SELECT `+spaceColumns+` FROM semantic_index_spaces WHERE space = ?`, space))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("read semantic index collection: %w", err)
+		return nil, fmt.Errorf("read semantic index space: %w", err)
 	}
-	return &c, nil
+	return &s, nil
 }
 
-func (r *SemanticIndexRepository) Collections(ctx context.Context) ([]application.SemanticIndexCollection, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT `+collectionColumns+` FROM semantic_index_collections ORDER BY collection`)
+func (r *SemanticIndexRepository) SpaceStates(ctx context.Context) ([]application.SemanticIndexSpaceState, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT `+spaceColumns+` FROM semantic_index_spaces ORDER BY space`)
+	if err != nil {
+		return nil, fmt.Errorf("read semantic index spaces: %w", err)
+	}
+	defer rows.Close()
+	var out []application.SemanticIndexSpaceState
+	for rows.Next() {
+		s, err := scanSpace(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func (r *SemanticIndexRepository) PhysicalCollections(ctx context.Context, space string) ([]application.PhysicalCollection, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT collection, space, run_id, status, created_at, updated_at
+		FROM semantic_index_physical_collections WHERE space = ? ORDER BY created_at, collection`, space)
 	if err != nil {
 		return nil, fmt.Errorf("read semantic index collections: %w", err)
 	}
 	defer rows.Close()
-	var out []application.SemanticIndexCollection
+	var out []application.PhysicalCollection
 	for rows.Next() {
-		c, err := scanCollection(rows)
-		if err != nil {
+		var c application.PhysicalCollection
+		var created, updated string
+		if err := rows.Scan(&c.Collection, &c.Space, &c.RunID, &c.Status, &created, &updated); err != nil {
+			return nil, err
+		}
+		if c.CreatedAt, err = time.Parse(leaseTime, created); err != nil {
+			return nil, err
+		}
+		if c.UpdatedAt, err = time.Parse(leaseTime, updated); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

@@ -176,7 +176,7 @@ type qdrantPayload struct {
 	Dimensions     int    `json:"dimensions"`
 }
 
-func (q *Qdrant) Upsert(ctx context.Context, space application.SemanticIndexSpace, points []application.VectorPoint) error {
+func (q *Qdrant) Upsert(ctx context.Context, collection string, space application.SemanticIndexSpace, points []application.VectorPoint) error {
 	type point struct {
 		ID      int64         `json:"id"`
 		Vector  []float32     `json:"vector"`
@@ -194,9 +194,9 @@ func (q *Qdrant) Upsert(ctx context.Context, space application.SemanticIndexSpac
 			ModelID: space.ModelID, Dimensions: space.Dimensions,
 		}})
 	}
-	status, _, err := q.do(ctx, http.MethodPut, collectionPath(space.Collection)+"/points?wait=true", body)
+	status, _, err := q.do(ctx, http.MethodPut, collectionPath(collection)+"/points?wait=true", body)
 	if err == nil && status == http.StatusNotFound {
-		return fmt.Errorf("%w: collection %s does not exist", application.ErrSemanticIndexNotBuilt, space.Collection)
+		return fmt.Errorf("%w: collection %s does not exist", application.ErrSemanticIndexNotBuilt, collection)
 	}
 	return err
 }
@@ -244,4 +244,72 @@ func (q *Qdrant) Query(ctx context.Context, collection string, vector []float32,
 		})
 	}
 	return hits, nil
+}
+
+// ListCollections returns every collection name in the Qdrant instance.
+func (q *Qdrant) ListCollections(ctx context.Context) ([]string, error) {
+	_, result, err := q.do(ctx, http.MethodGet, "/collections", nil)
+	if err != nil {
+		return nil, err
+	}
+	var parsed struct {
+		Collections []struct {
+			Name string `json:"name"`
+		} `json:"collections"`
+	}
+	if err := json.Unmarshal(result, &parsed); err != nil {
+		return nil, fmt.Errorf("%w: malformed collection list", application.ErrVectorIndexUnavailable)
+	}
+	names := make([]string, 0, len(parsed.Collections))
+	for _, c := range parsed.Collections {
+		names = append(names, c.Name)
+	}
+	return names, nil
+}
+
+// Scroll returns one page of points with payloads and vectors, ordered by id.
+func (q *Qdrant) Scroll(ctx context.Context, collection string, offset *int64, limit int) ([]application.StoredPoint, *int64, error) {
+	body := map[string]any{"limit": limit, "with_payload": true, "with_vector": true}
+	if offset != nil {
+		body["offset"] = *offset
+	}
+	status, result, err := q.do(ctx, http.MethodPost, collectionPath(collection)+"/points/scroll", body)
+	if err != nil {
+		return nil, nil, err
+	}
+	if status == http.StatusNotFound {
+		return nil, nil, fmt.Errorf("%w: collection %s does not exist", application.ErrSemanticIndexNotBuilt, collection)
+	}
+	var parsed struct {
+		Points []struct {
+			ID      json.RawMessage `json:"id"`
+			Payload json.RawMessage `json:"payload"`
+			Vector  []float32       `json:"vector"`
+		} `json:"points"`
+		Next json.RawMessage `json:"next_page_offset"`
+	}
+	if err := json.Unmarshal(result, &parsed); err != nil {
+		return nil, nil, fmt.Errorf("%w: malformed scroll response", application.ErrVectorIndexUnavailable)
+	}
+	points := make([]application.StoredPoint, 0, len(parsed.Points))
+	for _, p := range parsed.Points {
+		var id int64
+		idErr := json.Unmarshal(p.ID, &id)
+		var payload qdrantPayload
+		payloadErr := json.Unmarshal(p.Payload, &payload)
+		valid := idErr == nil && payloadErr == nil && id > 0 && payload.ConceptID == id
+		points = append(points, application.StoredPoint{
+			ConceptID: id, PayloadValid: valid, ContentHash: payload.ContentHash, Representation: payload.Representation,
+			ModelID: payload.ModelID, Dimensions: payload.Dimensions, Vector: p.Vector,
+		})
+	}
+	var next *int64
+	if len(parsed.Next) > 0 && string(parsed.Next) != "null" {
+		var n int64
+		if err := json.Unmarshal(parsed.Next, &n); err != nil {
+			return nil, nil, fmt.Errorf("%w: malformed scroll offset", application.ErrVectorIndexUnavailable)
+		}
+		next = &n
+	}
+	return points, next, nil
 }

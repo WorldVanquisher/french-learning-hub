@@ -166,9 +166,10 @@ func bagOfWords(text string, dims int) []float64 {
 }
 
 type memPoint struct {
-	vector []float32
-	hash   string
-	space  application.SemanticIndexSpace
+	vector  []float32
+	hash    string
+	space   application.SemanticIndexSpace
+	foreign bool
 }
 
 type memCollection struct {
@@ -176,15 +177,21 @@ type memCollection struct {
 	points map[int64]memPoint
 }
 
+// memIndex is an in-memory VectorIndex. Like Qdrant, it keeps collections
+// independent and returns points ordered by id on scroll.
 type memIndex struct {
 	mu          sync.Mutex
 	collections map[string]*memCollection
 	unavailable bool
 	upserts     int
-	failUpsert  int // fail this upsert call number (1-based)
+	failUpsert  int             // fail this upsert call number (1-based)
+	failDelete  map[string]bool // collections whose deletion fails
+	onQuery     func(collection string)
 }
 
-func newMemIndex() *memIndex { return &memIndex{collections: map[string]*memCollection{}} }
+func newMemIndex() *memIndex {
+	return &memIndex{collections: map[string]*memCollection{}, failDelete: map[string]bool{}}
+}
 
 func (m *memIndex) check() error {
 	if m.unavailable {
@@ -206,11 +213,33 @@ func (m *memIndex) CollectionInfo(_ context.Context, name string) (application.V
 	return application.VectorCollectionInfo{Exists: true, Dimensions: c.dims, Distance: "Cosine", PointCount: int64(len(c.points))}, nil
 }
 
+func (m *memIndex) ListCollections(context.Context) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.check(); err != nil {
+		return nil, err
+	}
+	out := []string{}
+	for name := range m.collections {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+func (m *memIndex) names() []string {
+	n, _ := m.ListCollections(context.Background())
+	return n
+}
+
 func (m *memIndex) CreateCollection(_ context.Context, name string, dims int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.check(); err != nil {
 		return err
+	}
+	if _, ok := m.collections[name]; ok {
+		return errors.New("collection already exists")
 	}
 	m.collections[name] = &memCollection{dims: dims, points: map[int64]memPoint{}}
 	return nil
@@ -222,11 +251,14 @@ func (m *memIndex) DeleteCollection(_ context.Context, name string) error {
 	if err := m.check(); err != nil {
 		return err
 	}
+	if m.failDelete[name] {
+		return application.ErrVectorIndexUnavailable
+	}
 	delete(m.collections, name)
 	return nil
 }
 
-func (m *memIndex) Upsert(_ context.Context, space application.SemanticIndexSpace, points []application.VectorPoint) error {
+func (m *memIndex) Upsert(_ context.Context, name string, space application.SemanticIndexSpace, points []application.VectorPoint) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.check(); err != nil {
@@ -236,7 +268,7 @@ func (m *memIndex) Upsert(_ context.Context, space application.SemanticIndexSpac
 	if m.failUpsert == m.upserts {
 		return application.ErrVectorIndexUnavailable
 	}
-	c, ok := m.collections[space.Collection]
+	c, ok := m.collections[name]
 	if !ok {
 		return application.ErrSemanticIndexNotBuilt
 	}
@@ -264,6 +296,11 @@ func (m *memIndex) Delete(_ context.Context, name string, ids []int64) error {
 }
 
 func (m *memIndex) Query(_ context.Context, name string, vector []float32, limit int) ([]application.VectorHit, error) {
+	if m.onQuery != nil {
+		hook := m.onQuery
+		m.onQuery = nil
+		hook(name)
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.check(); err != nil {
@@ -290,11 +327,51 @@ func (m *memIndex) Query(_ context.Context, name string, vector []float32, limit
 	return hits, nil
 }
 
-// injectPoint writes a point directly (simulating foreign or stale data).
+func (m *memIndex) Scroll(_ context.Context, name string, offset *int64, limit int) ([]application.StoredPoint, *int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.check(); err != nil {
+		return nil, nil, err
+	}
+	c, ok := m.collections[name]
+	if !ok {
+		return nil, nil, application.ErrSemanticIndexNotBuilt
+	}
+	ids := []int64{}
+	for id := range c.points {
+		if offset == nil || id >= *offset {
+			ids = append(ids, id)
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	var next *int64
+	if len(ids) > limit {
+		n := ids[limit]
+		next, ids = &n, ids[:limit]
+	}
+	out := []application.StoredPoint{}
+	for _, id := range ids {
+		p := c.points[id]
+		out = append(out, application.StoredPoint{ConceptID: id, PayloadValid: !p.foreign, ContentHash: p.hash,
+			Representation: p.space.Representation, ModelID: p.space.ModelID, Dimensions: p.space.Dimensions, Vector: p.vector})
+	}
+	return out, next, nil
+}
+
+// injectPoint writes a point directly (simulating foreign, stale or replaced data).
 func (m *memIndex) injectPoint(name string, id int64, hash string, space application.SemanticIndexSpace, vector []float32) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.collections[name].points[id] = memPoint{vector: vector, hash: hash, space: space}
+}
+
+func (m *memIndex) pointCount(name string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.collections[name]; ok {
+		return len(c.points)
+	}
+	return -1
 }
 
 func cosine32(a, b []float32) float64 {
