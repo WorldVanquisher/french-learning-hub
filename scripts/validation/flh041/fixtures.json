@@ -1,0 +1,22 @@
+{
+  "schema": "flh041_fixture_v1",
+  "purpose": "Opaque synthetic provider inputs; not production Concept serialization or relevance truth",
+  "dimensions": [4, 8],
+  "provider_models": ["fixture-model-a", "fixture-model-b"],
+  "model_identities": ["fixture/model@a", "fixture/model@b"],
+  "representations": ["fixture-representation-a", "fixture-representation-b"],
+  "documents": [
+    {"name": "unchanged-a", "text": "Synthetic document A: subjonctif après il faut que."},
+    {"name": "unchanged-b", "text": "Synthetic document B: accord avec être."},
+    {"name": "duplicate-a", "text": "Synthetic document A: subjonctif après il faut que."},
+    {"name": "changed-a", "text": "Synthetic document A revised: subjonctif après bien que."},
+    {"name": "orphaned", "text": "Synthetic orphaned Concept identity; still inspectable."},
+    {"name": "retired", "text": "Synthetic retired Concept identity."},
+    {"name": "deleted", "text": "Synthetic identity whose SQLite row will be absent."}
+  ],
+  "queries": [
+    {"name": "query-a", "text": "Synthetic query: expliquer le subjonctif."},
+    {"name": "query-b", "text": "Synthetic query: expliquer un accord."}
+  ],
+  "authority_scenarios": ["current", "orphaned", "retired", "deleted", "stale-hash", "foreign-model", "foreign-representation", "wrong-dimensions"]
+}
