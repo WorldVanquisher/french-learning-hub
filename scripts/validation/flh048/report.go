@@ -11,7 +11,9 @@ import (
 	"strings"
 )
 
-const reportSchema = "flh048_exploratory_retrieval_comparison_v1"
+// v2 (FLH-052): freeze status against the compiled FLH-045 constant, the
+// run deadline, and the exact baseline's structural note.
+const reportSchema = "flh048_exploratory_retrieval_comparison_v2"
 
 // Labels are written verbatim into every report and summary.
 var Labels = []string{
@@ -59,6 +61,7 @@ type RetrieverReport struct {
 	DurationTotalNS  int64         `json:"duration_total_ns"`
 	DurationMedianNS int64         `json:"duration_median_ns"`
 	Errors           int           `json:"errors"`
+	Structure        *Structure    `json:"structure,omitempty"` // exact baseline only
 	Evaluation       Evaluated     `json:"evaluation"`
 	Queries          []QueryReport `json:"queries"`
 }
@@ -76,6 +79,41 @@ type Report struct {
 	QueryIDs      []IDMap           `json:"query_id_mapping"`
 	Baselines     []RetrieverReport `json:"offline_baselines"`
 	Embedding     RetrieverReport   `json:"embedding"`
+}
+
+// Structure explains whether exact signature matching is possible at all on
+// these inputs. It is computed from the ranking inputs, never from labels.
+type Structure struct {
+	Documents                   int    `json:"documents"`
+	DocumentsWithScopeOrFeature int    `json:"documents_with_scope_or_features"`
+	Queries                     int    `json:"queries"`
+	QueriesWithScopeOrFeature   int    `json:"candidate_identities_with_scope_or_features"`
+	ExactMatchPossible          bool   `json:"exact_match_possible"`
+	Note                        string `json:"note"`
+}
+
+// ExactStructure counts scope/identity features on both sides. A signature
+// covers target, intent, scope and features, so a document with a scope or
+// features can only match a candidate identity that has them too.
+func ExactStructure(in *RankingInputs) *Structure {
+	st := &Structure{Documents: len(in.Documents), Queries: len(in.Queries)}
+	for _, d := range in.Documents {
+		if d.Scope != "" || len(d.IdentityFeatures) > 0 {
+			st.DocumentsWithScopeOrFeature++
+		}
+	}
+	for _, q := range in.Queries {
+		if q.CandidateIdentity.Scope != "" || len(q.CandidateIdentity.IdentityFeatures) > 0 {
+			st.QueriesWithScopeOrFeature++
+		}
+	}
+	st.ExactMatchPossible = !(st.DocumentsWithScopeOrFeature == st.Documents && st.QueriesWithScopeOrFeature == 0)
+	if st.ExactMatchPossible {
+		st.Note = "Some fixture Concepts lack scope/features or some derived candidates have them; exact matches are possible in principle."
+	} else {
+		st.Note = fmt.Sprintf("Structural: all %d fixture Concepts have a non-empty scope or identity features, while every candidate identity derived by domain.DeriveCandidateIdentity has neither, so no exact signature can match on these inputs. Its zeros are not evidence about semantic quality. Target identities are never copied into query inputs to change this.", st.Documents)
+	}
+	return st
 }
 
 func idMap(ids []string) []IDMap {
@@ -147,8 +185,12 @@ func Summary(r *Report) string {
 	for _, l := range r.Labels {
 		fmt.Fprintf(&b, "> **%s**\n", l)
 	}
-	fmt.Fprintf(&b, "\nFixture `%s` sha256 `%s` (matches frozen FLH-045: %v). Ranking inputs sha256 `%s`. Judgments sha256 `%s`.\n",
-		r.FixtureStatus["path"], r.Inputs.FixtureSHA256, r.Inputs.FixtureMatchesExpected, r.Inputs.RankingInputsSHA256, r.Inputs.JudgmentsSHA256)
+	fmt.Fprintf(&b, "\nFixture `%s` sha256 `%s`; frozen reference (%s) `%s`; matches the frozen reference: %v. Ranking inputs sha256 `%s`. Judgments sha256 `%s`.\n",
+		r.FixtureStatus["path"], r.Inputs.FixtureSHA256, r.Inputs.FrozenReference, r.Inputs.FrozenReferenceSHA256, r.Inputs.FixtureMatchesFrozen,
+		r.Inputs.RankingInputsSHA256, r.Inputs.JudgmentsSHA256)
+	if r.Run != nil {
+		fmt.Fprintf(&b, "Overall timeout %v: %v.\n", r.Run["timeout"], r.Run["deadline"])
+	}
 	d := r.Denominators
 	fmt.Fprintf(&b, "Catalog %d Concepts; %d queries: %d single-target (development %d, held out %d; fr %d, en %d), %d ambiguous and %d no-match (unscored). K = 5; MRR is truncated at 5.\n\n",
 		d.CatalogConcepts, d.TotalQueries, d.SingleTarget, d.SingleTargetBySplit[splitDevelopment], d.SingleTargetBySplit[splitHeldOut],
@@ -175,8 +217,17 @@ func writeRetriever(b *strings.Builder, rr RetrieverReport, header string) {
 	if rr.Note != "" {
 		fmt.Fprintf(b, "%s\n\n", rr.Note)
 	}
+	if rr.Structure != nil {
+		fmt.Fprintf(b, "%s\n\n", rr.Structure.Note)
+	}
 	if rr.Evaluation.Overall == nil {
 		fmt.Fprintf(b, "No metrics (state %s, %d error(s)); a partial run is never scored.\n\n", rr.State, rr.Errors)
+		for _, q := range rr.Queries {
+			if q.Status == "error" {
+				fmt.Fprintf(b, "First error (%s): %s\n\n", q.QueryID, q.Error)
+				break
+			}
+		}
 	} else {
 		b.WriteString(header)
 		b.WriteString(metricRow("all single-target", rr.Evaluation.Overall))

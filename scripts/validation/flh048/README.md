@@ -17,9 +17,13 @@ go test ./scripts/validation/flh048/
 ```
 
 **What a run does**
-- **Inputs.** It reads `scripts/validation/flh045/fixture.json` and refuses any
-  file whose SHA-256 isn't the frozen
-  `92726376…7043a`.
+- **Inputs (frozen fixture only).** It reads
+  `scripts/validation/flh045/fixture.json` and refuses any file whose SHA-256
+  isn't the frozen `92726376…7043a` compiled into the runner (exit `3`). Since
+  FLH-052, `-expect-fixture-sha256` is only an extra assertion: any value other
+  than that constant is refused (exit `2`), so a caller can never redefine which
+  fixture is frozen. Reports record `fixture_matches_frozen` against that
+  constant (`frozen_reference_sha256`).
 - **Retrievers.** It runs the existing exact-signature, weighted-lexical and
   BM25 `ConceptRetriever` implementations for all 56 queries against all 24
   Concepts, with `K = 5`.
@@ -32,8 +36,19 @@ go test ./scripts/validation/flh048/
 - A location inside the repository, next to the fixture, or one that contains
   the fixture is refused.
 
-**Exit status:** `0` OK; `1` report written but an enabled retriever failed;
-`2` usage or configuration; `3` input or output error. `go run` itself
+**Overall timeout (`-timeout`, default 10m, must be positive).** It is checked
+before and after every `Retrieve` and before a retriever is declared completed.
+A retriever that misses it fails explicitly: that query is an `error` naming
+the timeout, later queries are `not_run_after_error`, later retrievers make no
+call (and no provider request), and no metrics are published. A result returned
+after the deadline is discarded. **Limit:** the existing offline retrievers are
+synchronous and ignore their context, so a `Retrieve` already running is not
+interrupted; it finishes first, then its result is discarded. There is no hard
+process deadline and no watchdog goroutine.
+
+**Exit status:** `0` OK; `1` report written but an enabled retriever failed
+(including an expired overall timeout); `2` usage or configuration; `3` input
+or output error. `go run` itself
 reports a child's non-zero exit as `1`, so build the binary if you need the
 exact code.
 
@@ -54,6 +69,21 @@ Evaluator data meets results only in `Evaluate`.
 **ID mapping.** Runtime IDs are `1..n` in ascending fixture-ID order
 (`C001 → 1`, `Q001 → 1`). Every existing retriever breaks ties by ascending ID,
 so ties follow fixture-ID order whatever the file order.
+
+**Exact baseline.** Every fixture Concept has a scope or identity features,
+and `DeriveCandidateIdentity` never yields either, so no exact signature can
+match on this fixture. The report's `structure` block and the summary say so
+under the exact baseline; its zeros are structural, not a semantic result.
+Target identities are never copied into query inputs to change that.
+
+**Converter parity.** `toQuery`/`toDocument` mirror two unexported production
+converters. `TestConverterParity_AgainstProductionThroughOverlay` runs a child
+`go test -tags flh052parity -overlay …` that adds
+`testdata/production_bridge.go.txt` to `internal/application` virtually and
+compares mirror and production field for field over all 56 queries, all 24
+Concepts and a few edge cases. Nothing is written into production. It cannot
+check the declared synthetic Concept state (normal, supported, active), which
+is a fixture assumption, not a production catalog snapshot.
 
 ## Metrics
 

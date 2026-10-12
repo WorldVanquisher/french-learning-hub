@@ -1,0 +1,15 @@
+package application
+
+import "french-learning-app/internal/domain"
+
+// Virtual file for `go test -overlay` only (FLH-052 converter parity). It is
+// never written into internal/application: it lets the runner's tests call the
+// actual unexported production converters without exporting them.
+
+func FLH052ProductionQuery(unit domain.KnowledgeUnit) ConceptRetrievalQuery {
+	return toConceptRetrievalQuery(unit)
+}
+
+func FLH052ProductionDocument(concept domain.KnowledgeConcept) ConceptRetrievalDocument {
+	return toConceptRetrievalDocument(concept)
+}
