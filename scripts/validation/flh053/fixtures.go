@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"french-learning-app/internal/application"
@@ -15,6 +16,18 @@ type batch struct {
 
 const english = "How do I describe a completed action in French?"
 const french = "Comment décrire une action terminée en français ?"
+
+// FLH-054's explicit search envelope; the role comes from the outer envelope,
+// never from array position or JSON-looking user text.
+func searchInput(text string) string {
+	value := struct {
+		Representation string `json:"representation"`
+		Type           string `json:"type"`
+		Text           string `json:"text"`
+	}{"concept_search_query_v2", "query", text}
+	raw, _ := json.Marshal(value)
+	return string(raw)
+}
 
 type captureProvider struct{ texts []string }
 
@@ -30,6 +43,9 @@ func (p *captureProvider) Embed(_ context.Context, texts []string) ([][]float64,
 
 // Synthetic identities only. Rendering is performed by current production code.
 func fixtures(mode string) ([]batch, error) {
+	if mode == "raw-negative" {
+		return []batch{{"raw-text-must-be-rejected", []string{english}}}, nil
+	}
 	if mode == "plain" {
 		return []batch{{"english-french-repeat", []string{english, french, english}}, {"permuted-repeat", []string{french, english, french}}}, nil
 	}
@@ -61,5 +77,5 @@ func fixtures(mode string) ([]batch, error) {
 	if len(p.texts) != 3 || p.texts[1] != indexTexts[0] || p.texts[2] != indexTexts[1] {
 		return nil, fmt.Errorf("production document rendering differs by path")
 	}
-	return []batch{{"unit-to-concept", p.texts}, {"document-only-permuted", []string{indexTexts[1], indexTexts[0], indexTexts[1]}}, {"raw-search-en", []string{english}}, {"raw-search-fr", []string{french}}, {"mixed-repeat", p.texts}}, nil
+	return []batch{{"unit-to-concept", p.texts}, {"document-only-permuted", []string{indexTexts[1], indexTexts[0], indexTexts[1]}}, {"search-v2-en", []string{searchInput(english)}}, {"search-v2-fr", []string{searchInput(french)}}, {"mixed-repeat", p.texts}}, nil
 }

@@ -208,7 +208,7 @@ func TestRenderedPathsAndRoleAmbiguity(t *testing.T) {
 	if query["type"] != "query" || document["type"] != "concept" || query["representation"] != "concept_embedding_text_v1" || document["representation"] != "concept_embedding_text_v1" {
 		t.Fatal("role/version drift")
 	}
-	if batches[1].Inputs[1] != batches[0].Inputs[1] || batches[2].Inputs[0] != english || batches[3].Inputs[0] != french {
+	if batches[1].Inputs[1] != batches[0].Inputs[1] || batches[2].Inputs[0] != searchInput(english) || batches[3].Inputs[0] != searchInput(french) {
 		t.Fatal("index/search text mismatch")
 	}
 	// Use a real rendered document small enough to pass the actual 200-byte
@@ -221,7 +221,16 @@ func TestRenderedPathsAndRoleAmbiguity(t *testing.T) {
 	if err != nil || parsed.Text != minimal.Text {
 		t.Fatalf("raw query ambiguity witness rejected: %v", err)
 	}
-	t.Log("typed mixed and document-only batches expose roles; raw search can equal a document JSON string, so no universal server-side text heuristic exists")
+	wrapped := searchInput(minimal.Text)
+	var envelope map[string]any
+	if json.Unmarshal([]byte(wrapped), &envelope) != nil || envelope["representation"] != "concept_search_query_v2" || envelope["type"] != "query" || envelope["text"] != minimal.Text {
+		t.Fatal("search role envelope does not preserve user text")
+	}
+	negative, err := fixtures("raw-negative")
+	if err != nil || negative[0].Inputs[0] != english {
+		t.Fatal("raw negative case lost")
+	}
+	t.Log("typed mixed/document/search-v2 roles are explicit; raw-text rejection remains a separate negative fixture")
 }
 
 func TestCapsTimeoutAndOptIn(t *testing.T) {
@@ -281,5 +290,54 @@ func TestCapsTimeoutAndOptIn(t *testing.T) {
 	code := run([]string{"-allow-real-endpoint", "-base-url", server.URL + "/v1/", "-model", "flh053-synthetic-deployment", "-dimensions", "8", "-max-requests", "2", "-max-inputs", "6", "-out", filepath.Join(owned, "explicit-loopback")}, &stdout, &stderr)
 	if code != 0 || calls.Load() != 3 {
 		t.Fatalf("explicit endpoint CLI exit/calls = %d/%d", code, calls.Load())
+	}
+}
+
+func TestTailscaleRangeRequiresExplicitOptIn(t *testing.T) {
+	for _, host := range []string{"100.64.0.0", "100.118.109.6", "100.127.255.255"} {
+		base := "http://" + host + ":8765/v1"
+		if validateEndpoint(base, false) == nil || validateEndpoint(base, true) != nil {
+			t.Fatalf("CGNAT opt-in mismatch for %s", host)
+		}
+	}
+	for _, host := range []string{"100.63.255.255", "100.128.0.0", "8.8.8.8", "1.1.1.1"} {
+		if validateEndpoint("http://"+host+"/v1", true) == nil {
+			t.Fatalf("public/outside range admitted: %s", host)
+		}
+	}
+	for _, base := range []string{"http://name.example/v1", "http://user:pass@100.118.109.6/v1", "http://100.118.109.6/v1?x=y", "http://100.118.109.6/v1#fragment"} {
+		if validateEndpoint(base, true) == nil {
+			t.Fatal("unsafe URL admitted")
+		}
+	}
+}
+
+func TestIntegratedSearchGoldenParity(t *testing.T) {
+	raw, err := os.ReadFile("../../../tools/embedding/e5/tests/golden_inputs.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var golden struct {
+		Accepted []struct {
+			GoQueryText string `json:"go_query_text"`
+			Input       string `json:"input"`
+		} `json:"accepted"`
+	}
+	if err := json.Unmarshal(raw, &golden); err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, item := range golden.Accepted {
+		if item.GoQueryText == "" {
+			continue
+		}
+		count++
+		actual, err := application.ConceptSearchQueryEmbeddingText(item.GoQueryText)
+		if err != nil || actual != item.Input || searchInput(item.GoQueryText) != actual {
+			t.Fatalf("production/probe/golden search drift: %v", err)
+		}
+	}
+	if count != 3 {
+		t.Fatalf("search cases: %d", count)
 	}
 }

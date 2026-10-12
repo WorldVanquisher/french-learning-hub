@@ -1,0 +1,32 @@
+package http_test
+
+import (
+	"context"
+	"french-learning-app/internal/application"
+	"testing"
+)
+
+type flh056V2Search struct{ fakeSemantic }
+
+func (f *flh056V2Search) Search(ctx context.Context, q application.LibrarySearchQuery) (*application.SemanticSearchReport, error) {
+	r, err := f.fakeSemantic.Search(ctx, q)
+	if r != nil {
+		r.QueryRepresentation = application.ConceptSearchQueryRepresentationV2
+	}
+	return r, err
+}
+
+// This acceptance expectation deliberately fails on the supplied baseline.
+// It tests the actual handler without production edits, Qdrant or a model call.
+func TestFLH056HTTPMetadataMatchesEmbeddedRepresentation(t *testing.T) {
+	root, api := semanticServer(t, &flh056V2Search{})
+	for _, base := range []string{root.URL, api.URL + "/api"} {
+		status, body := semanticGet(t, base+"/knowledge-library/semantic-search?q=synthetic")
+		if status != 200 {
+			t.Fatalf("status: %d", status)
+		}
+		if body["query_representation"] != application.ConceptSearchQueryRepresentationV2 {
+			t.Errorf("expected %s, actual %v", application.ConceptSearchQueryRepresentationV2, body["query_representation"])
+		}
+	}
+}
