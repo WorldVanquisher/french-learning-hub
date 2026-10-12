@@ -108,6 +108,11 @@ func (h *Handler) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
 		writeSemanticError(w, err)
 		return
 	}
+	if report.QueryRepresentation == "" {
+		// The response must name what was actually embedded; never guess it.
+		writeError(w, http.StatusInternalServerError, "could not run semantic search")
+		return
+	}
 	if state == "" {
 		state = "all"
 	}
@@ -115,7 +120,7 @@ func (h *Handler) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
 	resp := semanticSearchResponse{
 		SchemaVersion: KnowledgeLibrarySemanticSearchSchemaVersion,
 		Query:         report.Query,
-		QueryForm:     application.ConceptSearchQueryRepresentationV1,
+		QueryForm:     report.QueryRepresentation,
 		State:         state,
 		Limit:         report.Limit,
 		Index: semanticIndexResponse{

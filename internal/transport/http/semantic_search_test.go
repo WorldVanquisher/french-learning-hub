@@ -21,6 +21,10 @@ import (
 type fakeSemantic struct {
 	err   error
 	query application.LibrarySearchQuery
+	// rep is the report's QueryRepresentation; "" means the default
+	// application value, and noRep leaves it empty.
+	rep   string
+	noRep bool
 }
 
 func (f *fakeSemantic) Search(_ context.Context, q application.LibrarySearchQuery) (*application.SemanticSearchReport, error) {
@@ -29,8 +33,12 @@ func (f *fakeSemantic) Search(_ context.Context, q application.LibrarySearchQuer
 		return nil, f.err
 	}
 	published := time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)
+	rep := f.rep
+	if rep == "" && !f.noRep {
+		rep = application.ConceptSearchQueryRepresentationV2
+	}
 	return &application.SemanticSearchReport{
-		Query: q.Text, State: q.State, Limit: q.Limit, Considered: 4, SkippedStale: 1,
+		Query: q.Text, QueryRepresentation: rep, State: q.State, Limit: q.Limit, Considered: 4, SkippedStale: 1,
 		Space:      application.SemanticIndexSpace{Collection: "space", Representation: "concept_embedding_text_v1", ModelID: "m", Dimensions: 8},
 		Collection: "space_rabc",
 		Publication: application.SemanticIndexSpaceState{PublishedRunID: "abc", PublishedAt: &published,
@@ -99,6 +107,9 @@ func TestSemanticSearchHTTP_ResponseShapeAndAPIPrefix(t *testing.T) {
 		if res["similarity"] != 0.42 || res["concept"].(map[string]any)["id"] != float64(3) {
 			t.Fatalf("result = %v", res)
 		}
+		if body["query_representation"] != application.ConceptSearchQueryRepresentationV2 {
+			t.Fatalf("%s: query_representation = %v", base, body["query_representation"])
+		}
 		if !strings.Contains(body["score_note"].(string), "not a probability") || body["state"] != "active" {
 			t.Fatalf("body = %v", body)
 		}
@@ -141,6 +152,28 @@ func TestSemanticSearchHTTP_ExplicitFailuresWithoutKeywordFallback(t *testing.T)
 		status, body := semanticGet(t, root.URL+"/knowledge-library/semantic-search?q=x")
 		if status != want || strings.Contains(fmt.Sprint(body), "secret") || body["results"] != nil {
 			t.Fatalf("%v: %d %v", err, status, body)
+		}
+	}
+}
+
+// FLH-057: the response names the representation the application report says
+// was embedded, on both the root and /api routes, rather than a transport
+// constant. An unrecorded representation is an error, not a guess.
+func TestSemanticSearchHTTP_QueryRepresentationFromReport(t *testing.T) {
+	for _, rep := range []string{application.ConceptSearchQueryRepresentationV2, "synthetic_query_representation_x"} {
+		root, api := semanticServer(t, &fakeSemantic{rep: rep})
+		for _, base := range []string{root.URL, api.URL + "/api"} {
+			status, body := semanticGet(t, base+"/knowledge-library/semantic-search?q=synthetic")
+			if status != 200 || body["query_representation"] != rep {
+				t.Fatalf("%s: %d query_representation = %v, want %s", base, status, body["query_representation"], rep)
+			}
+		}
+	}
+	root, api := semanticServer(t, &fakeSemantic{noRep: true})
+	for _, base := range []string{root.URL, api.URL + "/api"} {
+		status, body := semanticGet(t, base+"/knowledge-library/semantic-search?q=synthetic")
+		if status != 500 || body["results"] != nil || body["query_representation"] != nil {
+			t.Fatalf("%s: empty representation: %d %v", base, status, body)
 		}
 	}
 }
