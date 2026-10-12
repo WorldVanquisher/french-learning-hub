@@ -69,3 +69,112 @@ func TestRun_BusyLeaseExitsFour(t *testing.T) {
 		t.Fatalf("code %d stderr %q", code, errOut.String())
 	}
 }
+
+// FLH-047 O1: a healthy sync whose deletion of a retired collection failed.
+// The text report must show the pending name and error while the outcome
+// stays verified_unchanged (the CLI still exits 0 for it).
+func TestPrintReport_HealthySyncShowsPendingCleanup(t *testing.T) {
+	var out bytes.Buffer
+	printReport(&out, &application.SemanticIndexReport{
+		Operation: "sync", RunID: "run-b", Space: "flh_concepts_x", Collection: "flh_concepts_x_rnew",
+		Concepts: 3, VerifiedUnchanged: true, Outcome: "verified_unchanged",
+		CleanupPending: []string{"flh_concepts_x_rold"}, CleanupError: "vector index unavailable",
+	})
+	text := out.String()
+	for _, want := range []string{
+		"flh_concepts_x_rnew is healthy; published nothing",
+		"cleanup:             removed 0 leftover collection(s); 1 pending",
+		"pending:           flh_concepts_x_rold",
+		"cleanup error:     vector index unavailable",
+		"outcome:             verified_unchanged",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing %q in:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "nothing written") {
+		t.Errorf("healthy sync text still says nothing written:\n%s", text)
+	}
+}
+
+// A healthy sync that removed leftovers must not claim it wrote nothing.
+func TestPrintReport_HealthySyncShowsCleanedCount(t *testing.T) {
+	var out bytes.Buffer
+	printReport(&out, &application.SemanticIndexReport{
+		Operation: "sync", Collection: "c_rnew", VerifiedUnchanged: true, Cleaned: 2, Outcome: "verified_unchanged",
+	})
+	text := out.String()
+	if !strings.Contains(text, "removed 2 leftover collection(s); 0 pending") || strings.Contains(text, "nothing written") {
+		t.Fatalf("text:\n%s", text)
+	}
+	if strings.Contains(text, "pending:  ") || strings.Contains(text, "cleanup error") {
+		t.Fatalf("no pending or error expected:\n%s", text)
+	}
+}
+
+func TestPrintReport_PublishedAndFailedRuns(t *testing.T) {
+	var out bytes.Buffer
+	printReport(&out, &application.SemanticIndexReport{
+		Operation: "rebuild", Collection: "c_rb", Published: true, Replaced: "c_ra", Cleaned: 1,
+		CleanupPending: []string{"c_ra"}, CleanupError: "vector index unavailable", Outcome: "published",
+	})
+	text := out.String()
+	for _, want := range []string{"published:           yes (replaced c_ra)", "removed 1 leftover collection(s); 1 pending", "pending:           c_ra", "cleanup error:     vector index unavailable"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing %q in:\n%s", want, text)
+		}
+	}
+
+	// A run that failed before cleanup reports no cleanup line at all.
+	out.Reset()
+	printReport(&out, &application.SemanticIndexReport{Operation: "sync", Collection: "c_rc", Outcome: "failed"})
+	if strings.Contains(out.String(), "cleanup") {
+		t.Fatalf("failed run printed cleanup:\n%s", out.String())
+	}
+}
+
+// FLH-047 O2: status must not promise that the next (healthy) run removes
+// another run's writing collection.
+func TestPrintStatus_DistinguishesLeftoverKinds(t *testing.T) {
+	space, _ := application.NewSemanticIndexSpace("flh_concepts", "m@1", 8)
+	future := time.Now().Add(time.Minute)
+	st := &application.SemanticIndexStatus{
+		Space: space,
+		State: &application.SemanticIndexSpaceState{PublishedCollection: "p_rpub", LeaseRunID: "live-run", LeaseOperation: "rebuild", LeaseExpiresAt: &future},
+		Collections: []application.PhysicalCollection{
+			{Collection: "p_rpub", Status: application.PhysicalPublished, RunID: "pub"},
+			{Collection: "p_rdead", Status: application.PhysicalWriting, RunID: "dead-run"},
+			{Collection: "p_rlive", Status: application.PhysicalWriting, RunID: "live-run"},
+			{Collection: "p_rold", Status: application.PhysicalRetired, RunID: "old"},
+			{Collection: "p_rab", Status: application.PhysicalAbandoned, RunID: "ab"},
+		},
+	}
+	render := func() string {
+		var out bytes.Buffer
+		printStatus(&out, st)
+		return out.String()
+	}
+
+	st.LeaseActive = true
+	text := render()
+	for _, want := range []string{
+		"leftover:          p_rdead (writing, run dead-run) — removed only by the next publishing run (build, rebuild, or a sync that republishes); a healthy sync keeps it",
+		"in progress:       p_rlive (writing, run live-run holds the lease)",
+		"leftover:          p_rold (retired, run old) — removed by the next run, including a healthy sync",
+		"leftover:          p_rab (abandoned, run ab) — removed by the next run, including a healthy sync",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing %q in:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "leftover:          p_rpub") || strings.Contains(text, "writing, run dead-run) — removed by the next run") {
+		t.Errorf("wrong leftover wording:\n%s", text)
+	}
+
+	// Once the lease has expired, that run's writing collection is an ordinary
+	// leftover for the next publishing run.
+	st.LeaseActive = false
+	if text := render(); !strings.Contains(text, "leftover:          p_rlive (writing, run live-run) — removed only by the next publishing run") {
+		t.Errorf("expired holder's collection:\n%s", text)
+	}
+}

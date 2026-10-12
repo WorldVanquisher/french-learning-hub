@@ -15,7 +15,8 @@ unavailable, the run fails.
 Exit status: 0 all expected tests passed; 1 regression failure (failed,
 skipped, missing, unexpected or zero tests, list drift, leftover collections);
 2 usage; 3 environment (Docker or Qdrant unavailable, pull or readiness
-failed, cleanup failed); 4 the test command timed out.
+failed, cleanup failed); 4 the test command timed out. A cleanup failure
+turns an otherwise successful run into 3; an earlier nonzero status is kept.
 
 Standard library only.
 """
@@ -48,6 +49,10 @@ TEST_PATTERN = "^TestQdrantIntegration_"
 OWNED_COLLECTION_PREFIX = "flh042_it_"  # prefix the integration rig uses and deletes
 
 EXIT_OK, EXIT_REGRESSION, EXIT_USAGE, EXIT_ENV, EXIT_TIMEOUT = 0, 1, 2, 3, 4
+
+# Everything a collection listing or deletion over HTTP can raise
+# (urllib.error.HTTPError is a URLError).
+HTTP_ERRORS = (urllib.error.URLError, OSError, KeyError, TypeError, ValueError)
 
 IMAGE_RE = re.compile(r"^\s*image:\s*(qdrant/qdrant:(v[0-9][^\s@]*)@sha256:[0-9a-f]{64})\s*$", re.M)
 DECL_RE = re.compile(r"^func (TestQdrantIntegration_\w+)\(t \*testing\.T\)", re.M)
@@ -190,6 +195,35 @@ def delete_collections(url: str, names: list[str]) -> list[str]:
         except (urllib.error.URLError, OSError):
             failed.append(n)
     return failed
+
+
+def endpoint_cleanup(url: str, before: list[str]) -> dict:
+    """Delete test-prefix collections that appeared since `before`, then verify.
+
+    A create request already in flight when the test binary was killed can
+    still complete after a first sweep, so sweep until a listing finds nothing
+    new (bounded). That last listing is the verification: cleanup counts as
+    done only if it shows no new collection. Any listing or deletion error
+    leaves the result unverified.
+    """
+    found: list[str] = []
+    result: dict = {"found": found, "not_deleted": [], "verified": False}
+    try:
+        for _ in range(6):
+            current = sorted(set(owned_collections(url)) - set(before))
+            new = sorted(set(current) - set(found))
+            if not new:
+                result["not_deleted"] = current
+                result["verified"] = not current
+                return result
+            found += new
+            delete_collections(url, current)
+            time.sleep(1.0)
+        result["not_deleted"] = sorted(set(owned_collections(url)) - set(before))
+        result["error"] = "new test collections kept appearing"
+    except HTTP_ERRORS as e:
+        result["error"] = f"{type(e).__name__}: {e}"
+    return result
 
 
 def run_suite(url: str, artifacts: Path, timeout_s: int) -> tuple[list[dict], int | None, bool]:
@@ -346,13 +380,16 @@ def main(argv: list[str]) -> int:
         log(f"Qdrant ready: {info.get('version')} at {url}")
         if container and info.get("version") != tag.lstrip("v"):
             raise EnvError(f"running Qdrant {info.get('version')} does not match pinned tag {tag}")
-        before = owned_collections(url)
+        try:
+            before = owned_collections(url)
+        except HTTP_ERRORS as e:
+            raise EnvError(f"could not list collections before the run: {e}") from e
         events, exit_code, timed_out = run_suite(url, artifacts, args.test_timeout)
         verdict = evaluate(events, expected, declared, exit_code)
         try:
             after = owned_collections(url)
             leftover = sorted(set(after) - set(before))
-        except (urllib.error.URLError, OSError, KeyError, ValueError) as e:
+        except HTTP_ERRORS as e:
             leftover = [f"<could not list collections: {e}>"]
         if leftover:
             # Normally the rig's t.Cleanup deletes them; a killed or timed-out
@@ -379,28 +416,17 @@ def main(argv: list[str]) -> int:
         if url and before is not None and not (container and container.started):
             # Endpoint mode: remove only collections with the rig's prefix that
             # appeared during this run (a container is discarded anyway).
-            # A create request already in flight when the test binary was
-            # killed can still complete after a first sweep, so sweep until a
-            # round finds nothing new (bounded).
-            found: list[str] = []
-            undeleted: list[str] = []
-            try:
-                for _ in range(5):
-                    new = sorted(set(owned_collections(url)) - set(before) - set(found))
-                    if not new:
-                        break
-                    found += new
-                    undeleted = delete_collections(url, sorted(set(owned_collections(url)) - set(before)))
-                    time.sleep(1.0)
-                else:
-                    undeleted = sorted(set(owned_collections(url)) - set(before))
-                summary["leftover_cleanup"] = {"found": found, "not_deleted": undeleted}
-                if found:
-                    log(f"deleted {len(found) - len(undeleted)} leftover test collection(s); not deleted: {undeleted}")
-                if undeleted:
-                    code = code or EXIT_ENV
-            except (urllib.error.URLError, OSError, KeyError, ValueError) as e:
-                summary["leftover_cleanup"] = {"error": str(e)}
+            cleanup = endpoint_cleanup(url, before)
+            summary["leftover_cleanup"] = cleanup
+            if cleanup["found"]:
+                log(f"leftover test collection(s) found: {cleanup['found']}; still present: {cleanup['not_deleted']}")
+            if not cleanup["verified"]:
+                # Unverified cleanup can never pass; an earlier failure code
+                # (regression, timeout) and its verdict are kept as they are.
+                reason = cleanup.get("error") or f"collections remain: {cleanup['not_deleted']}"
+                summary["cleanup_error"] = f"endpoint leftover cleanup failed: {reason}"
+                log(f"cleanup FAILED: {summary['cleanup_error']}")
+                code = code or EXIT_ENV
         if container and container.started:
             summary["cleanup"] = c = container.cleanup()
             if c.get("removed") is False:
@@ -417,6 +443,8 @@ def main(argv: list[str]) -> int:
         log(f"{len(v['passed'])}/{len(summary['expected'])} expected tests passed")
         for r in v["reasons"]:
             log(f"FAIL: {r}")
+    if summary.get("cleanup_error"):
+        log(f"FAIL: {summary['cleanup_error']}")
     log(f"{'PASS' if code == EXIT_OK else 'FAIL'} (exit {code}); artifacts in {artifacts}")
     return code
 
