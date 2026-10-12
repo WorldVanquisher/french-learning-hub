@@ -33,6 +33,9 @@ type wireCall struct {
 	InputHashes  []string `json:"input_sha256"`
 	Status       int      `json:"http_status"`
 	ResponseHash string   `json:"response_sha256"`
+	ErrorType    string   `json:"contract_error_type,omitempty"`
+	Indices      []int    `json:"response_indices,omitempty"`
+	ModelMatches bool     `json:"response_model_matches"`
 	body         []byte
 }
 type tape struct {
@@ -215,6 +218,25 @@ func exercise(ctx context.Context, p application.EmbeddingProvider, t *tape, inp
 	}
 	for _, w := range t.calls {
 		w.ResponseHash = digest(w.body)
+		var response struct {
+			Model string `json:"model"`
+			Data  []struct {
+				Index int `json:"index"`
+			} `json:"data"`
+			Error *struct {
+				Type string `json:"type"`
+			} `json:"error"`
+		}
+		if json.Unmarshal(w.body, &response) == nil {
+			w.ModelMatches = response.Model == w.Model
+			for _, item := range response.Data {
+				w.Indices = append(w.Indices, item.Index)
+			}
+			// Fixed contract types only; never echo arbitrary provider strings.
+			if response.Error != nil && (response.Error.Type == "unknown_model" || response.Error.Type == "invalid_input") {
+				w.ErrorType = response.Error.Type
+			}
+		}
 	}
 	out.Wire = t.calls
 	out.Positions = t.positions
@@ -257,13 +279,17 @@ func newProvider(base, model string, timeout time.Duration, maxRequests, maxInpu
 	return embedding.NewHTTPProviderWithClient("", model, base, client), t
 }
 func validateURL(base string) error {
+	return validateEndpoint(base, false)
+}
+func validateEndpoint(base string, allowTailscale bool) error {
 	u, err := url.Parse(base)
 	if err != nil || u == nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 		return errors.New("base URL needs http(s), no credentials/query/fragment")
 	}
 	ip := net.ParseIP(u.Hostname())
-	if ip == nil || (!ip.IsPrivate() && !ip.IsLoopback()) {
-		return errors.New("use a private-network or loopback IP literal")
+	_, tailscaleRange, _ := net.ParseCIDR("100.64.0.0/10")
+	if ip == nil || (!ip.IsPrivate() && !ip.IsLoopback() && !(allowTailscale && tailscaleRange.Contains(ip))) {
+		return errors.New("use a private/loopback IP literal, or explicitly opt in to Tailscale CGNAT")
 	}
 	return nil
 }
@@ -305,10 +331,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 	f := flag.NewFlagSet("flh053", flag.ContinueOnError)
 	f.SetOutput(stderr)
 	real := f.Bool("allow-real-endpoint", false, "explicitly contact the supplied private endpoint (plumbing only)")
+	tailscale := f.Bool("allow-tailscale-cgnat", false, "explicitly permit the supplied IP within 100.64.0.0/10")
 	base := f.String("base-url", "", "base URL, not the /embeddings URL")
 	model := f.String("model", "", "exact wire model/deployment identifier")
 	dimensions := f.Int("dimensions", 8, "required expected vector size; candidate e5-base is 768")
-	payload := f.String("payload", "plain", "plain or current production rendered synthetic payloads; no prefix adaptation")
+	payload := f.String("payload", "plain", "plain, rendered (search-v2), or raw-negative; no prefix adaptation")
 	maxRequests := f.Int("max-requests", 5, "HTTP request limit (1..8)")
 	maxInputs := f.Int("max-inputs", 16, "input-position limit (1..24)")
 	maxBytes := f.Int("max-input-bytes", 2048, "UTF-8 bytes per input (1..4096)")
@@ -351,14 +378,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "limits below fixed probe inventory")
 		return 2
 	}
-	if !*real && (*base != "" || *model != "") {
+	if !*real && (*base != "" || *model != "" || *tailscale) {
 		fmt.Fprintln(stderr, "supplied endpoint/model requires -allow-real-endpoint")
 		return 2
 	}
 	if *real {
 		explicit := map[string]bool{}
 		f.Visit(func(option *flag.Flag) { explicit[option.Name] = true })
-		if validateURL(*base) != nil || strings.TrimSpace(*model) == "" || !explicit["dimensions"] || !explicit["max-requests"] || !explicit["max-inputs"] {
+		if validateEndpoint(*base, *tailscale) != nil || strings.TrimSpace(*model) == "" || !explicit["dimensions"] || !explicit["max-requests"] || !explicit["max-inputs"] {
 			fmt.Fprintln(stderr, "explicit private base URL, model, dimensions and request/input limits required")
 			return 2
 		}
