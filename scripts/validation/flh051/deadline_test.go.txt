@@ -1,0 +1,116 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	"french-learning-app/internal/application"
+)
+
+// Deliberately synchronous and context-ignoring. A late call returns a valid
+// hit which the runner must discard; the test does not create a hard deadline.
+type flh055Retriever struct {
+	calls    int
+	lateCall int
+	delay    time.Duration
+}
+
+func (*flh055Retriever) Name() string { return "flh055-controlled-context-ignoring" }
+func (r *flh055Retriever) Retrieve(_ context.Context, _ application.ConceptRetrievalQuery, _ []application.ConceptRetrievalDocument, _ int) ([]application.ConceptRetrievalCandidate, error) {
+	r.calls++
+	if r.calls == r.lateCall {
+		time.Sleep(r.delay)
+	}
+	return []application.ConceptRetrievalCandidate{{ConceptID: 1, Rank: 1, Score: 1, Evidence: "{}"}}, nil
+}
+
+func flh055NoMetrics(t *testing.T, run RetrieverRun, ev *Evaluation) {
+	t.Helper()
+	m := Evaluate(run, ev)
+	if m.Overall != nil || m.BySplit != nil || m.ByLanguage != nil || m.BySplitLanguage != nil || m.ByGroup != nil {
+		t.Fatal("failed or partial run published metrics")
+	}
+}
+
+func TestFLH055DeadlineAcceptance(t *testing.T) {
+	raw, in := flh051Inputs(t)
+	ev, err := LoadEvaluation(raw, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidence := map[string]any{}
+	t.Run("already_expired_no_retrieval", func(t *testing.T) {
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+		defer cancel()
+		r := &flh055Retriever{}
+		run := RunRetriever(ctx, r, in)
+		if r.calls != 0 || run.State != stateFailed || run.Queries[0].Status != "error" || !strings.Contains(run.Queries[0].Error, "expired before Retrieve") {
+			t.Fatal("expired context performed work or failed to report timeout")
+		}
+		for _, q := range run.Queries[1:] {
+			if q.Status != "not_run_after_error" || len(q.Hits) != 0 {
+				t.Fatal("query work continued")
+			}
+		}
+		flh055NoMetrics(t, run, ev)
+		evidence["already_expired"] = map[string]any{"expected_calls": 0, "actual_calls": r.calls, "state": run.State, "queries": run.Queries, "metrics": nil, "passed": true}
+	})
+	t.Run("canceled_no_retrieval", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		r := &flh055Retriever{}
+		run := RunRetriever(ctx, r, in)
+		if r.calls != 0 || run.State != stateFailed || !strings.Contains(run.Queries[0].Error, "run canceled") {
+			t.Fatal("cancellation ignored or mislabeled")
+		}
+		flh055NoMetrics(t, run, ev)
+		evidence["canceled"] = map[string]any{"expected_calls": 0, "actual_calls": r.calls, "state": run.State, "metrics": nil, "passed": true}
+	})
+	t.Run("late_result_discarded_partial_unscored", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)
+		defer cancel()
+		r := &flh055Retriever{lateCall: 2, delay: 200 * time.Millisecond}
+		start := time.Now()
+		run := RunRetriever(ctx, r, in)
+		elapsed := time.Since(start)
+		if r.calls != 2 || run.State != stateFailed || run.Queries[0].Status != "ok" || len(run.Queries[0].Hits) != 1 {
+			t.Fatal("controlled first/second calls not observed")
+		}
+		late := run.Queries[1]
+		if late.Status != "error" || len(late.Hits) != 0 || !strings.Contains(late.Error, "result is discarded") || late.DurationNS < int64(190*time.Millisecond) {
+			t.Fatal("late result retained or synchronous call interrupted")
+		}
+		for _, q := range run.Queries[2:] {
+			if q.Status != "not_run_after_error" || len(q.Hits) != 0 {
+				t.Fatal("retrieval continued after late result")
+			}
+		}
+		flh055NoMetrics(t, run, ev)
+		evidence["late_result"] = map[string]any{"expected_calls": 2, "actual_calls": r.calls, "timeout_ns": int64(80 * time.Millisecond), "controlled_delay_ns": int64(r.delay), "elapsed_ns": elapsed.Nanoseconds(), "queries": run.Queries, "state": run.State, "metrics": nil, "passed": true, "hard_deadline": false}
+	})
+	t.Run("completion_check_empty_work", func(t *testing.T) {
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+		defer cancel()
+		r := &flh055Retriever{}
+		run := RunRetriever(ctx, r, &RankingInputs{})
+		if run.State != stateFailed || r.calls != 0 || !strings.Contains(run.Note, "before the retriever was declared completed") {
+			t.Fatal("expired empty run declared completed")
+		}
+		flh055NoMetrics(t, run, &Evaluation{})
+		evidence["completion_check"] = map[string]any{"expected_calls": 0, "actual_calls": r.calls, "state": run.State, "note": run.Note, "metrics": nil, "passed": true}
+	})
+	if t.Failed() {
+		return
+	}
+	encoded, err := json.MarshalIndent(evidence, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(os.Getenv("FLH055_DEADLINE_EVIDENCE"), append(encoded, '\n'), 0600); err != nil {
+		t.Fatal(err)
+	}
+}
