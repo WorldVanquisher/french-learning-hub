@@ -1,0 +1,177 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"math"
+	"os"
+	"reflect"
+	"testing"
+
+	"french-learning-app/internal/application"
+	"french-learning-app/internal/domain"
+)
+
+func flh051Inputs(t *testing.T) ([]byte, *RankingInputs) {
+	t.Helper()
+	raw, err := os.ReadFile(os.Getenv("FLH051_FIXTURE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	in, err := LoadRankingInputs(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw, in
+}
+
+type flh051Provider struct{ batches [][]string }
+
+func (p *flh051Provider) Name() string { return "flh051-counted-constant-fake" }
+func (p *flh051Provider) Embed(_ context.Context, texts []string) ([][]float64, error) {
+	p.batches = append(p.batches, append([]string(nil), texts...))
+	vectors := make([][]float64, len(texts))
+	for i := range vectors {
+		vectors[i] = []float64{1, 0}
+	}
+	return vectors, nil
+}
+
+func TestFLH051ProductionParityAndEvidence(t *testing.T) {
+	raw, in := flh051Inputs(t)
+	for _, q := range in.Queries {
+		u := domain.KnowledgeUnit{ID: q.UnitID, Kind: q.Kind, Canonical: q.Canonical, Statement: q.Statement, Example: q.Example}
+		if !reflect.DeepEqual(toQuery(u), application.FLH051Query(u)) {
+			t.Fatalf("query converter drift: %d", q.UnitID)
+		}
+		if q.CandidateIdentity.Scope != "" || len(q.CandidateIdentity.IdentityFeatures) != 0 {
+			t.Fatal("candidate copied scoped target")
+		}
+	}
+	for _, d := range in.Documents {
+		identity := domain.ConceptIdentity{Target: d.Target, PedagogicalIntent: d.PedagogicalIntent, Scope: d.Scope, IdentityFeatures: d.IdentityFeatures}
+		actual := application.FLH051Document(domain.KnowledgeConcept{ID: d.ConceptID, IdentitySchemaVersion: d.IdentitySchemaVersion, Target: d.Target, PedagogicalIntent: d.PedagogicalIntent, Scope: d.Scope, IdentityFeatures: d.IdentityFeatures, Signature: d.Signature, Lifecycle: d.Lifecycle, Support: d.Support, State: d.State})
+		mirrored, err := toDocument(d.ConceptID, identity)
+		if err != nil || !reflect.DeepEqual(actual, mirrored) {
+			t.Fatalf("document converter drift: %d %v", d.ConceptID, err)
+		}
+	}
+	var data map[string]any
+	if err := json.Unmarshal(raw, &data); err != nil {
+		t.Fatal(err)
+	}
+	for _, j := range data["judgments"].([]any) {
+		row := j.(map[string]any)
+		row["rationale"] = "FLH051_EVALUATOR_ONLY"
+		row["review_status"] = "FLH051_UNREVIEWED_SENTINEL"
+		if p := row["proposed_relevant_concept_ids"].([]any); len(p) > 0 {
+			row["proposed_relevant_concept_ids"] = []string{"C024"}
+		}
+	}
+	for _, q := range data["queries"].([]any) {
+		row := q.(map[string]any)
+		row["free_text"] = "FLH051_FREE_TEXT_ONLY"
+		row["tags"] = []string{"FLH051_TAG_ONLY"}
+		row["language"] = "xx"
+	}
+	for _, k := range []string{"concepts", "queries", "judgments"} {
+		rows := data[k].([]any)
+		for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
+			rows[i], rows[j] = rows[j], rows[i]
+		}
+	}
+	mutated, _ := json.Marshal(data)
+	other, err := LoadRankingInputs(mutated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(in, other) {
+		t.Fatal("metadata or file order changed ranking input")
+	}
+	ev, err := LoadEvaluation(raw, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evOther, err := LoadEvaluation(mutated, other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range []application.ConceptRetriever{application.NewExactSignatureConceptRetriever(), application.NewWeightedLexicalConceptRetriever(), application.NewBM25ConceptRetriever()} {
+		a, b := RunRetriever(context.Background(), r, in), RunRetriever(context.Background(), r, other)
+		if rankingDigest(a) != rankingDigest(b) {
+			t.Fatalf("ranking changed with judgments: %s", r.Name())
+		}
+	}
+	p1, p2 := &flh051Provider{}, &flh051Provider{}
+	a := RunRetriever(context.Background(), application.NewEmbeddingConceptRetriever(p1), in)
+	b := RunRetriever(context.Background(), application.NewEmbeddingConceptRetriever(p2), other)
+	if !reflect.DeepEqual(p1.batches, p2.batches) || rankingDigest(a) != rankingDigest(b) {
+		t.Fatal("judgments affect provider or ranking")
+	}
+	if reflect.DeepEqual(Evaluate(a, ev), Evaluate(b, evOther)) {
+		t.Fatal("taint did not reach evaluator")
+	}
+	for _, q := range a.Queries {
+		for i, h := range q.Hits {
+			if h.ConceptID != int64(i+1) {
+				t.Fatal("equal-score tie ordering drift")
+			}
+		}
+	}
+	encoded, _ := json.Marshal(map[string]any{"queries": in.Queries, "documents": in.Documents, "provider_batches": p1.batches, "metadata_invariant": true, "production_parity": true})
+	if err := os.WriteFile(os.Getenv("FLH051_GO_EVIDENCE"), encoded, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Per-call cap: first 25 positions allowed, second batch refused before inner call.
+	p := &flh051Provider{}
+	counter := NewProviderCounter(p, 26, 2)
+	limited := RunRetriever(context.Background(), application.NewEmbeddingConceptRetriever(counter), in)
+	if limited.State != stateFailed || len(p.batches) != 1 || counter.InputPositions != 25 || counter.RefusedOverCap != 1 || Evaluate(limited, ev).Overall != nil {
+		t.Fatal("cap refusal, stop or null metrics violated")
+	}
+	t.Log("56 queries/24 documents match live production converters; all four ranking paths invariant; 56 equal-score tie lists; runtime cap refusal verified")
+}
+
+type flh051BadRetriever struct {
+	rows  []application.ConceptRetrievalCandidate
+	calls int
+}
+
+func (r *flh051BadRetriever) Name() string { return "flh051-invalid-candidates" }
+func (r *flh051BadRetriever) Retrieve(context.Context, application.ConceptRetrievalQuery, []application.ConceptRetrievalDocument, int) ([]application.ConceptRetrievalCandidate, error) {
+	r.calls++
+	return r.rows, nil
+}
+
+func TestFLH051RankValidationAndMetricBoundary(t *testing.T) {
+	_, in := flh051Inputs(t)
+	for name, rows := range map[string][]application.ConceptRetrievalCandidate{
+		"foreign": {{ConceptID: 999, Rank: 1, Score: 1}}, "rank_zero": {{ConceptID: 1, Rank: 0, Score: 1}},
+		"gap": {{ConceptID: 1, Rank: 2, Score: 1}}, "duplicate": {{ConceptID: 1, Rank: 1, Score: 1}, {ConceptID: 1, Rank: 2, Score: 1}},
+		"nan": {{ConceptID: 1, Rank: 1, Score: math.NaN()}}, "infinity": {{ConceptID: 1, Rank: 1, Score: math.Inf(1)}},
+		"six": {{ConceptID: 1, Rank: 1}, {ConceptID: 2, Rank: 2}, {ConceptID: 3, Rank: 3}, {ConceptID: 4, Rank: 4}, {ConceptID: 5, Rank: 5}, {ConceptID: 6, Rank: 6}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := &flh051BadRetriever{rows: rows}
+			run := RunRetriever(context.Background(), r, in)
+			if run.State != stateFailed || r.calls != 1 || run.Queries[1].Status != "not_run_after_error" {
+				t.Fatal("invalid output accepted or retried")
+			}
+		})
+	}
+	var m Metrics
+	for _, rank := range []int{1, 3, 5, 6, 0} {
+		m.add(rank)
+	}
+	m.finish()
+	if m.N != 5 || *m.Recall1 != 0.2 || *m.Recall3 != 0.4 || *m.Recall5 != 0.6 || math.Abs(*m.MRR5-(1+1.0/3+0.2)/5) > 1e-14 {
+		t.Fatal(fmt.Sprintf("MRR truncation error: %+v", m))
+	}
+	var empty Metrics
+	empty.finish()
+	if empty.MRR5 != nil {
+		t.Fatal("empty is zero")
+	}
+	t.Log("seven invalid candidate cases rejected; rank six contributes zero; empty population remains null")
+}
