@@ -35,6 +35,14 @@ stored, so this changes no cache or index space. It does change the text every
 provider receives for a search; an existing deployment's search ranking can
 therefore shift slightly.
 
+**What a search reports (FLH-057).** The HTTP response's `query_representation`
+(root and `/api` routes) is the representation the application actually
+embedded, taken from the search report, so it now reads
+`concept_search_query_v2`. FLH-054 left it hardcoded as
+`concept_search_query_v1`, which misdescribed the embedded text. A report that
+records no representation is answered with HTTP 500 rather than a guessed
+value.
+
 ## Configuration
 
 Set these for both the server and the CLI (same `.env` or environment):
@@ -307,7 +315,12 @@ SEMANTIC_BATCH_SIZE=32        # at most the service's 32 inputs
 - It binds `127.0.0.1` by default. NAS access needs an explicit private (RFC 1918
   or ULA) bind address; nothing changes the firewall or autostarts.
 - The service and its fake-encoder tests run anywhere. Real CUDA, model loading,
-  GPU memory and NAS access are **not yet run** on the Windows laptop.
+  GPU memory and NAS access have not been run by an agent on the Windows laptop;
+  the human's own runs are recorded, attributed, in
+  [FLH-056](validation/FLH-056-live-e5-acceptance.md).
+- `check-env.ps1` failed on the human's Windows PowerShell because inline
+  `python -c` source lost its double quotes. FLH-057 moved that Python into
+  `windows/check_env.py`; the fixed script is **not yet run on Windows**.
 
 ## Synthetic demo
 

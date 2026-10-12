@@ -14,6 +14,9 @@ authentication and must only listen on loopback or a private address.
 **Real CUDA, model loading, GPU memory, Windows scripts and NAS access are
 NOT RUN**: they need the human's Windows RTX 4070 Laptop after the explicit
 preparation below.
+FLH-057 replaced `check-env.ps1`'s inline `python -c` with
+`windows/check_env.py`; that fix is also **NOT RUN on Windows** (see step 1
+below).
 
 Contract: [plan](../../../docs/plans/FLH-054-local-e5-service.md).
 Evidence: [validation](../../../docs/validation/FLH-054-local-e5-service.md).
@@ -176,6 +179,13 @@ conda activate flh-embedding
    ```powershell
    .\tools\embedding\e5\windows\check-env.ps1 | Tee-Object before.txt
    ```
+   The Python part lives in `windows\check_env.py` and runs as
+   `python -B <path>` (FLH-057). The FLH-054 version passed source through
+   `python -c $code`. Windows PowerShell 5.1 strips embedded double quotes from
+   native arguments, so it failed with `SyntaxError` at `print(name, NOT ...`.
+   `check_env.py` exits 0 when the CUDA computation is correct, 1 when CUDA is
+   unavailable or wrong and 2 when torch can't be imported. The script throws
+   on any non-zero exit.
 2. **Install the pinned libraries without touching torch.** `requirements.txt`
    doesn't list torch, and none of these packages requires it. Check the dry run
    first:
