@@ -111,17 +111,23 @@ type Evaluation struct {
 	Queries       []QueryMeta // same order as RankingInputs.Queries
 }
 
-// InputDigests records what was evaluated.
+// frozenReference names what flh045FixtureSHA256 identifies.
+const frozenReference = "FLH-045 scripts/validation/flh045/fixture.json, SHA-256 compiled into this runner"
+
+// InputDigests records what was evaluated. The freeze status is always
+// against the compiled FLH-045 constant, never a caller-supplied value.
 type InputDigests struct {
-	FixtureSHA256          string `json:"fixture_sha256"`
-	ExpectedFixtureSHA256  string `json:"expected_fixture_sha256"`
-	FixtureMatchesExpected bool   `json:"fixture_matches_expected"`
-	RankingInputsSHA256    string `json:"ranking_inputs_sha256"`
-	RankingInputsEncoding  string `json:"ranking_inputs_encoding"`
-	DocumentsSHA256        string `json:"documents_sha256"`
-	QueriesSHA256          string `json:"queries_sha256"`
-	JudgmentsSHA256        string `json:"judgments_sha256"`
-	JudgmentsEncoding      string `json:"judgments_encoding"`
+	FixtureSHA256         string `json:"fixture_sha256"`
+	FrozenReference       string `json:"frozen_reference"`
+	FrozenReferenceSHA256 string `json:"frozen_reference_sha256"`
+	FixtureMatchesFrozen  bool   `json:"fixture_matches_frozen"`
+	CallerAssertedSHA256  string `json:"caller_asserted_sha256,omitempty"`
+	RankingInputsSHA256   string `json:"ranking_inputs_sha256"`
+	RankingInputsEncoding string `json:"ranking_inputs_encoding"`
+	DocumentsSHA256       string `json:"documents_sha256"`
+	QueriesSHA256         string `json:"queries_sha256"`
+	JudgmentsSHA256       string `json:"judgments_sha256"`
+	JudgmentsEncoding     string `json:"judgments_encoding"`
 }
 
 func sha256Hex(b []byte) string {
@@ -334,7 +340,7 @@ func LoadEvaluation(raw []byte, in *RankingInputs) (*Evaluation, error) {
 // Digests hashes the raw fixture, the rendered ranking inputs and the
 // judgments section (Go canonical JSON: decoded then re-encoded, sorted keys).
 // The judgments hash is not the FLH-045 validator's Python canonical hash.
-func Digests(raw []byte, in *RankingInputs, expected string) (InputDigests, error) {
+func Digests(raw []byte, in *RankingInputs) (InputDigests, error) {
 	var docs, queries [][]byte
 	for _, d := range in.Documents {
 		b, err := json.Marshal(d)
@@ -364,7 +370,8 @@ func Digests(raw []byte, in *RankingInputs, expected string) (InputDigests, erro
 	}
 	sum := sha256Hex(raw)
 	return InputDigests{
-		FixtureSHA256: sum, ExpectedFixtureSHA256: expected, FixtureMatchesExpected: sum == expected,
+		FixtureSHA256: sum, FrozenReference: frozenReference, FrozenReferenceSHA256: flh045FixtureSHA256,
+		FixtureMatchesFrozen:  sum == flh045FixtureSHA256,
 		RankingInputsSHA256:   lengthPrefixedSHA256(append(append([][]byte(nil), docs...), queries...)),
 		RankingInputsEncoding: rankingInputEncoding,
 		DocumentsSHA256:       lengthPrefixedSHA256(docs), QueriesSHA256: lengthPrefixedSHA256(queries),

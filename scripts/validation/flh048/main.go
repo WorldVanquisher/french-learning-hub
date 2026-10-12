@@ -15,9 +15,17 @@
 // input-position cap. No .env file is read; an API key is taken only from the
 // environment variable named by -embedding-api-key-env and never logged.
 //
+// The runner is frozen-fixture-only: the fixture's SHA-256 must equal the
+// FLH-045 constant compiled into this runner. -expect-fixture-sha256 is only an
+// extra equality assertion and can never redefine which fixture is frozen.
+//
+// -timeout bounds the run: it is checked before and after every Retrieve, and
+// a retriever that misses it fails without metrics. A synchronous Retrieve that
+// ignores its context cannot be interrupted by that check (see RunRetriever).
+//
 // Exit status: 0 report written and every enabled retriever completed;
-// 1 report written but an enabled retriever failed; 2 usage or configuration;
-// 3 input or output error.
+// 1 report written but an enabled retriever failed (including the overall
+// timeout); 2 usage or configuration; 3 input or output error.
 package main
 
 import (
@@ -122,7 +130,7 @@ func run(args []string, stdout, stderr io.Writer, providerOverride application.E
 	fs.SetOutput(stderr)
 	fixture := fs.String("fixture", "", "fixture path (default: <repo>/scripts/validation/flh045/fixture.json)")
 	out := fs.String("out", "", "new or empty output directory outside the repository (required)")
-	expect := fs.String("expect-fixture-sha256", flh045FixtureSHA256, "required fixture SHA-256 (the frozen FLH-045 file)")
+	expect := fs.String("expect-fixture-sha256", "", "optional extra assertion; must equal the frozen FLH-045 SHA-256 compiled into this runner")
 	mode := fs.String("embedding", "disabled", "disabled (default) or http")
 	baseURL := fs.String("embedding-base-url", "", "OpenAI-compatible base URL (POST <url>/embeddings)")
 	model := fs.String("embedding-model", "", "model name sent to the endpoint")
@@ -130,12 +138,20 @@ func run(args []string, stdout, stderr io.Writer, providerOverride application.E
 	timeout := fs.Duration("embedding-timeout", 30*time.Second, "per-request timeout (1s..5m)")
 	maxInputs := fs.Int("embedding-max-inputs", 0, "cap on submitted input positions (required with -embedding=http)")
 	dims := fs.Int("embedding-dimensions", 0, "expected vector dimensions (optional check)")
-	overall := fs.Duration("timeout", 10*time.Minute, "overall run timeout")
+	overall := fs.Duration("timeout", 10*time.Minute, "overall run timeout (must be positive)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	if fs.NArg() != 0 {
 		fmt.Fprintln(stderr, "unexpected arguments:", fs.Args())
+		return 2
+	}
+	if *overall <= 0 {
+		fmt.Fprintf(stderr, "-timeout must be positive, got %s\n", *overall)
+		return 2
+	}
+	if *expect != "" && *expect != flh045FixtureSHA256 {
+		fmt.Fprintf(stderr, "-expect-fixture-sha256 %s is not the frozen FLH-045 SHA-256 %s; this runner accepts only the frozen fixture\n", *expect, flh045FixtureSHA256)
 		return 2
 	}
 	cwd, _ := os.Getwd()
@@ -162,15 +178,16 @@ func run(args []string, stdout, stderr io.Writer, providerOverride application.E
 		fmt.Fprintln(stderr, "evaluator view:", err)
 		return 3
 	}
-	digests, err := Digests(raw, in, *expect)
+	digests, err := Digests(raw, in)
 	if err != nil {
 		fmt.Fprintln(stderr, "digests:", err)
 		return 3
 	}
-	if !digests.FixtureMatchesExpected {
-		fmt.Fprintf(stderr, "fixture sha256 %s does not match the required %s; refusing to run on a modified fixture\n", digests.FixtureSHA256, *expect)
+	if !digests.FixtureMatchesFrozen {
+		fmt.Fprintf(stderr, "fixture sha256 %s is not the frozen FLH-045 %s; refusing to run on a modified fixture\n", digests.FixtureSHA256, flh045FixtureSHA256)
 		return 3
 	}
+	digests.CallerAssertedSHA256 = *expect
 	planned := plannedEmbeddingPositions(in)
 	emb, err := ValidateEmbeddingConfig(*mode, *baseURL, *model, *keyEnv, *timeout, *maxInputs, *dims, planned, os.Getenv)
 	if err != nil {
@@ -197,7 +214,11 @@ func run(args []string, stdout, stderr io.Writer, providerOverride application.E
 		Sources:       hashSources(root), Denominators: CountDenominators(ev, len(in.Documents)),
 		ConceptIDs: idMap(in.ConceptFixtureIDs), QueryIDs: idMap(in.QueryFixtureIDs)}
 	for _, r := range baselines {
-		report.Baselines = append(report.Baselines, buildRetrieverReport(RunRetriever(ctx, r, in), ev))
+		rr := buildRetrieverReport(RunRetriever(ctx, r, in), ev)
+		if r.Name() == application.ExactSignatureRetrieverV1Name {
+			rr.Structure = ExactStructure(in)
+		}
+		report.Baselines = append(report.Baselines, rr)
 	}
 
 	var counter *ProviderCounter
@@ -216,8 +237,14 @@ func run(args []string, stdout, stderr io.Writer, providerOverride application.E
 			Note: "Not enabled (default); no provider was constructed or contacted and nothing was substituted.", Queries: []QueryRun{}}, ev)
 	}
 
+	deadline := "not reached"
+	if err := ctx.Err(); err != nil {
+		deadline = deadlineError("during the run; affected retrievers failed without metrics", err)
+	}
 	report.Run = map[string]any{
-		"started_at": started.Format(time.RFC3339Nano), "finished_at": time.Now().UTC().Format(time.RFC3339Nano),
+		"timeout_ns": overall.Nanoseconds(), "timeout": overall.String(), "deadline": deadline,
+		"timeout_limit": "checked before and after each Retrieve; a synchronous Retrieve that ignores its context is not interrupted",
+		"started_at":    started.Format(time.RFC3339Nano), "finished_at": time.Now().UTC().Format(time.RFC3339Nano),
 		"go_version": runtime.Version(), "goos": runtime.GOOS, "goarch": runtime.GOARCH,
 		"command": "go run ./scripts/validation/flh048 " + strings.Join(args, " "),
 	}

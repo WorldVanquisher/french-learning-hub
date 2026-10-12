@@ -190,8 +190,8 @@ func TestInputs_DeterministicMappingIndependentOfFileOrder(t *testing.T) {
 	}
 	f["concepts"], f["queries"] = rev(cs), rev(qs)
 	in2, _ := load(t, encode(t, f))
-	d1, _ := Digests(encode(t, smallFixture()), in1, "")
-	d2, _ := Digests(encode(t, f), in2, "")
+	d1, _ := Digests(encode(t, smallFixture()), in1)
+	d2, _ := Digests(encode(t, f), in2)
 	if d1.RankingInputsSHA256 != d2.RankingInputsSHA256 || strings.Join(in1.ConceptFixtureIDs, ",") != "C001,C002,C003" {
 		t.Fatalf("mapping must depend on fixture IDs only: %v vs %v", in1.ConceptFixtureIDs, in2.ConceptFixtureIDs)
 	}
@@ -241,8 +241,8 @@ func TestInputs_LabelsNeverReachRetrieversOrProvider(t *testing.T) {
 
 	inA, _ := load(t, encode(t, base))
 	inB, _ := load(t, encode(t, perturbed))
-	dA, _ := Digests(encode(t, base), inA, "")
-	dB, _ := Digests(encode(t, perturbed), inB, "")
+	dA, _ := Digests(encode(t, base), inA)
+	dB, _ := Digests(encode(t, perturbed), inB)
 	if dA.RankingInputsSHA256 != dB.RankingInputsSHA256 {
 		t.Fatal("judgments/metadata changed the ranking inputs")
 	}
@@ -308,8 +308,8 @@ func TestInputs_RejectsInconsistentFixtures(t *testing.T) {
 func TestInputs_FrozenFixture(t *testing.T) {
 	raw := frozenFixture(t)
 	in, ev := load(t, raw)
-	d, err := Digests(raw, in, flh045FixtureSHA256)
-	if err != nil || !d.FixtureMatchesExpected {
+	d, err := Digests(raw, in)
+	if err != nil || !d.FixtureMatchesFrozen {
 		t.Fatalf("frozen fixture hash: %+v %v", d, err)
 	}
 	// FLH-045's documented canonical judgments hash happens to equal the Go
