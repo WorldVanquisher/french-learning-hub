@@ -160,7 +160,7 @@ func printReport(w io.Writer, r *application.SemanticIndexReport) {
 	fmt.Fprintf(w, "%s %s (run %s)\n", r.Operation, r.Space, r.RunID)
 	fmt.Fprintf(w, "  concepts:            %d\n", r.Concepts)
 	if r.VerifiedUnchanged {
-		fmt.Fprintf(w, "  verified unchanged:  %s is healthy; nothing written\n", r.Collection)
+		fmt.Fprintf(w, "  verified unchanged:  %s is healthy; published nothing\n", r.Collection)
 	} else {
 		fmt.Fprintf(w, "  embedded (provider): %d texts\n", r.EmbeddedTexts)
 		fmt.Fprintf(w, "  reused from cache:   %d\n", r.ReusedVectors)
@@ -169,12 +169,32 @@ func printReport(w io.Writer, r *application.SemanticIndexReport) {
 			fmt.Fprintf(w, "  catch-up changes:    %d\n", r.CatchUpChanges)
 		}
 		if r.Published {
-			fmt.Fprintf(w, "  published:           yes (replaced %s, removed %d leftover collection(s))\n", orNone(r.Replaced), r.Cleaned)
+			fmt.Fprintf(w, "  published:           yes (replaced %s)\n", orNone(r.Replaced))
 		} else {
 			fmt.Fprintln(w, "  published:           no (the previous publication is unchanged)")
 		}
 	}
+	printCleanup(w, r)
 	fmt.Fprintf(w, "  outcome:             %s\n", r.Outcome)
+}
+
+// printCleanup reports what this run's cleanup removed and what remains,
+// whenever cleanup ran or left something behind. Pending cleanup is an
+// operator notice: the run's outcome and exit status are unchanged by it.
+func printCleanup(w io.Writer, r *application.SemanticIndexReport) {
+	if !r.Published && !r.VerifiedUnchanged && r.Cleaned == 0 && len(r.CleanupPending) == 0 && r.CleanupError == "" {
+		return // cleanup did not run
+	}
+	fmt.Fprintf(w, "  cleanup:             removed %d leftover collection(s); %d pending\n", r.Cleaned, len(r.CleanupPending))
+	for _, c := range r.CleanupPending {
+		fmt.Fprintf(w, "    pending:           %s\n", c)
+	}
+	if r.CleanupError != "" {
+		fmt.Fprintf(w, "    cleanup error:     %s\n", r.CleanupError)
+	}
+	if len(r.CleanupPending) > 0 {
+		fmt.Fprintln(w, "    next step:         run status; retired/abandoned leftovers are retried by any later run, other runs' writing collections only by a publishing run")
+	}
 }
 
 func orNone(s string) string {
@@ -245,8 +265,15 @@ func printStatus(w io.Writer, st *application.SemanticIndexStatus) {
 		}
 	}
 	for _, c := range st.Collections {
-		if c.Status != application.PhysicalPublished {
-			fmt.Fprintf(w, "  leftover:          %s (%s, run %s) — removed by the next run\n", c.Collection, c.Status, c.RunID)
+		switch {
+		case c.Status == application.PhysicalPublished:
+		case c.Status == application.PhysicalWriting && st.LeaseActive && s != nil && c.RunID == s.LeaseRunID:
+			fmt.Fprintf(w, "  in progress:       %s (writing, run %s holds the lease)\n", c.Collection, c.RunID)
+		case c.Status == application.PhysicalWriting:
+			// A healthy sync never deletes another run's writing collection.
+			fmt.Fprintf(w, "  leftover:          %s (writing, run %s) — removed only by the next publishing run (build, rebuild, or a sync that republishes); a healthy sync keeps it\n", c.Collection, c.RunID)
+		default:
+			fmt.Fprintf(w, "  leftover:          %s (%s, run %s) — removed by the next run, including a healthy sync\n", c.Collection, c.Status, c.RunID)
 		}
 	}
 	for _, n := range st.Unrecorded {

@@ -96,7 +96,11 @@ missing, and search drops stale hits.
 - **Incomplete cleanup is reported.** A run whose cleanup failed or stopped still
   succeeds (the publication is unaffected), but its report lists
   `cleanup_pending` and `cleanup_error`, and its `last_error` reads
-  `cleanup incomplete: N leftover collection(s) remain (...)`.
+  `cleanup incomplete: N leftover collection(s) remain (...)`. The default text
+  output shows the same (FLH-050): `cleanup: removed N leftover collection(s);
+  M pending`, then one `pending:` line per name and a `cleanup error:` line. A
+  healthy `sync` says it "published nothing"; its cleanup line shows what it
+  removed. Pending cleanup does not change the outcome or the exit status (`0`).
 - **No cross-store atomicity is claimed.** The SQLite switch is the single
   publication point; search re-checks every hit against SQLite. A search can
   read the pointer just before a newer run publishes and deletes that
@@ -132,7 +136,7 @@ Set the variables above in the shell or Compose `.env`. Inside Compose
 | `last run` | The outcome of the latest run that still owned the space when it finished: `published`, `verified_unchanged`, `failed`, `interrupted` or `sources_changed`, with its error. A successful run whose cleanup was incomplete shows `cleanup incomplete: …` as its error. History, not health. |
 | `lease` | A run currently holding the space, or an EXPIRED lease left by a killed run. |
 | `verification` | Live check of the published collection, computed now: existence, vector size and distance, and every point's id, payload (content hash, model, representation, dimensions) and vector compared with SQLite's current documents and the cached embeddings. `HEALTHY` only if all match; a point count alone is never enough. |
-| `leftover` / `unrecorded` | Collections awaiting removal by the next run (`retired`/`abandoned` also by a healthy `sync`; other runs' `writing` collections by the next publishing run), or present in Qdrant without a record (for example an FLH-040 collection); `rebuild` removes unrecorded ones. |
+| `leftover` / `in progress` / `unrecorded` | `retired`/`abandoned` leftovers are removed by the next run, including a healthy `sync`. Another run's `writing` collection is removed only by the next publishing run (`build`, `rebuild`, or a `sync` that republishes); a healthy `sync` keeps it. The `writing` collection of the run that holds an active lease is shown as `in progress`. `unrecorded` collections exist in Qdrant without a record (for example an FLH-040 collection); `rebuild` removes them. |
 | `other space` | Spaces for other model identities; not used by the current configuration. |
 
 Search responses (schema `knowledge_library_semantic_search_v2`) carry the
@@ -191,6 +195,9 @@ CI's `qdrant-integration` job runs the same helper,
 - Afterwards it deletes only collections with the integration tests' prefix
   (`flh042_it_`) that appeared during its own run. These are what a killed or
   timed-out test binary leaves behind.
+- The sweep ends with a listing that must show none of them left
+  (`leftover_cleanup.verified`). If a listing or deletion fails, or one
+  remains, cleanup is unverified and the run fails (FLH-050).
 - Don't point two concurrent runs at the same endpoint.
 
 **What the run asserts**
@@ -209,12 +216,15 @@ with `FLH_QDRANT_URL` set. It passes only if all of these hold:
 | `0` | All expected tests passed |
 | `1` | Failed, skipped, missing, unexpected or zero tests; list drift; build failure; leftover test collections |
 | `2` | Usage |
-| `3` | Environment: Docker or Qdrant unavailable, pull or readiness failed, interrupted, cleanup failed |
+| `3` | Environment: Docker or Qdrant unavailable, pull or readiness failed, interrupted, cleanup failed (container not removed, or endpoint sweep unverified) |
 | `4` | The test command timed out (Go's `-timeout`, plus a watchdog that kills the process group) |
+
+A cleanup failure turns an otherwise passing run into `3`. An earlier `1` or
+`4` is kept, together with its verdict and reasons.
 
 **Artifacts** go to `--artifacts DIR` (default: a new temp directory):
 - `summary.json`: mode, image, URL, Qdrant version, per-test results, reasons,
-  cleanup;
+  cleanup (`cleanup`, `leftover_cleanup`, `cleanup_error`);
 - `go-test.jsonl` and `go-test.txt`;
 - in container mode, `qdrant.log` and `docker-inspect.json`.
 
@@ -226,7 +236,12 @@ CI uploads them as the `qdrant-regression` artifact, even on failure.
 - The suite uses deterministic fake embeddings: no embedding service, secret or
   paid call.
 - `scripts/ci/flh046/test_qdrant_regression.py` unit-tests the helper's verdict
-  logic with synthetic events. It certifies nothing about Qdrant.
+  logic with synthetic events, and its endpoint cleanup against a loopback
+  facade that is not Qdrant. It certifies nothing about Qdrant.
+- `FLH_QDRANT_URL=<url> go test ./cmd/semantic-index -run CLIQdrant` runs the
+  real CLI against a Qdrant you provide, checking its cleanup text and `status`
+  wording (FLH-050). Without the variable it skips, and the helper does not run
+  it.
 
 ## Synthetic demo
 
