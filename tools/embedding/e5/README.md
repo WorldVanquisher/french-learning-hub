@@ -17,6 +17,9 @@ preparation below.
 FLH-057 replaced `check-env.ps1`'s inline `python -c` with
 `windows/check_env.py`; that fix is also **NOT RUN on Windows** (see step 1
 below).
+FLH-059 added opt-in batching policies and a GPU reproducibility diagnostic.
+Neither has run on a GPU; only fake-encoder tests and PowerShell 7 parsing and
+argument checks in a Linux container have run.
 
 Contract: [plan](../../../docs/plans/FLH-054-local-e5-service.md).
 Evidence: [validation](../../../docs/validation/FLH-054-local-e5-service.md).
@@ -88,6 +91,7 @@ code change and produces a new deployment identity.
 | Normalization | L2, float32; the service rejects any vector whose norm differs from 1 by more than 1e-3 |
 | Token limit | 512 including the prefix and `<s>`/`</s>`. **Longer inputs are rejected** (HTTP 422 `input_too_long`, counted), **never truncated** (the `truncations` counter stays 0) |
 | GPU microbatch | 8 (default; maximum is the request size) |
+| Batching policy | `dynamic_v1` (default, FLH-054 behaviour): each microbatch right-padded to its longest input. `singleton_v1` and `fixed_v1` are opt-in, each a new identity. See [Batching and reproducibility](#batching-and-reproducibility-flh-059) |
 
 ## Deployment manifest and identity
 
@@ -112,6 +116,23 @@ library and GPU versions; it does not load the model).
 
 The code hash covers `contract.py`, `encoder.py` and `manifest.py` with line
 endings normalized, so a CRLF checkout hashes the same.
+
+**Manifest v2 (FLH-059, non-default batching only).** With
+`--batching singleton_v1` or `fixed_v1`, the manifest schema is
+`flh_e5_deployment_manifest_v2`. It adds two hashed sections to the
+vector-defining fields:
+- `inference.batching`: policy, service microbatch, padding side, fixed width
+  and rows per forward pass;
+- `inference.numerics`: the observed attention implementation, TF32 and
+  reduced-precision matmul flags, float32 matmul precision, cuDNN flags and SDPA
+  backends.
+
+Its code hash also covers `batching.py`, and the identity names the policy:
+`multilingual-e5-base@<revision>/flh_e5_role_prefix_v1/<dtype>/<policy>/<sha16>`.
+`dynamic_v1` keeps the v1 manifest byte for byte, and `contract.py`,
+`encoder.py` and `manifest.py` are unchanged (code hash `96ab7c27…`, pinned by a
+test), so the FLH-054 deployment and its identity stay reproducible for
+comparison.
 
 **Use `deployment_id` for both `EMBEDDING_MODEL` and `EMBEDDING_MODEL_ID`.**
 The service rejects any other `model` value (HTTP 400 `unknown_model`).
@@ -172,6 +193,7 @@ All commands run in the existing environment, from the repository root:
 
 ```powershell
 conda activate flh-embedding
+$ModelDir = "$HOME\models\multilingual-e5-base"   # any directory outside the repository; your choice
 ```
 
 1. **Record the environment first.** This is read-only and checks a real CUDA
@@ -203,30 +225,33 @@ conda activate flh-embedding
 3. **Download and verify the model explicitly.** This needs about 1.13 GB.
    Without `-Download` the script only prints the command:
    ```powershell
-   .\tools\embedding\e5\windows\prepare-model.ps1 -ModelDir D:\models\multilingual-e5-base
-   .\tools\embedding\e5\windows\prepare-model.ps1 -ModelDir D:\models\multilingual-e5-base -Download
+   .\tools\embedding\e5\windows\prepare-model.ps1 -ModelDir $ModelDir
+   .\tools\embedding\e5\windows\prepare-model.ps1 -ModelDir $ModelDir -Download
    ```
    The download command itself is:
    ```powershell
-   hf download intfloat/multilingual-e5-base config.json model.safetensors tokenizer.json tokenizer_config.json special_tokens_map.json sentencepiece.bpe.model --revision d128750597153bb5987e10b1c3493a34e5a4502a --local-dir D:\models\multilingual-e5-base
+   hf download intfloat/multilingual-e5-base config.json model.safetensors tokenizer.json tokenizer_config.json special_tokens_map.json sentencepiece.bpe.model --revision d128750597153bb5987e10b1c3493a34e5a4502a --local-dir $ModelDir
    ```
    Verification must print every file; on any mismatch it fails.
 4. **Record the identity:**
    ```powershell
    cd tools\embedding\e5
-   python -B -m flh_e5 manifest --model-dir D:\models\multilingual-e5-base > manifest.json
+   python -B -m flh_e5 manifest --model-dir $ModelDir > manifest.json
    cd ..\..\..
    ```
 5. **Start the service in the foreground,** loopback first:
    ```powershell
-   .\tools\embedding\e5\windows\start.ps1 -ModelDir D:\models\multilingual-e5-base
+   .\tools\embedding\e5\windows\start.ps1 -ModelDir $ModelDir
    ```
    For the NAS, bind the laptop's private IP explicitly. Only loopback and
    RFC 1918 or ULA addresses are accepted; `0.0.0.0` and public addresses are
    refused.
    ```powershell
-   .\tools\embedding\e5\windows\start.ps1 -ModelDir D:\models\multilingual-e5-base -BindHost 192.168.1.20 -Port 8765
+   .\tools\embedding\e5\windows\start.ps1 -ModelDir $ModelDir -BindHost 192.168.1.20 -Port 8765
    ```
+   `-Batching singleton_v1` or `-Batching fixed_v1` serves a non-default
+   policy under its own new identity. Record its `manifest` with the same
+   `--batching` value.
    Nothing changes the firewall, network profile or router, and nothing
    autostarts. The human confirms that private NAS access is already permitted.
    Loopback success is not NAS reachability.
@@ -250,6 +275,46 @@ conda activate flh-embedding
 - the exact start command and bind address;
 - the stop log line.
 
+## Batching and reproducibility (FLH-059)
+
+**Observed (FLH-058, real GPU, float16, `dynamic_v1`, microbatch 8).** Every
+request was a Unit query followed by the same 24 Concept documents in the same
+order. The service splits that into microbatches of 8, 8, 8 and 1, so C001–C007
+always shared microbatch 1 with a *different* query, while C008–C024 always
+had identical companions.
+- The 112 repeated vectors that exceeded FLH-056's tolerance were exactly
+  C001–C007. The maximum coordinate difference was 3.0e-4.
+- Normalization held throughout (norms within 1e-7 of 1). Normalization is not
+  reproducibility.
+
+**Code facts (this file set).**
+- Inputs are right-padded to the longest input in their microbatch, and the
+  attention mask excludes padding.
+- The model runs in the selected dtype, while pooling and L2 normalization run
+  in float32.
+- No TF32, determinism or attention-backend setting is changed.
+
+**Not established.** That the tensor shape (padded width or row count) causes
+the drift is a plausible explanation that fits the C001–C007 pattern. So are
+float16 accumulation and shape-dependent GPU kernel selection. None has been
+measured, and no ranking change from the drift has been shown.
+
+**Policies** (`--batching`, for both `manifest` and `serve`):
+
+| Policy | Forward-pass shape | Identity |
+| --- | --- | --- |
+| `dynamic_v1` | (microbatch size, longest input in it): depends on companions | Unchanged FLH-054 v1 identity |
+| `singleton_v1` | (1, own token count): depends only on the text | New v2 identity |
+| `fixed_v1` | (microbatch, 512) always; spare rows are `<s></s>` and discarded | New v2 identity |
+
+None of them promises bitwise determinism; that is measured, not assumed.
+**The default stays `dynamic_v1`** until the GPU diagnostic in
+[`scripts/validation/flh059`](../../../scripts/validation/flh059/README.md)
+supplies evidence. Switching policy gives a new `deployment_id`, so a new
+`EMBEDDING_MODEL_ID`, cache and collection space, and a new
+`semantic-index build`. Vectors from the old identity are kept for comparison
+and never relabelled.
+
 ## NAS configuration (Go side)
 
 ```sh
@@ -264,6 +329,34 @@ SEMANTIC_BATCH_SIZE=32                             # must not exceed the service
 
 Then run `semantic-index build` for this new identity. Any indexing or
 evaluation run with real vectors needs its own explicit authorization.
+
+## Tailscale Serve (operator option)
+
+Instead of binding a private IP, the service can stay on `127.0.0.1` with
+Tailscale Serve forwarding tailnet traffic to it. The service's own bind rules
+are unchanged: it still refuses the tailnet's CGNAT `100.64.0.0/10` addresses.
+Run this on the laptop, in a second console, after the service is ready:
+
+```powershell
+.\tools\embedding\e5\windows\start.ps1 -ModelDir $ModelDir            # console 1: loopback only
+tailscale serve --http=8765 http://127.0.0.1:8765                       # console 2: foreground, Ctrl+C stops it
+tailscale serve status
+```
+
+- **NAS URL:** `EMBEDDING_BASE_URL=http://<laptop tailnet IP or MagicDNS name>:8765/v1`.
+- **Reach:** Serve shares only within your tailnet, and your tailnet's access
+  rules decide which devices reach it. **Never use `tailscale funnel`**, which
+  publishes to the internet. The service has no authentication.
+- **Persistence:** `--bg` keeps serving after the console closes and resumes
+  after a reboot, which is a persistent change on the laptop; this project
+  doesn't ask for it. If you used it, remove it with
+  `tailscale serve --http=8765 off` (or `tailscale serve reset`, which clears
+  *all* Serve configuration), then check `tailscale serve status`.
+- **What the service sees:** every connection appears to come from loopback, so
+  its connection limit counts the proxy's connections. Check the exact flags
+  against `tailscale serve --help` for your installed version.
+- **Not set up or run by an agent:** the endpoint FLH-056/058 used
+  (`100.118.109.6:8765`) is the human's own forwarding.
 
 ## Tests (no GPU, no model)
 
@@ -283,7 +376,9 @@ go test ./internal/application -run 'Envelope|Representations_Unchanged|Semantic
   - readiness during load and warmup, failed startup, counters, no input text in
     logs or metrics, bind-address rules, and graceful shutdown with a request in
     flight;
-  - manifest identity and file checks.
+  - manifest identity and file checks;
+  - batching policies (FLH-059): the shapes each policy requests, the v1/v2
+    manifest split, distinct identities, and the FLH-054 code hash pinned.
 - **Plumbing launcher:** `tests/run_fake_service.py --port N` runs the real
   service with the fake encoder, for checking Go callers.
 - **What they don't show:** CUDA, the model or semantic quality.

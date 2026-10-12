@@ -1,0 +1,333 @@
+{
+ "schema": "flh059_model_inputs_v1",
+ "source": {
+  "fixture": "scripts/validation/flh045/fixture.json",
+  "fixture_sha256": "92726376c7892ef5e7eb539648828eab3ccf9d026912a4a5509dc461c3b7043a",
+  "renderer": "production Go renderers via the FLH-051 overlay (TestFLH051ProductionParityAndEvidence)",
+  "contents": "model input strings only; no labels, targets, splits or languages"
+ },
+ "documents": [
+  {
+   "id": "C001",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"imparfait de description\",\"pedagogical_intent\":\"grammar\",\"scope\":\"arrière-plan passé\",\"identity_features\":[{\"key\":\"aspect\",\"value\":\"background\"}]}"
+  },
+  {
+   "id": "C002",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"passé composé événement achevé\",\"pedagogical_intent\":\"grammar\",\"scope\":\"événement passé délimité\",\"identity_features\":[{\"key\":\"aspect\",\"value\":\"bounded\"}]}"
+  },
+  {
+   "id": "C003",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"pronoms objets directs le la les\",\"pedagogical_intent\":\"grammar\",\"scope\":\"complément sans préposition\",\"identity_features\":[{\"key\":\"object_role\",\"value\":\"direct\"}]}"
+  },
+  {
+   "id": "C004",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"pronoms objets indirects lui leur\",\"pedagogical_intent\":\"grammar\",\"scope\":\"destinataire introduit par à\",\"identity_features\":[{\"key\":\"object_role\",\"value\":\"indirect\"}]}"
+  },
+  {
+   "id": "C005",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"y remplace un lieu\",\"pedagogical_intent\":\"grammar\",\"scope\":\"lieu introduit par à\",\"identity_features\":[{\"key\":\"replacement\",\"value\":\"location\"}]}"
+  },
+  {
+   "id": "C006",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"en reprend une quantité\",\"pedagogical_intent\":\"grammar\",\"scope\":\"quantité avec de\",\"identity_features\":[{\"key\":\"replacement\",\"value\":\"quantity\"}]}"
+  },
+  {
+   "id": "C007",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"accord de l’adjectif\",\"pedagogical_intent\":\"grammar\",\"scope\":\"adjectif qualifiant un nom\",\"identity_features\":[{\"key\":\"agreement\",\"value\":\"noun_gender_number\"}]}"
+  },
+  {
+   "id": "C008",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"adverbe modifiant le verbe\",\"pedagogical_intent\":\"grammar\",\"scope\":\"manière de faire une action\",\"identity_features\":[{\"key\":\"agreement\",\"value\":\"invariable_adverb\"}]}"
+  },
+  {
+   "id": "C009",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"négation ne pas\",\"pedagogical_intent\":\"grammar\",\"scope\":\"nier un fait présent\",\"identity_features\":[{\"key\":\"meaning\",\"value\":\"not\"}]}"
+  },
+  {
+   "id": "C010",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"négation ne plus\",\"pedagogical_intent\":\"grammar\",\"scope\":\"cessation d’une habitude\",\"identity_features\":[{\"key\":\"meaning\",\"value\":\"no_longer\"}]}"
+  },
+  {
+   "id": "C011",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"question avec est-ce que\",\"pedagogical_intent\":\"grammar\",\"scope\":\"interrogation sans inversion\",\"identity_features\":[{\"key\":\"construction\",\"value\":\"est_ce_que\"}]}"
+  },
+  {
+   "id": "C012",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"inversion sujet verbe\",\"pedagogical_intent\":\"grammar\",\"scope\":\"interrogation avec pronom sujet\",\"identity_features\":[{\"key\":\"construction\",\"value\":\"inversion\"}]}"
+  },
+  {
+   "id": "C013",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"devoir avec sujet personnel\",\"pedagogical_intent\":\"grammar\",\"scope\":\"obligation portée par une personne\",\"identity_features\":[{\"key\":\"subject\",\"value\":\"personal\"}]}"
+  },
+  {
+   "id": "C014",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"falloir impersonnel\",\"pedagogical_intent\":\"grammar\",\"scope\":\"nécessité avec il impersonnel\",\"identity_features\":[{\"key\":\"subject\",\"value\":\"impersonal\"}]}"
+  },
+  {
+   "id": "C015",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"relatif qui sujet\",\"pedagogical_intent\":\"grammar\",\"scope\":\"sujet de la proposition relative\",\"identity_features\":[{\"key\":\"relative_role\",\"value\":\"subject\"}]}"
+  },
+  {
+   "id": "C016",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"relatif que objet\",\"pedagogical_intent\":\"grammar\",\"scope\":\"objet de la proposition relative\",\"identity_features\":[{\"key\":\"relative_role\",\"value\":\"object\"}]}"
+  },
+  {
+   "id": "C017",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"conditionnel de demande polie\",\"pedagogical_intent\":\"usage\",\"scope\":\"adoucir une requête\",\"identity_features\":[{\"key\":\"strategy\",\"value\":\"conditional\"}]}"
+  },
+  {
+   "id": "C018",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"choix tu vous\",\"pedagogical_intent\":\"usage\",\"scope\":\"relation sociale avec l’interlocuteur\",\"identity_features\":[{\"key\":\"strategy\",\"value\":\"address_register\"}]}"
+  },
+  {
+   "id": "C019",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"ou où accent distinctif\",\"pedagogical_intent\":\"orthography\",\"scope\":\"choix entre alternative et lieu\",\"identity_features\":[{\"key\":\"contrast\",\"value\":\"or_where\"}]}"
+  },
+  {
+   "id": "C020",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"sons u et ou\",\"pedagogical_intent\":\"pronunciation\",\"scope\":\"contraste voyelles françaises\",\"identity_features\":[{\"key\":\"contrast\",\"value\":\"front_back_rounded\"}]}"
+  },
+  {
+   "id": "C021",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"depuis durée encore en cours\",\"pedagogical_intent\":\"grammar\",\"scope\":\"situation commencée et toujours vraie\",\"identity_features\":[{\"key\":\"time_span\",\"value\":\"continuing\"}]}"
+  },
+  {
+   "id": "C022",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"pendant durée délimitée\",\"pedagogical_intent\":\"grammar\",\"scope\":\"intervalle achevé ou borné\",\"identity_features\":[{\"key\":\"time_span\",\"value\":\"bounded\"}]}"
+  },
+  {
+   "id": "C023",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"article partitif affirmatif\",\"pedagogical_intent\":\"grammar\",\"scope\":\"quantité indéfinie positive\",\"identity_features\":[{\"key\":\"polarity\",\"value\":\"affirmative\"}]}"
+  },
+  {
+   "id": "C024",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"de après négation de quantité\",\"pedagogical_intent\":\"grammar\",\"scope\":\"quantité niée sans contraste\",\"identity_features\":[{\"key\":\"polarity\",\"value\":\"negative_quantity\"}]}"
+  }
+ ],
+ "queries": [
+  {
+   "id": "U001",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Une habitude ou un décor dans le passé\",\"statement\":\"Comment raconter le temps qu'il faisait pendant mon enfance ?\",\"example\":\"Quand nous étions petits, il pleuvait souvent.\",\"candidate_target\":\"une habitude ou un décor dans le passé\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U002",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Past background rather than a finished event\",\"statement\":\"I need the tense for the weather that was going on behind the story.\",\"example\":\"It was raining when the bus arrived.\",\"candidate_target\":\"past background rather than a finished event\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U003",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Une action terminée hier\",\"statement\":\"Quel temps choisir pour annoncer que mon train est arrivé hier ?\",\"example\":\"Le train est arrivé à midi.\",\"candidate_target\":\"une action terminée hier\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U004",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"One completed event in a past story\",\"statement\":\"How do I report that I finished the call yesterday?\",\"example\":\"I finished the call at noon.\",\"candidate_target\":\"one completed event in a past story\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U005",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Remplacer le livre par un petit mot\",\"statement\":\"Dans je lis le livre, comment éviter de répéter le livre ?\",\"example\":\"Je le lis.\",\"candidate_target\":\"remplacer le livre par un petit mot\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U006",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Replace a thing seen with a short object word\",\"statement\":\"How can I avoid repeating the flowers in I see the flowers?\",\"example\":\"Je les vois.\",\"candidate_target\":\"replace a thing seen with a short object word\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U007",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Remplacer à ma sœur après parler\",\"statement\":\"Je parle à ma sœur : quel pronom garde le sens du destinataire ?\",\"example\":\"Je lui parle.\",\"candidate_target\":\"remplacer à ma sœur après parler\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U008",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"A recipient after a verb of speaking\",\"statement\":\"Which pronoun replaces to my friends after I speak?\",\"example\":\"Je leur parle.\",\"candidate_target\":\"a recipient after a verb of speaking\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U009",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Éviter de répéter au marché\",\"statement\":\"Je vais au marché et mon ami aussi : comment remplacer ce lieu ?\",\"example\":\"J’y vais demain.\",\"candidate_target\":\"éviter de répéter au marché\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U010",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Substitute for the place I am going to\",\"statement\":\"What little word stands for to the museum after go?\",\"example\":\"J’y vais avec elle.\",\"candidate_target\":\"substitute for the place i am going to\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U011",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Garder deux sans répéter les pommes\",\"statement\":\"J’ai deux pommes : comment répondre en gardant seulement la quantité ?\",\"example\":\"J’en ai deux.\",\"candidate_target\":\"garder deux sans répéter les pommes\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U012",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Keep a number while leaving out the noun\",\"statement\":\"I have three tickets; how do I say I have three of them?\",\"example\":\"J’en ai trois.\",\"candidate_target\":\"keep a number while leaving out the noun\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U013",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"La terminaison dans des maisons blanches\",\"statement\":\"Pourquoi le mot qui décrit ces maisons prend-il un s ?\",\"example\":\"Des maisons blanches.\",\"candidate_target\":\"la terminaison dans des maisons blanches\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U014",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Describing several feminine things\",\"statement\":\"Does the describing word change when my small cars are feminine and plural?\",\"example\":\"Des petites voitures.\",\"candidate_target\":\"describing several feminine things\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U015",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Parler doucement avec plusieurs personnes\",\"statement\":\"Si plusieurs filles parlent doucement, faut-il ajouter un s au dernier mot ?\",\"example\":\"Elles parlent doucement.\",\"candidate_target\":\"parler doucement avec plusieurs personnes\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U016",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"How an action is done by several people\",\"statement\":\"Does slowly become plural when several women walk slowly?\",\"example\":\"Elles marchent lentement.\",\"candidate_target\":\"how an action is done by several people\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U017",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Dire que je ne mange pas de viande\",\"statement\":\"Comment nier simplement mon habitude de manger de la viande ?\",\"example\":\"Je ne mange pas de viande.\",\"candidate_target\":\"dire que je ne mange pas de viande\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U018",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Deny a fact without implying a previous habit\",\"statement\":\"How do I say I do not smoke without saying that I used to?\",\"example\":\"Je ne fume pas.\",\"candidate_target\":\"deny a fact without implying a previous habit\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U019",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Dire que mon ancienne habitude a cessé\",\"statement\":\"Je fumais auparavant et maintenant c’est fini : quel mot de négation exprime ce changement ?\",\"example\":\"Je ne fume plus.\",\"candidate_target\":\"dire que mon ancienne habitude a cessé\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U020",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Something used to happen and has now stopped\",\"statement\":\"How can I say I no longer take the bus, although I did before?\",\"example\":\"Je ne prends plus le bus.\",\"candidate_target\":\"something used to happen and has now stopped\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U021",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Poser une question en gardant tu viens\",\"statement\":\"Je veux demander si tu viens sans inverser le sujet et le verbe : quelle formule ajouter ?\",\"example\":\"Est-ce que tu viens ?\",\"candidate_target\":\"poser une question en gardant tu viens\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U022",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Ask a yes or no question without swapping subject and verb\",\"statement\":\"What introductory phrase lets me keep the order you are coming?\",\"example\":\"Est-ce que tu viens ?\",\"candidate_target\":\"ask a yes or no question without swapping subject and verb\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U023",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Mettre le pronom après le verbe dans une question\",\"statement\":\"Comment écrire une question où vous suit venez avec un trait d’union ?\",\"example\":\"Venez-vous demain ?\",\"candidate_target\":\"mettre le pronom après le verbe dans une question\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U024",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"A written question with the subject after the verb\",\"statement\":\"How do I form a question by swapping arrive and you?\",\"example\":\"Arrivez-vous demain ?\",\"candidate_target\":\"a written question with the subject after the verb\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U025",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Exprimer ce que nous sommes obligés de faire\",\"statement\":\"Je veux garder nous comme sujet en disant que nous sommes obligés de partir.\",\"example\":\"Nous devons partir.\",\"candidate_target\":\"exprimer ce que nous sommes obligés de faire\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U026",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"An obligation with we as the subject\",\"statement\":\"Which verb lets I be the subject of an obligation to study?\",\"example\":\"Je dois étudier.\",\"candidate_target\":\"an obligation with we as the subject\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U027",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Une nécessité générale introduite par il\",\"statement\":\"Comment exprimer une nécessité de partir sans préciser qui doit partir ?\",\"example\":\"Il faut partir.\",\"candidate_target\":\"une nécessité générale introduite par il\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U028",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"A general need without a named person\",\"statement\":\"How do I express that leaving is necessary using the impersonal it construction?\",\"example\":\"Il faut partir.\",\"candidate_target\":\"a general need without a named person\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U029",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Le mot relatif fait lui-même l’action\",\"statement\":\"Dans la femme ___ chante, le mot manquant représente celle qui fait l’action.\",\"example\":\"La femme qui chante.\",\"candidate_target\":\"le mot relatif fait lui-même l’action\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U030",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"The relative word is the one doing the action\",\"statement\":\"Fill the gap in the man ___ is speaking: there is no other subject after the gap.\",\"example\":\"L’homme qui parle.\",\"candidate_target\":\"the relative word is the one doing the action\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U031",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Le mot relatif reçoit l’action de je\",\"statement\":\"Dans le livre ___ je lis, je est déjà le sujet : que remplace le mot manquant ?\",\"example\":\"Le livre que je lis.\",\"candidate_target\":\"le mot relatif reçoit l’action de je\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U032",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"A relative gap before an already stated subject\",\"statement\":\"Fill the gap in the song ___ she sings, where she does the singing.\",\"example\":\"La chanson qu’elle chante.\",\"candidate_target\":\"a relative gap before an already stated subject\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U033",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Demander un café moins directement\",\"statement\":\"Au lieu de je veux un café, comment atténuer ma demande avec une autre forme du verbe ?\",\"example\":\"Je voudrais un café.\",\"candidate_target\":\"demander un café moins directement\",\"pedagogical_intent\":\"usage\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U034",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Soften a request by changing the verb form\",\"statement\":\"How can I make I want a coffee less blunt without changing who I address?\",\"example\":\"Je voudrais un café.\",\"candidate_target\":\"soften a request by changing the verb form\",\"pedagogical_intent\":\"usage\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U035",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Choisir comment s’adresser à un inconnu\",\"statement\":\"Quel pronom utiliser pour parler à une seule personne que je ne connais pas dans un cadre formel ?\",\"example\":\"Vous pouvez m’aider ?\",\"candidate_target\":\"choisir comment s’adresser à un inconnu\",\"pedagogical_intent\":\"usage\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U036",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Choose an address form for an unfamiliar adult\",\"statement\":\"Should I address a stranger formally or use the familiar singular pronoun?\",\"example\":\"Vous pouvez m’aider ?\",\"candidate_target\":\"choose an address form for an unfamiliar adult\",\"pedagogical_intent\":\"usage\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U037",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Un accent pour demander un endroit\",\"statement\":\"Quel accent manque dans ou habites-tu lorsque je demande un lieu ?\",\"example\":\"Où habites-tu ?\",\"candidate_target\":\"un accent pour demander un endroit\",\"pedagogical_intent\":\"orthography\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U038",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Write the location question rather than an alternative\",\"statement\":\"Which written form needs an accent when asking where someone lives?\",\"example\":\"Où habites-tu ?\",\"candidate_target\":\"write the location question rather than an alternative\",\"pedagogical_intent\":\"orthography\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U039",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Entendre la différence entre tu et tout\",\"statement\":\"Comment placer ma langue pour distinguer les voyelles de tu et tout ?\",\"example\":\"Tu / tout.\",\"candidate_target\":\"entendre la différence entre tu et tout\",\"pedagogical_intent\":\"pronunciation\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U040",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Pronounce the vowels in tu and tout differently\",\"statement\":\"What mouth position separates the two rounded vowel sounds in tu and tout?\",\"example\":\"Tu / tout.\",\"candidate_target\":\"pronounce the vowels in tu and tout differently\",\"pedagogical_intent\":\"pronunciation\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U041",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Une activité commencée il y a deux ans continue\",\"statement\":\"J’habite ici aujourd’hui et j’ai commencé il y a deux ans : quelle préposition lie la durée au présent ?\",\"example\":\"J’habite ici depuis deux ans.\",\"candidate_target\":\"une activité commencée il y a deux ans continue\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U042",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"An activity began earlier and is still happening\",\"statement\":\"I started living here two years ago and still do. Which time preposition fits?\",\"example\":\"J’habite ici depuis deux ans.\",\"candidate_target\":\"an activity began earlier and is still happening\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U043",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Un séjour de deux semaines déjà terminé\",\"statement\":\"Mon voyage est fini : quelle préposition indique seulement la durée de ce séjour ?\",\"example\":\"J’ai voyagé pendant deux semaines.\",\"candidate_target\":\"un séjour de deux semaines déjà terminé\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U044",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"A trip lasted a week and is over\",\"statement\":\"How do I mark the length of a finished stay, without saying it continues now?\",\"example\":\"J’ai voyagé pendant une semaine.\",\"candidate_target\":\"a trip lasted a week and is over\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U045",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Une quantité de soupe sans la compter\",\"statement\":\"Quel petit mot introduit soupe quand je dis que j’en mange une certaine quantité ?\",\"example\":\"Je mange de la soupe.\",\"candidate_target\":\"une quantité de soupe sans la compter\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U046",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Some uncounted bread in an affirmative sentence\",\"statement\":\"How do I introduce bread when I am eating some rather than one whole loaf?\",\"example\":\"Je mange du pain.\",\"candidate_target\":\"some uncounted bread in an affirmative sentence\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U047",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Le déterminant change quand je n’ai aucun pain\",\"statement\":\"Dans je n’ai pas ___ pain, pourquoi ne garde-t-on pas le mot de la phrase affirmative ?\",\"example\":\"Je n’ai pas de pain.\",\"candidate_target\":\"le déterminant change quand je n’ai aucun pain\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U048",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"No milk rather than some milk\",\"statement\":\"What happens to the article in I do not have any milk, with no contrast or être?\",\"example\":\"Je n’ai pas de lait.\",\"candidate_target\":\"no milk rather than some milk\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U049",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Un temps pour raconter hier\",\"statement\":\"Quel temps utiliser pour parler d’hier ?\",\"example\":null,\"candidate_target\":\"un temps pour raconter hier\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U050",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"A short word for a person\",\"statement\":\"Which object pronoun replaces that person?\",\"example\":null,\"candidate_target\":\"a short word for a person\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U051",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Une durée de trois jours\",\"statement\":\"Quelle préposition va avec une durée de trois jours ?\",\"example\":null,\"candidate_target\":\"une durée de trois jours\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U052",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"An article before bread\",\"statement\":\"Which article should I put before bread?\",\"example\":null,\"candidate_target\":\"an article before bread\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U053",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"La température du four\",\"statement\":\"À quelle température cuire une tarte aux pommes ?\",\"example\":null,\"candidate_target\":\"la température du four\",\"pedagogical_intent\":\"vocabulary\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U054",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"A database backup command\",\"statement\":\"Which command exports a PostgreSQL database backup?\",\"example\":null,\"candidate_target\":\"a database backup command\",\"pedagogical_intent\":\"vocabulary\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U055",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"Un mode après bien que\",\"statement\":\"Quel mode employer après bien que ?\",\"example\":null,\"candidate_target\":\"un mode après bien que\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+  },
+  {
+   "id": "U056",
+   "text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"The future stem of aller\",\"statement\":\"What stem does aller use in the simple future?\",\"example\":null,\"candidate_target\":\"the future stem of aller\",\"pedagogical_intent\":\"morphology\",\"scope\":\"\",\"identity_features\":[]}"
+  }
+ ]
+}

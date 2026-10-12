@@ -10,18 +10,33 @@ import sys
 import threading
 from pathlib import Path
 
-from . import contract, manifest
+from . import batching, contract, manifest
 from .service import EmbeddingHTTPServer, EmbeddingService, Limits, validate_bind_host
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 log = logging.getLogger("flh_e5")
 
 
-def build_manifest_for(encoder_files: dict, runtime: dict, dtype: str, limits: Limits) -> dict:
-    return manifest.build_manifest(
-        files=encoder_files, code_hash=manifest.code_sha256(PACKAGE_DIR), convention=contract.CONVENTION,
-        accepted_pairs=contract.ACCEPTED_PAIRS, prefixes=dict(contract.PREFIXES), dtype=dtype,
-        microbatch=limits.microbatch, runtime=runtime, service=limits.public())
+def build_manifest_for(encoder_files: dict, runtime: dict, dtype: str, limits: Limits,
+                       policy: str = batching.LEGACY_POLICY, numerics: dict | None = None) -> dict:
+    """dynamic_v1 keeps the FLH-054 v1 manifest byte for byte (same identity);
+    any other batching policy gets the v2 manifest and a new identity."""
+    common = dict(files=encoder_files, convention=contract.CONVENTION, accepted_pairs=contract.ACCEPTED_PAIRS,
+                  prefixes=dict(contract.PREFIXES), dtype=dtype, microbatch=limits.microbatch,
+                  runtime=runtime, service=limits.public())
+    if policy == batching.LEGACY_POLICY:
+        return manifest.build_manifest(code_hash=manifest.code_sha256(PACKAGE_DIR), **common)
+    if numerics is None:
+        raise ValueError("a v2 manifest needs the loaded model's numerics settings")
+    return batching.build_manifest_v2(code_hash=batching.code_sha256_v2(PACKAGE_DIR), policy=policy,
+                                      numerics=numerics, **common)
+
+
+def make_encoder(model_dir: Path, dtype: str, policy: str, limits: Limits):
+    if policy == batching.LEGACY_POLICY:
+        from .encoder import E5CudaEncoder
+        return E5CudaEncoder(model_dir, dtype)
+    return batching.make_policy_encoder(model_dir, dtype, policy, limits.microbatch)
 
 
 def main(argv: list[str]) -> int:
@@ -36,6 +51,8 @@ def main(argv: list[str]) -> int:
             p.add_argument("--max-inputs", type=int, default=32)
             p.add_argument("--max-queue", type=int, default=4)
             p.add_argument("--queue-timeout", type=float, default=30.0)
+            p.add_argument("--batching", choices=batching.POLICIES, default=batching.LEGACY_POLICY,
+                           help="tensor-shape policy (FLH-059); anything but dynamic_v1 is a new deployment identity")
         if name == "serve":
             p.add_argument("--host", default="127.0.0.1", help="loopback (default) or a private RFC 1918 / ULA IP literal")
             p.add_argument("--port", type=int, default=8765)
@@ -57,12 +74,19 @@ def main(argv: list[str]) -> int:
     except ValueError as e:
         print(f"configuration: {e}", file=sys.stderr)
         return 2
-    from .encoder import E5CudaEncoder, EncoderStartupError, runtime_versions
+    from .encoder import EncoderStartupError, runtime_versions
 
     if args.command == "manifest":
         try:
             files = manifest.verify_model_dir(args.model_dir)
-            m = build_manifest_for(files, runtime_versions(), args.dtype, limits)
+            if args.batching == batching.LEGACY_POLICY:
+                m = build_manifest_for(files, runtime_versions(), args.dtype, limits)
+            else:  # the v2 manifest records settings observed on the loaded model
+                enc = make_encoder(args.model_dir, args.dtype, args.batching, limits)
+                try:
+                    m = build_manifest_for(enc.files, enc.runtime_versions(), args.dtype, limits, args.batching, enc.numerics)
+                finally:
+                    enc.close()
         except (manifest.ModelFilesError, EncoderStartupError) as e:
             print(f"manifest: FAILED: {e}", file=sys.stderr)
             return 3
@@ -78,8 +102,9 @@ def main(argv: list[str]) -> int:
         return 2
 
     service = EmbeddingService(
-        encoder_factory=lambda: E5CudaEncoder(args.model_dir, args.dtype),
-        manifest_factory=lambda enc: build_manifest_for(enc.files, enc.runtime_versions(), args.dtype, limits),
+        encoder_factory=lambda: make_encoder(args.model_dir, args.dtype, args.batching, limits),
+        manifest_factory=lambda enc: build_manifest_for(enc.files, enc.runtime_versions(), args.dtype, limits,
+                                                        args.batching, getattr(enc, "numerics", None)),
         limits=limits)
     return serve(service, host, args.port)
 

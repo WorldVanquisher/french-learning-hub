@@ -311,6 +311,36 @@ SEMANTIC_BATCH_SIZE=32        # at most the service's 32 inputs
 - Old vectors are never reused or relabelled. Vectors produced without the E5
   prefixes, or by another deployment, live in their own spaces.
 
+**Numerical reproducibility (FLH-059)**
+- **Observed:** in FLH-058 (float16, microbatch 8), the same Concept text
+  sometimes got vectors differing by up to 3.0e-4 per coordinate. That exceeds
+  FLH-056's tolerance, which has not been loosened.
+- **Pattern:** the affected texts, C001–C007, are exactly those that shared a
+  microbatch with a varying query.
+- **Not established:** the cause, or any ranking effect.
+- **Batching policies:** the service now has explicit `--batching` policies.
+  `dynamic_v1` is the default, unchanged FLH-054 behaviour with the same
+  identity. `singleton_v1` (one unpadded pass per input) and `fixed_v1` (always
+  microbatch × 512) are opt-in.
+- **Identities:** each non-default policy has a v2 manifest that records the
+  policy and the observed numerics settings, so it gets a new
+  `deployment_id`, and therefore a new `EMBEDDING_MODEL_ID` and index space.
+- **Choosing:** the bounded GPU diagnostic in
+  [`scripts/validation/flh059`](../scripts/validation/flh059/README.md)
+  measures repeated identical texts across batch shapes, dtypes and policies,
+  including ranking sensitivity. Choosing a policy waits for its results.
+
+**Tailscale Serve (operator option).** The service can stay bound to
+`127.0.0.1` while `tailscale serve --http=8765 http://127.0.0.1:8765` (run in
+the foreground on the laptop) forwards tailnet traffic to it. The NAS then
+uses `EMBEDDING_BASE_URL=http://<laptop tailnet IP or MagicDNS name>:8765/v1`.
+- The service's own bind rules are unchanged, so it still refuses tailnet CGNAT
+  addresses.
+- Never use `tailscale funnel`.
+- `--bg` would persist across reboots; remove it with
+  `tailscale serve --http=8765 off`.
+- Details: [tools/embedding/e5/README.md](../tools/embedding/e5/README.md#tailscale-serve-operator-option).
+
 **Binding and status**
 - It binds `127.0.0.1` by default. NAS access needs an explicit private (RFC 1918
   or ULA) bind address; nothing changes the firewall or autostarts.
@@ -321,6 +351,11 @@ SEMANTIC_BATCH_SIZE=32        # at most the service's 32 inputs
 - `check-env.ps1` failed on the human's Windows PowerShell because inline
   `python -c` source lost its double quotes. FLH-057 moved that Python into
   `windows/check_env.py`; the fixed script is **not yet run on Windows**.
+- FLH-059 checked the PowerShell scripts in a Linux PowerShell 7.4 container.
+  All parse, and the `Legacy` argument-passing mode reproduces the old
+  `print(name, NOT` corruption, while the file-based invocation keeps its
+  arguments intact. That is not Windows execution.
+- The batching policies and the diagnostic have **not run on a GPU**.
 
 ## Synthetic demo
 
