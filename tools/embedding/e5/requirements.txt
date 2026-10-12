@@ -1,0 +1,11 @@
+# FLH-054 local E5 service: Python 3.11 in the existing Conda env "flh-embedding".
+# torch is deliberately NOT listed: keep the already verified torch 2.13.0+cu126.
+# Check first that pip would not touch torch:
+#   python -m pip install --dry-run -r tools\embedding\e5\requirements.txt
+# Versions checked on PyPI 2026-10-12 (each released at least two weeks earlier;
+# all ship cp311 / abi3 / py3 wheels for win_amd64).
+transformers==5.17.0
+tokenizers==0.23.2
+safetensors==0.8.0
+huggingface_hub==1.33.0
+numpy==2.4.6

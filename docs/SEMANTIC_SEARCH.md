@@ -21,7 +21,19 @@ every other feature behave exactly as before whether it is on or off.
 
 A real embedding service may be paid or remote: indexing sends every Concept's
 identity text (title, intent, scope, identity features) and each search sends
-the query text. Use the synthetic demo below to try the mechanics without one.
+the query text. Use the synthetic demo below to try the mechanics without one,
+or the [local E5 deployment](#local-e5-deployment-flh-054) on your own GPU.
+
+**What a search sends (FLH-054).** The trimmed query is wrapped in a versioned
+envelope, `{"representation":"concept_search_query_v2","type":"query","text":"<q>"}`
+(Go `encoding/json`, so `<`, `>` and `&` are escaped as `\u003c`, `\u003e` and
+`\u0026`). The original text is kept unchanged inside it. Indexed Concept
+documents and the experiment's Unit queries keep `concept_embedding_text_v1`.
+The envelope lets a role-aware service tell a query from a document even when
+the query text itself looks like a Concept document. Query vectors are never
+stored, so this changes no cache or index space. It does change the text every
+provider receives for a search; an existing deployment's search ranking can
+therefore shift slightly.
 
 ## Configuration
 
@@ -242,6 +254,60 @@ CI uploads them as the `qdrant-regression` artifact, even on failure.
   real CLI against a Qdrant you provide, checking its cleanup text and `status`
   wording (FLH-050). Without the variable it skips, and the helper does not run
   it.
+
+## Local E5 deployment (FLH-054)
+
+[`tools/embedding/e5/`](../tools/embedding/e5/README.md) is a bounded local
+service for the pinned `intfloat/multilingual-e5-base` revision
+`d128750597153bb5987e10b1c3493a34e5a4502a` (768 dimensions) on a CUDA GPU. It
+answers the existing `HTTPProvider` unchanged (`POST <base>/embeddings`,
+`{"model","input"}`).
+
+**Roles come only from the representation/type pair (`flh_e5_role_prefix_v1`)**
+- `concept_search_query_v2`/`query` and `concept_embedding_text_v1`/`query` get
+  `query: `.
+- `concept_embedding_text_v1`/`concept` gets `passage: `.
+- The prefix is applied once to the original bytes. Batch position never
+  matters, so an indexing batch of one document is still a passage.
+- Raw text or any other shape is rejected (HTTP 422). The service doesn't
+  guess.
+
+**Service behaviour**
+- Pooling and normalization: masked mean pooling and L2 normalization in
+  float32.
+- Device and dtype: CUDA is required with `float16` by default; there is no CPU
+  or model fallback.
+- Inputs: at most 32 per request, and at most 512 tokens each including the
+  prefix. Longer inputs are rejected, never truncated.
+- Readiness: `/readyz` returns 200 only after the GPU load and warmup.
+- Failures: overload and GPU out-of-memory are reported as 503, with no retry.
+
+**Configuration on the NAS.** Take `deployment_id` from the service's
+`GET /manifest` and use it for both variables:
+
+```bash
+EMBEDDING_BASE_URL=http://<laptop private IP>:8765/v1
+EMBEDDING_MODEL=<deployment_id>
+EMBEDDING_MODEL_ID=<deployment_id>
+EMBEDDING_DIMENSIONS=768
+EMBEDDING_TIMEOUT=30
+SEMANTIC_BATCH_SIZE=32        # at most the service's 32 inputs
+```
+
+**Identity**
+- `deployment_id` is derived from a SHA-256 over everything that defines the
+  vectors: revision and file hashes, adapter convention and code hash, dtype,
+  pooling, normalization, token policy, microbatch, library versions and GPU.
+- When any of these changes, the identity changes. `EMBEDDING_MODEL_ID` then
+  names a new cache and collection space, and `semantic-index build` fills it.
+- Old vectors are never reused or relabelled. Vectors produced without the E5
+  prefixes, or by another deployment, live in their own spaces.
+
+**Binding and status**
+- It binds `127.0.0.1` by default. NAS access needs an explicit private (RFC 1918
+  or ULA) bind address; nothing changes the firewall or autostarts.
+- The service and its fake-encoder tests run anywhere. Real CUDA, model loading,
+  GPU memory and NAS access are **not yet run** on the Windows laptop.
 
 ## Synthetic demo
 

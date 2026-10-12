@@ -415,6 +415,24 @@ FLH-042 semantic index run consistency:
 - `semantic_index_legacy.go` keeps FLH-040's unfenced methods solely so the
   FLH-041 probe compiles; production must not call them.
 
+FLH-054 search query envelope and local E5 service:
+
+- Semantic search embeds the trimmed query as the versioned envelope
+  `{"representation":"concept_search_query_v2","type":"query","text":...}`
+  (`ConceptSearchQueryEmbeddingText`). Unit queries and Concept documents keep
+  `concept_embedding_text_v1`. Query vectors are never persisted.
+- `tools/embedding/e5/` is an optional local HTTP service for the pinned
+  `intfloat/multilingual-e5-base` revision (768 dimensions, CUDA only,
+  safetensors, no remote code, no startup download). Role contract
+  `flh_e5_role_prefix_v1` assigns `query: `/`passage: ` from the
+  representation/type pair only and rejects anything else. Over 512 tokens is
+  rejected, never truncated. No retry or fallback.
+- Its manifest-derived `deployment_id` is used as `EMBEDDING_MODEL` and
+  `EMBEDDING_MODEL_ID`. Any vector-defining change creates a new identity and
+  index space. It binds loopback by default, or an explicit private address;
+  it is not a public service. `tests/golden_inputs.json` is shared by the
+  service's tests and the Go envelope tests.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.
