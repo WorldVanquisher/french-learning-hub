@@ -2,7 +2,7 @@
 """Independent FLH-048 acceptance, local counted fake embeddings only.
 
 No dependency installation. Retains results/logs/hashes under a new /tmp path.
-Known defects are recorded as observations, not silently repaired.
+FLH-055 retargets historical defect observations to corrected v2 requirements.
 """
 import argparse
 from collections import defaultdict
@@ -19,6 +19,29 @@ import time
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
 FIXTURE = ROOT / "scripts/validation/flh045/fixture.json"
+FROZEN_SHA256 = "92726376c7892ef5e7eb539648828eab3ccf9d026912a4a5509dc461c3b7043a"
+
+
+def no_metrics(run):
+    for key in ("overall", "by_split", "by_language", "by_split_language", "by_group"):
+        assert run["evaluation"][key] is None, (run["name"], key)
+
+
+def v2_contract(report, summary):
+    assert report["report_schema"] == "flh048_exploratory_retrieval_comparison_v2"
+    inputs = report["inputs"]
+    assert inputs["fixture_sha256"] == inputs["frozen_reference_sha256"] == FROZEN_SHA256
+    assert inputs["fixture_matches_frozen"] is True
+    assert "compiled into this runner" in inputs["frozen_reference"]
+    assert "expected_fixture_sha256" not in inputs and "fixture_matches_expected" not in inputs
+    assert "matches the frozen reference: true" in summary and FROZEN_SHA256 in summary
+    exact = report["offline_baselines"][0]
+    structure = exact["structure"]
+    assert structure["documents"] == structure["documents_with_scope_or_features"] == 24
+    assert structure["queries"] == 56 and structure["candidate_identities_with_scope_or_features"] == 0
+    assert structure["exact_match_possible"] is False
+    assert "Structural: all 24" in structure["note"] and "no exact signature can match" in structure["note"]
+    assert structure["note"] in summary and "not evidence about semantic quality" in summary
 
 
 def sha(path):
@@ -103,12 +126,14 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     output = args.output
-    if not output.is_absolute() or not str(output).startswith("/tmp/flh051"):
-        parser.error("output must be an isolated new /tmp/flh051... directory")
+    if not output.is_absolute() or not str(output).startswith(("/tmp/flh051", "/tmp/flh055")):
+        parser.error("output must be an isolated new /tmp/flh051... or /tmp/flh055... directory")
     output.mkdir(parents=True, exist_ok=False)
     env = dict(os.environ, GOPROXY="off", GOSUMDB="off")
     fixture = json.loads(FIXTURE.read_text())
-    preserved = [*sorted((ROOT / "scripts/validation/flh045").glob("*")), *sorted((ROOT / "scripts/validation/flh048").glob("*"))]
+    assert sha(FIXTURE) == FROZEN_SHA256
+    preserved = [*sorted((ROOT / "scripts/validation/flh045").rglob("*")), *sorted((ROOT / "scripts/validation/flh048").rglob("*")),
+                 ROOT / "docs/validation/FLH-051-experiment-runner-acceptance.md"]
     preserved = [p for p in preserved if p.is_file()]
     before = {str(p.relative_to(ROOT)): sha(p) for p in preserved}
     commands = []
@@ -120,7 +145,8 @@ def main():
         run = subprocess.run(cmd, cwd=ROOT, env=task_env, capture_output=True, text=True, timeout=90)
         (output / (name + ".stdout")).write_text(run.stdout)
         (output / (name + ".stderr")).write_text(run.stderr)
-        commands.append(dict(name=name, argv=cmd, exit=run.returncode, elapsed_s=time.monotonic() - start))
+        commands.append(dict(name=name, argv=cmd, expected_exit=expected, actual_exit=run.returncode,
+                             passed=expected is None or run.returncode == expected, elapsed_s=time.monotonic() - start))
         if expected is not None:
             assert run.returncode == expected, (name, run.returncode, run.stderr)
         return run
@@ -131,24 +157,44 @@ def main():
     overlay = {"Replace": {
         str(ROOT / "internal/application/flh051_virtual_bridge.go"): str(HERE / "production_bridge.go.txt"),
         str(ROOT / "scripts/validation/flh048/flh051_virtual_test.go"): str(HERE / "independent_test.go.txt"),
+        str(ROOT / "scripts/validation/flh048/flh055_virtual_test.go"): str(HERE / "deadline_test.go.txt"),
     }}
     (output / "overlay.json").write_text(json.dumps(overlay, indent=2) + "\n")
-    execute("independent-go", ["go", "test", "-overlay", str(output / "overlay.json"), "-json", "-count=1", "-run", "^TestFLH051", "./scripts/validation/flh048"], 0,
-            {"FLH051_FIXTURE": str(FIXTURE), "FLH051_GO_EVIDENCE": str(output / "go-evidence.json")})
+    execute("independent-go", ["go", "test", "-overlay", str(output / "overlay.json"), "-json", "-count=1", "-run", "^TestFLH05(1|5)", "./scripts/validation/flh048"], 0,
+            {"FLH051_FIXTURE": str(FIXTURE), "FLH051_GO_EVIDENCE": str(output / "go-evidence.json"),
+             "FLH055_DEADLINE_EVIDENCE": str(output / "deadline-evidence.json")})
+    events = [json.loads(line) for line in (output / "independent-go.stdout").read_text().splitlines()]
+    passed_tests = {e["Test"] for e in events if e["Action"] == "pass" and e.get("Test")}
+    assert {"TestFLH051ProductionParityAndEvidence", "TestFLH051RankValidationAndMetricBoundary",
+            "TestFLH055DeadlineAcceptance"} <= passed_tests
 
     reports = {}
     for name in ("offline-a", "offline-b", "offline-expired"):
         flags = ["-timeout", "1ns"] if name == "offline-expired" else []
-        execute(name, [str(binary), "-out", str(output / name), *flags], 0)
+        execute(name, [str(binary), "-out", str(output / name), *flags], 1 if name == "offline-expired" else 0)
         reports[name] = json.loads((output / name / "report.json").read_text())
+        v2_contract(reports[name], (output / name / "summary.md").read_text())
     for a, b in zip(reports["offline-a"]["offline_baselines"], reports["offline-b"]["offline_baselines"]):
         assert a["ranking_digest"] == b["ranking_digest"]
-    observations["overall_deadline"] = {"exit": 0, "configured": "1ns", "states": [r["state"] for r in reports["offline-expired"]["offline_baselines"]], "defect": "expired overall deadline yields completed baselines and quality metrics"}
+    for run in reports["offline-expired"]["offline_baselines"]:
+        assert run["state"] == "failed"
+        no_metrics(run)
+        assert run["queries"][0]["status"] == "error" and "before Retrieve" in run["queries"][0]["error"]
+        assert run["queries"][0]["duration_ns"] == 0
+        assert all(q["status"] == "not_run_after_error" and not q["hits"] for q in run["queries"][1:])
+    assert "expired" in reports["offline-expired"]["run"]["deadline"]
+    assert "not interrupted" in reports["offline-expired"]["run"]["timeout_limit"]
+    observations["overall_deadline"] = {"expected_exit": 1, "actual_exit": 1, "passed": True,
+        "configured": "1ns", "states": [r["state"] for r in reports["offline-expired"]["offline_baselines"]], "metrics": None}
+    for value in ("0", "-1s"):
+        name = "timeout-invalid-" + value.replace("-", "negative-")
+        execute(name, [str(binary), "-out", str(output / name), "-timeout", value], 2)
+        assert not (output / name).exists()
 
     class Server(ThreadingHTTPServer):
         daemon_threads = True
 
-    for mode in ("constant", "fail_second", "slow", "overall_timeout", "wrong_count", "empty_vector", "mixed_dimensions", "wrong_dimensions", "duplicate_index", "nonfinite", "cap_1399"):
+    for mode in ("constant", "fail_second", "slow", "overall_timeout", "expired_all", "wrong_count", "empty_vector", "mixed_dimensions", "wrong_dimensions", "duplicate_index", "nonfinite", "cap_1399"):
         ledger = []
 
         class Handler(BaseHTTPRequestHandler):
@@ -192,6 +238,8 @@ def main():
                      "-embedding-max-inputs", "1399" if mode == "cap_1399" else "1400", "-embedding-dimensions", "3" if mode == "wrong_dimensions" else "2", "-embedding-timeout", "1s"]
             if mode == "overall_timeout":
                 flags += ["-timeout", "200ms"]
+            if mode == "expired_all":
+                flags += ["-timeout", "1ns"]
             expected = 0 if mode == "constant" else 2 if mode == "cap_1399" else 1
             execute(name, [str(binary), "-out", str(output / name), *flags], expected)
         finally:
@@ -207,6 +255,7 @@ def main():
             observations[mode] = {"exit": 2, "requests": 0}
             continue
         report = json.loads((output / name / "report.json").read_text())
+        v2_contract(report, (output / name / "summary.md").read_text())
         reports[name] = report
         er = report["embedding"]
         counter = er["provider_counters"]
@@ -214,7 +263,14 @@ def main():
         assert counter["input_positions"] == sum(len(row["input"]) for row in ledger)
         assert counter["unique_input_hashes"] == len({hashlib.sha256(text.encode()).hexdigest() for row in ledger for text in row["input"]})
         assert all(row["path"] == "/v1/embeddings" for row in ledger)
-        if mode == "constant":
+        if mode == "expired_all":
+            assert not ledger and counter["requests"] == counter["input_positions"] == 0
+            for run in report["offline_baselines"] + [er]:
+                assert run["state"] == "failed"
+                no_metrics(run)
+                assert run["queries"][0]["status"] == "error" and "before Retrieve" in run["queries"][0]["error"]
+                assert all(q["status"] == "not_run_after_error" and not q["hits"] for q in run["queries"][1:])
+        elif mode == "constant":
             assert len(ledger) == 56 and counter["input_positions"] == 1400
             assert all([h["concept_id"] for h in q["hits"]] == [1, 2, 3, 4, 5] for q in er["queries"])
             evidence = json.loads((output / "go-evidence.json").read_text())
@@ -226,7 +282,9 @@ def main():
             error_position = next(i for i, q in enumerate(er["queries"]) if q["status"] == "error")
             assert all(q["status"] == "not_run_after_error" for q in er["queries"][error_position + 1:])
             assert all(r["state"] == "completed" for r in report["offline_baselines"])
-        observations[mode] = {"exit": expected, "state": er["state"], "counter": counter}
+        observations[mode] = {"expected_exit": expected, "actual_exit": expected, "passed": True,
+                              "expected_requests": 56 if mode == "constant" else 0 if mode == "expired_all" else 2 if mode == "fail_second" else 1,
+                              "actual_requests": len(ledger), "state": er["state"], "counter": counter}
 
     # Output and fixture protections: all collision targets are task-owned or read-only.
     existing = output / "existing"
@@ -252,9 +310,16 @@ def main():
     mutated["judgments"][0]["rationale"] = "FLH051_UNREVIEWED_MUTATED_COPY"
     copied_fixture.write_text(json.dumps(mutated, ensure_ascii=False))
     execute("reject-modified", [str(binary), "-fixture", str(copied_fixture), "-out", str(output / "modified-refused")], 3)
-    override = execute("digest-override", [str(binary), "-fixture", str(copied_fixture), "-expect-fixture-sha256", sha(copied_fixture), "-out", str(output / "digest-override")], 0)
-    assert "matches frozen FLH-045: true" in override.stdout
-    observations["freeze_override"] = {"exit": 0, "actual_sha256": sha(copied_fixture), "frozen_sha256": sha(FIXTURE), "misleading_summary": "matches frozen FLH-045: true"}
+    override = execute("digest-override", [str(binary), "-fixture", str(copied_fixture), "-expect-fixture-sha256", sha(copied_fixture), "-out", str(output / "digest-override")], 2)
+    assert "not the frozen FLH-045" in override.stderr and not (output / "digest-override").exists()
+    execute("modified-frozen-assertion", [str(binary), "-fixture", str(copied_fixture), "-expect-fixture-sha256", FROZEN_SHA256, "-out", str(output / "modified-frozen-assertion")], 3)
+    assert not (output / "modified-frozen-assertion").exists()
+    execute("frozen-valid-assertion", [str(binary), "-expect-fixture-sha256", FROZEN_SHA256, "-out", str(output / "frozen-valid-assertion")], 0)
+    reports["frozen-valid-assertion"] = json.loads((output / "frozen-valid-assertion/report.json").read_text())
+    v2_contract(reports["frozen-valid-assertion"], (output / "frozen-valid-assertion/summary.md").read_text())
+    assert reports["frozen-valid-assertion"]["inputs"]["caller_asserted_sha256"] == FROZEN_SHA256
+    observations["freeze_override"] = {"expected_exit": 2, "actual_exit": 2, "passed": True,
+                                       "actual_sha256": sha(copied_fixture), "frozen_sha256": FROZEN_SHA256, "output_created": False}
 
     calculated = {name: recompute(report, fixture) for name, report in reports.items()}
     (output / "independent-metrics.json").write_text(json.dumps(calculated, indent=2) + "\n")
@@ -272,9 +337,19 @@ def main():
     (output / "preserved-sources.json").write_text(json.dumps(before, indent=2) + "\n")
     (output / "commands.json").write_text(json.dumps(commands, indent=2) + "\n")
     (output / "observations.json").write_text(json.dumps(observations, indent=2) + "\n")
+    acceptance = {"result": "ACCEPTED", "commands_passed": all(c["passed"] for c in commands),
+                  "asserted_requirements": ["expired_pre_call_no_work", "late_result_discarded_cooperative_deadline",
+                                            "positive_timeout_configuration", "compiled_frozen_reference_v2", "structural_exact_explanation",
+                                            "production_converter_parity", "ranking_input_separation", "stable_ids_ranks",
+                                            "independent_metrics_and_slices", "counted_failure_timeout_caps_no_retry",
+                                            "output_protection_source_history_preservation"],
+                  "independent_test_passes": sorted(passed_tests), "deadline_evidence": json.loads((output / "deadline-evidence.json").read_text()),
+                  "complete_metric_reports_checked": sum(len(r) for r in calculated.values())}
+    assert acceptance["commands_passed"]
+    (output / "acceptance.json").write_text(json.dumps(acceptance, indent=2) + "\n")
     artifacts = {str(p.relative_to(output)): sha(p) for p in sorted(output.rglob("*")) if p.is_file() and not p.is_symlink()}
     (output / "artifact-sha256.json").write_text(json.dumps(artifacts, indent=2) + "\n")
-    print(json.dumps({"result": "NOT ACCEPTED", "reproduced_defects": ["overall_deadline", "freeze_override"],
+    print(json.dumps({"result": acceptance["result"], "requirements_checked": acceptance["asserted_requirements"],
                       "offline_metrics": {name: rows["overall"] for name, rows in calculated["offline-a"].items()}, "outputs": str(output)}, indent=2))
 
 
