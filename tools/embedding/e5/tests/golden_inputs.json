@@ -1,0 +1,159 @@
+{
+  "convention": "flh_e5_role_prefix_v1",
+  "note": "Shared by tools/embedding/e5/tests (service contract) and internal/application/semantic_search_envelope_test.go (Go producers). Accepted inputs are exact Go-produced wire strings.",
+  "accepted": [
+    {
+      "name": "search_query",
+      "producer": "semantic search",
+      "go_query_text": "subjonctif après il faut que",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"subjonctif après il faut que\"}",
+      "role": "query",
+      "model_text": "query: {\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"subjonctif après il faut que\"}"
+    },
+    {
+      "name": "search_query_html_and_quotes",
+      "producer": "semantic search",
+      "go_query_text": "le \"passé\" <composé> & co",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"le \\\"passé\\\" \\u003ccomposé\\u003e \\u0026 co\"}",
+      "role": "query",
+      "model_text": "query: {\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"le \\\"passé\\\" \\u003ccomposé\\u003e \\u0026 co\"}"
+    },
+    {
+      "name": "search_query_that_looks_like_a_concept_document",
+      "producer": "semantic search",
+      "go_query_text": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"imparfait\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"{\\\"representation\\\":\\\"concept_embedding_text_v1\\\",\\\"type\\\":\\\"concept\\\",\\\"target\\\":\\\"imparfait\\\",\\\"pedagogical_intent\\\":\\\"grammar\\\",\\\"scope\\\":\\\"\\\",\\\"identity_features\\\":[]}\"}",
+      "role": "query",
+      "model_text": "query: {\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"{\\\"representation\\\":\\\"concept_embedding_text_v1\\\",\\\"type\\\":\\\"concept\\\",\\\"target\\\":\\\"imparfait\\\",\\\"pedagogical_intent\\\":\\\"grammar\\\",\\\"scope\\\":\\\"\\\",\\\"identity_features\\\":[]}\"}"
+    },
+    {
+      "name": "concept_document",
+      "producer": "semantic index / retriever document",
+      "go_concept": {
+        "id": 7,
+        "target": "passé composé avec être",
+        "pedagogical_intent": "grammar",
+        "scope": "verbes de mouvement",
+        "identity_features": {
+          "tense": "passé composé",
+          "aux": "être"
+        }
+      },
+      "input": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"passé composé avec être\",\"pedagogical_intent\":\"grammar\",\"scope\":\"verbes de mouvement\",\"identity_features\":[{\"key\":\"aux\",\"value\":\"être\"},{\"key\":\"tense\",\"value\":\"passé composé\"}]}",
+      "role": "passage",
+      "model_text": "passage: {\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"passé composé avec être\",\"pedagogical_intent\":\"grammar\",\"scope\":\"verbes de mouvement\",\"identity_features\":[{\"key\":\"aux\",\"value\":\"être\"},{\"key\":\"tense\",\"value\":\"passé composé\"}]}"
+    },
+    {
+      "name": "unit_query",
+      "producer": "embedding retriever query",
+      "go_unit": {
+        "kind": "grammar",
+        "canonical": "passé composé avec être",
+        "statement": "aller prend être",
+        "example": "Je suis allée",
+        "candidate_target": "passé composé avec être",
+        "pedagogical_intent": "grammar"
+      },
+      "input": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"passé composé avec être\",\"statement\":\"aller prend être\",\"example\":\"Je suis allée\",\"candidate_target\":\"passé composé avec être\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}",
+      "role": "query",
+      "model_text": "query: {\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"passé composé avec être\",\"statement\":\"aller prend être\",\"example\":\"Je suis allée\",\"candidate_target\":\"passé composé avec être\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+    },
+    {
+      "name": "unwrapped_concept_json_is_a_document",
+      "producer": "semantic index",
+      "input": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"imparfait\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}",
+      "role": "passage",
+      "model_text": "passage: {\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"imparfait\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+    }
+  ],
+  "rejected": [
+    {
+      "name": "raw_search_text",
+      "input": "subjonctif après il faut que"
+    },
+    {
+      "name": "already_prefixed",
+      "input": "query: subjonctif"
+    },
+    {
+      "name": "prefixed_envelope",
+      "input": "query: {\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"x\"}"
+    },
+    {
+      "name": "leading_whitespace",
+      "input": " {\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"x\"}"
+    },
+    {
+      "name": "trailing_newline",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"x\"}\n"
+    },
+    {
+      "name": "json_array",
+      "input": "[\"x\"]"
+    },
+    {
+      "name": "json_string",
+      "input": "\"x\""
+    },
+    {
+      "name": "unknown_representation",
+      "input": "{\"representation\":\"concept_search_query_v1\",\"type\":\"query\",\"text\":\"x\"}"
+    },
+    {
+      "name": "search_envelope_typed_concept",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"concept\",\"text\":\"x\"}"
+    },
+    {
+      "name": "concept_text_v1_unknown_type",
+      "input": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"search\",\"target\":\"x\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+    },
+    {
+      "name": "document_keys_with_query_type",
+      "input": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"target\":\"x\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+    },
+    {
+      "name": "extra_key",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"x\",\"role\":\"passage\"}"
+    },
+    {
+      "name": "missing_key",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\"}"
+    },
+    {
+      "name": "duplicate_key",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"x\",\"text\":\"y\"}"
+    },
+    {
+      "name": "empty_search_text",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":\"\"}"
+    },
+    {
+      "name": "search_text_not_string",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":5}"
+    },
+    {
+      "name": "example_not_string_or_null",
+      "input": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"query\",\"canonical\":\"passé composé avec être\",\"statement\":\"aller prend être\",\"example\":3,\"candidate_target\":\"passé composé avec être\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":[]}"
+    },
+    {
+      "name": "feature_missing_value",
+      "input": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"passé composé avec être\",\"pedagogical_intent\":\"grammar\",\"scope\":\"verbes de mouvement\",\"identity_features\":[{\"key\":\"aux\"},{\"key\":\"tense\",\"value\":\"passé composé\"}]}"
+    },
+    {
+      "name": "feature_extra_key",
+      "input": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"passé composé avec être\",\"pedagogical_intent\":\"grammar\",\"scope\":\"verbes de mouvement\",\"identity_features\":[{\"key\":\"aux\",\"value\":\"être\",\"w\":1},{\"key\":\"tense\",\"value\":\"passé composé\"}]}"
+    },
+    {
+      "name": "features_not_list",
+      "input": "{\"representation\":\"concept_embedding_text_v1\",\"type\":\"concept\",\"target\":\"x\",\"pedagogical_intent\":\"grammar\",\"scope\":\"\",\"identity_features\":{}}"
+    },
+    {
+      "name": "not_json",
+      "input": "{not json"
+    },
+    {
+      "name": "nan_literal",
+      "input": "{\"representation\":\"concept_search_query_v2\",\"type\":\"query\",\"text\":NaN}"
+    }
+  ]
+}

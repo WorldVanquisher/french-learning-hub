@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,7 +18,38 @@ const (
 	// that hits dropped by re-validation or the state filter rarely shorten the
 	// page. Shortages are reported, never filled with other candidates.
 	semanticSearchOverfetch = 4
+
+	// ConceptSearchQueryRepresentationV2 (FLH-054) is the text sent to the
+	// embedding provider for a free-text semantic query: a JSON envelope
+	// {"representation":"concept_search_query_v2","type":"query","text":<q>}
+	// holding the original trimmed query text. The explicit type lets a
+	// role-aware provider tell a search query from a Concept document even when
+	// the user typed something that looks like one. Unit queries and Concept
+	// documents keep concept_embedding_text_v1. Query vectors are never
+	// persisted, so this changes no cache or index space.
+	ConceptSearchQueryRepresentationV2 = "concept_search_query_v2"
 )
+
+// conceptSearchQueryEnvelopeV2 is the wire form of one search query. Field
+// order is fixed by the struct; encoding/json escapes HTML characters.
+type conceptSearchQueryEnvelopeV2 struct {
+	Representation string `json:"representation"`
+	Type           string `json:"type"`
+	Text           string `json:"text"`
+}
+
+// ConceptSearchQueryEmbeddingText renders the provider input for a search
+// query. text is used exactly as given (the caller has already trimmed it).
+func ConceptSearchQueryEmbeddingText(text string) (string, error) {
+	if text == "" {
+		return "", fmt.Errorf("%w: semantic search needs a non-empty q", ErrKnowledgeLibraryQuery)
+	}
+	raw, err := json.Marshal(conceptSearchQueryEnvelopeV2{Representation: ConceptSearchQueryRepresentationV2, Type: "query", Text: text})
+	if err != nil {
+		return "", fmt.Errorf("encode search query: %w", err)
+	}
+	return string(raw), nil
+}
 
 // ErrSemanticPublicationChanged means the published collection was replaced
 // again after this search had already used its one replacement retry. The
@@ -51,6 +83,7 @@ type SemanticSearchResult struct {
 // reported in the per-hit counters.
 type SemanticSearchReport struct {
 	Query               string
+	QueryRepresentation string // what was embedded: ConceptSearchQueryRepresentationV2
 	State               *domain.ConceptState
 	Limit               int
 	Space               SemanticIndexSpace
@@ -107,9 +140,14 @@ func (s *SemanticSearchService) published(ctx context.Context) (*SemanticIndexSp
 	return state, nil
 }
 
-// embedQuery makes the search's single provider call.
+// embedQuery makes the search's single provider call, sending the query in
+// its versioned envelope.
 func (s *SemanticSearchService) embedQuery(ctx context.Context, text string) ([]float32, error) {
-	raw, err := s.provider.Embed(ctx, []string{text})
+	input, err := ConceptSearchQueryEmbeddingText(text)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := s.provider.Embed(ctx, []string{input})
 	if err != nil {
 		return nil, fmt.Errorf("embed search query: %w", err)
 	}
@@ -191,7 +229,7 @@ func (s *SemanticSearchService) Search(ctx context.Context, q LibrarySearchQuery
 	for _, c := range concepts {
 		byID[c.ID] = c
 	}
-	report := &SemanticSearchReport{Query: q.Text, State: q.State, Limit: q.Limit, Space: s.space, Publication: *state,
+	report := &SemanticSearchReport{Query: q.Text, QueryRepresentation: ConceptSearchQueryRepresentationV2, State: q.State, Limit: q.Limit, Space: s.space, Publication: *state,
 		Collection: state.PublishedCollection, Considered: len(hits), Results: []SemanticSearchResult{}}
 	for _, h := range hits {
 		if len(report.Results) == q.Limit {
