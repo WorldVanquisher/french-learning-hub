@@ -1,0 +1,12 @@
+package application
+
+import "french-learning-app/internal/domain"
+
+// Virtual overlay only: call the actual unexported production converters.
+func FLH051Query(unit domain.KnowledgeUnit) ConceptRetrievalQuery {
+	return toConceptRetrievalQuery(unit)
+}
+
+func FLH051Document(concept domain.KnowledgeConcept) ConceptRetrievalDocument {
+	return toConceptRetrievalDocument(concept)
+}
