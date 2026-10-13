@@ -366,6 +366,42 @@ fake turns texts into hashed bag-of-words vectors, so "similarity" means shared
 words. It demonstrates the mechanics (caching, publication, re-validation and
 recovery); it is not evidence about semantic quality.
 
+**Persistent demo with an optional real model (FLH-060).**
+[`scripts/demo/flh060/`](../scripts/demo/flh060/README.md) keeps one directory
+across stop and start. It holds the synthetic SQLite database (FLH-034 seed
+plus 8 contrast Concepts), task-owned Qdrant storage, evidence and the counters
+of a loopback gateway. That gateway counts search-query and Concept-document
+embeddings separately.
+
+**Modes**
+- **Fake mode** runs the FLH-054 service code with its hash-vector fake.
+- **Real mode** takes `--embedding-base-url`, `--embedding-model` (the exact
+  deployment id) and `--embedding-dimensions` explicitly.
+  - Setup and start only make read-only readiness and manifest checks and
+    refuse any other identity.
+  - Every live POST is charged to a per-directory budget before it is sent (64
+    POSTs and 256 positions by default).
+  - The scripted walkthrough runs once per directory.
+
+**What it shows, using the existing CLI and routes**
+- `build` embeds each Concept document once.
+- `sync` after a restart verifies with no provider call.
+- `rebuild` republishes from the SQLite cache with 0 provider calls.
+- Semantic search costs exactly one query embedding.
+- Keyword search costs none.
+- With the embedding service away, semantic search fails explicitly (502) while
+  keyword search and `status` keep working, and it recovers without a rebuild.
+
+**Compose:** `compose-up` runs the existing semantic profile under its own
+project name, image tag and env file.
+
+**Observed on 2026-10-12** (exploratory; not a quality claim). One live
+walkthrough against the human's `singleton_v1` service passed all 18
+mechanical checks using 9 POSTs and 22 positions. The service's own counters
+moved by the same amounts: 15 passage and 7 query inputs. Scores were all
+between about 0.81 and 0.87, so only their order is informative, and a cosine
+score is never a probability or a SAME decision.
+
 ## Go walkthrough
 
 Read the code in this order.
