@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "FLH063TitanV2OnDemandCanada",
+      "Effect": "Allow",
+      "Action": ["bedrock:InvokeModel", "bedrock:GetFoundationModel"],
+      "Resource": "arn:aws:bedrock:ca-central-1::foundation-model/amazon.titan-embed-text-v2:0"
+    }
+  ]
+}
