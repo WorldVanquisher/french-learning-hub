@@ -10,29 +10,63 @@
 #
 # Python source is never passed on the command line (see FLH-057); only file
 # paths and fixed option values are passed as arguments.
+#
+# -HashOnly (FLH-060) skips the GPU run and only writes artifact-sha256.txt for
+# an existing results directory, e.g. one whose final hashing step failed:
+#   .\scripts\validation\flh059\run-diagnostic.ps1 -OutDir <existing results dir> -HashOnly
+# An existing artifact-sha256.txt is kept, renamed artifact-sha256.previous-<time>.txt.
 param(
-    [Parameter(Mandatory = $true)][string]$ModelDir,
+    [string]$ModelDir,
     [Parameter(Mandatory = $true)][string]$OutDir,
     [string]$Dtypes = 'float16,float32',
-    [string]$Policies = 'dynamic_v1,singleton_v1,fixed_v1'
+    [string]$Policies = 'dynamic_v1,singleton_v1,fixed_v1',
+    [switch]$HashOnly
 )
 $ErrorActionPreference = 'Stop'
-if ($env:CONDA_DEFAULT_ENV -ne 'flh-embedding') { throw "activate the Conda env first: conda activate flh-embedding" }
-$ModelDir = (Resolve-Path -LiteralPath $ModelDir).Path
 $OutDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutDir)
 $Script = Join-Path $PSScriptRoot 'diagnose.py'
+$HashList = 'artifact-sha256.txt'
 
-Write-Output "powershell: $($PSVersionTable.PSVersion) $($PSVersionTable.PSEdition)"
-nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv
-if ($LASTEXITCODE -ne 0) { throw "nvidia-smi failed (exit $LASTEXITCODE)" }
+if ($HashOnly) {
+    if (-not (Test-Path -LiteralPath (Join-Path $OutDir 'analysis.json') -PathType Leaf)) {
+        throw "-HashOnly needs an existing results directory containing analysis.json: $OutDir"
+    }
+} else {
+    if (-not $ModelDir) { throw "-ModelDir is required unless -HashOnly is given" }
+    if ($env:CONDA_DEFAULT_ENV -ne 'flh-embedding') { throw "activate the Conda env first: conda activate flh-embedding" }
+    $ModelDir = (Resolve-Path -LiteralPath $ModelDir).Path
 
-python -B $Script run --model-dir $ModelDir --out $OutDir --dtypes $Dtypes --policies $Policies
-$code = $LASTEXITCODE
-if ($code -ne 0) { throw "diagnostic failed (exit $code); partial results, if any, are in $OutDir" }
+    Write-Output "powershell: $($PSVersionTable.PSVersion) $($PSVersionTable.PSEdition)"
+    nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv
+    if ($LASTEXITCODE -ne 0) { throw "nvidia-smi failed (exit $LASTEXITCODE)" }
 
-nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv |
-    Out-File -Encoding utf8 -LiteralPath (Join-Path $OutDir 'nvidia-smi-after.txt')
-Get-ChildItem -LiteralPath $OutDir -File | Sort-Object Name | Get-FileHash -Algorithm SHA256 |
-    ForEach-Object { "{0}  {1}" -f $_.Hash.ToLowerInvariant(), (Split-Path -Leaf $_.Path) } |
-    Out-File -Encoding utf8 -LiteralPath (Join-Path $OutDir 'artifact-sha256.txt')
-Write-Output "done: results and artifact-sha256.txt in $OutDir (keep them; do not copy vectors into the repository)"
+    python -B $Script run --model-dir $ModelDir --out $OutDir --dtypes $Dtypes --policies $Policies
+    $code = $LASTEXITCODE
+    if ($code -ne 0) { throw "diagnostic failed (exit $code); partial results, if any, are in $OutDir" }
+
+    $smi = nvidia-smi --query-gpu=name,driver_version,memory.total,memory.used --format=csv
+    if ($LASTEXITCODE -ne 0) { throw "nvidia-smi after the run failed (exit $LASTEXITCODE); diagnostic results are kept in $OutDir" }
+    $smi | Out-File -Encoding utf8 -LiteralPath (Join-Path $OutDir 'nvidia-smi-after.txt')
+}
+
+# FLH-060: enumerate and hash completely BEFORE writing the hash list, and never
+# hash the list itself. (The FLH-059 version piped Get-ChildItem straight into
+# Out-File, so the list being written was enumerated and hashed while open.)
+# Any hashing failure throws: the run is reported as failed, and every result
+# file stays in place.
+$previous = Join-Path $OutDir $HashList
+if (Test-Path -LiteralPath $previous) {
+    $kept = "artifact-sha256.previous-$(Get-Date -Format yyyyMMdd-HHmmss).txt"
+    Rename-Item -LiteralPath $previous -NewName $kept
+    Write-Output "kept the earlier hash list as $kept (it is hashed below like any other file)"
+}
+$files = @(Get-ChildItem -LiteralPath $OutDir -File | Where-Object { $_.Name -ne $HashList } | Sort-Object Name)
+if ($files.Count -eq 0) { throw "no result files to hash in $OutDir" }
+$lines = @(foreach ($f in $files) {
+    $h = Get-FileHash -Algorithm SHA256 -LiteralPath $f.FullName
+    if (-not $h -or -not $h.Hash) { throw "could not hash $($f.Name); results are kept in $OutDir" }
+    "{0}  {1}" -f $h.Hash.ToLowerInvariant(), $f.Name
+})
+if ($lines.Count -ne $files.Count) { throw "hashed $($lines.Count) of $($files.Count) files; results are kept in $OutDir" }
+$lines | Out-File -Encoding utf8 -LiteralPath (Join-Path $OutDir $HashList)
+Write-Output "done: $($lines.Count) result files hashed into $HashList in $OutDir (keep them; do not copy vectors into the repository)"

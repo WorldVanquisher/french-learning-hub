@@ -187,3 +187,31 @@ that both relations are shown and that the browser logged no React
 duplicate-key warning. React prints that warning only in development builds, so
 the check is meaningful against Vite. Run the read-only walkthrough first if
 you need its database snapshot.
+
+## Semantic search on the same library (FLH-060)
+
+[`scripts/demo/flh060/`](../scripts/demo/flh060/README.md) builds on this demo.
+It seeds the same library with the unchanged `demo.sh`, then adds eight English
+Concepts with French examples, in contrasting pairs:
+- imparfait / passé composé;
+- depuis / pendant;
+- ne … plus / ne … pas encore;
+- y / en.
+
+It then runs the server with semantic search, a task-owned Qdrant and the
+operator CLI, all on loopback, in one persistent directory:
+
+```sh
+WORK="$HOME/flh-demos/flh060-semantic"
+python3 -B scripts/demo/flh060/demo.py setup "$WORK" --mode fake --web-dist "$PWD/web/dist"
+python3 -B scripts/demo/flh060/demo.py walkthrough "$WORK"   # build, search, restart, sync, rebuild, offline
+python3 -B scripts/demo/flh060/demo.py cleanup "$WORK"
+```
+
+- **Fake mode (the default)** uses the real E5 service code with hash vectors,
+  so it never contacts a GPU and its rankings carry no meaning.
+- **Real mode** needs the endpoint, exact deployment id and dimensions on the
+  command line, and every live embedding request is counted against a budget
+  charged before it is sent.
+- Search examples there are demonstration inputs, not answers.
+

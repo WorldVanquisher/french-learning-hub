@@ -1,0 +1,17 @@
+# FLH-060 demo override for the existing compose.yaml semantic profile. Used only
+# by `demo.py compose-up` with its own project name (flh060-<id>) and an explicit
+# --env-file inside the demo directory, so no repository .env is read and the
+# release project, image tag and data directories are never touched.
+#  - its own image tag: building never replaces french-learning-hub:local;
+#  - restart "no": nothing restarts on its own after a reboot;
+#  - a label naming the demo directory on both containers.
+services:
+  app:
+    image: flh060-demo-app:local
+    restart: "no"
+    labels:
+      flh060.work: ${FLH060_WORK:?FLH060_WORK must be set by demo.py}
+  qdrant:
+    restart: "no"
+    labels:
+      flh060.work: ${FLH060_WORK:?FLH060_WORK must be set by demo.py}
