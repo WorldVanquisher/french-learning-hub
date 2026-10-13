@@ -1,0 +1,13 @@
+{
+  "schema": "flh063_smoke_inputs_v1",
+  "data_classification": "synthetic",
+  "source": "Demonstration sentences and examples from scripts/demo/flh060/catalog.py (synthetic; not labels)",
+  "inputs": [
+    {"id": "en-weather-child", "text": "what the weather was like when I was a child"},
+    {"id": "fr-imparfait-example", "text": "quand j'étais petit, il pleuvait souvent"},
+    {"id": "en-lived-still", "text": "I have lived here for three years and still do"},
+    {"id": "fr-depuis-example", "text": "j'habite ici depuis trois ans"},
+    {"id": "en-not-anymore", "text": "saying I don't do something anymore"},
+    {"id": "fr-ne-plus-example", "text": "je ne fume plus"}
+  ]
+}

@@ -1,0 +1,10 @@
+# FLH-063 live AWS use only (tests run without these). Exact pins, each released
+# at least two weeks before 2026-10-13. Install in a virtual environment:
+#   python3 -m venv .venv && .venv/bin/pip install -r tools/cloud/aws/requirements.txt
+boto3==1.43.104
+botocore==1.43.104
+s3transfer==0.19.2
+jmespath==1.1.0
+python-dateutil==2.9.0.post0
+six==1.17.0
+urllib3==2.8.0
