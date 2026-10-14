@@ -24,6 +24,7 @@ argument checks in a Linux container have run.
 Contract: [plan](../../../docs/plans/FLH-054-local-e5-service.md).
 Evidence: [validation](../../../docs/validation/FLH-054-local-e5-service.md).
 Operator view: [SEMANTIC_SEARCH.md](../../../docs/SEMANTIC_SEARCH.md#local-e5-deployment-flh-054).
+Remote start/stop over SSH (FLH-065): [WINDOWS_EMBEDDING_OPERATIONS.md](../../../docs/WINDOWS_EMBEDDING_OPERATIONS.md).
 
 ## Role contract `flh_e5_role_prefix_v1`
 
