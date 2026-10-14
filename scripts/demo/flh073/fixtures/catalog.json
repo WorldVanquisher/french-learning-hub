@@ -1,0 +1,88 @@
+{
+  "schema": "flh073_demo_fixtures_v1",
+  "data_classification": "synthetic",
+  "note": "Synthetic learner questions, analyses and units written for the FLH-073 public demo. No real learning record, person or conversation. Preset texts are demonstration inputs, not labels or expected answers.",
+  "entries": [
+    {
+      "key": "e-il-faut", "original_input": "Why is it « il faut que je fasse » and not « il faut que je fais »?",
+      "original_context": "Synthetic example: a learner checking a sentence from a grammar exercise.",
+      "analysis": {"category": "grammar", "explanation": "« Il faut que » expresses necessity and is followed by the subjunctive.", "confidence": 0.8},
+      "units": [{"key": "u-il-faut", "kind": "grammar", "canonical": "subjonctif après il faut que", "statement": "After « il faut que », the verb goes into the subjunctive.", "example": "Il faut que je fasse mes devoirs."}]
+    },
+    {
+      "key": "e-bien-que", "original_input": "Is it « bien que je suis » or « bien que je sois »?",
+      "original_context": "Synthetic example: a learner writing an email.",
+      "analysis": {"category": "grammar", "explanation": "« Bien que » (although) takes the subjunctive.", "confidence": 0.8},
+      "units": [
+        {"key": "u-bien-que-subj", "kind": "grammar", "canonical": "subjonctif après bien que", "statement": "« Bien que » is followed by the subjunctive.", "example": "Bien qu'il soit tard, je travaille."},
+        {"key": "u-bien-que-sens", "kind": "vocabulary", "canonical": "bien que", "statement": "« Bien que » means although.", "example": null}
+      ]
+    },
+    {
+      "key": "e-manquer", "original_input": "How do I say « I miss you » in French?",
+      "original_context": "Synthetic example: a learner preparing a message to a friend.",
+      "analysis": {"category": "vocabulary", "explanation": "French says the missed person is lacking to you: « tu me manques ».", "confidence": 0.8},
+      "units": [{"key": "u-manquer", "kind": "expression", "canonical": "tu me manques", "statement": "To say I miss you, the person who is missed is the subject: « tu me manques ».", "example": "Tu me manques beaucoup."}]
+    },
+    {
+      "key": "e-manquer-registre", "original_input": "Can I write « tu me manques » to a colleague?",
+      "original_context": "Synthetic example: a learner asking about register.",
+      "analysis": {"category": "pragmatics", "explanation": "« Tu me manques » is affectionate and informal.", "confidence": 0.7},
+      "units": [{"key": "u-manquer-registre", "kind": "usage", "canonical": "tu me manques", "statement": "« Tu me manques » is informal and affectionate; it suits friends and family.", "example": null}]
+    },
+    {
+      "key": "e-imparfait", "original_input": "When do I use the imparfait instead of the passé composé?",
+      "original_context": "Synthetic example: a learner telling a childhood story.",
+      "analysis": {"category": "grammar", "explanation": "The imparfait sets the scene or describes habits; the passé composé reports completed events.", "confidence": 0.8},
+      "units": [
+        {"key": "u-imparfait", "kind": "grammar", "canonical": "imparfait pour le contexte", "statement": "The imparfait describes background and habits in the past.", "example": "Quand j'étais petit, je jouais au foot."},
+        {"key": "u-pc-evenement", "kind": "grammar", "canonical": "passé composé pour un événement", "statement": "The passé composé reports a completed event.", "example": "Hier, j'ai joué au foot."}
+      ]
+    },
+    {
+      "key": "e-etre", "original_input": "Why is it « je suis allé » but « j'ai mangé »?",
+      "original_context": "Synthetic example: a learner correcting a diary entry.",
+      "analysis": {"category": "grammar", "explanation": "Some verbs, mostly of movement, form the passé composé with être.", "confidence": 0.8},
+      "units": [{"key": "u-pc-etre", "kind": "grammar", "canonical": "passé composé avec être", "statement": "Verbs of movement such as aller use être in the passé composé.", "example": "Je suis allé au marché."}]
+    },
+    {
+      "key": "e-depuis", "original_input": "How do I say I have lived here for three years and still do?",
+      "original_context": "Synthetic example: a learner introducing themselves.",
+      "analysis": {"category": "grammar", "explanation": "« Depuis » with the present describes something still going on; « pendant » gives a finished duration.", "confidence": 0.8},
+      "units": [
+        {"key": "u-depuis", "kind": "grammar", "canonical": "depuis avec le présent", "statement": "« Depuis » with the present tense describes something that started in the past and is still going on.", "example": "J'habite ici depuis trois ans."},
+        {"key": "u-pendant", "kind": "grammar", "canonical": "pendant pour une durée finie", "statement": "« Pendant » gives the length of a finished period.", "example": "J'ai habité à Lyon pendant trois ans."}
+      ]
+    },
+    {
+      "key": "e-ne-plus", "original_input": "How do I say I don't smoke anymore?",
+      "original_context": "Synthetic example: a learner talking about habits.",
+      "analysis": {"category": "grammar", "explanation": "« Ne … plus » means no longer.", "confidence": 0.8},
+      "units": [{"key": "u-ne-plus", "kind": "grammar", "canonical": "ne plus", "statement": "« Ne … plus » means no longer: an action that has stopped.", "example": "Je ne fume plus."}]
+    }
+  ],
+  "concepts": [
+    {"key": "c-il-faut", "target": "subjunctive after « il faut que »", "pedagogical_intent": "grammar", "scope": "", "identity_features": {"mood": "subjonctif", "trigger": "il faut que"}, "members": ["u-il-faut"], "preferred": "u-il-faut"},
+    {"key": "c-bien-que", "target": "subjunctive after « bien que »", "pedagogical_intent": "grammar", "scope": "", "identity_features": {"mood": "subjonctif", "trigger": "bien que"}, "members": ["u-bien-que-subj"], "preferred": ""},
+    {"key": "c-bien-que-sens", "target": "« bien que » means although", "pedagogical_intent": "vocabulary", "scope": "", "identity_features": {}, "members": ["u-bien-que-sens"], "preferred": ""},
+    {"key": "c-manquer", "target": "tu me manques: saying you miss someone", "pedagogical_intent": "expression", "scope": "", "identity_features": {"verb": "manquer"}, "members": ["u-manquer", "u-manquer-registre"], "preferred": "u-manquer"},
+    {"key": "c-imparfait", "target": "imparfait for background and past habits", "pedagogical_intent": "grammar", "scope": "past tenses", "identity_features": {"tense": "imparfait"}, "members": ["u-imparfait"], "preferred": ""},
+    {"key": "c-pc-evenement", "target": "passé composé for a completed event", "pedagogical_intent": "grammar", "scope": "past tenses", "identity_features": {"tense": "passé composé"}, "members": ["u-pc-evenement"], "preferred": ""},
+    {"key": "c-pc-etre", "target": "passé composé with être", "pedagogical_intent": "grammar", "scope": "past tenses", "identity_features": {"auxiliary": "être", "tense": "passé composé"}, "members": ["u-pc-etre"], "preferred": "u-pc-etre"},
+    {"key": "c-depuis", "target": "depuis with the present for something still going on", "pedagogical_intent": "grammar", "scope": "time expressions", "identity_features": {"marker": "depuis"}, "members": ["u-depuis"], "preferred": ""},
+    {"key": "c-pendant", "target": "pendant for a finished duration", "pedagogical_intent": "grammar", "scope": "time expressions", "identity_features": {"marker": "pendant"}, "members": ["u-pendant"], "preferred": ""},
+    {"key": "c-ne-plus", "target": "ne … plus: no longer", "pedagogical_intent": "grammar", "scope": "negation", "identity_features": {"negation": "ne plus"}, "members": ["u-ne-plus"], "preferred": ""},
+    {"key": "c-ne-pas-encore", "target": "ne … pas encore: not yet", "pedagogical_intent": "grammar", "scope": "negation", "identity_features": {"negation": "ne pas encore"}, "members": [], "preferred": ""},
+    {"key": "c-y-en", "target": "the pronouns y and en", "pedagogical_intent": "grammar", "scope": "pronouns", "identity_features": {}, "members": [], "preferred": ""}
+  ],
+  "presets": [
+    {"id": "miss-someone", "label": "Telling a friend you miss them", "text": "how to tell a friend I miss them"},
+    {"id": "still-going-on", "label": "Something still going on", "text": "action still going on since the past"},
+    {"id": "no-longer", "label": "Stopping a habit", "text": "no longer doing something"},
+    {"id": "past-habits", "label": "Describing past habits", "text": "describing past habits"},
+    {"id": "subjunctive", "label": "The subjunctive", "text": "subjunctive"},
+    {"id": "il-faut-que", "label": "« il faut que »", "text": "il faut que"},
+    {"id": "passe-compose", "label": "Passé composé", "text": "passé composé"},
+    {"id": "although", "label": "Saying although", "text": "although"}
+  ]
+}
