@@ -11,6 +11,7 @@ import type {
   LibrarySource,
   LibraryStateFilter,
   LibraryUnit,
+  PublicDemoInfo,
   SemanticSearch,
 } from "../types/library";
 
@@ -79,8 +80,12 @@ const fieldLabels: Record<string, string> = {
 // KnowledgeLibrary is a GET-only view of curated Concepts. Searching, opening a
 // Concept, or following a source records nothing and calls no provider; every
 // status shown is a backend fact.
-export function KnowledgeLibrary() {
+//
+// With `demo` (FLH-073 public demo) keyword search stays free text, while
+// semantic and hybrid search run only the demo's preset queries.
+export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
   const [draft, setDraft] = useState<LibraryQuery>({ q: "", state: "all" });
+  const [draftPreset, setDraftPreset] = useState<string>(demo?.presets[0]?.id ?? "");
   const [query, setQuery] = useState<LibraryQuery>({ q: "", state: "all" });
   const [draftMode, setDraftMode] = useState<LibrarySearchMode>("keyword");
   const [mode, setMode] = useState<LibrarySearchMode>("keyword");
@@ -89,10 +94,14 @@ export function KnowledgeLibrary() {
   const returnTo = useRef<number | null>(null);
 
   const search = useLoad<SearchOutcome>(
-    `${mode}\u0000${query.state}\u0000${query.q}`,
+    `${mode}\u0000${query.state}\u0000${query.q}\u0000${query.preset ?? ""}`,
     async (): Promise<SearchOutcome> => {
       if (mode === "keyword") return { kind: "keyword", data: await api.searchLibrary(query) };
       if (!query.q) return { kind: "needs-query" };
+      if (demo) {
+        if (mode === "hybrid") return { kind: "hybrid", data: await api.demoHybridSearch(query) };
+        return { kind: "semantic", data: await api.demoSemanticSearch(query) };
+      }
       if (mode === "hybrid") return { kind: "hybrid", data: await api.hybridSearchLibrary(query) };
       return { kind: "semantic", data: await api.semanticSearchLibrary(query) };
     },
@@ -109,7 +118,8 @@ export function KnowledgeLibrary() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    setQuery({ q: draft.q.trim(), state: draft.state });
+    const preset = demo && draftMode !== "keyword" ? demo.presets.find((p) => p.id === draftPreset) : undefined;
+    setQuery(preset ? { q: preset.text, state: draft.state, preset: preset.id } : { q: draft.q.trim(), state: draft.state });
     setMode(draftMode);
   };
   const backToResults = (conceptId: number) => {
@@ -127,15 +137,29 @@ export function KnowledgeLibrary() {
     <main className="library">
       <div hidden={screen.kind !== "results"}>
         <form className="panel library-search" role="search" onSubmit={submit}>
-          <label htmlFor="library-query">Search learned material</label>
+          {demo && draftMode !== "keyword" ? (
+            <label htmlFor="library-preset">Example query</label>
+          ) : (
+            <label htmlFor="library-query">Search learned material</label>
+          )}
           <div className="discovery-search-row">
-            <input
-              id="library-query"
-              type="search"
-              value={draft.q}
-              placeholder="e.g. subjonctif, il faut que, passé composé"
-              onChange={(e) => setDraft({ ...draft, q: e.target.value })}
-            />
+            {demo && draftMode !== "keyword" ? (
+              <select id="library-preset" value={draftPreset} onChange={(e) => setDraftPreset(e.target.value)}>
+                {demo.presets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}: “{p.text}”
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="library-query"
+                type="search"
+                value={draft.q}
+                placeholder="e.g. subjonctif, il faut que, passé composé"
+                onChange={(e) => setDraft({ ...draft, q: e.target.value })}
+              />
+            )}
             <select
               aria-label="Concept status"
               value={draft.state}
@@ -193,6 +217,13 @@ export function KnowledgeLibrary() {
               Hybrid
             </label>
           </fieldset>
+          {demo ? (
+            <p className="hint" role="note">
+              <strong>Public demo:</strong> keyword search accepts any words. Semantic and hybrid search are limited to the
+              example queries above, whose vectors were prepared in advance; this demo computes no embeddings and calls
+              no AI service. The exact text searched is shown with the results.
+            </p>
+          ) : null}
           <p className="hint">
             A <strong>concept</strong> is one idea you have learned, such as a grammar rule. A <strong>unit</strong> is a
             short rule taken from one of your learning records; units are filed under concepts and always link back to

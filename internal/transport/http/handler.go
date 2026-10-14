@@ -81,6 +81,8 @@ type Handler struct {
 	library             KnowledgeLibraryService
 	semantic            SemanticSearchService
 	hybrid              HybridSearchService
+	// demo is set only in the FLH-073 public demo mode.
+	demo *publicDemo
 	// readiness reports whether the backing store can serve requests. It is
 	// optional; without it /readyz reports not ready rather than guessing.
 	readiness        func(context.Context) error
@@ -203,6 +205,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /knowledge-library/units/{id}/source", h.handleGetLibraryUnitSource)
 	mux.HandleFunc("GET /knowledge-library/semantic-search", h.handleSemanticSearch)
 	mux.HandleFunc("GET /knowledge-library/hybrid-search", h.handleHybridSearch)
+	h.registerPublicDemoRoutes(mux)
 	return mux
 }
 

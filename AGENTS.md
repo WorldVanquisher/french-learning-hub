@@ -433,6 +433,27 @@ FLH-054 search query envelope and local E5 service:
   it is not a public service. `tests/golden_inputs.json` is shared by the
   service's tests and the Go envelope tests.
 
+FLH-073 read-only public demo (owner-authorized narrow mode):
+
+- Opt-in only: `cmd/server -public-demo-artifact DIR`. Normal routes, defaults and
+  wiring are unchanged without it. Demo mode never opens `DB_PATH`; it opens the
+  artifact's `demo.db` read-only/immutable after checking the migration ledger,
+  and refuses startup unless analyzer/extractor/embedding/semantic providers are
+  rule-based/disabled. Mechanical-vector artifacts also need
+  `-public-demo-allow-mechanical` (local smoke only).
+- `NewPublicDemoBoundary` is the server-side allowlist (root and `/api`): GET/HEAD
+  on health, keyword library search, Concept detail, unit source and
+  `/knowledge-library/demo{,/semantic-search,/hybrid-search}`, plus static assets.
+  Everything else is `404`, other methods `405`, before any handler runs.
+- Semantic/hybrid in the demo accept only preset ids; the embedding provider
+  returns cached vectors for exact preset envelopes only and has no network code.
+  The existing semantic and hybrid services run over a read-only in-process index
+  of artifact vectors (no Qdrant). Artifacts bind file hashes, vector identity,
+  preset envelopes and a domain fingerprint; any mismatch refuses startup.
+- Fixtures and tooling: `scripts/demo/flh073/`; operator guide
+  `docs/PUBLIC_DEMO.md`. Mechanical vectors show mechanics, not relevance; a
+  public release needs real-model vectors (release validation reports BLOCKED).
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

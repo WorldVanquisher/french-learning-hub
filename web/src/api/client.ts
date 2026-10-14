@@ -34,7 +34,7 @@ import type {
   NewFeedback,
   LearningRecordState,
 } from "../types/learning";
-import type { HybridSearch, LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, SemanticSearch } from "../types/library";
+import type { HybridSearch, LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, PublicDemoInfo, SemanticSearch } from "../types/library";
 
 // ApiError carries the HTTP status so callers can react specifically — most
 // importantly to 409 Conflict, after which the UI must refresh the unit's current
@@ -220,6 +220,27 @@ export function hybridSearchLibrary(query: LibraryQuery, fetchImpl: typeof fetch
   const params = new URLSearchParams({ q: query.q.trim() });
   if (query.state !== "all") params.set("state", query.state);
   return request<HybridSearch>("GET", `/knowledge-library/hybrid-search?${params.toString()}`, undefined, fetchImpl);
+}
+
+// ---- FLH-073 read-only public demo ----
+
+export function getPublicDemo(fetchImpl: typeof fetch = fetch): Promise<PublicDemoInfo> {
+  return request<PublicDemoInfo>("GET", "/knowledge-library/demo", undefined, fetchImpl);
+}
+
+function presetParams(query: LibraryQuery): string {
+  const params = new URLSearchParams({ preset: query.preset ?? "" });
+  if (query.state !== "all") params.set("state", query.state);
+  return params.toString();
+}
+
+// The demo's semantic and hybrid routes take a preset id, never free text.
+export function demoSemanticSearch(query: LibraryQuery, fetchImpl: typeof fetch = fetch): Promise<SemanticSearch> {
+  return request<SemanticSearch>("GET", `/knowledge-library/demo/semantic-search?${presetParams(query)}`, undefined, fetchImpl);
+}
+
+export function demoHybridSearch(query: LibraryQuery, fetchImpl: typeof fetch = fetch): Promise<HybridSearch> {
+  return request<HybridSearch>("GET", `/knowledge-library/demo/hybrid-search?${presetParams(query)}`, undefined, fetchImpl);
 }
 
 export function getLibraryConcept(conceptId: number, fetchImpl: typeof fetch = fetch): Promise<LibraryConcept> {

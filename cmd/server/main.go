@@ -34,11 +34,21 @@ func run() error {
 	// built frontend at / and the API under /api, beside the unchanged root API
 	// routes. Without it the server is API-only, as before.
 	webDir := flag.String("web-dir", "", "directory containing the built workbench (index.html, assets/); empty serves the API only")
+	// FLH-073: an explicit, read-only public demo over an integrity-checked
+	// artifact. Without the flag nothing below changes.
+	demoArtifact := flag.String("public-demo-artifact", "", "run the read-only public demo from this artifact directory (DB_PATH is not opened)")
+	demoAllowMechanical := flag.Bool("public-demo-allow-mechanical", false, "allow an artifact whose vectors are mechanical test fixtures (local smoke only)")
 	flag.Parse()
 
 	cfg, err := config.Load()
 	if err != nil {
 		return err
+	}
+	if *demoArtifact != "" {
+		return runPublicDemo(cfg, *demoArtifact, *demoAllowMechanical, *webDir)
+	}
+	if *demoAllowMechanical {
+		return errors.New("-public-demo-allow-mechanical requires -public-demo-artifact")
 	}
 
 	// Ensure the database directory exists.
@@ -165,7 +175,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	return serve(cfg, routes, "db="+cfg.DBPath)
+}
 
+// serve runs the HTTP server until SIGINT/SIGTERM, then shuts down gracefully.
+func serve(cfg config.Config, routes http.Handler, label string) error {
 	srv := &http.Server{
 		Addr:         cfg.Addr,
 		Handler:      routes,
@@ -179,7 +193,7 @@ func run() error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("listening on %s (db=%s)", cfg.Addr, cfg.DBPath)
+		log.Printf("listening on %s (%s)", cfg.Addr, label)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}

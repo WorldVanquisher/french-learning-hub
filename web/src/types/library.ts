@@ -8,6 +8,34 @@ export type LibraryStateFilter = "all" | "active" | "orphaned" | "retired";
 export interface LibraryQuery {
   q: string;
   state: LibraryStateFilter;
+  // FLH-073 public demo: semantic and hybrid run only preset queries; q then
+  // holds the preset's exact text, for display.
+  preset?: string;
+}
+
+// FLH-073 GET /knowledge-library/demo: the read-only demo's artifact identity
+// and its bounded catalog of preset queries.
+export interface PublicDemoInfo {
+  schema_version: "knowledge_library_public_demo_v1";
+  read_only: true;
+  data: "synthetic";
+  artifact: {
+    version: string;
+    manifest_sha256: string;
+    vector_source: "mechanical-test" | "model";
+    real_model: boolean;
+    vector_generator: string;
+    model_id: string;
+    dimensions: number;
+    document_representation: string;
+    query_representation: string;
+    release_status: string;
+    notice: string;
+    domain_fingerprint_sha256: string;
+  };
+  query_policy: string;
+  presets: Array<{ id: string; label: string; text: string }>;
+  counters: { preset_vector_lookups: number; refused_vector_lookups: number };
 }
 
 export interface LibrarySearchResult {
