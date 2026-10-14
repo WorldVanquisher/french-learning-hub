@@ -12,11 +12,13 @@ import base64
 import hashlib
 import json
 import os
+import re
 import secrets
 import time
 from pathlib import Path
 
 from . import TASK_TAG
+from .diagnostics import classify, error_code, is_definite_rejection
 from .ledger import Ledger, charged
 from .snapshot import MANIFEST_NAME, SNAPSHOT_NAME, Refused, VerificationError, sha256_file, write_json
 
@@ -29,11 +31,19 @@ STACK_POLL_SECONDS = 5
 STACK_TIMEOUT_SECONDS = 600
 
 
-def error_code(e: BaseException) -> str | None:
-    resp = getattr(e, "response", None)
-    if isinstance(resp, dict):
-        return resp.get("Error", {}).get("Code")
-    return None
+# Stack statuses written by this tool itself (the rest are CloudFormation's own).
+CREATE_REQUESTING = "CREATE_REQUESTING"   # saved before CreateStack is sent
+CREATE_REJECTED = "CREATE_REJECTED"       # AWS answered 4xx: nothing was created
+CREATE_UNKNOWN = "CREATE_UNKNOWN"         # no usable answer: the stack may or may not exist
+DELETE_REQUESTED = "DELETE_REQUESTED"     # saved before DeleteStack is sent; final state not yet observed
+LEGACY_CREATING = "CREATING"              # FLH-063 records (no StackId)
+LEGACY_DELETED = "DELETED"                # FLH-063: "does not exist" by name, never confirmed by StackId
+RESOURCES_SCHEMA = "flh066_resources_v2"
+BY_ID = "describe_stacks_by_id"
+
+
+class OutcomeUnknown(Exception):
+    """A request's effect could not be determined; nothing is retried automatically."""
 
 
 # --- resources.json --------------------------------------------------------------
@@ -51,6 +61,62 @@ def save_resources(state: Path, res: dict) -> None:
     write_json(resources_path(state), res)
 
 
+def _now() -> str:
+    from .ledger import utc_now
+    return utc_now()
+
+
+def check_stack_id(stack_id: str, res: dict) -> None:
+    """The full StackId must name this state's stack, account and region."""
+    pat = (r"arn:aws[a-z-]*:cloudformation:" + re.escape(res["region"]) + ":" + re.escape(res["account"])
+           + r":stack/" + re.escape(res["stack"]["name"]) + r"/[0-9a-fA-F-]{36}")
+    if not isinstance(stack_id, str) or not re.fullmatch(pat, stack_id):
+        raise VerificationError("StackId does not name this state directory's stack, account and region")
+
+
+def _observe(st: dict, status: str, by: str) -> None:
+    st.update({"status": status, "observed_utc": _now(), "observed_by": by})
+    st.pop("last_observation_error", None)
+
+
+def stack_report(res: dict) -> dict:
+    """Honest cleanup/presence state derived only from what was recorded and observed."""
+    st = res.get("stack")
+    if not st:
+        return {"state": "none_recorded"}
+    status, sid = st.get("status"), st.get("id")
+    probe = (res.get("bucket_probe") or {}).get("result")
+    rep = {"name": st["name"], "stack_id_recorded": bool(sid), "status": status,
+           "observed_by": st.get("observed_by"), "observed_utc": st.get("observed_utc"), "bucket_probe": probe}
+    if st.get("last_observation_error"):
+        rep["last_observation_error"] = st["last_observation_error"]
+    if status == CREATE_REJECTED:
+        return {"state": "not_created", "reason": "CreateStack was rejected by AWS; nothing was created", **rep}
+    if not sid:
+        if status in (LEGACY_DELETED,) or st.get("by_name") == "absent":
+            why = ("no StackId was recorded; a stack that does not exist by name may be deleted or never created, "
+                   "so DELETE_COMPLETE cannot be verified")
+            if probe == "absent":
+                why += "; the bucket is confirmed absent (NoSuchBucket for the expected owner)"
+            return {"state": "verification_unavailable", "reason": why, **rep}
+        return {"state": "verification_unavailable",
+                "reason": "the creation outcome is not known and no StackId is recorded; run recover", **rep}
+    if status == "DELETE_COMPLETE" and st.get("observed_by") == BY_ID:
+        if probe == "absent":
+            return {"state": "deletion_confirmed", "reason": "DELETE_COMPLETE read by StackId and the bucket is absent",
+                    **rep}
+        if probe == "present":
+            return {"state": "resources_present", "reason": "the stack is DELETE_COMPLETE but the bucket still exists",
+                    **rep}
+        return {"state": "verification_unavailable",
+                "reason": "DELETE_COMPLETE read by StackId; bucket absence not confirmed", **rep}
+    if status in (DELETE_REQUESTED, "DELETE_IN_PROGRESS"):
+        return {"state": "deletion_requested", "reason": "DeleteStack was sent; completion has not been observed", **rep}
+    if status in (CREATE_REQUESTING, CREATE_UNKNOWN, LEGACY_CREATING):
+        return {"state": "verification_unavailable", "reason": "the creation outcome is not known; run recover", **rep}
+    return {"state": "resources_present", "reason": f"the stack was last observed as {status}", **rep}
+
+
 # --- deploy and verify -------------------------------------------------------------
 
 def deploy(state: Path, clients, region: str, retention_days: int, backend: str,
@@ -58,45 +124,228 @@ def deploy(state: Path, clients, region: str, retention_days: int, backend: str,
     if not 1 <= retention_days <= MAX_RETENTION_DAYS:
         raise Refused(f"--retention-days must be 1..{MAX_RETENTION_DAYS}")
     res = load_resources(state)
+    history = res.get("history", [])
     if res.get("stack"):
-        raise Refused(f"this state directory already owns stack {res['stack']['name']}; "
-                      "use a new state directory or run cleanup first")
+        if res["stack"].get("status") != CREATE_REJECTED:
+            raise Refused(f"this state directory already owns stack {res['stack']['name']} "
+                          f"({stack_report(res)['state']}); run recover/cleanup, or use a new state directory")
+        history.append({k: res[k] for k in ("stack", "bucket", "state_id") if k in res})  # nothing was created
     account = clients.sts.get_caller_identity()["Account"]
     sid = secrets.token_hex(6)
     name = f"flh063-{sid}"
-    res = {"region": region, "account": account, "state_id": sid,
-           "stack": {"name": name, "status": "CREATING"}, "bucket": name,
-           "retention_days": retention_days, "objects": [], "runs": {}}
-    save_resources(state, res)  # recorded before the request, so cleanup can find it
-    clients.cfn.create_stack(
-        StackName=name, TemplateBody=TEMPLATE.read_text(encoding="utf-8"),
-        Parameters=[{"ParameterKey": "BucketName", "ParameterValue": name},
-                    {"ParameterKey": "StateId", "ParameterValue": sid},
-                    {"ParameterKey": "RetentionDays", "ParameterValue": str(retention_days)}],
-        Tags=[{"Key": "flh:task", "Value": TASK_TAG}, {"Key": "flh:state-id", "Value": sid}],
-        OnFailure="DELETE", TimeoutInMinutes=10, ClientRequestToken=f"{name}-create")
-    status = wait_stack(clients.cfn, name, ("CREATE_COMPLETE",), sleep)
-    res["stack"]["status"] = status
-    save_resources(state, res)
+    token = f"{name}-create"
+    res = {"schema": RESOURCES_SCHEMA, "region": region, "account": account, "state_id": sid,
+           "stack": {"name": name, "status": CREATE_REQUESTING, "client_request_token": token,
+                     "requested_utc": _now(), "tags": {"flh:task": TASK_TAG, "flh:state-id": sid}},
+           "bucket": name, "retention_days": retention_days, "objects": [], "runs": {}}
+    if history:
+        res["history"] = history
+    save_resources(state, res)  # recorded before the request, so recover/cleanup can find it
+    st = res["stack"]
+    try:
+        r = clients.cfn.create_stack(
+            StackName=name, TemplateBody=TEMPLATE.read_text(encoding="utf-8"),
+            Parameters=[{"ParameterKey": "BucketName", "ParameterValue": name},
+                        {"ParameterKey": "StateId", "ParameterValue": sid},
+                        {"ParameterKey": "RetentionDays", "ParameterValue": str(retention_days)}],
+            Tags=[{"Key": "flh:task", "Value": TASK_TAG}, {"Key": "flh:state-id", "Value": sid}],
+            OnFailure="DELETE", TimeoutInMinutes=10, ClientRequestToken=token)
+    except Exception as e:  # noqa: BLE001
+        info = classify(e)
+        st["create_error"] = {k: info[k] for k in ("category", "error_type", "code", "message")}
+        if is_definite_rejection(e):
+            _observe(st, CREATE_REJECTED, "create_stack_response")
+            save_resources(state, res)
+            raise VerificationError(f"CreateStack was rejected ({info['category']}: {info['code']}); nothing was "
+                                    f"created. {info['guidance']}") from None
+        _observe(st, CREATE_UNKNOWN, "local")
+        save_resources(state, res)
+        raise OutcomeUnknown(f"CreateStack for {name} has an unknown outcome ({info['category']}: "
+                             f"{info['error_type']}); the stack may exist. It is not resent. Run `recover` "
+                             "(read-only) before anything else.") from None
+    st["id"] = r.get("StackId")
+    st["id_source"] = "create_stack_response"
+    try:
+        check_stack_id(st["id"], res)
+    except VerificationError:
+        st["unexpected_stack_id"], st["id"] = st["id"], None
+        _observe(st, CREATE_UNKNOWN, "create_stack_response")
+        save_resources(state, res)
+        raise
+    _observe(st, "CREATE_IN_PROGRESS", "create_stack_response")
+    save_resources(state, res)  # the full StackId is persisted before any wait
+    status = _wait_and_record(state, res, clients.cfn, ("CREATE_COMPLETE",), sleep)
     if status != "CREATE_COMPLETE":
-        raise VerificationError(f"stack {name} ended in {status}")
-    return {"stack": name, "bucket": name, "region": region, "checks": verify_bucket(state, clients, backend)}
+        raise VerificationError(f"stack {name} ended in {status}; run cleanup to confirm what remains")
+    return {"stack": name, "stack_id": mask_account(st["id"]), "bucket": name, "region": region,
+            "checks": verify_bucket(state, clients, backend)}
 
 
-def wait_stack(cfn, name: str, ok: tuple, sleep=time.sleep) -> str:
+def mask_account(text):
+    return re.sub(r"(?<!\d)\d{12}(?!\d)", "<account>", text) if isinstance(text, str) else text
+
+
+def describe_stack(cfn, ident: str) -> dict | None:
+    """DescribeStacks for one name or StackId; None only when CloudFormation says it does not exist.
+
+    By name, only live stacks are found. By StackId, CloudFormation also
+    returns deleted stacks (DELETE_COMPLETE) for a retention period.
+    """
+    try:
+        stacks = cfn.describe_stacks(StackName=ident)["Stacks"]
+    except Exception as e:  # noqa: BLE001
+        if error_code(e) == "ValidationError" and "does not exist" in str(e):
+            return None
+        raise
+    if len(stacks) != 1:
+        raise VerificationError(f"DescribeStacks returned {len(stacks)} stacks for one identifier")
+    return stacks[0]
+
+
+def wait_stack(cfn, ident: str, ok: tuple, sleep=time.sleep) -> str:
+    """Poll until a terminal status. A StackId that 'does not exist' is unknown, never deleted."""
     deadline = time.monotonic() + STACK_TIMEOUT_SECONDS
     while True:
-        try:
-            st = cfn.describe_stacks(StackName=name)["Stacks"][0]["StackStatus"]
-        except Exception as e:  # noqa: BLE001
-            if "does not exist" in str(e):
-                return "DOES_NOT_EXIST"
-            raise
+        s = describe_stack(cfn, ident)
+        if s is None:
+            raise OutcomeUnknown("CloudFormation reports no stack for the recorded StackId")
+        st = s["StackStatus"]
         if st in ok or st.endswith("_FAILED") or st.endswith("ROLLBACK_COMPLETE") or st == "DELETE_COMPLETE":
             return st
         if time.monotonic() > deadline:
-            return st + " (timed out waiting)"
+            raise OutcomeUnknown(f"stack still {st} after {STACK_TIMEOUT_SECONDS} s")
         sleep(STACK_POLL_SECONDS)
+
+
+def _wait_and_record(state: Path, res: dict, cfn, ok: tuple, sleep) -> str:
+    st = res["stack"]
+    try:
+        status = wait_stack(cfn, st["id"], ok, sleep)
+    except Exception as e:  # noqa: BLE001 - AccessDenied, network, timeout: unknown, not success
+        info = classify(e) if not isinstance(e, OutcomeUnknown) else {"category": "unknown", "message": str(e)}
+        st["last_observation_error"] = {"category": info["category"], "message": info["message"], "utc": _now()}
+        save_resources(state, res)
+        raise OutcomeUnknown(f"could not observe stack {st['name']} ({info['category']}: {info['message']}); "
+                             "run `recover` (read-only) later") from None
+    _observe(st, status, BY_ID)
+    save_resources(state, res)
+    return status
+
+
+# --- read-only reconciliation ---------------------------------------------------------
+
+def _owned(s: dict, res: dict) -> bool:
+    tags = {t["Key"]: t["Value"] for t in s.get("Tags") or []}
+    return (s.get("StackName") == res["stack"]["name"] and tags.get("flh:task") == TASK_TAG
+            and tags.get("flh:state-id") == res["state_id"])
+
+
+def probe_bucket(state: Path, clients, backend: str) -> dict:
+    """GetBucketLocation with ExpectedBucketOwner: NoSuchBucket proves the bucket is absent."""
+    res = load_resources(state)
+    try:
+        _s3_read(Ledger(state), backend, "GetBucketLocation(probe)", clients.s3.get_bucket_location,
+                 Bucket=res["bucket"], ExpectedBucketOwner=res["account"])
+        out = {"result": "present"}
+    except Exception as e:  # noqa: BLE001
+        if error_code(e) == "NoSuchBucket":
+            out = {"result": "absent"}
+        else:
+            info = classify(e)
+            out = {"result": "unknown", "category": info["category"], "message": info["message"]}
+    out["utc"] = _now()
+    res["bucket_probe"] = out
+    save_resources(state, res)
+    return out
+
+
+def recover(state: Path, clients, backend: str, stack_id: str | None = None) -> dict:
+    """Read-only reconciliation of the recorded stack. Sends no write to AWS.
+
+    1. With an operator-supplied --stack-id (for a record without one), check
+       it names this state's stack, account and region, then read it.
+    2. Without a recorded StackId, look the stack up by name (live stacks only)
+       and adopt its StackId only if its tags identify this state directory.
+    3. With a StackId, read the current status by StackId.
+    4. When no stack is found, or the stack is DELETE_COMPLETE, probe the bucket.
+    """
+    res = load_resources(state)
+    st = res.get("stack")
+    if not st:
+        return {"stack": stack_report(res), "actions": []}
+    actions = []
+    if stack_id:
+        if st.get("id") and st["id"] != stack_id:
+            raise Refused("a different StackId is already recorded; not replaced")
+        check_stack_id(stack_id, res)
+        st["id"], st["id_source"] = stack_id, "operator"
+        actions.append("adopted the operator-supplied StackId after checking name, account and region")
+        save_resources(state, res)
+    try:
+        if not st.get("id"):
+            s = describe_stack(clients.cfn, st["name"])
+            if s is None:
+                st["by_name"] = "absent"
+                st["by_name_utc"] = _now()
+                actions.append("no live stack by this name (deleted or never created; not distinguishable by name)")
+            elif not _owned(s, res):
+                raise VerificationError(f"a stack named {st['name']} exists but its tags do not identify this state "
+                                        "directory; not adopted, nothing changed")
+            else:
+                st["id"] = s["StackId"]
+                check_stack_id(st["id"], res)
+                st["id_source"] = "describe_stacks_by_name"
+                st.pop("by_name", None)
+                actions.append("adopted the StackId of the live, correctly tagged stack")
+        if st.get("id"):
+            s = describe_stack(clients.cfn, st["id"])
+            if s is None:
+                raise OutcomeUnknown("CloudFormation reports no stack for the recorded StackId")
+            if s.get("StackName") != st["name"]:
+                raise VerificationError("the StackId resolves to a different stack name; nothing changed")
+            _observe(st, s["StackStatus"], BY_ID)
+            actions.append(f"read status {s['StackStatus']} by StackId")
+    except (VerificationError, Refused):
+        save_resources(state, res)
+        raise
+    except Exception as e:  # noqa: BLE001 - AccessDenied, network: report, change nothing else
+        info = classify(e) if not isinstance(e, OutcomeUnknown) else {"category": "unknown", "message": str(e)}
+        st["last_observation_error"] = {"category": info["category"], "message": info["message"], "utc": _now()}
+        actions.append(f"observation failed ({info['category']})")
+    save_resources(state, res)
+    if st.get("by_name") == "absent" or (st.get("status") == "DELETE_COMPLETE" and st.get("observed_by") == BY_ID):
+        p = probe_bucket(state, clients, backend)
+        actions.append(f"bucket probe: {p['result']}")
+    res = load_resources(state)
+    return {"stack": stack_report(res), "actions": actions, "operator_steps": operator_steps(res)}
+
+
+def operator_steps(res: dict) -> list:
+    """Precise manual steps for states this tool cannot settle with its permissions."""
+    rep = stack_report(res)
+    st = res.get("stack") or {}
+    name, region = st.get("name"), res.get("region")
+    if rep["state"] in ("deletion_confirmed", "not_created", "none_recorded"):
+        return []
+    steps = []
+    if not st.get("id"):
+        steps += [
+            f"Find the full StackId of {name}: CloudFormation console, region {region}, Stacks, filter "
+            "'Deleted' (or 'Active'), open the stack and copy its Stack ID; or CloudTrail event history, event "
+            "name CreateStack, responseElements.stackId.",
+            "Then run: recover --state STATE --profile P --stack-id 'arn:aws:cloudformation:...' "
+            "(read-only; it reads that StackId and probes the bucket).",
+        ]
+    if rep["state"] == "deletion_requested":
+        steps.append("Run recover (read-only) to read the final status by StackId; rerun cleanup only if the stack "
+                     "is not deleting.")
+    if rep["state"] == "resources_present":
+        steps.append("Run cleanup; if it keeps the stack, inspect the reported objects in the S3 console before "
+                     "deciding anything by hand.")
+    if rep["state"] == "verification_unavailable" and st.get("last_observation_error"):
+        steps.append("The last read failed (" + st["last_observation_error"]["category"] + "); fix access or the "
+                     "network, then rerun recover.")
+    return steps
 
 
 def _s3_read(ledger: Ledger, backend: str, what: str, fn, **kw):
@@ -264,68 +513,161 @@ def download(state: Path, clients, run_id: str, dest: Path, backend: str) -> lis
 
 # --- cleanup -------------------------------------------------------------------------
 
+CLEANUP_EXIT = {"none_recorded": 0, "not_created": 0, "deletion_confirmed": 0, "resources_present": 1,
+                "deletion_requested": 4, "verification_unavailable": 4}
+
+
 def cleanup(state: Path, clients, backend: str, sleep=time.sleep) -> dict:
-    """Delete exactly the recorded objects, then the stack only if the bucket is empty."""
+    """Delete exactly the recorded objects, then the stack only if the bucket is empty.
+
+    The result's ``cleanup_state`` is one of: ``none_recorded``, ``not_created``,
+    ``deletion_confirmed`` (DELETE_COMPLETE read by StackId and the bucket
+    absent), ``deletion_requested`` (DeleteStack sent, completion not
+    observed), ``verification_unavailable`` (AccessDenied, network, or no
+    StackId) and ``resources_present``. Only observed state is reported; a
+    missing stack by name is never presented as DELETE_COMPLETE.
+    """
+    deleted, kept, unknown, notes = [], [], [], []
+
+    def result(error: dict | None = None, present: bool = False) -> dict:
+        r = load_resources(state)
+        rep = stack_report(r)
+        out = {"cleanup_state": rep["state"], "stack": rep, "objects_deleted": deleted, "kept": kept,
+               "unknown_keys": unknown, "notes": notes, "operator_steps": operator_steps(r)}
+        if present and rep["state"] not in ("verification_unavailable", "deletion_requested"):
+            out["cleanup_state"] = "resources_present"
+        if error:
+            out["error"] = error
+            if not error.get("definite") and rep["state"] != "deletion_requested":
+                out["cleanup_state"] = "verification_unavailable"
+            elif out["cleanup_state"] == "deletion_confirmed":
+                out["cleanup_state"] = "resources_present"
+        return out
+
     res = load_resources(state)
-    if not res.get("stack"):
-        return {"objects_deleted": [], "stack": "none recorded", "unknown_keys": []}
+    st = res.get("stack")
+    if not st or st.get("status") == CREATE_REJECTED:
+        return result()
+    if stack_report(res)["state"] == "deletion_confirmed":
+        notes.append("deletion was already confirmed by StackId; nothing was sent")
+        return result()
+    if not st.get("id"):
+        if st.get("status") != LEGACY_DELETED and st.get("by_name") != "absent":
+            recover(state, clients, backend)  # read-only: adopt the StackId of a live, correctly tagged stack
+            res = load_resources(state)
+            st = res["stack"]
+        if not st.get("id"):
+            if (res.get("bucket_probe") or {}).get("result") != "absent":
+                probe_bucket(state, clients, backend)
+            notes.append("no StackId: nothing was deleted and DELETE_COMPLETE cannot be verified")
+            return result()
+
+    # Observe the stack by its exact StackId before acting.
+    try:
+        s = describe_stack(clients.cfn, st["id"])
+        if s is None:
+            raise OutcomeUnknown("CloudFormation reports no stack for the recorded StackId")
+        _observe(st, s["StackStatus"], BY_ID)
+        save_resources(state, res)
+    except Exception as e:  # noqa: BLE001
+        info = _info(e)
+        st["last_observation_error"] = {"category": info["category"], "message": info["message"], "utc": _now()}
+        save_resources(state, res)
+        return result({"phase": "describe_stack", **info, "definite": False})
+    if st["status"] == "DELETE_IN_PROGRESS":
+        try:
+            _wait_and_record(state, res, clients.cfn, ("DELETE_COMPLETE",), sleep)
+        except OutcomeUnknown as e:
+            return result({"phase": "wait_delete", "category": "unknown", "message": str(e), "definite": False})
+    if st["status"] == "DELETE_COMPLETE":
+        probe_bucket(state, clients, backend)
+        return result()
+
+    # Owned objects: each is re-read before it is deleted, so a rerun never acts blindly.
     led = Ledger(state)
     b, owner = res["bucket"], res["account"]
-    deleted, kept = [], []
-    for obj in list(res["objects"]):
-        key = obj["key"]
-        with charged(led, "s3_head_object", {"s3_get_requests": 1}, {"key": key}, backend):
-            try:
-                head = clients.s3.head_object(Bucket=b, Key=key, ExpectedBucketOwner=owner)
-            except Exception as e:  # noqa: BLE001
-                if error_code(e) in ("404", "NoSuchKey", "NotFound"):
-                    head = None
-                else:
-                    raise
-        if head is None:  # already gone (for example expired by lifecycle)
+    try:
+        for obj in list(res["objects"]):
+            key = obj["key"]
+            with charged(led, "s3_head_object", {"s3_get_requests": 1}, {"key": key}, backend):
+                try:
+                    head = clients.s3.head_object(Bucket=b, Key=key, ExpectedBucketOwner=owner)
+                except Exception as e:  # noqa: BLE001
+                    if error_code(e) in ("404", "NoSuchKey", "NotFound", "NoSuchBucket"):
+                        head = None
+                    else:
+                        raise
+            if head is None:  # already gone (deleted by an earlier run whose answer was lost, or expired)
+                res["objects"].remove(obj)
+                save_resources(state, res)
+                deleted.append({"key": key, "result": "already absent"})
+                continue
+            meta = {k.lower(): v for k, v in (head.get("Metadata") or {}).items()}
+            if head.get("ETag") != obj["etag"] or meta.get("flh-run") != obj["run_id"]:
+                kept.append({"key": key, "reason": "ETag or run metadata differs from the record; not deleted"})
+                continue
+            with charged(led, "s3_delete_object", {"s3_delete_requests": 1}, {"key": key}, backend):
+                clients.s3.delete_object(Bucket=b, Key=key, IfMatch=obj["etag"], ExpectedBucketOwner=owner)
             res["objects"].remove(obj)
             save_resources(state, res)
-            deleted.append({"key": key, "result": "already absent"})
-            continue
-        meta = {k.lower(): v for k, v in (head.get("Metadata") or {}).items()}
-        if head.get("ETag") != obj["etag"] or meta.get("flh-run") != obj["run_id"]:
-            kept.append({"key": key, "reason": "ETag or run metadata differs from the record; not deleted"})
-            continue
-        with charged(led, "s3_delete_object", {"s3_delete_requests": 1}, {"key": key}, backend):
-            clients.s3.delete_object(Bucket=b, Key=key, IfMatch=obj["etag"], ExpectedBucketOwner=owner)
-        res["objects"].remove(obj)
-        save_resources(state, res)
-        deleted.append({"key": key, "result": "deleted"})
-
-    stack_status = res["stack"].get("status")
-    unknown = []
-    if stack_status in ("CREATE_COMPLETE", "CREATING", "DELETE_FAILED"):
+            deleted.append({"key": key, "result": "deleted"})
         try:
             unknown = list_keys(state, clients, backend)
         except Exception as e:  # noqa: BLE001
-            if error_code(e) not in ("NoSuchBucket",):
-                raise
-    if kept or unknown:
-        return {"objects_deleted": deleted, "kept": kept, "unknown_keys": unknown,
-                "stack": f"kept: bucket is not empty ({len(unknown)} object(s) remain); nothing unknown was deleted"}
-    if res["stack"].get("status") != "DELETED":
-        tags_ok = True
-        try:
-            verify_tags_only(state, clients, backend)
-        except VerificationError:
-            tags_ok = False
-        except Exception as e:  # noqa: BLE001
             if error_code(e) != "NoSuchBucket":
                 raise
-        if not tags_ok:
-            return {"objects_deleted": deleted, "unknown_keys": [],
-                    "stack": "kept: bucket tags do not identify this state directory"}
-        clients.cfn.delete_stack(StackName=res["stack"]["name"],
-                                 ClientRequestToken=f"{res['stack']['name']}-delete")
-        status = wait_stack(clients.cfn, res["stack"]["name"], ("DELETE_COMPLETE",), sleep)
-        res["stack"]["status"] = "DELETED" if status in ("DELETE_COMPLETE", "DOES_NOT_EXIST") else status
+    except Exception as e:  # noqa: BLE001 - stop; the record still lists every object not proven gone
+        info = _info(e)
+        notes.append("stopped in the object phase; rerun cleanup: it re-reads each recorded object first")
+        return result({"phase": "objects", **info, "definite": is_definite_rejection(e)}, present=True)
+    if kept or unknown:
+        notes.append(f"stack kept: the bucket is not empty ({len(unknown)} object(s)); nothing unknown was deleted")
+        return result(present=True)
+    try:
+        verify_tags_only(state, clients, backend)
+    except VerificationError:
+        notes.append("stack kept: bucket tags do not identify this state directory")
+        return result(present=True)
+    except Exception as e:  # noqa: BLE001
+        if error_code(e) != "NoSuchBucket":
+            info = _info(e)
+            return result({"phase": "bucket_tags", **info, "definite": is_definite_rejection(e)}, present=True)
+
+    # DeleteStack by StackId. Recorded before sending; a new token only after a fresh observation.
+    attempts = st.setdefault("delete_attempts", [])
+    token = f"{st['name']}-delete" if not attempts else f"{st['name']}-delete-{len(attempts) + 1}"
+    attempt = {"token": token, "requested_utc": _now(), "from_status": st["status"], "outcome": "sending"}
+    attempts.append(attempt)
+    prev = {k: st.get(k) for k in ("status", "observed_utc", "observed_by")}
+    _observe(st, DELETE_REQUESTED, "local")
+    save_resources(state, res)
+    try:
+        clients.cfn.delete_stack(StackName=st["id"], ClientRequestToken=token)
+    except Exception as e:  # noqa: BLE001
+        info = _info(e)
+        attempt.update({"outcome": "rejected" if is_definite_rejection(e) else "unknown",
+                        "category": info["category"]})
+        if is_definite_rejection(e):
+            st.update(prev)  # AWS refused the request: the status read just before it still holds
         save_resources(state, res)
-    return {"objects_deleted": deleted, "unknown_keys": [], "stack": res["stack"]["status"]}
+        return result({"phase": "delete_stack", **info, "definite": is_definite_rejection(e)},
+                      present=is_definite_rejection(e))
+    attempt["outcome"] = "accepted"
+    save_resources(state, res)
+    try:
+        status = _wait_and_record(state, res, clients.cfn, ("DELETE_COMPLETE",), sleep)
+    except OutcomeUnknown as e:
+        return result({"phase": "wait_delete", "category": "unknown", "message": str(e), "definite": False})
+    if status == "DELETE_COMPLETE":
+        probe_bucket(state, clients, backend)
+    return result()
+
+
+def _info(e: BaseException) -> dict:
+    if isinstance(e, OutcomeUnknown):
+        return {"category": "unknown", "error_type": "OutcomeUnknown", "code": None, "message": str(e)}
+    i = classify(e)
+    return {k: i[k] for k in ("category", "error_type", "code", "message", "guidance")}
 
 
 def list_keys(state: Path, clients, backend: str, max_pages: int = 5) -> list:

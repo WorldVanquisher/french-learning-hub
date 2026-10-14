@@ -6,6 +6,12 @@ conditional requests promise (SSE header, If-None-Match, If-Match, checksum,
 expected owner), and build the bucket from the real CloudFormation template.
 They say nothing about AWS availability, IAM evaluation, latency, billing or
 Titan's semantic behaviour. Faults are injected through ``<root>/faults.json``.
+
+CloudFormation visibility follows the documented API: DescribeStacks by name
+finds only live stacks, while DescribeStacks by full StackId also returns a
+deleted stack as DELETE_COMPLETE. Transport faults raise exceptions named like
+botocore's (``ReadTimeoutError``: the request took effect, the answer was lost;
+``EndpointConnectionError``: it never arrived).
 """
 
 from __future__ import annotations
@@ -17,6 +23,7 @@ import json
 import math
 import re
 import shutil
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -28,6 +35,25 @@ class FakeClientError(Exception):
         super().__init__(f"An error occurred ({code}): {message}")
         self.response = {"Error": {"Code": code, "Message": message},
                          "ResponseMetadata": {"HTTPStatusCode": status}}
+
+
+class ReadTimeoutError(Exception):
+    """Like botocore's: sent, possibly processed, no answer."""
+
+
+class EndpointConnectionError(Exception):
+    """Like botocore's: the request never reached the endpoint."""
+
+
+def _fault_error(spec) -> Exception:
+    """A configured fault: "lost" (ReadTimeoutError), "unreachable", or an AWS error code."""
+    if spec in (True, "lost"):
+        return ReadTimeoutError('Read timeout on endpoint URL: "https://fake"')
+    if spec == "unreachable":
+        return EndpointConnectionError('Could not connect to the endpoint URL: "https://fake"')
+    if isinstance(spec, dict):
+        return FakeClientError(spec.get("code", "AccessDenied"), spec.get("message", "injected"), spec.get("status", 403))
+    return FakeClientError(str(spec), "injected", 403)
 
 
 def _faults(root: Path) -> dict:
@@ -143,6 +169,8 @@ class FakeS3:
 
     def head_object(self, Bucket, Key, ExpectedBucketOwner=None):
         _bump(self.root, "s3.HeadObject")
+        if "head_object" in _faults(self.root):
+            raise _fault_error(_faults(self.root)["head_object"])
         self._cfg(Bucket, ExpectedBucketOwner)
         meta = self._meta(Bucket, Key)
         size = self._obj(Bucket, Key).with_suffix(".bin").stat().st_size
@@ -167,9 +195,14 @@ class FakeS3:
         meta = self._meta(Bucket, Key)
         if IfMatch != meta["ETag"]:
             raise FakeClientError("PreconditionFailed", "ETag mismatch", 412)
+        f = _faults(self.root).get("delete_object")
+        if f and f != "lost":
+            raise _fault_error(f)
         p = self._obj(Bucket, Key)
         p.with_suffix(".bin").unlink()
         p.with_suffix(".meta").unlink()
+        if f == "lost":  # deleted, but the answer never arrives
+            raise _fault_error("lost")
         return {}
 
     def list_objects_v2(self, Bucket, ExpectedBucketOwner=None, MaxKeys=1000, ContinuationToken=None):
@@ -192,16 +225,37 @@ def _resolve(node, params: dict):
 
 
 class FakeCloudFormation:
+    """Faults: create_stack / delete_stack / describe_stacks = "lost" | "unreachable" | {code, status, message};
+    create_stack_fail (stack fails and is deleted, OnFailure=DELETE); delete_in_progress_polls (N reads)."""
+
     def __init__(self, root: Path, s3: FakeS3, region: str):
         self.root, self.s3, self.region = Path(root), s3, region
 
     def _p(self, name):
         return self.root / "cfn" / f"{name}.json"
 
+    def _find(self, ident: str):
+        """By name: live stacks only. By StackId: live or deleted."""
+        if ident.startswith("arn:"):
+            for p in sorted((self.root / "cfn").glob("*.json")) if (self.root / "cfn").is_dir() else []:
+                st = json.loads(p.read_text())
+                if st["StackId"] == ident:
+                    return p, st
+            return None, None
+        p = self._p(ident)
+        if p.exists():
+            st = json.loads(p.read_text())
+            if st["StackStatus"] != "DELETE_COMPLETE":
+                return p, st
+        return None, None
+
     def create_stack(self, StackName, TemplateBody, Parameters, Tags=None, OnFailure=None,
                      TimeoutInMinutes=None, ClientRequestToken=None):
         _bump(self.root, "cfn.CreateStack")
-        if self._p(StackName).exists():
+        f = _faults(self.root).get("create_stack")
+        if f and f != "lost":
+            raise _fault_error(f)  # rejected or unreachable: nothing is created
+        if self._find(StackName)[0] is not None:
             raise FakeClientError("AlreadyExistsException", f"Stack [{StackName}] already exists")
         t = json.loads(TemplateBody)
         params = {k: v.get("Default") for k, v in t["Parameters"].items()}
@@ -236,24 +290,33 @@ class FakeCloudFormation:
             status = "DELETE_COMPLETE" if OnFailure == "DELETE" else "ROLLBACK_COMPLETE"
         else:
             self.s3._create_bucket(b["BucketName"], cfg)
-        self._p(StackName).write_text(json.dumps({"StackName": StackName, "StackStatus": status,
-                                                  "Bucket": b["BucketName"], "Tags": Tags}))
-        return {"StackId": f"arn:aws:cloudformation:{self.region}:{FAKE_ACCOUNT}:stack/{StackName}/fake"}
+        stack_id = f"arn:aws:cloudformation:{self.region}:{FAKE_ACCOUNT}:stack/{StackName}/{uuid.uuid4()}"
+        self._p(StackName).write_text(json.dumps({"StackName": StackName, "StackId": stack_id, "StackStatus": status,
+                                                  "Bucket": b["BucketName"], "Tags": Tags or []}))
+        if f == "lost":  # created, but the answer never arrives
+            raise _fault_error("lost")
+        return {"StackId": stack_id}
 
     def describe_stacks(self, StackName):
         _bump(self.root, "cfn.DescribeStacks")
-        p = self._p(StackName)
-        if not p.exists():
+        f = _faults(self.root).get("describe_stacks")
+        if f:
+            raise _fault_error(f)
+        p, st = self._find(StackName)
+        if p is None:
             raise FakeClientError("ValidationError", f"Stack with id {StackName} does not exist")
-        return {"Stacks": [json.loads(p.read_text())]}
+        polls = _faults(self.root).get("delete_in_progress_polls")
+        if st["StackStatus"] == "DELETE_COMPLETE" and polls and _bump(self.root, "fake.delete_polls") <= polls:
+            st = {**st, "StackStatus": "DELETE_IN_PROGRESS"}
+        return {"Stacks": [{k: v for k, v in st.items() if k != "Bucket"}]}
 
     def delete_stack(self, StackName, ClientRequestToken=None):
         _bump(self.root, "cfn.DeleteStack")
-        p = self._p(StackName)
-        if not p.exists():
-            return {}
-        st = json.loads(p.read_text())
-        if st["StackStatus"] != "DELETE_COMPLETE":
+        f = _faults(self.root).get("delete_stack")
+        if f and f != "lost":
+            raise _fault_error(f)
+        p, st = self._find(StackName)
+        if p is not None and st["StackStatus"] != "DELETE_COMPLETE":
             try:
                 if self.s3._bdir(st["Bucket"]).exists():
                     self.s3._delete_bucket(st["Bucket"])
@@ -261,6 +324,8 @@ class FakeCloudFormation:
             except FakeClientError:
                 st["StackStatus"] = "DELETE_FAILED"
             p.write_text(json.dumps(st))
+        if f == "lost":
+            raise _fault_error("lost")
         return {}
 
 
@@ -300,7 +365,11 @@ class FakeBedrockRuntime:
         if dims not in (256, 512, 1024) or not req.get("inputText"):
             raise FakeClientError("ValidationException", "Malformed input request")
         if "invoke_fail" in f and n > f["invoke_fail"].get("after", 0):
-            raise FakeClientError(f["invoke_fail"].get("code", "ThrottlingException"), "injected failure", 429)
+            spec = f["invoke_fail"]
+            if spec.get("transport"):
+                raise _fault_error(spec["transport"])
+            raise FakeClientError(spec.get("code", "ThrottlingException"), spec.get("message", "injected failure"),
+                                  spec.get("status", 429))
         vec = fake_vector(req["inputText"], dims)
         bad = f.get("invoke_bad")
         if bad == "nan":

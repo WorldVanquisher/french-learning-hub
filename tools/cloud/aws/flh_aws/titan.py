@@ -15,6 +15,7 @@ import math
 import time
 from pathlib import Path
 
+from .diagnostics import classify
 from .ledger import MAX_CHARS_PER_INPUT, Ledger, charged, utc_now
 from .snapshot import Refused, VerificationError, write_json
 
@@ -81,8 +82,14 @@ def invoke(ledger: Ledger, runtime, dimensions: int, text: str, backend: str, la
     with charged(ledger, "bedrock_invoke_model", amounts,
                  {"label": label, "model": MODEL_ID, "dimensions": dimensions}, backend) as out:
         t0 = time.monotonic()
-        r = runtime.invoke_model(modelId=MODEL_ID, body=body, contentType="application/json",
-                                 accept="application/json")
+        try:
+            r = runtime.invoke_model(modelId=MODEL_ID, body=body, contentType="application/json",
+                                     accept="application/json")
+        except Exception as e:  # noqa: BLE001 - categorized in the ledger record, then re-raised
+            info = classify(e)
+            out.update({"error_category": info["category"], "error_code": info["code"],
+                        "request_id": info["request_id"], "may_have_been_processed": info["may_have_been_processed"]})
+            raise
         raw = r["body"].read(MAX_RESPONSE_BYTES + 1)
         out["latency_ms"] = round((time.monotonic() - t0) * 1000, 1)
         out["request_id"] = r.get("ResponseMetadata", {}).get("RequestId")
@@ -131,9 +138,42 @@ def load_smoke_inputs(path: Path = SMOKE_INPUTS) -> list:
     return items
 
 
-def smoke(state: Path, runtime, region: str, dimensions: int, backend: str, inputs: list) -> dict:
-    """Embed each synthetic input once. Stops at the first failure; never retries."""
+def invocation_history(state: Path, dimensions: int, backend: str) -> dict:
+    """Earlier InvokeModel records in this state's ledger, by outcome (failures stay counted)."""
+    calls = [c for c in Ledger(state).read()["calls"] if c["kind"] == "bedrock_invoke_model"]
+    ok = sorted({c["detail"].get("label") for c in calls if c["outcome"] == "ok" and c.get("backend") == backend
+                 and c["detail"].get("dimensions") == dimensions})
+    return {"attempted_total": len(calls),
+            "ok": sum(1 for c in calls if c["outcome"] == "ok"),
+            "failed": sum(1 for c in calls if c["outcome"] == "failed"),
+            "unfinished": sum(1 for c in calls if c["outcome"] == "attempted"),
+            "failed_by_category": _count(c.get("result", {}).get("error_category", "unrecorded")
+                                         for c in calls if c["outcome"] == "failed"),
+            "ok_labels_at_these_dimensions": ok}
+
+
+def _count(items) -> dict:
+    out = {}
+    for i in items:
+        out[i] = out.get(i, 0) + 1
+    return dict(sorted(out.items()))
+
+
+def smoke(state: Path, runtime, region: str, dimensions: int, backend: str, inputs: list,
+          only_missing: bool = False) -> dict:
+    """Embed each synthetic input once. Stops at the first failure; never retries.
+
+    ``only_missing`` skips inputs that already have an ``ok`` InvokeModel
+    record at these dimensions in this state's ledger. It never resets a
+    counter or raises a cap; every earlier attempt, failed ones included,
+    stays charged.
+    """
     led = Ledger(state)
+    history = invocation_history(state, dimensions, backend)
+    skipped = []
+    if only_missing:
+        skipped = [it["id"] for it in inputs if it["id"] in history["ok_labels_at_these_dimensions"]]
+        inputs = [it for it in inputs if it["id"] not in skipped]
     rem = led.remaining()
     bodies = [build_body(it["text"], dimensions) for it in inputs]
     need = {"bedrock_invocations": len(inputs), "bedrock_input_chars": sum(len(i["text"]) for i in inputs),
@@ -147,16 +187,19 @@ def smoke(state: Path, runtime, region: str, dimensions: int, backend: str, inpu
         try:
             r = invoke(led, runtime, dimensions, it["text"], backend, it["id"])
         except Exception as e:  # noqa: BLE001 - stop at the first failure, recorded
-            error = {"input": it["id"], "type": type(e).__name__, "message": str(e)[:300]}
+            info = classify(e)
+            error = {"input": it["id"], "type": info["error_type"], **{k: v for k, v in info.items()
+                                                                       if k != "error_type"}}
             break
         vectors[it["id"]] = r.pop("vector")
         calls.append({"input": it["id"], "chars": len(it["text"]), **{k: v for k, v in r.items() if k != "tokens"}})
     ids = list(vectors)
     cos = {f"{a}|{b}": round(sum(x * y for x, y in zip(vectors[a], vectors[b])), 6)
            for i, a in enumerate(ids) for b in ids[i + 1:]}
-    report = {"schema": "flh063_titan_smoke_v1", "backend": backend, "started_utc": started,
+    report = {"schema": "flh066_titan_smoke_v2", "backend": backend, "started_utc": started,
               "finished_utc": utc_now(), "region": region, "model_id": MODEL_ID, "identity": identity(region, dimensions),
               "dimensions": dimensions, "text_convention": TEXT_CONVENTION, "planned_calls": len(inputs),
+              "only_missing": only_missing, "skipped_already_ok": skipped, "ledger_history_before": history,
               "completed_calls": len(calls), "error": error, "calls": calls,
               "pairwise_cosine_exploratory": cos,
               "note": "cosine values are exploratory observations on synthetic inputs, not relevance or SAME judgments",
