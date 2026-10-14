@@ -8,3 +8,8 @@ jmespath==1.1.0
 python-dateutil==2.9.0.post0
 six==1.17.0
 urllib3==2.8.0
+# FLH-066: a profile created by `aws login` (login_session in the AWS config)
+# resolves credentials only when awscrt is importable; without it botocore
+# raises MissingDependencyException. 0.36.0 is exactly what botocore 1.43.104's
+# `crt` extra pins (uploaded to PyPI 2026-07-16; wheels for macOS, Linux and Windows).
+awscrt==0.36.0

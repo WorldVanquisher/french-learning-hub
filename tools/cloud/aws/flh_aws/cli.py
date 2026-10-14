@@ -6,7 +6,8 @@ leaves the machine). Fake and live budgets therefore never mix.
 
 Exit codes: 0 OK; 1 failure (AWS error or failed verification); 2 usage or
 refusal, including whole-plan budget pre-checks (nothing sent); 3 a single call
-would exceed a cap (that call is not sent).
+would exceed a cap (that call is not sent); 4 outcome not verified (a request's
+effect is unknown, or deletion could not be confirmed): run `recover`.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import sys
 from pathlib import Path
 
 from . import TOOL_VERSION
+from .diagnostics import classify, sanitize
 from .ledger import DEFAULT_CAPS, MAX_CHARS_PER_INPUT, CapExceeded, Ledger, utc_now
 from .snapshot import Refused, VerificationError, check_outside_repo, make_package, new_run_id, write_json
 
@@ -132,8 +134,13 @@ def cmd_deploy(args):
     s = _state(args)
     backend, c = _clients(s, args, args.region)
     _need_live(backend, args)
-    from .s3store import deploy
-    out = deploy(s, c, args.region, args.retention_days, backend)
+    from .s3store import OutcomeUnknown, deploy, load_resources, stack_report
+    try:
+        out = deploy(s, c, args.region, args.retention_days, backend)
+    except (OutcomeUnknown, VerificationError) as e:
+        _evidence(s, "deploy-failed", _masked({"error": sanitize(e, 2000), "stack": stack_report(load_resources(s))}))
+        raise
+    out = _masked(out)
     _evidence(s, "deploy", out)
     return out
 
@@ -198,26 +205,66 @@ def cmd_cleanup(args):
     s = _state(args)
     backend, c = _clients(s, args, _bucket_region(s))
     _need_live(backend, args)
-    from .s3store import cleanup
-    out = cleanup(s, c, backend)
+    from .s3store import CLEANUP_EXIT, cleanup
+    out = _masked(cleanup(s, c, backend))
     _evidence(s, "cleanup", out)
-    if out.get("unknown_keys") or out.get("kept"):
-        print(json.dumps(out, indent=2), file=sys.stderr)
-        raise VerificationError("cleanup stopped: the bucket holds objects this state directory did not write")
+    code = CLEANUP_EXIT[out["cleanup_state"]]
+    if code:
+        print(f"cleanup_state={out['cleanup_state']}: {out['stack'].get('reason', '')}", file=sys.stderr)
+        for line in out["notes"] + [f"unknown key kept: {k}" for k in out["unknown_keys"]] + \
+                [f"recorded object kept: {k['key']} ({k['reason']})" for k in out["kept"]] + out["operator_steps"]:
+            print(f"  {line}", file=sys.stderr)
+        if out.get("error"):
+            print(f"  error [{out['error']['category']}] in {out['error']['phase']}: {out['error']['message']}",
+                  file=sys.stderr)
+    return out, code
+
+
+def cmd_recover(args):
+    s = _state(args)
+    from .s3store import load_resources, recover
+    if not load_resources(s).get("stack"):
+        return {"stack": {"state": "none_recorded"}, "actions": [], "note": "nothing recorded; nothing sent"}
+    backend, c = _clients(s, args, _bucket_region(s))
+    out = _masked(recover(s, c, backend, args.stack_id))
+    _evidence(s, "recover", out)
+    return out, (0 if out["stack"]["state"] in ("deletion_confirmed", "not_created", "none_recorded",
+                                                "resources_present") else 4)
+
+
+def cmd_auth_check(args):
+    s = _state(args)
+    from .awsclients import sdk_versions
+    backend, c = _clients(s, args, args.region)
+    ident = c.sts.get_caller_identity()
+    arn = ident.get("Arn", "")
+    out = {"backend": backend, "profile": getattr(args, "profile", None), "region": args.region,
+           "sdk": sdk_versions(), "credential_method": getattr(c, "credential_method", "fake"),
+           "principal_arn": sanitize(arn), "account_last4": ident.get("Account", "")[-4:],
+           "note": "credentials were resolved in memory and are not printed; GetCallerIdentity is the only request"}
+    _evidence(s, "auth-check", out)
     return out
+
+
+def _masked(d):
+    """Mask 12-digit account ids in printed and evidence copies (resources.json keeps the real value)."""
+    return json.loads(sanitize(json.dumps(d, default=str), limit=10 ** 9))
 
 
 def cmd_status(args):
     s = _state(args)
     from .s3store import load_resources
     led = Ledger(s).read()
+    from .s3store import operator_steps, stack_report
     res = load_resources(s)
+    report, steps = stack_report(res), operator_steps(res)
     res.pop("account", None)
-    return {"backend": _backend(s), "used": led["used"], "caps": led["caps"],
-            "calls": {"total": len(led["calls"]),
-                      "failed": sum(1 for x in led["calls"] if x["outcome"] == "failed"),
-                      "unfinished": sum(1 for x in led["calls"] if x["outcome"] == "attempted")},
-            "resources": res, "packages": list(_packages(s))}
+    return _masked({"backend": _backend(s), "used": led["used"], "caps": led["caps"],
+                    "remaining": Ledger(s).remaining(),
+                    "calls": {"total": len(led["calls"]),
+                              "failed": sum(1 for x in led["calls"] if x["outcome"] == "failed"),
+                              "unfinished": sum(1 for x in led["calls"] if x["outcome"] == "attempted")},
+                    "stack": report, "operator_steps": steps, "resources": res, "packages": list(_packages(s))})
 
 
 def cmd_titan_preflight(args):
@@ -236,10 +283,11 @@ def cmd_titan_smoke(args):
     inputs = load_smoke_inputs(Path(args.inputs)) if args.inputs else load_smoke_inputs()
     backend, c = _clients(s, args, args.region)
     _need_live(backend, args)
-    out = smoke(s, c.bedrock_runtime, args.region, args.dimensions, backend, inputs)
+    out = smoke(s, c.bedrock_runtime, args.region, args.dimensions, backend, inputs, args.only_missing)
     if out["error"]:
         print(json.dumps(out, indent=2), file=sys.stderr)
-        raise VerificationError(f"smoke stopped at {out['error']['input']}: {out['error']['type']}")
+        e = out["error"]
+        raise VerificationError(f"smoke stopped at {e['input']}: {e['type']} [{e['category']}]. {e['guidance']}")
     return out
 
 
@@ -302,11 +350,16 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--into", required=True)
     sp.add_argument("--expect-manifest-sha256", required=True)
     add("cleanup", cmd_cleanup, profile=True, live=True)
+    sp = add("recover", cmd_recover, profile=True)
+    sp.add_argument("--stack-id", help="full CloudFormation StackId ARN, for a record that has none (read-only check)")
+    add("auth-check", cmd_auth_check, profile=True, region=True)
     add("status", cmd_status)
     add("titan-preflight", cmd_titan_preflight, profile=True, region=True)
     sp = add("titan-smoke", cmd_titan_smoke, profile=True, region=True, live=True)
     sp.add_argument("--dimensions", type=int, required=True, choices=(256, 512, 1024))
     sp.add_argument("--inputs", help="synthetic inputs file (default smoke_inputs.json)")
+    sp.add_argument("--only-missing", action="store_true",
+                    help="skip inputs that already have an ok InvokeModel record in this ledger")
     sp = add("adapter", cmd_adapter, profile=True, region=True, live=True)
     sp.add_argument("--dimensions", type=int, required=True, choices=(256, 512, 1024))
     sp.add_argument("--port", type=int, required=True)
@@ -315,8 +368,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    from .s3store import OutcomeUnknown
+    code = 0
     try:
         out = args.fn(args)
+        if isinstance(out, tuple):
+            out, code = out
+    except OutcomeUnknown as e:
+        print(f"outcome unknown: {sanitize(e, 2000)}", file=sys.stderr)
+        return 4
     except Refused as e:
         print(f"refused: {e}", file=sys.stderr)
         return 2
@@ -326,11 +386,13 @@ def main(argv=None) -> int:
     except VerificationError as e:
         print(f"verification failed: {e}", file=sys.stderr)
         return 1
-    except Exception as e:  # noqa: BLE001 - AWS/client errors; no credentials are in these messages
-        print(f"error: {type(e).__name__}: {e}", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001 - AWS/client errors, categorized and sanitized
+        info = classify(e)
+        print(f"error: {info['error_type']} [{info['category']}]: {info['message']}\n{info['guidance']}",
+              file=sys.stderr)
         return 1
     print(json.dumps(out, indent=2, ensure_ascii=False, default=str))
-    return 0
+    return code
 
 
 if __name__ == "__main__":

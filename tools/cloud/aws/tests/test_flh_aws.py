@@ -208,7 +208,9 @@ class FakeWorkflowTests(unittest.TestCase):
         self.assertEqual(rest["checks"]["domain"]["counts"]["knowledge_concepts"], len(CONCEPTS))
         code, cl, err = self.cli("cleanup")
         self.assertEqual(code, 0, err)
-        self.assertEqual(cl["stack"], "DELETED")
+        self.assertEqual(cl["cleanup_state"], "deletion_confirmed")
+        self.assertEqual(cl["stack"]["observed_by"], "describe_stacks_by_id")
+        self.assertEqual(cl["stack"]["bucket_probe"], "absent")
         self.assertEqual(len(cl["objects_deleted"]), 2)
         self.assertFalse((self.fake / "s3").exists() and any((self.fake / "s3").iterdir()))
         self.assertEqual(self.cli("cleanup")[0], 0)  # safe to repeat
@@ -264,6 +266,7 @@ class FakeWorkflowTests(unittest.TestCase):
         code, _, err = self.cli("cleanup")
         self.assertEqual(code, 1)
         self.assertIn("other/unknown.txt", err)
+        self.assertEqual(json.loads((self.state / "resources.json").read_text())["stack"]["status"], "CREATE_COMPLETE")
         self.assertTrue(s3._obj(res["bucket"], "other/unknown.txt").with_suffix(".bin").exists())
         st = json.loads((self.fake / "cfn" / f"{res['stack']['name']}.json").read_text())
         self.assertEqual(st["StackStatus"], "CREATE_COMPLETE")
