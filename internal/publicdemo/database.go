@@ -10,7 +10,9 @@ import (
 	"io/fs"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"french-learning-app/internal/application"
 	"french-learning-app/internal/storage/sqlite"
@@ -74,37 +76,150 @@ func checkMigrations(db *sql.DB) error {
 	return nil
 }
 
-// fingerprintQueries select content columns only (no timestamps), so the same
-// fixture always produces the same fingerprint.
-var fingerprintQueries = []struct{ name, query string }{
+// FingerprintVersion names the domain-fingerprint contract. v1 (FLH-073,
+// manifests without a version) omitted admission recommendations, the
+// current-extraction selection and the order of latest-wins records, so a
+// change to them could keep a valid fingerprint; v1 artifacts are refused.
+const FingerprintVersion = "flh075_domain_fingerprint_v2"
+
+// fingerprintContent lists, for every table that public-library reads depend
+// on, the columns that carry domain meaning. Absolute timestamps are excluded
+// (they only label records); where "latest wins" reads order rows by
+// created_at, the row's position in that order is included instead (order_rank,
+// computed across all ordered tables because effective annotation compares
+// SAME, DISTINCT and relation events with each other).
+var fingerprintContent = []struct{ table, query string }{
 	{"learning_entries", `SELECT id, original_input, original_context FROM learning_entries ORDER BY id`},
 	{"entry_analyses", `SELECT id, entry_id, version, category, explanation, confidence, uncertainty, analyzer FROM entry_analyses ORDER BY id`},
 	{"analysis_feedback", `SELECT id, analysis_id, status, corrected_category, corrected_explanation, user_note FROM analysis_feedback ORDER BY id`},
 	{"knowledge_extractions", `SELECT id, entry_id, version, source_analysis_id, source_feedback_id, extractor FROM knowledge_extractions ORDER BY id`},
+	{"entry_current_extractions", `SELECT entry_id, extraction_id FROM entry_current_extractions ORDER BY entry_id`},
 	{"knowledge_units", `SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence FROM knowledge_units ORDER BY id`},
+	{"knowledge_admission_recommendations", `SELECT id, unit_id, ruleset, state, reason FROM knowledge_admission_recommendations ORDER BY id`},
 	{"knowledge_admission_overrides", `SELECT id, unit_id, decision, reason, note FROM knowledge_admission_overrides ORDER BY id`},
 	{"knowledge_concepts", `SELECT id, identity_schema_version, target, pedagogical_intent, scope, identity_features, signature, preferred_unit_id, lifecycle_state FROM knowledge_concepts ORDER BY id`},
-	{"unit_concept_links", `SELECT id, unit_id, concept_id, relation, status, decision_source, resolver_version, supersedes_link_id FROM unit_concept_links ORDER BY id`},
+	{"unit_concept_links", `SELECT id, unit_id, concept_id, relation, status, decision_source, resolver_version, score, evidence, supersedes_link_id FROM unit_concept_links ORDER BY id`},
 	{"unit_concept_memberships", `SELECT unit_id, concept_id, link_id FROM unit_concept_memberships ORDER BY unit_id`},
-	{"unit_concept_distinctions", `SELECT id, unit_id, concept_id, decision_source FROM unit_concept_distinctions ORDER BY id`},
-	{"unit_resolution_judgments", `SELECT id, unit_id, judgment, decision_source, note FROM unit_resolution_judgments ORDER BY id`},
-	{"learning_captures", `SELECT id, capture_id, entry_id FROM learning_captures ORDER BY id`},
-	{"semantic_embedding_cache", `SELECT content_hash FROM semantic_embedding_cache ORDER BY content_hash`},
-	{"semantic_index_spaces", `SELECT space FROM semantic_index_spaces ORDER BY space`},
+	{"unit_concept_distinctions", `SELECT id, unit_id, concept_id, decision_source, resolver_version, evidence FROM unit_concept_distinctions ORDER BY id`},
+	{"unit_resolution_judgments", `SELECT id, unit_id, judgment, decision_source, note, evidence FROM unit_resolution_judgments ORDER BY id`},
+	{"learning_captures", `SELECT id, capture_id, entry_id, analysis_id, source, schema_version, discussion_summary, content_fingerprint FROM learning_captures ORDER BY id`},
 }
 
-// ComputeFingerprint digests the database content.
+// orderedTables are read "latest by created_at, then id". Their rows get a
+// global order rank.
+var orderedTables = []string{"analysis_feedback", "knowledge_admission_recommendations", "knowledge_admission_overrides",
+	"unit_concept_links", "unit_concept_distinctions", "unit_resolution_judgments"}
+
+// emptyTables must hold no rows in a demo artifact: semantic index state is
+// replaced by the artifact's own vectors, and the demo records no operations.
+var emptyTables = []string{"annotation_operations", "semantic_embedding_cache", "semantic_index_collections",
+	"semantic_index_manifest", "semantic_index_physical_collections", "semantic_index_points", "semantic_index_spaces"}
+
+// unfingerprintedTables are bookkeeping, checked elsewhere or not data.
+var unfingerprintedTables = map[string]string{
+	"schema_migrations": "checked exactly against the embedded migrations",
+	"sqlite_sequence":   "autoincrement counters, not domain data",
+}
+
+// FingerprintTables reports every table the fingerprint covers, by kind.
+func FingerprintTables() (content, empty []string, skipped map[string]string) {
+	for _, c := range fingerprintContent {
+		content = append(content, c.table)
+	}
+	return content, append([]string{}, emptyTables...), unfingerprintedTables
+}
+
+type orderKey struct {
+	table string
+	id    int64
+}
+
+// orderRanks ranks every row of the ordered tables by its created_at instant
+// (parsed as RFC 3339; equal instants share a rank). Unparseable timestamps
+// rank after all valid ones and their raw text is digested, so corruption is
+// visible.
+func orderRanks(ctx context.Context, db *sql.DB) (map[orderKey]string, error) {
+	type row struct {
+		key   orderKey
+		at    time.Time
+		raw   string
+		valid bool
+	}
+	var rows []row
+	for _, t := range orderedTables {
+		rs, err := db.QueryContext(ctx, `SELECT id, created_at FROM `+t)
+		if err != nil {
+			return nil, fmt.Errorf("order %s: %w", t, err)
+		}
+		for rs.Next() {
+			var r row
+			r.key.table = t
+			if err := rs.Scan(&r.key.id, &r.raw); err != nil {
+				rs.Close()
+				return nil, err
+			}
+			at, err := time.Parse(time.RFC3339Nano, r.raw)
+			r.at, r.valid = at, err == nil
+			rows = append(rows, r)
+		}
+		if err := rs.Err(); err != nil {
+			rs.Close()
+			return nil, err
+		}
+		rs.Close()
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, b := rows[i], rows[j]
+		if a.valid != b.valid {
+			return a.valid
+		}
+		if a.valid && !a.at.Equal(b.at) {
+			return a.at.Before(b.at)
+		}
+		if !a.valid && a.raw != b.raw {
+			return a.raw < b.raw
+		}
+		if a.key.table != b.key.table {
+			return a.key.table < b.key.table
+		}
+		return a.key.id < b.key.id
+	})
+	ranks := map[orderKey]string{}
+	rank := 0
+	for i, r := range rows {
+		if i == 0 || !(r.valid == rows[i-1].valid && (r.valid && r.at.Equal(rows[i-1].at) || !r.valid && r.raw == rows[i-1].raw)) {
+			rank++
+		}
+		if r.valid {
+			ranks[r.key] = strconv.Itoa(rank)
+		} else {
+			ranks[r.key] = "invalid:" + r.raw
+		}
+	}
+	return ranks, nil
+}
+
+// ComputeFingerprint digests the database's domain content (FingerprintVersion).
 func ComputeFingerprint(ctx context.Context, db *sql.DB) (DomainFingerprint, error) {
+	fp := DomainFingerprint{Version: FingerprintVersion, Counts: map[string]int{}}
+	ranks, err := orderRanks(ctx, db)
+	if err != nil {
+		return fp, err
+	}
+	ordered := map[string]bool{}
+	for _, t := range orderedTables {
+		ordered[t] = true
+	}
 	h := sha256.New()
-	fp := DomainFingerprint{Counts: map[string]int{}}
-	for _, q := range fingerprintQueries {
+	fmt.Fprintf(h, "%s\n", FingerprintVersion)
+	for _, q := range fingerprintContent {
 		rows, err := db.QueryContext(ctx, q.query)
 		if err != nil {
-			return fp, fmt.Errorf("fingerprint %s: %w", q.name, err)
+			return fp, fmt.Errorf("fingerprint %s: %w", q.table, err)
 		}
 		cols, _ := rows.Columns()
 		n := 0
-		fmt.Fprintf(h, "%s\n", q.name)
+		fmt.Fprintf(h, "%s\n", q.table)
 		for rows.Next() {
 			vals := make([]any, len(cols))
 			ptrs := make([]any, len(cols))
@@ -120,6 +235,10 @@ func ComputeFingerprint(ctx context.Context, db *sql.DB) (DomainFingerprint, err
 					vals[i] = string(b)
 				}
 			}
+			if ordered[q.table] {
+				id, _ := vals[0].(int64)
+				vals = append(vals, ranks[orderKey{q.table, id}])
+			}
 			line, _ := json.Marshal(vals)
 			h.Write(line)
 			h.Write([]byte("\n"))
@@ -130,7 +249,15 @@ func ComputeFingerprint(ctx context.Context, db *sql.DB) (DomainFingerprint, err
 			return fp, err
 		}
 		rows.Close()
-		fp.Counts[q.name] = n
+		fp.Counts[q.table] = n
+	}
+	for _, t := range emptyTables {
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT count(*) FROM `+t).Scan(&n); err != nil {
+			return fp, fmt.Errorf("fingerprint %s: %w", t, err)
+		}
+		fmt.Fprintf(h, "%s %d\n", t, n)
+		fp.Counts[t] = n
 	}
 	fp.SHA256 = hex.EncodeToString(h.Sum(nil))
 	return fp, nil
@@ -155,16 +282,30 @@ func OpenArtifact(ctx context.Context, dir string) (*Artifact, *sql.DB, error) {
 	return a, db, nil
 }
 
+func equalCounts(a, b map[string]int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 func (a *Artifact) verifyDatabase(ctx context.Context, db *sql.DB) error {
 	fp, err := ComputeFingerprint(ctx, db)
 	if err != nil {
 		return fail("fingerprint: %v", err)
 	}
-	if fp.SHA256 != a.Manifest.DomainFingerprint.SHA256 {
+	if fp.SHA256 != a.Manifest.DomainFingerprint.SHA256 || !equalCounts(fp.Counts, a.Manifest.DomainFingerprint.Counts) {
 		return fail("database fingerprint differs from the manifest")
 	}
-	if fp.Counts["semantic_embedding_cache"] != 0 || fp.Counts["semantic_index_spaces"] != 0 {
-		return fail("demo database must not carry semantic index state")
+	for _, t := range emptyTables {
+		if fp.Counts[t] != 0 {
+			return fail("demo database must not carry %s rows", t)
+		}
 	}
 	concepts, err := sqlite.NewConceptRepository(db).ListConcepts(ctx, nil)
 	if err != nil {

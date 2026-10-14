@@ -13,6 +13,13 @@ Contract: [plan](plans/FLH-073-public-readonly-demo.md). Evidence:
 [validation](validation/FLH-073-public-readonly-demo.md). Tooling:
 [scripts/demo/flh073/](../scripts/demo/flh073/README.md).
 
+**Integrity fixes (FLH-075):** [plan](plans/FLH-075-public-demo-integrity.md),
+[validation](validation/FLH-075-public-demo-integrity.md). They fix the two
+defects that the independent FLH-074 acceptance found: static files could
+escape the web root through a symlink, and the domain fingerprint did not cover
+admission authority. Artifacts built before FLH-075 must be rebuilt
+([below](#rebuilding-an-artifact-from-before-flh-075)).
+
 > **Release status: BLOCKED.** The only artifact that can be built today uses
 > **mechanical test vectors** (feature hashing of words, not a language
 > model). Its semantic and hybrid rankings show the ranking mechanics only and
@@ -33,7 +40,8 @@ build):
   - the file hashes, the vector identity (source, model, dimensions,
     representations) and each preset's exact query envelope;
   - that every Concept has exactly its recorded document vector;
-  - the database fingerprint.
+  - the database's domain fingerprint, contract `flh075_domain_fingerprint_v2`
+    ([below](#domain-fingerprint-v2)).
 
   Any mismatch stops startup.
 - **Providers:** startup is refused unless `AI_PROVIDER=rule-based`,
@@ -58,6 +66,82 @@ build):
   - semantic and hybrid use the unchanged services and the
     `concept_hybrid_rrf_v1` policy, over an in-process read-only index of the
     artifact's vectors. **No Qdrant is used.**
+
+## Static files and symlinks
+
+The demo web build (`-web-dir`) is served through an `os.Root` opened on that
+directory. Each file open is confined to the directory tree by the operating
+system's directory handle, so a link swapped in after startup is confined
+too; there is no separate path check that could race.
+
+| Case | Result |
+| --- | --- |
+| Regular files inside the web directory | Served (`/`, `/assets/…`) |
+| Relative symlink (file or directory, any depth) whose target stays inside the web directory | Followed |
+| Absolute symlink, even to a path inside the web directory | Refused, `404` |
+| Symlink resolving outside the web directory (directly, through `..`, or through a linked directory) | Refused, `404` |
+| Directories | Never listed, `404` |
+| `index.html` resolving outside the web directory | Startup error |
+| The `-web-dir` path itself being a symlink | Allowed; resolved once at startup |
+
+**Release rule:** ship the demo web build as plain files. Before deploying,
+`find <web-dir> -type l` should print nothing. The policy above is a
+safeguard, not a reason to keep links.
+
+**Not covered:** `os.Root` does not stop hard links, bind mounts or other
+filesystem-level aliases created by someone with write access to the
+directory. Keep the release directory read-only.
+
+## Domain fingerprint (v2)
+
+The manifest's `domain_fingerprint` (`version: flh075_domain_fingerprint_v2`)
+is a SHA-256 over the content columns of every table the public library reads:
+- entries and analyses;
+- feedback;
+- extractions and the current-extraction selection;
+- units;
+- admission recommendations and overrides;
+- Concepts, links, memberships, distinctions, unit judgments;
+- captures.
+
+It also records row counts, and requires the annotation-operation and semantic
+index tables to be empty. A test fails if a table in the schema is neither
+covered nor explicitly exempted.
+
+**Timestamps:**
+- *Absolute* timestamps are excluded, so the same fixture always produces the
+  same fingerprint and artifact version.
+- Where reads pick the latest record by `created_at` (admission, feedback,
+  links, distinctions, judgments), the records' **relative order** is
+  included, so reordering them invalidates the artifact.
+- The exact bytes, including displayed dates, are still bound by
+  `files["demo.db"]`.
+
+**Changing any covered authority invalidates the artifact,** even when someone
+also refreshes `files["demo.db"]`. For example, suppressing an admission
+recommendation, pinning an extraction or retiring a Concept. This detects
+inconsistent edits. It is not a signature: someone who can rewrite the
+database *and* recompute the manifest can still forge an artifact. Keep
+release directories read-only and record the manifest SHA-256 you deploy.
+
+## Rebuilding an artifact from before FLH-075
+
+Older artifacts have a fingerprint with no `version` (v1, FLH-073). The server
+and `prepare validate` refuse them with `domain fingerprint contract v1
+(FLH-073, no version) is not flh075_domain_fingerprint_v2 … Rebuild the
+artifact`. Nothing is converted in place; build a new directory:
+
+```sh
+go build -o /tmp/flh-prepare ./scripts/demo/flh073/prepare
+/tmp/flh-prepare build -out /new/artifact/dir -fixtures scripts/demo/flh073/fixtures/catalog.json
+/tmp/flh-prepare validate -artifact /new/artifact/dir            # 0
+/tmp/flh-prepare validate -artifact /new/artifact/dir -release   # 3 (BLOCKED) for mechanical vectors
+```
+
+Then point the release at the new directory, as for any rollout. Keep the old
+directory unchanged if you want it for comparison. The rebuilt artifact has a
+new manifest SHA-256 and artifact version. The vectors are identical, because
+the fixtures are unchanged.
 
 ## Local smoke (this Mac or any Linux host; no Docker)
 
@@ -94,9 +178,10 @@ go run ./scripts/demo/flh073/prepare build -out $W/artifact
 - **Releases:** each release directory holds the server binary's version, the
   artifact directory and the demo web build. `current` is a symlink to the
   active release.
-- **Permissions:** make the artifact read-only for that user
-  (`chmod -R a-w releases/<id>/artifact`). The server needs no write access
-  anywhere; it writes only logs to stderr.
+- **Permissions:** make the artifact and web build read-only for that user
+  (`chmod -R a-w releases/<id>`). Check that the web build has no symlinks
+  (`find releases/<id>/web -type l` prints nothing). The server needs no write
+  access anywhere; it writes only logs to stderr.
 - **Process:** run it under the init system with an explicit environment and
   `WorkingDirectory` set to the release directory, so no `.env` is picked up:
 
