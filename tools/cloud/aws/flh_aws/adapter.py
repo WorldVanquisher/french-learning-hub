@@ -78,7 +78,7 @@ def make_server(state: Path, runtime, region: str, dimensions: int, backend: str
             data = []
             for i, text in enumerate(inputs):
                 try:
-                    r = invoke(ledger, runtime, dimensions, text, backend, f"adapter[{i}]")
+                    r = invoke(ledger, runtime, dimensions, text, backend, f"adapter[{i}]", region=region)
                 except CapExceeded:
                     return self._error(429, "budget_exhausted", "budget reached; no partial result")
                 except Refused as e:
