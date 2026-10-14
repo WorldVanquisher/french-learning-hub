@@ -130,12 +130,18 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		options = append(options, transporthttp.WithSemanticSearch(application.NewSemanticSearchService(
+		semanticSvc := application.NewSemanticSearchService(
 			conceptRepo, libraryService, sqlite.NewSemanticIndexRepository(db),
 			vectorindex.NewQdrant(cfg.Semantic.QdrantURL, cfg.Semantic.QdrantAPIKey, cfg.Semantic.QdrantTimeout),
 			selectedEmbeddingProvider, space,
-		)))
-		log.Printf("semantic search: qdrant collection %s (model %s, %d dimensions)", space.Collection, space.ModelID, space.Dimensions)
+		)
+		options = append(options,
+			transporthttp.WithSemanticSearch(semanticSvc),
+			// FLH-071: hybrid fuses keyword and this semantic search; it exists only
+			// when semantic search does and never runs keyword search alone.
+			transporthttp.WithHybridSearch(application.NewHybridSearchService(libraryService, semanticSvc, conceptRepo, libraryService)),
+		)
+		log.Printf("semantic search: qdrant collection %s (model %s, %d dimensions); hybrid search: %s", space.Collection, space.ModelID, space.Dimensions, application.HybridSearchPolicyVersion)
 	} else {
 		log.Printf("semantic search: %s", cfg.Semantic.Mode)
 	}

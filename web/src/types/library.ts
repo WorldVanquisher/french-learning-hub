@@ -31,7 +31,8 @@ export interface LibrarySearch {
 
 // FLH-040 semantic search: an explicit, opt-in mode. The backend embeds the
 // query, reads stored concept vectors and re-checks every hit against SQLite.
-export type LibrarySearchMode = "keyword" | "semantic";
+// FLH-071 hybrid: an explicit third mode that fuses both rankings on the server.
+export type LibrarySearchMode = "keyword" | "semantic" | "hybrid";
 
 export interface SemanticSearchResult {
   concept: Concept;
@@ -71,6 +72,48 @@ export interface SemanticSearch {
   filtered_by_state: number;
   score_note: string;
   results: SemanticSearchResult[];
+}
+
+// FLH-071 hybrid search: the server fuses the keyword and semantic candidate
+// rankings by Concept ID with reciprocal rank fusion. Every value below is a
+// backend fact; the browser never recomputes ranks or scores.
+export interface HybridSearchResult {
+  concept: Concept;
+  // Σ 1/(rrf_k + rank) over the components that ranked the concept. Not a
+  // probability or a relevance estimate; comparable only within one response.
+  fused_score: number;
+  sources: Array<"keyword" | "semantic">;
+  // Keyword rank is the keyword order (tier, status, title, id); it has no score.
+  keyword: { rank: number; match_tier: "identity" | "unit_evidence"; matched_fields: string[] } | null;
+  semantic: { rank: number; similarity: number } | null;
+  current_member_count: number;
+  supporting_unit_count: number;
+}
+
+export interface HybridSearch {
+  schema_version: "knowledge_library_hybrid_search_v1";
+  query: string;
+  state: LibraryStateFilter;
+  limit: number;
+  depth: number;
+  policy: { version: string; rrf_k: number; weights: { keyword: number; semantic: number }; tie_break: string };
+  score_note: string;
+  components: {
+    keyword: { returned: number; total_matches: number; truncated_at_depth: boolean; matching: string };
+    semantic: {
+      returned: number;
+      considered: number;
+      skipped: { missing: number; stale: number; incompatible: number; non_positive: number };
+      filtered_by_state: number;
+      query_representation: string;
+      index: SemanticSearch["index"];
+      score_note: string;
+    };
+  };
+  total_candidates: number;
+  truncated: boolean;
+  dropped_after_fusion: { missing: number; filtered_by_state: number; changed_during_search: number; duplicate_component_ids: number };
+  results: HybridSearchResult[];
 }
 
 // One unit with the provenance facts needed to label it honestly.

@@ -34,7 +34,7 @@ import type {
   NewFeedback,
   LearningRecordState,
 } from "../types/learning";
-import type { LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, SemanticSearch } from "../types/library";
+import type { HybridSearch, LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, SemanticSearch } from "../types/library";
 
 // ApiError carries the HTTP status so callers can react specifically — most
 // importantly to 409 Conflict, after which the UI must refresh the unit's current
@@ -211,6 +211,15 @@ export function semanticSearchLibrary(query: LibraryQuery, fetchImpl: typeof fet
   const params = new URLSearchParams({ q: query.q.trim() });
   if (query.state !== "all") params.set("state", query.state);
   return request<SemanticSearch>("GET", `/knowledge-library/semantic-search?${params.toString()}`, undefined, fetchImpl);
+}
+
+// hybridSearchLibrary runs the explicit FLH-071 hybrid search. The server fuses
+// keyword and semantic rankings; without semantic search it answers with an
+// explicit error and never returns keyword results alone.
+export function hybridSearchLibrary(query: LibraryQuery, fetchImpl: typeof fetch = fetch): Promise<HybridSearch> {
+  const params = new URLSearchParams({ q: query.q.trim() });
+  if (query.state !== "all") params.set("state", query.state);
+  return request<HybridSearch>("GET", `/knowledge-library/hybrid-search?${params.toString()}`, undefined, fetchImpl);
 }
 
 export function getLibraryConcept(conceptId: number, fetchImpl: typeof fetch = fetch): Promise<LibraryConcept> {
