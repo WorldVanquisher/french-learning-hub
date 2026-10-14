@@ -20,6 +20,18 @@ address the three gaps FLH-064's live run exposed:
 
 The guide for the next real run is [below](#next-real-run-flh-066).
 
+**Receipt integrity (FLH-068):** [plan](plans/FLH-068-aws-receipt-integrity.md),
+[validation](validation/FLH-068-aws-receipt-integrity.md). These changes fix
+the three defects FLH-067's independent acceptance reproduced:
+- **Ownership:** cleanup now refuses a saved StackId or an observed stack that
+  is not proven to be this state's, with zero destructive requests.
+- **Receipts:** malformed or inconsistent receipts are refused, and a bare
+  `DELETE_COMPLETE` is no longer proof.
+- **Titan continuation:** it reuses only a success for the exact same request.
+
+The checks detect corruption and inconsistent edits, not forgery by someone
+who can rewrite every local file.
+
 ## What it shows
 
 **A. Backup and isolated restore.**
@@ -255,6 +267,9 @@ $PY -B -m flh_aws status --state "$STATE"
   - `ledger_history_before.failed_by_category` is `{"unrecorded": 1}`, because
     FLH-064's failure predates categories (its evidence file keeps the
     message).
+- **Since FLH-068:** an input counts as done only for the exact same text,
+  model, region, dimensions, normalization and convention. FLH-064 has no
+  successful call, so the plan above is unchanged.
 - **If it fails again:** the report's `error.category` says why. Stop, and
   rerun the same command only after addressing that cause. Never reset the
   ledger, raise a cap or redeploy S3 to retry Titan.
@@ -272,7 +287,8 @@ $PY -B -m flh_aws status --state "$STATE"
 
 - **Result:**
   - `deletion_confirmed` (exit 0) needs `DELETE_COMPLETE` by StackId and
-    `NoSuchBucket`;
+    `NoSuchBucket`. The operator ARN must name `flh063-74ca91fbb3d3`, your
+    account and `ca-central-1`; any other is refused;
   - anything else exits 4 with steps.
 - **Retention:** CloudFormation keeps deleted stacks readable for a limited
   time (90 days per its documentation), so do this soon.

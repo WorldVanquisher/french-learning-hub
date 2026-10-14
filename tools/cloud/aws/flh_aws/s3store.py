@@ -42,8 +42,26 @@ RESOURCES_SCHEMA = "flh066_resources_v2"
 BY_ID = "describe_stacks_by_id"
 
 
+CFN_STATUSES = frozenset(
+    f"{op}_{st}" for op in ("CREATE", "ROLLBACK", "DELETE", "UPDATE", "UPDATE_ROLLBACK", "IMPORT",
+                            "IMPORT_ROLLBACK", "UPDATE_COMPLETE_CLEANUP", "UPDATE_ROLLBACK_COMPLETE_CLEANUP")
+    for st in ("IN_PROGRESS", "FAILED", "COMPLETE")) | {"REVIEW_IN_PROGRESS"}
+LOCAL_STATUSES = frozenset({CREATE_REQUESTING, CREATE_REJECTED, CREATE_UNKNOWN, DELETE_REQUESTED,
+                            LEGACY_CREATING, LEGACY_DELETED})
+OBSERVERS = frozenset({BY_ID, "describe_stacks_by_name", "create_stack_response", "local"})
+UTC_RE = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z")
+
+
 class OutcomeUnknown(Exception):
     """A request's effect could not be determined; nothing is retried automatically."""
+
+
+class ReceiptInvalid(VerificationError):
+    """resources.json is malformed or internally inconsistent; nothing is sent and no success is reported.
+
+    This detects corruption and inconsistent edits. It is not tamper-proofing:
+    whoever can rewrite every local file consistently can forge a receipt.
+    """
 
 
 # --- resources.json --------------------------------------------------------------
@@ -53,8 +71,99 @@ def resources_path(state: Path) -> Path:
 
 
 def load_resources(state: Path) -> dict:
+    """Read and validate the receipt. Raises ReceiptInvalid; never returns an inconsistent record."""
     p = resources_path(state)
-    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    if not p.exists():
+        return {}
+    try:
+        res = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        raise ReceiptInvalid(f"{p.name} is not valid JSON; nothing was sent") from None
+    problems = receipt_problems(res)
+    if problems:
+        raise ReceiptInvalid(f"{p.name} is malformed or inconsistent ({'; '.join(problems)}); nothing was sent "
+                             "and no cleanup result is reported. Restore it from your own copy, or inspect the "
+                             "resources in the AWS console")
+    return res
+
+
+def _is_str(v) -> bool:
+    return isinstance(v, str) and bool(v)
+
+
+def receipt_problems(res) -> list:
+    """Schema, type and identifier/state invariants of resources.json (FLH-068).
+
+    Legacy FLH-063/064 records (no ``schema``, no StackId) remain valid.
+    """
+    if not isinstance(res, dict):
+        return ["not a JSON object"]
+    if not res:
+        return []
+    out = []
+    schema = res.get("schema")
+    if schema is not None and schema != RESOURCES_SCHEMA:
+        out.append(f"unknown schema {schema!r}")
+    region, account, sid = res.get("region"), res.get("account"), res.get("state_id")
+    if not (_is_str(region) and re.fullmatch(r"[a-z]{2}(-[a-z]+)+-\d", region)):
+        out.append("region is not an AWS region name")
+    if not (_is_str(account) and re.fullmatch(r"\d{12}", account)):
+        out.append("account is not a 12-digit id")
+    if not (_is_str(sid) and re.fullmatch(r"[0-9a-f]{12}", sid)):
+        out.append("state_id is not 12 hex digits")
+        return out
+    expected = f"flh063-{sid}"
+    if res.get("bucket") != expected:
+        out.append("bucket does not match state_id")
+    st = res.get("stack")
+    if not isinstance(st, dict):
+        return out + ["stack is missing or not an object"]
+    if st.get("name") != expected:
+        out.append("stack name does not match state_id")
+    status = st.get("status")
+    if status not in CFN_STATUSES and status not in LOCAL_STATUSES:
+        out.append(f"unknown stack status {status!r}")
+    if st.get("observed_by") is not None and st.get("observed_by") not in OBSERVERS:
+        out.append("unknown observed_by")
+    for k in ("observed_utc", "requested_utc"):
+        if st.get(k) is not None and not (isinstance(st[k], str) and UTC_RE.fullmatch(st[k])):
+            out.append(f"stack.{k} is not a UTC timestamp")
+    if "tags" in st and st["tags"] != {"flh:task": TASK_TAG, "flh:state-id": sid}:
+        out.append("stack tags do not identify this state")
+    if st.get("id") is not None:
+        if not out:
+            try:
+                check_stack_id(st["id"], res)
+            except VerificationError:
+                out.append("stack.id is not this state's StackId (name, account, region)")
+    elif status == "DELETE_COMPLETE" or st.get("observed_by") == BY_ID or "deletion_confirmation" in st:
+        out.append("a StackId observation is recorded without a StackId")
+    if "deletion_confirmation" in st and not out and not _confirmation_ok(res):
+        out.append("deletion_confirmation is inconsistent with the stack record and bucket probe")
+    probe = res.get("bucket_probe")
+    if probe is not None and not (isinstance(probe, dict) and probe.get("result") in ("absent", "present", "unknown")
+                                  and isinstance(probe.get("utc"), str) and UTC_RE.fullmatch(probe["utc"])):
+        out.append("bucket_probe is malformed")
+    objs = res.get("objects", [])
+    if not isinstance(objs, list) or not all(
+            isinstance(o, dict) and _is_str(o.get("key")) and o["key"].startswith(KEY_PREFIX)
+            and _is_str(o.get("etag")) and _is_str(o.get("run_id")) for o in objs):
+        out.append("objects are malformed")
+    if not isinstance(res.get("runs", {}), dict):
+        out.append("runs is not an object")
+    if not isinstance(st.get("delete_attempts", []), list):
+        out.append("delete_attempts is not a list")
+    return out
+
+
+def _confirmation_ok(res: dict) -> bool:
+    """A deletion confirmation must restate exactly what was observed: by StackId, then NoSuchBucket."""
+    st, c, probe = res["stack"], res["stack"].get("deletion_confirmation"), res.get("bucket_probe") or {}
+    return (isinstance(c, dict) and c.get("stack_id") == st.get("id") and c.get("stack_status") == "DELETE_COMPLETE"
+            and st.get("status") == "DELETE_COMPLETE" and st.get("observed_by") == BY_ID
+            and c.get("observed_utc") == st.get("observed_utc") and probe.get("result") == "absent"
+            and c.get("bucket") == res.get("bucket") and c.get("bucket_probe_utc") == probe.get("utc")
+            and isinstance(c.get("observed_utc"), str) and c.get("observed_utc") <= probe.get("utc", ""))
 
 
 def save_resources(state: Path, res: dict) -> None:
@@ -77,6 +186,21 @@ def check_stack_id(stack_id: str, res: dict) -> None:
 def _observe(st: dict, status: str, by: str) -> None:
     st.update({"status": status, "observed_utc": _now(), "observed_by": by})
     st.pop("last_observation_error", None)
+    st.pop("deletion_confirmation", None)  # any new observation supersedes an earlier confirmation
+
+
+def ownership_problems(s: dict, res: dict) -> list:
+    """The observed stack must be exactly the recorded one and carry this state's task/state tags."""
+    st = res["stack"]
+    tags = {t.get("Key"): t.get("Value") for t in s.get("Tags") or [] if isinstance(t, dict)}
+    out = []
+    if s.get("StackId") != st.get("id"):
+        out.append("observed StackId differs from the recorded one")
+    if s.get("StackName") != st.get("name"):
+        out.append("observed stack name differs from the recorded one")
+    if tags.get("flh:task") != TASK_TAG or tags.get("flh:state-id") != res.get("state_id"):
+        out.append("observed tags do not identify this task and state directory")
+    return out
 
 
 def stack_report(res: dict) -> dict:
@@ -101,10 +225,17 @@ def stack_report(res: dict) -> dict:
             return {"state": "verification_unavailable", "reason": why, **rep}
         return {"state": "verification_unavailable",
                 "reason": "the creation outcome is not known and no StackId is recorded; run recover", **rep}
+    if st.get("ownership_refused"):
+        return {"state": "ownership_refused", "reason": "the observed stack is not proven to belong to this state "
+                "directory (" + "; ".join(st["ownership_refused"]["problems"]) + "); nothing destructive was sent",
+                **rep}
     if status == "DELETE_COMPLETE" and st.get("observed_by") == BY_ID:
-        if probe == "absent":
+        if probe == "absent" and _confirmation_ok(res):
             return {"state": "deletion_confirmed", "reason": "DELETE_COMPLETE read by StackId and the bucket is absent",
                     **rep}
+        if probe == "absent":
+            return {"state": "verification_unavailable", "reason": "DELETE_COMPLETE and bucket absence are recorded "
+                    "without a consistent deletion confirmation; cleanup or recover re-reads them", **rep}
         if probe == "present":
             return {"state": "resources_present", "reason": "the stack is DELETE_COMPLETE but the bucket still exists",
                     **rep}
@@ -209,6 +340,8 @@ def wait_stack(cfn, ident: str, ok: tuple, sleep=time.sleep) -> str:
         s = describe_stack(cfn, ident)
         if s is None:
             raise OutcomeUnknown("CloudFormation reports no stack for the recorded StackId")
+        if s.get("StackId") != ident:
+            raise VerificationError("DescribeStacks answered for a different StackId")
         st = s["StackStatus"]
         if st in ok or st.endswith("_FAILED") or st.endswith("ROLLBACK_COMPLETE") or st == "DELETE_COMPLETE":
             return st
@@ -255,6 +388,13 @@ def probe_bucket(state: Path, clients, backend: str) -> dict:
             out = {"result": "unknown", "category": info["category"], "message": info["message"]}
     out["utc"] = _now()
     res["bucket_probe"] = out
+    st = res.get("stack") or {}
+    st.pop("deletion_confirmation", None)
+    if out["result"] == "absent" and st.get("id") and st.get("status") == "DELETE_COMPLETE" \
+            and st.get("observed_by") == BY_ID:
+        st["deletion_confirmation"] = {"stack_id": st["id"], "stack_status": "DELETE_COMPLETE",
+                                       "observed_utc": st["observed_utc"], "bucket": res["bucket"],
+                                       "bucket_probe_utc": out["utc"]}
     save_resources(state, res)
     return out
 
@@ -301,8 +441,11 @@ def recover(state: Path, clients, backend: str, stack_id: str | None = None) -> 
             s = describe_stack(clients.cfn, st["id"])
             if s is None:
                 raise OutcomeUnknown("CloudFormation reports no stack for the recorded StackId")
-            if s.get("StackName") != st["name"]:
-                raise VerificationError("the StackId resolves to a different stack name; nothing changed")
+            if s.get("StackName") != st["name"] or s.get("StackId") != st["id"]:
+                raise VerificationError("the StackId resolves to a different stack; nothing changed")
+            if s["StackStatus"] != "DELETE_COMPLETE" and ownership_problems(s, res):
+                raise VerificationError("the live stack is not proven to belong to this state directory ("
+                                        + "; ".join(ownership_problems(s, res)) + "); nothing changed")
             _observe(st, s["StackStatus"], BY_ID)
             actions.append(f"read status {s['StackStatus']} by StackId")
     except (VerificationError, Refused):
@@ -514,6 +657,7 @@ def download(state: Path, clients, run_id: str, dest: Path, backend: str) -> lis
 # --- cleanup -------------------------------------------------------------------------
 
 CLEANUP_EXIT = {"none_recorded": 0, "not_created": 0, "deletion_confirmed": 0, "resources_present": 1,
+                "ownership_refused": 1,
                 "deletion_requested": 4, "verification_unavailable": 4}
 
 
@@ -567,13 +711,24 @@ def cleanup(state: Path, clients, backend: str, sleep=time.sleep) -> dict:
         s = describe_stack(clients.cfn, st["id"])
         if s is None:
             raise OutcomeUnknown("CloudFormation reports no stack for the recorded StackId")
-        _observe(st, s["StackStatus"], BY_ID)
-        save_resources(state, res)
     except Exception as e:  # noqa: BLE001
         info = _info(e)
         st["last_observation_error"] = {"category": info["category"], "message": info["message"], "utc": _now()}
         save_resources(state, res)
         return result({"phase": "describe_stack", **info, "definite": False})
+    # FLH-068: the answer must be exactly the recorded stack (StackId and name) before it is recorded, and a
+    # live stack must carry this state's task/state tags before anything destructive is sent.
+    problems = ownership_problems(s, res)
+    if s.get("StackStatus") == "DELETE_COMPLETE":
+        problems = [p for p in problems if "tags" not in p]  # nothing destructive follows a deleted stack
+    if problems:
+        st["ownership_refused"] = {"problems": problems, "utc": _now()}
+        save_resources(state, res)
+        notes.append("refused before any delete: " + "; ".join(problems))
+        return result()
+    st.pop("ownership_refused", None)
+    _observe(st, s["StackStatus"], BY_ID)
+    save_resources(state, res)
     if st["status"] == "DELETE_IN_PROGRESS":
         try:
             _wait_and_record(state, res, clients.cfn, ("DELETE_COMPLETE",), sleep)

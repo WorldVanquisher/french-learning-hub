@@ -253,18 +253,24 @@ def _masked(d):
 
 def cmd_status(args):
     s = _state(args)
-    from .s3store import load_resources
+    from .s3store import ReceiptInvalid, load_resources, operator_steps, stack_report
     led = Ledger(s).read()
-    from .s3store import operator_steps, stack_report
-    res = load_resources(s)
-    report, steps = stack_report(res), operator_steps(res)
+    code = 0
+    try:
+        res = load_resources(s)
+        report, steps = stack_report(res), operator_steps(res)
+    except ReceiptInvalid as e:  # reported, never trusted: no cleanup state is derived from it
+        res, report, code = {}, {"state": "receipt_invalid", "reason": str(e)}, 1
+        steps = ["Do not trust or reuse this receipt. Restore resources.json from your own copy, or check the "
+                 "stack and bucket in the AWS console."]
     res.pop("account", None)
     return _masked({"backend": _backend(s), "used": led["used"], "caps": led["caps"],
                     "remaining": Ledger(s).remaining(),
                     "calls": {"total": len(led["calls"]),
                               "failed": sum(1 for x in led["calls"] if x["outcome"] == "failed"),
                               "unfinished": sum(1 for x in led["calls"] if x["outcome"] == "attempted")},
-                    "stack": report, "operator_steps": steps, "resources": res, "packages": list(_packages(s))})
+                    "stack": report, "operator_steps": steps, "resources": res,
+                    "packages": list(_packages(s))}), code
 
 
 def cmd_titan_preflight(args):

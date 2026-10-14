@@ -2,8 +2,9 @@
 
 Bounded operator tools for one AWS experiment, on **synthetic data only**.
 Overview and decisions: [docs/CLOUD_EXPERIMENT.md](../../../docs/CLOUD_EXPERIMENT.md).
-Contracts: [FLH-063 plan](../../../docs/plans/FLH-063-aws-backup-and-embedding.md) and the
-[FLH-066 recovery plan](../../../docs/plans/FLH-066-aws-experiment-recovery.md).
+Contracts: [FLH-063 plan](../../../docs/plans/FLH-063-aws-backup-and-embedding.md), the
+[FLH-066 recovery plan](../../../docs/plans/FLH-066-aws-experiment-recovery.md) and the
+[FLH-068 receipt-integrity plan](../../../docs/plans/FLH-068-aws-receipt-integrity.md).
 
 Nothing here changes the application: no production Go, frontend, migration
 or provider default.
@@ -141,6 +142,27 @@ $PY -B -m flh_aws adapter         --state "$STATE" --profile P --region ca-centr
      proves it is absent.
 
   No `ListStacks` permission is needed.
+- **Receipt integrity (FLH-068):** every command that reads `resources.json` validates it
+  before using it.
+  - **Checked:** the schema; the region, account and state-id formats; bucket
+    and stack name derived from the state id; known statuses and observers;
+    timestamps; and the object list.
+  - **StackId:** a saved one must name this state's stack, account and region.
+  - **Failure:** malformed, inconsistent or invalid-JSON receipts are refused
+    (exit 1) before any request, and `status` reports `receipt_invalid`.
+  - **Cached confirmation:** `deletion_confirmed` is returned without a new
+    read only with a `deletion_confirmation` record. That record restates the
+    StackId, the `DELETE_COMPLETE` read by StackId and the later `NoSuchBucket`
+    probe; only the code that observed them writes it. A bare
+    `DELETE_COMPLETE` status is not proof, and cleanup reads the stack again.
+  - **Trust boundary:** this detects corruption and inconsistent edits, **not
+    forgery**. Anyone who can rewrite every local file consistently can forge
+    a receipt or ledger; there is no cryptographic protection.
+- **Ownership before writes (FLH-068):** before deleting any object or the
+  stack, cleanup reads the stack by its StackId. The answer must have the same
+  StackId and name and this state's `flh:task`/`flh:state-id` tags. Otherwise
+  the result is `ownership_refused`, with zero destructive requests. `recover`
+  refuses a live, foreign-tagged stack the same way.
 - **Old state directories** (FLH-063/064: no `schema`, no StackId) still work:
   - a live record adopts its StackId by name, with the tag check;
   - a record saved as `DELETED` is reported as `verification_unavailable`
@@ -216,6 +238,7 @@ $PY -B -m flh_aws adapter         --state "$STATE" --profile P --region ca-centr
     | `deletion_confirmed` | `DELETE_COMPLETE` read by StackId **and** `NoSuchBucket` | 0 |
     | `not_created`, `none_recorded` | Nothing was ever created | 0 |
     | `resources_present` | Stack or objects observed present (unknown keys, refused delete) | 1 |
+    | `ownership_refused` | The live stack read by StackId lacks this state's name, StackId or `flh:task`/`flh:state-id` tags; nothing destructive was sent | 1 |
     | `deletion_requested` | `DeleteStack` sent, completion not observed | 4 |
     | `verification_unavailable` | AccessDenied, network failure, or no StackId | 4 |
 
@@ -255,9 +278,18 @@ most 300 characters) and guidance. Categories:
   recognized message.
 
 **Rerunning only the smoke.** Run `titan-smoke --only-missing` with the
-**same** `--state`. It skips inputs that already have an `ok` record at these
-dimensions. It never resets a counter, raises a cap, retries automatically or
-needs a deployment, and the whole-plan budget check still applies.
+**same** `--state`.
+- It never resets a counter, raises a cap, retries automatically or needs a
+  deployment, and the whole-plan budget check still applies.
+- **What counts as done (FLH-068):** an input is skipped only when an `ok`
+  ledger record has the same label and backend, plus the same binding
+  `flh068_titan_request_v1`. The binding covers model, region, dimensions,
+  `normalize`, embedding types, text convention, identity, and the SHA-256 of
+  the exact input text and request body.
+- **Reported, not reused:** a changed text, region, model, dimensions or
+  convention is listed under `not_reused`, and the input is sent again.
+- **Older records:** an `ok` record written before FLH-068 has no binding and
+  never qualifies (`legacy_unbound_record`). It stays charged.
 
 **Adapter wire format.** `POST /v1/embeddings` with `{"model": <identity>,
 "input": [1..8 strings]}` returns `{"data": [{"index": i, "embedding": [...]}]}`,
@@ -287,3 +319,8 @@ python3 -B -m unittest discover -s tools/cloud/aws/tests -p 'test_*.py'        #
 - **Recovery tests:** `test_recovery.py` covers lost responses, a crash before
   the StackId is saved, AccessDenied, repeated cleanup, old state directories
   and Titan categories, using fault injection in the fakes.
+- **Integrity tests:** `test_integrity.py` covers malformed and foreign
+  receipts, confirmation records, observed ownership and Titan request
+  binding.
+- **Independent acceptance:** `scripts/validation/flh067/accept.py` (see its
+  README) is the FLH-067 oracle.

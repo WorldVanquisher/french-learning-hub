@@ -141,7 +141,9 @@ class BotoShapeTests(unittest.TestCase):
                 # DELETE_COMPLETE read by StackId, then NoSuchBucket for the expected owner
                 cfs.add_response("describe_stacks", {"Stacks": [{
                     "StackName": bucket, "StackId": stack_id, "CreationTime": "2026-10-13T00:00:00Z",
-                    "StackStatus": "CREATE_COMPLETE"}]}, {"StackName": stack_id})
+                    "StackStatus": "CREATE_COMPLETE",
+                    "Tags": [{"Key": "flh:task", "Value": "FLH-063"}, {"Key": "flh:state-id", "Value": sid}]}]},
+                    {"StackName": stack_id})  # FLH-068: ownership is read from the live stack before deleting
                 for name in (SNAPSHOT_NAME, MANIFEST_NAME):
                     key = f"flh063/run1/{name}"
                     s3s.add_response("head_object", {"ETag": f'"{name}"', "Metadata": {"flh-run": "run1"}},
@@ -182,7 +184,7 @@ class BotoShapeTests(unittest.TestCase):
                 rs.add_response("invoke_model", {"body": streaming(raw), "contentType": "application/json"},
                                 {"modelId": titan.MODEL_ID, "body": titan.build_body("je ne fume plus", 256),
                                  "contentType": "application/json", "accept": "application/json"})
-                r = titan.invoke(Ledger(t), rt, 256, "je ne fume plus", "aws", "shape")
+                r = titan.invoke(Ledger(t), rt, 256, "je ne fume plus", "aws", "shape", region=REGION)
                 self.assertEqual(r["tokens"], 4)
                 rs.assert_no_pending_responses()
 
