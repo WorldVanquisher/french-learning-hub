@@ -64,8 +64,10 @@ type VectorIdentity struct {
 
 // DomainFingerprint is a timestamp-free digest of the synthetic database content.
 type DomainFingerprint struct {
-	SHA256 string         `json:"sha256"`
-	Counts map[string]int `json:"counts"`
+	// Version is FingerprintVersion; FLH-073 (v1) manifests have none.
+	Version string         `json:"version"`
+	SHA256  string         `json:"sha256"`
+	Counts  map[string]int `json:"counts"`
 }
 
 // Manifest is manifest.json.
@@ -230,6 +232,15 @@ func LoadArtifact(dir string) (*Artifact, error) {
 	case m.Vectors.Source == SourceMechanical && m.ReleaseStatus != ReleaseBlockedMechanical,
 		m.Vectors.Source == SourceModel && m.ReleaseStatus != ReleaseModelVectors:
 		return nil, fail("release_status %q does not match vector source %q", m.ReleaseStatus, m.Vectors.Source)
+	}
+	if m.DomainFingerprint.Version != FingerprintVersion {
+		v := m.DomainFingerprint.Version
+		if v == "" {
+			v = "v1 (FLH-073, no version)"
+		}
+		return nil, fail("domain fingerprint contract %s is not %s: older fingerprints do not cover admission "+
+			"recommendations, the current-extraction selection or record order. Rebuild the artifact into a new "+
+			"directory: go run ./scripts/demo/flh073/prepare build -out NEW_DIR", v, FingerprintVersion)
 	}
 	if !hexSHA256.MatchString(m.DomainFingerprint.SHA256) {
 		return nil, fail("domain fingerprint is missing")

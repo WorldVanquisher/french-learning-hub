@@ -25,21 +25,33 @@ const WorkbenchAPIPrefix = "/api"
 //
 // The workbench changes no URL path, so there is deliberately no SPA fallback.
 // index.html is read once at startup; an unusable webDir is a startup error.
+//
+// Symlink policy (FLH-075): every read goes through an os.Root opened on
+// webDir, which confines each open to that directory tree, including against
+// a link swapped in after startup. A symbolic link (file or directory, at any
+// depth) is followed only if it is relative and resolves inside webDir; an
+// absolute link, or one whose target is outside webDir, is refused as not
+// found. webDir itself may be a link: it is resolved once, when the root opens.
 func NewWorkbenchHandler(api http.Handler, webDir string) (http.Handler, error) {
 	if webDir == "" {
 		return nil, errors.New("workbench directory is empty")
 	}
-	root := os.DirFS(webDir)
+	// The root stays open for the handler's lifetime (one descriptor).
+	confined, err := os.OpenRoot(webDir)
+	if err != nil {
+		return nil, fmt.Errorf("workbench directory: %w", err)
+	}
+	root := confined.FS()
 	info, err := fs.Stat(root, "index.html")
 	if err != nil {
-		return nil, fmt.Errorf("workbench index.html: %w", err)
+		return nil, closeRoot(confined, fmt.Errorf("workbench index.html: %w", err))
 	}
 	if !info.Mode().IsRegular() {
-		return nil, errors.New("workbench index.html is not a regular file")
+		return nil, closeRoot(confined, errors.New("workbench index.html is not a regular file"))
 	}
 	index, err := fs.ReadFile(root, "index.html")
 	if err != nil {
-		return nil, fmt.Errorf("read workbench index.html: %w", err)
+		return nil, closeRoot(confined, fmt.Errorf("read workbench index.html: %w", err))
 	}
 	modTime := info.ModTime()
 
@@ -61,13 +73,22 @@ func NewWorkbenchHandler(api http.Handler, webDir string) (http.Handler, error) 
 	return mux, nil
 }
 
-// fileOnlyFS hides directories so the file server never renders a listing.
+// closeRoot releases the root after a startup failure and returns err.
+func closeRoot(root *os.Root, err error) error {
+	root.Close()
+	return err
+}
+
+// fileOnlyFS hides directories so the file server never renders a listing,
+// and reports every open failure as not found.
 type fileOnlyFS struct{ fsys fs.FS }
 
 func (f fileOnlyFS) Open(name string) (fs.File, error) {
 	file, err := f.fsys.Open(name)
 	if err != nil {
-		return nil, err
+		// A confinement refusal (a link escaping the root), a missing file and
+		// an unreadable one all answer 404, without saying which.
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 	}
 	info, err := file.Stat()
 	if err != nil {

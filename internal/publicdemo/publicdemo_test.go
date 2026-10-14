@@ -2,12 +2,14 @@ package publicdemo_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"french-learning-app/internal/application"
 	"french-learning-app/internal/publicdemo"
@@ -326,5 +328,196 @@ func TestPresetProviderAndIndexAreReadOnlyAndRefuseOtherText(t *testing.T) {
 	}
 	if st, _ := publicdemo.NewPublication(a).SpaceState(ctx, a.Space.Collection); st == nil || st.PublishedCollection != a.Collection {
 		t.Fatalf("publication = %+v", st)
+	}
+}
+
+// ---- FLH-075: complete domain fingerprint ----
+
+// mutateDB applies SQL to a copy's demo.db and refreshes only the manifest's
+// file checksum, so only the domain fingerprint can catch the change.
+func mutateDB(t *testing.T, dir string, apply func(db *sql.DB)) {
+	t.Helper()
+	db, err := sql.Open("sqlite", filepath.Join(dir, publicdemo.DatabaseFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	apply(db)
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	rehash(t, dir, publicdemo.DatabaseFile)
+}
+
+func mustExec(t *testing.T, db *sql.DB, q string, args ...any) {
+	t.Helper()
+	res, err := db.Exec(q, args...)
+	if err != nil {
+		t.Fatalf("%s: %v", q, err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		t.Fatalf("%s changed no row", q)
+	}
+}
+
+func TestFingerprint_AuthorityChangesInvalidateEvenWithRefreshedChecksum(t *testing.T) {
+	good := buildArtifact(t)
+	cases := map[string]func(t *testing.T, db *sql.DB){
+		// The FLH-074 F2 reproduction: every machine recommendation suppressed.
+		"admission recommendations suppressed": func(t *testing.T, db *sql.DB) {
+			mustExec(t, db, `UPDATE knowledge_admission_recommendations SET state = 'suppressed'`)
+		},
+		"one recommendation reason changed": func(t *testing.T, db *sql.DB) {
+			mustExec(t, db, `UPDATE knowledge_admission_recommendations SET reason = 'edited' WHERE id = 1`)
+		},
+		"human admission override added": func(t *testing.T, db *sql.DB) {
+			mustExec(t, db, `INSERT INTO knowledge_admission_overrides (unit_id, decision, reason, note, created_at) VALUES (1, 'suppressed', 'x', '', '2030-01-01T00:00:00Z')`)
+		},
+		"current extraction pinned": func(t *testing.T, db *sql.DB) {
+			mustExec(t, db, `INSERT INTO entry_current_extractions (entry_id, extraction_id, updated_at) SELECT entry_id, id, '2030-01-01T00:00:00Z' FROM knowledge_extractions WHERE id = 1`)
+		},
+		"concept retired": func(t *testing.T, db *sql.DB) {
+			mustExec(t, db, `UPDATE knowledge_concepts SET lifecycle_state = 'retired' WHERE id = 1`)
+		},
+		"link evidence changed": func(t *testing.T, db *sql.DB) {
+			mustExec(t, db, `UPDATE unit_concept_links SET evidence = 'edited' WHERE id = 1`)
+		},
+		"order of two latest-wins records swapped": func(t *testing.T, db *sql.DB) {
+			// Recommendation 1 was created before the links; moving it after them
+			// changes which record a latest-wins read would see first.
+			mustExec(t, db, `UPDATE knowledge_admission_recommendations SET created_at = ? WHERE id = 1`, "2030-01-01T00:00:00Z")
+		},
+		"semantic index state added": func(t *testing.T, db *sql.DB) {
+			mustExec(t, db, `INSERT INTO annotation_operations (id, payload, result, created_at) VALUES ('op', '{}', '{}', '2030-01-01T00:00:00Z')`)
+		},
+	}
+	for name, apply := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := copyDir(t, good)
+			mutateDB(t, dir, func(db *sql.DB) { apply(t, db) })
+			if _, err := publicdemo.LoadArtifact(dir); err != nil {
+				t.Fatalf("file checks must pass after the checksum refresh: %v", err)
+			}
+			_, db, err := publicdemo.OpenArtifact(context.Background(), dir)
+			if !errors.Is(err, publicdemo.ErrArtifact) {
+				if db != nil {
+					db.Close()
+				}
+				t.Fatalf("want ErrArtifact, got %v", err)
+			}
+			if !strings.Contains(err.Error(), "fingerprint differs") && !strings.Contains(err.Error(), "must not carry") {
+				t.Fatalf("must be caught by the domain fingerprint: %v", err)
+			}
+		})
+	}
+}
+
+func TestFingerprint_AbsoluteTimestampsDoNotChangeDomainMeaning(t *testing.T) {
+	dir := copyDir(t, buildArtifact(t))
+	// Shift every timestamp in the database by the same hour: the order of
+	// records, and so every latest-wins read, is unchanged.
+	mutateDB(t, dir, func(db *sql.DB) {
+		rows, err := db.Query(`SELECT m.name, p.name FROM sqlite_master m, pragma_table_info(m.name) p
+			WHERE m.type = 'table' AND p.name IN ('created_at', 'updated_at')`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		type col struct{ table, column string }
+		var cols []col
+		for rows.Next() {
+			var c col
+			rows.Scan(&c.table, &c.column)
+			cols = append(cols, c)
+		}
+		rows.Close()
+		shifted := 0
+		for _, c := range cols {
+			type cell struct {
+				rowid int64
+				at    string
+			}
+			var cells []cell
+			rs, err := db.Query(`SELECT rowid, ` + c.column + ` FROM ` + c.table)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for rs.Next() {
+				var x cell
+				rs.Scan(&x.rowid, &x.at)
+				cells = append(cells, x)
+			}
+			rs.Close()
+			for _, x := range cells {
+				at, err := time.Parse(time.RFC3339Nano, x.at)
+				if err != nil {
+					t.Fatalf("%s.%s: %v", c.table, c.column, err)
+				}
+				mustExec(t, db, `UPDATE `+c.table+` SET `+c.column+` = ? WHERE rowid = ?`, at.Add(time.Hour).Format(time.RFC3339Nano), x.rowid)
+				shifted++
+			}
+		}
+		if shifted == 0 {
+			t.Fatal("no timestamp was shifted")
+		}
+	})
+	_, db, err := publicdemo.OpenArtifact(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("a uniform time shift keeps the domain fingerprint: %v", err)
+	}
+	db.Close()
+}
+
+func TestFingerprint_VersionOneManifestsAreRefusedWithRebuildGuidance(t *testing.T) {
+	dir := copyDir(t, buildArtifact(t))
+	var m map[string]any
+	readJSON(t, filepath.Join(dir, publicdemo.ManifestFile), &m)
+	delete(m["domain_fingerprint"].(map[string]any), "version")
+	writeJSON(t, filepath.Join(dir, publicdemo.ManifestFile), m)
+	_, err := publicdemo.LoadArtifact(dir)
+	if !errors.Is(err, publicdemo.ErrArtifact) || !strings.Contains(err.Error(), "v1 (FLH-073, no version)") ||
+		!strings.Contains(err.Error(), "prepare build -out NEW_DIR") {
+		t.Fatalf("v1 manifest: %v", err)
+	}
+	m["domain_fingerprint"].(map[string]any)["version"] = "flh999_future"
+	writeJSON(t, filepath.Join(dir, publicdemo.ManifestFile), m)
+	if _, err := publicdemo.LoadArtifact(dir); !errors.Is(err, publicdemo.ErrArtifact) {
+		t.Fatalf("unknown version: %v", err)
+	}
+}
+
+// Every table in the schema must be fingerprinted, required empty, or listed
+// with a reason, so a new migration cannot silently escape the fingerprint.
+func TestFingerprint_CoversEveryTableInTheSchema(t *testing.T) {
+	a, db, err := publicdemo.OpenArtifact(context.Background(), buildArtifact(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	content, empty, skipped := publicdemo.FingerprintTables()
+	covered := map[string]bool{}
+	for _, list := range [][]string{content, empty} {
+		for _, name := range list {
+			if covered[name] {
+				t.Fatalf("%s listed twice", name)
+			}
+			covered[name] = true
+		}
+	}
+	for name := range skipped {
+		covered[name] = true
+	}
+	rows, err := db.Query(`SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		rows.Scan(&name)
+		if !covered[name] {
+			t.Errorf("table %s is not covered by the domain fingerprint", name)
+		}
+	}
+	if a.Manifest.DomainFingerprint.Version != publicdemo.FingerprintVersion || a.Manifest.DomainFingerprint.Counts["knowledge_admission_recommendations"] != 11 {
+		t.Fatalf("manifest fingerprint = %+v", a.Manifest.DomainFingerprint)
 	}
 }
