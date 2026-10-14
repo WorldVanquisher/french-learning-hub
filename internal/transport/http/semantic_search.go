@@ -116,26 +116,15 @@ func (h *Handler) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
 	if state == "" {
 		state = "all"
 	}
-	pub := report.Publication
 	resp := semanticSearchResponse{
-		SchemaVersion: KnowledgeLibrarySemanticSearchSchemaVersion,
-		Query:         report.Query,
-		QueryForm:     report.QueryRepresentation,
-		State:         state,
-		Limit:         report.Limit,
-		Index: semanticIndexResponse{
-			Space: report.Space.Collection, Collection: report.Collection, Representation: report.Space.Representation,
-			ModelID: report.Space.ModelID, Dimensions: report.Space.Dimensions,
-			PublishedRunID: pub.PublishedRunID, PublishedAt: optTime(pub.PublishedAt),
-			LastRunOperation: pub.LastRunOperation, LastRunOutcome: pub.LastRunOutcome,
-			LastRunFinishedAt: optTime(pub.LastRunFinishedAt), LastError: pub.LastError,
-			HealthVerified: false,
-			Note:           "publication and last-run fields are recorded history, not verified for this request; every returned hit was re-checked against the database",
-		},
-		Considered: report.Considered,
-		Skipped: semanticSkippedResponse{
-			Missing: report.SkippedMissing, Stale: report.SkippedStale, Incompatible: report.SkippedIncompatible, NonPositive: report.SkippedNonPositive,
-		},
+		SchemaVersion:   KnowledgeLibrarySemanticSearchSchemaVersion,
+		Query:           report.Query,
+		QueryForm:       report.QueryRepresentation,
+		State:           state,
+		Limit:           report.Limit,
+		Index:           toSemanticIndexResponse(report),
+		Considered:      report.Considered,
+		Skipped:         toSemanticSkipped(report),
 		FilteredByState: report.FilteredByState,
 		ScoreNote:       "cosine similarity between query and concept-document embeddings; not a probability and not a SAME judgment",
 		Results:         make([]semanticSearchResultResponse, 0, len(report.Results)),
@@ -147,6 +136,26 @@ func (h *Handler) handleSemanticSearch(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// toSemanticIndexResponse reports the publication one semantic search used.
+func toSemanticIndexResponse(report *application.SemanticSearchReport) semanticIndexResponse {
+	pub := report.Publication
+	return semanticIndexResponse{
+		Space: report.Space.Collection, Collection: report.Collection, Representation: report.Space.Representation,
+		ModelID: report.Space.ModelID, Dimensions: report.Space.Dimensions,
+		PublishedRunID: pub.PublishedRunID, PublishedAt: optTime(pub.PublishedAt),
+		LastRunOperation: pub.LastRunOperation, LastRunOutcome: pub.LastRunOutcome,
+		LastRunFinishedAt: optTime(pub.LastRunFinishedAt), LastError: pub.LastError,
+		HealthVerified: false,
+		Note:           "publication and last-run fields are recorded history, not verified for this request; every returned hit was re-checked against the database",
+	}
+}
+
+func toSemanticSkipped(report *application.SemanticSearchReport) semanticSkippedResponse {
+	return semanticSkippedResponse{
+		Missing: report.SkippedMissing, Stale: report.SkippedStale, Incompatible: report.SkippedIncompatible, NonPositive: report.SkippedNonPositive,
+	}
 }
 
 // writeSemanticError maps categories only; provider and vector-store details,

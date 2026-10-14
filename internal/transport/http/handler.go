@@ -80,6 +80,7 @@ type Handler struct {
 	retrievalComparison RetrievalComparisonService
 	library             KnowledgeLibraryService
 	semantic            SemanticSearchService
+	hybrid              HybridSearchService
 	// readiness reports whether the backing store can serve requests. It is
 	// optional; without it /readyz reports not ready rather than guessing.
 	readiness        func(context.Context) error
@@ -201,6 +202,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /knowledge-library/concepts/{id}", h.handleGetLibraryConcept)
 	mux.HandleFunc("GET /knowledge-library/units/{id}/source", h.handleGetLibraryUnitSource)
 	mux.HandleFunc("GET /knowledge-library/semantic-search", h.handleSemanticSearch)
+	mux.HandleFunc("GET /knowledge-library/hybrid-search", h.handleHybridSearch)
 	return mux
 }
 

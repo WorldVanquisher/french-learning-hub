@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import type {
+  HybridSearch,
   LibraryConcept,
   LibraryHistoricalUnit,
   LibraryQuery,
@@ -13,12 +14,15 @@ import type {
   SemanticSearch,
 } from "../types/library";
 
-// One search outcome per submitted query. Semantic mode needs a query; with an
-// empty one nothing is requested (browsing is keyword search's job).
+// One search outcome per submitted query. Semantic and hybrid modes need a
+// query; with an empty one nothing is requested (browsing is keyword search's job).
 type SearchOutcome =
   | { kind: "keyword"; data: LibrarySearch }
   | { kind: "semantic"; data: SemanticSearch }
-  | { kind: "semantic-empty" };
+  | { kind: "hybrid"; data: HybridSearch }
+  | { kind: "needs-query" };
+
+const modeName: Record<LibrarySearchMode, string> = { keyword: "", semantic: "semantic ", hybrid: "hybrid " };
 
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
 
@@ -88,7 +92,8 @@ export function KnowledgeLibrary() {
     `${mode}\u0000${query.state}\u0000${query.q}`,
     async (): Promise<SearchOutcome> => {
       if (mode === "keyword") return { kind: "keyword", data: await api.searchLibrary(query) };
-      if (!query.q) return { kind: "semantic-empty" };
+      if (!query.q) return { kind: "needs-query" };
+      if (mode === "hybrid") return { kind: "hybrid", data: await api.hybridSearchLibrary(query) };
       return { kind: "semantic", data: await api.semanticSearchLibrary(query) };
     },
     retry,
@@ -113,10 +118,10 @@ export function KnowledgeLibrary() {
   };
   const openConcept = (conceptId: number) => setScreen({ kind: "concept", conceptId });
   const resultsLabel = query.q
-    ? `${mode === "semantic" ? "semantic " : ""}results for “${query.q}”`
-    : mode === "semantic"
-      ? "semantic search"
-      : "all concepts";
+    ? `${modeName[mode]}results for “${query.q}”`
+    : mode === "keyword"
+      ? "all concepts"
+      : `${mode} search`;
 
   return (
     <main className="library">
@@ -176,6 +181,16 @@ export function KnowledgeLibrary() {
                 onChange={() => setDraftMode("semantic")}
               />{" "}
               Semantic
+            </label>{" "}
+            <label>
+              <input
+                type="radio"
+                name="library-mode"
+                value="hybrid"
+                checked={draftMode === "hybrid"}
+                onChange={() => setDraftMode("hybrid")}
+              />{" "}
+              Hybrid
             </label>
           </fieldset>
           <p className="hint">
@@ -195,6 +210,12 @@ export function KnowledgeLibrary() {
             either is missing it says so and never falls back to keyword search. Its scores are similarity, not
             probability, and every result is re-checked against the current database.
           </p>
+          <p className="hint">
+            <strong>Hybrid</strong> mode runs both searches and merges their top candidates by rank (reciprocal rank
+            fusion, fixed and equal weights). Each result shows where it came from: its keyword rank and matched fields,
+            its semantic rank and similarity, and the combined score, which is not a probability. It needs semantic search
+            and fails rather than showing keyword results alone.
+          </p>
         </form>
         {search.status === "ready" && search.data.kind === "keyword" ? (
           <Results
@@ -205,13 +226,15 @@ export function KnowledgeLibrary() {
           />
         ) : search.status === "ready" && search.data.kind === "semantic" ? (
           <SemanticResults data={search.data.data} query={query} onOpen={openConcept} />
+        ) : search.status === "ready" && search.data.kind === "hybrid" ? (
+          <HybridResults data={search.data.data} query={query} onOpen={openConcept} />
         ) : search.status === "ready" ? (
-          <p className="empty" role="status">Type a query, then Search, to run a semantic search.</p>
+          <p className="empty" role="status">Type a query, then Search, to run a {mode} search.</p>
         ) : search.status === "loading" ? (
           <p className="empty" role="status">Searching the knowledge library…</p>
         ) : (
           <div className="banner error" role="alert">
-            Could not {mode === "semantic" ? "run the semantic search" : "search the knowledge library"}: {search.message}{" "}
+            Could not {mode === "keyword" ? "search the knowledge library" : `run the ${mode} search`}: {search.message}{" "}
             <button type="button" className="ghost" onClick={() => setRetry((n) => n + 1)}>
               Try again
             </button>
@@ -367,6 +390,78 @@ function SemanticResults({
               </div>
               <div className="hint">
                 Similarity {r.similarity.toFixed(2)} (cosine; not a probability or a SAME judgment)
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function HybridResults({
+  data,
+  query,
+  onOpen,
+}: {
+  data: HybridSearch;
+  query: LibraryQuery;
+  onOpen: (conceptId: number) => void;
+}) {
+  const kw = data.components.keyword;
+  const sem = data.components.semantic;
+  const semDropped = sem.skipped.stale + sem.skipped.missing + sem.skipped.incompatible;
+  const fusedDropped =
+    data.dropped_after_fusion.missing + data.dropped_after_fusion.filtered_by_state + data.dropped_after_fusion.changed_during_search;
+  return (
+    <section aria-label="Hybrid results">
+      <p className="hint" role="status">
+        {data.truncated
+          ? `Showing the top ${data.results.length} of ${data.total_candidates} merged concepts for “${data.query}”`
+          : `${data.results.length} merged concept${data.results.length === 1 ? "" : "s"} for “${data.query}”`}
+        {query.state === "all" ? "" : ` with status ${query.state}`}.
+      </p>
+      <p className="hint">
+        Merged from the top {data.depth} of each search: keyword found {kw.total_matches} (used {kw.returned}
+        {kw.truncated_at_depth ? ", cut at that depth" : ""}); semantic returned {sem.returned} from index{" "}
+        {sem.index.collection}, model {sem.index.model_id}. Policy {data.policy.version}: reciprocal rank fusion with k ={" "}
+        {data.policy.rrf_k}, equal weights, ties by concept number. The combined score is not a probability or a
+        relevance estimate.
+      </p>
+      {semDropped > 0 || sem.filtered_by_state > 0 || fusedDropped > 0 ? (
+        <p className="hint">
+          Re-checked against the database: semantic search dropped {semDropped} out-of-date or invalid index entr
+          {semDropped === 1 ? "y" : "ies"}
+          {sem.filtered_by_state > 0 ? ` and ${sem.filtered_by_state} not matching the status filter` : ""}; after merging,{" "}
+          {fusedDropped} concept{fusedDropped === 1 ? " was" : "s were"} removed because{" "}
+          {fusedDropped === 1 ? "it" : "they"} changed or disappeared during the search. Other concepts are not substituted.
+        </p>
+      ) : null}
+      {data.results.length === 0 ? (
+        <p className="empty">Neither search found a concept for “{data.query}”.</p>
+      ) : (
+        <ol className="library-results">
+          {data.results.map((r) => (
+            <li key={r.concept.id} className="panel library-result">
+              <button type="button" className="link-button" id={resultButtonId(r.concept.id)} onClick={() => onOpen(r.concept.id)}>
+                {r.concept.target}
+              </button>{" "}
+              <StateTag state={r.concept.state} />
+              <div className="hint">
+                {r.concept.pedagogical_intent}
+                {r.concept.scope ? ` · ${r.concept.scope}` : ""} · {r.current_member_count} unit
+                {r.current_member_count === 1 ? "" : "s"} filed here, {r.supporting_unit_count} currently supporting ·
+                concept #{r.concept.id}
+              </div>
+              <div className="hint">
+                {r.keyword
+                  ? `Keyword #${r.keyword.rank} (found in ${r.keyword.matched_fields.map((f) => fieldLabels[f] ?? f).join(", ")})`
+                  : "Not found by keyword"}
+                {" · "}
+                {r.semantic
+                  ? `Semantic #${r.semantic.rank} (similarity ${r.semantic.similarity.toFixed(2)})`
+                  : "Not among the semantic candidates"}
+                {" · "}Combined score {r.fused_score.toFixed(4)}
               </div>
             </li>
           ))}

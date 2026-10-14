@@ -236,6 +236,89 @@ describe("Knowledge Library", () => {
     expect(screen.queryByText(/concepts? matching/)).toBeNull();
   });
 
+  it("runs an explicit hybrid search and shows where each result came from", async () => {
+    const index = { space: "flh_concepts_x", collection: "flh_concepts_x_rabc", representation: "concept_embedding_text_v1",
+      model_id: "fake/bag-of-words@1", dimensions: 64, published_run_id: "abc", published_at: "2026-10-10T12:00:00Z",
+      last_run_operation: "build", last_run_outcome: "published", last_run_finished_at: "2026-10-10T12:05:00Z",
+      last_error: "", health_verified: false, note: "recorded history" };
+    const hybrid = {
+      schema_version: "knowledge_library_hybrid_search_v1", query: "subjonctif", state: "all", limit: 20, depth: 50,
+      policy: { version: "concept_hybrid_rrf_v1", rrf_k: 60, weights: { keyword: 1, semantic: 1 }, tie_break: "concept_id_ascending" },
+      score_note: "not a probability",
+      components: {
+        keyword: { returned: 2, total_matches: 2, truncated_at_depth: false, matching: "prefix" },
+        semantic: { returned: 2, considered: 8, skipped: { missing: 0, stale: 1, incompatible: 0, non_positive: 0 }, filtered_by_state: 0,
+          query_representation: "concept_search_query_v2", index, score_note: "cosine" },
+      },
+      total_candidates: 3, truncated: false,
+      dropped_after_fusion: { missing: 0, filtered_by_state: 0, changed_during_search: 1, duplicate_component_ids: 0 },
+      results: [
+        { concept: concept(1, "subjonctif après il faut que", "active"), fused_score: 1 / 61 + 1 / 62, sources: ["keyword", "semantic"],
+          keyword: { rank: 1, match_tier: "identity", matched_fields: ["target"] }, semantic: { rank: 2, similarity: 0.512 },
+          current_member_count: 2, supporting_unit_count: 1 },
+        { concept: concept(5, "bien que", "orphaned"), fused_score: 1 / 61, sources: ["semantic"], keyword: null,
+          semantic: { rank: 1, similarity: 0.6 }, current_member_count: 0, supporting_unit_count: 0 },
+        { concept: concept(3, "faire", "orphaned"), fused_score: 1 / 62, sources: ["keyword"],
+          keyword: { rank: 2, match_tier: "unit_evidence", matched_fields: ["unit_statement"] }, semantic: null,
+          current_member_count: 1, supporting_unit_count: 0 },
+      ],
+    };
+    const calls = library({ "/api/knowledge-library/hybrid-search?q=subjonctif": () => ({ body: hybrid }) });
+    await openLibrary();
+    expect(await screen.findByText("2 concepts.")).toBeInTheDocument();
+    const before = calls.length;
+    fireEvent.click(screen.getByRole("radio", { name: "Hybrid" }));
+    fireEvent.change(screen.getByLabelText("Search learned material"), { target: { value: "subjonctif" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    const results = await screen.findByRole("region", { name: "Hybrid results" });
+    expect(within(results).getByText("3 merged concepts for “subjonctif”.")).toBeInTheDocument();
+    expect(within(results).getByText(/Policy concept_hybrid_rrf_v1: reciprocal rank fusion with k = 60, equal weights/)).toHaveTextContent(
+      "not a probability or a relevance estimate",
+    );
+    expect(within(results).getByText(/index flh_concepts_x_rabc, model fake\/bag-of-words@1/)).toBeInTheDocument();
+    const items = within(results).getAllByRole("listitem");
+    expect(items.map((li) => within(li).getByRole("button").textContent)).toEqual(["subjonctif après il faut que", "bien que", "faire"]);
+    expect(items[0]).toHaveTextContent("Keyword #1 (found in title) · Semantic #2 (similarity 0.51) · Combined score 0.0325");
+    expect(items[1]).toHaveTextContent("Not found by keyword · Semantic #1 (similarity 0.60) · Combined score 0.0164");
+    expect(items[2]).toHaveTextContent(
+      "Keyword #2 (found in the explanation of a unit filed here) · Not among the semantic candidates · Combined score 0.0161",
+    );
+    expect(within(results).getByText(/semantic search dropped 1 out-of-date or invalid index entry/)).toHaveTextContent(
+      "1 concept was removed because it changed or disappeared during the search",
+    );
+    // Only the hybrid endpoint was called: the browser neither fuses nor falls back.
+    expect(calls.slice(before).map((c) => c.path)).toEqual(["/api/knowledge-library/hybrid-search"]);
+    fireEvent.click(screen.getByRole("button", { name: "subjonctif après il faut que" }));
+    expect(await screen.findByRole("region", { name: "Currently supporting this concept (1)" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "← Back to hybrid results for “subjonctif”" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "subjonctif après il faut que" })).toHaveFocus());
+    expect(calls.every((c) => c.method === "GET")).toBe(true);
+  });
+
+  it("fails hybrid search explicitly without keyword results and needs a query", async () => {
+    const calls = library({
+      "/api/knowledge-library/hybrid-search?q=subjonctif&state=active": () => ({
+        status: 503, body: { error: "hybrid search needs semantic search, which is not configured" },
+      }),
+    });
+    await openLibrary();
+    expect(await screen.findByText("2 concepts.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Hybrid" }));
+    let before = calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByText("Type a query, then Search, to run a hybrid search.")).toBeInTheDocument();
+    expect(calls.length).toBe(before);
+    before = calls.length;
+    fireEvent.change(screen.getByLabelText("Search learned material"), { target: { value: "subjonctif" } });
+    fireEvent.change(screen.getByLabelText("Concept status"), { target: { value: "active" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not run the hybrid search: (503) hybrid search needs semantic search, which is not configured",
+    );
+    expect(calls.slice(before).map((c) => `${c.path}${c.search}`)).toEqual(["/api/knowledge-library/hybrid-search?q=subjonctif&state=active"]);
+    expect(screen.queryByRole("region", { name: "Library results" })).toBeNull();
+  });
+
   it("shows an orphaned concept honestly", async () => {
     library();
     await openLibrary();

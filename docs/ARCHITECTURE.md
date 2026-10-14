@@ -1874,8 +1874,9 @@ token must be a prefix of some token in the searched fields (AND semantics).
 Known limitations:
 
 - Prefix matching only: no stemming, synonyms, typo tolerance or semantic
-  retrieval in keyword mode (the optional semantic mode is a separate endpoint,
-  [§9.3](#93-optional-semantic-search-flh-040)). One-character words such as « à » or « y » cannot be searched.
+  retrieval in keyword mode. The optional semantic and hybrid modes are
+  separate endpoints ([§9.3](#93-optional-semantic-search-flh-040),
+  [§9.4](#94-explicit-hybrid-search-flh-071)). One-character words such as « à » or « y » cannot be searched.
 - Entry text and analyses are not searched.
 - Each request scans all Concepts and derives support per Concept; there is no
   index. This is adequate at personal scale, not for a large library.
@@ -1990,6 +1991,60 @@ in [SEMANTIC_SEARCH.md](SEMANTIC_SEARCH.md); the contract is:
 
 Deterministic fake-embedding tests prove these mechanics only. No real model's
 semantic quality or Recall@K/MRR improvement has been measured.
+
+### 9.4 Explicit hybrid search (FLH-071)
+
+A third, explicit **Hybrid** mode fuses the two production searches above. It
+was authorized narrowly. It is not a resolver, reranker, RAG or automatic
+SAME, and it uses no §8 evaluation retriever, dataset or label. Contract:
+[plan](plans/FLH-071-hybrid-concept-search.md).
+
+- **Availability.** `GET /knowledge-library/hybrid-search` is wired only when
+  semantic search is (`SEMANTIC_SEARCH=qdrant`); otherwise it answers `503`.
+  Keyword and semantic routes, schemas and defaults are unchanged.
+- **Candidates.** Each component is run once with `limit = depth`, and both
+  receive the same `q` and `state`.
+  - **Order:** keyword runs first (no provider), so an invalid query never
+    reaches the embedding provider.
+  - **Depth:** default 50, `limit ≤ depth ≤ 50`; the displayed `limit`
+    defaults to 20.
+  - **Keyword ranks:** the keyword order of §9.1 (tier, state, target, id),
+    matched by token prefix with AND semantics, cut at depth. That order is
+    not a relevance score, and keyword reports no numeric score.
+  - **Semantic ranks:** §9.3 search with `k = min(4 × depth, 200)` against
+    one publication, with all its re-checks.
+- **Fusion (`concept_hybrid_rrf_v1`).** Reciprocal rank fusion by Concept ID:
+  `Σ w/(60 + rank)` with fixed, equal weights (1, 1), not tuned against any
+  labels.
+  - A Concept absent from a component contributes nothing for it.
+  - A duplicate id within one component keeps its first rank and is counted.
+  - Ties sort by Concept ID ascending.
+  - The fused score is not a probability or a relevance estimate and is
+    comparable only within one response.
+- **Authority.** After both components, the Concepts are read once more.
+  - A fused Concept is dropped and counted if it no longer exists, no longer
+    passes the state filter, or its identity or state differs from the
+    version a component ranked (`changed_during_search`).
+  - Dropped Concepts are never replaced.
+  - Semantic search's own drops (missing, stale, incompatible, non-positive,
+    state) are reported unchanged.
+- **One publication.** The semantic component is a single search, so all
+  semantic evidence comes from one physical collection, reported in
+  `components.semantic.index`. Hybrid adds no retry beyond semantic's one
+  replacement retry; a second replacement fails.
+- **Failures.** Any semantic failure fails hybrid with the semantic status
+  codes. There is no keyword-only answer, no document embedding during search
+  and no index build.
+- **Read-only.** The service holds only the two searchers, a Concept lister
+  and the count summarizer.
+
+**Comparing the modes later.** A human-reviewed query set (free-text queries,
+each with the Concept ids a person judged relevant) can be run through all
+three modes on one database and publication with fixed parameters, reporting
+Recall@k, MRR and per-query overlap. Such a set is evaluation data only: it
+never creates CURRENT SAME, DISTINCT or relations, and M11-C human SAME stays
+the only annotation truth. No such comparison has been run, and no relevance
+improvement is claimed.
 
 ## 10. Runtime, configuration and the HTTP boundary
 
@@ -2158,8 +2213,10 @@ committed roadmap items:
 - No spaced repetition, review scheduling, mastery estimation, CEFR or
   difficulty scoring.
 - No knowledge or prerequisite graph and no cross-interaction normalization.
-- No training, dataset splits, SQLite FTS, hybrid fusion or reranking. The
-  retrieval-evaluation baselines are request-scoped experiments. The only
+- No training, dataset splits, SQLite FTS or reranking. The only fusion is
+  the explicit, fixed-policy Knowledge Library hybrid search
+  ([§9.4](#94-explicit-hybrid-search-flh-071)); the evaluation retrievers
+  have none. The retrieval-evaluation baselines are request-scoped experiments. The only
   persistent vector index is the optional, disposable FLH-040 semantic search
   index ([§9.3](#93-optional-semantic-search-flh-040)), with no RAG answer
   generation and no automatic SAME decisions.
@@ -2907,3 +2964,23 @@ skipped (`missing`, `stale`, `incompatible`, `non_positive`) and state-filtered
 hits, and results with `concept`, `similarity`, `current_member_count` and
 `supporting_unit_count`. `q` is required. Status codes are listed in
 [§9.3](#93-optional-semantic-search-flh-040).
+
+`GET /knowledge-library/hybrid-search?q=&state=&limit=&depth=` (FLH-071)
+returns schema `knowledge_library_hybrid_search_v1`:
+- `query`, `state`, `limit` and `depth`;
+- `policy`: `version`, `rrf_k`, `weights`, `tie_break`;
+- `score_note`;
+- `components.keyword`: `returned`, `total_matches`, `truncated_at_depth`,
+  `matching`;
+- `components.semantic`: `returned`, `considered`, `skipped`,
+  `filtered_by_state`, `query_representation`, `index`;
+- `total_candidates`, `truncated`;
+- `dropped_after_fusion`: `missing`, `filtered_by_state`,
+  `changed_during_search`, `duplicate_component_ids`;
+- `results`, each with `concept`, `fused_score`, `sources`, `keyword` (`rank`,
+  `match_tier`, `matched_fields`, or null), `semantic` (`rank`, `similarity`,
+  or null) and the two counts.
+
+`q` is required. Invalid parameters return `400`; without semantic search the
+route returns `503`, and other failures use the semantic status codes
+([§9.4](#94-explicit-hybrid-search-flh-071)).
