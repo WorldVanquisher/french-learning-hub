@@ -10,7 +10,18 @@ calls or model downloads.
 
 **Not touched:** remote source, NAS services and FLH evidence.
 
-**Outcome: Linux package acceptance BLOCKED (no SSH access to the NAS).** A
+**Current outcome:** Linux acceptance on the NAS **ran** (2026-10-15)
+([NAS Linux acceptance](#nas-linux-acceptance-third-part)):
+- with the D1-fixed `ctl.sh` overlaid: **84 PASS / 0 FAIL / 1 BLOCKED**
+  (nginx), and the D1 regression suite **35/0**;
+- the integrated checkout as shipped **FAILS** packaging on Linux (**D2**,
+  `shasum` missing) and still has D1;
+- the NAS checkout is **stale**: a human sync is required
+  ([below](#nas-checkout-sync-required)).
+
+The sections that follow, up to that one, are kept as history.
+
+**Earlier outcome: Linux package acceptance BLOCKED (no SSH access to the NAS).** A
 reproducible harness (`scripts/validation/flh077/accept.sh`) is delivered and
 was debugged in a labelled macOS dry run. That dry run found one controller
 defect (D1), which is **fixed** in the second part of this task
@@ -191,12 +202,12 @@ Medium; operational.
 
 | Area | NAS (Linux) | macOS dry run |
 | --- | --- | --- |
-| 1. Build/package with the revision label | NOT RUN (SSH BLOCKED) | PASS |
-| 2. Packaged native Linux binary: architecture, checksums, layout | NOT RUN | Layout/checksums/ELF headers PASS; execution not possible on macOS |
-| 3. Controller lifecycle, repeats, stale pid, unrelated process, spaces | NOT RUN | First run: PASS except the occupied port, **FAIL (D1)**. After the D1 fix: **PASS** (dry run 82/0/1; `ctl_regression.sh` 35/0) |
-| 4. Static, presets, provenance, denied requests, bytes, restart identity | NOT RUN | PASS |
-| 5. Mechanical release refusal, tampering | NOT RUN | PASS |
-| 6. systemd / nginx template syntax | NOT RUN | systemd BLOCKED (absent); nginx PASS (macOS nginx 1.29.2) |
+| 1. Build/package with the revision label | **FAIL as shipped (D2: `shasum` missing on Linux)**; PASS with a task-local `shasum`→`sha256sum` test shim | PASS |
+| 2. Packaged native Linux binary: architecture, checksums, layout | **PASS** (x86_64 binary executed; ELF machines, `SHA256SUMS`, layout, revision label) | Layout/checksums/ELF headers PASS; execution not possible on macOS |
+| 3. Controller lifecycle, repeats, stale pid, unrelated process, spaces | Integrated `ctl.sh`: PASS except **D1 FAIL** (reproduced on Linux). Fixed `ctl.sh` (overlay): **PASS**, `ctl_regression.sh` **35/0** | First run: D1 FAIL. After the fix: PASS (82/0/1; 35/0) |
+| 4. Static, presets, provenance, denied requests, bytes, restart identity | **PASS** | PASS |
+| 5. Mechanical release refusal, tampering | **PASS** (exit 3; the 4 tamperings exit 1) | PASS |
+| 6. systemd / nginx template syntax | systemd-analyze verify **PASS**; nginx **BLOCKED** (not installed; not installed by me) | systemd BLOCKED; nginx PASS (macOS nginx 1.29.2) |
 
 ## E5 readiness (requested after FLH-077; FLH-076 not resumed)
 
@@ -317,4 +328,104 @@ byte-identical with `cmp`. Result: **23 PASS / 12 FAIL**.
 acceptance on the NAS remains **BLOCKED** (SSH): run `accept.sh` and
 `ctl_regression.sh` on the NAS to obtain Linux evidence. On Linux, both use
 the packaged native binary.
+
+## NAS Linux acceptance (third part)
+
+**Access:** `ssh -o BatchMode=yes worldvanquisher@100.98.239.98` now works.
+The host is `x86_64`, Linux, Go 1.27.1. These tools are present: `python3`,
+`curl`, `tar`, `ss`, `systemd-analyze`, `openssl`, and `web/node_modules`
+(vite). These are absent: `nginx`, `lsof`, `shasum`.
+
+**Remote checkout** `~/workspace/flh-nas-codex`, inspected read-only and never
+modified:
+- **Contains FLH-076:** `flh076_domain_fingerprint_v3`, and `package.sh`
+  identical to the local one (SHA-256 `8e08a736…`).
+- **Does not contain FLH-077:** no `scripts/validation/flh077/`, and the
+  pre-fix `ctl.sh` (SHA-256 `1e9e2b06…`; the fixed one is `74ec63d4…`).
+  Rechecked on 2026-10-15 after PR #104: **unchanged (stale)**.
+
+**Harness copies:** in `/tmp/flh077-harness/` on the NAS. `accept.sh` there
+is `e88dcd16…`, byte-identical to the repository version in this change,
+which includes the systemd-check fix below. They were run from the checkout
+root and write only to their work directories under `/tmp`.
+
+| Run | Source | Result |
+| --- | --- | --- |
+| A (`/tmp/flh077 nas A`) | Integrated checkout, label `1dc49114…`, as is | **FAIL at packaging:** `package.sh` exit 127, `line 103: shasum: command not found` (D2). Nothing further ran |
+| A2 (`/tmp/flh077 nas A2`) | Integrated checkout plus a task-local test shim `/tmp/flh077-shim/shasum` (`shasum -a 256 ARGS` → `sha256sum ARGS`) first in `PATH` | **82 PASS / 2 FAIL / 1 BLOCKED.** FAIL: **D1 reproduced on Linux** with the packaged native binary ("ctl.sh start hung >30 s"), and `systemd-analyze verify`, which was a harness bug (fixed below). BLOCKED: nginx |
+| B, regression (`/tmp/flh077 nas B ctl`) | `/tmp/flh077-overlay-src`: a copy of the checkout without `.git`. It differs only by the **fixed `ctl.sh`** and the harness directory (`diff -rq`), and uses the shim | **35 PASS / 0 FAIL** (`ss` ownership) |
+| B, acceptance (`/tmp/flh077 nas B`) | Same overlay, label `1dc49114…+flh077-ctl-overlay` | **84 PASS / 0 FAIL / 1 BLOCKED** (nginx) |
+
+**Linux evidence from run B** (the packaged native binary,
+`bin/linux-amd64/flh-server`):
+- **Package and binary:**
+  - ELF machines x86_64 and aarch64, matching the host; the binary executes;
+  - layout, no symlinks, `SHA256SUMS`, revision label, `BLOCKED` status.
+- **Release and controller:**
+  - `validate-release.sh` exits 3, and start without `ALLOW_MECHANICAL` is
+    refused;
+  - start, repeated start (same pid, the process is the packaged binary),
+    status, stop, repeated stop and restart;
+  - a runtime path with spaces;
+  - the occupied port fails promptly with the bind error logged;
+  - stale and dead pid files; an unrelated `sleep` never signalled;
+  - the corrupted-artifact startup failure.
+- **HTTP:** static index and JS bytes, allowed routes 200, denied 404, writes
+  405, `q=` 400, unknown preset 404, provenance, and byte-identical results
+  and identity after restart.
+- **Package and teardown:** bytes unchanged; the 4 tamper refusals;
+  `systemd-analyze verify` on the unit template; `sh -n ctl.sh`; owned ports
+  closed; no leftover processes.
+
+**Harness fix (`accept.sh`):** the systemd check substituted a path containing
+spaces into `ExecStart`, which unit files split, and used `User=nobody`, which
+systemd flags. The test copy now lives in a space-free task-local directory
+and uses the current user. The unit template itself was unchanged and
+verified clean.
+
+**D2: `package.sh` requires `shasum`, which Linux hosts may lack.** Medium;
+release tooling.
+- **Expected:** packaging works on the Linux target.
+- **Actual:** exit 127 at `SHA256SUMS`, `line 103: shasum: command not found`.
+  The tarball `.sha256` step would follow.
+- **Location:** `scripts/demo/flh076/package.sh` (FLH-076; not owned in this
+  task and not modified). `validate-release.sh`, `ctl.sh` and `accept.sh`
+  already prefer `sha256sum`.
+- **Shortest reproducer:** on the NAS, `bash scripts/demo/flh076/package.sh
+  --artifact A --revision R --label x --out /tmp/out` with no `shasum` in
+  `PATH`.
+- **Suggested fix:** use `sha256sum` when present.
+- **Workaround used:** the test shim above, labelled. It changes no source.
+
+**Linux limits:**
+- The `nolsof` regression mode still finds `ss` in `/usr/bin` on this host,
+  so the log-only ownership fallback was exercised on macOS only.
+- `nginx -t` is BLOCKED on the NAS. Its macOS result is syntax evidence only.
+
+**Retained on the NAS** (logs and packages kept): `/tmp/flh077 nas A`, `A2`,
+`B ctl`, `B`, `/tmp/flh077-overlay-src`, `/tmp/flh077-shim`,
+`/tmp/flh077-harness`. No service was installed, enabled or reloaded.
+
+### NAS checkout sync required
+
+`~/workspace/flh-nas-codex` predates FLH-077. Its `ctl.sh` is `1e9e2b06…`
+(pre-fix), and it has no `scripts/validation/flh077/`. No Git was run here.
+
+**Human step:** bring the checkout to the integrated revision that contains
+PR #104, then confirm:
+
+```sh
+cd ~/workspace/flh-nas-codex && sha256sum scripts/demo/flh076/deploy/ctl.sh && ls scripts/validation/flh077/
+# ctl.sh must be 74ec63d4a94e6160e4883e1aa818d76c65f8cb9608a403c499203664b12fe5b0 (or a later reviewed fix)
+```
+
+**Afterwards (no overlay needed):**
+
+```sh
+PATH=/tmp/flh077-shim:$PATH bash scripts/validation/flh077/ctl_regression.sh "/tmp/flh077 nas C ctl" 19840
+PATH=/tmp/flh077-shim:$PATH bash scripts/validation/flh077/accept.sh "/tmp/flh077 nas C" 19870
+```
+
+Drop the shim once D2 is fixed. The overlay run B already exercised exactly
+this `ctl.sh` on Linux, so these are confirmation runs only.
 

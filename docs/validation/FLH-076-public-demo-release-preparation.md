@@ -9,7 +9,14 @@ Date: 2026-10-15 (UTC). Working directory:
 **Not used:** Git/GitHub, subagents, Docker, AWS/Titan, model downloads,
 Windows changes, service installation, publication or DNS.
 
-**Outcome: release candidate BLOCKED (no real-model vectors).** The other
+**Current outcome (2026-10-15): still BLOCKED, now on deployment identity.**
+E5 is reachable and ready, but it serves `…/float16/dd0889c6f1869f7f` (default
+dynamic batching), not the pinned `…/float16/singleton_v1/5a3e23f28a05baff`.
+Nothing was sent, so no real artifact, package or real-artifact browser run
+exists yet ([continuation](#continuation-real-artifact-attempts-2026-10-15)).
+The original outcome below is kept as history.
+
+**Earlier outcome: release candidate BLOCKED (no real-model vectors).** The other
 work packages are delivered: the pipeline, browser acceptance, a BLOCKED
 package, and the deployment handoff.
 
@@ -256,3 +263,71 @@ pre-existing `scripts/validation/flh053` symlinked-temp refusal.
 - **Logs and probe:** `/tmp/flh076-verify.log`,
   `/tmp/flh076-flh073-smoke.out`, and the probe output
   `/tmp/flh076-probe1.json` (empty: the probe timed out).
+
+## Continuation: real-artifact attempts (2026-10-15)
+
+**Prior state, inspected before sending:**
+- no work directory existed (`~/flh076` absent), so 0/64 positions and 0/16
+  POSTs had been used;
+- the fresh plan is **20 positions** (12 `document/concept_embedding_text_v1/passage`,
+  8 `preset/concept_search_query_v2/query`) in **3 POSTs**, plan SHA-256
+  `083a35ef51a9580e…`, as expected.
+
+**Attempt 1 at 02:58:22Z** (Mac; one invocation, no retry):
+
+```sh
+prepare embed -work ~/flh076/e5-work -base-url http://100.118.109.6:8765/v1 \
+  -deployment 'multilingual-e5-base@d128750597153bb5987e10b1c3493a34e5a4502a/flh_e5_role_prefix_v1/float16/singleton_v1/5a3e23f28a05baff' \
+  -dimensions 768 -allow-live
+```
+
+- **Built-in probe:** `/readyz` 200, but `/manifest` reported a **different
+  deployment**, so the result was `deployment_mismatch`, exit 1, nothing sent.
+- **Accounting** (`~/flh076/e5-work/state.json`): **1/2 probes, 0/16 POSTs,
+  0/64 positions**, 0 receipts.
+- **Hashes:** `plan.json` `239b159a…`, `state.json` `2b12c7b3…`.
+
+**Attempt 2 at 03:15:08Z** (after PR #104): a single plain `GET /manifest`
+and `GET /readyz`, so as not to spend the work directory's last probe on a
+known mismatch. Both returned 200, still with deployment
+`…/float16/dd0889c6f1869f7f`, so `embed` was **not** run. A final identical check at
+03:17:22Z, just before handoff, returned the same identity.
+
+| | Deployment id |
+| --- | --- |
+| Pinned (FLH-060, singleton batching) | `multilingual-e5-base@d128750597153bb5987e10b1c3493a34e5a4502a/flh_e5_role_prefix_v1/float16/singleton_v1/5a3e23f28a05baff` |
+| Served | `multilingual-e5-base@d128750597153bb5987e10b1c3493a34e5a4502a/flh_e5_role_prefix_v1/float16/dd0889c6f1869f7f` (`manifest_sha256` `dd0889c6f1869f7fe3bc…`) |
+
+The served identity has no `singleton_v1` segment. That is the shape of the
+default `dynamic_v1` batching (FLH-059): a different vector identity.
+
+**Therefore NOT RUN:**
+- import and real-artifact release validation;
+- packaging with source label `86b06f461e64203192ebc3a54e4d1f749681aceb`;
+- browser checks against a real artifact.
+
+No AWS or paid fallback; no Windows changes.
+
+**To unblock, choose one (human decision):**
+1. **Serve the pinned deployment.** Start the encoder with `singleton_v1`
+   batching (FLH-065 `flh-e5.ps1 start` uses `singleton_v1` with the pinned
+   identity). Then rerun the **same** `embed` command: the work directory
+   keeps its accounting (1 probe left, 64/16 untouched).
+2. **Adopt the served `…/float16/dd0889c6f1869f7f` identity** (an explicit
+   decision: a new vector identity). Use it as `-deployment` and
+   `--expected-deployment` in a **new** work directory. The started one is
+   bound to the pinned id.
+
+**Then:**
+
+```sh
+prepare import -work ~/flh076/e5-work -out ~/flh076/artifact-e5
+prepare validate -artifact ~/flh076/artifact-e5 -release            # expect 0
+bash scripts/demo/flh076/package.sh --artifact ~/flh076/artifact-e5 --revision 86b06f461e64203192ebc3a54e4d1f749681aceb \
+  --label rc2 --out ~/flh076/packages --expected-deployment '<deployment id>'
+bash scripts/demo/flh076/browser/run.sh /abs/new/browser-dir ~/flh076/artifact-e5
+```
+
+Package on a host that has `shasum` (such as this Mac) until FLH-077 D2 is
+fixed.
+
