@@ -51,6 +51,18 @@ PY
 }
 sha() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 treehash() { (cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 cat | sha | cut -d' ' -f1); }
+# The one temporary directory this run creates outside WORK (FLH-080 H1). It is
+# removed as soon as it is used, and on any exit bash can catch (an error,
+# SIGHUP, SIGINT, SIGTERM). Only the exact path mktemp returned to this run is
+# removed. Other /tmp/flh077-unit-* directories are never touched. Nothing
+# can clean up after SIGKILL or power loss.
+UNITDIR=""
+remove_unitdir() {
+  case "$UNITDIR" in /tmp/flh077-unit-??????) [ -d "$UNITDIR" ] && [ ! -L "$UNITDIR" ] && rm -rf -- "$UNITDIR" ;; esac
+  UNITDIR=""
+}
+trap remove_unitdir EXIT
+trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
 
 # 0. Prerequisites (reported, never installed).
 for tool in go python3 curl tar; do command -v $tool >/dev/null && pass "prerequisite $tool" "$(command -v $tool)" || { blocked "prerequisite $tool" "missing"; }; done
@@ -201,14 +213,17 @@ TPL="$WORK/templates"; mkdir -p "$TPL"
 if command -v systemd-analyze >/dev/null; then
   # The unit is verified as written, with only its site paths and user substituted. Unit files
   # split ExecStart on spaces, so the test copy uses a space-free task-local directory.
-  UNITDIR=$(mktemp -d /tmp/flh077-unit-XXXXXX); cp "$SERVER" "$UNITDIR/flh-server"
-  sed -e "s|/srv/flh-demo/current/bin/linux-amd64/flh-server|$UNITDIR/flh-server|" -e "s|/srv/flh-demo/current|$UNITDIR|g" -e "s|/srv/flh-demo|$UNITDIR|g" \
-      -e "s|^User=.*|User=$(id -un)|" -e "s|^Group=.*|Group=$(id -gn)|" \
-    "$PKG/deploy/flh-public-demo.service.example" > "$UNITDIR/flh-public-demo-test.service"
-  cp "$UNITDIR/flh-public-demo-test.service" "$TPL/"
-  systemd-analyze verify "$UNITDIR/flh-public-demo-test.service" > "$TPL/systemd-verify.out" 2>&1; rc=$?
-  if [ $rc = 0 ] && ! grep -qiE "unknown|invalid|failed|ignoring" "$TPL/systemd-verify.out"; then pass "systemd-analyze verify (unit template)"
-  else fail "systemd-analyze verify (unit template)" "exit $rc: $(head -c 300 "$TPL/systemd-verify.out" | tr '\n' ' ')"; fi
+  if UNITDIR=$(mktemp -d /tmp/flh077-unit-XXXXXX) && cp "$SERVER" "$UNITDIR/flh-server"; then
+    sed -e "s|/srv/flh-demo/current/bin/linux-amd64/flh-server|$UNITDIR/flh-server|" -e "s|/srv/flh-demo/current|$UNITDIR|g" -e "s|/srv/flh-demo|$UNITDIR|g" \
+        -e "s|^User=.*|User=$(id -un)|" -e "s|^Group=.*|Group=$(id -gn)|" \
+      "$PKG/deploy/flh-public-demo.service.example" > "$UNITDIR/flh-public-demo-test.service"
+    cp "$UNITDIR/flh-public-demo-test.service" "$TPL/"
+    systemd-analyze verify "$UNITDIR/flh-public-demo-test.service" > "$TPL/systemd-verify.out" 2>&1; rc=$?
+    if [ $rc = 0 ] && ! grep -qiE "unknown|invalid|failed|ignoring" "$TPL/systemd-verify.out"; then pass "systemd-analyze verify (unit template)"
+    else fail "systemd-analyze verify (unit template)" "exit $rc: $(head -c 300 "$TPL/systemd-verify.out" | tr '\n' ' ')"; fi
+  else fail "systemd-analyze verify (unit template)" "could not prepare the temporary unit directory"; fi
+  UNITTMP=$UNITDIR; remove_unitdir
+  if [ -n "$UNITTMP" ]; then [ ! -e "$UNITTMP" ] && pass "temporary unit directory removed" "$UNITTMP" || fail "temporary unit directory removed" "$UNITTMP"; fi
 else blocked "systemd-analyze verify" "systemd-analyze not installed"; fi
 if command -v nginx >/dev/null; then
   if command -v openssl >/dev/null; then
