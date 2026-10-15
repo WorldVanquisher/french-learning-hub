@@ -377,11 +377,18 @@ Windows, Qdrant, cloud credentials, API key or egress.
     `fixtures.json` hash differing from the manifest), and nothing serves.
   - **Recovery:** switch `current` back to the last good release and run
     `start`.
-- **Runtime directory must be writable.** If `ctl.sh start` fails while
-  writing its pid file (disk full, quota), the server it launched keeps
-  running untracked (FLH-078 D3). Find it by its full
-  `-public-demo-artifact <release>/artifact` command line, stop it, free the
-  space, and start again.
+- **Runtime directory must be writable.** `ctl.sh start` checks this before it
+  launches anything. If the pid path is not a regular file, or the runtime
+  directory is unwritable (quota, permissions), start exits 1 with "start
+  refused … nothing launched". If recording the pid fails after the launch
+  (disk full), start stops the process it launched and exits 1 with "could not
+  record pid". The same happens when start is interrupted by SIGHUP, SIGINT or
+  SIGTERM before it reports `started`. Free the space or fix the directory,
+  then start again (FLH-080 D3).
+- **Exception: SIGKILL.** If `ctl.sh` itself is killed with SIGKILL in the
+  instant between the launch and the pid rename, the server can still be left
+  untracked. Find it by its full `-public-demo-artifact <release>/artifact`
+  command line and stop that one process.
 
 **Local smoke of a package:** `bash scripts/demo/flh076/smoke_package.sh PKG
 /abs/new/run/dir`. Off Linux, it uses host builds of the same source.
