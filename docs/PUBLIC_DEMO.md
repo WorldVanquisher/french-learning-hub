@@ -29,14 +29,19 @@ admission authority. Artifacts built before FLH-075 must be rebuilt
   ([below](#release-package-and-deployment-handoff-flh-076));
 - fingerprint v3.
 
-> **Release status: BLOCKED.** No real-model artifact exists yet. The E5
-> service was offline when FLH-076 ran (one readiness probe, which timed out).
-> The only artifact that can be built uses **mechanical test vectors** (feature
-> hashing of words, not a language model): its semantic and hybrid rankings
-> show the ranking mechanics only and say nothing about relevance. For
-> example, one example query ranks an unrelated Concept first. The packaging
-> tool therefore produces only a `…-BLOCKED` package. Nothing has been
-> published, and no DNS change has been made.
+> **Release status: CANDIDATE prepared, not deployed (FLH-078).** A
+> real-model artifact exists (artifact `d025f217f4d76396`, the pinned E5
+> deployment `…/float16/singleton_v1/5a3e23f28a05baff`), packaged as
+> `flh-public-demo-flh078-rc1`, accepted on Linux and in a real browser.
+> Details, hashes and limits:
+> [FLH-078 report](validation/FLH-078-demo-release-candidate.md). Nothing has
+> been published, installed or changed in DNS; public deployment needs a
+> separate decision.
+>
+> Artifacts built from **mechanical test vectors** (feature hashing of words,
+> not a language model) still package only as `…-BLOCKED`: their semantic and
+> hybrid rankings show the ranking mechanics only and say nothing about
+> relevance.
 
 ## What the server does in demo mode
 
@@ -216,8 +221,11 @@ refused, with or without copied provenance.
 - the release packager therefore also requires the model id to be a pinned E5
   deployment equal to `--expected-deployment`.
 
-**Continuation, when the Windows E5 service is reachable again.** Run this
-from the repository root; it sends at most 20 positions in 3 POSTs:
+**Continuation (completed in FLH-078).** This command produced the current
+artifact: 20 positions in 3 POSTs. Its work directory has now used both of its
+readiness probes, so running `embed` again there is refused. A new artifact,
+for example for another deployment id, needs a new work directory and its own
+budget decision. Run it from the repository root:
 
 ```sh
 go build -o /tmp/flh-prepare ./scripts/demo/flh073/prepare && DEP='multilingual-e5-base@d128750597153bb5987e10b1c3493a34e5a4502a/flh_e5_role_prefix_v1/float16/singleton_v1/5a3e23f28a05baff' && /tmp/flh-prepare embed -work "$HOME/flh076/e5-work" -base-url http://100.118.109.6:8765/v1 -deployment "$DEP" -dimensions 768 -allow-live && /tmp/flh-prepare import -work "$HOME/flh076/e5-work" -out "$HOME/flh076/artifact-e5" && bash scripts/demo/flh076/package.sh --artifact "$HOME/flh076/artifact-e5" --revision "<YOUR-REVISION-LABEL>" --label rc2 --out "$HOME/flh076/packages" --expected-deployment "$DEP"
@@ -319,6 +327,12 @@ bash scripts/demo/flh076/package.sh --artifact ARTIFACT_DIR --revision LABEL --l
 **Output:** `flh-public-demo-NAME[-BLOCKED]/`, plus a `.tar.gz` and its
 `.sha256`.
 
+**Packaging host:** Linux or macOS, with Go, Python 3, the `web/node_modules`
+install, and `sha256sum` or `shasum`. `sha256sum` is used when present
+(usual on Linux), else `shasum -a 256` (macOS). With neither, the packager
+stops with exit 2 before building anything. Both produce the same
+`SHA256SUMS` format.
+
 | Path | Contents |
 | --- | --- |
 | `bin/linux-amd64/`, `bin/linux-arm64/` | Static `flh-server` and `flh-prepare` |
@@ -346,6 +360,29 @@ Windows, Qdrant, cloud credentials, API key or egress.
 - **rollback:** switch the `current` symlink (outside the release) back and
   restart.
 
+**Restart, rollback and recovery, as rehearsed in FLH-078**
+- **Layout:** releases in `releases/<package>/`, made read-only after
+  validation; `current` is a symlink beside them; one runtime directory that
+  stays writable.
+- **Switch:** replace `current` atomically: `ln -sfn releases/<new>
+  current.new && mv -T current.new current`.
+- **Restart:** `current/deploy/ctl.sh stop RUN`, then `current/deploy/ctl.sh
+  start RUN`, with the same `PORT` and runtime directory. `stop` finds the
+  previous server through the recorded pid, even after the switch.
+- **Check the identity** after every start: `artifact.version`,
+  `manifest_sha256` and `real_model` from `/knowledge-library/demo`.
+- **Invalid release:**
+  - `validate-release.sh` exits 1, so don't switch.
+  - If one is selected anyway, the server refuses to start (for example, a
+    `fixtures.json` hash differing from the manifest), and nothing serves.
+  - **Recovery:** switch `current` back to the last good release and run
+    `start`.
+- **Runtime directory must be writable.** If `ctl.sh start` fails while
+  writing its pid file (disk full, quota), the server it launched keeps
+  running untracked (FLH-078 D3). Find it by its full
+  `-public-demo-artifact <release>/artifact` command line, stop it, free the
+  space, and start again.
+
 **Local smoke of a package:** `bash scripts/demo/flh076/smoke_package.sh PKG
 /abs/new/run/dir`. Off Linux, it uses host builds of the same source.
 
@@ -366,7 +403,8 @@ download.
   architecture (amd64 or arm64), and the release root (default
   `/srv/flh-demo`).
 
-**Remaining deployment steps** (human-owned; none performed):
+**Remaining deployment steps** (human-owned; none performed). Steps 1 and 2
+were done in FLH-078 for `flh-public-demo-flh078-rc1`:
 1. Run the continuation command, and get `validate-release.sh` exit 0.
 2. Run the browser acceptance against the CANDIDATE artifact
    (`--expect-vectors model` is selected automatically).

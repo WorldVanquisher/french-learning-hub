@@ -24,6 +24,11 @@ done
 [[ "$REVISION" =~ ^[A-Za-z0-9._/+-]{1,80}$ ]] || { echo "refused: revision label must be [A-Za-z0-9._/+-]{1,80}" >&2; exit 2; }
 case "$OUT" in /*) ;; *) echo "refused: --out must be absolute" >&2; exit 2 ;; esac
 case "$OUT/" in "$REPO"/*) echo "refused: --out must be outside the repository" >&2; exit 2 ;; esac
+# SHA-256 lines ("HASH  PATH"): sha256sum (GNU coreutils, usual on Linux), else
+# shasum -a 256 (macOS, Perl). Both write the format validate-release.sh checks.
+if command -v sha256sum >/dev/null 2>&1; then sha256() { sha256sum "$@"; }
+elif command -v shasum >/dev/null 2>&1; then sha256() { shasum -a 256 "$@"; }
+else echo "refused: no SHA-256 tool (need sha256sum or shasum)" >&2; exit 2; fi
 ARTIFACT=$(cd "$ARTIFACT" && pwd)
 [ -z "$(find "$ARTIFACT" -type l)" ] || { echo "refused: the artifact contains symbolic links" >&2; exit 2; }
 
@@ -100,12 +105,12 @@ PY
 top=$(cd "$STAGE" && ls -A | LC_ALL=C sort | tr '\n' ' ')
 [ "$top" = "README.md RELEASE.json artifact bin deploy validate-release.sh web " ] || { echo "refused: unexpected top-level entries: $top" >&2; exit 1; }
 # Written outside the package first, so the list never includes itself.
-(cd "$STAGE" && find . -type f | sed 's|^\./||' | LC_ALL=C sort | while read -r f; do shasum -a 256 "$f"; done) > "$TOOLS/SHA256SUMS"
+(cd "$STAGE" && find . -type f | sed 's|^\./||' | LC_ALL=C sort | while IFS= read -r f; do sha256 "$f"; done) > "$TOOLS/SHA256SUMS"
 mv "$TOOLS/SHA256SUMS" "$STAGE/SHA256SUMS"
 grep -q '  SHA256SUMS$' "$STAGE/SHA256SUMS" && { echo "refused: SHA256SUMS lists itself" >&2; exit 1; }
 
 mv "$STAGE" "$FINAL"
-(cd "$OUT" && COPYFILE_DISABLE=1 tar -czf "$NAME.tar.gz" "$NAME" && shasum -a 256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256")
+(cd "$OUT" && COPYFILE_DISABLE=1 tar -czf "$NAME.tar.gz" "$NAME" && sha256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256")
 trap 'rm -rf "$TOOLS"' EXIT
 echo "$STATUS package: $FINAL"
 echo "tarball: $OUT/$NAME.tar.gz ($(cut -d' ' -f1 "$OUT/$NAME.tar.gz.sha256"))"
