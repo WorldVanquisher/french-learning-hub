@@ -19,7 +19,9 @@ if [ "$(uname -s)" != Linux ]; then
   export SERVER_BIN="$RUN/host-server" PREPARE="$RUN/host-prepare"
   note "NOTE: non-Linux host: using host builds of this source instead of the package's linux binaries"
 fi
-before=$(cd "$PKG" && find . -type f | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256)
+if command -v sha256sum >/dev/null 2>&1; then sha256() { sha256sum "$@"; }; else sha256() { shasum -a 256 "$@"; }; fi
+tree_sha() { (cd "$PKG" && find . -type f | LC_ALL=C sort | while IFS= read -r f; do sha256 "$f"; done | sha256); }
+before=$(tree_sha)
 set +e; "$PKG/validate-release.sh" > "$RUN/validate.out" 2>&1; V=$?; set -e
 STATUS=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["release_status"])' "$PKG/RELEASE.json")
 note "validate-release.sh exit $V ($(tail -1 "$RUN/validate.out")); RELEASE.json status $STATUS"
@@ -44,7 +46,7 @@ C2=$(counters)
 [ "$C2" = "2 0" ] && note "PASS two preset searches, two cached lookups ($C2)" || { note "FAIL counters $C2"; FAILED=1; }
 PORT=$PORT "$PKG/deploy/ctl.sh" stop "$RUN" | tee -a "$RUN/smoke.txt"
 trap - EXIT
-after=$(cd "$PKG" && find . -type f | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256)
+after=$(tree_sha)
 [ "$before" = "$after" ] && note "PASS package files unchanged by the run" || { note "FAIL package files changed"; FAILED=1; }
 [ "$FAILED" = 0 ] && note "PACKAGE SMOKE PASSED" || note "PACKAGE SMOKE FAILED"
 exit "$FAILED"

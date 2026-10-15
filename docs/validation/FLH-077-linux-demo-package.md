@@ -10,7 +10,23 @@ calls or model downloads.
 
 **Not touched:** remote source, NAS services and FLH evidence.
 
-**Current outcome:** Linux acceptance on the NAS **ran** (2026-10-15)
+**Current outcome (FLH-078, 2026-10-15): Linux acceptance PASSES on the synced
+checkout, with no shim or overlay.**
+- **The NAS checkout is now synced:** `ctl.sh` `74ec63d4…`, harness present.
+  The only addition is the FLH-078 **D2 fix** in a task-local copy, whose
+  differences are recorded in
+  [FLH-078](FLH-078-demo-release-candidate.md).
+- **Results:**
+  - `accept.sh`: **84 PASS / 0 FAIL / 1 BLOCKED** (nginx);
+  - `ctl_regression.sh`: **35/0**;
+  - D2 is **fixed** (`package.sh` prefers `sha256sum`).
+- **New finding D3** (`ctl.sh`, low severity): a failed pid-file write leaves
+  the launched server untracked. It is reported in FLH-078.
+
+The next banner and the sections that follow, up to "NAS Linux acceptance",
+are kept as history.
+
+**Earlier outcome:** Linux acceptance on the NAS **ran** (2026-10-15)
 ([NAS Linux acceptance](#nas-linux-acceptance-third-part)):
 - with the D1-fixed `ctl.sh` overlaid: **84 PASS / 0 FAIL / 1 BLOCKED**
   (nginx), and the D1 regression suite **35/0**;

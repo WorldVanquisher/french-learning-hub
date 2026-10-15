@@ -9,7 +9,19 @@ Date: 2026-10-15 (UTC). Working directory:
 **Not used:** Git/GitHub, subagents, Docker, AWS/Titan, model downloads,
 Windows changes, service installation, publication or DNS.
 
-**Current outcome (2026-10-15): still BLOCKED, now on deployment identity.**
+**Current outcome (FLH-078, 2026-10-15): CANDIDATE prepared; not deployed.**
+- The encoder was restarted with the pinned `singleton_v1` deployment, then the
+  same work directory was resumed: 20 positions in 3 POSTs. Accounting is
+  20/64 positions, 3/16 POSTs and 2/2 probes; all receipts are complete.
+- The artifact is `~/flh076/artifact-e5`: version `d025f217f4d76396`,
+  manifest `dfe6e94d…`, `validate -release` exit 0.
+- It is packaged as `flh-public-demo-flh078-rc1` (tarball `78fb5495…`) and
+  accepted on Linux and in a real browser. Evidence:
+  [FLH-078](FLH-078-demo-release-candidate.md).
+
+The two banners below are kept as history.
+
+**Earlier outcome (2026-10-15): still BLOCKED, now on deployment identity.**
 E5 is reachable and ready, but it serves `…/float16/dd0889c6f1869f7f` (default
 dynamic batching), not the pinned `…/float16/singleton_v1/5a3e23f28a05baff`.
 Nothing was sent, so no real artifact, package or real-artifact browser run
