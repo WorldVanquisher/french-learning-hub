@@ -199,9 +199,14 @@ done
 # 6. Template syntax (installed tools only; nothing installed, enabled or reloaded).
 TPL="$WORK/templates"; mkdir -p "$TPL"
 if command -v systemd-analyze >/dev/null; then
-  sed -e "s|/srv/flh-demo/current/bin/linux-amd64/flh-server|$SERVER|" -e "s|/srv/flh-demo/current|/tmp|g" -e "s|/srv/flh-demo|/tmp|g" -e "s|^User=.*|User=nobody|" -e "s|^Group=.*|Group=nogroup|" \
-    "$PKG/deploy/flh-public-demo.service.example" > "$TPL/flh-public-demo-test.service"
-  systemd-analyze verify "$TPL/flh-public-demo-test.service" > "$TPL/systemd-verify.out" 2>&1; rc=$?
+  # The unit is verified as written, with only its site paths and user substituted. Unit files
+  # split ExecStart on spaces, so the test copy uses a space-free task-local directory.
+  UNITDIR=$(mktemp -d /tmp/flh077-unit-XXXXXX); cp "$SERVER" "$UNITDIR/flh-server"
+  sed -e "s|/srv/flh-demo/current/bin/linux-amd64/flh-server|$UNITDIR/flh-server|" -e "s|/srv/flh-demo/current|$UNITDIR|g" -e "s|/srv/flh-demo|$UNITDIR|g" \
+      -e "s|^User=.*|User=$(id -un)|" -e "s|^Group=.*|Group=$(id -gn)|" \
+    "$PKG/deploy/flh-public-demo.service.example" > "$UNITDIR/flh-public-demo-test.service"
+  cp "$UNITDIR/flh-public-demo-test.service" "$TPL/"
+  systemd-analyze verify "$UNITDIR/flh-public-demo-test.service" > "$TPL/systemd-verify.out" 2>&1; rc=$?
   if [ $rc = 0 ] && ! grep -qiE "unknown|invalid|failed|ignoring" "$TPL/systemd-verify.out"; then pass "systemd-analyze verify (unit template)"
   else fail "systemd-analyze verify (unit template)" "exit $rc: $(head -c 300 "$TPL/systemd-verify.out" | tr '\n' ' ')"; fi
 else blocked "systemd-analyze verify" "systemd-analyze not installed"; fi
