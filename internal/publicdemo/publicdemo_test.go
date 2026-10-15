@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -519,5 +520,81 @@ func TestFingerprint_CoversEveryTableInTheSchema(t *testing.T) {
 	}
 	if a.Manifest.DomainFingerprint.Version != publicdemo.FingerprintVersion || a.Manifest.DomainFingerprint.Counts["knowledge_admission_recommendations"] != 11 {
 		t.Fatalf("manifest fingerprint = %+v", a.Manifest.DomainFingerprint)
+	}
+}
+
+// FLH-076: the fingerprint must not depend on whether rows share a clock tick,
+// only on the order the reads use.
+func TestFingerprint_TiesAndTickDistanceDoNotMatterButOrderDoes(t *testing.T) {
+	good := buildArtifact(t)
+	set := func(t *testing.T, db *sql.DB, table string, id int, at string) {
+		mustExec(t, db, `UPDATE `+table+` SET created_at = ? WHERE id = ?`, at, id)
+	}
+	same := map[string]func(t *testing.T, db *sql.DB){
+		// Recommendations 2 and 3: tied, then 1 µs apart in id order — the read order is unchanged.
+		"recommendations tied": func(t *testing.T, db *sql.DB) {
+			set(t, db, "knowledge_admission_recommendations", 2, "2026-01-01T00:00:00.000002Z")
+			set(t, db, "knowledge_admission_recommendations", 3, "2026-01-01T00:00:00.000002Z")
+		},
+		"recommendations a tick apart": func(t *testing.T, db *sql.DB) {
+			set(t, db, "knowledge_admission_recommendations", 2, "2026-01-01T00:00:00.000002Z")
+			set(t, db, "knowledge_admission_recommendations", 3, "2026-01-01T00:00:00.000003Z")
+		},
+	}
+	// Make every timestamp distinct and ordered first, so each variant differs only as named.
+	normalize := func(t *testing.T, db *sql.DB) {
+		for _, table := range []string{"knowledge_admission_recommendations", "unit_concept_links"} {
+			rows, _ := db.Query(`SELECT id FROM ` + table + ` ORDER BY id`)
+			var ids []int
+			for rows.Next() {
+				var id int
+				rows.Scan(&id)
+				ids = append(ids, id)
+			}
+			rows.Close()
+			for i, id := range ids {
+				set(t, db, table, id, fmt.Sprintf("2026-01-0%dT00:00:00.%06dZ", map[string]int{"knowledge_admission_recommendations": 1, "unit_concept_links": 2}[table], i*10))
+			}
+		}
+	}
+	base := copyDir(t, good)
+	mutateDB(t, base, func(db *sql.DB) { normalize(t, db) })
+	var m publicdemo.Manifest
+	readJSON(t, filepath.Join(base, publicdemo.ManifestFile), &m)
+	db, err := publicdemo.OpenReadOnly(filepath.Join(base, publicdemo.DatabaseFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseFP, err := publicdemo.ComputeFingerprint(context.Background(), db)
+	db.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, apply := range same {
+		t.Run(name, func(t *testing.T) {
+			dir := copyDir(t, base)
+			mutateDB(t, dir, func(db *sql.DB) { apply(t, db) })
+			db, err := publicdemo.OpenReadOnly(filepath.Join(dir, publicdemo.DatabaseFile))
+			if err != nil {
+				t.Fatal(err)
+			}
+			fp, err := publicdemo.ComputeFingerprint(context.Background(), db)
+			db.Close()
+			if err != nil || fp.SHA256 != baseFP.SHA256 {
+				t.Fatalf("fingerprint changed for an equivalent order: %v", err)
+			}
+		})
+	}
+	// Reversing two recommendations' read order is a different domain state.
+	dir := copyDir(t, base)
+	mutateDB(t, dir, func(db *sql.DB) {
+		set(t, db, "knowledge_admission_recommendations", 2, "2026-01-01T00:00:00.000030Z")
+		set(t, db, "knowledge_admission_recommendations", 3, "2026-01-01T00:00:00.000020Z")
+	})
+	db, _ = publicdemo.OpenReadOnly(filepath.Join(dir, publicdemo.DatabaseFile))
+	fp, _ := publicdemo.ComputeFingerprint(context.Background(), db)
+	db.Close()
+	if fp.SHA256 == baseFP.SHA256 {
+		t.Fatal("a changed read order must change the fingerprint")
 	}
 }

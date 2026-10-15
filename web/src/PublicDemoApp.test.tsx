@@ -98,7 +98,8 @@ describe("Public demo", () => {
       "Telling a friend you miss them: “how to tell a friend I miss them”",
       "Stopping a habit: “no longer doing something”",
     ]);
-    expect(screen.getByRole("note")).toHaveTextContent("Semantic and hybrid search are limited to the example queries above");
+    expect(screen.getByRole("note")).toHaveTextContent("Semantic and hybrid search are limited to a fixed list of example queries");
+    expect(screen.queryByText(/It needs that index and an embedding service/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     expect(await screen.findByText(/1 concept by similarity to “how to tell a friend I miss them”/)).toBeInTheDocument();
 

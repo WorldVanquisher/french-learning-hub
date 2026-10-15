@@ -28,6 +28,14 @@ const (
 	DatabaseFile = "demo.db"
 	VectorsFile  = "vectors.json"
 	FixturesFile = "fixtures.json"
+	// ProvenanceFile is required for, and only for, model-vector artifacts.
+	ProvenanceFile   = "provenance.json"
+	ProvenanceSchema = "flh076_vector_provenance_v1"
+	// ModelGenerator is the FLH-076 E5 HTTP preparation pipeline.
+	ModelGenerator = "flh076_e5_http_v1"
+
+	RoleDocument = "passage"
+	RoleQuery    = "query"
 
 	// SourceMechanical marks deterministic test vectors with no semantic meaning.
 	SourceMechanical = "mechanical-test"
@@ -114,6 +122,69 @@ type Preset struct {
 	Label  string
 	Text   string
 	vector []float32
+}
+
+// ProvenancePosition binds one embedded text to its vector.
+type ProvenancePosition struct {
+	Key            string `json:"key"`
+	Kind           string `json:"kind"` // "document" or "preset"
+	Representation string `json:"representation"`
+	Role           string `json:"role"`
+	TextSHA256     string `json:"text_sha256"`
+	VectorSHA256   string `json:"vector_sha256"`
+	PostSeq        int    `json:"post_seq"`
+	ReceivedUTC    string `json:"received_utc"`
+}
+
+// ProvenancePost is one embedding POST as recorded by the ledger.
+type ProvenancePost struct {
+	Seq         int    `json:"seq"`
+	Positions   int    `json:"positions"`
+	Outcome     string `json:"outcome"` // ok, failed, attempted
+	ReservedUTC string `json:"reserved_utc"`
+	FinishedUTC string `json:"finished_utc"`
+	Error       string `json:"error"`
+}
+
+// ProvenanceProbe is one readiness probe (GET /readyz and GET /manifest).
+type ProvenanceProbe struct {
+	UTC                  string `json:"utc"`
+	ReadyStatus          int    `json:"ready_status"`
+	ManifestDeploymentID string `json:"manifest_deployment_id"`
+	ManifestSHA256       string `json:"manifest_sha256"`
+	Outcome              string `json:"outcome"`
+}
+
+// Accounting is the persistent preparation budget and its use.
+type Accounting struct {
+	MaxPositions  int `json:"max_positions"`
+	MaxPosts      int `json:"max_posts"`
+	MaxProbes     int `json:"max_probes"`
+	UsedPositions int `json:"used_positions"`
+	UsedPosts     int `json:"used_posts"`
+	UsedProbes    int `json:"used_probes"`
+}
+
+// Provenance is provenance.json: what the preparation recorded about every vector.
+type Provenance struct {
+	Schema         string               `json:"schema"`
+	Generator      string               `json:"generator"`
+	DeploymentID   string               `json:"deployment_id"`
+	Dimensions     int                  `json:"dimensions"`
+	BaseURL        string               `json:"base_url"`
+	PlanSHA256     string               `json:"plan_sha256"`
+	FixturesSHA256 string               `json:"fixtures_sha256"`
+	Probes         []ProvenanceProbe    `json:"probes"`
+	Posts          []ProvenancePost     `json:"posts"`
+	Accounting     Accounting           `json:"accounting"`
+	Positions      []ProvenancePosition `json:"positions"`
+	Note           string               `json:"note"`
+}
+
+// VectorSHA256 is the SHA-256 of a vector's canonical JSON encoding.
+func VectorSHA256(v []float64) string {
+	b, _ := json.Marshal(v)
+	return sha256Hex(string(b))
 }
 
 // Artifact is a loaded, validated artifact (database not yet opened).
@@ -209,6 +280,9 @@ func LoadArtifact(dir string) (*Artifact, error) {
 		return nil, fail("space_prefix and generator are required")
 	}
 	want := []string{DatabaseFile, VectorsFile, FixturesFile}
+	if m.Vectors.Source == SourceModel {
+		want = append(want, ProvenanceFile)
+	}
 	if len(m.Files) != len(want) {
 		return nil, fail("manifest must list exactly %v", want)
 	}
@@ -238,9 +312,10 @@ func LoadArtifact(dir string) (*Artifact, error) {
 		if v == "" {
 			v = "v1 (FLH-073, no version)"
 		}
-		return nil, fail("domain fingerprint contract %s is not %s: older fingerprints do not cover admission "+
-			"recommendations, the current-extraction selection or record order. Rebuild the artifact into a new "+
-			"directory: go run ./scripts/demo/flh073/prepare build -out NEW_DIR", v, FingerprintVersion)
+		return nil, fail("domain fingerprint contract %s is not %s: v1 does not cover admission recommendations, the "+
+			"current-extraction selection or record order, and v2 depends on clock ticks. Rebuild the artifact into a new "+
+			"directory: go run ./scripts/demo/flh073/prepare build -out NEW_DIR (model vectors: prepare import from the "+
+			"same work directory)", v, FingerprintVersion)
 	}
 	if !hexSHA256.MatchString(m.DomainFingerprint.SHA256) {
 		return nil, fail("domain fingerprint is missing")
@@ -312,7 +387,78 @@ func LoadArtifact(dir string) (*Artifact, error) {
 		a.Presets = append(a.Presets, Preset{ID: p.ID, Label: p.Label, Text: p.Text, vector: vec})
 		a.byEnvelope[p.Envelope] = i
 	}
+	if m.Vectors.Source == SourceModel {
+		if err := checkProvenance(abs, m, &v); err != nil {
+			return nil, err
+		}
+	}
 	return a, nil
+}
+
+// checkProvenance requires provenance.json to bind every vector in
+// vectors.json: the same text hash (document content hash, preset envelope
+// hash), the same vector hash, the right representation and role, and the
+// vector identity's deployment and dimensions. A mechanical artifact
+// relabelled as a model therefore fails here.
+func checkProvenance(dir string, m Manifest, v *Vectors) error {
+	var p Provenance
+	if err := readStrictJSON(filepath.Join(dir, ProvenanceFile), &p); err != nil {
+		return fail("%s: %v", ProvenanceFile, err)
+	}
+	if p.Schema != ProvenanceSchema || p.Generator != m.Vectors.Generator || m.Vectors.Generator != ModelGenerator {
+		return fail("model vectors need %s provenance from %s", ProvenanceSchema, ModelGenerator)
+	}
+	if p.DeploymentID != m.Vectors.ModelID || p.Dimensions != m.Vectors.Dimensions {
+		return fail("provenance deployment/dimensions differ from the vector identity")
+	}
+	if !hexSHA256.MatchString(p.PlanSHA256) || p.FixturesSHA256 != m.Files[FixturesFile] {
+		return fail("provenance is not bound to this artifact's fixtures and plan")
+	}
+	acc := p.Accounting
+	if acc.MaxPositions < 1 || acc.MaxPositions > 64 || acc.MaxPosts < 1 || acc.MaxPosts > 16 || acc.MaxProbes < 1 || acc.MaxProbes > 2 ||
+		acc.UsedPositions > acc.MaxPositions || acc.UsedPosts > acc.MaxPosts || acc.UsedProbes > acc.MaxProbes ||
+		acc.UsedPosts != len(p.Posts) || acc.UsedProbes != len(p.Probes) {
+		return fail("provenance accounting exceeds the bounded preparation limits")
+	}
+	okProbe := false
+	for _, pr := range p.Probes {
+		if pr.Outcome == "ready" && pr.ReadyStatus == 200 && pr.ManifestDeploymentID == p.DeploymentID {
+			okProbe = true
+		}
+	}
+	if !okProbe {
+		return fail("provenance has no successful readiness probe of %s", p.DeploymentID)
+	}
+	type want struct{ kind, rep, role, text, vec string }
+	expected := map[string]want{}
+	for _, d := range v.Documents {
+		expected[fmt.Sprintf("concept:%d", d.ConceptID)] = want{"document", application.ConceptIndexRepresentationV1, RoleDocument, d.ContentHash, VectorSHA256(d.Vector)}
+	}
+	for _, pr := range v.Presets {
+		expected["preset:"+pr.ID] = want{"preset", application.ConceptSearchQueryRepresentationV2, RoleQuery, pr.EnvelopeSHA256, VectorSHA256(pr.Vector)}
+	}
+	if len(p.Positions) != len(expected) {
+		return fail("provenance has %d positions for %d vectors", len(p.Positions), len(expected))
+	}
+	posts := map[int]string{}
+	for _, post := range p.Posts {
+		posts[post.Seq] = post.Outcome
+	}
+	seen := map[string]bool{}
+	for _, pos := range p.Positions {
+		w, ok := expected[pos.Key]
+		if !ok || seen[pos.Key] {
+			return fail("provenance position %q is unknown or duplicated", pos.Key)
+		}
+		seen[pos.Key] = true
+		if pos.Kind != w.kind || pos.Representation != w.rep || pos.Role != w.role || pos.TextSHA256 != w.text || pos.VectorSHA256 != w.vec {
+			return fail("provenance position %s does not match its vector, text, representation or role", pos.Key)
+		}
+		if posts[pos.PostSeq] != "ok" {
+			return fail("provenance position %s is not from a completed POST", pos.Key)
+		}
+	}
+	return nil
 }
 
 func trimmed(s string) string {

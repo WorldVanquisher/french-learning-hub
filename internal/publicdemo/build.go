@@ -12,6 +12,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"french-learning-app/internal/application"
 	"french-learning-app/internal/domain"
@@ -145,87 +146,165 @@ func ReadFixtures(path string) (*Fixtures, []byte, error) {
 // mechanical vectors, writes the artifact into outDir (which must not exist or
 // be empty) and validates it with the server's own loader.
 func Build(ctx context.Context, fixturesPath, outDir string) (*Artifact, error) {
+	return buildArtifact(ctx, fixturesPath, outDir, buildMeta{
+		generator: "scripts/demo/flh073/prepare build", release: ReleaseBlockedMechanical, notice: MechanicalNotice,
+		vectors: func(docs []application.SemanticIndexDocument, presets []presetText) (Vectors, *Provenance, error) {
+			identity := VectorIdentity{Source: SourceMechanical, RealModel: false, Generator: MechanicalGenerator, ModelID: MechanicalModelID,
+				Dimensions: MechanicalDimensions, DocumentRepresentation: application.ConceptIndexRepresentationV1,
+				QueryRepresentation: application.ConceptSearchQueryRepresentationV2}
+			vec := Vectors{Schema: VectorsSchema, Identity: identity}
+			for _, d := range docs {
+				vec.Documents = append(vec.Documents, DocumentVector{ConceptID: d.ConceptID, ContentHash: d.ContentHash, Vector: MechanicalEmbed(d.Text, identity.Dimensions)})
+			}
+			for _, p := range presets {
+				vec.Presets = append(vec.Presets, PresetVector{ID: p.ID, Label: p.Label, Text: p.Text, Envelope: p.Envelope,
+					EnvelopeSHA256: sha256Hex(p.Envelope), Vector: MechanicalEmbed(p.Envelope, identity.Dimensions)})
+			}
+			return vec, nil, nil
+		},
+	})
+}
+
+// presetText is one preset with its exact search-query envelope.
+type presetText struct {
+	ID, Label, Text, Envelope string
+}
+
+type buildMeta struct {
+	generator, release, notice string
+	vectors                    func(docs []application.SemanticIndexDocument, presets []presetText) (Vectors, *Provenance, error)
+}
+
+// derive seeds dbPath from the fixtures and returns the fingerprint, the exact
+// Concept documents (in id order) and the exact preset envelopes.
+func derive(ctx context.Context, f *Fixtures, dbPath string) (DomainFingerprint, []application.SemanticIndexDocument, []presetText, error) {
+	if err := seed(ctx, f, dbPath); err != nil {
+		return DomainFingerprint{}, nil, nil, err
+	}
+	ro, err := OpenReadOnly(dbPath)
+	if err != nil {
+		return DomainFingerprint{}, nil, nil, err
+	}
+	defer ro.Close()
+	fp, err := ComputeFingerprint(ctx, ro)
+	if err != nil {
+		return fp, nil, nil, err
+	}
+	concepts, err := sqlite.NewConceptRepository(ro).ListConcepts(ctx, nil)
+	if err != nil {
+		return fp, nil, nil, err
+	}
+	sort.Slice(concepts, func(i, j int) bool { return concepts[i].ID < concepts[j].ID })
+	var docs []application.SemanticIndexDocument
+	for _, c := range concepts {
+		doc, err := application.BuildSemanticIndexDocument(c)
+		if err != nil {
+			return fp, nil, nil, err
+		}
+		docs = append(docs, doc)
+	}
+	var presets []presetText
+	for _, p := range f.Presets {
+		env, err := application.ConceptSearchQueryEmbeddingText(p.Text)
+		if err != nil {
+			return fp, nil, nil, fmt.Errorf("preset %s: %w", p.ID, err)
+		}
+		presets = append(presets, presetText{ID: p.ID, Label: p.Label, Text: p.Text, Envelope: env})
+	}
+	return fp, docs, presets, nil
+}
+
+// buildArtifact writes a complete artifact into a temporary sibling directory,
+// validates it with the server's loader, and only then renames it to outDir.
+// A failure leaves outDir absent (or as the empty directory it was) and
+// removes the partial directory.
+func buildArtifact(ctx context.Context, fixturesPath, outDir string, meta buildMeta) (_ *Artifact, err error) {
 	f, raw, err := ReadFixtures(fixturesPath)
+	if err != nil {
+		return nil, err
+	}
+	outDir, err = filepath.Abs(outDir)
 	if err != nil {
 		return nil, err
 	}
 	if entries, err := os.ReadDir(outDir); err == nil && len(entries) > 0 {
 		return nil, fmt.Errorf("%s exists and is not empty", outDir)
 	}
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outDir), 0o755); err != nil {
 		return nil, err
 	}
-	dbPath := filepath.Join(outDir, DatabaseFile)
-	if err := seed(ctx, f, dbPath); err != nil {
-		return nil, err
-	}
-	ro, err := OpenReadOnly(dbPath)
+	stage, err := os.MkdirTemp(filepath.Dir(outDir), "."+filepath.Base(outDir)+".partial-")
 	if err != nil {
 		return nil, err
 	}
-	fp, err := ComputeFingerprint(ctx, ro)
-	if err != nil {
-		ro.Close()
+	defer func() {
+		if err != nil {
+			os.RemoveAll(stage)
+		}
+	}()
+	if err := os.Chmod(stage, 0o755); err != nil {
 		return nil, err
 	}
-	concepts, err := sqlite.NewConceptRepository(ro).ListConcepts(ctx, nil)
-	ro.Close()
+	fp, docs, presets, err := derive(ctx, f, filepath.Join(stage, DatabaseFile))
 	if err != nil {
 		return nil, err
 	}
-
-	identity := VectorIdentity{Source: SourceMechanical, RealModel: false, Generator: MechanicalGenerator, ModelID: MechanicalModelID,
-		Dimensions: MechanicalDimensions, DocumentRepresentation: application.ConceptIndexRepresentationV1,
-		QueryRepresentation: application.ConceptSearchQueryRepresentationV2}
-	vec := Vectors{Schema: VectorsSchema, Identity: identity}
-	for _, c := range concepts {
-		doc, err := application.BuildSemanticIndexDocument(c)
+	vec, prov, err := meta.vectors(docs, presets)
+	if err != nil {
+		return nil, err
+	}
+	if err := writeJSONFile(filepath.Join(stage, VectorsFile), vec); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(filepath.Join(stage, FixturesFile), raw, 0o644); err != nil {
+		return nil, err
+	}
+	names := []string{DatabaseFile, VectorsFile, FixturesFile}
+	if prov != nil {
+		prov.FixturesSHA256, err = SHA256File(filepath.Join(stage, FixturesFile))
 		if err != nil {
 			return nil, err
 		}
-		vec.Documents = append(vec.Documents, DocumentVector{ConceptID: c.ID, ContentHash: doc.ContentHash, Vector: MechanicalEmbed(doc.Text, identity.Dimensions)})
-	}
-	for _, p := range f.Presets {
-		env, err := application.ConceptSearchQueryEmbeddingText(p.Text)
-		if err != nil {
-			return nil, fmt.Errorf("preset %s: %w", p.ID, err)
+		if err := writeJSONFile(filepath.Join(stage, ProvenanceFile), prov); err != nil {
+			return nil, err
 		}
-		vec.Presets = append(vec.Presets, PresetVector{ID: p.ID, Label: p.Label, Text: p.Text, Envelope: env,
-			EnvelopeSHA256: sha256Hex(env), Vector: MechanicalEmbed(env, identity.Dimensions)})
-	}
-	vecBytes, err := json.MarshalIndent(vec, "", " ")
-	if err != nil {
-		return nil, err
-	}
-	if err := os.WriteFile(filepath.Join(outDir, VectorsFile), append(vecBytes, '\n'), 0o644); err != nil {
-		return nil, err
-	}
-	if err := os.WriteFile(filepath.Join(outDir, FixturesFile), raw, 0o644); err != nil {
-		return nil, err
+		names = append(names, ProvenanceFile)
 	}
 	files := map[string]string{}
-	for _, name := range []string{DatabaseFile, VectorsFile, FixturesFile} {
-		if files[name], err = SHA256File(filepath.Join(outDir, name)); err != nil {
+	for _, name := range names {
+		if files[name], err = SHA256File(filepath.Join(stage, name)); err != nil {
 			return nil, err
 		}
 	}
 	version := sha256.Sum256([]byte(files[FixturesFile] + "\x00" + files[VectorsFile] + "\x00" + fp.SHA256))
-	m := Manifest{Schema: ManifestSchema, ArtifactVersion: hex.EncodeToString(version[:])[:16], Generator: "scripts/demo/flh073/prepare build",
-		Files: files, Vectors: identity, SpacePrefix: DemoSpacePrefix, DomainFingerprint: fp,
-		ReleaseStatus: ReleaseBlockedMechanical, Notice: MechanicalNotice}
-	mBytes, err := json.MarshalIndent(m, "", " ")
-	if err != nil {
+	m := Manifest{Schema: ManifestSchema, ArtifactVersion: hex.EncodeToString(version[:])[:16], Generator: meta.generator,
+		Files: files, Vectors: vec.Identity, SpacePrefix: DemoSpacePrefix, DomainFingerprint: fp,
+		ReleaseStatus: meta.release, Notice: meta.notice}
+	if err := writeJSONFile(filepath.Join(stage, ManifestFile), m); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(filepath.Join(outDir, ManifestFile), append(mBytes, '\n'), 0o644); err != nil {
-		return nil, err
-	}
-	a, db, err := OpenArtifact(ctx, outDir)
+	_, db, err := OpenArtifact(ctx, stage)
 	if err != nil {
 		return nil, fmt.Errorf("the built artifact does not validate: %w", err)
 	}
 	db.Close()
-	return a, nil
+	if _, statErr := os.Stat(outDir); statErr == nil {
+		if err := os.Remove(outDir); err != nil { // empty, checked above
+			return nil, err
+		}
+	}
+	if err := os.Rename(stage, outDir); err != nil {
+		return nil, err
+	}
+	return LoadArtifact(outDir)
+}
+
+func writeJSONFile(path string, v any) error {
+	b, err := json.MarshalIndent(v, "", " ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(b, '\n'), 0o644)
 }
 
 func seed(ctx context.Context, f *Fixtures, dbPath string) error {
