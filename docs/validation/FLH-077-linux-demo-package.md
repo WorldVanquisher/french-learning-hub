@@ -13,7 +13,8 @@ calls or model downloads.
 **Outcome: Linux package acceptance BLOCKED (no SSH access to the NAS).** A
 reproducible harness (`scripts/validation/flh077/accept.sh`) is delivered and
 was debugged in a labelled macOS dry run. That dry run found one controller
-defect (D1).
+defect (D1), which is **fixed** in the second part of this task
+([D1 fix](#d1-fix-second-part-of-flh-077)), with focused regression tests.
 
 ## NAS access: BLOCKED
 
@@ -172,9 +173,7 @@ Medium; operational.
   would answer, so it would not hang. It is not a signalling defect: `ctl.sh`
   never signals that occupant.
 - **Location:** `scripts/demo/flh076/deploy/ctl.sh`, in the `start` readiness
-  loop. This is FLH-076-owned and not modified here.
-- **Suggested fix** (for the FLH-076 owner): `curl --max-time 2`, and stop
-  polling once the recorded pid has exited.
+  loop. Ownership was later extended to FLH-077, which fixed it (below).
 - **Shortest reproducer** (any host; uses a BLOCKED package `PKG` and a host
   or packaged server):
 
@@ -194,7 +193,7 @@ Medium; operational.
 | --- | --- | --- |
 | 1. Build/package with the revision label | NOT RUN (SSH BLOCKED) | PASS |
 | 2. Packaged native Linux binary: architecture, checksums, layout | NOT RUN | Layout/checksums/ELF headers PASS; execution not possible on macOS |
-| 3. Controller lifecycle, repeats, stale pid, unrelated process, spaces | NOT RUN | PASS, except the occupied port: **FAIL (D1)** |
+| 3. Controller lifecycle, repeats, stale pid, unrelated process, spaces | NOT RUN | First run: PASS except the occupied port, **FAIL (D1)**. After the D1 fix: **PASS** (dry run 82/0/1; `ctl_regression.sh` 35/0) |
 | 4. Static, presets, provenance, denied requests, bytes, restart identity | NOT RUN | PASS |
 | 5. Mechanical release refusal, tampering | NOT RUN | PASS |
 | 6. systemd / nginx template syntax | NOT RUN | systemd BLOCKED (absent); nginx PASS (macOS nginx 1.29.2) |
@@ -222,3 +221,100 @@ Medium; operational.
   the package and its tarball, logs, and the template test configs.
 - **D1 reproduction:** `/tmp/flh077-occ/`.
 - **E5 probe:** this report; the probe wrote no response files.
+
+## D1 fix (second part of FLH-077)
+
+The human owner extended ownership to `scripts/demo/flh076/deploy/ctl.sh` and
+its focused tests. NAS access is still BLOCKED, so everything below ran
+locally on macOS, with host builds of the same source. It is not Linux
+package evidence.
+
+**1. The original hang, reproduced before editing.** Using the unchanged
+`ctl.sh`, packaged from this source, and a Python listener on
+`127.0.0.1:19830` that accepts but never answers: `ctl.sh start` was
+**still running after 20 s** and was stopped by its own outer session. The
+occupant was alive, and the server log showed `bind: address already in
+use`. Evidence: `/tmp/flh077-d1-before/`.
+
+**2. The fix (`ctl.sh start`).**
+- **Bounded requests:** every readiness request uses `curl --max-time 2`
+  (and `status` uses `--max-time 5`).
+- **Bounded total wait:** `READY_TIMEOUT`, default 30 s. It must be whole
+  seconds, otherwise the script exits 2 before launching anything. The wait
+  is at least `READY_TIMEOUT` and under one second more.
+- **Exit detection:** the launched pid is checked on every poll. If it has
+  exited, start fails at once ("exited during startup") and the pid file is
+  removed.
+- **Ready means all of the following:**
+  - the launched pid is alive, and its command line is this package's
+    (`-public-demo-artifact <root>/artifact`);
+  - `GET /knowledge-library/demo` reports this package's artifact manifest
+    SHA-256;
+  - the launched pid owns the listening socket. This uses `lsof` or `ss` when
+    available. Otherwise, the server's own `listening on 127.0.0.1:PORT` log
+    line must appear since this launch, with no `server error` after a 0.5 s
+    settle.
+
+  So an unrelated HTTP service, even one imitating the demo's identity
+  answer, is never reported as ready.
+- **On timeout:** stop only the launched pid, after re-checking its command
+  line (TERM, then KILL after 5 s), remove the pid file and exit 1.
+- **Never signalled:** a process occupying the port, or a pid whose command
+  line is not this package's.
+- **Unchanged:** `stop` and `status` keep their ownership checks.
+
+**3. Focused regression tests** (`scripts/validation/flh077/ctl_regression.sh`).
+They build a BLOCKED package that carries the `ctl.sh` under test. Every call
+runs under an outer hard timeout in its own session. Checks 1–2 and 4 run in
+two ownership modes:
+- **`tool`:** `lsof` available;
+- **`nolsof`:** `PATH` without `/usr/sbin`, exercising the log fallback.
+
+```sh
+bash scripts/validation/flh077/ctl_regression.sh "/tmp/flh077 ctl regression2" 19840   # exit 0
+```
+
+| Case | Result with the fixed `ctl.sh` |
+| --- | --- |
+| Non-HTTP occupant (D1), both modes | start exits 1 within 2 s; occupant alive; no pid file left |
+| HTTP occupant imitating the identity answer, both modes | not reported ready (exit 1, within 1 s); occupant alive |
+| Immediate startup failure (corrupted artifact) | exit 1 within 1 s, "exited during startup" |
+| Successful start, repeated start, status, stop, both modes | 0; same pid on repeat; status 0; stop 0 and the process gone |
+| Slow readiness (ready after about 2 s, `READY_TIMEOUT=15`) | succeeds after waiting ≥ 2 s |
+| Never ready (`READY_TIMEOUT=3`) | exit 1 in 3–4 s, "not ready within 3s; stopped the launched process only"; launched process stopped; an unrelated `sleep 3600` alive; pid file removed |
+| Invalid `READY_TIMEOUT` | exit 2, nothing launched |
+
+**Final run: 35 PASS / 0 FAIL**, with no leftover processes or listeners.
+
+**The tests detect D1.** The same suite was run against the **original**
+`ctl.sh`: it was temporarily swapped back, then restored and checked
+byte-identical with `cmp`. Result: **23 PASS / 12 FAIL**.
+- The non-HTTP occupant hung until the 60 s outer bound, in both modes.
+- Immediate failure and never-ready took 11 s, with no timeout bound or
+  message.
+- Stale pid files were left behind, and `READY_TIMEOUT` was not validated.
+- The old controller also **leaked** the never-ready launched process. That
+  test process was stopped afterwards by its verified command line.
+
+**Test-harness corrections made while writing these tests:**
+- The timer's capture mixed in `ctl.sh` stdout.
+- A "never-ready" fake that `exec sleep` dropped the demo arguments from its
+  command line. `ctl.sh` therefore correctly refused to stop it, leaving one
+  orphaned test `sleep`, which I stopped after identifying it by its start
+  time.
+- The fake now keeps its arguments, as a real server does.
+
+**4. Existing harnesses, run unchanged:**
+- `scripts/validation/flh077/accept.sh`, as a macOS dry run
+  (`/tmp/flh077 dryrun4/`): **82 PASS / 0 FAIL / 1 BLOCKED**. The previous
+  FAIL ("start on an occupied port fails promptly") now passes. The
+  unrelated process was not signalled, and the occupant stayed alive.
+  `systemd-analyze` is still BLOCKED on macOS.
+- `scripts/demo/flh076/smoke_package.sh`, on the package from that run:
+  `PACKAGE SMOKE PASSED`.
+
+**Updated status:** D1 is **FIXED and locally verified**. Linux package
+acceptance on the NAS remains **BLOCKED** (SSH): run `accept.sh` and
+`ctl_regression.sh` on the NAS to obtain Linux evidence. On Linux, both use
+the packaged native binary.
+
