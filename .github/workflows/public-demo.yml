@@ -1,0 +1,140 @@
+name: Public demo
+
+# FLH-079 offline acceptance of the read-only public demo. Synthetic fixtures and
+# mechanical vectors only: no Docker, Qdrant, GPU, model, provider, AWS or secret.
+# Mechanical vectors prove routing, preset and ranking mechanics, not retrieval
+# quality. Reproduce locally: docs/validation/FLH-079-public-demo-ci.md.
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/public-demo.yml"
+      - "cmd/server/**"
+      - "internal/**"
+      - "migrations/**"
+      - "web/**"
+      - "go.mod"
+      - "go.sum"
+      - "scripts/demo/flh034/proc_guard.py"
+      - "scripts/demo/flh073/**"
+      - "scripts/demo/flh076/browser/**"
+      - "scripts/validation/flh079/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/public-demo.yml"
+      - "cmd/server/**"
+      - "internal/**"
+      - "migrations/**"
+      - "web/**"
+      - "go.mod"
+      - "go.sum"
+      - "scripts/demo/flh034/proc_guard.py"
+      - "scripts/demo/flh073/**"
+      - "scripts/demo/flh076/browser/**"
+      - "scripts/validation/flh079/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  public-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Tooling self-tests
+        timeout-minutes: 3
+        run: python3 -B -m unittest discover -s scripts/validation/flh079 -p 'test_*.py'
+
+      - name: Public demo acceptance (HTTP + browser)
+        timeout-minutes: 15
+        run: >-
+          python3 -B scripts/validation/flh079/run.py
+          --work "$RUNNER_TEMP/flh079/accept" --port 18990
+          --require-browser --npm-cache "$HOME/.npm"
+
+      - name: Controlled failure probe
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        run: >-
+          python3 -B scripts/validation/flh079/failure_probe.py
+          --work "$RUNNER_TEMP/flh079/probe" --port 18992 --npm-cache "$HOME/.npm"
+
+      # Safety net if a harness was killed before its own cleanup: proc_guard
+      # signals only a recorded server whose start time and command line match.
+      - name: Stop leftover task servers
+        if: always()
+        timeout-minutes: 2
+        run: |
+          for d in "$RUNNER_TEMP/flh079/accept/run" "$RUNNER_TEMP"/flh079/probe/*/run; do
+            if [ -f "$d/server.pid" ]; then python3 -B scripts/demo/flh034/proc_guard.py stop "$d" || true; fi
+          done
+
+      # Only summaries, bounded log tails, browser results and screenshots. A harness
+      # killed before cleanup leaves raw logs: their last 200 kB are copied here.
+      # Never databases, vectors, binaries, node_modules or the work directories.
+      - name: Collect bounded diagnostics
+        if: ${{ failure() || cancelled() }}
+        timeout-minutes: 2
+        run: |
+          out="$RUNNER_TEMP/flh079-diagnostics"
+          mkdir -p "$out"
+          for w in "$RUNNER_TEMP/flh079/accept" "$RUNNER_TEMP"/flh079/probe/assertion "$RUNNER_TEMP"/flh079/probe/interrupt; do
+            [ -d "$w" ] || continue
+            name="$(basename "$w")"
+            mkdir -p "$out/$name"
+            if [ -d "$w/diagnostics" ]; then
+              find "$w/diagnostics" -maxdepth 1 -name '*.json' -size -2M -exec cp {} "$out/$name/" \;
+              if [ -d "$w/diagnostics/logs" ]; then cp -R "$w/diagnostics/logs" "$out/$name/logs"; fi
+              if [ -d "$w/diagnostics/browser" ]; then
+                mkdir -p "$out/$name/browser"
+                find "$w/diagnostics/browser" -maxdepth 1 \( -name '*.png' -o -name 'results.json' \) -size -5M \
+                  -exec cp {} "$out/$name/browser/" \;
+              fi
+            fi
+            for logdir in "$w/logs" "$w/run"; do
+              [ -d "$logdir" ] || continue
+              mkdir -p "$out/$name/unfinished-logs"
+              for f in "$logdir"/*.log; do
+                if [ -f "$f" ]; then tail -c 200000 "$f" > "$out/$name/unfinished-logs/$(basename "$f")"; fi
+              done
+            done
+          done
+          for f in "$RUNNER_TEMP"/flh079/probe/*.log "$RUNNER_TEMP"/flh079/probe/probe-summary.json; do
+            if [ -f "$f" ]; then tail -c 200000 "$f" > "$out/probe-$(basename "$f")"; fi
+          done
+          du -sh "$out"
+
+      - name: Upload diagnostics
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-demo-diagnostics
+          path: ${{ runner.temp }}/flh079-diagnostics
+          if-no-files-found: warn
+          retention-days: 5
