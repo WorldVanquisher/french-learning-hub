@@ -219,9 +219,10 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
           </fieldset>
           {demo ? (
             <p className="hint" role="note">
-              <strong>Public demo:</strong> keyword search accepts any words. Semantic and hybrid search are limited to the
-              example queries above, whose vectors were prepared in advance; this demo computes no embeddings and calls
-              no AI service. The exact text searched is shown with the results.
+              <strong>Public demo:</strong> keyword search accepts any words. Semantic and hybrid search are limited to a
+              fixed list of example queries (choose Semantic or Hybrid to pick one), whose vectors were prepared in
+              advance; this demo computes no embeddings and calls no AI service. The exact text searched is shown with the
+              results.
             </p>
           ) : null}
           <p className="hint">
@@ -235,12 +236,20 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
             moved away are not searched. Accents and case are ignored, and each word matches the start of a word.
             Read-only: searching records nothing.
           </p>
-          <p className="hint">
-            <strong>Semantic</strong> mode compares the meaning of your query with each concept's title and identity
-            details, using embeddings stored in a separately built index. It needs that index and an embedding service; if
-            either is missing it says so and never falls back to keyword search. Its scores are similarity, not
-            probability, and every result is re-checked against the current database.
-          </p>
+          {demo ? (
+            <p className="hint">
+              <strong>Semantic</strong> mode compares the meaning of the example query with each concept's title and
+              identity details, using vectors stored with this demo. Its scores are similarity, not probability, and
+              every result is re-checked against the demo database.
+            </p>
+          ) : (
+            <p className="hint">
+              <strong>Semantic</strong> mode compares the meaning of your query with each concept's title and identity
+              details, using embeddings stored in a separately built index. It needs that index and an embedding service;
+              if either is missing it says so and never falls back to keyword search. Its scores are similarity, not
+              probability, and every result is re-checked against the current database.
+            </p>
+          )}
           <p className="hint">
             <strong>Hybrid</strong> mode runs both searches and merges their top candidates by rank (reciprocal rank
             fusion, fixed and equal weights). Each result shows where it came from: its keyword rank and matched fields,

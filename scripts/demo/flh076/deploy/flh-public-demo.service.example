@@ -1,0 +1,47 @@
+# Example systemd unit for the FLH read-only public demo (FLH-076).
+# NOT installed by any tool. Review, then copy to /etc/systemd/system/ yourself.
+# Replace: /srv/flh-demo (release root), demo.example.org (public host name),
+# linux-amd64 (or linux-arm64), and the port if 18970 is taken.
+[Unit]
+Description=FLH read-only public demo (Knowledge Library)
+After=network.target
+
+[Service]
+Type=simple
+User=flh-demo
+Group=flh-demo
+# The release directory is the working directory, so no .env elsewhere is read.
+WorkingDirectory=/srv/flh-demo/current
+# Explicit, minimal environment: loopback only, every provider disabled.
+Environment=LISTEN_HOST=127.0.0.1
+Environment=PORT=18970
+Environment=AI_PROVIDER=rule-based
+Environment=EXTRACTOR_PROVIDER=disabled
+Environment=EMBEDDING_PROVIDER=disabled
+Environment=SEMANTIC_SEARCH=disabled
+Environment=HTTP_ALLOWED_HOSTS=demo.example.org
+ExecStart=/srv/flh-demo/current/bin/linux-amd64/flh-server -public-demo-artifact /srv/flh-demo/current/artifact -web-dir /srv/flh-demo/current/web
+Restart=on-failure
+RestartSec=5
+# Read-only, isolated runtime: the demo writes nothing.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadOnlyPaths=/srv/flh-demo
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+MemoryMax=256M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

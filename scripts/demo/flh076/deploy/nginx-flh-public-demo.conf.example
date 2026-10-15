@@ -1,0 +1,50 @@
+# Example nginx server block in front of the FLH read-only public demo (FLH-076).
+# NOT installed by any tool. Replace demo.example.org and the certificate paths.
+# The demo listens on 127.0.0.1:18970 only; nothing else is exposed.
+limit_req_zone $binary_remote_addr zone=flh_demo:10m rate=10r/s;
+limit_conn_zone $binary_remote_addr zone=flh_demo_conn:10m;
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name demo.example.org;
+    ssl_certificate     /etc/ssl/demo.example.org/fullchain.pem;
+    ssl_certificate_key /etc/ssl/demo.example.org/privkey.pem;
+
+    # Read-only: GET/HEAD only, no request bodies, bounded time and size.
+    if ($request_method !~ ^(GET|HEAD)$) { return 405; }
+    client_max_body_size 1k;
+    client_body_timeout 10s;
+    client_header_timeout 10s;
+    large_client_header_buffers 4 8k;
+    keepalive_timeout 15s;
+    send_timeout 15s;
+    limit_req zone=flh_demo burst=20 nodelay;
+    limit_conn flh_demo_conn 20;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header X-Frame-Options DENY always;
+
+    location / {
+        proxy_pass http://127.0.0.1:18970;
+        # The demo checks Host against HTTP_ALLOWED_HOSTS; pass the public name.
+        proxy_set_header Host $host;
+        # Never forward client-supplied forwarding headers; the demo trusts none.
+        proxy_set_header X-Forwarded-For "";
+        proxy_set_header X-Forwarded-Host "";
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 10s;
+        proxy_send_timeout 10s;
+        proxy_buffering on;
+        proxy_max_temp_file_size 0;
+    }
+}
+
+server {
+    listen 80;
+    server_name demo.example.org;
+    return 301 https://$host$request_uri;
+}

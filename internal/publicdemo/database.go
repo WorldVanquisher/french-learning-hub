@@ -79,8 +79,12 @@ func checkMigrations(db *sql.DB) error {
 // FingerprintVersion names the domain-fingerprint contract. v1 (FLH-073,
 // manifests without a version) omitted admission recommendations, the
 // current-extraction selection and the order of latest-wins records, so a
-// change to them could keep a valid fingerprint; v1 artifacts are refused.
-const FingerprintVersion = "flh075_domain_fingerprint_v2"
+// change to them could keep a valid fingerprint. v2 (FLH-075) gave rows with
+// equal timestamps equal ranks, so whether two rows were created within the
+// same clock tick changed the fingerprint between identical builds. v3
+// (FLH-076) records the order the reads actually use. Older versions are
+// refused.
+const FingerprintVersion = "flh076_domain_fingerprint_v3"
 
 // fingerprintContent lists, for every table that public-library reads depend
 // on, the columns that carry domain meaning. Absolute timestamps are excluded
@@ -134,66 +138,75 @@ type orderKey struct {
 	id    int64
 }
 
-// orderRanks ranks every row of the ordered tables by its created_at instant
-// (parsed as RFC 3339; equal instants share a rank). Unparseable timestamps
-// rank after all valid ones and their raw text is digested, so corruption is
-// visible.
+// orderGroups are the sets of tables whose rows are compared by time. Reads
+// pick the latest row of one table by (created_at, id), so within a table a
+// tie means the same as id order. Effective annotation additionally compares
+// SAME links with DISTINCT decisions across tables, where a SAME at an equal
+// or later instant wins: in that merged order, ties put the distinction first.
+var orderGroups = [][]string{
+	{"analysis_feedback"}, {"knowledge_admission_recommendations"}, {"knowledge_admission_overrides"},
+	{"unit_resolution_judgments"}, {"unit_concept_distinctions", "unit_concept_links"},
+}
+
+// orderRanks gives every row of the ordered tables its position in the order
+// the reads use: by parsed RFC 3339 instant, then (within a group) by the
+// group's table order, then by id. Positions do not depend on whether two rows
+// happened to share a clock tick. Unparseable timestamps sort after all valid
+// ones and their raw text is digested, so corruption is visible.
 func orderRanks(ctx context.Context, db *sql.DB) (map[orderKey]string, error) {
 	type row struct {
-		key   orderKey
-		at    time.Time
-		raw   string
-		valid bool
+		key      orderKey
+		tableIdx int
+		at       time.Time
+		raw      string
+		valid    bool
 	}
-	var rows []row
-	for _, t := range orderedTables {
-		rs, err := db.QueryContext(ctx, `SELECT id, created_at FROM `+t)
-		if err != nil {
-			return nil, fmt.Errorf("order %s: %w", t, err)
-		}
-		for rs.Next() {
-			var r row
-			r.key.table = t
-			if err := rs.Scan(&r.key.id, &r.raw); err != nil {
+	ranks := map[orderKey]string{}
+	for _, group := range orderGroups {
+		var rows []row
+		for ti, t := range group {
+			rs, err := db.QueryContext(ctx, `SELECT id, created_at FROM `+t)
+			if err != nil {
+				return nil, fmt.Errorf("order %s: %w", t, err)
+			}
+			for rs.Next() {
+				r := row{key: orderKey{table: t}, tableIdx: ti}
+				if err := rs.Scan(&r.key.id, &r.raw); err != nil {
+					rs.Close()
+					return nil, err
+				}
+				at, err := time.Parse(time.RFC3339Nano, r.raw)
+				r.at, r.valid = at, err == nil
+				rows = append(rows, r)
+			}
+			if err := rs.Err(); err != nil {
 				rs.Close()
 				return nil, err
 			}
-			at, err := time.Parse(time.RFC3339Nano, r.raw)
-			r.at, r.valid = at, err == nil
-			rows = append(rows, r)
-		}
-		if err := rs.Err(); err != nil {
 			rs.Close()
-			return nil, err
 		}
-		rs.Close()
-	}
-	sort.SliceStable(rows, func(i, j int) bool {
-		a, b := rows[i], rows[j]
-		if a.valid != b.valid {
-			return a.valid
-		}
-		if a.valid && !a.at.Equal(b.at) {
-			return a.at.Before(b.at)
-		}
-		if !a.valid && a.raw != b.raw {
-			return a.raw < b.raw
-		}
-		if a.key.table != b.key.table {
-			return a.key.table < b.key.table
-		}
-		return a.key.id < b.key.id
-	})
-	ranks := map[orderKey]string{}
-	rank := 0
-	for i, r := range rows {
-		if i == 0 || !(r.valid == rows[i-1].valid && (r.valid && r.at.Equal(rows[i-1].at) || !r.valid && r.raw == rows[i-1].raw)) {
-			rank++
-		}
-		if r.valid {
-			ranks[r.key] = strconv.Itoa(rank)
-		} else {
-			ranks[r.key] = "invalid:" + r.raw
+		sort.SliceStable(rows, func(i, j int) bool {
+			a, b := rows[i], rows[j]
+			if a.valid != b.valid {
+				return a.valid
+			}
+			if a.valid && !a.at.Equal(b.at) {
+				return a.at.Before(b.at)
+			}
+			if !a.valid && a.raw != b.raw {
+				return a.raw < b.raw
+			}
+			if a.tableIdx != b.tableIdx {
+				return a.tableIdx < b.tableIdx
+			}
+			return a.key.id < b.key.id
+		})
+		for i, r := range rows {
+			if r.valid {
+				ranks[r.key] = strconv.Itoa(i + 1)
+			} else {
+				ranks[r.key] = "invalid:" + r.raw
+			}
 		}
 	}
 	return ranks, nil
