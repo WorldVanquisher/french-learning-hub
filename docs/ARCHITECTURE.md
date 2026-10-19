@@ -2157,7 +2157,12 @@ Concept Review (write-capable), Annotation Inspector and Experiment Dashboard �
 and keeps business rules and current authority in the backend: the browser
 renders backend facts and never recomputes them. In development, Vite proxies
 `/api` to the Go server (stripping the prefix); in production the Go server
-serves the built files itself ([§10.1](#101-process-and-serving)). Mutation
+serves the built files itself ([§10.1](#101-process-and-serving)). A unit
+opened from a record can be corrected there when it belongs to the current
+extraction and already has CURRENT SAME or an INVALID judgment, using only the
+existing reassign, INVALID and restore endpoints (FLH-082); those endpoints do
+not check extraction currency, so the workbench keeps historical units
+read-only and re-reads the unit immediately before each write. Mutation
 components are written to survive React StrictMode effect replay (FLH-021). Its
 behaviour per view is documented in [web/README.md](../web/README.md).
 

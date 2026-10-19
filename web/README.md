@@ -325,19 +325,57 @@ while another view is shown.
   the unit stopped awaiting review in the meantime, it is not shown as a
   candidate; the view explains why and offers "Inspect unit #N". All decisions
   are the existing explicit human actions.
-- **Unit inspection.** A read-only view of one unit's effective annotation
+- **Unit inspection.** A view of one unit's effective annotation
   (`GET /knowledge-units/{id}/effective-annotation`) with the record's current
-  selection. It states whether the unit belongs to the current extraction; a
-  historical unit's stored labels are shown for reference only, never as a
-  review candidate. A current unit that is unresolved links to Concept Review,
-  which checks eligibility again. A unit that no longer exists is reported.
+  selection. Opening it records nothing. It states whether the unit belongs to
+  the current extraction; a historical unit's stored labels are shown for
+  reference only, never as a review or correction candidate. A current unit
+  that is unresolved links to Concept Review, which checks eligibility again. A
+  current unit that was already reviewed can be corrected there (see below). A
+  unit that no longer exists is reported.
 - **Back to record #N** returns to the same record, viewed extraction version,
   list filter, loaded pages, feedback drafts, and moves keyboard focus to the
   unit (or the record heading). Review status is read again on return. Choosing
   a tab directly leaves the record-scoped mode.
-- **Not covered.** Correcting a unit that already has a CURRENT SAME membership
-  or an INVALID judgment is not offered: the existing review queue only serves
-  units awaiting review.
+
+## Correcting a reviewed unit from the inspection (FLH-082)
+
+The unit inspection opened from a record offers corrections for a unit of the
+record's **current** extraction that already has a CURRENT SAME membership or an
+INVALID judgment. It uses only existing endpoints and adds no semantics:
+
+| Backend state | Offered correction | Endpoint |
+| --- | --- | --- |
+| resolved (CURRENT SAME) | **Reassign SAME** to another non-retired Concept, chosen with the same retrieval-only catalog search as Concept Review (the current Concept is not offered) | `PUT /knowledge-units/{id}/concept-membership` |
+| resolved (CURRENT SAME) | **Mark INVALID**, which also clears the membership in the same transaction | `POST /knowledge-units/{id}/invalid` |
+| invalid | **Restore**, which withdraws the INVALID judgment; the unit becomes unresolved and no membership is recreated | `POST /knowledge-units/{id}/invalid/restore` |
+
+- **Historical units stay read-only.** The correction endpoints accept any unit,
+  so the workbench applies the current-extraction restriction itself, from the
+  backend's effective annotation and current-extraction selection. Unresolved
+  units are sent to Concept Review instead.
+- **Explained, then confirmed.** Each action first shows the current backend
+  state and what the request appends, clears or leaves unchanged (prior events
+  stay in history; a preferred-unit reference to the unit is cleared; RESTORE
+  does not bring a cleared membership back). Selecting or searching a target
+  records nothing.
+- **Re-checked before sending.** Immediately before the write the unit and the
+  record's current extraction are read again. If the current extraction, the
+  unit's status, its in-force SAME event or its latest judgment differ from what
+  was confirmed, nothing is sent and the new state is shown.
+- **Outcomes** follow Concept Review: a confirmed write, a server rejection
+  ("The server did not record …"; a `404` or `409` also re-reads the unit), or
+  **Outcome unknown** when no response arrived. An unknown outcome is checked
+  read-only against current authority (membership is the requested Concept; the
+  unit is INVALID; a judgment newer than the withdrawn INVALID one leaves it
+  valid), never resent, and blocks further corrections until it is found or
+  **Allow another correction for unit #N…** is confirmed. Only the newest check's
+  answer is used.
+- **Re-read after a write** is reported on its own line. If it fails, the shown
+  state is not treated as current: corrections stay disabled until **Re-read
+  unit #N** succeeds.
+- While a correction is in flight, other corrections and **Back to record #N**
+  wait. Returning moves focus to the unit and re-reads its review status.
 
 ## Human feedback (FLH-018)
 
@@ -422,6 +460,8 @@ web/src/
                explicit analysis and extraction requests
                ReviewQueue — write-capable annotation workflow
                AnnotationInspector — read-only effective-state view
+               UnitInspection, UnitCorrections — one unit opened from a
+               record, with explicit corrections of a reviewed current unit
                ExperimentDashboard — read-only quality/comparison summary
   types/       wire types mirroring the Go transport DTOs
   App.tsx

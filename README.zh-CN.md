@@ -44,7 +44,7 @@ Concept 判断——作为独立的、版本化或只追加的记录保存。当
 - 通过 API、工作台或 `cmd/capture` 命令行幂等导入事先准备好的 `learning_capture_v1` 文档。导入从不调用模型。
 - 显式运行**知识抽取**（OpenAI 适配器，默认关闭），配合固定的准入规则集和只追加的人工覆盖。
 - 在 **Concept Review** 工作台中审核单元：SAME、NEW CONCEPT、BROADER、NARROWER、RELATED、DISTINCT 与
-  INVALID 判断，保留只追加的历史和显式更正；DISTINCT 与关系类请求在响应丢失时可幂等恢复。
+  INVALID 判断，保留只追加的历史和显式更正（也可在记录的单元查看页中更正）；DISTINCT 与关系类请求在响应丢失时可幂等恢复。
 - 在只读的 **Knowledge Library** 中检索和浏览已整理的 Concept：以平实的英文显示状态，并能从每个单元链接到
   它所来自的记录及当时使用的确切解释。可选的**语义检索**模式按嵌入相似度排序 Concept，使用持久、可重建的
   Qdrant 索引和 SQLite 中的嵌入缓存，索引只能由显式的运维命令构建。索引任务通过租约串行执行，
