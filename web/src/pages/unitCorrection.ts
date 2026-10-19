@@ -1,6 +1,7 @@
 import * as api from "../api/client";
 import type { EffectiveAnnotationItem } from "../types/concept";
 import type { CurrentExtraction } from "../types/learning";
+import { msg, type MessageRef } from "../i18n";
 
 // What the focused inspection shows for one unit: its backend-derived effective
 // annotation and the record's current extraction selection, read together.
@@ -27,7 +28,7 @@ export type Correction =
 export type Eligibility =
   | { kind: "reassign-or-invalid"; conceptId: number; linkId: number }
   | { kind: "restore"; judgmentId: number }
-  | { kind: "none"; reason: string };
+  | { kind: "none"; reason: MessageRef };
 
 export function basisOf({ item, current }: Inspection): CorrectionBasis {
   return {
@@ -56,13 +57,10 @@ export function sameBasis(a: CorrectionBasis, b: CorrectionBasis): boolean {
 export function correctionEligibility({ item, current }: Inspection): Eligibility {
   const { unit, snapshot } = item;
   if (snapshot.unit_id !== unit.id) {
-    return { kind: "none", reason: "The effective snapshot does not match this unit, so no correction is offered." };
+    return { kind: "none", reason: msg("correction.none.mismatch") };
   }
   if (current.current_extraction_id === null || unit.extraction_id !== current.current_extraction_id) {
-    return {
-      kind: "none",
-      reason: "Historical units are read-only here: corrections are offered only for units of the record's current extraction.",
-    };
+    return { kind: "none", reason: msg("correction.none.historical") };
   }
   if (snapshot.status === "resolved" && snapshot.current_same) {
     return {
@@ -75,46 +73,46 @@ export function correctionEligibility({ item, current }: Inspection): Eligibilit
     return { kind: "restore", judgmentId: snapshot.latest_unit_judgment.id };
   }
   if (snapshot.status === "unresolved") {
-    return { kind: "none", reason: "This unit has no CURRENT SAME membership and is not INVALID; review it in Concept Review." };
+    return { kind: "none", reason: msg("correction.none.unresolved") };
   }
-  return { kind: "none", reason: "The backend state of this unit offers no correction here." };
+  return { kind: "none", reason: msg("correction.none.noOption") };
 }
 
-export function describeCorrection(c: Correction): string {
+export function describeCorrection(c: Correction): MessageRef {
   switch (c.kind) {
     case "reassign":
-      return `REASSIGN SAME concept #${c.fromConceptId} → concept #${c.toConceptId}`;
+      return msg("correction.label.reassign", { from: c.fromConceptId, to: c.toConceptId });
     case "invalid":
-      return "INVALID";
+      return msg("decision.label.invalid");
     case "restore":
-      return "RESTORE";
+      return msg("correction.label.restore");
   }
 }
 
 // sendCorrection performs the write once and returns the confirmed result text.
 // It never retries.
-export async function sendCorrection(c: Correction): Promise<string> {
+export async function sendCorrection(c: Correction): Promise<MessageRef> {
   switch (c.kind) {
     case "reassign": {
       const link = await api.reassignSame(c.unitId, c.toConceptId);
-      return `Moved unit #${c.unitId}'s CURRENT SAME membership from concept #${c.fromConceptId} to concept #${link.concept_id} (SAME event #${link.id}).`;
+      return msg("correction.sent.reassign", { unit: c.unitId, from: c.fromConceptId, to: link.concept_id, event: link.id });
     }
     case "invalid": {
       const res = await api.markUnitInvalid(c.unitId);
       return res.judgment
-        ? `Marked unit #${c.unitId} INVALID (judgment #${res.judgment.id}); its SAME membership to concept #${c.fromConceptId} was cleared.`
-        : `The server reports unit #${c.unitId} as INVALID.`;
+        ? msg("correction.sent.invalid", { unit: c.unitId, judgment: res.judgment.id, from: c.fromConceptId })
+        : msg("correction.sent.invalidAlready", { unit: c.unitId });
     }
     case "restore": {
       const res = await api.restoreUnit(c.unitId);
       return res.judgment
-        ? `Restored unit #${c.unitId} (judgment #${res.judgment.id}). It is unresolved and awaits Concept Review.`
-        : `The server recorded nothing new: unit #${c.unitId} was not INVALID anymore.`;
+        ? msg("correction.sent.restore", { unit: c.unitId, judgment: res.judgment.id })
+        : msg("correction.sent.restoreNothing", { unit: c.unitId });
     }
   }
 }
 
-export type Evidence = { found: boolean; text: string };
+export type Evidence = { found: boolean; text: MessageRef };
 
 // checkCorrection reads the current authority a correction with an unknown
 // outcome would have changed. `found: false` never proves the request failed: it
@@ -124,25 +122,25 @@ export async function checkCorrection(c: Correction): Promise<Evidence> {
     case "reassign": {
       const m = (await api.getCurrentMembership(c.unitId)).current_membership;
       return m && m.concept_id === c.toConceptId
-        ? { found: true, text: `The unit's CURRENT SAME membership is concept #${m.concept_id} (link #${m.link_id}).` }
+        ? { found: true, text: msg("correction.check.same", { id: m.concept_id, link: m.link_id }) }
         : {
             found: false,
-            text: m ? `The unit's CURRENT SAME membership is concept #${m.concept_id}, not #${c.toConceptId}.` : "The unit has no CURRENT SAME membership.",
+            text: m ? msg("correction.check.sameOther", { id: m.concept_id, wanted: c.toConceptId }) : msg("correction.check.sameNone"),
           };
     }
     case "invalid": {
       const env = await api.getUnitInvalid(c.unitId);
       return env.invalid
-        ? { found: true, text: `The unit is INVALID (judgment #${env.history[0]?.id ?? "?"}).` }
-        : { found: false, text: "The unit is not INVALID." };
+        ? { found: true, text: msg("check.invalid.found", { judgment: env.history[0]?.id ?? "?" }) }
+        : { found: false, text: msg("check.invalid.missing") };
     }
     case "restore": {
       const env = await api.getUnitInvalid(c.unitId);
       const latest = env.history[0];
       // Only a judgment newer than the INVALID one being withdrawn counts.
       return !env.invalid && latest && latest.id > c.judgmentId
-        ? { found: true, text: `The unit is no longer INVALID (judgment #${latest.id}).` }
-        : { found: false, text: env.invalid ? "The unit is still INVALID." : "No judgment newer than the withdrawn one is stored." };
+        ? { found: true, text: msg("correction.check.restored", { judgment: latest.id }) }
+        : { found: false, text: msg(env.invalid ? "correction.check.stillInvalid" : "correction.check.noNewer") };
     }
   }
 }

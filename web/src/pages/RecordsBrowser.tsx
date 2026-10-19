@@ -9,6 +9,7 @@ import {
   type LearningRecord,
   type LearningRecordState,
 } from "../types/learning";
+import { useI18n } from "../i18n";
 
 // The page size requested from GET /learning-records. The backend clamps limits.
 export const RECORDS_PAGE_SIZE = 20;
@@ -42,6 +43,7 @@ export function RecordsBrowser({
   // Opens an extracted unit in Concept Review or the Inspector.
   onNavigateToUnit?: (target: UnitTarget) => void;
 } = {}) {
+  const { t, tp, status } = useI18n();
   const [filter, setFilter] = useState<StateFilter>("all");
   const [records, setRecords] = useState<LearningRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
@@ -155,10 +157,7 @@ export function RecordsBrowser({
 
       {/* The list stays mounted while a detail is open, so its pages and filter survive. */}
       <main hidden={openEntryId !== null}>
-        <div className="banner info">
-          Opening a record does not analyze, review, or extract anything. Analysis and
-          extraction run only when you explicitly request them in a record&apos;s detail.
-        </div>
+        <div className="banner info">{t("records.notice")}</div>
 
         <div className="queue-nav">
           <button
@@ -168,7 +167,7 @@ export function RecordsBrowser({
             aria-controls="capture-import"
             onClick={() => setShowImport((v) => !v)}
           >
-            {showImport ? "Hide capture import" : "Import a capture"}
+            {showImport ? t("records.hideImport") : t("records.showImport")}
           </button>
         </div>
         {/* Kept mounted while hidden so a pending import and its outcome survive. */}
@@ -176,14 +175,14 @@ export function RecordsBrowser({
           <CaptureImport onImported={() => setReloadCount((n) => n + 1)} onOpenRecord={openRecord} />
         </div>
 
-        <div className="inspector-filters" aria-label="Record filters">
+        <div className="inspector-filters" aria-label={t("records.filters")}>
           <label>
-            Record state
+            {t("records.state")}
             <select value={filter} onChange={(event) => setFilter(event.target.value as StateFilter)}>
-              <option value="all">All</option>
+              <option value="all">{t("common.all")}</option>
               {LEARNING_RECORD_STATES.map((state) => (
                 <option key={state} value={state}>
-                  {state}
+                  {status(state)}
                 </option>
               ))}
             </select>
@@ -191,23 +190,21 @@ export function RecordsBrowser({
         </div>
 
         {list.status === "loading" ? (
-          <div className="empty">Loading learning records…</div>
+          <div className="empty">{t("records.loading")}</div>
         ) : list.status === "error" ? (
           <div className="banner error" role="alert">
-            Could not load learning records: {list.message}{" "}
+            {t("records.loadFailed", { message: list.message })}{" "}
             <button type="button" className="ghost" onClick={() => setReloadCount((n) => n + 1)}>
-              Retry
+              {t("common.retry")}
             </button>
           </div>
         ) : records.length === 0 ? (
           <div className="empty">
-            {filter === "all"
-              ? "No learning records exist yet. Import a capture or create an entry to see it here."
-              : `No learning records are in the "${filter}" state.`}
+            {filter === "all" ? t("records.empty") : t("records.emptyFiltered", { state: status(filter) })}
           </div>
         ) : (
           <>
-            <ul className="records-list" aria-label="Learning records">
+            <ul className="records-list" aria-label={t("records.list")}>
               {records.map((record) => (
                 <RecordRow
                   key={record.entry_id}
@@ -220,12 +217,10 @@ export function RecordsBrowser({
             </ul>
 
             <div className="records-more">
-              <span className="hint">
-                Showing {records.length} record{records.length === 1 ? "" : "s"}.
-              </span>
+              <span className="hint">{tp("records.showing", records.length)}</span>
               {more.status === "error" ? (
                 <div className="banner error" role="alert">
-                  Could not load older records: {more.message}
+                  {t("records.olderFailed", { message: more.message })}
                 </div>
               ) : null}
               {nextCursor !== null ? (
@@ -236,13 +231,13 @@ export function RecordsBrowser({
                   onClick={loadOlder}
                 >
                   {more.status === "loading"
-                    ? "Loading older records…"
+                    ? t("records.olderLoading")
                     : more.status === "error"
-                      ? "Retry loading older records"
-                      : "Load older records"}
+                      ? t("records.olderRetry")
+                      : t("records.older")}
                 </button>
               ) : (
-                <span className="hint">End of records.</span>
+                <span className="hint">{t("records.end")}</span>
               )}
             </div>
           </>
@@ -263,42 +258,41 @@ function RecordRow({
   unconfirmed: boolean;
   onOpen: () => void;
 }) {
+  const { t, status } = useI18n();
+  const interpretation = record.effective
+    ? t("records.effectiveCategory", { category: record.effective.category })
+    : record.state === "rejected"
+      ? t("records.rejected")
+      : t("records.noAnalysis");
   return (
     <li className="record-row">
       <div className="inspector-card-head">
-        <h3>Record #{record.entry_id}</h3>
-        <span className={`record-state ${record.state}`}>{record.state}</span>
+        <h3>{t("record.heading", { id: record.entry_id })}</h3>
+        <span className={`record-state ${record.state}`}>{status(record.state)}</span>
       </div>
       <p className="french record-input">{record.original_input}</p>
       {record.original_context ? <p className="hint">{record.original_context}</p> : null}
       <p className="hint">
-        {record.effective
-          ? `Effective category: ${record.effective.category}`
-          : record.state === "rejected"
-            ? "Latest interpretation rejected"
-            : "No analysis"}
-        {record.analysis_version !== null ? ` · latest analysis v${record.analysis_version}` : ""}
+        {record.analysis_version !== null
+          ? t("records.rowLatest", { interpretation, version: record.analysis_version })
+          : interpretation}
       </p>
       {unconfirmed ? (
         <p className="banner error" role="alert">
-          This record changed, but its row could not be re-read from the server. The state shown
-          may be out of date; reload the list.
+          {t("records.unconfirmed")}
         </p>
       ) : null}
       {filter !== "all" && record.state !== filter ? (
-        <p className="hint">
-          Changed since this list loaded: now &quot;{record.state}&quot;, which no longer matches the
-          &quot;{filter}&quot; filter.
-        </p>
+        <p className="hint">{t("records.changed", { state: status(record.state), filter: status(filter) })}</p>
       ) : null}
       <button
         type="button"
         className="ghost"
         id={`record-open-${record.entry_id}`}
-        aria-label={`Open record #${record.entry_id}`}
+        aria-label={t("records.openLabel", { id: record.entry_id })}
         onClick={onOpen}
       >
-        Open
+        {t("records.open")}
       </button>
     </li>
   );

@@ -1,4 +1,5 @@
 import type { Concept } from "../types/concept";
+import { useI18n } from "../i18n";
 
 // CandidateConceptCard shows one existing concept from either the deterministic
 // exact-signature resolver or retrieval-only catalog discovery. The containing
@@ -13,14 +14,13 @@ export function CandidateConceptCard({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const { t, tn, status } = useI18n();
   const features = Object.entries(concept.identity_features ?? {});
   return (
     <div className={`candidate${selected ? " selected" : ""}`}>
       <div className="head">
-        <strong>
-          concept <span className="mono">#{concept.id}</span>
-        </strong>
-        <span className={`tag ${concept.state}`}>{concept.state}</span>
+        <strong>{tn("candidate.heading", { id: <span className="mono">#{concept.id}</span> })}</strong>
+        <span className={`tag ${concept.state}`}>{status(concept.state)}</span>
       </div>
       <div className="field-row">
         <span className="label">target</span>
@@ -32,7 +32,7 @@ export function CandidateConceptCard({
       </div>
       <div className="field-row">
         <span className="label">scope</span>
-        <span className="value">{concept.scope || <em>(unset)</em>}</span>
+        <span className="value">{concept.scope || <em>{t("common.unset")}</em>}</span>
       </div>
       {features.length > 0 ? (
         <div className="field-row">
@@ -47,18 +47,18 @@ export function CandidateConceptCard({
         </div>
       ) : null}
       <div className="field-row">
-        <span className="label">lifecycle / support</span>
+        <span className="label">{t("candidate.lifecycleSupport")}</span>
         <span className="value">
-          {concept.lifecycle_state} / {concept.support_state}
+          {status(concept.lifecycle_state)} / {status(concept.support_state)}
         </span>
       </div>
       <div className="field-row">
-        <span className="label">preferred unit</span>
+        <span className="label">{t("candidate.preferredUnit")}</span>
         <span className="value">
           {concept.preferred_unit_id !== null ? (
             <span className="mono">{concept.preferred_unit_id}</span>
           ) : (
-            <em>(none)</em>
+            <em>{t("common.none")}</em>
           )}
         </span>
       </div>
@@ -72,7 +72,7 @@ export function CandidateConceptCard({
         onClick={onSelect}
         aria-pressed={selected}
       >
-        {selected ? "selected" : "select this concept"}
+        {selected ? t("candidate.selected") : t("candidate.select")}
       </button>
     </div>
   );

@@ -60,7 +60,7 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   explicit corrections (also from a record's unit inspection), and idempotent
   recovery for lost DISTINCT and relation responses.
 - Search and browse curated Concepts in the read-only **Knowledge Library**,
-  with plain-English status and links from each unit to the record and the exact
+  with plain-language status and links from each unit to the record and the exact
   interpretation it came from. An optional **semantic search** mode ranks
   Concepts by embedding similarity using a persistent, rebuildable Qdrant index
   and an embedding cache in SQLite, built only by an explicit operator command.
@@ -72,6 +72,11 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   population.
 - Package the server and built workbench as one Docker image with health and
   readiness checks and documented backup, restore and upgrade procedures.
+- Use the workbench and the public demo in **English** (the default) or
+  **简体中文**, chosen with a language selector and remembered in the browser.
+  Only interface text is translated: learner content, stored and AI-generated
+  text, Concept identities, IDs, decision names and raw server errors are shown
+  as written.
 
 ## What it is not
 

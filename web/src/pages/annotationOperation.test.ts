@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { clearOperation, loadOperations, newOperation, OperationConflictError, OperationStorageError, recheckStorage, saveOperation } from "./annotationOperation";
 import { checkDecision, sendDecision } from "./reviewOutcome";
+import { formatEn } from "../i18n";
 import { ApiError } from "../api/client";
 
 afterEach(() => { window.localStorage.clear(); vi.restoreAllMocks(); });
@@ -66,7 +67,9 @@ describe("durable annotation identity", () => {
     globalThis.fetch = vi.fn(async () => new Response('{"error":"unknown"}',{status:404}));
     expect(await checkDecision(d,null)).toMatchObject({found:false});
     globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({id:d.operationId,request:{action:"distinct",unit_id:5,concept_id:42},result:{id:17}})));
-    expect(await checkDecision(d,null)).toMatchObject({found:true,text:expect.stringContaining("historical")});
+    const committed = await checkDecision(d,null);
+    expect(committed.found).toBe(true);
+    expect(formatEn(committed.text)).toContain("historical");
     globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({id:d.operationId,request:{action:"distinct",unit_id:6,concept_id:42},result:{id:17}})));
     await expect(checkDecision(d,null)).rejects.toThrow("does not match");
   });

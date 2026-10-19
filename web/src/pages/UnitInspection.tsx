@@ -5,6 +5,7 @@ import type { UnitTarget } from "../navigation";
 import { InspectorItem } from "./AnnotationInspector";
 import { UnitCorrections, type ConceptCatalog } from "./UnitCorrections";
 import type { Inspection } from "./unitCorrection";
+import { useI18n } from "../i18n";
 
 type Load<T> =
   | { status: "loading" }
@@ -31,6 +32,7 @@ export function UnitInspection({
   onBack: () => void;
   onReview: () => void;
 }) {
+  const { t } = useI18n();
   const [load, setLoad] = useState<Load<Inspection>>({ status: "loading" });
   const [catalog, setCatalog] = useState<ConceptCatalog>({ status: "loading" });
   const [reloadCount, setReloadCount] = useState(0);
@@ -111,26 +113,26 @@ export function UnitInspection({
 
   return (
     <main>
-      <section className="panel record-context" aria-label="Record context">
+      <section className="panel record-context" aria-label={t("focus.context")}>
         <h2 ref={headingRef} tabIndex={-1}>
-          Unit #{focus.unitId} from record #{focus.entryId}
+          {t("inspection.heading", { unit: focus.unitId, record: focus.entryId })}
         </h2>
-        <p className="hint">Opening this view records nothing. Only an explicit, confirmed correction below writes.</p>
+        <p className="hint">{t("inspection.hint")}</p>
         <button type="button" className="ghost" onClick={onBack} disabled={writing}>
-          ← Back to record #{focus.entryId}
+          {t("focus.back", { id: focus.entryId })}
         </button>
       </section>
 
       {load.status === "loading" ? (
-        <div className="empty">Loading the unit&apos;s annotation…</div>
+        <div className="empty">{t("inspection.loading")}</div>
       ) : load.status === "error" ? (
         <div className="banner error" role="alert">
           {load.notFound
-            ? `Unit #${focus.unitId} was not found on the server. Return to the record and reload its extractions.`
-            : `Could not load unit #${focus.unitId}: ${load.message}`}{" "}
+            ? t("inspection.notFound", { id: focus.unitId })
+            : t("inspection.failed", { id: focus.unitId, message: load.message })}{" "}
           {!load.notFound ? (
             <button type="button" className="ghost" onClick={() => setReloadCount((n) => n + 1)}>
-              Retry
+              {t("common.retry")}
             </button>
           ) : null}
         </div>
@@ -162,42 +164,34 @@ function Currency({
   focus: UnitTarget;
   onReview: () => void;
 }) {
+  const { t, status } = useI18n();
   const { item, current } = inspection;
-  const mode = current.selection_mode;
+  const mode = status(current.selection_mode);
   if (current.current_extraction_id === null) {
-    return (
-      <div className="banner info">
-        The record has no current extraction ({mode} selection), so this unit is not reviewable and
-        gives no concept support. Its stored labels are shown for reference.
-      </div>
-    );
+    return <div className="banner info">{t("currency.none", { mode })}</div>;
   }
   if (item.unit.extraction_id !== current.current_extraction_id) {
     return (
-      <div className="banner info" aria-label="Unit currency">
-        <strong>Historical unit.</strong> It belongs to extraction #{item.unit.extraction_id}, which is not
-        the record&apos;s current extraction (#{current.current_extraction_id}, {mode} selection). Its stored
-        labels are shown for reference; it is not reviewable and gives no concept support while another
-        version is current.
+      <div className="banner info" aria-label={t("currency.region")}>
+        <strong>{t("currency.historical")}</strong>{" "}
+        {t("currency.historical.detail", { unitExtraction: item.unit.extraction_id, current: current.current_extraction_id, mode })}
       </div>
     );
   }
   const unresolved = item.snapshot.status === "unresolved";
   return (
-    <div className="banner info" aria-label="Unit currency">
-      This unit belongs to the record&apos;s current extraction ({mode} selection).
-      {item.unit.extraction_id !== focus.extractionId
-        ? " The current extraction changed since the record was shown; return to the record and reload it."
-        : null}
+    <div className="banner info" aria-label={t("currency.region")}>
+      {t("currency.current", { mode })}
+      {item.unit.extraction_id !== focus.extractionId ? <>{" "}{t("currency.changed")}</> : null}
       {unresolved ? (
         <>
-          {" "}It has no current SAME membership and is not INVALID.{" "}
+          {" "}{t("currency.unresolved")}{" "}
           <button type="button" className="ghost" onClick={onReview}>
-            Open unit #{item.unit.id} in Concept Review
+            {t("currency.openReview", { id: item.unit.id })}
           </button>
         </>
       ) : (
-        ` It is ${item.snapshot.status}, so it is not awaiting review.`
+        <>{" "}{t("currency.notAwaiting", { status: status(item.snapshot.status) })}</>
       )}
     </div>
   );

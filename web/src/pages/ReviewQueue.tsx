@@ -28,6 +28,7 @@ import {
   describeDecision,
   duplicateRisk,
   readBaseline,
+  ReceiptMismatchError,
   resolvesUnit,
   sendDecision,
   type Baseline,
@@ -43,11 +44,14 @@ import {
   saveOperation,
   type StoredDecision,
 } from "./annotationOperation";
+import { msg, useI18n, type MessageKey, type MessageRef, type Msg } from "../i18n";
 
-type Notice = { kind: "success" | "error" | "info"; text: string } | null;
+// Notice and reconciliation texts are kept as messages, so they follow a language
+// switch; raw server error details inside them are never translated.
+type Notice = { kind: "success" | "error" | "info"; text: Msg } | null;
 
 // The latest decision outcome and the re-read that followed it, per unit.
-type UnitStatus = { outcome: Outcome | null; refresh: { what: string; state: RefreshState } | null };
+type UnitStatus = { outcome: Outcome | null; refresh: { what: Msg; state: RefreshState } | null };
 
 // A decision whose outcome is unknown (no response) and the check of the backend
 // for its effect. Until the check finds it, or the reviewer explicitly accepts the
@@ -56,13 +60,14 @@ type Reconciliation = {
   decision: Decision;
   baseline: Baseline;
   check: "checking" | "found" | "not-found" | "failed";
-  text: string;
+  // A message, or raw error details from a failed check.
+  text: Msg;
   acknowledged: boolean;
 };
 
-const restoredText = "Restored unresolved operation. Check its receipt or explicitly retry the saved payload.";
-const storageStillFailing =
-  "Browser storage is still unavailable or unreadable. Nothing was sent; keyed decisions (BROADER, NARROWER, RELATED, DISTINCT) stay disabled. Allow site storage and recheck. Reloading does not repair an unreadable saved value.";
+const restoredText = msg("review.restoredOperation");
+const storageStillFailing = msg("review.storage.stillFailing");
+const unitAuthority = (unitId: number) => msg("review.what.authority", { id: unitId });
 
 function errorText(e: unknown): string {
   if (e instanceof ApiError) return `(${e.status}) ${e.message}`;
@@ -103,7 +108,8 @@ export function ReviewQueue({
   const [index, setIndex] = useState(0);
   const [loadingQueue, setLoadingQueue] = useState(true);
   // The decision currently being sent. While set, no decision or unit switch is possible.
-  const [pendingWrite, setPendingWrite] = useState<{ unitId: number; label: string } | null>(null);
+  const { t, render } = useI18n();
+  const [pendingWrite, setPendingWrite] = useState<{ unitId: number; label: MessageRef } | null>(null);
   const writeInFlight = useRef(false);
   const [unitStatus, setUnitStatus] = useState<Record<number, UnitStatus>>({});
   const [reconciliations, setReconciliations] = useState<Record<number, Reconciliation>>({});
@@ -122,7 +128,7 @@ export function ReviewQueue({
   const [notice, setNotice] = useState<Notice>(null);
   // Page-wide: browser storage cannot be read or written, so keyed decisions are
   // disabled until an explicit recheck succeeds. A per-unit conflict never sets it.
-  const [storageFailure, setStorageFailure] = useState<string | null>(null);
+  const [storageFailure, setStorageFailure] = useState<MessageRef | null>(null);
   // Exact saved operations whose cleanup failed; an explicit recheck retries them.
   const pendingCleanup = useRef(new Map<string, Decision>());
   useEffect(() => {
@@ -134,13 +140,13 @@ export function ReviewQueue({
       };
       setReconciliations(restored);
       reconciliationsRef.current = restored;
-    } catch { setStorageFailure("Browser storage is unavailable or invalid. Unresolved identity cannot be recovered across reload; new keyed annotations are blocked. Keyed decisions (BROADER, NARROWER, RELATED, DISTINCT) stay disabled until browser storage is rechecked."); }
+    } catch { setStorageFailure(msg("review.storage.unavailable")); }
   }, []);
 
   // cleanUp removes exactly this saved operation (key and payload), also after the
   // page was left, so a newer operation is never removed. A failure is reported
   // and kept for the explicit storage recheck.
-  const cleanUp = useCallback((decision: Decision, failure: string) => {
+  const cleanUp = useCallback((decision: Decision, failure: MessageRef) => {
     if (!decision.operationId) return;
     try {
       clearOperation(decision);
@@ -191,7 +197,7 @@ export function ReviewQueue({
       setFocusMissing(focus !== null && focusedIndex < 0);
     } catch (e) {
       if (request !== queueRequest.current) return;
-      setNotice({ kind: "error", text: describe(e, "Could not load the review queue.") });
+      setNotice({ kind: "error", text: describe(e, "review.error.queue") });
     } finally {
       if (request === queueRequest.current) setLoadingQueue(false);
     }
@@ -209,7 +215,7 @@ export function ReviewQueue({
     try {
       setCatalog(await api.listConcepts());
     } catch (e) {
-      setNotice({ kind: "error", text: describe(e, "Could not load the concept catalog.") });
+      setNotice({ kind: "error", text: describe(e, "review.error.catalog") });
     } finally {
       setCatalogLoading(false);
     }
@@ -239,7 +245,7 @@ export function ReviewQueue({
       }
       setLoadedUnitContextId(unit.unit_id);
     } catch (e) {
-      setNotice({ kind: "error", text: describe(e, "Could not load unit context.") });
+      setNotice({ kind: "error", text: describe(e, "review.error.unitContext") });
     }
   }, []);
 
@@ -272,7 +278,7 @@ export function ReviewQueue({
       const view = await api.getConcept(conceptId);
       setHistory(view.links);
     } catch (e) {
-      setNotice({ kind: "error", text: describe(e, "Could not load concept history.") });
+      setNotice({ kind: "error", text: describe(e, "review.error.history") });
     } finally {
       setHistoryLoading(false);
     }
@@ -299,7 +305,7 @@ export function ReviewQueue({
   // kept (e.g. DISTINCT A, then NEW CONCEPT B from the edited identity); the
   // selection is cleared so the concept just judged is not re-targeted by accident.
   const rereadUnit = useCallback(
-    async (unit: ReviewableUnit, what: string, effective = false) => {
+    async (unit: ReviewableUnit, what: Msg, effective = false) => {
       const id = unit.unit_id;
       const request = checkRequest.current.get(id);
       setStatus(id, { refresh: { what, state: { kind: "refreshing" } } });
@@ -347,7 +353,7 @@ export function ReviewQueue({
         updateReconciliation(unitId, { check: "found", text: evidence.text });
         if (rec.decision.operationId) {
           setStatus(unitId, { outcome: { kind: "succeeded", text: evidence.text } });
-          cleanUp(rec.decision, "The receipt is committed, but browser storage cleanup failed. Reload may show it again; receipt lookup remains safe. Keyed decisions are disabled until browser storage is rechecked.");
+          cleanUp(rec.decision, msg("review.storage.cleanupAfterReceipt"));
           if (stale()) return;
         }
         const label = describeDecision(rec.decision);
@@ -355,14 +361,14 @@ export function ReviewQueue({
           removeUnit(unitId);
           setNotice({
             kind: "info",
-            text: `Unit #${unitId}: the server shows ${label} is stored (${evidence.text}), so the unit left the queue.`,
+            text: msg("review.foundLeftQueue", { id: unitId, label, evidence: evidence.text }),
           });
         } else {
           const unit = queueRef.current.find((u) => u.unit_id === unitId);
-          if (unit) await rereadUnit(unit, `unit #${unitId}'s membership and exact matches`, !!rec.decision.operationId);
+          if (unit) await rereadUnit(unit, unitAuthority(unitId), !!rec.decision.operationId);
         }
       } catch (e) {
-        if (!stale()) updateReconciliation(unitId, { check: "failed", text: errorText(e) });
+        if (!stale()) updateReconciliation(unitId, { check: "failed", text: e instanceof ReceiptMismatchError ? msg("check.receiptMismatch") : errorText(e) });
       }
     },
     [cleanUp, removeUnit, rereadUnit, updateReconciliation, setStatus],
@@ -374,8 +380,8 @@ export function ReviewQueue({
   function adoptConflict(unitId: number, decision: Decision, existing: StoredDecision) {
     const label = describeDecision(existing);
     const text = existing.operationId === decision.operationId
-      ? `Nothing was sent: the payload saved under this key is ${label}, which differs from this page's copy. The saved payload is kept; check its receipt or retry it explicitly.`
-      : `Nothing was sent: this browser already has an unresolved ${label} saved for unit #${unitId}, probably from another tab. It is kept unchanged; check its receipt or retry it explicitly before deciding again.`;
+      ? msg("review.conflict.sameKey", { label })
+      : msg("review.conflict.otherTab", { label, id: unitId });
     const rec: Reconciliation = { decision: existing, baseline: null, check: "not-found", text, acknowledged: false };
     reconciliationsRef.current = { ...reconciliationsRef.current, [unitId]: rec };
     setReconciliations((all) => ({ ...all, [unitId]: rec }));
@@ -404,7 +410,7 @@ export function ReviewQueue({
     reconciliationsRef.current = next;
     setReconciliations(next);
     setStorageFailure(null);
-    setNotice({ kind: "info", text: "Browser storage works again. Keyed decisions are enabled; nothing was sent." });
+    setNotice({ kind: "info", text: msg("review.storage.recovered") });
   }
 
   const blockedFor = (unitId: number) => {
@@ -443,20 +449,20 @@ export function ReviewQueue({
     if (!draft) return;
     let decision: Decision;
     if ((draft.kind === "distinct" || draft.kind === "relation") && storageFailure) {
-      setNotice({ kind: "error", text: "Nothing was sent: browser storage is unavailable, so keyed decisions are disabled. Recheck browser storage first." });
+      setNotice({ kind: "error", text: msg("review.storage.blocked") });
       return;
     }
     try {
       decision = retry ?? newOperation(draft);
     } catch {
-      setNotice({ kind: "error", text: "Could not generate an annotation operation key. Nothing was sent." });
+      setNotice({ kind: "error", text: msg("review.keyFailed") });
       return;
     }
     try {
       saveOperation(decision);
     } catch (e) {
       if (e instanceof OperationConflictError) adoptConflict(unitId, decision, e.existing);
-      else setStorageFailure("Browser storage failed. Nothing was sent; reload recovery cannot be guaranteed. Keyed decisions (BROADER, NARROWER, RELATED, DISTINCT) are disabled until browser storage is rechecked.");
+      else setStorageFailure(msg("review.storage.saveFailed"));
       return;
     }
     if (!decision) return;
@@ -477,23 +483,23 @@ export function ReviewQueue({
         baseline = await readBaseline(decision);
       } catch (e) {
         setStatus(unitId, {
-          outcome: { kind: "rejected", text: `Nothing was sent: the existing events for ${label} could not be read first ${errorText(e)}.` },
+          outcome: { kind: "rejected", text: msg("review.baselineFailed", { label, error: errorText(e) }) },
         });
         return;
       }
       try {
         const text = await sendDecision(decision);
         if (decision.operationId) {
-          cleanUp(decision, "Request committed, but browser storage cleanup failed. Reload may show it again; check the receipt. Keyed decisions are disabled until browser storage is rechecked.");
-          updateReconciliation(unitId, { check: "found", text: "This request committed. Current authority is refreshed separately." });
+          cleanUp(decision, msg("review.storage.cleanupAfterCommit"));
+          updateReconciliation(unitId, { check: "found", text: msg("review.committed") });
         }
         if (!mounted.current) return;
         if (resolvesUnit(decision)) {
           removeUnit(unitId);
-          setNotice({ kind: "success", text: `Unit #${unitId}: ${text}` });
+          setNotice({ kind: "success", text: msg("review.unitResult", { id: unitId, text }) });
         } else {
           setStatus(unitId, { outcome: { kind: "succeeded", text } });
-          await rereadUnit(unit, `unit #${unitId}'s membership and exact matches`, !!decision.operationId);
+          await rereadUnit(unit, unitAuthority(unitId), !!decision.operationId);
         }
       } catch (e) {
         const unknown = e instanceof NetworkError || !(e instanceof ApiError) || (!!decision.operationId && e.status >= 500);
@@ -501,16 +507,14 @@ export function ReviewQueue({
         // saved operation, even if Concept Review was left meanwhile. A rejected
         // retry does not cancel the original request, so it is kept.
         if (!unknown && decision.operationId && !retry) {
-          cleanUp(decision, "Browser storage cleanup failed; the rejected operation remains saved and may be shown again after reload. Keyed decisions are disabled until browser storage is rechecked.");
+          cleanUp(decision, msg("review.storage.cleanupAfterReject"));
         }
         if (!mounted.current) return;
         if (unknown || !(e instanceof ApiError)) {
           setStatus(unitId, {
             outcome: {
               kind: "uncertain",
-              text: decision.operationId
-                ? `No committed result was confirmed for ${label} on unit #${unitId}, so its outcome is unknown. It was not sent again.`
-                : `No response was received for ${label} on unit #${unitId}, so it may or may not have been recorded. It was not sent again.`,
+              text: msg(decision.operationId ? "review.unknown.keyed" : "review.unknown", { label, id: unitId }),
             },
           });
           setReconciliations((all) => ({
@@ -524,13 +528,13 @@ export function ReviewQueue({
           void runCheck(unitId);
         } else {
           setStatus(unitId, {
-            outcome: { kind: "rejected", text: `The server did not record ${label} ${errorText(e)}.` },
+            outcome: { kind: "rejected", text: msg("review.rejected", { label, error: errorText(e) }) },
           });
           if (retry?.operationId) {
-            updateReconciliation(unitId, { check: "not-found", text: "Retry rejected; this does not cancel the original unresolved request. Check its receipt again." });
+            updateReconciliation(unitId, { check: "not-found", text: msg("review.retryRejected") });
           }
           // A conflict means authority may have changed underneath; re-read it.
-          if (e.isConflict) await rereadUnit(unit, `unit #${unitId}'s current membership`);
+          if (e.isConflict) await rereadUnit(unit, msg("review.what.membership", { id: unitId }));
         }
       }
     } finally {
@@ -540,17 +544,14 @@ export function ReviewQueue({
   }
 
   const context = focus ? (
-    <section className="panel record-context" aria-label="Record context">
+    <section className="panel record-context" aria-label={t("focus.context")}>
       <h2 ref={focusHeadingRef} tabIndex={-1}>
-        Concept Review for record #{focus.entryId}
+        {t("review.focus.heading", { id: focus.entryId })}
       </h2>
-      <p className="hint">
-        Opened from unit #{focus.unitId} of extraction v{focus.extractionVersion}. Only this record&apos;s
-        units that the server lists as awaiting review are shown here.
-      </p>
+      <p className="hint">{t("review.focus.hint", { unit: focus.unitId, version: focus.extractionVersion })}</p>
       {onBack ? (
         <button type="button" className="ghost" onClick={onBack}>
-          ← Back to record #{focus.entryId}
+          {t("focus.back", { id: focus.entryId })}
         </button>
       ) : null}
     </section>
@@ -559,12 +560,10 @@ export function ReviewQueue({
   const missing =
     focus && focusMissing ? (
       <div className="banner info" role="alert">
-        <strong>Unit #{focus.unitId} is not awaiting review.</strong> The server does not list it as
-        reviewable now: it may already be resolved or marked INVALID, or its extraction is no longer
-        current. It is not shown as a review candidate.{" "}
+        <strong>{t("review.focus.missing", { id: focus.unitId })}</strong> {t("review.focus.missing.detail")}{" "}
         {onInspect ? (
           <button type="button" className="ghost" onClick={() => onInspect(focus.unitId)}>
-            Inspect unit #{focus.unitId}
+            {t("unitLinks.inspect", { id: focus.unitId })}
           </button>
         ) : null}
       </div>
@@ -574,7 +573,7 @@ export function ReviewQueue({
     return (
       <div>
         {context}
-        <p className="empty">Loading review queue…</p>
+        <p className="empty">{t("review.loading")}</p>
       </div>
     );
   }
@@ -584,9 +583,9 @@ export function ReviewQueue({
       <div>
         {context}
         {missing}
-        {notice ? <div className={`banner ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.text}</div> : null}
+        {notice ? <div className={`banner ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{render(notice.text)}</div> : null}
         <div className="empty">
-          <p>{focus ? `No units of record #${focus.entryId} are awaiting review.` : "No units are awaiting review. 🎉"}</p>
+          <p>{focus ? t("review.empty.focus", { id: focus.entryId }) : t("review.empty")}</p>
           <button
             className="ghost"
             onClick={() => {
@@ -594,7 +593,7 @@ export function ReviewQueue({
               void loadCatalog();
             }}
           >
-            Reload queue
+            {t("review.reloadQueue")}
           </button>
         </div>
       </div>
@@ -609,9 +608,9 @@ export function ReviewQueue({
       {context}
       {missing}
       {focus && focusMissing ? (
-        <p className="hint">Other units of record #{focus.entryId} are awaiting review below.</p>
+        <p className="hint">{t("review.focus.others", { id: focus.entryId })}</p>
       ) : null}
-      {notice ? <div className={`banner ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{notice.text}</div> : null}
+      {notice ? <div className={`banner ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{render(notice.text)}</div> : null}
 
       <div className="queue-nav">
         <button
@@ -619,17 +618,15 @@ export function ReviewQueue({
           disabled={index === 0 || pendingWrite !== null}
           onClick={() => setIndex((i) => Math.max(0, i - 1))}
         >
-          ← previous
+          {t("review.previous")}
         </button>
-        <span className="position">
-          unit {index + 1} of {queue.length}
-        </span>
+        <span className="position">{t("review.position", { index: index + 1, total: queue.length })}</span>
         <button
           className="ghost"
           disabled={index >= queue.length - 1 || pendingWrite !== null}
           onClick={() => setIndex((i) => Math.min(queue.length - 1, i + 1))}
         >
-          skip →
+          {t("review.skip")}
         </button>
         <button
           className="ghost"
@@ -638,7 +635,7 @@ export function ReviewQueue({
             void loadCatalog();
           }}
         >
-          reload queue
+          {t("review.reloadQueueLower")}
         </button>
       </div>
 
@@ -650,17 +647,13 @@ export function ReviewQueue({
 
         <div>
           <div className="panel">
-            <h2>Exact identity matches</h2>
-            <p className="hint">
-              From the deterministic exact-signature resolver. Showing or selecting
-              a match records no label; only an explicit human action below does.
-            </p>
+            <h2>{t("review.exact.title")}</h2>
+            <p className="hint">{t("review.exact.hint")}</p>
             {!unitContextReady ? (
-              <p className="value">Loading exact resolver context…</p>
+              <p className="value">{t("review.exact.loading")}</p>
             ) : candidates.length === 0 ? (
               <p className="value">
-                <em>No exact-signature concept exists for this identity.</em> Create a
-                new concept below, or select nothing and mark INVALID.
+                <em>{t("review.exact.none")}</em> {t("review.exact.none.detail")}
               </p>
             ) : (
               <div className="candidate-list">
@@ -677,33 +670,30 @@ export function ReviewQueue({
           </div>
 
           <div className="panel">
-            <h2>Search existing concepts</h2>
-            <p className="hint">
-              Retrieval-only catalog search, not an automatic SAME recommendation.
-              Showing, searching, selecting, or skipping a result records nothing.
-            </p>
+            <h2>{t("review.search.title")}</h2>
+            <p className="hint">{t("review.search.hint")}</p>
             <label className="discovery-search" htmlFor="concept-discovery-search">
-              Search target, intent, scope, or identity features
+              {t("review.search.label")}
             </label>
             <div className="discovery-search-row">
               <input
                 id="concept-discovery-search"
                 type="search"
-                aria-label="Search existing concepts"
+                aria-label={t("review.search.title")}
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
               <button type="button" className="ghost" onClick={() => setSearchQuery("")}>
-                clear
+                {t("common.clear")}
               </button>
             </div>
             {catalogLoading ? (
-              <p className="value">Loading concept catalog…</p>
+              <p className="value">{t("review.search.catalogLoading")}</p>
             ) : !unitContextReady ? (
-              <p className="value">Loading exact unit context before candidate discovery…</p>
+              <p className="value">{t("review.search.contextLoading")}</p>
             ) : discoveryCandidates.length === 0 ? (
               <p className="value">
-                <em>No discoverable concepts match this search.</em>
+                <em>{t("review.search.none")}</em>
               </p>
             ) : (
               <div className="candidate-list discovery-results">
@@ -722,7 +712,7 @@ export function ReviewQueue({
           </div>
 
           <div className="panel">
-            <h2>Reviewed identity (for NEW CONCEPT)</h2>
+            <h2>{t("review.identity.title")}</h2>
             {identity ? (
               // Keyed by unit so the editor's local feature rows reset with the unit.
               <IdentityEditor
@@ -737,9 +727,9 @@ export function ReviewQueue({
 
       {storageFailure ? (
         <div className="banner error" role="alert">
-          {storageFailure}{" "}
+          {render(storageFailure)}{" "}
           <button type="button" className="ghost" onClick={recheckStorageNow}>
-            Recheck browser storage
+            {t("review.storage.recheck")}
           </button>
         </div>
       ) : null}
@@ -752,8 +742,7 @@ export function ReviewQueue({
       />
       {pendingWrite ? (
         <p className="hint" role="status">
-          Sending {pendingWrite.label} for unit #{pendingWrite.unitId}… Other decisions and unit switches wait for the
-          server&apos;s answer.
+          {t("review.sending", { label: pendingWrite.label, id: pendingWrite.unitId })}
         </p>
       ) : null}
       <OutcomeBanner outcome={unitStatus[current.unit_id]?.outcome ?? null} />
@@ -779,8 +768,8 @@ export function ReviewQueue({
       <HistoryPanel
         title={
           historyConceptId !== null
-            ? `Events for concept #${historyConceptId} (current membership shown separately above).`
-            : "Select a concept to inspect its resolution events."
+            ? t("review.history.title", { id: historyConceptId })
+            : t("review.history.select")
         }
         links={history}
         loading={historyLoading}
@@ -788,7 +777,7 @@ export function ReviewQueue({
       />
       {historyConceptId !== null ? (
         <button className="ghost" disabled={historyLoading} onClick={() => void loadHistory(historyConceptId)}>
-          load history for concept #{historyConceptId}
+          {t("review.history.load", { id: historyConceptId })}
         </button>
       ) : null}
     </div>
@@ -797,14 +786,10 @@ export function ReviewQueue({
 
 // describe extracts a human-readable message from an error, preferring the backend's
 // error text. Errors are never swallowed — this feeds the visible banner.
-function describe(e: unknown, fallback: string): string {
-  if (e instanceof ApiError) {
-    return `${fallback} (${e.status}) ${e.message}`;
-  }
-  if (e instanceof Error) {
-    return `${fallback} ${e.message}`;
-  }
-  return fallback;
+function describe(e: unknown, what: MessageKey): MessageRef {
+  if (e instanceof ApiError) return msg("review.error.detail", { what: msg(what), detail: `(${e.status}) ${e.message}` });
+  if (e instanceof Error) return msg("review.error.detail", { what: msg(what), detail: e.message });
+  return msg(what);
 }
 
 // ReconciliationPanel shows the check of an unknown decision outcome and the only
@@ -827,68 +812,60 @@ function ReconciliationPanel({
   busy: boolean;
   storageUnavailable: boolean;
 }) {
-  const label = describeDecision(rec.decision);
+  const { t, render } = useI18n();
+  const label = String(render(describeDecision(rec.decision)));
+  const text = String(render(rec.text) ?? "");
   if (rec.check === "checking") {
     return (
       <p className="hint" role="status">
-        Checking the server for {label} on unit #{unitId}…
+        {t("reconcile.checking", { label, id: unitId })}
       </p>
     );
   }
   if (rec.check === "found") {
     return (
       <p className="hint" role="status">
-        Found on the server: {rec.text} {label} is stored.
+        {t("reconcile.found", { text, label })}
       </p>
     );
   }
   if (rec.decision.operationId) return (
-    <section className="panel reconciliation" aria-label="Unknown decision outcome">
-      <h2>Outcome of {label} still unknown</h2>
-      <p>{rec.text}</p>
-      <p>Saved operation {rec.decision.operationId}. Editing the selection does not change this saved payload.</p>
-      <button disabled={busy} onClick={onCheck}>Check receipt</button>
-      <button disabled={busy || storageUnavailable} onClick={onRetry}>Retry saved operation</button>
-      {storageUnavailable ? <p className="hint">Retry waits until browser storage is rechecked; checking the receipt sends nothing.</p> : null}
+    <section className="panel reconciliation" aria-label={t("reconcile.region")}>
+      <h2>{t("reconcile.unknown", { label })}</h2>
+      <p>{text}</p>
+      <p>{t("reconcile.savedOperation", { key: rec.decision.operationId })}</p>
+      <button disabled={busy} onClick={onCheck}>{t("reconcile.checkReceipt")}</button>
+      <button disabled={busy || storageUnavailable} onClick={onRetry}>{t("reconcile.retrySaved")}</button>
+      {storageUnavailable ? <p className="hint">{t("reconcile.retryWaits")}</p> : null}
     </section>
   );
   return (
-    <section className="panel reconciliation" aria-label="Unknown decision outcome">
-      <h2>Outcome of {label} still unknown</h2>
+    <section className="panel reconciliation" aria-label={t("reconcile.region")}>
+      <h2>{t("reconcile.unknown", { label })}</h2>
       {rec.check === "failed" ? (
         <div className="banner error" role="alert">
-          Could not check the server for {label}: {rec.text}
+          {t("reconcile.checkFailed", { label, text })}
         </div>
       ) : (
-        <p>
-          Not visible on the server yet: {rec.text} The original request may still be in progress on the server, or
-          may never have arrived. It was not sent again.
-        </p>
+        <p>{t("reconcile.notVisible", { text })}</p>
       )}
       {rec.acknowledged ? (
-        <p className="hint">
-          You allowed another decision for unit #{unitId} although the outcome of {label} is still unknown.
-        </p>
+        <p className="hint">{t("reconcile.allowed", { id: unitId, label })}</p>
       ) : (
-        <p className="hint">Decisions for unit #{unitId} wait until the check finds it or you allow another decision.</p>
+        <p className="hint">{t("reconcile.waiting", { id: unitId })}</p>
       )}
       <div className="actions">
         <button type="button" className="ghost" onClick={onCheck}>
-          Check again
+          {t("reconcile.checkAgain")}
         </button>
       </div>
       {!rec.acknowledged ? (
         <ExplicitAction
-          label={`Allow another decision for unit #${unitId}`}
-          confirmLabel="Allow another decision"
+          label={t("reconcile.allow", { id: unitId })}
+          confirmLabel={t("reconcile.allow.confirm")}
           pending={false}
           onConfirm={onAllow}
-          explanation={
-            <p>
-              The earlier request may still be stored later. {duplicateRisk(rec.decision)} Check again first if you
-              can. Nothing is sent until you choose a decision yourself.
-            </p>
-          }
+          explanation={<p>{t("reconcile.allow.explain", { risk: duplicateRisk(rec.decision) })}</p>}
         />
       ) : null}
     </section>

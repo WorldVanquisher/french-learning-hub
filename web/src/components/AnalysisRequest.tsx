@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError, NetworkError } from "../api/client";
 import type { Analysis } from "../types/learning";
+import { msg, useI18n } from "../i18n";
 import {
   ExplicitAction,
   OutcomeBanner,
@@ -29,6 +30,7 @@ export function AnalysisRequest({
   // set only when the server confirmed the new version.
   onSettled: (created: Analysis | null, reread: boolean) => void;
 }) {
+  const { t, tn } = useI18n();
   const [pending, setPending] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const mounted = useRef(true);
@@ -48,15 +50,12 @@ export function AnalysisRequest({
     let next: Outcome;
     let created: Analysis | null = null;
     try {
-      created = await api.createAnalysis(entryId);
+      const stored: Analysis = await api.createAnalysis(entryId);
+      created = stored;
       next = {
         kind: "succeeded",
-        text: (
-          <>
-            Created analysis v{created.version} with <span className="mono">{created.analyzer}</span>.
-            It is unreviewed until a human gives feedback.
-          </>
-        ),
+        text: (i) =>
+          i.tn("analysis.created", { version: stored.version, analyzer: <span className="mono">{stored.analyzer}</span> }),
       };
     } catch (error) {
       next = describeAnalysisFailure(error);
@@ -73,36 +72,26 @@ export function AnalysisRequest({
   // stays unavailable until the versions were re-read successfully.
   const disabledReason =
     outcome?.kind === "uncertain" && refresh.kind !== "refreshed"
-      ? "Unavailable until the analysis versions have been re-read after the unknown outcome. Use Retry if the re-read failed, then check for a new version."
+      ? t("analysis.blocked")
       : null;
 
   return (
     <div className="workflow-action">
       <ExplicitAction
-        label="Request analysis"
-        confirmLabel="Create a new analysis version"
+        label={t("analysis.label")}
+        confirmLabel={t("analysis.confirm")}
         pending={pending}
         disabledReason={disabledReason}
         onConfirm={submit}
         explanation={
           <>
-            <p>
-              The server runs its configured analyzer on this record&apos;s original input and
-              context and stores the result as a new, immutable analysis version. The record
-              state then follows the new latest version, which is unreviewed. Earlier versions
-              and their feedback are not changed.
-            </p>
-            <p>
-              The default local rule-based analyzer makes no external call. If the server is
-              configured with an external analyzer (<span className="mono">AI_PROVIDER=openai</span>),
-              this request calls it and may be billed. The request is sent once and never retried
-              automatically.
-            </p>
+            <p>{t("analysis.explain.store")}</p>
+            <p>{tn("analysis.explain.provider", { setting: <span className="mono">AI_PROVIDER=openai</span> })}</p>
           </>
         }
       />
       <OutcomeBanner outcome={outcome} />
-      <RefreshBanner refresh={refresh} what="analysis versions" />
+      <RefreshBanner refresh={refresh} what={msg("analysis.what")} />
     </div>
   );
 }
@@ -113,17 +102,10 @@ export function AnalysisRequest({
 // re-checked inside the store transaction), so none implies it was not called.
 function describeAnalysisFailure(error: unknown): Outcome {
   if (error instanceof NetworkError) {
-    return {
-      kind: "uncertain",
-      text:
-        "No response was received, so a new analysis may or may not have been created, and the configured analyzer may have been called.",
-    };
+    return { kind: "uncertain", text: msg("analysis.noResponse") };
   }
   if (error instanceof ApiError) {
-    return {
-      kind: "rejected",
-      text: `No analysis was stored (${error.status}): ${error.message}. The configured analyzer may have been called.`,
-    };
+    return { kind: "rejected", text: msg("analysis.rejected", { status: error.status, message: error.message }) };
   }
-  return { kind: "rejected", text: `The analysis request failed: ${String(error)}` };
+  return { kind: "rejected", text: msg("analysis.failed", { error: String(error) }) };
 }

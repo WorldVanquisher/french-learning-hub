@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import * as api from "../api/client";
 import { ApiError, NetworkError } from "../api/client";
 import { OutcomeBanner, type Outcome } from "./ExplicitAction";
+import { msg, useI18n, type I18n } from "../i18n";
 
 // captureIdOf reads capture_id only to look up the stored receipt afterwards. It is
 // not validation: the server validates the whole document.
@@ -38,6 +39,7 @@ export function CaptureImport({
   onImported: (entryId: number) => void;
   onOpenRecord: (entryId: number) => void;
 }) {
+  const { t, tn } = useI18n();
   const [text, setText] = useState("");
   const [pending, setPending] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -48,13 +50,14 @@ export function CaptureImport({
   const generation = useRef(0);
 
   // Names differ from the list rows' "Open record #N" so each control is unique.
-  function openButton(entryId: number, label = `Open imported record #${entryId}`): ReactNode {
+  function openButton(i: I18n, entryId: number, existing = false): ReactNode {
     return (
       <button type="button" className="ghost" onClick={() => onOpenRecord(entryId)}>
-        {label}
+        {i.t(existing ? "capture.openExisting" : "capture.openImported", { id: entryId })}
       </button>
     );
   }
+  const mono = (value: string) => <span className="mono">{value}</span>;
 
   async function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -63,7 +66,7 @@ export function CaptureImport({
       setText(await readFileText(file));
       setOutcome(null);
     } catch (error) {
-      setOutcome({ kind: "rejected", text: `Could not read ${file.name}: ${describeError(error)}` });
+      setOutcome({ kind: "rejected", text: msg("capture.readFailed", { file: file.name, error: describeError(error) }) });
     }
     setCheckableId(null);
   }
@@ -76,7 +79,7 @@ export function CaptureImport({
     } catch (error) {
       setOutcome({
         kind: "rejected",
-        text: `This is not valid JSON, so nothing was sent: ${error instanceof Error ? error.message : String(error)}`,
+        text: msg("capture.notJson", { error: error instanceof Error ? error.message : String(error) }),
       });
       setCheckableId(null);
       return;
@@ -93,57 +96,48 @@ export function CaptureImport({
         onImported(result.entry_id);
         setOutcome({
           kind: "succeeded",
-          text: (
-            <>
-              Imported capture <span className="mono">{result.capture_id}</span> as new record #{result.entry_id}
-              {result.analysis_id !== null
-                ? ` with imported analysis #${result.analysis_id} (unreviewed).`
-                : " without an analysis."}{" "}
-              {openButton(result.entry_id)}
-            </>
-          ),
+          text: (i) =>
+            i.tn(result.analysis_id !== null ? "capture.imported.withAnalysis" : "capture.imported.withoutAnalysis", {
+              capture: mono(result.capture_id),
+              record: result.entry_id,
+              analysis: result.analysis_id ?? "",
+              open: openButton(i, result.entry_id),
+            }),
         });
       } else {
         setOutcome({
           kind: "succeeded",
-          text: (
-            <>
-              Already imported: capture <span className="mono">{result.capture_id}</span> with identical
-              content is record #{result.entry_id}. Nothing new was stored. {openButton(result.entry_id)}
-            </>
-          ),
+          text: (i) =>
+            i.tn("capture.alreadyImported", {
+              capture: mono(result.capture_id),
+              record: result.entry_id,
+              open: openButton(i, result.entry_id),
+            }),
         });
       }
     } catch (error) {
       if (error instanceof NetworkError) {
         setOutcome({
           kind: "uncertain",
-          text: `No response was received, so the capture may or may not have been stored.${
-            captureId ? " Check its status before importing again." : ""
-          } Re-importing the identical document is safe: the server would return the existing record.`,
+          text: msg(captureId ? "capture.noResponse.checkable" : "capture.noResponse"),
         });
         setCheckableId(captureId);
       } else if (error instanceof ApiError && error.isConflict && captureId) {
         setOutcome({
           kind: "rejected",
-          text: (
-            <>
-              Conflict ({error.status}): {error.message}. Nothing was changed. A new learning interaction
-              needs a new capture_id; correct an interpretation with feedback instead of re-importing.
-            </>
-          ),
+          text: msg("capture.conflict", { status: error.status, message: error.message }),
         });
         await showExistingCapture(captureId, current, error);
       } else if (error instanceof ApiError && error.status >= 500) {
         setOutcome({
           kind: "rejected",
-          text: `The server reported an error and did not confirm the import (${error.status}): ${error.message}.`,
+          text: msg("capture.serverError", { status: error.status, message: error.message }),
         });
         setCheckableId(captureId);
       } else {
         setOutcome({
           kind: "rejected",
-          text: `The server rejected this capture, so nothing was stored ${describeError(error)}.`,
+          text: msg("capture.rejected", { error: describeError(error) }),
         });
       }
     } finally {
@@ -160,14 +154,14 @@ export function CaptureImport({
       if (generation.current !== current) return;
       setOutcome({
         kind: "rejected",
-        text: (
-          <>
-            Conflict ({conflict.status}): {conflict.message}. Nothing was changed. The existing capture{" "}
-            <span className="mono">{receipt.capture_id}</span> is record #{receipt.entry_id}. A new learning
-            interaction needs a new capture_id; correct an interpretation with feedback instead.{" "}
-            {openButton(receipt.entry_id, `Open existing record #${receipt.entry_id}`)}
-          </>
-        ),
+        text: (i) =>
+          i.tn("capture.conflictExisting", {
+            status: conflict.status,
+            message: conflict.message,
+            capture: mono(receipt.capture_id),
+            record: receipt.entry_id,
+            open: openButton(i, receipt.entry_id, true),
+          }),
       });
     } catch {
       // Keep the conflict message; the lookup is only a convenience.
@@ -183,12 +177,8 @@ export function CaptureImport({
       if (generation.current !== current) return;
       setOutcome({
         kind: "succeeded",
-        text: (
-          <>
-            Stored: capture <span className="mono">{receipt.capture_id}</span> is record #{receipt.entry_id}.{" "}
-            {openButton(receipt.entry_id)}
-          </>
-        ),
+        text: (i) =>
+          i.tn("capture.stored", { capture: mono(receipt.capture_id), record: receipt.entry_id, open: openButton(i, receipt.entry_id) }),
       });
       setCheckableId(null);
       onImported(receipt.entry_id);
@@ -197,13 +187,13 @@ export function CaptureImport({
       if (error instanceof ApiError && error.isNotFound) {
         setOutcome({
           kind: "rejected",
-          text: `Not stored: no capture ${checkableId} exists on the server. You can import it again.`,
+          text: msg("capture.notStored", { capture: checkableId }),
         });
         setCheckableId(null);
       } else {
         setOutcome({
           kind: "uncertain",
-          text: `The status check also failed ${describeError(error)}. The import is still unconfirmed.`,
+          text: msg("capture.checkFailed", { error: describeError(error) }),
         });
       }
     } finally {
@@ -212,16 +202,11 @@ export function CaptureImport({
   }
 
   return (
-    <section className="panel" aria-label="Import a learning capture">
-      <h2>Import a learning capture</h2>
-      <p className="hint">
-        Paste or load one <span className="mono">learning_capture_v1</span> JSON document. It is sent
-        unchanged to the server, which validates it. Importing makes no AI call. Importing identical
-        content again returns the existing record; different content under an existing capture_id is
-        refused.
-      </p>
+    <section className="panel" aria-label={t("capture.title")}>
+      <h2>{t("capture.title")}</h2>
+      <p className="hint">{tn("capture.hint", { schema: <span className="mono">learning_capture_v1</span> })}</p>
       <label className="discovery-search" htmlFor="capture-json">
-        Capture JSON
+        {t("capture.jsonLabel")}
       </label>
       <textarea
         id="capture-json"
@@ -233,7 +218,7 @@ export function CaptureImport({
       />
       <div className="actions">
         <label className="file-input">
-          Load from file
+          {t("capture.loadFile")}
           <input type="file" accept=".json,application/json" onChange={(event) => void onFile(event)} />
         </label>
         <button
@@ -242,11 +227,11 @@ export function CaptureImport({
           disabled={pending || text.trim() === ""}
           onClick={() => void submit()}
         >
-          {pending ? "Importing…" : "Import capture"}
+          {pending ? t("capture.importing") : t("capture.import")}
         </button>
         {checkableId ? (
           <button type="button" className="ghost" disabled={checking} onClick={() => void checkStatus()}>
-            {checking ? "Checking…" : "Check import status"}
+            {checking ? t("capture.checking") : t("capture.checkStatus")}
           </button>
         ) : null}
       </div>

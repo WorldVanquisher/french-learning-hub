@@ -5,6 +5,7 @@ import type {
   EffectiveAnnotationItem,
   EffectiveAnnotationStatus,
 } from "../types/concept";
+import { useI18n } from "../i18n";
 
 type StatusFilter = "all" | EffectiveAnnotationStatus;
 type SameSourceFilter = "all" | "human" | "automatic";
@@ -20,9 +21,10 @@ function ConceptReference({
   conceptId: number;
   concepts: Map<number, Concept>;
 }) {
+  const { t } = useI18n();
   const concept = concepts.get(conceptId);
   if (!concept) {
-    return <span>Concept #{conceptId}</span>;
+    return <span>{t("correction.conceptItem", { id: conceptId })}</span>;
   }
   return (
     <span>
@@ -45,11 +47,12 @@ function Provenance({
   resolverVersion?: string;
   createdAt?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className="annotation-provenance">
-      <span>source: <span className="mono">{source}</span></span>
-      <span>event #{eventId}</span>
-      {resolverVersion ? <span>resolver: {resolverVersion}</span> : null}
+      <span>{t("inspector.source")} <span className="mono">{source}</span></span>
+      <span>{t("inspector.event", { id: eventId })}</span>
+      {resolverVersion ? <span>{t("inspector.resolver", { version: resolverVersion })}</span> : null}
       {createdAt ? <time dateTime={createdAt}>{createdAt}</time> : null}
     </div>
   );
@@ -64,28 +67,29 @@ export function InspectorItem({
   item: EffectiveAnnotationItem;
   concepts: Map<number, Concept>;
 }) {
+  const { t, status } = useI18n();
   const { unit, snapshot } = item;
   const corrupt = snapshot.unit_id !== unit.id;
 
   return (
-    <article className="inspector-card" aria-label={`Unit #${unit.id}`}>
+    <article className="inspector-card" aria-label={t("inspector.unit", { id: unit.id })}>
       <div className="inspector-card-head">
-        <h2>Unit #{unit.id}</h2>
-        <span className={`status-tag ${snapshot.status}`}>{snapshot.status}</span>
+        <h2>{t("inspector.unit", { id: unit.id })}</h2>
+        <span className={`status-tag ${snapshot.status}`}>{status(snapshot.status)}</span>
       </div>
 
       {corrupt ? (
         <div className="banner error" role="alert">
-          Corrupt effective snapshot: unit ID {snapshot.unit_id} does not match Unit #{unit.id}.
+          {t("inspector.corrupt", { snapshot: snapshot.unit_id, id: unit.id })}
         </div>
       ) : null}
 
       <dl className="unit-evidence">
-        <div><dt>Kind</dt><dd>{unit.kind}</dd></div>
-        <div><dt>Canonical</dt><dd className="french">{unit.canonical}</dd></div>
-        <div><dt>Statement</dt><dd className="french">{unit.statement}</dd></div>
-        {unit.example ? <div><dt>Example</dt><dd className="french">{unit.example}</dd></div> : null}
-        <div><dt>Confidence</dt><dd>{unit.confidence}</dd></div>
+        <div><dt>{t("unit.kind")}</dt><dd>{unit.kind}</dd></div>
+        <div><dt>{t("unit.canonical")}</dt><dd className="french">{unit.canonical}</dd></div>
+        <div><dt>{t("unit.statement")}</dt><dd className="french">{unit.statement}</dd></div>
+        {unit.example ? <div><dt>{t("unit.example")}</dt><dd className="french">{unit.example}</dd></div> : null}
+        <div><dt>{t("unit.confidence")}</dt><dd>{unit.confidence}</dd></div>
       </dl>
 
       <section className="annotation-section" aria-label="CURRENT SAME">
@@ -104,13 +108,13 @@ export function InspectorItem({
             />
           </>
         ) : (
-          <p className="hint">No CURRENT SAME membership.</p>
+          <p className="hint">{t("inspector.noSame")}</p>
         )}
       </section>
 
       {snapshot.distinctions.length > 0 ? (
-        <section className="annotation-section" aria-label="Effective DISTINCT">
-          <h3>Effective DISTINCT</h3>
+        <section className="annotation-section" aria-label={t("inspector.distinct")}>
+          <h3>{t("inspector.distinct")}</h3>
           <ul className="annotation-list">
             {snapshot.distinctions.map((distinction) => (
               <li key={distinction.id}>
@@ -129,8 +133,8 @@ export function InspectorItem({
       ) : null}
 
       {snapshot.relations.length > 0 ? (
-        <section className="annotation-section" aria-label="Effective relations">
-          <h3>Effective relations</h3>
+        <section className="annotation-section" aria-label={t("inspector.relations")}>
+          <h3>{t("inspector.relations")}</h3>
           <ul className="annotation-list">
             {snapshot.relations.map((relation) => (
               <li key={relation.id}>
@@ -149,8 +153,8 @@ export function InspectorItem({
       ) : null}
 
       {snapshot.status === "invalid" && snapshot.latest_unit_judgment ? (
-        <section className="annotation-section invalid-provenance" aria-label="INVALID provenance">
-          <h3>INVALID provenance</h3>
+        <section className="annotation-section invalid-provenance" aria-label={t("inspector.invalidProvenance")}>
+          <h3>{t("inspector.invalidProvenance")}</h3>
           <Provenance
             source={snapshot.latest_unit_judgment.decision_source}
             eventId={snapshot.latest_unit_judgment.id}
@@ -166,6 +170,7 @@ export function InspectorItem({
 // AnnotationInspector is a GET-only view of the backend's M11-A projection. It
 // displays the returned effective facts verbatim and never derives their authority.
 export function AnnotationInspector() {
+  const { t } = useI18n();
   const [items, setItems] = useState<EffectiveAnnotationItem[]>([]);
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -222,50 +227,48 @@ export function AnnotationInspector() {
   );
 
   if (loadingItems) {
-    return <div className="empty">Loading effective annotations…</div>;
+    return <div className="empty">{t("inspector.loading")}</div>;
   }
 
   if (itemsError) {
-    return <div className="banner error" role="alert">Could not load effective annotations: {itemsError}</div>;
+    return <div className="banner error" role="alert">{t("inspector.failed", { message: itemsError })}</div>;
   }
 
   return (
     <main>
-      <div className="banner info">
-        Read-only view of M11-A effective annotation state. This page does not create or change annotation authority.
-      </div>
+      <div className="banner info">{t("inspector.notice")}</div>
 
-      {loadingConcepts ? <div className="banner info">Loading Concept catalog…</div> : null}
+      {loadingConcepts ? <div className="banner info">{t("inspector.catalogLoading")}</div> : null}
       {conceptsError ? (
         <div className="banner error" role="alert">
-          Could not load the Concept catalog: {conceptsError}. Referenced concepts are shown by ID.
+          {t("inspector.catalogFailed", { message: conceptsError })}
         </div>
       ) : null}
 
-      <div className="inspector-filters" aria-label="Inspector filters">
+      <div className="inspector-filters" aria-label={t("inspector.filters")}>
         <label>
-          Annotation status
+          {t("inspector.statusFilter")}
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
-            <option value="all">All</option>
-            <option value="resolved">Resolved</option>
-            <option value="unresolved">Unresolved</option>
-            <option value="invalid">Invalid</option>
+            <option value="all">{t("common.all")}</option>
+            <option value="resolved">{t("inspector.filter.resolved")}</option>
+            <option value="unresolved">{t("inspector.filter.unresolved")}</option>
+            <option value="invalid">{t("inspector.filter.invalid")}</option>
           </select>
         </label>
         <label>
-          CURRENT SAME source
+          {t("inspector.sourceFilter")}
           <select value={sameSourceFilter} onChange={(event) => setSameSourceFilter(event.target.value as SameSourceFilter)}>
-            <option value="all">All</option>
-            <option value="human">Human</option>
-            <option value="automatic">Automatic</option>
+            <option value="all">{t("common.all")}</option>
+            <option value="human">{t("inspector.filter.human")}</option>
+            <option value="automatic">{t("inspector.filter.automatic")}</option>
           </select>
         </label>
       </div>
 
       {items.length === 0 ? (
-        <div className="empty">No KnowledgeUnits exist in the current extraction.</div>
+        <div className="empty">{t("inspector.empty")}</div>
       ) : filteredItems.length === 0 ? (
-        <div className="empty">No effective annotations match these filters.</div>
+        <div className="empty">{t("inspector.noMatch")}</div>
       ) : (
         <div className="inspector-list">
           {filteredItems.map((item) => (

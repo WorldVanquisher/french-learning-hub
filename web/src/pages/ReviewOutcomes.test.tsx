@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ReviewQueue } from "./ReviewQueue";
 import { checkDecision } from "./reviewOutcome";
+import { formatEn } from "../i18n";
 
 // Concept Review decision outcomes, rendered in StrictMode as main.tsx does. A
 // stateful fixture backend lets a write either never arrive ("not sent"), or be
@@ -473,7 +474,8 @@ describe("checkDecision for paths the queue cannot reach directly", () => {
 
   it("REASSIGN is found only when the membership moved to the requested concept", async () => {
     globalThis.fetch = vi.fn(async () => reply({ unit_id: 5, current_membership: { concept_id: 7, link_id: 2, updated_at: "t" } })) as unknown as typeof fetch;
-    expect(await checkDecision({ kind: "same", unitId: 5, conceptId: 9, reassign: true }, null)).toEqual({
+    const evidence = await checkDecision({ kind: "same", unitId: 5, conceptId: 9, reassign: true }, null);
+    expect({ found: evidence.found, text: formatEn(evidence.text) }).toEqual({
       found: false,
       text: "The unit's current SAME membership is concept #7, not #9.",
     });
@@ -483,7 +485,8 @@ describe("checkDecision for paths the queue cannot reach directly", () => {
   it("NEW CONCEPT without SAME is found by its normalized identity in the catalog", async () => {
     globalThis.fetch = vi.fn(async () => reply({ concepts: [concept(8, "Cible  Nouvelle")] })) as unknown as typeof fetch;
     const identity = { target: "cible nouvelle", pedagogical_intent: "Grammar", scope: "", identity_features: {} };
-    expect(await checkDecision({ kind: "new", unitId: 5, identity, seedAsSame: false }, null)).toEqual({
+    const evidence = await checkDecision({ kind: "new", unitId: 5, identity, seedAsSame: false }, null);
+    expect({ found: evidence.found, text: formatEn(evidence.text) }).toEqual({
       found: true,
       text: "Concept #8 with this identity exists.",
     });

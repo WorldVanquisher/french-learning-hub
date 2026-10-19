@@ -1,5 +1,6 @@
 import * as api from "../api/client";
 import type { ConceptIdentity, RelationKind } from "../types/concept";
+import { msg, type MessageRef } from "../i18n";
 
 // One explicit Concept Review decision, with everything needed to send it once
 // and, if its outcome is unknown, to check the backend for its effect later.
@@ -14,34 +15,36 @@ export type Decision = (
 export const resolvesUnit = (d: Decision) =>
   d.kind === "same" || d.kind === "invalid" || (d.kind === "new" && d.seedAsSame);
 
-export function describeDecision(d: Decision): string {
+// The decision vocabulary (SAME, NEW CONCEPT, relation names, DISTINCT, INVALID)
+// stays as written in every language; IDs and the drafted target are data.
+export function describeDecision(d: Decision): MessageRef {
   switch (d.kind) {
     case "same":
-      return `${d.reassign ? "REASSIGN SAME" : "SAME"} → concept #${d.conceptId}`;
+      return msg(d.reassign ? "decision.label.reassign" : "decision.label.same", { id: d.conceptId });
     case "new":
-      return `NEW CONCEPT "${d.identity.target}"${d.seedAsSame ? " with SAME" : ""}`;
+      return msg(d.seedAsSame ? "decision.label.newSame" : "decision.label.new", { target: d.identity.target });
     case "relation":
-      return `${d.relation.toUpperCase()} → concept #${d.conceptId}`;
+      return msg("decision.label.relation", { relation: d.relation.toUpperCase(), id: d.conceptId });
     case "distinct":
-      return `DISTINCT from concept #${d.conceptId}`;
+      return msg("decision.label.distinct", { id: d.conceptId });
     case "invalid":
-      return "INVALID";
+      return msg("decision.label.invalid");
   }
 }
 
 // What an accidental second submission would do, so the reviewer can decide
 // whether to allow one while the first outcome is unknown.
-export function duplicateRisk(d: Decision): string {
+export function duplicateRisk(d: Decision): MessageRef {
   switch (d.kind) {
     case "relation":
     case "distinct":
-      return d.operationId ? "Retry uses the saved key and payload; the server appends at most once. An unknown receipt does not mean canceled." : "Each submission of this decision appends a new event, so sending it again after the first was stored records it twice.";
+      return msg(d.operationId ? "decision.risk.keyed" : "decision.risk.append");
     case "new":
-      return "If the first request created the concept, the server refuses an identical second one, but the unit may already belong to it.";
+      return msg("decision.risk.new");
     case "same":
-      return "If the first request was stored, the unit already belongs to that concept; the server refuses or repeats the same membership.";
+      return msg("decision.risk.same");
     case "invalid":
-      return "If the first request was stored, the unit is already INVALID; the server does not record it twice.";
+      return msg("decision.risk.invalid");
   }
 }
 
@@ -68,31 +71,30 @@ export async function readBaseline(d: Decision): Promise<Baseline> {
   return null;
 }
 
-// sendDecision performs the write once and returns the confirmed success text.
-export async function sendDecision(d: Decision): Promise<string> {
+// sendDecision performs the write once and returns the confirmed success message.
+export async function sendDecision(d: Decision): Promise<MessageRef> {
   switch (d.kind) {
     case "same":
       await (d.reassign ? api.reassignSame(d.unitId, d.conceptId) : api.resolveSame(d.unitId, d.conceptId));
-      return `Recorded SAME → concept #${d.conceptId}.`;
+      return msg("decision.sent.same", { id: d.conceptId });
     case "new": {
       const res = await api.createConcept(d.identity, d.unitId, d.seedAsSame);
-      return d.seedAsSame
-        ? `Created concept #${res.concept.id} and seeded SAME.`
-        : `Created concept #${res.concept.id} (membership unchanged; use REASSIGN to move it).`;
+      return msg(d.seedAsSame ? "decision.sent.newSame" : "decision.sent.new", { id: res.concept.id });
     }
     case "relation": {
       const result = await api.recordRelation(d.unitId, d.conceptId, d.relation, undefined, d.operationId);
-      if (d.operationId) return `Recorded ${d.relation.toUpperCase()} event #${result.id} for concept #${d.conceptId} (historical request result; current authority refreshed separately).`;
-      return `Recorded ${d.relation.toUpperCase()} → concept #${d.conceptId}.`;
+      const relation = d.relation.toUpperCase();
+      if (d.operationId) return msg("decision.sent.relationKeyed", { relation, event: result.id, id: d.conceptId });
+      return msg("decision.sent.relation", { relation, id: d.conceptId });
     }
     case "distinct": {
       const result = await api.recordDistinction(d.unitId, d.conceptId, undefined, d.operationId);
-      if (d.operationId) return `Recorded DISTINCT event #${result.id} for concept #${d.conceptId} (historical request result; current authority refreshed separately).`;
-      return `Recorded DISTINCT: unit is NOT concept #${d.conceptId}. Pick another concept, create a NEW one, or mark INVALID.`;
+      if (d.operationId) return msg("decision.sent.distinctKeyed", { event: result.id, id: d.conceptId });
+      return msg("decision.sent.distinct", { id: d.conceptId });
     }
     case "invalid":
       await api.markUnitInvalid(d.unitId);
-      return "Marked the unit INVALID: removed from the review queue.";
+      return msg("decision.sent.invalid");
   }
 }
 
@@ -110,7 +112,15 @@ function sameIdentity(a: ConceptIdentity, b: ConceptIdentity): boolean {
   );
 }
 
-export type Evidence = { found: boolean; text: string };
+export type Evidence = { found: boolean; text: MessageRef };
+
+// The stored receipt answers for a different operation than the one saved. The
+// message is application text, shown translated (see ReviewQueue).
+export class ReceiptMismatchError extends Error {
+  constructor() {
+    super("Receipt does not match the saved operation.");
+  }
+}
 
 // checkDecision reads the backend authority or history the decision would have
 // changed. `found: true` means the stored state shows the decision's effect.
@@ -123,10 +133,10 @@ export async function checkDecision(d: Decision, baseline: Baseline): Promise<Ev
       const req = receipt.request;
       if (receipt.id !== d.operationId || req.action !== d.kind || req.unit_id !== d.unitId ||
           !("conceptId" in d) || req.concept_id !== d.conceptId ||
-          (d.kind === "relation" && req.relation !== d.relation)) throw new Error("Receipt does not match the saved operation.");
-      return { found: true, text: `This request committed event #${receipt.result.id}. This historical result is separate from current authority.` };
+          (d.kind === "relation" && req.relation !== d.relation)) throw new ReceiptMismatchError();
+      return { found: true, text: msg("check.receiptCommitted", { event: receipt.result.id }) };
     } catch (e) {
-      if (e instanceof api.ApiError && e.status === 404) return { found: false, text: "Receipt unknown. The original request may still commit; retry only with its saved key and payload." };
+      if (e instanceof api.ApiError && e.status === 404) return { found: false, text: msg("check.receiptUnknown") };
       throw e;
     }
   }
@@ -134,22 +144,22 @@ export async function checkDecision(d: Decision, baseline: Baseline): Promise<Ev
     case "same": {
       const m = (await api.getCurrentMembership(d.unitId)).current_membership;
       return m && m.concept_id === d.conceptId
-        ? { found: true, text: `The unit's current SAME membership is concept #${m.concept_id} (link #${m.link_id}).` }
-        : { found: false, text: m ? `The unit's current SAME membership is concept #${m.concept_id}, not #${d.conceptId}.` : "The unit has no current SAME membership." };
+        ? { found: true, text: msg("check.same.found", { id: m.concept_id, link: m.link_id }) }
+        : { found: false, text: m ? msg("check.same.otherConcept", { id: m.concept_id, wanted: d.conceptId }) : msg("check.same.none") };
     }
     case "new": {
       if (!d.seedAsSame) {
         const match = (await api.listConcepts()).find((c) => sameIdentity(c, d.identity));
         return match
-          ? { found: true, text: `Concept #${match.id} with this identity exists.` }
-          : { found: false, text: "No concept with this identity exists." };
+          ? { found: true, text: msg("check.new.exists", { id: match.id }) }
+          : { found: false, text: msg("check.new.missing") };
       }
       const m = (await api.getCurrentMembership(d.unitId)).current_membership;
-      if (!m) return { found: false, text: "The unit has no current SAME membership." };
+      if (!m) return { found: false, text: msg("check.same.none") };
       const concept = (await api.getConcept(m.concept_id)).concept;
       return sameIdentity(concept, d.identity)
-        ? { found: true, text: `The unit now belongs to concept #${concept.id} ("${concept.target}"), matching the drafted identity.` }
-        : { found: false, text: `The unit now belongs to concept #${concept.id} ("${concept.target}"), whose identity differs from the draft.` };
+        ? { found: true, text: msg("check.new.matches", { id: concept.id, target: concept.target }) }
+        : { found: false, text: msg("check.new.differs", { id: concept.id, target: concept.target }) };
     }
     case "relation": {
       const links = (await api.getConcept(d.conceptId)).links;
@@ -157,22 +167,22 @@ export async function checkDecision(d: Decision, baseline: Baseline): Promise<Ev
         (l) => l.unit_id === d.unitId && l.relation === d.relation && l.id > (baseline?.newestEventId ?? 0),
       );
       return stored
-        ? { found: true, text: `A new ${d.relation.toUpperCase()} event #${stored.id} for this unit is stored.` }
-        : { found: false, text: `No ${d.relation.toUpperCase()} event newer than the one before sending is stored.` };
+        ? { found: true, text: msg("check.relation.found", { relation: d.relation.toUpperCase(), event: stored.id }) }
+        : { found: false, text: msg("check.relation.missing", { relation: d.relation.toUpperCase() }) };
     }
     case "distinct": {
       const events = await api.listDistinctions(d.unitId);
       const stored = events.find((e) => e.concept_id === d.conceptId && e.id > (baseline?.newestEventId ?? 0));
       return stored
-        ? { found: true, text: `A new DISTINCT event #${stored.id} is stored.` }
-        : { found: false, text: "No DISTINCT event newer than the one before sending is stored." };
+        ? { found: true, text: msg("check.distinct.found", { event: stored.id }) }
+        : { found: false, text: msg("check.distinct.missing") };
     }
     case "invalid": {
       const env = await api.getUnitInvalid(d.unitId);
       const latest = env.history[0];
       return env.invalid
-        ? { found: true, text: `The unit is INVALID (judgment #${latest?.id ?? "?"}).` }
-        : { found: false, text: "The unit is not INVALID." };
+        ? { found: true, text: msg("check.invalid.found", { judgment: latest?.id ?? "?" }) }
+        : { found: false, text: msg("check.invalid.missing") };
     }
   }
 }
