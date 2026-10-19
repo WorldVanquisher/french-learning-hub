@@ -8,6 +8,10 @@ hybrid results for a fixed set of labelled example queries.
 - **Read-only:** it records nothing.
 - **No AI:** it calls no AI service and computes no embeddings.
 - **Data:** it never opens the personal database.
+- **Language:** English by default, with an optional 简体中文 interface
+  (FLH-083). Only interface text changes; artifact data, preset texts and
+  provenance stay as built, and the choice is kept in the visitor's browser
+  only.
 
 Contract: [plan](plans/FLH-073-public-readonly-demo.md). Evidence:
 [validation](validation/FLH-073-public-readonly-demo.md). Tooling:

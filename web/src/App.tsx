@@ -6,31 +6,18 @@ import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue } from "./pages/ReviewQueue";
 import { UnitInspection } from "./pages/UnitInspection";
 import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
+import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n";
 
 type View = "records" | "library" | "review" | "inspector" | "experiments";
 
-const viewCopy: Record<View, { title: string; subtitle: string }> = {
-  records: {
-    title: "Learning Records",
-    subtitle: "Import captures, browse learner-authored records, and explicitly request analysis or extraction. Interpretations and eligibility stay backend-owned.",
-  },
-  library: {
-    title: "Knowledge Library",
-    subtitle: "Search curated Concepts, see their current support, and follow evidence back to the original record. Read-only.",
-  },
-  review: {
-    title: "Concept Review",
-    subtitle: "Experimental human annotation for KnowledgeUnit → KnowledgeConcept resolution. Every explicit decision is recorded as backend data.",
-  },
-  inspector: {
-    title: "Effective Annotation Inspector",
-    subtitle: "Read-only inspection of backend-derived annotation state for current-extraction units.",
-  },
-  experiments: {
-    title: "Experiment Dashboard",
-    subtitle: "Read-only dataset quality and retrieval baseline comparison from backend-owned reports.",
-  },
+const viewCopy: Record<View, { title: MessageKey; subtitle: MessageKey; tab: MessageKey }> = {
+  records: { title: "app.records.title", subtitle: "app.records.subtitle", tab: "nav.records" },
+  library: { title: "app.library.title", subtitle: "app.library.subtitle", tab: "nav.library" },
+  review: { title: "app.review.title", subtitle: "app.review.subtitle", tab: "nav.review" },
+  inspector: { title: "app.inspector.title", subtitle: "app.inspector.subtitle", tab: "nav.inspector" },
+  experiments: { title: "app.experiments.title", subtitle: "app.experiments.subtitle", tab: "nav.experiments" },
 };
+const VIEWS: View[] = ["records", "library", "review", "inspector", "experiments"];
 
 // App keeps the internal workbench views behind a local tab switch. Learning
 // Records writes only through explicit capture import, analysis, feedback, and
@@ -43,6 +30,17 @@ const viewCopy: Record<View, { title: string; subtitle: string }> = {
 // inspection. Learning Records stays mounted (hidden) meanwhile, so returning
 // restores the record, its viewed extraction, filters, drafts, and position.
 export default function App() {
+  // The provider sits above every view, so switching the language re-renders text in
+  // place and never remounts a view or discards its state.
+  return (
+    <LocaleProvider>
+      <Workbench />
+    </LocaleProvider>
+  );
+}
+
+function Workbench() {
+  const { t } = useI18n();
   const [view, setView] = useState<View>("review");
   const [recordsMounted, setRecordsMounted] = useState(false);
   // The library stays mounted once opened, so its query, results and open
@@ -57,11 +55,12 @@ export default function App() {
   // description ("current-extraction units") would not fit it.
   const copy =
     view === "inspector" && focus
-      ? {
-          title: "Unit Inspection",
-          subtitle: "One unit opened from a record, including whether it belongs to the record's current extraction. Already reviewed current units can be corrected explicitly; historical units are read-only.",
-        }
-      : viewCopy[view];
+      ? { title: t("app.unitInspection.title"), subtitle: t("app.unitInspection.subtitle") }
+      : { title: t(viewCopy[view].title), subtitle: t(viewCopy[view].subtitle) };
+
+  useEffect(() => {
+    document.title = t("app.documentTitle");
+  }, [t]);
 
   const show = (next: View) => {
     setFocus(null);
@@ -97,43 +96,14 @@ export default function App() {
           <h1>{copy.title}</h1>
           <p className="subtitle">{copy.subtitle}</p>
         </div>
+        <LanguageSelect />
       </header>
-      <nav className="view-tabs" aria-label="Workbench views">
-        <button
-          type="button"
-          aria-pressed={view === "records"}
-          onClick={() => show("records")}
-        >
-          Learning Records
-        </button>
-        <button
-          type="button"
-          aria-pressed={view === "library"}
-          onClick={() => show("library")}
-        >
-          Knowledge Library
-        </button>
-        <button
-          type="button"
-          aria-pressed={view === "review"}
-          onClick={() => show("review")}
-        >
-          Concept Review
-        </button>
-        <button
-          type="button"
-          aria-pressed={view === "inspector"}
-          onClick={() => show("inspector")}
-        >
-          Annotation Inspector
-        </button>
-        <button
-          type="button"
-          aria-pressed={view === "experiments"}
-          onClick={() => show("experiments")}
-        >
-          Experiment Dashboard
-        </button>
+      <nav className="view-tabs" aria-label={t("nav.label")}>
+        {VIEWS.map((v) => (
+          <button key={v} type="button" aria-pressed={view === v} onClick={() => show(v)}>
+            {t(viewCopy[v].tab)}
+          </button>
+        ))}
       </nav>
       {recordsMounted ? (
         <div hidden={view !== "records"}>

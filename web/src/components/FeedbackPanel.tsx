@@ -9,6 +9,7 @@ import {
   type NewFeedback,
 } from "../types/learning";
 import { OutcomeBanner, RefreshBanner, type Outcome, type RefreshState } from "./ExplicitAction";
+import { msg, useI18n, type MessageKey } from "../i18n";
 
 type Load<T> =
   | { status: "loading" }
@@ -39,10 +40,10 @@ const EMPTY_SLOT: Slot = {
   historyReload: 0,
 };
 
-const DECISIONS: Array<{ status: FeedbackStatus; label: string; help: string }> = [
-  { status: "accepted", label: "Accept", help: "The interpretation is correct as stored." },
-  { status: "corrected", label: "Correct", help: "Supply a better category, explanation, or both." },
-  { status: "rejected", label: "Reject", help: "The interpretation is wrong; it then has no effective interpretation." },
+const DECISIONS: Array<{ status: FeedbackStatus; label: MessageKey; help: MessageKey }> = [
+  { status: "accepted", label: "feedback.accept", help: "feedback.accept.help" },
+  { status: "corrected", label: "feedback.correct", help: "feedback.correct.help" },
+  { status: "rejected", label: "feedback.reject", help: "feedback.reject.help" },
 ];
 
 function describeError(error: unknown): string {
@@ -84,6 +85,7 @@ export function FeedbackPanel({
   // detail and the list row are re-read from the backend.
   onRecorded: (analysisId: number) => void;
 }) {
+  const { t, status: statusLabel } = useI18n();
   const [slots, setSlots] = useState<Record<number, Slot>>({});
   const inFlight = useRef(new Set<number>());
   const mounted = useRef(true);
@@ -155,28 +157,25 @@ export function FeedbackPanel({
       const created = await api.createFeedback(targetId, toRequest(draft));
       stored = true;
       reread = true;
+      const latestVersion = latest?.version ?? "?";
       outcome = {
         kind: "succeeded",
-        text: (
-          <>
-            Recorded feedback #{created.id} ({created.status}) for analysis v{target.version}.
-            {isLatest
-              ? " This is the latest analysis, so the record's state follows it."
-              : ` This is a historical version: the record's state and any new extraction still use the latest analysis v${latest?.version ?? "?"}.`}
-          </>
-        ),
+        text: (i) =>
+          i.t(isLatest ? "feedback.recorded.latest" : "feedback.recorded.historical", {
+            id: created.id,
+            status: i.status(created.status),
+            version: target.version,
+            latest: latestVersion,
+          }),
       };
     } catch (error) {
       if (error instanceof NetworkError) {
         reread = true;
-        outcome = {
-          kind: "uncertain",
-          text: `No response was received, so feedback for analysis v${target.version} may or may not have been recorded.`,
-        };
+        outcome = { kind: "uncertain", text: msg("feedback.noResponse", { version: target.version }) };
       } else {
         outcome = {
           kind: "rejected",
-          text: `No feedback was stored for analysis v${target.version} ${describeError(error)}. Your draft is kept.`,
+          text: msg("feedback.rejected", { version: target.version, error: describeError(error) }),
         };
       }
     } finally {
@@ -202,21 +201,16 @@ export function FeedbackPanel({
   const prefix = `feedback-${target.id}`;
 
   return (
-    <section className="panel" aria-label="Feedback">
+    <section className="panel" aria-label={t("feedback.region")}>
       <h2>
-        Feedback for analysis v{target.version}{" "}
-        <span className="hint">({isLatest ? "latest version" : `historical version; latest is v${latest?.version ?? "?"}`})</span>
+        {t("feedback.heading", { version: target.version })}{" "}
+        <span className="hint">
+          {isLatest ? t("version.latestTag") : t("version.historicalTag", { latest: latest?.version ?? "?" })}
+        </span>
       </h2>
-      <p className="hint">
-        Feedback is stored as a new immutable record for this analysis version only. It never changes
-        the original entry, the analysis, or stored extractions; the latest feedback decides this
-        version&apos;s effective interpretation.
-        {isLatest
-          ? " Because this is the latest version, the record's state and the source for a new extraction follow it."
-          : " The record's state and any new extraction use the latest analysis, not this historical version."}
-      </p>
+      <p className="hint">{t(isLatest ? "feedback.hint.latest" : "feedback.hint.historical")}</p>
 
-      <h3>Feedback history</h3>
+      <h3>{t("feedback.history")}</h3>
       <FeedbackHistory
         load={slot.history}
         effectiveFeedbackId={effectiveFeedbackId}
@@ -225,20 +219,15 @@ export function FeedbackPanel({
 
       <form
         className="feedback-form"
-        aria-label={`Record feedback for analysis v${target.version}`}
+        aria-label={t("feedback.form", { version: target.version })}
         onSubmit={(event) => {
           event.preventDefault();
           void submit();
         }}
       >
         <fieldset disabled={slot.pending}>
-          <legend>Decision for analysis v{target.version}</legend>
-          {effectiveResolution === "rejected" ? (
-            <p className="hint">
-              This version is currently rejected. New feedback becomes its latest judgment; the
-              rejection stays in its history.
-            </p>
-          ) : null}
+          <legend>{t("feedback.legend", { version: target.version })}</legend>
+          {effectiveResolution === "rejected" ? <p className="hint">{t("feedback.currentlyRejected")}</p> : null}
           {DECISIONS.map((d) => (
             <label key={d.status} className="feedback-decision">
               <input
@@ -248,38 +237,38 @@ export function FeedbackPanel({
                 checked={draft.status === d.status}
                 onChange={() => setDraft({ status: d.status })}
               />
-              <strong>{d.label}</strong> <span className="hint">{d.help}</span>
+              <strong>{t(d.label)}</strong> <span className="hint">{t(d.help)}</span>
             </label>
           ))}
 
           {draft.status === "corrected" ? (
             <div className="feedback-correction">
-              <label htmlFor={`${prefix}-category`}>Corrected category</label>
+              <label htmlFor={`${prefix}-category`}>{t("feedback.correctedCategory")}</label>
               <select
                 id={`${prefix}-category`}
                 value={draft.category}
                 onChange={(event) => setDraft({ category: event.target.value })}
               >
-                <option value="">Keep the original ({target.category})</option>
+                <option value="">{t("feedback.keepCategory", { category: target.category })}</option>
                 {FR_L2_TAXONOMY_V1.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
                 ))}
               </select>
-              <label htmlFor={`${prefix}-explanation`}>Corrected explanation</label>
+              <label htmlFor={`${prefix}-explanation`}>{t("feedback.correctedExplanation")}</label>
               <textarea
                 id={`${prefix}-explanation`}
                 rows={4}
                 value={draft.explanation}
-                placeholder="Leave empty to keep the original explanation"
+                placeholder={t("feedback.keepExplanation")}
                 onChange={(event) => setDraft({ explanation: event.target.value })}
               />
-              <p className="hint">The server requires a new category, a new explanation, or both.</p>
+              <p className="hint">{t("feedback.correctionRequired")}</p>
             </div>
           ) : null}
 
-          <label htmlFor={`${prefix}-note`}>Note (optional)</label>
+          <label htmlFor={`${prefix}-note`}>{t("feedback.note")}</label>
           <textarea
             id={`${prefix}-note`}
             rows={2}
@@ -291,23 +280,20 @@ export function FeedbackPanel({
         <div className="actions">
           <button type="submit" className="primary" disabled={slot.pending || blocked || draft.status === null}>
             {slot.pending
-              ? "Recording feedback…"
+              ? t("feedback.recording")
               : draft.status === null
-                ? "Choose a decision to record"
-                : `Record "${draft.status}" for analysis v${target.version}`}
+                ? t("feedback.choose")
+                : t("feedback.submit", { status: statusLabel(draft.status), version: target.version })}
           </button>
         </div>
         {blocked ? (
-          <p className="hint">
-            Unavailable until this version&apos;s feedback history has been re-read after the unknown
-            outcome. Reload it and check whether your feedback was recorded before submitting again.
-          </p>
+          <p className="hint">{t("feedback.blocked")}</p>
         ) : null}
       </form>
 
       <OutcomeBanner outcome={slot.outcome} />
-      <RefreshBanner refresh={slot.historyRefresh} what="feedback history" />
-      <RefreshBanner refresh={effectiveRefresh} what="effective interpretation" />
+      <RefreshBanner refresh={slot.historyRefresh} what={msg("feedback.what.history")} />
+      <RefreshBanner refresh={effectiveRefresh} what={msg("feedback.what.effective")} />
     </section>
   );
 }
@@ -321,13 +307,14 @@ function FeedbackHistory({
   effectiveFeedbackId: number | null | undefined;
   onReload: () => void;
 }) {
-  if (load.status === "loading") return <p className="value">Loading feedback history…</p>;
+  const { t, status } = useI18n();
+  if (load.status === "loading") return <p className="value">{t("feedback.historyLoading")}</p>;
   if (load.status === "error") {
     return (
       <div className="banner error" role="alert">
-        Could not load feedback history: {load.message}{" "}
+        {t("feedback.historyFailed", { message: load.message })}{" "}
         <button type="button" className="ghost" onClick={onReload}>
-          Reload feedback history
+          {t("feedback.historyReload")}
         </button>
       </div>
     );
@@ -335,19 +322,19 @@ function FeedbackHistory({
   if (load.data.length === 0) {
     return (
       <p className="value">
-        <strong>No feedback yet.</strong> No human has accepted, corrected, or rejected this version.
+        <strong>{t("feedback.none")}</strong> {t("feedback.none.detail")}
       </p>
     );
   }
   return (
-    <ol className="annotation-list" aria-label="Feedback history (oldest first)">
+    <ol className="annotation-list" aria-label={t("feedback.historyList")}>
       {load.data.map((f) => (
         <li key={f.id}>
-          <strong>{f.status}</strong> <span className="mono">feedback #{f.id}</span>
-          {f.id === effectiveFeedbackId ? <span className="record-state accepted"> in effect</span> : null}
-          {f.corrected_category !== undefined ? <div>Category → {f.corrected_category}</div> : null}
-          {f.corrected_explanation !== undefined ? <div>Explanation → {f.corrected_explanation}</div> : null}
-          {f.user_note ? <div className="hint">Note: {f.user_note}</div> : null}
+          <strong>{status(f.status)}</strong> <span className="mono">feedback #{f.id}</span>
+          {f.id === effectiveFeedbackId ? <span className="record-state accepted"> {t("feedback.inEffect")}</span> : null}
+          {f.corrected_category !== undefined ? <div>{t("feedback.categoryArrow")} {f.corrected_category}</div> : null}
+          {f.corrected_explanation !== undefined ? <div>{t("feedback.explanationArrow")} {f.corrected_explanation}</div> : null}
+          {f.user_note ? <div className="hint">{t("feedback.noteLabel")} {f.user_note}</div> : null}
           <time className="hint" dateTime={f.created_at}>{f.created_at}</time>
         </li>
       ))}

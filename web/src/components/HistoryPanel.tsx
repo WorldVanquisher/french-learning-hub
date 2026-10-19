@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { UnitConceptLink } from "../types/concept";
+import { useI18n } from "../i18n";
 
 // HistoryPanel is a secondary, collapsible view of the append-only resolution
 // events for the selected concept/unit. It exists for debugging and research value:
@@ -17,22 +18,23 @@ export function HistoryPanel({
   loading?: boolean;
   unitId?: number;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return (
     <div className="panel history">
       <h2 style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>Resolution history</span>
+        <span>{t("history.title")}</span>
         <button className="ghost" onClick={() => setOpen((v) => !v)} style={{ padding: "2px 10px" }}>
-          {open ? "hide" : "show"}
+          {open ? t("history.hide") : t("history.show")}
         </button>
       </h2>
       <p className="hint">{title}</p>
       {open ? (
         loading ? (
-          <p className="value">Loading history…</p>
+          <p className="value">{t("history.loading")}</p>
         ) : links.length === 0 ? (
           <p className="value">
-            <em>No resolution events recorded yet.</em>
+            <em>{t("history.empty")}</em>
           </p>
         ) : (
           <ul className="history-list">

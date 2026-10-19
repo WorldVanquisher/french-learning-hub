@@ -20,6 +20,7 @@ import {
   type Correction,
   type Inspection,
 } from "./unitCorrection";
+import { msg, useI18n, type MessageRef, type Msg } from "../i18n";
 
 export type ConceptCatalog =
   | { status: "loading" }
@@ -32,7 +33,8 @@ export type ConceptCatalog =
 type Reconciliation = {
   correction: Correction;
   check: "checking" | "found" | "not-found" | "failed";
-  text: string;
+  // A message, or raw error details from a failed check.
+  text: Msg;
   acknowledged: boolean;
 };
 
@@ -66,11 +68,12 @@ export function UnitCorrections({
   refresh: () => Promise<Inspection | null>;
   onPendingChange: (pending: boolean) => void;
 }) {
+  const { t, tn, render, status: statusLabel } = useI18n();
   const unitId = inspection.item.unit.id;
   const eligibility = correctionEligibility(inspection);
   const [query, setQuery] = useState("");
   const [targetId, setTargetId] = useState<number | null>(null);
-  const [pending, setPending] = useState<string | null>(null);
+  const [pending, setPending] = useState<MessageRef | null>(null);
   const inFlight = useRef(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [reread, setReread] = useState<RefreshState>({ kind: "idle" });
@@ -89,9 +92,10 @@ export function UnitCorrections({
     () => new Map(catalog.status === "ready" ? catalog.concepts.map((c) => [c.id, c]) : []),
     [catalog],
   );
+  // The Concept target is stored data, quoted as it is.
   const conceptName = (id: number) => {
     const c = conceptsById.get(id);
-    return c ? `concept #${id} ("${c.target}")` : `concept #${id}`;
+    return c ? t("correction.conceptNamed", { id, target: c.target }) : t("correction.concept", { id });
   };
 
   const fromConceptId = eligibility.kind === "reassign-or-invalid" ? eligibility.conceptId : null;
@@ -139,11 +143,11 @@ export function UnitCorrections({
   const blockedReason = pending
     ? null
     : unresolvedOutcome
-      ? "Wait until the earlier correction is found on the server, or explicitly allow another correction."
+      ? t("correction.blocked.unknown")
       : reread.kind === "failed"
-        ? "Re-read the unit's state before another correction."
+        ? t("correction.blocked.reread")
         : reread.kind === "refreshing"
-          ? "Re-reading the unit's state…"
+          ? t("correction.blocked.rereading")
           : null;
 
   // perform sends one confirmed correction once. Immediately before sending it
@@ -165,21 +169,18 @@ export function UnitCorrections({
         fresh = await refresh();
       } catch (e) {
         if (mounted.current) {
-          setOutcome({ kind: "rejected", text: `Nothing was sent: the unit's current state could not be re-read first ${errorText(e)}.` });
+          setOutcome({ kind: "rejected", text: msg("correction.rereadFirstFailed", { error: errorText(e) }) });
         }
         return;
       }
       if (!mounted.current) return;
       if (!fresh) {
-        setOutcome({ kind: "rejected", text: "Nothing was sent: a newer read of the unit replaced the state you confirmed. Review it and confirm again." });
+        setOutcome({ kind: "rejected", text: msg("correction.superseded") });
         return;
       }
       if (!sameBasis(confirmedBasis, basisOf(fresh))) {
         setTargetId(null);
-        setOutcome({
-          kind: "rejected",
-          text: `Nothing was sent: unit #${unitId} changed on the server since it was shown. Its current state is shown now; review it before correcting.`,
-        });
+        setOutcome({ kind: "rejected", text: msg("correction.changed", { id: unitId }) });
         return;
       }
       try {
@@ -191,14 +192,11 @@ export function UnitCorrections({
       } catch (e) {
         if (!mounted.current) return;
         if (e instanceof NetworkError || !(e instanceof ApiError)) {
-          setOutcome({
-            kind: "uncertain",
-            text: `No response was received for ${label} on unit #${unitId}, so it may or may not have been recorded. It was not sent again.`,
-          });
+          setOutcome({ kind: "uncertain", text: msg("review.unknown", { label, id: unitId }) });
           setRec({ correction, check: "checking", text: "", acknowledged: false });
           void runCheck(correction);
         } else {
-          setOutcome({ kind: "rejected", text: `The server did not record ${label} ${errorText(e)}.` });
+          setOutcome({ kind: "rejected", text: msg("review.rejected", { label, error: errorText(e) }) });
           // Authority may have changed underneath, or the unit or concept is gone.
           if (e.isConflict || e.isNotFound) await rereadAfter();
         }
@@ -216,15 +214,14 @@ export function UnitCorrections({
     <>
       {pending ? (
         <p className="hint" role="status">
-          Sending {pending} for unit #{unitId}… Other corrections and leaving this view wait for the server&apos;s
-          answer.
+          {t("correction.sending", { label: pending, id: unitId })}
         </p>
       ) : null}
       <OutcomeBanner outcome={outcome} />
-      <RefreshBanner refresh={reread} what={`unit #${unitId}'s annotation and the record's current extraction`} />
+      <RefreshBanner refresh={reread} what={msg("correction.what", { id: unitId })} />
       {reread.kind === "failed" ? (
         <button type="button" className="ghost" onClick={() => void rereadAfter()}>
-          Re-read unit #{unitId}
+          {t("correction.reread", { id: unitId })}
         </button>
       ) : null}
       {rec ? (
@@ -240,60 +237,60 @@ export function UnitCorrections({
 
   if (eligibility.kind === "none") {
     return (
-      <section className="panel unit-corrections" aria-label={`Correct unit #${unitId}`}>
-        <h2>Corrections</h2>
-        <p className="hint">{eligibility.reason}</p>
+      <section className="panel unit-corrections" aria-label={t("correction.region", { id: unitId })}>
+        <h2>{t("correction.title")}</h2>
+        <p className="hint">{render(eligibility.reason)}</p>
         {status}
       </section>
     );
   }
 
   return (
-    <section className="panel unit-corrections" aria-label={`Correct unit #${unitId}`}>
-      <h2>Correct unit #{unitId}</h2>
+    <section className="panel unit-corrections" aria-label={t("correction.region", { id: unitId })}>
+      <h2>{t("correction.region", { id: unitId })}</h2>
       {eligibility.kind === "reassign-or-invalid" ? (
         <>
           <p>
-            Current backend state: <strong>resolved</strong>. CURRENT SAME membership is{" "}
-            {conceptName(eligibility.conceptId)}, in force by SAME event #{eligibility.linkId}.
+            {tn("correction.state.resolved", {
+              state: <strong>{statusLabel("resolved")}</strong>,
+              concept: conceptName(eligibility.conceptId),
+              link: eligibility.linkId,
+            })}
           </p>
-          <p className="hint">
-            Each correction is sent once after you confirm it. History is appended, never rewritten; selecting or
-            searching a concept records nothing.
-          </p>
+          <p className="hint">{t("correction.hint")}</p>
 
-          <h3>Reassign SAME to another concept</h3>
+          <h3>{t("correction.reassign.title")}</h3>
           {catalog.status === "loading" ? (
-            <p className="value">Loading the concept catalog…</p>
+            <p className="value">{t("correction.catalogLoading")}</p>
           ) : catalog.status === "error" ? (
             <div className="banner error" role="alert">
-              Could not load the concept catalog ({catalog.message}), so no reassignment target can be chosen.{" "}
+              {t("correction.catalogFailed", { message: catalog.message })}{" "}
               <button type="button" className="ghost" onClick={onReloadCatalog}>
-                Reload concepts
+                {t("correction.reloadConcepts")}
               </button>
             </div>
           ) : (
             <>
               <label className="discovery-search" htmlFor={`correction-target-search-${unitId}`}>
-                Search target, intent, scope, or identity features
+                {t("review.search.label")}
               </label>
               <div className="discovery-search-row">
                 <input
                   id={`correction-target-search-${unitId}`}
                   type="search"
-                  aria-label="Search reassignment targets"
+                  aria-label={t("correction.searchTargets")}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
               </div>
               {targets.length === 0 ? (
                 <p className="value">
-                  <em>No other non-retired concept matches this search.</em>
+                  <em>{t("correction.noTargets")}</em>
                 </p>
               ) : (
-                <div className="candidate-list" aria-label="Reassignment targets" role="list">
+                <div className="candidate-list" aria-label={t("correction.targets")} role="list">
                   {targets.slice(0, shownTargets).map((concept) => (
-                    <div role="listitem" key={concept.id} aria-label={`Concept #${concept.id}`}>
+                    <div role="listitem" key={concept.id} aria-label={t("correction.conceptItem", { id: concept.id })}>
                       <CandidateConceptCard
                         concept={concept}
                         selected={target?.id === concept.id}
@@ -304,17 +301,15 @@ export function UnitCorrections({
                 </div>
               )}
               {targets.length > shownTargets ? (
-                <p className="hint">
-                  Showing {shownTargets} of {targets.length} matching concepts; refine the search to see others.
-                </p>
+                <p className="hint">{t("correction.showingTargets", { shown: shownTargets, total: targets.length })}</p>
               ) : null}
             </>
           )}
           <ExplicitAction
-            label={target ? `Reassign SAME to concept #${target.id}` : "Reassign SAME"}
-            confirmLabel={target ? `Confirm reassignment to concept #${target.id}` : "Confirm reassignment"}
+            label={target ? t("correction.reassign.to", { id: target.id }) : t("correction.reassign")}
+            confirmLabel={target ? t("correction.reassign.confirmTo", { id: target.id }) : t("correction.reassign.confirm")}
             pending={pending !== null}
-            disabledReason={blockedReason ?? (target ? null : "Select the concept the unit should belong to instead.")}
+            disabledReason={blockedReason ?? (target ? null : t("correction.reassign.select"))}
             onConfirm={() =>
               target
                 ? perform({
@@ -330,24 +325,24 @@ export function UnitCorrections({
               target ? (
                 <>
                   <p>
-                    Moves unit #{unitId}&apos;s CURRENT SAME membership from {conceptName(eligibility.conceptId)} to{" "}
-                    {conceptName(target.id)} (PUT concept-membership).
+                    {t("correction.reassign.explain", {
+                      id: unitId,
+                      from: conceptName(eligibility.conceptId),
+                      to: conceptName(target.id),
+                    })}
                   </p>
                   <p>
-                    A new human SAME event superseding event #{eligibility.linkId} is appended; the earlier event stays
-                    in history. If {conceptName(eligibility.conceptId)} uses this unit as its preferred unit, that
-                    preference is cleared. Concept support follows current membership, so it may change for both
-                    concepts. DISTINCT and relation records are unchanged.
+                    {t("correction.reassign.history", { link: eligibility.linkId, from: conceptName(eligibility.conceptId) })}
                   </p>
                 </>
               ) : null
             }
           />
 
-          <h3>Mark INVALID</h3>
+          <h3>{t("correction.invalid.title")}</h3>
           <ExplicitAction
-            label={`Mark unit #${unitId} INVALID`}
-            confirmLabel={`Confirm INVALID for unit #${unitId}`}
+            label={t("correction.invalid", { id: unitId })}
+            confirmLabel={t("correction.invalid.confirm", { id: unitId })}
             pending={pending !== null}
             disabledReason={blockedReason}
             onConfirm={() =>
@@ -356,12 +351,9 @@ export function UnitCorrections({
             explanation={
               <>
                 <p>
-                  Records that unit #{unitId} itself is an invalid candidate for concept resolution (POST invalid).
-                  In the same transaction the server clears its CURRENT SAME membership to{" "}
-                  {conceptName(eligibility.conceptId)}, appending a rejected-SAME event that refers to event #
-                  {eligibility.linkId}; history is kept. A preferred-unit reference to this unit is cleared.
+                  {t("correction.invalid.explain", { id: unitId, concept: conceptName(eligibility.conceptId), link: eligibility.linkId })}
                 </p>
-                <p>RESTORE can later withdraw the INVALID judgment, but it does not bring this membership back.</p>
+                <p>{t("correction.invalid.restoreNote")}</p>
               </>
             }
           />
@@ -369,25 +361,21 @@ export function UnitCorrections({
       ) : (
         <>
           <p>
-            Current backend state: <strong>invalid</strong>, by judgment #{eligibility.judgmentId}. It has no CURRENT
-            SAME membership.
+            {tn("correction.state.invalid", {
+              state: <strong>{statusLabel("invalid")}</strong>,
+              judgment: eligibility.judgmentId,
+            })}
           </p>
           <ExplicitAction
-            label={`Restore unit #${unitId}`}
-            confirmLabel={`Confirm RESTORE for unit #${unitId}`}
+            label={t("correction.restore", { id: unitId })}
+            confirmLabel={t("correction.restore.confirm", { id: unitId })}
             pending={pending !== null}
             disabledReason={blockedReason}
             onConfirm={() => perform({ kind: "restore", unitId, judgmentId: eligibility.judgmentId })}
             explanation={
               <>
-                <p>
-                  Appends a &quot;restored&quot; judgment that withdraws INVALID judgment #{eligibility.judgmentId}{" "}
-                  (POST invalid/restore). The INVALID judgment stays in history.
-                </p>
-                <p>
-                  No SAME membership is recreated: the unit becomes unresolved and awaits a new decision in Concept
-                  Review.
-                </p>
+                <p>{t("correction.restore.explain", { judgment: eligibility.judgmentId })}</p>
+                <p>{t("correction.restore.noMembership")}</p>
               </>
             }
           />
@@ -412,14 +400,16 @@ function CorrectionReconciliation({
   onCheck: () => void;
   onAllow: () => Promise<void>;
 }) {
-  const label = describeCorrection(rec.correction);
+  const { t, render } = useI18n();
+  const label = String(render(describeCorrection(rec.correction)));
+  const text = String(render(rec.text) ?? "");
   if (rec.check === "checking") {
     // A check that hangs can be replaced; only the newest check's answer is used.
     return (
       <p className="hint" role="status">
-        Checking the server for {label} on unit #{unitId}…{" "}
+        {t("reconcile.checking", { label, id: unitId })}{" "}
         <button type="button" className="ghost" onClick={onCheck}>
-          Check again
+          {t("reconcile.checkAgain")}
         </button>
       </p>
     );
@@ -427,48 +417,37 @@ function CorrectionReconciliation({
   if (rec.check === "found") {
     return (
       <p className="hint" role="status">
-        Found on the server: {rec.text} {label} is stored.
+        {t("reconcile.found", { text, label })}
       </p>
     );
   }
   return (
-    <section className="panel reconciliation" aria-label="Unknown correction outcome">
-      <h2>Outcome of {label} still unknown</h2>
+    <section className="panel reconciliation" aria-label={t("correction.reconcile.region")}>
+      <h2>{t("reconcile.unknown", { label })}</h2>
       {rec.check === "failed" ? (
         <div className="banner error" role="alert">
-          Could not check the server for {label}: {rec.text}
+          {t("reconcile.checkFailed", { label, text })}
         </div>
       ) : (
-        <p>
-          Not visible on the server yet: {rec.text} The original request may still be in progress on the server, or may
-          never have arrived. It was not sent again.
-        </p>
+        <p>{t("reconcile.notVisible", { text })}</p>
       )}
       {rec.acknowledged ? (
-        <p className="hint">
-          You allowed another correction for unit #{unitId} although the outcome of {label} is still unknown.
-        </p>
+        <p className="hint">{t("correction.reconcile.allowed", { id: unitId, label })}</p>
       ) : (
-        <p className="hint">Corrections for unit #{unitId} wait until the check finds it or you allow another one.</p>
+        <p className="hint">{t("correction.reconcile.waiting", { id: unitId })}</p>
       )}
       <div className="actions">
         <button type="button" className="ghost" onClick={onCheck}>
-          Check again
+          {t("reconcile.checkAgain")}
         </button>
       </div>
       {!rec.acknowledged ? (
         <ExplicitAction
-          label={`Allow another correction for unit #${unitId}`}
-          confirmLabel="Allow another correction"
+          label={t("correction.reconcile.allow", { id: unitId })}
+          confirmLabel={t("correction.reconcile.allow.confirm")}
           pending={false}
           onConfirm={onAllow}
-          explanation={
-            <p>
-              The earlier request may still be stored later. The server applies each of these corrections at most once
-              to the same state, but a later different correction could be overtaken by it. Check again first if you
-              can. Nothing is sent until you confirm a correction yourself.
-            </p>
-          }
+          explanation={<p>{t("correction.reconcile.allow.explain")}</p>}
         />
       ) : null}
     </section>

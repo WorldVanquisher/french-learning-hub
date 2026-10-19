@@ -10,6 +10,7 @@ import {
   type Outcome,
   type RefreshState,
 } from "./ExplicitAction";
+import { msg, useI18n } from "../i18n";
 
 type Load<T> =
   | { status: "loading" }
@@ -56,6 +57,7 @@ export function ExtractionPanel({
   returnEpoch?: number;
   onNavigateToUnit?: (target: UnitTarget) => void;
 }) {
+  const { t } = useI18n();
   const [state, setState] = useState<Load<ExtractionState>>({ status: "loading" });
   const [reloadCount, setReloadCount] = useState(0);
   const [pending, setPending] = useState(false);
@@ -150,9 +152,10 @@ export function ExtractionPanel({
     try {
       const created = await api.createExtraction(entryId);
       const n = created.units.length;
+      const version = created.version;
       next = {
         kind: "succeeded",
-        text: `Stored extraction v${created.version} with ${n} unit${n === 1 ? "" : "s"}${n === 0 ? " (a valid empty result)" : ""}.`,
+        text: (i) => (n === 0 ? i.t("extraction.stored.empty", { version }) : i.tp("extraction.stored", n, { version })),
       };
     } catch (error) {
       next = describeExtractionFailure(error);
@@ -197,7 +200,7 @@ export function ExtractionPanel({
     changeSelection({ kind: "pin", extractionId: target.id, version: target.version }, async () => {
       // The PUT body is built from the request, so it is not read as stored state.
       await api.setCurrentExtraction(entryId, target.id);
-      return { kind: "succeeded", text: `The server accepted v${target.version} as the pinned current extraction.` };
+      return { kind: "succeeded", text: msg("extraction.pinAccepted", { version: target.version }) };
     });
 
   const resumeAutomatic = () =>
@@ -205,29 +208,23 @@ export function ExtractionPanel({
       const reported = await api.clearCurrentExtraction(entryId);
       return {
         kind: "succeeded",
-        text: `The server removed the pin and reported ${reported.selection_mode} selection${
-          reported.current_extraction_id === null ? " with no current extraction" : ""
-        }.`,
+        text: (i) =>
+          i.t(reported.current_extraction_id === null ? "extraction.unpinned.none" : "extraction.unpinned", {
+            mode: i.status(reported.selection_mode),
+          }),
       };
     });
 
   // After an unknown outcome a new write could repeat it, so the same action
   // stays unavailable until stored state was re-read.
-  const extractionBlocked = extractionNeedsCheck
-    ? "Unavailable until the stored extractions have been re-read after the unknown outcome. Reload them and check for a new version first."
-    : null;
-  const selectionBlocked = selectionNeedsCheck
-    ? "Unavailable until the current extraction has been re-read after the unknown outcome. Reload extractions and check the current selection first."
-    : null;
+  const extractionBlocked = extractionNeedsCheck ? t("extraction.blocked") : null;
+  const selectionBlocked = selectionNeedsCheck ? t("extraction.selectionBlocked") : null;
 
   return (
-    <section className="panel" aria-label="Knowledge extraction">
-      <h2>Knowledge extraction</h2>
+    <section className="panel" aria-label={t("extraction.title")}>
+      <h2>{t("extraction.title")}</h2>
       <p className="hint">
-        Stored extractions are historical evidence: feedback never changes or regenerates them. A new
-        extraction uses the record&apos;s latest analysis{latestVersion !== null ? ` (v${latestVersion})` : ""} and
-        its latest feedback as the server resolves them when you request it, not the version selected
-        above.
+        {latestVersion !== null ? t("extraction.hint.version", { version: latestVersion }) : t("extraction.hint")}
       </p>
       <ExtractionBrowser
         entryId={entryId}
@@ -247,33 +244,21 @@ export function ExtractionPanel({
       <SelectionCheck requested={requested} load={state} refresh={refresh} />
       <div className="workflow-action">
         <ExplicitAction
-          label="Request extraction"
-          confirmLabel="Send to the extraction provider"
+          label={t("extraction.request")}
+          confirmLabel={t("extraction.confirm")}
           pending={pending}
           disabledReason={extractionBlocked}
           onConfirm={submit}
           explanation={
             <>
-              <p>
-                The server sends this record&apos;s original input and its current effective
-                interpretation to the configured extraction provider, which may be an external,
-                billed service. Extraction is disabled by default; the server then refuses before
-                calling any provider.
-              </p>
-              <p>
-                The server decides eligibility: a record without an analysis, or whose latest
-                analysis was rejected, is refused. If the interpretation changes while the provider
-                runs, the server refuses to store the result. A successful request stores a new,
-                immutable extraction version (zero units is a valid result). It becomes current
-                under automatic selection; a pinned version stays current. The request is sent once
-                and never retried automatically.
-              </p>
+              <p>{t("extraction.explain.provider")}</p>
+              <p>{t("extraction.explain.eligibility")}</p>
             </>
           }
         />
         <OutcomeBanner outcome={outcome} />
       </div>
-      <RefreshBanner refresh={refresh} what="stored extractions" />
+      <RefreshBanner refresh={refresh} what={msg("extraction.what")} />
     </section>
   );
 }
@@ -290,13 +275,21 @@ function SelectionCheck({
   load: Load<ExtractionState>;
   refresh: RefreshState;
 }) {
+  const { t, status } = useI18n();
   if (!requested || refresh.kind !== "refreshed" || load.status !== "ready") return null;
   const { current, extractions } = load.data;
   const versionOf = (id: number | null) => {
     const e = extractions.find((x) => x.id === id);
-    return e ? `v${e.version}` : id === null ? "no extraction" : `extraction #${id}`;
+    return e
+      ? t("record.version", { version: e.version })
+      : id === null
+        ? t("extraction.noExtraction")
+        : t("extraction.byId", { id });
   };
-  const stored = `${versionOf(current.current_extraction_id)} (${current.selection_mode})`;
+  const stored = t("extraction.storedSelection", {
+    version: versionOf(current.current_extraction_id),
+    mode: status(current.selection_mode),
+  });
   const matches =
     requested.kind === "pin"
       ? current.selection_mode === "pinned" && current.current_extraction_id === requested.extractionId
@@ -304,15 +297,15 @@ function SelectionCheck({
   if (matches) {
     return (
       <p className="hint" role="status">
-        Confirmed by re-read: the server reports {stored} as the current extraction.
+        {t("extraction.confirmedByReread", { stored })}
       </p>
     );
   }
-  const wanted = requested.kind === "pin" ? `v${requested.version} (pinned)` : "automatic selection";
+  const wanted =
+    requested.kind === "pin" ? t("extraction.wantedPinned", { version: requested.version }) : t("extraction.wantedAutomatic");
   return (
     <div className="banner error" role="alert">
-      The re-read shows {stored} as current, not {wanted}. It may have been changed again elsewhere;
-      reload extractions before acting.
+      {t("extraction.rereadMismatch", { stored, wanted })}
     </div>
   );
 }
@@ -344,15 +337,16 @@ function ExtractionBrowser({
   onRecheckReview: () => void;
   onNavigateToUnit?: (target: UnitTarget) => void;
 }) {
+  const { t, tp } = useI18n();
   if (load.status === "loading") {
-    return <p className="value">Loading extractions…</p>;
+    return <p className="value">{t("extraction.loading")}</p>;
   }
   if (load.status === "error") {
     return (
       <div className="banner error" role="alert">
-        Could not load extractions: {load.message}{" "}
+        {t("extraction.loadFailed", { message: load.message })}{" "}
         <button type="button" className="ghost" onClick={onRetry}>
-          Reload extractions
+          {t("extraction.reload")}
         </button>
       </div>
     );
@@ -362,7 +356,7 @@ function ExtractionBrowser({
   if (extractions.length === 0) {
     return (
       <p className="value">
-        <strong>No extraction stored.</strong> No extraction has been run for this record.
+        <strong>{t("extraction.none")}</strong> {t("extraction.none.detail")}
       </p>
     );
   }
@@ -374,57 +368,48 @@ function ExtractionBrowser({
 
   return (
     <>
-      <p className="value" aria-label="Extraction summary">
-        Current: {currentExtraction ? `v${currentExtraction.version}` : "none"} · Selection:{" "}
-        {pinned ? "pinned" : "automatic"} · Latest stored: v{latest.version} · {extractions.length} version
-        {extractions.length === 1 ? "" : "s"} stored
+      <p className="value" aria-label={t("extraction.summary")}>
+        {tp("extraction.summaryLine", extractions.length, {
+          current: currentExtraction ? t("record.version", { version: currentExtraction.version }) : t("extraction.currentNone"),
+          mode: pinned ? t("status.pinned") : t("status.automatic"),
+          latest: latest.version,
+        })}
       </p>
-      <p className="hint" aria-label="Selection mode">
+      <p className="hint" aria-label={t("extraction.selectionMode")}>
         {pinned
           ? currentExtraction && currentExtraction.id === latest.id
-            ? `Pinned: v${currentExtraction.version} is pinned and is also the latest stored version. It stays current even if a newer extraction is stored later.`
-            : `Pinned: the server keeps v${currentExtraction?.version ?? "?"} as current although v${latest.version} is the latest stored version. Newer extractions do not replace a pinned version.`
-          : "Automatic: the server treats the latest stored extraction as current and follows new extractions."}
+            ? t("extraction.pinnedLatest", { version: currentExtraction.version })
+            : t("extraction.pinnedOlder", { version: currentExtraction?.version ?? "?", latest: latest.version })
+          : t("extraction.automatic")}
       </p>
       {!currentExtraction ? (
         <p className="hint">
-          <strong>No current extraction.</strong> Stored versions exist, but the server reports none as
-          current.
+          <strong>{t("extraction.noCurrent")}</strong> {t("extraction.noCurrent.detail")}
         </p>
       ) : null}
       {pinned ? (
         <div className="workflow-action">
           <ExplicitAction
-            label="Resume automatic latest selection"
-            confirmLabel="Remove the pin"
+            label={t("extraction.resume")}
+            confirmLabel={t("extraction.resume.confirm")}
             pending={selectPending}
             disabledReason={selectionBlocked}
             onConfirm={onResumeAutomatic}
             explanation={
               <>
-                <p>
-                  The server removes the pin for this record and treats the latest stored extraction
-                  (now v{latest.version}) as current, following later extractions automatically. Its
-                  units become the ones offered in Concept Review and counted as concept support;
-                  units of the previously pinned version stay stored but give no support while another
-                  version is current.
-                </p>
-                <p>
-                  Nothing is deleted or rewritten: every version&apos;s units, SAME memberships,
-                  DISTINCT and relation labels, and INVALID judgments stay stored. No extraction is run
-                  and no provider is called. The request is sent once and never retried automatically.
-                </p>
+                <p>{t("extraction.resume.explain", { version: latest.version })}</p>
+                <p>{t("extraction.resume.nothingDeleted")}</p>
               </>
             }
           />
         </div>
       ) : null}
-      <p className="hint">Choosing a version below only changes what is shown; it changes nothing on the server.</p>
-      <div className="version-list" role="group" aria-label="Stored extraction versions">
+      <p className="hint">{t("extraction.viewOnly")}</p>
+      <div className="version-list" role="group" aria-label={t("extraction.versions")}>
         {versions.map((e) => {
           const tags = [
-            e.id === currentExtraction?.id ? (pinned ? "current, pinned" : "current") : null,
-            e.id === latest.id ? "latest" : null,
+            e.id === currentExtraction?.id ? (pinned ? t("extraction.tag.currentPinned") : t("extraction.tag.current")) : null,
+            e.id === latest.id ? t("extraction.tag.latest") : null,
           ].filter(Boolean);
           return (
             <button
@@ -434,8 +419,9 @@ function ExtractionBrowser({
               aria-pressed={e.id === viewed.id}
               onClick={() => onView(e.id)}
             >
-              v{e.version}
-              {tags.length ? ` (${tags.join(", ")})` : ""}
+              {tags.length
+                ? t("extraction.versionTagged", { version: e.version, tags: tags.join(t("extraction.tagSeparator")) })
+                : t("record.version", { version: e.version })}
             </button>
           );
         })}
@@ -455,29 +441,16 @@ function ExtractionBrowser({
           <ExplicitAction
             // Keyed by version so an open confirmation never carries over to another one.
             key={viewed.id}
-            label={`Pin v${viewed.version} as the current extraction`}
-            confirmLabel={`Pin v${viewed.version}`}
+            label={t("extraction.pin", { version: viewed.version })}
+            confirmLabel={t("extraction.pin.confirm", { version: viewed.version })}
             pending={selectPending}
             disabledReason={selectionBlocked}
             onConfirm={() => onPin(viewed)}
             explanation={
               <>
-                <p>
-                  The server will keep v{viewed.version} as this record&apos;s current extraction. Its
-                  units become the ones offered in Concept Review and counted as concept support; units of
-                  other versions stay stored but are not reviewable and give no support while v
-                  {viewed.version} is current.
-                </p>
-                <p>
-                  Nothing is deleted or rewritten: every version&apos;s units, SAME memberships, DISTINCT
-                  and relation labels, and INVALID judgments stay stored and apply again if their version
-                  becomes current later. No extraction is run.
-                </p>
-                <p>
-                  A pinned version stays current even when the record is extracted again, including when
-                  it is the latest now. &quot;Resume automatic latest selection&quot; removes the pin later. The
-                  request is sent once and never retried automatically.
-                </p>
+                <p>{t("extraction.pin.explain", { version: viewed.version })}</p>
+                <p>{t("extraction.pin.nothingDeleted")}</p>
+                <p>{t("extraction.pin.stays", { resume: t("extraction.resume") })}</p>
               </>
             }
           />
@@ -513,64 +486,70 @@ function ExtractionVersionView({
     extractionId: extraction.id,
     extractionVersion: extraction.version,
   });
+  const { t, status: useStatus } = useI18n();
   // Review status applies only when it was read for this (current) extraction.
   const status =
     isCurrent && reviewable && (reviewable.status !== "ready" || reviewable.forExtractionId === extraction.id)
       ? reviewable
       : null;
   return (
-    <div className="annotation-section" aria-label="Viewed extraction">
+    <div className="annotation-section" aria-label={t("extraction.viewed")}>
       <h3>
-        Viewing extraction v{extraction.version}{" "}
+        {t("extraction.viewing", { version: extraction.version })}{" "}
         <span className="hint">
-          ({[isCurrent ? "current" : "not current", isLatest ? "latest stored" : null].filter(Boolean).join(", ")})
+          {t(isCurrent ? (isLatest ? "extraction.viewTags.currentLatest" : "extraction.viewTags.current") : isLatest ? "extraction.viewTags.notCurrentLatest" : "extraction.viewTags.notCurrent")}
         </span>
       </h3>
       <p className="hint">
         {isCurrent
-          ? "This is the current extraction: its units are the ones offered for concept review and counted as concept support."
-          : `Not current: its units stay stored as history but are not offered for review and give no concept support${
-              currentVersion !== null ? ` while v${currentVersion} is current` : ""
-            }.`}
+          ? t("extraction.isCurrent")
+          : currentVersion !== null
+            ? t("extraction.notCurrent.while", { version: currentVersion })
+            : t("extraction.notCurrent")}
       </p>
       <div className="annotation-provenance">
         <span className="mono">{extraction.extractor}</span>
-        <span>from analysis #{extraction.source_analysis_id}</span>
+        <span>{t("extraction.fromAnalysis", { id: extraction.source_analysis_id })}</span>
         <span>
-          {extraction.source_feedback_id !== null ? `feedback #${extraction.source_feedback_id}` : "no feedback"}
+          {extraction.source_feedback_id !== null ? `feedback #${extraction.source_feedback_id}` : t("provenance.noFeedback")}
         </span>
         <time dateTime={extraction.created_at}>{extraction.created_at}</time>
       </div>
       {status?.status === "error" ? (
         <div className="banner error" role="alert">
-          Could not check which units await review: {status.message}{" "}
+          {t("extraction.reviewCheckFailed", { message: status.message })}{" "}
           <button type="button" className="ghost" onClick={onRecheckReview}>
-            Recheck review status
+            {t("extraction.recheckReview")}
           </button>
         </div>
       ) : null}
       {extraction.units.length === 0 ? (
         <p className="value">
-          <strong>Zero units.</strong> This successful extraction produced no knowledge units.
+          <strong>{t("extraction.zeroUnits")}</strong> {t("extraction.zeroUnits.detail")}
         </p>
       ) : (
-        <ul className="annotation-list" aria-label="Extracted units">
+        <ul className="annotation-list" aria-label={t("extraction.units")}>
           {extraction.units.map((unit) => (
             // Focus returns here when the reader comes back from another view.
             <li key={unit.id} id={unitFocusId(unit.id)} tabIndex={-1}>
               <dl className="unit-evidence">
-                <div><dt>Unit</dt><dd>#{unit.id} · {unit.kind}</dd></div>
-                <div><dt>Canonical</dt><dd className="french">{unit.canonical}</dd></div>
-                <div><dt>Statement</dt><dd className="french">{unit.statement}</dd></div>
-                {unit.example ? <div><dt>Example</dt><dd className="french">{unit.example}</dd></div> : null}
-                <div><dt>Confidence</dt><dd>{unit.confidence}</dd></div>
+                <div><dt>{t("unit.unit")}</dt><dd>#{unit.id} · {unit.kind}</dd></div>
+                <div><dt>{t("unit.canonical")}</dt><dd className="french">{unit.canonical}</dd></div>
+                <div><dt>{t("unit.statement")}</dt><dd className="french">{unit.statement}</dd></div>
+                {unit.example ? <div><dt>{t("unit.example")}</dt><dd className="french">{unit.example}</dd></div> : null}
+                <div><dt>{t("unit.confidence")}</dt><dd>{unit.confidence}</dd></div>
                 <div>
-                  <dt>Admission</dt>
+                  <dt>{t("unit.admission")}</dt>
                   <dd>
-                    {unit.admission.effective_state}
                     {unit.admission.latest_override
-                      ? ` (human override: ${unit.admission.latest_override.decision})`
-                      : ` (machine: ${unit.admission.machine_reason})`}
+                      ? t("unit.admission.override", {
+                          state: useStatus(unit.admission.effective_state),
+                          decision: unit.admission.latest_override.decision,
+                        })
+                      : t("unit.admission.machine", {
+                          state: useStatus(unit.admission.effective_state),
+                          reason: unit.admission.machine_reason,
+                        })}
                   </dd>
                 </div>
               </dl>
@@ -606,30 +585,31 @@ function UnitLinks({
   onReview: () => void;
   onInspect: () => void;
 }) {
+  const { t } = useI18n();
   let note: string;
   let canReview = false;
   if (!isCurrent) {
-    note = "Historical unit: not reviewable while another version is current.";
+    note = t("unitLinks.historical");
   } else if (!status || status.status === "loading") {
-    note = "Checking review status…";
+    note = t("unitLinks.checking");
   } else if (status.status === "error") {
-    note = "Review status unknown.";
+    note = t("unitLinks.unknown");
   } else if (status.data.has(unitId)) {
-    note = "Awaiting concept review.";
+    note = t("unitLinks.awaiting");
     canReview = true;
   } else {
-    note = "Not awaiting review (already resolved or marked INVALID).";
+    note = t("unitLinks.notAwaiting");
   }
   return (
     <div className="actions unit-links">
       <span className="hint">{note}</span>
       {canReview ? (
         <button type="button" className="ghost" onClick={onReview}>
-          Review unit #{unitId} in Concept Review
+          {t("unitLinks.review", { id: unitId })}
         </button>
       ) : null}
       <button type="button" className="ghost" onClick={onInspect}>
-        {isCurrent ? `Inspect unit #${unitId}` : `Inspect stored labels of unit #${unitId}`}
+        {isCurrent ? t("unitLinks.inspect", { id: unitId }) : t("unitLinks.inspectHistorical", { id: unitId })}
       </button>
     </div>
   );
@@ -639,17 +619,16 @@ function UnitLinks({
 // the PUT or DELETE is returned before its transaction commits, so the selection
 // was not changed; a missing response leaves the outcome unknown.
 function describeSelectionFailure(error: unknown, wanted: Requested): Outcome {
-  const what = wanted.kind === "pin" ? `v${wanted.version} may or may not have been pinned as current` : "the pin may or may not have been removed";
   if (error instanceof NetworkError) {
-    return { kind: "uncertain", text: `No response was received, so ${what}.` };
-  }
-  if (error instanceof ApiError) {
     return {
-      kind: "rejected",
-      text: `The server did not change the current extraction selection (${error.status}): ${error.message}.`,
+      kind: "uncertain",
+      text: wanted.kind === "pin" ? msg("extraction.pinUnknown", { version: wanted.version }) : msg("extraction.unpinUnknown"),
     };
   }
-  return { kind: "rejected", text: `The selection request failed: ${String(error)}` };
+  if (error instanceof ApiError) {
+    return { kind: "rejected", text: msg("extraction.selectionRejected", { status: error.status, message: error.message }) };
+  }
+  return { kind: "rejected", text: msg("extraction.selectionFailed", { error: String(error) }) };
 }
 
 // describeExtractionFailure states only what the backend contract supports. Every
@@ -659,42 +638,23 @@ function describeSelectionFailure(error: unknown, wanted: Requested): Outcome {
 // it never implies that no provider was called.
 function describeExtractionFailure(error: unknown): Outcome {
   if (error instanceof NetworkError) {
-    return {
-      kind: "uncertain",
-      text:
-        "No response was received, so a new extraction may or may not have been stored, and the extraction provider may have been called.",
-    };
+    return { kind: "uncertain", text: msg("extraction.noResponse") };
   }
   if (!(error instanceof ApiError)) {
-    return { kind: "rejected", text: `The extraction request failed: ${String(error)}` };
+    return { kind: "rejected", text: msg("extraction.failed", { error: String(error) }) };
   }
   const detail = `(${error.status}) ${error.message}`;
   switch (error.status) {
     case 503:
-      return {
-        kind: "rejected",
-        text: `Extraction is not enabled on this server ${detail}. The server refuses before calling any extraction provider; nothing was stored.`,
-      };
+      return { kind: "rejected", text: msg("extraction.disabled", { detail }) };
     case 409:
-      return {
-        kind: "rejected",
-        text: `The server did not store an extraction ${detail}. This conflict can be detected before the provider runs or after it returns, so the extraction provider may have been called. Check the record's current analysis before requesting again.`,
-      };
+      return { kind: "rejected", text: msg("extraction.conflict", { detail }) };
     case 422:
-      return {
-        kind: "rejected",
-        text: `The server rejected the extraction result ${detail}. Nothing was stored; the extraction provider may have been called.`,
-      };
+      return { kind: "rejected", text: msg("extraction.resultRejected", { detail }) };
     case 502:
     case 504:
-      return {
-        kind: "rejected",
-        text: `The extraction provider failed ${detail}. Nothing was stored; the provider may have been called.`,
-      };
+      return { kind: "rejected", text: msg("extraction.providerFailed", { detail }) };
     default:
-      return {
-        kind: "rejected",
-        text: `No extraction was stored ${detail}. The extraction provider may have been called.`,
-      };
+      return { kind: "rejected", text: msg("extraction.notStored", { detail }) };
   }
 }

@@ -1,4 +1,5 @@
 import type { CurrentMembership, RelationKind } from "../types/concept";
+import { useI18n } from "../i18n";
 
 // The decision the reviewer is about to make. NEW is handled by the parent (it
 // needs the edited identity); SAME / relations / DISTINCT act on a selected existing
@@ -34,6 +35,7 @@ export function ResolutionActions({
   keyedUnavailable?: boolean;
   onAct: (action: ActionKind) => void;
 }) {
+  const { t } = useI18n();
   const hasSelection = selectedConceptId !== null;
   const alreadyMember =
     membership !== null && selectedConceptId !== null && membership.concept_id === selectedConceptId;
@@ -41,9 +43,9 @@ export function ResolutionActions({
   // SAME label reflects whether this will establish or move a membership.
   const sameLabel = membership
     ? alreadyMember
-      ? "SAME (already current)"
-      : "REASSIGN SAME → selected"
-    : "SAME → selected";
+      ? t("resolution.same.current")
+      : t("resolution.same.reassign")
+    : t("resolution.same.selected");
 
   const relation = (kind: RelationKind) => (
     <button className="ghost" disabled={busy || keyedUnavailable || !hasSelection} onClick={() => onAct(kind)}>
@@ -53,17 +55,13 @@ export function ResolutionActions({
 
   return (
     <div className="panel">
-      <h2>Human decision</h2>
+      <h2>{t("resolution.title")}</h2>
       <div className="actions">
         <button
           className="same"
           disabled={busy || !hasSelection || alreadyMember}
           onClick={() => onAct("same")}
-          title={
-            membership
-              ? "Move this unit's current SAME membership to the selected concept (ReassignSame)."
-              : "Resolve this unresolved unit SAME to the selected concept."
-          }
+          title={membership ? t("resolution.same.reassign.title") : t("resolution.same.title")}
         >
           {sameLabel}
         </button>
@@ -72,7 +70,7 @@ export function ResolutionActions({
           className="primary"
           disabled={busy}
           onClick={() => onAct("new")}
-          title="Create a new concept from the edited identity; seeds SAME only when the unit is unresolved."
+          title={t("resolution.new.title")}
         >
           NEW CONCEPT
         </button>
@@ -85,7 +83,7 @@ export function ResolutionActions({
           className="ghost"
           disabled={busy || keyedUnavailable || !hasSelection}
           onClick={() => onAct("distinct")}
-          title="Record that this unit is NOT the same learning identity as the selected concept (an explicit negative pair). Does not create or change SAME membership; the unit stays reviewable."
+          title={t("resolution.distinct.title")}
         >
           DISTINCT
         </button>
@@ -94,26 +92,16 @@ export function ResolutionActions({
           className="invalid"
           disabled={busy}
           onClick={() => onAct("invalid")}
-          title="Mark this KnowledgeUnit an invalid candidate for concept resolution. Works for a freshly unresolved unit and also clears any current SAME membership."
+          title={t("resolution.invalid.title")}
         >
           INVALID
         </button>
       </div>
 
       <p className="hint">
-        {hasSelection
-          ? "SAME / BROADER / NARROWER / RELATED / DISTINCT act on the selected concept above."
-          : "Select a concept above to enable SAME, the relation actions, and DISTINCT, or create a NEW CONCEPT."}
-        {" "}
-        BROADER / NARROWER / RELATED record a non-membership relation and DISTINCT
-        records an explicit negative pair — none of these make the unit a SAME member,
-        and all keep it reviewable. INVALID needs no selected concept: it marks the
-        unit itself an invalid candidate (clearing any current SAME membership) and
-        removes it from the queue. All decisions wait while one is being sent or while
-        an earlier decision&apos;s outcome is still unknown.
-        {keyedUnavailable
-          ? " BROADER / NARROWER / RELATED / DISTINCT are disabled while browser storage cannot keep their operation keys."
-          : null}
+        {hasSelection ? t("resolution.hint.selected") : t("resolution.hint.unselected")}{" "}
+        {t("resolution.hint.rules")}
+        {keyedUnavailable ? <>{" "}{t("resolution.hint.keyedDisabled")}</> : null}
       </p>
     </div>
   );

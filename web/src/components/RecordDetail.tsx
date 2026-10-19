@@ -7,6 +7,7 @@ import type { RefreshState } from "./ExplicitAction";
 import { ExtractionPanel } from "./ExtractionPanel";
 import { FeedbackPanel } from "./FeedbackPanel";
 import { recordHeadingId, type UnitTarget } from "../navigation";
+import { useI18n } from "../i18n";
 
 // Load is the lifecycle of one independent read. Each section of the detail has its
 // own Load so a failure in one read never hides the data of another.
@@ -51,6 +52,7 @@ export function RecordDetail({
   returnEpoch?: number;
   onNavigateToUnit?: (target: UnitTarget) => void;
 }) {
+  const { t } = useI18n();
   const [entry, setEntry] = useState<Load<Entry>>({ status: "loading" });
   const [analyses, setAnalyses] = useState<Load<Analysis[]>>({ status: "loading" });
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<number | null>(null);
@@ -166,7 +168,7 @@ export function RecordDetail({
     <main className="record-detail">
       <div className="queue-nav">
         <button type="button" className="ghost" onClick={onBack}>
-          ← Back to records
+          {t("record.back")}
         </button>
         {anyError ? (
           <button
@@ -180,54 +182,50 @@ export function RecordDetail({
               }
             }}
           >
-            Retry
+            {t("common.retry")}
           </button>
         ) : null}
       </div>
 
       <h2 ref={headingRef} id={recordHeadingId(entryId)} tabIndex={-1} className="record-detail-heading">
-        Record #{entryId}
+        {t("record.heading", { id: entryId })}
       </h2>
 
-      <section className="panel" aria-label="Original input and context">
-        <h2>Original input and context</h2>
+      <section className="panel" aria-label={t("record.original")}>
+        <h2>{t("record.original")}</h2>
         {entry.status === "loading" ? (
-          <p className="value">Loading the original record…</p>
+          <p className="value">{t("record.originalLoading")}</p>
         ) : entry.status === "error" ? (
           <div className="banner error" role="alert">
-            Could not load the original record: {entry.message}
+            {t("record.originalFailed", { message: entry.message })}
           </div>
         ) : (
           <dl className="unit-evidence">
-            <div><dt>Original input</dt><dd className="french">{entry.data.original_input}</dd></div>
+            <div><dt>{t("record.originalInput")}</dt><dd className="french">{entry.data.original_input}</dd></div>
             <div>
-              <dt>Original context</dt>
-              <dd className="french">{entry.data.original_context || <em>(no context recorded)</em>}</dd>
+              <dt>{t("record.originalContext")}</dt>
+              <dd className="french">{entry.data.original_context || <em>{t("record.noContext")}</em>}</dd>
             </div>
-            <div><dt>Created</dt><dd><time dateTime={entry.data.created_at}>{entry.data.created_at}</time></dd></div>
+            <div><dt>{t("record.created")}</dt><dd><time dateTime={entry.data.created_at}>{entry.data.created_at}</time></dd></div>
           </dl>
         )}
       </section>
 
-      <section className="panel" aria-label="Analysis versions">
-        <h2>Analysis versions</h2>
+      <section className="panel" aria-label={t("record.analyses")}>
+        <h2>{t("record.analyses")}</h2>
         {analyses.status === "loading" ? (
-          <p className="value">Loading analysis versions…</p>
+          <p className="value">{t("record.analysesLoading")}</p>
         ) : analyses.status === "error" ? (
           <div className="banner error" role="alert">
-            Could not load analysis versions: {analyses.message}
+            {t("record.analysesFailed", { message: analyses.message })}
           </div>
         ) : analysisList.length === 0 ? (
           <p className="value">
-            <strong>No analysis.</strong> This record has not been analyzed, so it has no
-            interpretation to show.
+            <strong>{t("record.noAnalysis")}</strong> {t("record.noAnalysis.detail")}
           </p>
         ) : (
           <>
-            <p className="hint">
-              Analyses are immutable versions. The record&apos;s state reflects the latest
-              version; selecting another version only changes what is shown here.
-            </p>
+            <p className="hint">{t("record.analysesHint")}</p>
             <div className="version-list">
               {analysisList.map((a) => (
                 <button
@@ -237,8 +235,7 @@ export function RecordDetail({
                   aria-pressed={a.id === selectedAnalysisId}
                   onClick={() => setSelectedAnalysisId(a.id)}
                 >
-                  v{a.version}
-                  {a.id === latest?.id ? " (latest)" : ""}
+                  {a.id === latest?.id ? t("record.versionLatest", { version: a.version }) : t("record.version", { version: a.version })}
                 </button>
               ))}
             </div>
@@ -249,18 +246,18 @@ export function RecordDetail({
       </section>
 
       {selected ? (
-        <section className="panel" aria-label="Selected analysis">
+        <section className="panel" aria-label={t("record.selectedAnalysis")}>
           <h2>
-            Analysis v{selected.version}{" "}
+            {t("record.analysisHeading", { version: selected.version })}{" "}
             <span className="hint">
-              ({selected.id === latest?.id ? "latest version" : `historical version; latest is v${latest?.version ?? "?"}`})
+              {selected.id === latest?.id ? t("version.latestTag") : t("version.historicalTag", { latest: latest?.version ?? "?" })}
             </span>
           </h2>
           <dl className="unit-evidence">
-            <div><dt>Analyzer</dt><dd className="mono">{selected.analyzer}</dd></div>
-            <div><dt>Confidence</dt><dd>{selected.confidence}</dd></div>
-            <div><dt>Uncertainty</dt><dd>{selected.uncertainty || <em>(none stated)</em>}</dd></div>
-            <div><dt>Created</dt><dd><time dateTime={selected.created_at}>{selected.created_at}</time></dd></div>
+            <div><dt>{t("record.analyzer")}</dt><dd className="mono">{selected.analyzer}</dd></div>
+            <div><dt>{t("record.confidence")}</dt><dd>{selected.confidence}</dd></div>
+            <div><dt>{t("record.uncertainty")}</dt><dd>{selected.uncertainty || <em>{t("record.noneStated")}</em>}</dd></div>
+            <div><dt>{t("record.created")}</dt><dd><time dateTime={selected.created_at}>{selected.created_at}</time></dd></div>
           </dl>
           <EffectiveInterpretation load={effective} />
         </section>
@@ -307,54 +304,52 @@ export function RecordDetail({
 // A rejected analysis has no effective interpretation; its original values stay
 // visible only as rejected evidence.
 function EffectiveInterpretation({ load }: { load: Load<EffectiveAnalysis> }) {
+  const { t, status } = useI18n();
   if (load.status === "loading") {
-    return <p className="value">Loading the effective interpretation…</p>;
+    return <p className="value">{t("effective.loading")}</p>;
   }
   if (load.status === "error") {
     return (
       <div className="banner error" role="alert">
-        Could not load the effective interpretation: {load.message}
+        {t("effective.failed", { message: load.message })}
       </div>
     );
   }
   const eff = load.data;
   return (
-    <div className="annotation-section" aria-label="Effective interpretation">
+    <div className="annotation-section" aria-label={t("effective.title")}>
       <h3>
-        Effective interpretation{" "}
-        <span className={`record-state ${eff.resolution}`}>{eff.resolution}</span>
+        {t("effective.title")}{" "}
+        <span className={`record-state ${eff.resolution}`}>{status(eff.resolution)}</span>
       </h3>
       {eff.effective === null ? (
         <>
           <div className="banner info">
-            <strong>Rejected interpretation.</strong> A human rejected this analysis, so
-            it has no effective interpretation.
+            <strong>{t("effective.rejected")}</strong> {t("effective.rejected.detail")}
           </div>
           <dl className="unit-evidence">
-            <div><dt>Rejected category</dt><dd>{eff.original.category}</dd></div>
-            <div><dt>Rejected explanation</dt><dd>{eff.original.explanation}</dd></div>
+            <div><dt>{t("effective.rejectedCategory")}</dt><dd>{eff.original.category}</dd></div>
+            <div><dt>{t("effective.rejectedExplanation")}</dt><dd>{eff.original.explanation}</dd></div>
           </dl>
         </>
       ) : (
         <>
           <dl className="unit-evidence">
-            <div><dt>Category</dt><dd>{eff.effective.category}</dd></div>
-            <div><dt>Explanation</dt><dd>{eff.effective.explanation}</dd></div>
+            <div><dt>{t("effective.category")}</dt><dd>{eff.effective.category}</dd></div>
+            <div><dt>{t("effective.explanation")}</dt><dd>{eff.effective.explanation}</dd></div>
           </dl>
-          {eff.resolution === "unreviewed" ? (
-            <p className="hint">Unreviewed candidate: no human has accepted or corrected it.</p>
-          ) : null}
+          {eff.resolution === "unreviewed" ? <p className="hint">{t("effective.unreviewed")}</p> : null}
           {eff.resolution === "corrected" ? (
             <dl className="unit-evidence">
-              <div><dt>Original category</dt><dd>{eff.original.category}</dd></div>
-              <div><dt>Original explanation</dt><dd>{eff.original.explanation}</dd></div>
+              <div><dt>{t("effective.originalCategory")}</dt><dd>{eff.original.category}</dd></div>
+              <div><dt>{t("effective.originalExplanation")}</dt><dd>{eff.original.explanation}</dd></div>
             </dl>
           ) : null}
         </>
       )}
       <div className="annotation-provenance">
         <span>analysis #{eff.analysis_id}</span>
-        <span>{eff.feedback_id !== null ? `feedback #${eff.feedback_id}` : "no feedback"}</span>
+        <span>{eff.feedback_id !== null ? `feedback #${eff.feedback_id}` : t("provenance.noFeedback")}</span>
       </div>
     </div>
   );

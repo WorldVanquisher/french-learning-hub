@@ -14,6 +14,7 @@ import type {
   PublicDemoInfo,
   SemanticSearch,
 } from "../types/library";
+import { useI18n, type I18n, type MessageKey } from "../i18n";
 
 // One search outcome per submitted query. Semantic and hybrid modes need a
 // query; with an empty one nothing is requested (browsing is keyword search's job).
@@ -22,8 +23,6 @@ type SearchOutcome =
   | { kind: "semantic"; data: SemanticSearch }
   | { kind: "hybrid"; data: HybridSearch }
   | { kind: "needs-query" };
-
-const modeName: Record<LibrarySearchMode, string> = { keyword: "", semantic: "semantic ", hybrid: "hybrid " };
 
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
 
@@ -67,14 +66,42 @@ function useFocusedHeading(status: string) {
   return ref;
 }
 
-const fieldLabels: Record<string, string> = {
-  target: "title",
-  pedagogical_intent: "type",
-  scope: "scope",
-  identity_features: "identity details",
-  unit_canonical: "the name of a unit filed here",
-  unit_statement: "the explanation of a unit filed here",
-  unit_example: "the example of a unit filed here",
+// Display names of the backend's matched-field identifiers; unknown ones are shown as given.
+const fieldLabels: Record<string, MessageKey> = {
+  target: "library.field.target",
+  pedagogical_intent: "library.field.pedagogical_intent",
+  scope: "library.field.scope",
+  identity_features: "library.field.identity_features",
+  unit_canonical: "library.field.unit_canonical",
+  unit_statement: "library.field.unit_statement",
+  unit_example: "library.field.unit_example",
+};
+const fieldList = (i: I18n, fields: string[]) =>
+  fields.map((f) => (fieldLabels[f] ? i.t(fieldLabels[f]) : f)).join(i.t("library.fieldSeparator"));
+
+// Machine values such as needs_review or verified_unchanged: English shows them
+// with spaces as before; other languages show their status label.
+const spaced = (i: I18n, value: string) => (i.locale === "en" ? value.replace("_", " ") : i.status(value));
+
+const resultsLabelKey: Record<LibrarySearchMode, MessageKey> = {
+  keyword: "library.resultsLabel.keyword",
+  semantic: "library.resultsLabel.semantic",
+  hybrid: "library.resultsLabel.hybrid",
+};
+const modeSearchKey: Record<LibrarySearchMode, MessageKey> = {
+  keyword: "library.allConcepts",
+  semantic: "library.modeSearch.semantic",
+  hybrid: "library.modeSearch.hybrid",
+};
+const needsQueryKey: Record<LibrarySearchMode, MessageKey> = {
+  keyword: "library.needsQuery.semantic",
+  semantic: "library.needsQuery.semantic",
+  hybrid: "library.needsQuery.hybrid",
+};
+const searchFailedKey: Record<LibrarySearchMode, MessageKey> = {
+  keyword: "library.searchFailed.keyword",
+  semantic: "library.searchFailed.semantic",
+  hybrid: "library.searchFailed.hybrid",
 };
 
 // KnowledgeLibrary is a GET-only view of curated Concepts. Searching, opening a
@@ -84,6 +111,8 @@ const fieldLabels: Record<string, string> = {
 // With `demo` (FLH-073 public demo) keyword search stays free text, while
 // semantic and hybrid search run only the demo's preset queries.
 export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
+  const i18n = useI18n();
+  const { t, tn } = i18n;
   const [draft, setDraft] = useState<LibraryQuery>({ q: "", state: "all" });
   const [draftPreset, setDraftPreset] = useState<string>(demo?.presets[0]?.id ?? "");
   const [query, setQuery] = useState<LibraryQuery>({ q: "", state: "all" });
@@ -127,20 +156,17 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
     setScreen({ kind: "results" });
   };
   const openConcept = (conceptId: number) => setScreen({ kind: "concept", conceptId });
-  const resultsLabel = query.q
-    ? `${modeName[mode]}results for “${query.q}”`
-    : mode === "keyword"
-      ? "all concepts"
-      : `${mode} search`;
+  const resultsLabel = query.q ? t(resultsLabelKey[mode], { q: query.q }) : t(modeSearchKey[mode]);
+  const strong = (key: MessageKey) => <strong>{t(key)}</strong>;
 
   return (
     <main className="library">
       <div hidden={screen.kind !== "results"}>
         <form className="panel library-search" role="search" onSubmit={submit}>
           {demo && draftMode !== "keyword" ? (
-            <label htmlFor="library-preset">Example query</label>
+            <label htmlFor="library-preset">{t("library.exampleQuery")}</label>
           ) : (
-            <label htmlFor="library-query">Search learned material</label>
+            <label htmlFor="library-query">{t("library.searchLabel")}</label>
           )}
           <div className="discovery-search-row">
             {demo && draftMode !== "keyword" ? (
@@ -156,21 +182,21 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
                 id="library-query"
                 type="search"
                 value={draft.q}
-                placeholder="e.g. subjonctif, il faut que, passé composé"
+                placeholder={t("library.placeholder")}
                 onChange={(e) => setDraft({ ...draft, q: e.target.value })}
               />
             )}
             <select
-              aria-label="Concept status"
+              aria-label={t("library.stateFilter")}
               value={draft.state}
               onChange={(e) => setDraft({ ...draft, state: e.target.value as LibraryStateFilter })}
             >
-              <option value="all">all statuses</option>
-              <option value="active">active (supported)</option>
-              <option value="orphaned">orphaned (unsupported)</option>
-              <option value="retired">retired</option>
+              <option value="all">{t("library.state.all")}</option>
+              <option value="active">{t("library.state.active")}</option>
+              <option value="orphaned">{t("library.state.orphaned")}</option>
+              <option value="retired">{t("library.state.retired")}</option>
             </select>
-            <button type="submit" className="primary">Search</button>
+            <button type="submit" className="primary">{t("library.search")}</button>
             <button
               type="button"
               className="ghost"
@@ -181,11 +207,11 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
                 setMode("keyword");
               }}
             >
-              clear
+              {t("common.clear")}
             </button>
           </div>
           <fieldset className="library-mode">
-            <legend>Search mode</legend>
+            <legend>{t("library.mode")}</legend>
             <label>
               <input
                 type="radio"
@@ -194,7 +220,7 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
                 checked={draftMode === "keyword"}
                 onChange={() => setDraftMode("keyword")}
               />{" "}
-              Keyword
+              {t("library.mode.keyword")}
             </label>{" "}
             <label>
               <input
@@ -204,7 +230,7 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
                 checked={draftMode === "semantic"}
                 onChange={() => setDraftMode("semantic")}
               />{" "}
-              Semantic
+              {t("library.mode.semantic")}
             </label>{" "}
             <label>
               <input
@@ -214,48 +240,24 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
                 checked={draftMode === "hybrid"}
                 onChange={() => setDraftMode("hybrid")}
               />{" "}
-              Hybrid
+              {t("library.mode.hybrid")}
             </label>
           </fieldset>
           {demo ? (
             <p className="hint" role="note">
-              <strong>Public demo:</strong> keyword search accepts any words. Semantic and hybrid search are limited to a
-              fixed list of example queries (choose Semantic or Hybrid to pick one), whose vectors were prepared in
-              advance; this demo computes no embeddings and calls no AI service. The exact text searched is shown with the
-              results.
+              {tn("library.demo.note", { label: strong("library.demo.label") })}
             </p>
           ) : null}
           <p className="hint">
-            A <strong>concept</strong> is one idea you have learned, such as a grammar rule. A <strong>unit</strong> is a
-            short rule taken from one of your learning records; units are filed under concepts and always link back to
-            the record they came from.
+            {tn("library.terms", { concept: strong("library.term.concept"), unit: strong("library.term.unit") })}
           </p>
-          <p className="hint">
-            Search looks at concept titles and identity details, and at the name, explanation and French example of every
-            unit filed under a concept (its CURRENT SAME members), even units that no longer support it. Units that were
-            moved away are not searched. Accents and case are ignored, and each word matches the start of a word.
-            Read-only: searching records nothing.
-          </p>
+          <p className="hint">{t("library.searchScope")}</p>
           {demo ? (
-            <p className="hint">
-              <strong>Semantic</strong> mode compares the meaning of the example query with each concept's title and
-              identity details, using vectors stored with this demo. Its scores are similarity, not probability, and
-              every result is re-checked against the demo database.
-            </p>
+            <p className="hint">{tn("library.semantic.demo", { semantic: strong("library.mode.semantic") })}</p>
           ) : (
-            <p className="hint">
-              <strong>Semantic</strong> mode compares the meaning of your query with each concept's title and identity
-              details, using embeddings stored in a separately built index. It needs that index and an embedding service;
-              if either is missing it says so and never falls back to keyword search. Its scores are similarity, not
-              probability, and every result is re-checked against the current database.
-            </p>
+            <p className="hint">{tn("library.semantic.full", { semantic: strong("library.mode.semantic") })}</p>
           )}
-          <p className="hint">
-            <strong>Hybrid</strong> mode runs both searches and merges their top candidates by rank (reciprocal rank
-            fusion, fixed and equal weights). Each result shows where it came from: its keyword rank and matched fields,
-            its semantic rank and similarity, and the combined score, which is not a probability. It needs semantic search
-            and fails rather than showing keyword results alone.
-          </p>
+          <p className="hint">{tn("library.hybrid.explain", { hybrid: strong("library.mode.hybrid") })}</p>
         </form>
         {search.status === "ready" && search.data.kind === "keyword" ? (
           <Results
@@ -269,14 +271,14 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
         ) : search.status === "ready" && search.data.kind === "hybrid" ? (
           <HybridResults data={search.data.data} query={query} onOpen={openConcept} />
         ) : search.status === "ready" ? (
-          <p className="empty" role="status">Type a query, then Search, to run a {mode} search.</p>
+          <p className="empty" role="status">{t(needsQueryKey[mode])}</p>
         ) : search.status === "loading" ? (
-          <p className="empty" role="status">Searching the knowledge library…</p>
+          <p className="empty" role="status">{t("library.searching")}</p>
         ) : (
           <div className="banner error" role="alert">
-            Could not {mode === "keyword" ? "search the knowledge library" : `run the ${mode} search`}: {search.message}{" "}
+            {t(searchFailedKey[mode], { message: search.message })}{" "}
             <button type="button" className="ghost" onClick={() => setRetry((n) => n + 1)}>
-              Try again
+              {t("common.tryAgain")}
             </button>
           </div>
         )}
@@ -285,7 +287,7 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
         <ConceptScreen
           key={`concept-${screen.conceptId}`}
           conceptId={screen.conceptId}
-          backLabel={`← Back to ${resultsLabel}`}
+          backLabel={t("library.backTo", { label: resultsLabel })}
           onBack={() => backToResults(screen.conceptId)}
           onOpenConcept={openConcept}
           onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId })}
@@ -306,6 +308,17 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
   );
 }
 
+// ResultMeta is the stored Concept type and scope (data) followed by the counts.
+function ResultMeta({ concept, members, supporting }: { concept: LibraryConcept["concept"]; members: number; supporting: number }) {
+  const { tp } = useI18n();
+  return (
+    <div className="hint">
+      {concept.pedagogical_intent}
+      {concept.scope ? ` · ${concept.scope}` : ""} · {tp("library.resultMeta", members, { supporting, id: concept.id })}
+    </div>
+  );
+}
+
 function Results({
   search,
   query,
@@ -317,13 +330,15 @@ function Results({
   onOpen: (conceptId: number) => void;
   onRetry: () => void;
 }) {
-  if (search.status === "loading") return <p className="empty" role="status">Searching the knowledge library…</p>;
+  const i18n = useI18n();
+  const { t, tp, status } = i18n;
+  if (search.status === "loading") return <p className="empty" role="status">{t("library.searching")}</p>;
   if (search.status === "error")
     return (
       <div className="banner error" role="alert">
-        Could not search the knowledge library: {search.message}{" "}
+        {t("library.searchFailed.keyword", { message: search.message })}{" "}
         <button type="button" className="ghost" onClick={onRetry}>
-          Try again
+          {t("common.tryAgain")}
         </button>
       </div>
     );
@@ -332,18 +347,22 @@ function Results({
     return (
       <div className="empty" role="status">
         {query.q
-          ? `No concepts match “${query.q}”${query.state === "all" ? "" : ` with status ${query.state}`}.`
+          ? query.state === "all"
+            ? t("library.noMatch", { q: query.q })
+            : t("library.noMatchState", { q: query.q, state: status(query.state) })
           : query.state === "all"
-            ? "The library is empty. Concepts appear here after they are created in Concept Review."
-            : `No ${query.state} concepts.`}
+            ? t("library.empty")
+            : t("library.emptyState", { state: status(query.state) })}
       </div>
     );
   return (
-    <section aria-label="Library results">
+    <section aria-label={t("library.results")}>
       <p className="hint" role="status">
         {data.truncated
-          ? `Showing the first ${data.results.length} of ${data.total_matches} matching concepts. Refine the search to see others.`
-          : `${data.total_matches} concept${data.total_matches === 1 ? "" : "s"}${query.q ? ` matching “${query.q}”` : ""}.`}
+          ? t("library.truncated", { shown: data.results.length, total: data.total_matches })
+          : query.q
+            ? tp("library.countMatching", data.total_matches, { q: query.q })
+            : tp("library.count", data.total_matches)}
       </p>
       <ol className="library-results">
         {data.results.map((r) => (
@@ -352,18 +371,12 @@ function Results({
               {r.concept.target}
             </button>{" "}
             <StateTag state={r.concept.state} />
-            <div className="hint">
-              {r.concept.pedagogical_intent}
-              {r.concept.scope ? ` · ${r.concept.scope}` : ""} · {r.current_member_count} unit
-              {r.current_member_count === 1 ? "" : "s"} filed here, {r.supporting_unit_count} currently supporting ·
-              concept #{r.concept.id}
-            </div>
+            <ResultMeta concept={r.concept} members={r.current_member_count} supporting={r.supporting_unit_count} />
             {r.match_tier !== "browse" ? (
               <div className="hint">
-                Found in {r.matched_fields.map((f) => fieldLabels[f] ?? f).join(", ")}
-                {r.match_tier === "unit_evidence"
-                  ? ", not in the concept's title. Being filed here does not mean the unit supports the concept; open it to see."
-                  : ""}
+                {t(r.match_tier === "unit_evidence" ? "library.foundInUnits" : "library.foundIn", {
+                  fields: fieldList(i18n, r.matched_fields),
+                })}
               </div>
             ) : null}
           </li>
@@ -382,38 +395,49 @@ function SemanticResults({
   query: LibraryQuery;
   onOpen: (conceptId: number) => void;
 }) {
+  const i18n = useI18n();
+  const { t, tp, tn, status } = i18n;
   const dropped = data.skipped.stale + data.skipped.missing + data.skipped.incompatible;
   const idx = data.index;
   const lastRunOk = idx.last_run_outcome === "published" || idx.last_run_outcome === "verified_unchanged";
+  const outcome = idx.last_run_outcome ? spaced(i18n, idx.last_run_outcome) : "";
   return (
-    <section aria-label="Semantic results">
+    <section aria-label={t("library.semanticResults")}>
       {!lastRunOk && idx.last_run_outcome ? (
         <div className="banner info" role="status">
-          The last index run ended “{idx.last_run_outcome.replace("_", " ")}”
-          {idx.last_error ? ` (${idx.last_error})` : ""}. Search still uses the earlier published index, which may be out of
-          date; an operator can check it with <code>semantic-index status</code> and repair it with{" "}
-          <code>semantic-index sync</code>.
+          {tn(idx.last_error ? "library.lastRun.failedError" : "library.lastRun.failed", {
+            outcome,
+            error: idx.last_error,
+            status: <code>semantic-index status</code>,
+            sync: <code>semantic-index sync</code>,
+          })}
         </div>
       ) : null}
       <p className="hint" role="status">
-        {data.results.length} concept{data.results.length === 1 ? "" : "s"} by similarity to “{data.query}”
-        {query.state === "all" ? "" : ` with status ${query.state}`} · model {idx.model_id}.
+        {query.state === "all"
+          ? tp("library.semantic.count", data.results.length, { q: data.query, model: idx.model_id })
+          : tp("library.semantic.countState", data.results.length, {
+              q: data.query,
+              state: status(query.state),
+              model: idx.model_id,
+            })}
       </p>
       <p className="hint">
-        Index published {idx.published_at ?? "at an unknown time"}; last run: {idx.last_run_operation || "none"}{" "}
-        {idx.last_run_outcome ? idx.last_run_outcome.replace("_", " ") : ""}. This is recorded history, not re-verified
-        for this search; every result below was re-checked against the current database.
+        {t("library.semantic.index", {
+          published: idx.published_at ?? t("library.semantic.unknownTime"),
+          operation: idx.last_run_operation || t("library.semantic.noRun"),
+          outcome,
+        })}
       </p>
       {dropped > 0 || data.filtered_by_state > 0 ? (
         <p className="hint">
-          After re-checking the database, {dropped} index entr{dropped === 1 ? "y was" : "ies were"} dropped as out of date
-          or no longer valid
-          {data.filtered_by_state > 0 ? `, and ${data.filtered_by_state} did not match the status filter` : ""}. Other
-          concepts are not substituted.
+          {data.filtered_by_state > 0
+            ? tp("library.semantic.droppedFiltered", dropped, { filtered: data.filtered_by_state })
+            : tp("library.semantic.dropped", dropped)}
         </p>
       ) : null}
       {data.results.length === 0 ? (
-        <p className="empty">No concept is similar enough to “{data.query}”.</p>
+        <p className="empty">{t("library.semantic.none", { q: data.query })}</p>
       ) : (
         <ol className="library-results">
           {data.results.map((r) => (
@@ -422,15 +446,8 @@ function SemanticResults({
                 {r.concept.target}
               </button>{" "}
               <StateTag state={r.concept.state} />
-              <div className="hint">
-                {r.concept.pedagogical_intent}
-                {r.concept.scope ? ` · ${r.concept.scope}` : ""} · {r.current_member_count} unit
-                {r.current_member_count === 1 ? "" : "s"} filed here, {r.supporting_unit_count} currently supporting ·
-                concept #{r.concept.id}
-              </div>
-              <div className="hint">
-                Similarity {r.similarity.toFixed(2)} (cosine; not a probability or a SAME judgment)
-              </div>
+              <ResultMeta concept={r.concept} members={r.current_member_count} supporting={r.supporting_unit_count} />
+              <div className="hint">{t("library.similarity", { value: r.similarity.toFixed(2) })}</div>
             </li>
           ))}
         </ol>
@@ -448,37 +465,51 @@ function HybridResults({
   query: LibraryQuery;
   onOpen: (conceptId: number) => void;
 }) {
+  const i18n = useI18n();
+  const { t, tp, status } = i18n;
   const kw = data.components.keyword;
   const sem = data.components.semantic;
   const semDropped = sem.skipped.stale + sem.skipped.missing + sem.skipped.incompatible;
   const fusedDropped =
     data.dropped_after_fusion.missing + data.dropped_after_fusion.filtered_by_state + data.dropped_after_fusion.changed_during_search;
+  const stateFiltered = query.state !== "all";
   return (
-    <section aria-label="Hybrid results">
+    <section aria-label={t("library.hybridResults")}>
       <p className="hint" role="status">
         {data.truncated
-          ? `Showing the top ${data.results.length} of ${data.total_candidates} merged concepts for “${data.query}”`
-          : `${data.results.length} merged concept${data.results.length === 1 ? "" : "s"} for “${data.query}”`}
-        {query.state === "all" ? "" : ` with status ${query.state}`}.
+          ? t(stateFiltered ? "library.hybrid.truncatedState" : "library.hybrid.truncated", {
+              shown: data.results.length,
+              total: data.total_candidates,
+              q: data.query,
+              state: status(query.state),
+            })
+          : tp(stateFiltered ? "library.hybrid.countState" : "library.hybrid.count", data.results.length, {
+              q: data.query,
+              state: status(query.state),
+            })}
       </p>
       <p className="hint">
-        Merged from the top {data.depth} of each search: keyword found {kw.total_matches} (used {kw.returned}
-        {kw.truncated_at_depth ? ", cut at that depth" : ""}); semantic returned {sem.returned} from index{" "}
-        {sem.index.collection}, model {sem.index.model_id}. Policy {data.policy.version}: reciprocal rank fusion with k ={" "}
-        {data.policy.rrf_k}, equal weights, ties by concept number. The combined score is not a probability or a
-        relevance estimate.
+        {t(kw.truncated_at_depth ? "library.hybrid.policyCut" : "library.hybrid.policy", {
+          depth: data.depth,
+          found: kw.total_matches,
+          used: kw.returned,
+          returned: sem.returned,
+          collection: sem.index.collection,
+          model: sem.index.model_id,
+          policy: data.policy.version,
+          k: data.policy.rrf_k,
+        })}
       </p>
       {semDropped > 0 || sem.filtered_by_state > 0 || fusedDropped > 0 ? (
         <p className="hint">
-          Re-checked against the database: semantic search dropped {semDropped} out-of-date or invalid index entr
-          {semDropped === 1 ? "y" : "ies"}
-          {sem.filtered_by_state > 0 ? ` and ${sem.filtered_by_state} not matching the status filter` : ""}; after merging,{" "}
-          {fusedDropped} concept{fusedDropped === 1 ? " was" : "s were"} removed because{" "}
-          {fusedDropped === 1 ? "it" : "they"} changed or disappeared during the search. Other concepts are not substituted.
+          {sem.filtered_by_state > 0
+            ? tp("library.hybrid.semDroppedFiltered", semDropped, { filtered: sem.filtered_by_state })
+            : tp("library.hybrid.semDropped", semDropped)}{" "}
+          {tp("library.hybrid.fusedDropped", fusedDropped)}
         </p>
       ) : null}
       {data.results.length === 0 ? (
-        <p className="empty">Neither search found a concept for “{data.query}”.</p>
+        <p className="empty">{t("library.hybrid.none", { q: data.query })}</p>
       ) : (
         <ol className="library-results">
           {data.results.map((r) => (
@@ -487,21 +518,17 @@ function HybridResults({
                 {r.concept.target}
               </button>{" "}
               <StateTag state={r.concept.state} />
-              <div className="hint">
-                {r.concept.pedagogical_intent}
-                {r.concept.scope ? ` · ${r.concept.scope}` : ""} · {r.current_member_count} unit
-                {r.current_member_count === 1 ? "" : "s"} filed here, {r.supporting_unit_count} currently supporting ·
-                concept #{r.concept.id}
-              </div>
+              <ResultMeta concept={r.concept} members={r.current_member_count} supporting={r.supporting_unit_count} />
               <div className="hint">
                 {r.keyword
-                  ? `Keyword #${r.keyword.rank} (found in ${r.keyword.matched_fields.map((f) => fieldLabels[f] ?? f).join(", ")})`
-                  : "Not found by keyword"}
+                  ? t("library.hybrid.keyword", { rank: r.keyword.rank, fields: fieldList(i18n, r.keyword.matched_fields) })
+                  : t("library.hybrid.noKeyword")}
                 {" · "}
                 {r.semantic
-                  ? `Semantic #${r.semantic.rank} (similarity ${r.semantic.similarity.toFixed(2)})`
-                  : "Not among the semantic candidates"}
-                {" · "}Combined score {r.fused_score.toFixed(4)}
+                  ? t("library.hybrid.semantic", { rank: r.semantic.rank, value: r.semantic.similarity.toFixed(2) })
+                  : t("library.hybrid.noSemantic")}
+                {" · "}
+                {t("library.hybrid.score", { score: r.fused_score.toFixed(4) })}
               </div>
             </li>
           ))}
@@ -512,20 +539,15 @@ function HybridResults({
 }
 
 function StateTag({ state }: { state: "active" | "orphaned" | "retired" }) {
-  return <span className={`tag ${state}`}>{state}</span>;
+  const { status } = useI18n();
+  return <span className={`tag ${state}`}>{status(state)}</span>;
 }
 
-const supportText: Record<string, string> = {
-  active:
-    "Active: at least one unit currently supports this concept. It is filed here, comes from its record's current extraction, and has not been hidden by the learner.",
-  orphaned:
-    "Orphaned: no unit currently supports this concept. It keeps its identity and history, can still be inspected, and becomes active again if a supporting unit returns.",
-  retired: "Retired by a person. Its history can still be inspected.",
+const supportText: Record<string, MessageKey> = {
+  active: "library.support.active",
+  orphaned: "library.support.orphaned",
+  retired: "library.support.retired",
 };
-
-// Membership versus support, in the words used on the concept page.
-const filedVersusSupporting =
-  "A unit is filed under a concept when it was judged to be the same idea (its CURRENT SAME membership). It supports the concept only while it also comes from its record's current extraction and the learner has not hidden it (admission active).";
 
 function ConceptScreen({
   conceptId,
@@ -540,6 +562,8 @@ function ConceptScreen({
   onOpenConcept: (conceptId: number) => void;
   onOpenSource: (unitId: number) => void;
 }) {
+  const i18n = useI18n();
+  const { t, tp, tn, status } = i18n;
   const [retry, setRetry] = useState(0);
   const load = useLoad<LibraryConcept>(String(conceptId), () => api.getLibraryConcept(conceptId), retry);
   const headingRef = useFocusedHeading(load.status);
@@ -550,18 +574,18 @@ function ConceptScreen({
   );
   if (load.status !== "ready")
     return (
-      <section className="panel" aria-label="Concept">
+      <section className="panel" aria-label={t("library.concept.region")}>
         <h2 ref={headingRef} tabIndex={-1}>
-          Concept #{conceptId}
+          {t("library.concept.heading", { id: conceptId })}
         </h2>
         {back}
         {load.status === "loading" ? (
-          <p className="hint" role="status">Loading concept #{conceptId}…</p>
+          <p className="hint" role="status">{t("library.concept.loading", { id: conceptId })}</p>
         ) : (
           <div className="banner error" role="alert">
-            Could not load concept #{conceptId}: {load.message}{" "}
+            {t("library.concept.failed", { id: conceptId, message: load.message })}{" "}
             <button type="button" className="ghost" onClick={() => setRetry((n) => n + 1)}>
-              Try again
+              {t("common.tryAgain")}
             </button>
           </div>
         )}
@@ -577,156 +601,164 @@ function ConceptScreen({
   );
   return (
     <div>
-      <section className="panel library-concept" aria-label="Concept">
+      <section className="panel library-concept" aria-label={t("library.concept.region")}>
         <h2 ref={headingRef} tabIndex={-1} className="library-title">
           {c.target} <StateTag state={c.state} />
         </h2>
         {back}
         <dl className="unit-evidence">
-          <Row label="Status">{supportText[c.state]}</Row>
-          <Row label="Type">{c.pedagogical_intent}</Row>
-          <Row label="Scope">{c.scope || <em>not set</em>}</Row>
-          <Row label="Identity details">
-            {features.length ? features.map(([k, v]) => `${k}: ${v}`).join(" · ") : <em>none</em>}
+          <Row label={t("library.row.status")}>{supportText[c.state] ? t(supportText[c.state]) : c.state}</Row>
+          <Row label={t("library.row.type")}>{c.pedagogical_intent}</Row>
+          <Row label={t("library.row.scope")}>{c.scope || <em>{t("library.notSet")}</em>}</Row>
+          <Row label={t("library.row.identity")}>
+            {features.length ? features.map(([k, v]) => `${k}: ${v}`).join(" · ") : <em>{t("library.noneLower")}</em>}
           </Row>
         </dl>
-        <p className="hint">{filedVersusSupporting}</p>
+        <p className="hint">{t("library.filedVersusSupporting")}</p>
         <p className="hint">
-          Concept #{c.id} · lifecycle {c.lifecycle_state} · support {c.support_state}
+          {t("library.concept.meta", { id: c.id, lifecycle: status(c.lifecycle_state), support: status(c.support_state) })}
         </p>
       </section>
 
       <section className="panel library-section current" aria-labelledby="lib-preferred">
-        <h3 id="lib-preferred">Best explanation (preferred unit)</h3>
+        <h3 id="lib-preferred">{t("library.preferred")}</h3>
         {d.preferred_unit ? (
-          unit(d.preferred_unit, preferredNote(d.preferred_unit, d))
+          unit(d.preferred_unit, preferredNote(i18n, d.preferred_unit, d))
         ) : (
-          <p className="hint">No unit has been chosen as the best explanation.</p>
+          <p className="hint">{t("library.preferred.none")}</p>
         )}
       </section>
 
       <section className="panel library-section current" aria-labelledby="lib-support">
-        <h3 id="lib-support">Currently supporting this concept ({d.supporting_units.length})</h3>
+        <h3 id="lib-support">{t("library.supporting", { count: d.supporting_units.length })}</h3>
         {d.supporting_units.length ? (
           d.supporting_units.map((u) => unit(u))
         ) : (
-          <p className="hint">No unit currently supports this concept.</p>
+          <p className="hint">{t("library.supporting.none")}</p>
         )}
       </section>
 
       {d.non_supporting_members.length ? (
         <section className="panel library-section" aria-labelledby="lib-members">
-          <h3 id="lib-members">Filed here but not supporting ({d.non_supporting_members.length})</h3>
-          <p className="hint">These units are still filed under this concept, but they do not count as support, for the reason shown.</p>
-          {d.non_supporting_members.map((u) => unit(u, <span>{notSupportingReasons(u).join(" ")}</span>))}
+          <h3 id="lib-members">{t("library.members", { count: d.non_supporting_members.length })}</h3>
+          <p className="hint">{t("library.members.hint")}</p>
+          {d.non_supporting_members.map((u) => unit(u, <span>{notSupportingReasons(i18n, u).join(" ")}</span>))}
         </section>
       ) : null}
 
       <section className="panel library-section" aria-labelledby="lib-relations">
-        <h3 id="lib-relations">Linked units ({d.current_relations.length})</h3>
-        <p className="hint">
-          A link records that a unit is BROADER, NARROWER or RELATED to this concept. A link is not filing and gives no
-          support.
-        </p>
+        <h3 id="lib-relations">{t("library.relations", { count: d.current_relations.length })}</h3>
+        <p className="hint">{t("library.relations.hint")}</p>
         {d.current_relations.length ? (
           d.current_relations.map((r) =>
             unit(
               r.unit,
               <span>
-                <strong>{r.relation.toUpperCase()}</strong> link from unit #{r.unit.unit_id} to this concept
-                {` (link #${r.link_id}, decided by ${r.decision_source}).`}
+                {tn("library.relations.note", {
+                  relation: <strong>{r.relation.toUpperCase()}</strong>,
+                  unit: r.unit.unit_id,
+                  link: r.link_id,
+                  source: r.decision_source,
+                })}
               </span>,
               `relation-${r.link_id}`,
             ),
           )
         ) : (
-          <p className="hint">No units are linked to this concept.</p>
+          <p className="hint">{t("library.relations.none")}</p>
         )}
       </section>
 
       <section className="panel library-section history" aria-labelledby="lib-history">
-        <h3 id="lib-history">History: no longer current ({d.historical_units.length})</h3>
-        <p className="hint">
-          Units that were once filed or linked here but are not any more. They are shown so you can trace past decisions,
-          and never count as support. {d.history_event_count} decision{d.history_event_count === 1 ? "" : "s"} recorded for
-          this concept in total (append-only).
-        </p>
+        <h3 id="lib-history">{t("library.history", { count: d.historical_units.length })}</h3>
+        <p className="hint">{tp("library.history.hint", d.history_event_count)}</p>
         {d.historical_units.length
           ? d.historical_units.map((h) => unit(h.unit, <HistoricalNote h={h} onOpenConcept={onOpenConcept} />))
-          : <p className="hint">No earlier units.</p>}
+          : <p className="hint">{t("library.history.none")}</p>}
       </section>
     </div>
   );
 }
 
-function preferredNote(u: LibraryUnit, d: LibraryConcept): string {
+function preferredNote(i: I18n, u: LibraryUnit, d: LibraryConcept): string {
   const supporting = d.supporting_units.some((s) => s.unit_id === u.unit_id);
   return supporting
-    ? "Chosen as the best explanation; it also currently supports the concept."
-    : `Chosen as the best explanation and still filed here, but it does not support the concept: ${notSupportingReasons(u).join(" ")}`;
+    ? i.t("library.preferred.supporting")
+    : i.t("library.preferred.notSupporting", { reasons: notSupportingReasons(i, u).join(" ") });
 }
 
-function notSupportingReasons(u: LibraryUnit): string[] {
+function notSupportingReasons(i: I18n, u: LibraryUnit): string[] {
   const reasons: string[] = [];
   if (!u.in_current_extraction)
-    reasons.push(
-      `It comes from extraction v${u.extraction_version} of record #${u.entry_id}, which is no longer that record's current extraction.`,
-    );
-  if (u.admission === "suppressed") reasons.push("The learner hid it (admission suppressed).");
-  else if (u.admission !== "active") reasons.push(`It is waiting for review (admission ${u.admission.replace("_", " ")}).`);
+    reasons.push(i.t("library.reason.oldExtraction", { version: u.extraction_version, record: u.entry_id }));
+  if (u.admission === "suppressed") reasons.push(i.t("library.reason.suppressed"));
+  else if (u.admission !== "active") reasons.push(i.t("library.reason.waiting", { admission: spaced(i, u.admission) }));
   return reasons;
 }
 
 function HistoricalNote({ h, onOpenConcept }: { h: LibraryHistoricalUnit; onOpenConcept: (id: number) => void }) {
+  const { t, tn, status } = useI18n();
   const e = h.latest_event;
   return (
     <span>
-      {h.effective_status === "invalid" ? (
-        "This unit was later marked INVALID: judged not to be a usable unit."
-      ) : h.current_concept_id !== null ? (
-        <>
-          This unit was moved: it is now filed under{" "}
-          <button type="button" className="link-button" onClick={() => onOpenConcept(h.current_concept_id!)}>
-            concept #{h.current_concept_id}
-          </button>
-          .
-        </>
-      ) : (
-        "This unit is no longer filed under any concept."
-      )}
-      {!h.unit.in_current_extraction ? ` Its extraction v${h.unit.extraction_version} is not the record's current one.` : ""}{" "}
-      Last decision here: {e.relation.toUpperCase()} {e.status} ({e.decision_source}, event #{e.id}).
+      {h.effective_status === "invalid"
+        ? t("library.historical.invalid")
+        : h.current_concept_id !== null
+          ? tn("library.historical.moved", {
+              concept: (
+                <button type="button" className="link-button" onClick={() => onOpenConcept(h.current_concept_id!)}>
+                  {t("library.conceptLink", { id: h.current_concept_id })}
+                </button>
+              ),
+            })
+          : t("library.historical.unfiled")}
+      {!h.unit.in_current_extraction ? <>{" "}{t("library.historical.oldExtraction", { version: h.unit.extraction_version })}</> : ""}{" "}
+      {t("library.historical.lastDecision", {
+        relation: e.relation.toUpperCase(),
+        status: status(e.status),
+        source: e.decision_source,
+        id: e.id,
+      })}
     </span>
   );
 }
 
 function UnitCard({ unit, note, onOpenSource }: { unit: LibraryUnit; note?: ReactNode; onOpenSource: () => void }) {
+  const i18n = useI18n();
+  const { t } = i18n;
   return (
-    <article className="library-unit" aria-label={`Unit #${unit.unit_id}`}>
+    <article className="library-unit" aria-label={t("inspector.unit", { id: unit.unit_id })}>
       <div className="library-unit-head">
         <strong>{unit.canonical}</strong>{" "}
         <span className={`tag ${unit.in_current_extraction ? "active" : "retired"}`}>
-          {unit.in_current_extraction ? "current extraction" : `older extraction v${unit.extraction_version}`}
+          {unit.in_current_extraction ? t("library.unit.current") : t("library.unit.older", { version: unit.extraction_version })}
         </span>
       </div>
       <p>{unit.statement}</p>
       {unit.example ? <FrenchExample text={unit.example} /> : null}
       {note ? <p className="hint">{note}</p> : null}
       <div className="hint">
-        Unit #{unit.unit_id} · {unit.kind} · record #{unit.entry_id}, extraction v{unit.extraction_version} · admission{" "}
-        {unit.admission.replace("_", " ")}{" "}
+        {t("library.unit.meta", {
+          id: unit.unit_id,
+          kind: unit.kind,
+          record: unit.entry_id,
+          version: unit.extraction_version,
+          admission: spaced(i18n, unit.admission),
+        })}{" "}
         <button type="button" className="link-button" onClick={onOpenSource}>
-          View source record #{unit.entry_id}
+          {t("library.unit.viewSource", { id: unit.entry_id })}
         </button>
       </div>
     </article>
   );
 }
 
+// The French example is learner-facing study material: always shown as written, marked lang="fr".
 function FrenchExample({ text }: { text: string }) {
+  const { t } = useI18n();
   return (
     <p className="hint">
-      French example:{" "}
+      {t("library.frenchExample")}{" "}
       <span lang="fr" className="french">
         {text}
       </span>
@@ -743,11 +775,11 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const resolutionText: Record<string, string> = {
-  unreviewed: "not reviewed by a person",
-  accepted: "accepted by a person",
-  corrected: "corrected by a person",
-  rejected: "rejected by a person",
+const resolutionText: Record<string, MessageKey> = {
+  unreviewed: "library.resolution.unreviewed",
+  accepted: "library.resolution.accepted",
+  corrected: "library.resolution.corrected",
+  rejected: "library.resolution.rejected",
 };
 
 function SourceScreen({
@@ -765,33 +797,35 @@ function SourceScreen({
   onBackToResults: () => void;
   onOpenConcept: (conceptId: number) => void;
 }) {
+  const i18n = useI18n();
+  const { t, tn, status } = i18n;
   const [retry, setRetry] = useState(0);
   const load = useLoad<LibrarySource>(String(unitId), () => api.getLibraryUnitSource(unitId), retry);
   const headingRef = useFocusedHeading(load.status);
   const nav = (
     <div className="actions">
       <button type="button" className="ghost" onClick={onBackToConcept}>
-        ← Back to concept #{conceptId}
+        {t("library.source.backToConcept", { id: conceptId })}
       </button>
       <button type="button" className="ghost" onClick={onBackToResults}>
-        ← Back to {resultsLabel}
+        {t("library.backTo", { label: resultsLabel })}
       </button>
     </div>
   );
   if (load.status !== "ready")
     return (
-      <section className="panel" aria-label="Source">
+      <section className="panel" aria-label={t("library.source.region")}>
         <h2 ref={headingRef} tabIndex={-1}>
-          Where unit #{unitId} came from
+          {t("library.source.heading", { id: unitId })}
         </h2>
         {nav}
         {load.status === "loading" ? (
-          <p className="hint" role="status">Loading the source of unit #{unitId}…</p>
+          <p className="hint" role="status">{t("library.source.loading", { id: unitId })}</p>
         ) : (
           <div className="banner error" role="alert">
-            Could not load the source of unit #{unitId}: {load.message}{" "}
+            {t("library.source.failed", { id: unitId, message: load.message })}{" "}
             <button type="button" className="ghost" onClick={() => setRetry((n) => n + 1)}>
-              Try again
+              {t("common.tryAgain")}
             </button>
           </div>
         )}
@@ -801,101 +835,104 @@ function SourceScreen({
   const interp = s.source_interpretation;
   const isCurrent = s.unit.in_current_extraction;
   const newer = s.latest_analysis && s.latest_analysis.id !== interp.analysis.id ? s.latest_analysis : null;
+  const resolution = resolutionText[interp.effective.resolution]
+    ? t(resolutionText[interp.effective.resolution])
+    : interp.effective.resolution;
   return (
     <div>
-      <section className="panel" aria-label="Source">
+      <section className="panel" aria-label={t("library.source.region")}>
         <h2 ref={headingRef} tabIndex={-1} className="library-title">
-          Where unit #{s.unit.unit_id} came from: learning record #{s.entry.id}
+          {t("library.source.title", { unit: s.unit.unit_id, record: s.entry.id })}
         </h2>
         {nav}
-        <p className="hint">
-          The trail from what the learner wrote, through how it was interpreted, to the unit. Read-only: opening it
-          records nothing and runs no analysis or extraction.
-        </p>
+        <p className="hint">{t("library.source.hint")}</p>
       </section>
 
       <section className="panel library-section" aria-labelledby="src-unit">
-        <h3 id="src-unit">The unit (#{s.unit.unit_id})</h3>
+        <h3 id="src-unit">{t("library.source.unit", { id: s.unit.unit_id })}</h3>
         <p>
           <strong>{s.unit.canonical}</strong>: {s.unit.statement}
         </p>
         {s.unit.example ? <FrenchExample text={s.unit.example} /> : null}
         <p className="hint">
-          Now:{" "}
-          {s.annotation.status === "invalid" ? (
-            "marked INVALID (not a usable unit)"
-          ) : s.annotation.current_concept_id !== null ? (
-            <>
-              filed under{" "}
-              <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
-                concept #{s.annotation.current_concept_id}
-              </button>{" "}
-              (CURRENT SAME)
-            </>
-          ) : (
-            "not filed under any concept"
-          )}{" "}
-          · {s.unit.kind} · admission {s.unit.admission.replace("_", " ")}
+          {s.annotation.status === "invalid"
+            ? t("library.source.now.invalid")
+            : s.annotation.current_concept_id !== null
+              ? tn("library.source.now.filed", {
+                  concept: (
+                    <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
+                      {t("library.conceptLink", { id: s.annotation.current_concept_id })}
+                    </button>
+                  ),
+                })
+              : t("library.source.now.none")}{" "}
+          {t("library.source.nowMeta", { kind: s.unit.kind, admission: spaced(i18n, s.unit.admission) })}
         </p>
       </section>
 
       <section className="panel library-section current" aria-labelledby="src-entry">
-        <h3 id="src-entry">Original learning record #{s.entry.id}</h3>
+        <h3 id="src-entry">{t("library.source.entry", { id: s.entry.id })}</h3>
         <dl className="unit-evidence">
-          <Row label="What the learner wrote">
+          <Row label={t("library.source.wrote")}>
             <span className="french">{s.entry.original_input}</span>
           </Row>
-          <Row label="Context">{s.entry.original_context || <em>none</em>}</Row>
-          <Row label="Recorded">{s.entry.created_at}</Row>
+          <Row label={t("library.source.context")}>{s.entry.original_context || <em>{t("library.noneLower")}</em>}</Row>
+          <Row label={t("library.source.recorded")}>{s.entry.created_at}</Row>
         </dl>
       </section>
 
       <section className={`panel library-section ${isCurrent ? "current" : "history"}`} aria-labelledby="src-extraction">
-        <h3 id="src-extraction">Extraction v{s.extraction.version}</h3>
-        <p className="hint">An extraction is the step that turned this record into units. A record can be extracted more than once.</p>
+        <h3 id="src-extraction">{t("library.source.extraction", { version: s.extraction.version })}</h3>
+        <p className="hint">{t("library.source.extraction.hint")}</p>
         <p>
           {isCurrent
-            ? "This is the record's current extraction."
-            : `Historical: this is not the record's current extraction${
-                s.current_extraction.extraction_id !== null
-                  ? ` (the current one is extraction #${s.current_extraction.extraction_id}, ${
-                      s.current_extraction.selection_mode === "pinned" ? "pinned by a person" : "selected automatically"
-                    })`
-                  : ""
-              }. The unit is kept as evidence but does not count as support.`}
+            ? t("library.source.extraction.current")
+            : s.current_extraction.extraction_id === null
+              ? t("library.source.extraction.historical")
+              : t(
+                  s.current_extraction.selection_mode === "pinned"
+                    ? "library.source.extraction.historicalPinned"
+                    : "library.source.extraction.historicalAutomatic",
+                  { id: s.current_extraction.extraction_id },
+                )}
         </p>
         <p className="hint">
-          Extraction #{s.extraction.id} by {s.extraction.extractor}, {s.extraction.created_at}.
+          {t("library.source.extraction.meta", {
+            id: s.extraction.id,
+            extractor: s.extraction.extractor,
+            created: s.extraction.created_at,
+          })}
         </p>
       </section>
 
       <section className="panel library-section" aria-labelledby="src-interp">
-        <h3 id="src-interp">Interpretation this extraction used: analysis v{interp.analysis.version}</h3>
-        <p className="hint">How the record was understood at the time the units were made, including any human correction then in force.</p>
+        <h3 id="src-interp">{t("library.source.interpretation", { version: interp.analysis.version })}</h3>
+        <p className="hint">{t("library.source.interpretation.hint")}</p>
         <dl className="unit-evidence">
-          <Row label="Review">
-            {resolutionText[interp.effective.resolution] ?? interp.effective.resolution}
-            {interp.feedback ? ` (feedback #${interp.feedback.id}, ${interp.feedback.status})` : " (no feedback at extraction time)"}
+          <Row label={t("library.source.review")}>
+            {interp.feedback
+              ? t("library.source.review.feedback", { resolution, id: interp.feedback.id, status: status(interp.feedback.status) })
+              : t("library.source.review.none", { resolution })}
           </Row>
           {interp.effective.effective ? (
             <>
-              <Row label="Category">{interp.effective.effective.category}</Row>
-              <Row label="Explanation used">{interp.effective.effective.explanation}</Row>
+              <Row label={t("effective.category")}>{interp.effective.effective.category}</Row>
+              <Row label={t("library.source.explanationUsed")}>{interp.effective.effective.explanation}</Row>
             </>
           ) : (
-            <Row label="Explanation used">none: the interpretation was rejected</Row>
+            <Row label={t("library.source.explanationUsed")}>{t("library.source.rejected")}</Row>
           )}
           {interp.effective.resolution === "corrected" ? (
-            <Row label="Before correction">
+            <Row label={t("library.source.beforeCorrection")}>
               {interp.effective.original.category}: {interp.effective.original.explanation}
             </Row>
           ) : null}
-          <Row label="Produced by">{interp.analysis.analyzer}</Row>
+          <Row label={t("library.source.producedBy")}>{interp.analysis.analyzer}</Row>
         </dl>
         <p className="hint">
           {newer
-            ? `The record now has a newer analysis (v${newer.version}); this unit was derived from v${interp.analysis.version}.`
-            : `Analysis v${interp.analysis.version} is still the record's latest analysis.`}
+            ? t("library.source.newer", { newer: newer.version, version: interp.analysis.version })
+            : t("library.source.latest", { version: interp.analysis.version })}
         </p>
       </section>
     </div>

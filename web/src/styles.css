@@ -59,6 +59,22 @@ body {
   max-width: 640px;
 }
 
+/* FLH-083 language selector: compact, at the end of the header row. */
+.language-select {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.language-select select {
+  margin-left: 4px;
+  font-size: 13px;
+}
+
+.language-select .hint {
+  margin: 4px 0 0;
+  max-width: 260px;
+}
+
 .view-tabs {
   display: flex;
   gap: 8px;

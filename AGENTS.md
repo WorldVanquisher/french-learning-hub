@@ -454,6 +454,40 @@ FLH-073 read-only public demo (owner-authorized narrow mode):
   `docs/PUBLIC_DEMO.md`. Mechanical vectors show mechanics, not relevance; a
   public release needs real-model vectors (release validation reports BLOCKED).
 
+FLH-083 UI localization:
+
+- `web/src/i18n/` provides English (default on first use, regardless of browser
+  locale) and 简体中文 for application text in every workbench view and the public
+  demo. An explicit choice is stored in `localStorage` (`flh.ui-locale.v1`);
+  unavailable storage or an invalid value means English.
+- Translate application text only. Never translate learner content, French
+  examples, stored or AI-generated text, Concept identities, human notes, IDs,
+  wire values/API fields, provider/retriever/model names, provenance, the
+  decision vocabulary (SAME, NEW CONCEPT, BROADER, NARROWER, RELATED, DISTINCT,
+  INVALID, RESTORE, CURRENT SAME) or raw server error details. Status values get
+  display labels only.
+- `zh-CN.ts` is typed to exactly the English keys; `i18n.test.tsx` checks
+  placeholder parity. New UI text needs both catalogs, whole-sentence messages
+  (no markup in strings, no sentences assembled from fragments), and outcome or
+  notice text stored as message references so a language switch re-renders it.
+
+FLH-083 UI localization:
+
+- `web/src/i18n/` provides English (default on first use, regardless of browser
+  locale) and 简体中文 for application text in every workbench view and the public
+  demo. An explicit choice is stored in `localStorage` (`flh.ui-locale.v1`);
+  unavailable storage or an invalid value means English.
+- Translate application text only. Never translate learner content, French
+  examples, stored or AI-generated text, Concept identities, human notes, IDs,
+  wire values/API fields, provider/retriever/model names, provenance, the
+  decision vocabulary (SAME, NEW CONCEPT, BROADER, NARROWER, RELATED, DISTINCT,
+  INVALID, RESTORE, CURRENT SAME) or raw server error details. Status values get
+  display labels only.
+- `zh-CN.ts` is typed to exactly the English keys; `i18n.test.tsx` checks
+  placeholder parity. New UI text needs both catalogs, whole-sentence messages
+  (no markup in strings, no sentences assembled from fragments), and outcome or
+  notice text stored as message references so a language switch re-renders it.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

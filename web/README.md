@@ -59,7 +59,7 @@ sufficient for reviewability.
 | `npm run dev` | Vite dev server with the `/api` proxy |
 | `npm run build` | typecheck (`tsc -b`) then production build (`vite build`) |
 | `npm run typecheck` | typecheck only |
-| `npm test` | run the Vitest unit tests once |
+| `npm test` | run the Vitest unit tests once (Node 25+: `NODE_OPTIONS=--no-experimental-webstorage npm test`, so jsdom supplies `localStorage`; CI's Node 22 needs no flag) |
 | `npm run preview` | serve the built `dist/` locally |
 
 ## What the reviewer can do
@@ -446,6 +446,37 @@ This view does not load detailed per-sample evaluations, run or select retriever
 configure providers, create annotations, or change Concept resolution. It is a
 compact presentation of backend-owned experiment state.
 
+## Interface language (FLH-083)
+
+The header of the workbench and of the public demo has an **English / 简体中文**
+selector.
+
+- **Default:** English on first use, whatever the browser language. An explicit
+  choice is stored in `localStorage` (`flh.ui-locale.v1`); a missing,
+  unreadable or invalid value means English. If the choice cannot be saved, it
+  still applies and the selector says it is not saved.
+- **Switching** re-renders in place (`<html lang>` follows): drafts,
+  navigation, selections, pending writes and unknown outcomes are kept.
+  Outcome banners and notices hold message references, so text shown before a
+  switch is shown again in the new language; nothing is re-sent.
+- **Translated:** application text only — navigation, controls, labels,
+  confirmations, empty/loading states, outcome banners, accessibility labels
+  and explanations. Known status values get a display label; the raw value
+  still drives logic, filters, CSS and requests.
+- **Never translated:** learner input and context, French examples, unit text,
+  analyzer/AI explanations and categories, Concept targets and identity fields,
+  human notes, IDs, wire values and API fields, provider/retriever/model names,
+  provenance (`analysis #`, `event #`, decision sources), the decision
+  vocabulary (SAME, NEW CONCEPT, BROADER, NARROWER, RELATED, DISTINCT,
+  INVALID, RESTORE, CURRENT SAME) and raw server error details, which appear
+  verbatim inside the translated message.
+- **Mechanism:** `src/i18n/` — a typed English catalog (`en.ts`, the
+  reference), `zh-CN.ts` typed to exactly the same keys, `{name}`
+  interpolation, `.one`/`.other` plural pairs, and whole-sentence templates
+  whose placeholders take React nodes (no markup inside messages). No
+  translation service, model call or network request is involved;
+  `i18n.test.tsx` checks key and placeholder parity.
+
 ## Layout
 
 ```
@@ -463,6 +494,7 @@ web/src/
                UnitInspection, UnitCorrections — one unit opened from a
                record, with explicit corrections of a reviewed current unit
                ExperimentDashboard — read-only quality/comparison summary
+  i18n/        UI localization: catalogs (en, zh-CN), provider, selector
   types/       wire types mirroring the Go transport DTOs
   App.tsx
 ```

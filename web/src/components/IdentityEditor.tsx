@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ConceptIdentity } from "../types/concept";
+import { useI18n } from "../i18n";
 
 // IdentityEditor lets the reviewer edit a candidate identity before creating a NEW
 // CONCEPT. It starts from the backend-derived candidate identity. It is deliberately
@@ -13,6 +14,7 @@ export function IdentityEditor({
   value: ConceptIdentity;
   onChange: (next: ConceptIdentity) => void;
 }) {
+  const { t } = useI18n();
   // Features are edited as an ordered pair list so a blank key can exist while
   // typing; they are collapsed back to a map on every change.
   const [pairs, setPairs] = useState<Array<[string, string]>>(() =>
@@ -55,8 +57,8 @@ export function IdentityEditor({
       {pairs.map(([k, v], i) => (
         <div className="feature-row" key={i}>
           <input
-            aria-label={`feature key ${i}`}
-            placeholder="key"
+            aria-label={t("identity.featureKey", { index: i })}
+            placeholder={t("identity.key")}
             value={k}
             onChange={(e) => {
               const next = pairs.slice();
@@ -65,8 +67,8 @@ export function IdentityEditor({
             }}
           />
           <input
-            aria-label={`feature value ${i}`}
-            placeholder="value"
+            aria-label={t("identity.featureValue", { index: i })}
+            placeholder={t("identity.value")}
             value={v}
             onChange={(e) => {
               const next = pairs.slice();
@@ -76,7 +78,7 @@ export function IdentityEditor({
           />
           <button
             className="ghost"
-            aria-label={`remove feature ${i}`}
+            aria-label={t("identity.removeFeature", { index: i })}
             onClick={() => pushFeatures(pairs.filter((_, j) => j !== i))}
           >
             ✕
@@ -84,12 +86,9 @@ export function IdentityEditor({
         </div>
       ))}
       <button className="ghost" style={{ marginTop: 8 }} onClick={() => pushFeatures([...pairs, ["", ""]])}>
-        + add feature
+        {t("identity.addFeature")}
       </button>
-      <p className="hint">
-        Fields are normalized server-side (lowercased, whitespace-collapsed) before
-        the identity signature is computed.
-      </p>
+      <p className="hint">{t("identity.hint")}</p>
     </div>
   );
 }

@@ -2166,6 +2166,14 @@ read-only and re-reads the unit immediately before each write. Mutation
 components are written to survive React StrictMode effect replay (FLH-021). Its
 behaviour per view is documented in [web/README.md](../web/README.md).
 
+The workbench and the public demo offer English (default on first use) and
+Simplified Chinese interface text (FLH-083). Localization is presentation only:
+a typed catalog in `web/src/i18n/` translates application text, while learner
+and stored content, identities, IDs, wire values, provenance, the decision
+vocabulary and raw server errors are rendered unchanged. The choice is a
+browser-local preference; it never reaches the server and changes no API,
+schema or stored data.
+
 ## 11. Persistence, migrations and recovery
 
 SQLite is embedded through the pure-Go `modernc.org/sqlite` driver; no SQLite
