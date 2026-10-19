@@ -157,7 +157,10 @@ five views with different ownership boundaries:
 - **Concept Review** is write-capable: explicit human actions record Concept
   annotations and resolution decisions.
 - **Annotation Inspector** is read-only and displays backend-owned effective
-  annotation state.
+  annotation state. A unit opened from a record can be inspected the same way;
+  if it belongs to the current extraction and was already reviewed, that view
+  also offers explicit, confirmed corrections (reassign SAME, mark INVALID,
+  restore).
 - **Experiment Dashboard** is read-only and displays backend-owned dataset
   quality and retrieval-comparison results. It computes no metrics in the
   browser.

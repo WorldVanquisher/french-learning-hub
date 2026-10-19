@@ -57,8 +57,8 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   with a fixed admission ruleset and append-only human overrides.
 - Review units in the **Concept Review** workbench: SAME, NEW CONCEPT, BROADER,
   NARROWER, RELATED, DISTINCT and INVALID decisions, with append-only history,
-  explicit corrections, and idempotent recovery for lost DISTINCT and relation
-  responses.
+  explicit corrections (also from a record's unit inspection), and idempotent
+  recovery for lost DISTINCT and relation responses.
 - Search and browse curated Concepts in the read-only **Knowledge Library**,
   with plain-English status and links from each unit to the record and the exact
   interpretation it came from. An optional **semantic search** mode ranks

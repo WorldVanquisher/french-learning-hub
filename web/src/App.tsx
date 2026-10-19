@@ -35,7 +35,8 @@ const viewCopy: Record<View, { title: string; subtitle: string }> = {
 // App keeps the internal workbench views behind a local tab switch. Learning
 // Records writes only through explicit capture import, analysis, feedback, and
 // extraction requests; the Knowledge Library, Inspector and Experiment Dashboard
-// are read-only;
+// are read-only, except that a unit inspection opened from a record can send
+// explicit corrections of an already reviewed current unit;
 // Concept Review records annotation decisions.
 //
 // A record's extracted unit can be opened in Concept Review or a focused
@@ -58,7 +59,7 @@ export default function App() {
     view === "inspector" && focus
       ? {
           title: "Unit Inspection",
-          subtitle: "Read-only inspection of one unit opened from a record, including whether it belongs to the record's current extraction.",
+          subtitle: "One unit opened from a record, including whether it belongs to the record's current extraction. Already reviewed current units can be corrected explicitly; historical units are read-only.",
         }
       : viewCopy[view];
 

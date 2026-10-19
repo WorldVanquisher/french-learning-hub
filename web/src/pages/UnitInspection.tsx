@@ -1,27 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
-import type { Concept, EffectiveAnnotationItem } from "../types/concept";
-import type { CurrentExtraction } from "../types/learning";
 import type { UnitTarget } from "../navigation";
 import { InspectorItem } from "./AnnotationInspector";
+import { UnitCorrections, type ConceptCatalog } from "./UnitCorrections";
+import type { Inspection } from "./unitCorrection";
 
 type Load<T> =
   | { status: "loading" }
   | { status: "error"; message: string; notFound: boolean }
   | { status: "ready"; data: T };
 
-type Inspection = { item: EffectiveAnnotationItem; current: CurrentExtraction };
-
 function describeError(error: unknown): string {
   if (error instanceof ApiError) return `(${error.status}) ${error.message}`;
   return error instanceof Error ? error.message : String(error);
 }
 
-// UnitInspection is a GET-only view of one unit opened from a record. It shows
-// the unit's backend-derived effective annotation and whether the unit belongs to
-// the record's current extraction, as the backend reports both now. Stored labels
-// of a historical unit are shown only for reference, never as a review candidate.
+// UnitInspection shows one unit opened from a record: its backend-derived
+// effective annotation and whether the unit belongs to the record's current
+// extraction, as the backend reports both now. Opening it records nothing. Stored
+// labels of a historical unit are shown for reference only, never as a review or
+// correction candidate. A current-extraction unit that was already reviewed (CURRENT
+// SAME or INVALID) can be corrected through explicit, confirmed actions.
 export function UnitInspection({
   focus,
   onBack,
@@ -32,41 +32,82 @@ export function UnitInspection({
   onReview: () => void;
 }) {
   const [load, setLoad] = useState<Load<Inspection>>({ status: "loading" });
-  const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [catalog, setCatalog] = useState<ConceptCatalog>({ status: "loading" });
   const [reloadCount, setReloadCount] = useState(0);
+  const [catalogCount, setCatalogCount] = useState(0);
+  const [writing, setWriting] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // Only the latest inspection read is applied, and none after leaving the view.
+  const readRequest = useRef(0);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     headingRef.current?.focus();
   }, []);
 
+  const readInspection = useCallback(
+    () =>
+      Promise.all([api.getEffectiveAnnotation(focus.unitId), api.getCurrentExtraction(focus.entryId)]).then(
+        ([item, current]): Inspection => ({ item, current }),
+      ),
+    [focus.unitId, focus.entryId],
+  );
+
   useEffect(() => {
-    let active = true;
+    const request = ++readRequest.current;
     setLoad({ status: "loading" });
-    Promise.all([api.getEffectiveAnnotation(focus.unitId), api.getCurrentExtraction(focus.entryId)])
-      .then(([item, current]) => {
-        if (active) setLoad({ status: "ready", data: { item, current } });
+    readInspection()
+      .then((data) => {
+        if (mounted.current && request === readRequest.current) setLoad({ status: "ready", data });
       })
       .catch((error: unknown) => {
-        if (!active) return;
+        if (!mounted.current || request !== readRequest.current) return;
         setLoad({
           status: "error",
           message: describeError(error),
           notFound: error instanceof ApiError && error.isNotFound,
         });
       });
-    // Concept names are a convenience; references stay visible by ID without them.
+  }, [readInspection, reloadCount]);
+
+  // refresh re-reads the inspection for a correction and shows it. A read that a
+  // newer one superseded resolves null; a failed read keeps what is shown and
+  // rejects, so the caller can report it.
+  const refresh = useCallback(async (): Promise<Inspection | null> => {
+    const request = ++readRequest.current;
+    const data = await readInspection();
+    if (!mounted.current || request !== readRequest.current) return null;
+    setLoad({ status: "ready", data });
+    return data;
+  }, [readInspection]);
+
+  // Concept names are a convenience for reading; references stay visible by ID
+  // without them. A reassignment target can only be chosen from a loaded catalog.
+  useEffect(() => {
+    let active = true;
+    setCatalog({ status: "loading" });
     api.listConcepts()
-      .then((loaded) => {
-        if (active) setConcepts(loaded);
+      .then((concepts) => {
+        if (active) setCatalog({ status: "ready", concepts });
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        if (active) setCatalog({ status: "error", message: describeError(error) });
+      });
     return () => {
       active = false;
     };
-  }, [focus.unitId, focus.entryId, reloadCount]);
+  }, [catalogCount]);
 
-  const conceptsById = useMemo(() => new Map(concepts.map((c) => [c.id, c])), [concepts]);
+  const conceptsById = useMemo(
+    () => new Map(catalog.status === "ready" ? catalog.concepts.map((c) => [c.id, c]) : []),
+    [catalog],
+  );
 
   return (
     <main>
@@ -74,8 +115,8 @@ export function UnitInspection({
         <h2 ref={headingRef} tabIndex={-1}>
           Unit #{focus.unitId} from record #{focus.entryId}
         </h2>
-        <p className="hint">Read-only inspection. Opening this view records nothing.</p>
-        <button type="button" className="ghost" onClick={onBack}>
+        <p className="hint">Opening this view records nothing. Only an explicit, confirmed correction below writes.</p>
+        <button type="button" className="ghost" onClick={onBack} disabled={writing}>
           ← Back to record #{focus.entryId}
         </button>
       </section>
@@ -97,6 +138,15 @@ export function UnitInspection({
         <>
           <Currency inspection={load.data} focus={focus} onReview={onReview} />
           <InspectorItem item={load.data.item} concepts={conceptsById} />
+          {/* A correction's re-read replaces only the data, so this stays mounted
+              and its outcome stays visible. */}
+          <UnitCorrections
+            inspection={load.data}
+            catalog={catalog}
+            onReloadCatalog={() => setCatalogCount((n) => n + 1)}
+            refresh={refresh}
+            onPendingChange={setWriting}
+          />
         </>
       )}
     </main>
