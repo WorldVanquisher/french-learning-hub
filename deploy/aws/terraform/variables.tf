@@ -93,6 +93,16 @@ variable "termination_protection" {
   default     = false
 }
 
+variable "host_role_permissions_boundary_name" {
+  description = "Name of the administrator-created customer managed policy used as the host role's permissions boundary."
+  type        = string
+  default     = "flh-demo-host-boundary"
+  validation {
+    condition     = can(regex("^[A-Za-z0-9+=,.@_-]{1,128}$", var.host_role_permissions_boundary_name))
+    error_message = "host_role_permissions_boundary_name must be an IAM policy name."
+  }
+}
+
 variable "artifact_bucket_name" {
   description = "Exact name for the private artifact bucket. null (default) lets Terraform generate a unique name from name_prefix."
   type        = string

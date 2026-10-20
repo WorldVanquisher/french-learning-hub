@@ -1,0 +1,68 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3UploadReleases",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:AbortMultipartUpload"
+      ],
+      "Resource": "arn:aws:s3:::flh-demo-artifacts-*/releases/*",
+      "Condition": {
+        "StringEquals": {
+          "s3:ResourceAccount": "__AWS_ACCOUNT_ID__"
+        }
+      }
+    },
+    {
+      "Sid": "SsmSessionToStackInstance",
+      "Effect": "Allow",
+      "Action": "ssm:StartSession",
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "ssm:resourceTag/Project": "flh",
+          "ssm:resourceTag/Component": "public-demo"
+        },
+        "BoolIfExists": {
+          "ssm:SessionDocumentAccessCheck": "true"
+        }
+      }
+    },
+    {
+      "Sid": "SsmSessionDocuments",
+      "Effect": "Allow",
+      "Action": "ssm:StartSession",
+      "Resource": [
+        "arn:aws:ssm:us-east-1::document/AWS-StartPortForwardingSession",
+        "arn:aws:ssm:us-east-1:__AWS_ACCOUNT_ID__:document/SSM-SessionManagerRunShell"
+      ]
+    },
+    {
+      "Sid": "SsmOwnSessions",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:TerminateSession",
+        "ssm:ResumeSession"
+      ],
+      "Resource": "arn:aws:ssm:us-east-1:__AWS_ACCOUNT_ID__:session/${aws:username}-*"
+    },
+    {
+      "Sid": "Ec2StartStopStackInstance",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:StartInstances",
+        "ec2:StopInstances",
+        "ec2:RebootInstances"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Project": "flh",
+          "aws:ResourceTag/Component": "public-demo"
+        }
+      }
+    }
+  ]
+}
