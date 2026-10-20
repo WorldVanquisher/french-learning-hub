@@ -1,0 +1,74 @@
+# FLH read-only public demo on the AWS host (FLH-084). Rendered by Terraform
+# (templatefile) into cloud-init and installed as
+# /etc/systemd/system/flh-public-demo.service. Based on the FLH-076 template and
+# the FLH-081 hardened proposal. Only flh-release enables and starts it, after a
+# verified release is selected.
+#
+# Loopback only, every provider disabled. HTTP_ALLOWED_HOSTS is intentionally
+# empty: loopback host names are always accepted, which is all an SSM
+# port-forward preview needs. Public exposure (and its host name) stays frozen.
+[Unit]
+Description=FLH read-only public demo (Knowledge Library)
+After=network.target
+ConditionPathExists=${root}/current/bin/linux-${arch}/flh-server
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=flh-demo
+Group=flh-demo
+WorkingDirectory=${root}/current
+Environment=LISTEN_HOST=127.0.0.1
+Environment=PORT=${port}
+Environment=AI_PROVIDER=rule-based
+Environment=EXTRACTOR_PROVIDER=disabled
+Environment=EMBEDDING_PROVIDER=disabled
+Environment=SEMANTIC_SEARCH=disabled
+Environment=HTTP_ALLOWED_HOSTS=
+ExecStart=${root}/current/bin/linux-${arch}/flh-server -public-demo-artifact ${root}/current/artifact -web-dir ${root}/current/web
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=flh-public-demo
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadOnlyPaths=${root}
+InaccessiblePaths=-${root}/state
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+# The demo has no runtime network dependency: loopback only (the SSM agent's
+# port forward also arrives from 127.0.0.1).
+IPAddressDeny=any
+IPAddressAllow=localhost
+# FLH-081 measurements: ~21 MB RSS idle, 28 MB peak, 15 threads.
+MemoryHigh=128M
+MemoryMax=256M
+TasksMax=64
+CPUQuota=100%
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

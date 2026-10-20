@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars (ignored by Git) and fill in the owner's choices.
+# No account ID, credential, domain or host name belongs here.
+aws_region    = "us-east-1"  # owner choice
+architecture  = "arm64"      # arm64 or x86_64
+instance_type = "t4g.micro"  # t3.micro for x86_64; t4g.nano/t3.nano also fit
+# ami_id                          = "ami-..."  # pin after the first plan resolves it
+# availability_zone               = "us-east-1a"
+# root_volume_size_gib            = 8
+# root_volume_delete_on_termination = true
+# cpu_credits                     = "standard"
+# artifact_bucket_name            = null  # generated from name_prefix when null
+# artifact_bucket_force_destroy   = false
+# termination_protection          = false
