@@ -1,8 +1,8 @@
 # Copy to terraform.tfvars (ignored by Git) and fill in the owner's choices.
 # No account ID, credential, domain or host name belongs here.
-aws_region    = "us-east-1"  # owner choice
-architecture  = "arm64"      # arm64 or x86_64
-instance_type = "t4g.micro"  # t3.micro for x86_64; t4g.nano/t3.nano also fit
+aws_region    = "us-east-1" # owner choice
+architecture  = "arm64"     # arm64 or x86_64
+instance_type = "t4g.micro" # t3.micro for x86_64; t4g.nano/t3.nano also fit
 # ami_id                          = "ami-..."  # pin after the first plan resolves it
 # availability_zone               = "us-east-1a"
 # root_volume_size_gib            = 8

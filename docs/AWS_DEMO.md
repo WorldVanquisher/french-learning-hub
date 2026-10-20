@@ -8,9 +8,17 @@ previews it privately over AWS Systems Manager Session Manager.
 - **Decisions and cost estimate:**
   [docs/plans/FLH-084-aws-demo-deployment.md](plans/FLH-084-aws-demo-deployment.md).
 
-**Status (FLH-084):** prepared only. Nothing has been initialised, planned or
-applied, and no AWS account was contacted while preparing it. Every step below
-is run by the human owner.
+**Status:**
+- **FLH-084:** prepared the configuration.
+- **FLH-085:** natively validated it, without AWS. Nothing has been planned or
+  applied, and no AWS account has been contacted. Every step below is run by
+  the human owner. See "Validation status" for what that does and does not
+  prove.
+
+**Intended mode (owner decision, FLH-085):** continuous operation. The instance
+runs all month, about $10.42/month in us-east-1 on `t4g.micro` before tax and
+transfer; other regions are in plan §4.2. Stop/start (§8) is for maintenance,
+not a cost-saving routine.
 
 **Frozen in this phase:**
 - **DNS:** Namecheap stays authoritative. Add or change no records.
@@ -18,6 +26,33 @@ is run by the human owner.
   host name in `HTTP_ALLOWED_HOSTS`.
 - **Workloads:** the personal database, the write-capable workbench, the model
   service and Qdrant never go on this host.
+
+## Validation status
+
+**Native validation (FLH-085, on the NAS):** every check below ran without AWS
+credentials or API calls. The console steps ran with networking disabled.
+
+| Check | Result |
+|---|---|
+| Terraform 1.16.6 (official zip, SHA-256 verified against `SHA256SUMS`, which is GPG-verified with HashiCorp key `C874 011F 0AB4 0511 0D02 1055 3436 5D94 72D7 468F`) | used for all of the following |
+| `terraform fmt -check -diff -recursive` | pass |
+| `terraform init -backend=false` | pass; hashicorp/aws **6.69.1** selected within `>= 5.70.0, < 7.0.0` |
+| `terraform providers lock` for `linux_amd64`, `linux_arm64`, `darwin_amd64`, `darwin_arm64`, `windows_amd64` | 5 `h1:` and 16 `zh:` hashes in `.terraform.lock.hcl`; every package signed by HashiCorp |
+| `terraform init -backend=false -lockfile=readonly` then `terraform validate` | pass, 0 errors, 0 warnings |
+| `terraform fmt -check` of `terraform.tfvars.example`, `terraform console -var-file` with it | pass after formatting; variable validations evaluated |
+| `scripts/validation/flh084/render_cloud_config.sh` (renders the real template wiring with a sample bucket) and Terraform `yamldecode` | parses; contents equal the source files byte for byte; 15.4 KB raw (EC2 limit 16 KB), 5.6 KB gzipped as sent |
+| `cloud-init schema` | **NOT RUN**: cloud-init is not installed on the validation host. Run it on the instance after boot (§6) |
+| `terraform plan` / `apply`, AWS CLI, Session Manager | **NOT RUN** (not authorised). Real AWS verification starts at §3 |
+
+**What native validation does not prove:**
+- that the account permits these resources and has quota for them;
+- that the chosen instance type exists in the zone;
+- that the SSM agent registers with the minimal policy;
+- that the bucket policy and gateway endpoint admit the host;
+- that cloud-init accepts the document on AL2023;
+- that the service starts on the instance.
+
+These are proved only by §3 to §7 against the real account.
 
 ## Steps that cost money or change external state
 
@@ -47,26 +82,109 @@ is run by the human owner.
   - `ssm:GetParameter` on the public AMI parameter;
   - `ssm:StartSession`, `ssm:TerminateSession`, `ssm:ResumeSession` and
     `ssm:DescribeInstanceInformation`.
-- **Permission set:** for a single-owner account, `AdministratorAccess` covers
-  this. `PowerUserAccess` does **not**, because it excludes IAM role creation.
-  A narrower operator policy is an owner choice (§10).
+- **Permission sets.** Use separate identities, or separate permission sets,
+  for the read-only plan and for apply. `AdministratorAccess` is not required.
+  - **Plan (§3), read-only:** the AWS managed `ReadOnlyAccess` policy covers
+    what `terraform plan` reads for a new stack:
+    - `sts:GetCallerIdentity`;
+    - `ssm:GetParameter` on the public AMI parameter;
+    - `ec2:DescribeInstanceTypes`;
+    - the provider's account and partition lookups.
+
+    It cannot create or change anything.
+  - **Apply, operate and destroy, option 1:** `AdministratorAccess`. This is
+    the simplest option for a single-owner account.
+  - **Apply, operate and destroy, option 2:** `PowerUserAccess` plus the inline
+    supplement below. `PowerUserAccess` covers EC2, VPC, S3 and SSM but
+    excludes almost all of IAM. The supplement allows only roles and instance
+    profiles whose names start with this stack's prefix.
+
+    **Not tested against AWS:** if `plan` or `apply` reports `AccessDenied`,
+    the error names the missing action. Add only that action, or use option 1.
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "FlhDemoHostRole",
+          "Effect": "Allow",
+          "Action": [
+            "iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:TagRole", "iam:UntagRole",
+            "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy",
+            "iam:ListRolePolicies", "iam:ListAttachedRolePolicies",
+            "iam:ListInstanceProfilesForRole", "iam:PassRole"
+          ],
+          "Resource": "arn:aws:iam::*:role/flh-demo-host-*"
+        },
+        {
+          "Sid": "FlhDemoHostInstanceProfile",
+          "Effect": "Allow",
+          "Action": [
+            "iam:CreateInstanceProfile", "iam:DeleteInstanceProfile", "iam:GetInstanceProfile",
+            "iam:AddRoleToInstanceProfile", "iam:RemoveRoleFromInstanceProfile",
+            "iam:TagInstanceProfile", "iam:UntagInstanceProfile"
+          ],
+          "Resource": "arn:aws:iam::*:instance-profile/flh-demo-host-*"
+        }
+      ]
+    }
+    ```
+    The pattern `flh-demo-host-*` assumes the default `name_prefix`
+    (`flh-demo`). It must change if the prefix does.
+  - **Operating only (§5 to §8, without Terraform):** a narrower identity is
+    enough:
+    - `s3:PutObject` on `<bucket>/releases/*`;
+    - `ssm:StartSession` on the instance and on the `AWS-StartPortForwardingSession`
+      document;
+    - `ssm:TerminateSession` and `ssm:ResumeSession` on the operator's own
+      sessions;
+    - `ssm:DescribeInstanceInformation`;
+    - `ec2:StartInstances` and `ec2:StopInstances` on the instance.
 - **Budget alert (recommended):** create an AWS Budgets alert in the Billing
   console, for example at $15/month with email notification. It **notifies
   only**; it does not cap or stop spending.
 
-**Local tools, installed and configured by the operator (not by this
-repository):**
-- **Terraform ≥ 1.5.** OpenTofu is not tested.
-- **AWS CLI v2.**
-- **Session Manager plugin for the AWS CLI**, needed by `aws ssm
-  start-session`: <https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html>.
-- **Credentials** through the normal mechanisms, never written into this
-  repository, Terraform files or state. For example:
-  ```sh
-  aws configure sso          # once, creates a named profile
-  aws sso login --profile flh-admin
-  export AWS_PROFILE=flh-admin
-  ```
+**Local tools on the operator machine, installed by the operator (not by
+this repository):**
+- **Terraform ≥ 1.5.** 1.16.6 is the version validated. The committed
+  `.terraform.lock.hcl` pins hashicorp/aws 6.69.1, with checksums for Linux
+  (amd64, arm64), macOS (amd64, arm64) and Windows (amd64). On any other
+  platform, `terraform init` stops until that platform is added with
+  `terraform providers lock -platform=<os_arch>`. OpenTofu is not tested.
+- **AWS CLI v2:**
+  <https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html>.
+  Check with `aws --version`, which must print `aws-cli/2.`.
+- **Session Manager plugin**, required by `aws ssm start-session` for §6 and
+  §7:
+  <https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html>.
+  Check with `session-manager-plugin --version`.
+
+**Where operator authentication is configured.** Terraform's AWS provider and
+the AWS CLI read the same standard chain; nothing in this repository adds to
+it. In order of precedence:
+1. **Environment variables:** `AWS_PROFILE`, or temporary
+   `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`AWS_SESSION_TOKEN`.
+2. **Shared config and credentials files:** profiles, including IAM Identity
+   Center (SSO) profiles and `credential_process`, in `~/.aws/config` and
+   `~/.aws/credentials`. On Windows these are under `%USERPROFILE%\.aws\`.
+   The locations can be overridden with `AWS_CONFIG_FILE` and
+   `AWS_SHARED_CREDENTIALS_FILE`.
+
+**What FLH-085 found on the NAS:** no `AWS_*` variables, no `~/.aws`, and no
+AWS CLI or Session Manager plugin. Only names and existence were checked; no
+file was read. The account's authentication therefore lives on another machine
+(the operator workstation), and §3 onwards runs there.
+
+**Checking the active identity:** list profile names with
+`aws configure list-profiles`, which prints names only, and confirm the
+identity with `aws sts get-caller-identity`. Credentials are never written
+into this repository, Terraform files, tfvars or state. If no profile exists
+yet:
+```sh
+aws configure sso          # once, creates a named profile
+aws sso login --profile <profile>
+export AWS_PROFILE=<profile>
+```
 
 ## 2. Local validation (no AWS access)
 
@@ -76,12 +194,17 @@ python3 -B scripts/validation/flh084/release_tool_test.py \
   --tarball /path/to/flh-public-demo-<label>.tar.gz --work /tmp/flh084-test --port 18996
 cd deploy/aws/terraform
 terraform fmt -check -diff
-terraform init          # downloads the hashicorp/aws provider; creates .terraform/ and .terraform.lock.hcl
+terraform init -backend=false -lockfile=readonly   # downloads hashicorp/aws 6.69.1 into .terraform/ (git-ignored)
 terraform validate
+cd ../../..
+TERRAFORM=terraform scripts/validation/flh084/render_cloud_config.sh /tmp/flh-userdata arm64 <region>
+# where cloud-init is installed (any Linux host, or the instance itself):
+cloud-init schema --config-file /tmp/flh-userdata/user-data-arm64.yaml --annotate
 ```
 
-**Lock file:** commit `.terraform.lock.hcl` after the first `init`. It pins the
-provider checksums.
+**Lock file:** `.terraform.lock.hcl` is committed and must not be regenerated
+with `-upgrade` unless a provider upgrade is intended. `-lockfile=readonly`
+fails if the lock does not match.
 
 **Choose the release package:**
 - **rc1 (existing):** `flh-public-demo-flh081-rc1.tar.gz`, SHA-256
@@ -181,6 +304,7 @@ aws ssm start-session --target "$(terraform output -raw instance_id)"
 
 ```sh
 cloud-init status --wait                     # must end with: status: done
+sudo cloud-init schema --system --annotate   # first real schema check of the user data
 sudo flh-release install s3://<bucket>/releases/flh-public-demo-<label>.tar.gz <sha256 from the .sha256 file>
 sudo flh-release status
 exit
@@ -317,15 +441,40 @@ tarballs remain on the operator's machine.
 5. **Artifact bucket name:** generated (default), or an explicit name.
 6. **Release package:** rc1, or a newly built package from the current source
    (§2), with its `source_revision` label.
-7. **Operator identity and permission set:** `AdministratorAccess` or a
-   narrower custom policy, plus the budget alert threshold.
+7. **Operator identity and permission set:** `ReadOnlyAccess` for the plan.
+   For apply, `AdministratorAccess`, or `PowerUserAccess` plus the scoped IAM
+   supplement (§1). Plus the budget alert threshold.
 8. **Defaults to confirm or change:**
    - root volume size and `delete_on_termination`, defaults 8 GiB and true;
    - `cpu_credits = standard`;
    - non-current version expiry, default 30 days;
    - termination protection, default off.
-9. **Duration:** a continuous month (about $10–12) or an intermittent trial
-   (cents), and the date by which §9 teardown happens if the trial ends.
+9. **Duration:** decided (FLH-085): continuous operation, about $10–12 a
+   month. Still open: whether a Savings Plan or Reserved Instance is worth it
+   for a year-long run. Not evaluated here.
+10. **OS updates for a continuously running host:** Amazon Linux 2023 does not
+    apply updates automatically. Options:
+    - run `sudo dnf upgrade --releasever=latest` in a session periodically,
+      then reboot;
+    - replace the instance with a newer pinned AMI (`terraform apply`), then
+      re-install the release (§6).
+
+    The cadence is an owner choice. It is not automated by this configuration.
+
+**Next human step (read-only plan).** On the operator workstation, with the
+tools above, only these choices remain:
+1. the AWS profile (`AWS_PROFILE`) with at least `ReadOnlyAccess`;
+2. the region (`aws_region`);
+3. the architecture and instance type (`arm64` + `t4g.micro` suggested);
+4. which release package will follow (rc1 or a new build). It is not needed
+   for the plan itself, but it is needed right after apply.
+
+Then:
+```sh
+aws sts get-caller-identity
+terraform -chdir=deploy/aws/terraform init -lockfile=readonly
+terraform -chdir=deploy/aws/terraform plan -out flh084.tfplan
+```
 
 **Lifting the freeze is outside this runbook.** It needs separate, explicit
 decisions:

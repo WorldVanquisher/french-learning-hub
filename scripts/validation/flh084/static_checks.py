@@ -103,8 +103,11 @@ check("force_destroy defaults to false", re.search(r"default\s*=\s*false", fd))
 forbidden = [r"AKIA[0-9A-Z]{16}", r"aws_secret_access_key", r"X-Amz-(Signature|Credential)", r"presign",
              r"\b\d{12}\b", r"vanquisher", r"\b[a-z0-9-]+\.(world|org|net|io)\b", r"BEGIN [A-Z ]*PRIVATE KEY",
              r"secret_key|access_key\s*=|password\s*=|token\s*=\s*\""]
-for root, _, files in os.walk(AWS):
+for root, dirs, files in os.walk(AWS):
+    dirs[:] = [d for d in dirs if d != ".terraform"]  # provider binaries from terraform init
     for f in files:
+        if f in (".terraform.lock.hcl", "terraform.tfvars") or f.endswith((".tfstate", ".tfplan")):
+            continue
         text = read(os.path.join(root, f))
         rel = os.path.relpath(os.path.join(root, f), REPO)
         for pat in forbidden:
@@ -129,6 +132,14 @@ for arch in ("arm64", "amd64"):
               "InaccessiblePaths=-/srv/flh-demo/state"):
         check(f"unit[{arch}]: {d}", re.search("^" + re.escape(d) + "$", unit, re.M))
     check(f"unit[{arch}]: no unrendered placeholders", "${" not in unit)
+
+# cloud-init template wiring: every variable main.tf passes is used by the template.
+cc_tpl = read(os.path.join(HOST, "cloud-config.yaml.tftpl"))
+cc_vars = set(re.findall(r"^\s{4}([a-z_]+)\s+=", re.search(r"cloud_config_vars = \{(.*?)\n  \}", tf["main.tf"], re.S).group(1), re.M))
+check("cloud-config template starts with #cloud-config", cc_tpl.startswith("#cloud-config\n"))
+check("cloud_config_vars are exactly the template's inputs", cc_vars == {"release_tool", "unit", "journald", "root", "port", "arch", "region", "bucket"}
+      and all(re.search(r"\b%s\b" % v, cc_tpl) for v in cc_vars), sorted(cc_vars))
+check("user_data rendered from the template", 'templatefile("${local.host_dir}/cloud-config.yaml.tftpl", local.cloud_config_vars)' in tf["main.tf"])
 
 # cloud-init document size, as main.tf builds it (JSON is valid YAML; yamlencode output is similar in size).
 doc = "#cloud-config\n" + json.dumps({"write_files": [

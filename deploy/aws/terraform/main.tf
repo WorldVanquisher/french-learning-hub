@@ -14,42 +14,20 @@ locals {
   # cloud-init (gzip-compressed, see user_data_base64): create the service
   # account and directories, install the host tools, journald limits, unit and
   # non-secret configuration. It downloads and starts nothing: a release is
-  # installed later by the operator over SSM.
-  user_data = join("\n", ["#cloud-config", yamlencode({
-    write_files = [
-      {
-        path        = "/usr/local/sbin/flh-release"
-        permissions = "0755"
-        owner       = "root:root"
-        content     = file("${local.host_dir}/flh-release")
-      },
-      {
-        path        = "/etc/systemd/system/flh-public-demo.service"
-        permissions = "0644"
-        owner       = "root:root"
-        content     = local.unit
-      },
-      {
-        path        = "/etc/systemd/journald.conf.d/50-flh-demo.conf"
-        permissions = "0644"
-        owner       = "root:root"
-        content     = file("${local.host_dir}/journald-flh.conf")
-      },
-      {
-        path        = "/etc/flh-demo/deploy.env"
-        permissions = "0644"
-        owner       = "root:root"
-        content     = "ROOT=${local.root_dir}\nPORT=${var.app_port}\nARCH=${local.package_arch}\nREGION=${var.aws_region}\nARTIFACT_BUCKET=${aws_s3_bucket.artifacts.bucket}\n"
-      },
-    ]
-    runcmd = [
-      ["useradd", "--system", "--no-create-home", "--home-dir", "/nonexistent", "--shell", "/sbin/nologin", "flh-demo"],
-      ["install", "-d", "-m", "0755", "-o", "root", "-g", "root", local.root_dir, "${local.root_dir}/releases"],
-      ["install", "-d", "-m", "0700", "-o", "root", "-g", "root", "${local.root_dir}/state"],
-      ["systemctl", "restart", "systemd-journald"],
-      ["systemctl", "daemon-reload"],
-    ]
-  })])
+  # installed later by the operator over SSM. Rendered from a template so the
+  # same document can be produced offline with a sample bucket name
+  # (scripts/validation/flh084/render_cloud_config.sh).
+  cloud_config_vars = {
+    release_tool = file("${local.host_dir}/flh-release")
+    unit         = local.unit
+    journald     = file("${local.host_dir}/journald-flh.conf")
+    root         = local.root_dir
+    port         = var.app_port
+    arch         = local.package_arch
+    region       = var.aws_region
+    bucket       = aws_s3_bucket.artifacts.bucket
+  }
+  user_data = templatefile("${local.host_dir}/cloud-config.yaml.tftpl", local.cloud_config_vars)
 }
 
 data "aws_ssm_parameter" "al2023" {
