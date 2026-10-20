@@ -1,0 +1,36 @@
+#cloud-config
+${yamlencode({
+  write_files = [
+    {
+      path        = "/usr/local/sbin/flh-release"
+      permissions = "0755"
+      owner       = "root:root"
+      content     = release_tool
+    },
+    {
+      path        = "/etc/systemd/system/flh-public-demo.service"
+      permissions = "0644"
+      owner       = "root:root"
+      content     = unit
+    },
+    {
+      path        = "/etc/systemd/journald.conf.d/50-flh-demo.conf"
+      permissions = "0644"
+      owner       = "root:root"
+      content     = journald
+    },
+    {
+      path        = "/etc/flh-demo/deploy.env"
+      permissions = "0644"
+      owner       = "root:root"
+      content     = "ROOT=${root}\nPORT=${port}\nARCH=${arch}\nREGION=${region}\nARTIFACT_BUCKET=${bucket}\n"
+    },
+  ]
+  runcmd = [
+    ["useradd", "--system", "--no-create-home", "--home-dir", "/nonexistent", "--shell", "/sbin/nologin", "flh-demo"],
+    ["install", "-d", "-m", "0755", "-o", "root", "-g", "root", root, "${root}/releases"],
+    ["install", "-d", "-m", "0700", "-o", "root", "-g", "root", "${root}/state"],
+    ["systemctl", "restart", "systemd-journald"],
+    ["systemctl", "daemon-reload"],
+  ]
+})}

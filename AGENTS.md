@@ -484,9 +484,15 @@ FLH-084 AWS demo deployment preparation:
   `/knowledge-library/demo` identity to match the release; otherwise it restores
   the previous release. The unit binds 127.0.0.1 with an empty
   `HTTP_ALLOWED_HOSTS`; DNS (Namecheap) and public exposure stay frozen.
-- Agents must not run `terraform init/plan/apply` or AWS commands; the owner
-  runs `docs/AWS_DEMO.md`. Decisions and cost:
+- Agents must not run `terraform plan/apply/destroy` or AWS commands; the owner
+  runs `docs/AWS_DEMO.md`. `terraform fmt/init -backend=false/validate` and
+  provider downloads were authorised for FLH-085 only. Decisions and cost:
   `docs/plans/FLH-084-aws-demo-deployment.md`.
+- FLH-085: the committed `.terraform.lock.hcl` pins hashicorp/aws 6.69.1 for
+  linux/darwin amd64+arm64 and windows amd64; do not `-upgrade` it unasked.
+  User data is `deploy/aws/host/cloud-config.yaml.tftpl`;
+  `scripts/validation/flh084/render_cloud_config.sh` renders it offline.
+  Intended operation is continuous.
 
 ## Design Priorities
 
