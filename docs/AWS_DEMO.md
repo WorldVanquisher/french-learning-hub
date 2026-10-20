@@ -10,10 +10,28 @@ previews it privately over AWS Systems Manager Session Manager.
 
 **Status:**
 - **FLH-084:** prepared the configuration.
-- **FLH-085:** natively validated it, without AWS. Nothing has been planned or
-  applied, and no AWS account has been contacted. Every step below is run by
-  the human owner. See "Validation status" for what that does and does not
-  prove.
+- **FLH-085:** natively validated it, without AWS. See "Validation status"
+  for what that does and does not prove.
+- **FLH-086:** corrected the permissions (host-role boundary, no
+  default-security-group adoption).
+- **FLH-087 (operator-reported):** the first deployment was applied from
+  `flh086r2.tfplan`: 19 added, us-east-1, arm64 `t4g.micro`. rc1 was installed
+  and is serving on loopback.
+  - Interactive acceptance is still pending.
+  - Detachment of `flh-demo-deploy` is unconfirmed.
+  - Evidence: `docs/validation/FLH-087-aws-first-deployment.md`.
+
+Every step below is run by the human owner.
+
+**Deployment stages are verified separately.** Each stage proves only itself:
+
+| Stage | Proved by |
+|---|---|
+| 1. Infrastructure created | `terraform apply` result; SSM `PingStatus = Online` (§4) |
+| 2. Host configured | `cloud-init status --wait` = done; schema check of the decoded config (§6); installer and unit present |
+| 3. Runtime ready | `flh-release install` / `status` identity match; service active; `/readyz` = ready (§6, §7) |
+| 4. Browser access | page loads through the SSM port forward (§7) |
+| 5. Interactive acceptance | an explicit check of search, Concept detail and source record, and the language selector (§7) |
 
 **Intended mode (owner decision, FLH-085):** continuous operation. The instance
 runs all month, about $10.42/month in us-east-1 on `t4g.micro` before tax and
@@ -41,7 +59,7 @@ credentials or API calls. The console steps ran with networking disabled.
 | `terraform init -backend=false -lockfile=readonly` then `terraform validate` | pass, 0 errors, 0 warnings |
 | `terraform fmt -check` of `terraform.tfvars.example`, `terraform console -var-file` with it | pass after formatting; variable validations evaluated |
 | `scripts/validation/flh084/render_cloud_config.sh` (renders the real template wiring with a sample bucket) and Terraform `yamldecode` | parses; contents equal the source files byte for byte; 15.4 KB raw (EC2 limit 16 KB), 5.6 KB gzipped as sent |
-| `cloud-init schema` | **NOT RUN**: cloud-init is not installed on the validation host. Run it on the instance after boot (§6) |
+| `cloud-init schema` | **NOT RUN** on the validation host (cloud-init is not installed). FLH-087, operator-reported on the instance: `--system` rejected the gzip header; the decoded `/var/lib/cloud/instance/cloud-config.txt` is "Valid cloud-config" (§6) |
 | `terraform plan` / `apply`, AWS CLI, Session Manager | **NOT RUN** (not authorised). Real AWS verification starts at §3 |
 
 **What native validation does not prove:**
@@ -92,47 +110,20 @@ These are proved only by §3 to §7 against the real account.
     - the provider's account and partition lookups.
 
     It cannot create or change anything.
-  - **Apply, operate and destroy, option 1:** `AdministratorAccess`. This is
-    the simplest option for a single-owner account.
-  - **Apply, operate and destroy, option 2:** `PowerUserAccess` plus the inline
-    supplement below. `PowerUserAccess` covers EC2, VPC, S3 and SSM but
-    excludes almost all of IAM. The supplement allows only roles and instance
-    profiles whose names start with this stack's prefix.
-
-    **Not tested against AWS:** if `plan` or `apply` reports `AccessDenied`,
-    the error names the missing action. Add only that action, or use option 1.
-    ```json
-    {
-      "Version": "2012-10-17",
-      "Statement": [
-        {
-          "Sid": "FlhDemoHostRole",
-          "Effect": "Allow",
-          "Action": [
-            "iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:TagRole", "iam:UntagRole",
-            "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy",
-            "iam:ListRolePolicies", "iam:ListAttachedRolePolicies",
-            "iam:ListInstanceProfilesForRole", "iam:PassRole"
-          ],
-          "Resource": "arn:aws:iam::*:role/flh-demo-host-*"
-        },
-        {
-          "Sid": "FlhDemoHostInstanceProfile",
-          "Effect": "Allow",
-          "Action": [
-            "iam:CreateInstanceProfile", "iam:DeleteInstanceProfile", "iam:GetInstanceProfile",
-            "iam:AddRoleToInstanceProfile", "iam:RemoveRoleFromInstanceProfile",
-            "iam:TagInstanceProfile", "iam:UntagInstanceProfile"
-          ],
-          "Resource": "arn:aws:iam::*:instance-profile/flh-demo-host-*"
-        }
-      ]
-    }
-    ```
-    The pattern `flh-demo-host-*` assumes the default `name_prefix`
-    (`flh-demo`). It must change if the prefix does.
-  - **Operating only (§5 to §8, without Terraform):** a narrower identity is
-    enough:
+  - **Apply and destroy (recommended):** attach the customer-managed
+    `flh-demo-deploy` policy (`deploy/aws/iam/`), only while applying or
+    destroying. It requires the host role to carry the administrator-managed
+    permissions boundary `flh-demo-host-boundary`, and explicitly denies
+    removing or changing that boundary. Procedure: `deploy/aws/iam/README.md`.
+    It is **untested against AWS**: an `AccessDenied` names the missing action
+    or condition.
+  - **Apply and destroy (alternative):** `AdministratorAccess`. The boundary
+    policy must still exist, because the plan looks it up by name.
+  - **Withdrawn (FLH-086):** the earlier `PowerUserAccess` plus IAM supplement.
+    It let the deploy identity create unbounded `flh-demo-host-*` roles, which
+    is a privilege-escalation path.
+  - **Operating only (§5 to §8, without Terraform):** the `flh-demo-operate`
+    policy (`deploy/aws/iam/`) grants:
     - `s3:PutObject` on `<bucket>/releases/*`;
     - `ssm:StartSession` on the instance and on the `AWS-StartPortForwardingSession`
       document;
@@ -231,16 +222,24 @@ fails if the lock does not match.
 cd deploy/aws/terraform
 cp terraform.tfvars.example terraform.tfvars    # git-ignored; edit the owner choices (§10)
 aws sts get-caller-identity                     # confirm the intended account before planning
-terraform plan -out flh084.tfplan
+terraform plan -out <new-name>.tfplan
 ```
 
-**Review the plan before applying.** Expect exactly these resources to be
-created:
+**Before planning:** an administrator must have created the
+`flh-demo-host-boundary` policy (`deploy/aws/iam/README.md`). The plan reads it
+by name and fails if it is missing.
+
+**Obsolete plan:** `flh086.tfplan` predates the FLH-086 corrections. It still
+adopts the default security group and creates the role without a boundary.
+**Never apply it**; it is kept only as review evidence. Generate and review a
+new plan.
+
+**Review the plan before applying.** Expect exactly these **19** resources to
+be created:
 - **Network:**
   - `aws_vpc`, `aws_internet_gateway`, `aws_subnet`;
   - `aws_route_table` and `aws_route_table_association`;
   - `aws_vpc_endpoint` (S3, Gateway);
-  - `aws_default_security_group` (no rules);
   - `aws_security_group` and one `aws_vpc_security_group_egress_rule` (tcp/443).
 - **IAM:** `aws_iam_role`, `aws_iam_role_policy`, `aws_iam_instance_profile`.
 - **Storage:** `aws_s3_bucket` plus its public access block, ownership controls,
@@ -256,12 +255,15 @@ created:
   AMI ID in `terraform.tfvars` if it should not drift.
 - **Instance policy:** contains only the five Session Manager actions plus
   `s3:GetObject` on `<bucket>/releases/*`.
+- **Role boundary:** `aws_iam_role.host` has `permissions_boundary` set to the
+  ARN of `flh-demo-host-boundary`.
+- **Default security group:** no `aws_default_security_group` resource.
 - **Bucket:** `force_destroy = false`.
 
 ## 4. Apply (starts billing)
 
 ```sh
-terraform apply flh084.tfplan
+terraform apply <new-name>.tfplan     # the reviewed replacement plan, never flh086.tfplan
 terraform output
 ```
 
@@ -282,6 +284,19 @@ causes, which are the usual ones:
 - the instance role is missing;
 - outbound 443 is blocked;
 - there is no public IPv4 address.
+
+**Default security group (optional, administrator, once).** Terraform does not
+manage the new VPC's default security group, because adopting it would need
+account-wide rule revocation for the deploy identity. AWS creates it with an
+inbound rule from members of the same group and all outbound traffic.
+- **Exposure:** no network interface uses it, since the instance names its own
+  group, and it admits nothing from the internet.
+- **Optional hardening:** an administrator can strip its rules once with
+  administrator credentials. Look up its ID with `aws ec2 describe-security-groups
+  --filters Name=vpc-id,Values=<vpc-id> Name=group-name,Values=default`, then
+  run `aws ec2 revoke-security-group-ingress` / `revoke-security-group-egress`
+  with the listed rule IDs.
+- **Drift:** this is outside Terraform, so it causes no drift.
 
 Use **EC2 → Instance → Actions → Monitor → Get system log** (read-only) to see
 cloud-init output.
@@ -304,11 +319,23 @@ aws ssm start-session --target "$(terraform output -raw instance_id)"
 
 ```sh
 cloud-init status --wait                     # must end with: status: done
-sudo cloud-init schema --system --annotate   # first real schema check of the user data
-sudo flh-release install s3://<bucket>/releases/flh-public-demo-<label>.tar.gz <sha256 from the .sha256 file>
-sudo flh-release status
+sudo cloud-init schema -c /var/lib/cloud/instance/cloud-config.txt --annotate   # see the note below
+sudo /usr/local/sbin/flh-release install s3://<bucket>/releases/flh-public-demo-<label>.tar.gz <sha256 from the .sha256 file>
+sudo /usr/local/sbin/flh-release status
 exit
 ```
+
+**Installer path:** `flh-release` lives at `/usr/local/sbin/flh-release`.
+`sudo`'s `secure_path` may not include `/usr/local/sbin`, so use the full path.
+
+**Schema check of the user data:** the user data is sent gzip-compressed.
+- **Observed (FLH-087, cloud-init 22.2.2 on the deployed AL2023 AMI):**
+  `cloud-init schema --system` rejected the compressed input header.
+  `/var/lib/cloud/instance/user-data.txt` begins with the gzip magic bytes.
+- **What passed:** validating the decoded configuration that cloud-init wrote,
+  `/var/lib/cloud/instance/cloud-config.txt`, reported "Valid cloud-config".
+- **Other versions:** other cloud-init versions may behave differently. If
+  `--system` succeeds on a later AMI, either check is acceptable.
 
 **What `install` does, in order:**
 1. Downloads the tarball and requires its SHA-256 to equal the one given.
@@ -333,7 +360,7 @@ re-verified. If there is no previous release, the service is stopped.
 - **Re-installing a package:** a package name already installed is accepted
   again only with the same tarball hash. Releases are immutable; use a new
   label for new bytes.
-- **Deployed identity:** `flh-release status` prints the tarball SHA-256,
+- **Deployed identity:** `/usr/local/sbin/flh-release status` prints the tarball SHA-256,
   source object, `source_revision` and artifact version from `RELEASE.json`,
   and the live identity check.
 
@@ -358,16 +385,26 @@ curl -s http://127.0.0.1:18970/knowledge-library/demo | python3 -m json.tool | h
   is empty.
 - **Boundary:** the read-only allowlist is unchanged. Non-demo routes are 404
   and other methods are 405.
+- **Tunnel scope:** closing the port-forward session ends only the preview.
+  The instance and the service keep running and billing.
+
+**Interactive acceptance (stage 5).** Through the tunnel, record the result of:
+- one keyword search;
+- opening a Concept;
+- opening a supporting unit's source record;
+- the language selector: English on first load, switching to 简体中文 and back.
+
+A page that loads is browser access only, not acceptance.
 
 **Host commands, run in a session:**
 
 | Purpose | Command |
 |---|---|
 | Health | `curl -s http://127.0.0.1:18970/healthz` and `/readyz` |
-| Identity | `sudo flh-release status` |
+| Identity | `sudo /usr/local/sbin/flh-release status` |
 | Logs | `journalctl -u flh-public-demo -n 200 --no-pager` (persistent, capped at 200 MB / 30 days) |
-| Releases and history | `sudo flh-release list` |
-| Rollback to the previous release (verified as in §6) | `sudo flh-release rollback`. Running it again swaps back |
+| Releases and history | `sudo /usr/local/sbin/flh-release list` |
+| Rollback to the previous release (verified as in §6) | `sudo /usr/local/sbin/flh-release rollback`. Running it again swaps back |
 | Stop serving without uninstalling | `sudo systemctl disable --now flh-public-demo` |
 
 **Upgrading:** upload a new label (§5) and `install` it. The old release stays
@@ -392,7 +429,7 @@ aws ec2 start-instances --instance-ids "$(terraform output -raw instance_id)"
 **On start:**
 - The instance gets a new public IP. Nothing depends on it.
 - The unit is enabled, so the selected release starts on boot. Confirm with
-  `flh-release status`.
+  `/usr/local/sbin/flh-release status`.
 - `terraform plan` does not track the running or stopped state.
 
 ## 9. Teardown
@@ -442,8 +479,9 @@ tarballs remain on the operator's machine.
 6. **Release package:** rc1, or a newly built package from the current source
    (§2), with its `source_revision` label.
 7. **Operator identity and permission set:** `ReadOnlyAccess` for the plan.
-   For apply, `AdministratorAccess`, or `PowerUserAccess` plus the scoped IAM
-   supplement (§1). Plus the budget alert threshold.
+   For apply, the administrator-created `flh-demo-host-boundary` plus
+   `flh-demo-deploy` (or `AdministratorAccess`); `flh-demo-operate` to operate
+   (§1). Plus the budget alert threshold.
 8. **Defaults to confirm or change:**
    - root volume size and `delete_on_termination`, defaults 8 GiB and true;
    - `cpu_credits = standard`;
@@ -473,7 +511,7 @@ Then:
 ```sh
 aws sts get-caller-identity
 terraform -chdir=deploy/aws/terraform init -lockfile=readonly
-terraform -chdir=deploy/aws/terraform plan -out flh084.tfplan
+terraform -chdir=deploy/aws/terraform plan -out <new-name>.tfplan
 ```
 
 **Lifting the freeze is outside this runbook.** It needs separate, explicit

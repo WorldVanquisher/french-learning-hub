@@ -69,7 +69,9 @@ check("no load balancer / NAT / RDS / ECS / EKS / EIP / interface endpoints",
       not re.search(r'"aws_(lb|alb|elb|nat_gateway|db_instance|rds_cluster|ecs_|eks_|eip)', code)
       and 'vpc_endpoint_type = "Interface"' not in code)
 check("no Route 53 or DNS records", "aws_route53" not in code)
-check("default security group stripped", 'resource "aws_default_security_group"' in code)
+check("default security group not adopted (needs account-wide revoke; FLH-086)", "aws_default_security_group" not in code)
+check("host role requires the administrator-managed permissions boundary",
+      "permissions_boundary = data.aws_iam_policy.host_boundary.arn" in code and 'data "aws_iam_policy" "host_boundary"' in code)
 
 # Instance.
 check("IMDSv2 required", 'http_tokens                 = "required"' in code)

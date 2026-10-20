@@ -89,11 +89,12 @@ resource "aws_vpc_endpoint" "s3" {
   tags              = { Name = "${local.name}-s3" }
 }
 
-# Strip the VPC default security group of its default rules.
-resource "aws_default_security_group" "demo" {
-  vpc_id = aws_vpc.demo.id
-  tags   = { Name = "${local.name}-default-unused" }
-}
+# The VPC's default security group is deliberately not managed here
+# (FLH-086): adopting it needs rule revocation on an untagged group whose VPC
+# ARN is unknown before apply, which the deploy identity could only be granted
+# account-wide. No network interface uses it (the instance names its own
+# group); an administrator may strip its rules once after apply
+# (docs/AWS_DEMO.md section 4).
 
 resource "aws_security_group" "host" {
   name        = "${local.name}-host"
@@ -125,9 +126,17 @@ data "aws_iam_policy_document" "ec2_assume" {
   }
 }
 
+# Administrator-managed permissions boundary (deploy/aws/iam/
+# flh-demo-host-boundary-policy.json). It must exist before planning; the
+# deploy identity may create this role only with it attached.
+data "aws_iam_policy" "host_boundary" {
+  name = var.host_role_permissions_boundary_name
+}
+
 resource "aws_iam_role" "host" {
-  name_prefix        = "${local.name}-host-"
-  assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
+  name_prefix          = "${local.name}-host-"
+  assume_role_policy   = data.aws_iam_policy_document.ec2_assume.json
+  permissions_boundary = data.aws_iam_policy.host_boundary.arn
 }
 
 # AWS's documented minimal Session Manager instance policy (no session logging,
