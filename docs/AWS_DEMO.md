@@ -16,8 +16,11 @@ previews it privately over AWS Systems Manager Session Manager.
   default-security-group adoption).
 - **FLH-087 (operator-reported):** the first deployment was applied from
   `flh086r2.tfplan`: 19 added, us-east-1, arm64 `t4g.micro`. rc1 was installed
-  and is serving on loopback.
-  - Interactive acceptance is still pending.
+  first. It was then upgraded to the verified-source package
+  `flh-public-demo-flh087-rc1`, which is active and ready on loopback. rc1 is
+  the previous release and rollback target.
+  - Browser review: overall, no blocking issue reported. Individual features
+    were not separately accepted.
   - Detachment of `flh-demo-deploy` is unconfirmed.
   - Evidence: `docs/validation/FLH-087-aws-first-deployment.md`.
 

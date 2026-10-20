@@ -7,7 +7,17 @@ Owner: NAS Claude Code. Builds on FLH-084, FLH-085 and FLH-086.
 - VPS, DNS, nginx or xray changes;
 - Git commands, subagents, installations, model calls.
 
-## 1. Deployment evidence (OPERATOR-REPORTED)
+**Current state (closing summary):**
+- **Deployed:** the verified-source candidate `flh-public-demo-flh087-rc1`
+  (§3), installed over rc1 by the operator (§4). rc1 is the recorded rollback
+  target.
+- **Historical:** the earlier `flh087-local-unverified` package (§2) was
+  superseded and never deployed.
+- **AWS and browser results are operator-reported.** The agent observed none
+  of them; it ran only the local package build and checks.
+- **Outstanding:** see §5.
+
+## 1. First deployment evidence (OPERATOR-REPORTED)
 
 The human supplied everything in this section. None of it was independently
 observed by the agent. Account, bucket and instance identifiers are
@@ -22,10 +32,10 @@ deliberately omitted.
 | Release install | `flh-release` downloaded rc1 from the private bucket, passed CANDIDATE validation, installed it and verified the live artifact identity |
 | Runtime | service `active`; `GET http://127.0.0.1:18970/readyz` returned `{"status":"ready"}` |
 | Browser access | demo opened on a Mac through an SSM port forward (instance 18970 → local 18971). The tunnel was then closed, which does not stop the instance |
-| Interactive acceptance | **PENDING.** Search and record-detail interactions were requested; no explicit acceptance report yet |
-| Deploy-policy detachment | **PENDING CONFIRMATION.** Removal of the `flh-demo-deploy` attachment is not explicitly verified |
+| Interactive acceptance | Not reported for rc1. For the later upgrade, see §4 |
+| Deploy-policy detachment | **PENDING CONFIRMATION.** Removal of the `flh-demo-deploy` attachment is not explicitly verified (still open, §5) |
 
-**Deployed release (rc1, unchanged):**
+**First deployed release (rc1; now the previous release and rollback target):**
 
 | Item | Value |
 |---|---|
@@ -49,7 +59,12 @@ deliberately omitted.
 - **Unchanged:** the permissions-boundary design and the `flh086.tfplan`
   obsolete-plan warning.
 
-## 2. Updated demo package: LOCAL CANDIDATE / SOURCE UNVERIFIED
+## 2. Earlier package (historical): LOCAL CANDIDATE / SOURCE UNVERIFIED
+
+**Superseded and never deployed.** This section records the first rebuild,
+made before a source revision was available. It was replaced by the
+verified-source candidate in §3, which is the deployed package. The
+"source unverified" label applies only to this earlier package.
 
 **Source provenance.** The exact source revision and clean committed state
 **could not be established**:
@@ -149,29 +164,115 @@ optional 简体中文, persistence, catalog parity.
 - **Real-browser rendering of the language selector:** not run, no browser on
   the NAS. English default and Chinese switching are proven by the jsdom tests
   of the same source, not by a browser against the packaged bundle.
-- **Source revision and clean committed state:** unverified (see above).
+- **Source revision and clean committed state:** unverified for this package
+  (see above); resolved by the verified rebuild in §3.
 - **`<html lang="fr">`:** the static `index.html` still declares it until the
   app sets the language on mount. This predates the task (FLH-083).
 
-## 3. Release blockers for the new package
+## 3. Verified-source candidate: `flh087-rc1` (DEPLOYED)
 
-1. **Source provenance:** a human must commit the tree and rebuild with the
-   commit hash as `--revision` and a new label, e.g. `flh087-rc1`. This task
-   has no Git access. Deploying the unverified candidate instead is an explicit
-   owner decision.
-2. **arm64 runtime:** proved only on the instance, after install
-   (`flh-release` checks readiness and identity there).
-3. **Interactive acceptance:** search, Concept detail, source record and
-   language switching, in a browser through the tunnel.
+**Source identity.** The human owner fetched `origin/main`, created the
+branch at the revision below and confirmed no tracked changes. The source
+identity rests on that Git verification. The agent ran no Git and did not
+check the revision itself. That is a task boundary, not a defect of the
+package, so the package is **not** labelled source-unverified.
 
-## 4. Human-operated AWS upgrade (not executed)
+| Item | Value |
+|---|---|
+| Package | `flh-public-demo-flh087-rc1.tar.gz` (41,365,127 bytes) |
+| SHA-256 | **`725a367aa545ecdaf723cfd43f571e96b783195f699e6bc6be44d81ad36f4a6d`** |
+| Source revision | `dc82235a85b01497957f571ef6870f514ea0cb27` |
+| Status | CANDIDATE, built 2026-10-20T19:35:37Z with Go 1.27.1 |
+| Targets | `linux/amd64` (x86-64) and `linux/arm64` (AArch64), statically linked |
+| Artifact | version `d025f217f4d76396`, manifest `dfe6e94d…bcab`, `real_model: true` |
 
-From the operator workstation, profile with `flh-demo-operate`; no Terraform:
+**Build (existing workflow, network-isolated):**
+```sh
+unshare -rn env GOPROXY=off GOFLAGS=-mod=readonly GOTOOLCHAIN=local \
+  bash scripts/demo/flh076/package.sh --artifact ~/flh081/artifact \
+  --revision dc82235a85b01497957f571ef6870f514ea0cb27 --label flh087-rc1 --out ~/flh087/verified-release \
+  --expected-deployment 'multilingual-e5-base@d128750597153bb5987e10b1c3493a34e5a4502a/flh_e5_role_prefix_v1/float16/singleton_v1/5a3e23f28a05baff'
+```
+- **Output collision:** the output directory did not exist beforehand, and
+  the builder refuses an existing package name.
+- **Dependencies:** existing Go modules and `web/node_modules`; nothing
+  installed or downloaded.
+
+**Unchanged artifact and model provenance:**
+- All five artifact files are byte-identical to `~/flh081/artifact`, which
+  matches its recorded checksums. No embeddings were regenerated.
+- The pinned E5 deployment id and the model provenance are the same as in
+  rc1.
+- The 268 source inputs recorded for the §2 package are byte-identical in
+  the verified tree.
+
+**Validation (run by the agent):**
+
+| Command | Result |
+|---|---|
+| `unshare -rn python3 -B scripts/validation/flh081/candidate_check.py --tarball <flh087-rc1 tarball> --work ~/flh087/check-rc1 --revision dc82235a85b01497957f571ef6870f514ea0cb27 --artifact-version d025f217f4d76396` | **93 PASS, 0 FAIL**. Includes loopback-only namespace and `RELEASE.json` `source_revision` equal to the supplied revision |
+| `python3 -B scripts/validation/flh084/release_tool_test.py --tarball <flh087-rc1 tarball> --work <scratch> --port 18996` | **26 passed, 0 failed** (amd64 binary, fake `aws` and `systemctl`) |
+
+**Preserved:** rc1 (`536966c4…81df`) and the §2 package (`6035fe8b…7521`)
+are unchanged.
+
+## 4. AWS upgrade and browser review (OPERATOR-REPORTED)
+
+The human supplied everything in this section. None of it was independently
+observed by the agent. Account, bucket and instance identifiers are omitted.
+
+| Item | Operator-reported result |
+|---|---|
+| `flh-release status`: current | `flh-public-demo-flh087-rc1` |
+| `flh-release status`: previous | `flh-public-demo-flh081-rc1` |
+| Tarball hash and source revision | match §3 |
+| Service | `active` |
+| Artifact version | `d025f217f4d76396` |
+| Artifact manifest SHA-256 | `dfe6e94de6664c18be2ae65a27ad9b6c107e7ceefb56a1627fe3f54d4788bcab` |
+| Live identity | match; `real_model=True` |
+| `GET /readyz` | `{"status":"ready"}` |
+
+**What this establishes:**
+- **arm64:** the new arm64 server starts and becomes ready on the AWS
+  instance, with the expected live identity. This is not comprehensive arm64
+  functional testing.
+- **Rollback:** rc1 stays the recorded rollback target. No production
+  rollback was exercised during this upgrade. Rollback is covered only by the
+  local installer test (§3).
+
+**Browser review (operator-reported):**
+- **Reported:** "页面几乎没有问题" ("The page has almost no issues.").
+- **Recorded as:** an overall browser review with no reported blocking issue.
+- **Not claimed from this statement:** separate acceptance of search, Concept
+  detail, source records, language switching or English-default behaviour.
+- **Preview tunnel:** its current open/closed state is unknown. Closing it
+  does not stop the instance.
+
+## 5. Outstanding items
+
+1. **Deploy-policy detachment:** removal of the `flh-demo-deploy` attachment
+   is still unconfirmed.
+2. **Private encoder address in `RELEASE.json`:**
+   `model_provenance.base_url` records the private address of the encoder
+   that produced the vectors. rc1 carries the same field. It must be resolved
+   before public artifact distribution. The address is deliberately not
+   reproduced here.
+3. **Bilingual English/Chinese concept explanations: FROZEN** until the
+   multilingual model choice is settled. No implementation or model research
+   is authorized by this task.
+4. **Not verified:** individual browser features (§4) and arm64 behaviour
+   beyond startup and readiness.
+
+## 6. Upgrade procedure (reference; run by the operator)
+
+The operator ran these steps for the §4 upgrade. They are kept for the next
+upgrade. From the operator workstation, profile with `flh-demo-operate`; no
+Terraform:
 
 ```sh
 # 1. upload (cents); hash comes from the local .sha256 file, never from the bucket
-aws s3 cp --profile flh-plan ~/flh087/release/<package>.tar.gz s3://<artifact-bucket>/releases/
-cat ~/flh087/release/<package>.tar.gz.sha256
+aws s3 cp --profile flh-plan <package-dir>/<package>.tar.gz s3://<artifact-bucket>/releases/
+cat <package-dir>/<package>.tar.gz.sha256
 # 2. session
 aws ssm start-session --profile flh-plan --region us-east-1 --target <instance-id>
 ```
@@ -179,44 +280,38 @@ aws ssm start-session --profile flh-plan --region us-east-1 --target <instance-i
 In the session:
 
 ```sh
-sudo /usr/local/sbin/flh-release status          # before: current = flh-public-demo-flh081-rc1, identity match
+sudo /usr/local/sbin/flh-release status          # before: current release, identity match
 sudo /usr/local/sbin/flh-release install s3://<artifact-bucket>/releases/<package>.tar.gz <sha256>
-sudo /usr/local/sbin/flh-release status          # after: new package, previous = rc1, "(match)"
+sudo /usr/local/sbin/flh-release status          # after: new package, previous = old release, "(match)"
 systemctl is-active flh-public-demo
 curl -s http://127.0.0.1:18970/readyz            # {"status":"ready"}
 curl -s http://127.0.0.1:18970/knowledge-library/demo | python3 -m json.tool | grep -E '"version"|"manifest_sha256"|"real_model"'
 exit
 ```
 
-**Expected identity:** version `d025f217f4d76396`, manifest
-`dfe6e94d…bcab`, `real_model: true`. The artifact is unchanged; the UI and
-binaries change.
-
 **Failure handling:**
 - **Automatic:** if the post-switch identity or readiness check fails,
-  `flh-release` restores rc1 by itself.
+  `flh-release` restores the previous release by itself.
 - **Manual rollback:** `sudo /usr/local/sbin/flh-release rollback`, then
-  `status` and `/readyz` again. rc1 stays in `/srv/flh-demo/releases/`.
+  `status` and `/readyz` again. Previous releases stay in
+  `/srv/flh-demo/releases/`.
 
 **Then:** browser access (stage 4) and interactive acceptance (stage 5)
 through the tunnel, as in `docs/AWS_DEMO.md` §7. Record the results.
 
-## 5. Self-handoff
+## 7. Self-handoff
 
 - **Implementation:**
   - this report;
   - narrow corrections to `docs/AWS_DEMO.md`;
-  - a local package outside the repository. No code changed.
-- **Validation:**
-  - candidate check 93/0, installer test 26/0, i18n 13/13;
-  - archive structure clean;
-  - arm64 runtime, real browser and source revision not verified.
-- **Commit and merge status:** nothing committed by the agent (no Git). The
-  FLH-084 to FLH-086 uncommitted work is preserved and untouched, apart from
-  the runbook edits listed here.
+  - two local packages outside the repository (§2 historical, §3 deployed).
+    No code changed.
+- **Validation (agent-run):**
+  - §3 package: candidate check 93/0, installer test 26/0;
+  - §2 package: candidate check 93/0, installer test 26/0, i18n 13/13,
+    archive structure clean.
+- **Commit and merge status:** nothing committed by the agent (no Git).
 - **Deployment status (operator-reported):**
-  - AWS runs rc1, ready on loopback;
-  - the new package is **not** uploaded or installed;
-  - acceptance and deploy-policy detachment are pending.
-- **Unknowns:** the exact source revision of the new package, the arm64
-  runtime of the new binaries, and real-browser behaviour of the new bundle.
+  - AWS runs `flh-public-demo-flh087-rc1`, active and ready, identity match;
+  - rc1 is the previous release and rollback target.
+- **Open:** see §5.
