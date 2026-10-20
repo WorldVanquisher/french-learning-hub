@@ -1,0 +1,222 @@
+#!/bin/bash
+# flh-release — install, verify, roll back and report FLH public-demo releases on
+# the AWS host (FLH-084). Installed by cloud-init as /usr/local/sbin/flh-release.
+#
+#   flh-release install S3_URI EXPECTED_SHA256   download, verify, validate, switch, restart, verify identity
+#   flh-release rollback                          switch back to the previous release, restart, verify
+#   flh-release status                            current release, recorded identity, service and live identity
+#   flh-release list                              installed releases and the deployment log
+#
+# It reuses the package's own layout and tools (FLH-076/078): releases live in
+# ROOT/releases/<package>/ and are made read-only; ROOT/current is a symlink
+# switched atomically; validate-release.sh must exit 0 (CANDIDATE). BLOCKED
+# (mechanical) packages are refused. The tarball must match the SHA-256 the
+# operator supplies from the local .sha256 file, not one read from the bucket.
+#
+# The server listens on 127.0.0.1 only (systemd unit flh-public-demo.service).
+# After every switch the live /knowledge-library/demo identity (artifact
+# version, manifest SHA-256, real_model) must equal the release's own files;
+# otherwise the previous release is restored, or the service stopped if there
+# is none.
+#
+# Configuration: /etc/flh-demo/deploy.env (written by cloud-init), overridable
+# by environment for tests: FLH_ROOT, FLH_PORT, FLH_ARCH, FLH_SERVICE, FLH_AWS,
+# FLH_SYSTEMCTL, FLH_OWNER, FLH_HEALTH_TIMEOUT, FLH_ALLOW_NONROOT. When the config
+# sets REGION, downloads use that region; when it names ARTIFACT_BUCKET, only s3://ARTIFACT_BUCKET/releases/ objects are accepted.
+set -euo pipefail
+umask 022
+
+CONFIG=${FLH_CONFIG:-/etc/flh-demo/deploy.env}
+# shellcheck disable=SC1090
+[ -r "$CONFIG" ] && . "$CONFIG"
+ROOT=${FLH_ROOT:-${ROOT:-/srv/flh-demo}}
+PORT=${FLH_PORT:-${PORT:-18970}}
+ARCH=${FLH_ARCH:-${ARCH:-arm64}}
+SERVICE=${FLH_SERVICE:-flh-public-demo.service}
+AWS=${FLH_AWS:-aws}
+SYSTEMCTL=${FLH_SYSTEMCTL:-systemctl}
+OWNER=${FLH_OWNER:-root:root}
+HEALTH_TIMEOUT=${FLH_HEALTH_TIMEOUT:-30}
+STATE="$ROOT/state"
+LOG="$STATE/deployments.log"
+
+die() { echo "flh-release: $*" >&2; exit "${2:-1}"; }
+note() { echo "flh-release: $*"; }
+now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+[ "$(id -u)" = 0 ] || [ "${FLH_ALLOW_NONROOT:-}" = 1 ] || die "run as root (sudo)" 2
+case "$ARCH" in amd64|arm64) ;; *) die "ARCH must be amd64 or arm64 (got $ARCH)" 2 ;; esac
+case "$PORT" in ''|*[!0-9]*) die "PORT must be a number" 2 ;; esac
+mkdir -p "$ROOT/releases" "$STATE"
+
+log_event() { # action release tarball_sha source_revision artifact_version result
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$(now)" "$1" "$2" "$3" "$4" "$5" "$6" >> "$LOG"
+}
+
+json_field() { # file dotted.path
+  python3 -I -c 'import json,sys
+d=json.load(open(sys.argv[1]))
+for k in sys.argv[2].split("."): d=d[k]
+print(d)' "$1" "$2"
+}
+
+current_name() {
+  [ -L "$ROOT/current" ] || return 0
+  basename "$(readlink "$ROOT/current")"
+}
+
+switch_to() { # release-name
+  ( cd "$ROOT" && ln -sfn "releases/$1" current.new && mv -T current.new current )
+}
+
+# live_identity_matches NAME: the running server reports exactly this release's artifact.
+live_identity_matches() {
+  local rel="$ROOT/releases/$1" deadline body want_version want_sha
+  want_version=$(json_field "$rel/RELEASE.json" artifact.version)
+  want_sha=$(sha256sum "$rel/artifact/manifest.json" | cut -d' ' -f1)
+  deadline=$(( $(date +%s) + HEALTH_TIMEOUT ))
+  until curl -fsS --max-time 2 "http://127.0.0.1:$PORT/readyz" > /dev/null 2>&1; do
+    [ "$(date +%s)" -lt "$deadline" ] || { note "not ready within ${HEALTH_TIMEOUT}s"; return 1; }
+    sleep 1
+  done
+  body=$(curl -fsS --max-time 5 "http://127.0.0.1:$PORT/knowledge-library/demo") || { note "identity request failed"; return 1; }
+  printf '%s' "$body" | python3 -I -c 'import json,sys
+a=json.load(sys.stdin)["artifact"]
+ok = a["version"] == sys.argv[1] and a["manifest_sha256"] == sys.argv[2] and a["real_model"] is True
+print("live identity:", a["version"], a["manifest_sha256"], "real_model=%s" % a["real_model"], "(match)" if ok else "(MISMATCH)")
+sys.exit(0 if ok else 1)' "$want_version" "$want_sha"
+}
+
+restart_and_verify() { # name
+  "$SYSTEMCTL" enable "$SERVICE" > /dev/null 2>&1 || true
+  "$SYSTEMCTL" restart "$SERVICE"
+  live_identity_matches "$1"
+}
+
+cmd_install() {
+  [ $# = 2 ] || die "usage: flh-release install s3://BUCKET/releases/flh-public-demo-LABEL.tar.gz EXPECTED_SHA256" 2
+  local uri=$1 want=$2 file name rel got previous status
+  [[ "$uri" =~ ^s3://[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]/([A-Za-z0-9._/-]+/)?(flh-public-demo-[A-Za-z0-9._-]+)\.tar\.gz$ ]] \
+    || die "S3 URI must name a flh-public-demo-<label>.tar.gz object" 2
+  name=${BASH_REMATCH[2]}
+  if [ -n "${ARTIFACT_BUCKET:-}" ]; then
+    case "$uri" in "s3://$ARTIFACT_BUCKET/releases/"*) ;; *) die "refused: install only from s3://$ARTIFACT_BUCKET/releases/" 2 ;; esac
+  fi
+  [[ "$want" =~ ^[0-9a-f]{64}$ ]] || die "EXPECTED_SHA256 must be 64 lowercase hex characters" 2
+  case "$name" in *-BLOCKED) die "refused: $name is a BLOCKED (mechanical-vector) package" ;; esac
+  rel="$ROOT/releases/$name"
+  previous=$(current_name)
+
+  if [ -e "$rel" ]; then
+    # Releases are immutable: the same name may be re-selected only for the same bytes.
+    [ "$(cat "$STATE/$name.tarball.sha256" 2>/dev/null)" = "$want" ] \
+      || die "refused: $rel exists with a different (or unknown) tarball hash; use a new release label"
+    note "$name already installed with this hash; re-selecting it"
+  else
+    # Global, not local: the EXIT trap runs after this function's scope ends.
+    WORK=$(mktemp -d "$ROOT/.incoming.XXXXXX")
+    trap 'rm -rf "$WORK"' EXIT
+    file="$WORK/$name.tar.gz"
+    note "downloading $uri"
+    # Explicit region: the bucket policy admits the host only through this
+    # VPC's S3 gateway endpoint, which serves the regional endpoint.
+    "$AWS" s3 cp --only-show-errors "$uri" "$file" ${REGION:+--region "$REGION"} || die "download failed"
+    got=$(sha256sum "$file" | cut -d' ' -f1)
+    [ "$got" = "$want" ] || die "refused: tarball SHA-256 is $got, expected $want"
+    # Only regular files and directories under the single expected top directory.
+    python3 -I - "$file" "$name" <<'PY' || die "refused: unsafe or unexpected tarball layout"
+import sys, tarfile
+path, name = sys.argv[1], sys.argv[2]
+with tarfile.open(path) as t:
+    for m in t.getmembers():
+        parts = m.name.split("/")
+        if m.name.startswith("/") or ".." in parts or parts[0] != name or not (m.isfile() or m.isdir()):
+            sys.exit(f"bad member: {m.name}")
+PY
+    tar -xzf "$file" -C "$WORK" --no-same-owner
+    [ -d "$WORK/$name" ] || die "refused: tarball has no $name/ directory"
+    ( cd "$WORK/$name" && ./validate-release.sh ) || { status=$?; die "refused: validate-release.sh exit $status (0 = CANDIDATE required)"; }
+    status=$(json_field "$WORK/$name/RELEASE.json" release_status)
+    [ "$status" = CANDIDATE ] || die "refused: RELEASE.json status is $status"
+    [ -x "$WORK/$name/bin/linux-$ARCH/flh-server" ] || die "refused: no bin/linux-$ARCH/flh-server in the package"
+    # Move first (a read-only directory cannot be re-parented without root),
+    # then make it immutable before anything can select it.
+    mv "$WORK/$name" "$rel"
+    chown -R "$OWNER" "$rel"
+    chmod -R a-w,a+rX "$rel"
+    printf '%s\n' "$want" > "$STATE/$name.tarball.sha256"
+    printf '%s\n' "$uri" > "$STATE/$name.source"
+    rm -rf "$WORK"
+    trap - EXIT
+  fi
+
+  local revision version
+  revision=$(json_field "$rel/RELEASE.json" source_revision)
+  version=$(json_field "$rel/RELEASE.json" artifact.version)
+  switch_to "$name"
+  note "switched current -> releases/$name (previous: ${previous:-none})"
+  if restart_and_verify "$name"; then
+    [ -n "$previous" ] && [ "$previous" != "$name" ] && printf '%s\n' "$previous" > "$STATE/previous"
+    log_event install "$name" "$want" "$revision" "$version" ok
+    note "installed $name (source $revision, artifact $version)"
+    return 0
+  fi
+  log_event install "$name" "$want" "$revision" "$version" failed
+  if [ -n "$previous" ] && [ "$previous" != "$name" ]; then
+    note "identity check failed; restoring $previous"
+    switch_to "$previous"
+    if restart_and_verify "$previous"; then log_event auto-rollback "$previous" "-" "-" "-" ok
+    else log_event auto-rollback "$previous" "-" "-" "-" failed; "$SYSTEMCTL" stop "$SERVICE" || true; fi
+  else
+    note "identity check failed and there is no previous release; stopping the service"
+    "$SYSTEMCTL" stop "$SERVICE" || true
+    rm -f "$ROOT/current"
+  fi
+  die "install of $name failed; see journalctl -u $SERVICE"
+}
+
+cmd_rollback() {
+  local current previous
+  current=$(current_name)
+  previous=$(cat "$STATE/previous" 2>/dev/null || true)
+  [ -n "$previous" ] && [ -d "$ROOT/releases/$previous" ] || die "no previous release recorded"
+  switch_to "$previous"
+  if restart_and_verify "$previous"; then
+    [ -n "$current" ] && printf '%s\n' "$current" > "$STATE/previous"
+    log_event rollback "$previous" "$(cat "$STATE/$previous.tarball.sha256" 2>/dev/null || echo -)" \
+      "$(json_field "$ROOT/releases/$previous/RELEASE.json" source_revision)" \
+      "$(json_field "$ROOT/releases/$previous/RELEASE.json" artifact.version)" ok
+    note "rolled back to $previous"
+    return 0
+  fi
+  log_event rollback "$previous" "-" "-" "-" failed
+  die "rollback to $previous failed its identity check; current points at $previous; inspect journalctl -u $SERVICE"
+}
+
+cmd_status() {
+  local name
+  name=$(current_name)
+  if [ -z "$name" ]; then note "no release selected"; "$SYSTEMCTL" is-active "$SERVICE" || true; return 3; fi
+  echo "current:        $name"
+  echo "tarball sha256: $(cat "$STATE/$name.tarball.sha256" 2>/dev/null || echo unknown)"
+  echo "source object:  $(cat "$STATE/$name.source" 2>/dev/null || echo unknown)"
+  echo "source rev:     $(json_field "$ROOT/releases/$name/RELEASE.json" source_revision)"
+  echo "artifact:       $(json_field "$ROOT/releases/$name/RELEASE.json" artifact.version)"
+  echo "previous:       $(cat "$STATE/previous" 2>/dev/null || echo none)"
+  echo "service:        $("$SYSTEMCTL" is-active "$SERVICE" 2>/dev/null || true)"
+  FLH_HEALTH_TIMEOUT=5 HEALTH_TIMEOUT=5 live_identity_matches "$name"
+}
+
+cmd_list() {
+  ls -1 "$ROOT/releases"
+  echo "--- deployments ($LOG)"
+  tail -n 20 "$LOG" 2>/dev/null || true
+}
+
+case "${1:-}" in
+  install) shift; cmd_install "$@" ;;
+  rollback) cmd_rollback ;;
+  status) cmd_status ;;
+  list) cmd_list ;;
+  *) die "usage: flh-release install S3_URI SHA256 | rollback | status | list" 2 ;;
+esac

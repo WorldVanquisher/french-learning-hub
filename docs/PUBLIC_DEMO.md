@@ -267,6 +267,11 @@ go run ./scripts/demo/flh073/prepare build -out $W/artifact
 
 ## Deployment preparation (not performed)
 
+**AWS (FLH-084):** a prepared, not yet applied, single-EC2 deployment of a
+release package is in [AWS_DEMO.md](AWS_DEMO.md): no inbound access, private
+preview over Session Manager, verified install and rollback with `flh-release`.
+The general notes below still apply to any host.
+
 **Server and storage**
 - **Account:** a dedicated, unprivileged system user, with its own directory,
   for example `/srv/flh-demo/{bin,releases,current}`.

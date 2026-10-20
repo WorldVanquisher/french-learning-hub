@@ -471,22 +471,22 @@ FLH-083 UI localization:
   (no markup in strings, no sentences assembled from fragments), and outcome or
   notice text stored as message references so a language switch re-renders it.
 
-FLH-083 UI localization:
+FLH-084 AWS demo deployment preparation:
 
-- `web/src/i18n/` provides English (default on first use, regardless of browser
-  locale) and 简体中文 for application text in every workbench view and the public
-  demo. An explicit choice is stored in `localStorage` (`flh.ui-locale.v1`);
-  unavailable storage or an invalid value means English.
-- Translate application text only. Never translate learner content, French
-  examples, stored or AI-generated text, Concept identities, human notes, IDs,
-  wire values/API fields, provider/retriever/model names, provenance, the
-  decision vocabulary (SAME, NEW CONCEPT, BROADER, NARROWER, RELATED, DISTINCT,
-  INVALID, RESTORE, CURRENT SAME) or raw server error details. Status values get
-  display labels only.
-- `zh-CN.ts` is typed to exactly the English keys; `i18n.test.tsx` checks
-  placeholder parity. New UI text needs both catalogs, whole-sentence messages
-  (no markup in strings, no sentences assembled from fragments), and outcome or
-  notice text stored as message references so a language switch re-renders it.
+- `deploy/aws/` prepares (does not perform) the read-only public demo on one EC2
+  instance: Terraform with region/architecture/instance type/AMI as variables,
+  no security-group ingress (egress 443 only), Session Manager access with AWS's
+  minimal instance policy plus `s3:GetObject` on the private artifact bucket's
+  `releases/*`, IMDSv2, encrypted gp3, no credentials or URLs in user-data/state.
+- `deploy/aws/host/flh-release` installs a CANDIDATE package only after the
+  operator-supplied tarball SHA-256, tar-safety and `validate-release.sh` pass,
+  switches `current` atomically, and requires the live
+  `/knowledge-library/demo` identity to match the release; otherwise it restores
+  the previous release. The unit binds 127.0.0.1 with an empty
+  `HTTP_ALLOWED_HOSTS`; DNS (Namecheap) and public exposure stay frozen.
+- Agents must not run `terraform init/plan/apply` or AWS commands; the owner
+  runs `docs/AWS_DEMO.md`. Decisions and cost:
+  `docs/plans/FLH-084-aws-demo-deployment.md`.
 
 ## Design Priorities
 
