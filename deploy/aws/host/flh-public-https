@@ -1,0 +1,599 @@
+#!/bin/bash
+# flh-public-https — public HTTPS entry point for the FLH read-only demo on the
+# AWS host (FLH-088). Installed by the operator over SSM as
+# /usr/local/sbin/flh-public-https; deliberately NOT part of cloud-init, because
+# changing the user data replaces the instance.
+#
+#   flh-public-https preflight HOST                      checks only, changes nothing
+#   flh-public-https enable HOST [--staging] [--email ADDRESS]
+#   flh-public-https status
+#   flh-public-https disable                             back to the private SSM-only host
+#   flh-public-https render DIR HOST CERT_NAME           write the nginx files to DIR (tests)
+#
+# enable installs nginx and certbot from the Amazon Linux repositories (no
+# third-party repository, no pip), obtains a Let's Encrypt certificate with the
+# HTTP-01 webroot method, and terminates TLS in nginx in front of the unchanged
+# demo on 127.0.0.1:PORT. It allows only GET and HEAD, without request bodies,
+# with per-address rate limits, and rejects any other host name. It adds HOST to
+# the server's HTTP_ALLOWED_HOSTS through a systemd drop-in; the unit file
+# itself, the release layout and flh-release are untouched. --staging uses the
+# Let's Encrypt staging service (an untrusted certificate) for a first dry run
+# that does not consume production rate limits.
+#
+# Public URL: https://HOST/ on the standard port 443 (port 80 only answers
+# ACME and redirects). preflight stops and names the holder if 80 or 443 is
+# taken; it never picks another public port.
+#
+# Prerequisites: the instance's Elastic IP (terraform public_https_enabled) and
+# a DNS A record HOST -> that address. preflight queries the system resolver
+# directly: HOST must have exactly that A record, no CNAME, and a verified
+# empty AAAA answer (this rollout is IPv4-only; a failed lookup is never
+# treated as "no AAAA").
+#
+# Existing nginx configuration: the top-level nginx.conf is replaced only when
+# it is the unmodified package file (rpm -V) and no other *.conf exists in
+# conf.d/ or default.d/, or when this tool already manages it (safe rerun).
+# Anything else is refused, never silently disabled.
+#
+# Renewal: the renewal mechanism is the one shipped by the installed certbot
+# package (a systemd timer, or a cron file with crond running), found from the
+# package's file list. enable refuses before issuing a certificate if there is
+# none, and serves HTTPS only after the schedule is enabled, active and has a
+# next run, and the renewal configuration uses the webroot with the nginx
+# reload hook. Exit status 3 means "certificate issued, HTTPS not enabled".
+#
+# disable restores the original nginx.conf, stops nginx and the renewal timer,
+# removes the drop-in and restarts the demo with loopback hosts only.
+# Certificates stay in /etc/letsencrypt; packages stay installed.
+#
+# Configuration: /etc/flh-demo/deploy.env (PORT). Test overrides: FLH_CONFIG,
+# FLH_ALLOW_NONROOT, FLH_SYSROOT (prefix for host paths), FLH_RELEASE,
+# FLH_RESOLVER (resolver address[:port]), FLH_INSTALL_OWNER, FLH_INSTALL_GROUP.
+set -euo pipefail
+umask 022
+
+CONFIG=${FLH_CONFIG:-/etc/flh-demo/deploy.env}
+# shellcheck disable=SC1090
+[ -r "$CONFIG" ] && . "$CONFIG"
+PORT=${PORT:-18970}
+SERVICE=flh-public-demo.service
+SYSROOT=${FLH_SYSROOT:-}
+RELEASE_TOOL=${FLH_RELEASE:-/usr/local/sbin/flh-release}
+OWNER=${FLH_INSTALL_OWNER:-root}
+GROUP=${FLH_INSTALL_GROUP:-root}
+# Paths as nginx and certbot see them (written into configuration) ...
+SITE_INCLUDE=/etc/nginx/flh-demo
+WEBROOT=/var/lib/flh-acme
+LE_DIR=/etc/letsencrypt
+# ... and as this tool reads and writes them.
+NGINX_DIR=$SYSROOT/etc/nginx
+SITE_DIR=$SYSROOT$SITE_INCLUDE
+ORIGINAL=$NGINX_DIR/nginx.conf.flh-original
+DROPIN_DIR=$SYSROOT/etc/systemd/system/$SERVICE.d
+DROPIN=$DROPIN_DIR/50-public-host.conf
+STATE=$SYSROOT/etc/flh-demo/public-https.env
+MARKER="# FLH-088: nginx for the FLH read-only public demo only (flh-public-https)."
+
+die() { echo "flh-public-https: $*" >&2; exit "${2:-1}"; }
+note() { echo "flh-public-https: $*"; }
+
+valid_host() { # lowercase DNS name with at least two labels; never an IP literal
+  [[ "$1" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]] && [ "${#1}" -le 253 ]
+}
+case "$PORT" in ''|*[!0-9]*) die "PORT must be a number" 2 ;; esac
+
+# --- nginx configuration -----------------------------------------------------
+
+write_main_conf() { # path
+  cat > "$1" <<EOF
+$MARKER
+# The package's original file is kept as nginx.conf.flh-original.
+user nginx;
+worker_processes auto;
+pid /run/nginx.pid;
+error_log syslog:server=unix:/dev/log,tag=nginx warn;
+
+events {
+    worker_connections 512;
+}
+
+http {
+    server_tokens off;
+    # Through journald, which is size- and age-capped on this host.
+    access_log syslog:server=unix:/dev/log,tag=nginx_access combined;
+    include $SITE_INCLUDE/*.conf;
+}
+EOF
+}
+
+write_http_conf() { # path host
+  cat > "$1" <<EOF
+# FLH-088 port 80: ACME HTTP-01 challenges and a redirect to HTTPS, for $2 only.
+server {
+    listen 80 default_server;
+    server_name _;
+    location / { return 444; }
+}
+
+server {
+    listen 80;
+    server_name $2;
+    location ^~ /.well-known/acme-challenge/ {
+        root $WEBROOT;
+        default_type text/plain;
+        try_files \$uri =404;
+    }
+    location / {
+        if (\$request_method !~ ^(GET|HEAD)\$) { return 405; }
+        return 301 https://$2\$request_uri;
+    }
+}
+EOF
+}
+
+write_https_conf() { # path host cert_name
+  cat > "$1" <<EOF
+# FLH-088 port 443: TLS in front of the read-only demo on 127.0.0.1:$PORT.
+# Derived from scripts/demo/flh076/deploy/nginx-flh-public-demo.conf.example.
+limit_req_zone \$binary_remote_addr zone=flh_demo:10m rate=10r/s;
+limit_conn_zone \$binary_remote_addr zone=flh_demo_conn:10m;
+
+# Any other name, or no SNI: refuse the TLS handshake.
+server {
+    listen 443 ssl default_server;
+    ssl_reject_handshake on;
+}
+
+server {
+    listen 443 ssl;
+    server_name $2;
+    ssl_certificate     $LE_DIR/live/$3/fullchain.pem;
+    ssl_certificate_key $LE_DIR/live/$3/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:flh_tls:1m;
+    ssl_session_timeout 1h;
+    ssl_session_tickets off;
+
+    # Read-only: GET/HEAD only, no request bodies, bounded time and size.
+    if (\$request_method !~ ^(GET|HEAD)\$) { return 405; }
+    client_max_body_size 1k;
+    client_body_timeout 10s;
+    client_header_timeout 10s;
+    large_client_header_buffers 4 8k;
+    keepalive_timeout 15s;
+    send_timeout 15s;
+    limit_req zone=flh_demo burst=20 nodelay;
+    limit_req_status 429;
+    limit_conn flh_demo_conn 20;
+    limit_conn_status 429;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header X-Frame-Options DENY always;
+
+    location / {
+        proxy_pass http://127.0.0.1:$PORT;
+        # The demo checks Host against HTTP_ALLOWED_HOSTS; pass the public name.
+        proxy_set_header Host \$host;
+        # Never forward client-supplied forwarding headers; the demo trusts none.
+        proxy_set_header X-Forwarded-For "";
+        proxy_set_header X-Forwarded-Host "";
+        proxy_set_header X-Forwarded-Proto "";
+        proxy_set_header Forwarded "";
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 10s;
+        proxy_send_timeout 10s;
+        proxy_buffering on;
+        proxy_max_temp_file_size 0;
+    }
+}
+EOF
+}
+
+cmd_render() { # DIR HOST CERT_NAME
+  [ $# = 3 ] || die "usage: flh-public-https render DIR HOST CERT_NAME" 2
+  valid_host "$2" || die "HOST must be a lowercase DNS name (not an IP address): $2" 2
+  [[ "$3" =~ ^[a-z0-9-]{1,40}$ ]] || die "CERT_NAME must be [a-z0-9-]{1,40}" 2
+  mkdir -p "$1"
+  write_main_conf "$1/nginx.conf"
+  write_http_conf "$1/10-http.conf" "$2"
+  write_https_conf "$1/20-https.conf" "$2" "$3"
+}
+
+# --- host operations (root) --------------------------------------------------
+
+require_root() { [ "$(id -u)" = 0 ] || [ "${FLH_ALLOW_NONROOT:-}" = 1 ] || die "run as root (sudo)" 2; }
+
+public_ipv4() { # this instance's public IPv4 from IMDSv2 (empty if none)
+  local token
+  token=$(curl -fsS --max-time 2 -X PUT http://169.254.169.254/latest/api/token \
+    -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' 2>/dev/null) || return 0
+  curl -fsS --max-time 2 -H "X-aws-ec2-metadata-token: $token" \
+    http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || true
+}
+
+port_holder() { # PORT: TCP listeners on PORT other than nginx (empty when free or nginx-owned)
+  ss -Hltnp "sport = :$1" 2>/dev/null | grep -v '"nginx"' || true
+}
+
+# dns_lookup HOST A|AAAA: one recursive query to the system resolver (or
+# FLH_RESOLVER), printing exactly one outcome line:
+#   answer ADDR...     records of the requested type
+#   nodata             NOERROR from a recursive resolver with no such record
+#   nxdomain           the name does not exist
+#   cname TARGET ...   the name is an alias
+#   error REASON       timeout, SERVFAIL/REFUSED, non-recursive or malformed reply
+# Only "nodata" proves an empty answer; "error" never does.
+dns_lookup() {
+  python3 -I - "$1" "$2" "${FLH_RESOLVER:-}" <<'PY'
+import random, socket, struct, sys
+
+host, qname, server = sys.argv[1], sys.argv[2], sys.argv[3]
+qtype, family = {"A": (1, socket.AF_INET), "AAAA": (28, socket.AF_INET6)}[qname]
+
+def out(*words):
+    print(" ".join(words))
+    sys.exit(0)
+
+port = 53
+if not server:
+    try:
+        with open("/etc/resolv.conf") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 2 and parts[0] == "nameserver":
+                    server = parts[1]
+                    break
+    except OSError:
+        out("error", "resolv.conf-unreadable")
+if not server:
+    out("error", "no-nameserver")
+if server.count(":") == 1:  # IPv4 address:port (tests)
+    server, p = server.split(":")
+    port = int(p)
+
+qid = random.randrange(65536)
+query = (struct.pack(">HHHHHH", qid, 0x0100, 1, 0, 0, 0)
+         + b"".join(bytes([len(l)]) + l.encode() for l in host.split(".")) + b"\0"
+         + struct.pack(">HH", qtype, 1))
+
+def ask_udp(addr, fam):
+    s = socket.socket(fam, socket.SOCK_DGRAM)
+    s.settimeout(3)
+    try:
+        for _ in range(2):
+            s.sendto(query, addr)
+            try:
+                while True:
+                    reply, _ = s.recvfrom(65535)
+                    if len(reply) >= 12 and struct.unpack(">H", reply[:2])[0] == qid:
+                        return reply
+            except socket.timeout:
+                continue
+    finally:
+        s.close()
+    return None
+
+def ask_tcp(addr, fam):
+    s = socket.socket(fam, socket.SOCK_STREAM)
+    s.settimeout(5)
+    try:
+        s.connect(addr)
+        s.sendall(struct.pack(">H", len(query)) + query)
+        buf = b""
+        while len(buf) < 2 or len(buf) < 2 + struct.unpack(">H", buf[:2])[0]:
+            chunk = s.recv(65535)
+            if not chunk:
+                return None
+            buf += chunk
+        return buf[2:2 + struct.unpack(">H", buf[:2])[0]]
+    finally:
+        s.close()
+
+def skip_name(b, i):
+    while True:
+        n = b[i]
+        if n == 0:
+            return i + 1
+        if n & 0xC0 == 0xC0:
+            return i + 2
+        i += 1 + n
+
+def read_name(b, i, depth=0):
+    labels = []
+    while depth < 20:
+        n = b[i]
+        if n == 0:
+            break
+        if n & 0xC0 == 0xC0:
+            i, depth = ((n & 0x3F) << 8) | b[i + 1], depth + 1
+            continue
+        labels.append(b[i + 1:i + 1 + n].decode("ascii", "replace"))
+        i += 1 + n
+    return ".".join(labels)
+
+try:
+    info = socket.getaddrinfo(server, port, type=socket.SOCK_DGRAM)[0]
+    fam, addr = info[0], info[4]
+    reply = ask_udp(addr, fam)
+    if reply is None:
+        out("error", "timeout")
+    if reply[2] & 0x02:  # truncated: retry over TCP
+        reply = ask_tcp(addr, fam)
+        if reply is None or struct.unpack(">H", reply[:2])[0] != qid:
+            out("error", "tcp-retry-failed")
+    flags1, flags2 = reply[2], reply[3]
+    rcode = flags2 & 0x0F
+    qd, an = struct.unpack(">HH", reply[4:8])
+    if not flags1 & 0x80:
+        out("error", "not-a-response")
+    if rcode == 3:
+        out("nxdomain")
+    if rcode != 0:
+        out("error", "rcode-%d" % rcode)
+    if not flags2 & 0x80:
+        out("error", "resolver-not-recursive")
+    i = 12
+    for _ in range(qd):
+        i = skip_name(reply, i) + 4
+    values, cname = [], None
+    for _ in range(an):
+        i = skip_name(reply, i)
+        rtype, rclass, _ttl, length = struct.unpack(">HHIH", reply[i:i + 10])
+        i += 10
+        rdata = reply[i:i + length]
+        if len(rdata) != length:
+            out("error", "malformed")
+        if rtype == 5:
+            cname = read_name(reply, i)
+        elif rtype == qtype and rclass == 1:
+            values.append(socket.inet_ntop(family, rdata))
+        i += length
+except (OSError, IndexError, struct.error, ValueError) as e:
+    out("error", type(e).__name__)
+if cname:
+    out("cname", cname, *sorted(set(values)))
+if values:
+    out("answer", *sorted(set(values)))
+out("nodata")
+PY
+}
+
+check_dns() { # HOST IP: exactly one A = IP, no CNAME, verified empty AAAA
+  local host=$1 ip=$2 a aaaa
+  a=$(dns_lookup "$host" A)
+  case "$a" in
+    "answer $ip") ;;
+    answer\ *) die "DNS: $host A is '${a#answer }', expected only $ip (replace the existing A record; do not add a second one)" ;;
+    nodata|nxdomain) die "DNS: $host has no A record ($a); expected $ip" ;;
+    cname\ *) die "DNS: $host is a CNAME (${a#cname }); this rollout needs a plain A record -> $ip" ;;
+    *) die "DNS: A lookup for $host failed (${a#error }); cannot verify the destination" ;;
+  esac
+  aaaa=$(dns_lookup "$host" AAAA)
+  case "$aaaa" in
+    nodata) ;;
+    answer\ *) die "DNS: $host has AAAA ${aaaa#answer }; this rollout is IPv4-only and Let's Encrypt would validate over IPv6. Remove the AAAA record first" ;;
+    cname\ *) die "DNS: $host is a CNAME (${aaaa#cname }); this rollout needs a plain A record" ;;
+    nxdomain) die "DNS: AAAA lookup for $host says the name does not exist, contradicting the A answer; retry after propagation" ;;
+    *) die "DNS: AAAA lookup for $host failed (${aaaa#error }); an empty AAAA answer is not verified, refusing" ;;
+  esac
+}
+
+preflight() { # HOST
+  local host=$1 ip mode p holder
+  valid_host "$host" || die "HOST must be a lowercase DNS name (not an IP address): $host" 2
+  # The public URL is https://HOST/ on the standard port. If 443 (or 80 for
+  # ACME and the redirect) is taken, stop and name the holder; never pick
+  # another public port.
+  command -v ss > /dev/null || die "ss (iproute) is missing; cannot check that ports 80 and 443 are free"
+  for p in 80 443; do
+    holder=$(port_holder "$p")
+    [ -z "$holder" ] || die "port $p is already in use, so the standard public URL cannot be served: $holder"
+  done
+  mode=$(getenforce 2>/dev/null || echo Disabled)
+  [ "$mode" != Enforcing ] || die "SELinux is Enforcing; nginx would need httpd_can_network_connect. Not changed automatically; decide first."
+  systemctl is-active --quiet "$SERVICE" || die "$SERVICE is not active; install a release with flh-release first"
+  "$RELEASE_TOOL" status > /dev/null || die "flh-release status reports no identity match"
+  dnf -q info nginx > /dev/null 2>&1 || die "package nginx is not available from the configured repositories"
+  dnf -q info certbot > /dev/null 2>&1 || die "package certbot is not available from the configured repositories; stop here (no pip or third-party repository is used)"
+  ip=$(public_ipv4)
+  [ -n "$ip" ] || die "no public IPv4 on this instance (is the Elastic IP associated?)"
+  check_dns "$host" "$ip"
+  note "preflight ok: $host -> $ip (A only, AAAA verified empty, no CNAME), ports 80/443 free (or nginx), SELinux $mode, $SERVICE active with matching identity, nginx and certbot available"
+}
+
+install_conf() { # src dest: install atomically
+  install -m 0644 -o "$OWNER" -g "$GROUP" "$1" "$2.new" && mv -f "$2.new" "$2"
+}
+
+# inspect_nginx: refuse to replace nginx.conf unless it is this tool's own
+# (rerun, original saved) or the unmodified package file, and refuse when any
+# other configuration exists that the replacement would stop loading.
+inspect_nginx() {
+  local conf=$NGINX_DIR/nginx.conf owner verify other
+  [ -f "$conf" ] || die "nginx: $conf is missing after installing nginx"
+  if [ "$(head -n 1 "$conf")" = "$MARKER" ]; then
+    [ -f "$ORIGINAL" ] || die "nginx: $conf is managed by this tool but $ORIGINAL is missing; refusing (the original could not be restored)"
+  else
+    [ ! -e "$ORIGINAL" ] || die "nginx: $conf is not this tool's, but $ORIGINAL already exists; refusing to overwrite the saved original"
+    owner=$(rpm -qf "$conf" 2> /dev/null) || owner=""
+    owner=${owner%%$'\n'*}
+    [ -n "$owner" ] || die "nginx: $conf is not owned by a package; refusing to replace an unknown configuration"
+    verify=$(rpm -V "$owner" 2> /dev/null || true)
+    if printf '%s\n' "$verify" | awk -v p="${conf#"$SYSROOT"}" '$NF == p {found=1} END {exit !found}'; then
+      die "nginx: $conf differs from package $owner (local configuration); refusing to replace it"
+    fi
+  fi
+  other=$(find "$NGINX_DIR/conf.d" "$NGINX_DIR/default.d" -maxdepth 1 -name '*.conf' 2> /dev/null | sort | tr '\n' ' ')
+  [ -z "$other" ] || die "nginx: other configuration exists that this tool would stop loading: ${other% }; refusing"
+  if [ -d "$SITE_DIR" ]; then
+    other=$(find "$SITE_DIR" -mindepth 1 -maxdepth 1 ! -name 10-http.conf ! -name 20-https.conf | sort | tr '\n' ' ')
+    [ -z "$other" ] || die "nginx: unexpected files in $SITE_DIR: ${other% }; refusing"
+  fi
+}
+
+# renewal_mechanism: the automatic renewal shipped by the installed certbot
+# package, as "timer UNIT" or "cron FILE"; empty if the package ships neither.
+renewal_mechanism() {
+  local bin pkg files unit cronf
+  bin=$(command -v certbot) || return 0
+  pkg=$(rpm -qf "$bin" 2> /dev/null) || return 0
+  pkg=${pkg%%$'\n'*}
+  [ -n "$pkg" ] || return 0
+  files=$(rpm -ql "$pkg" 2> /dev/null || true)
+  unit=$(printf '%s\n' "$files" | sed -n 's#^/usr/lib/systemd/system/\([^/]*\.timer\)$#\1#p' | sort | head -n 1)
+  if [ -n "$unit" ]; then echo "timer $unit"; return 0; fi
+  cronf=$(printf '%s\n' "$files" | grep -E '^/etc/cron\.d/[^/]+$' | sort | head -n 1 || true)
+  [ -z "$cronf" ] || echo "cron $cronf"
+}
+
+# verify_renewal MECHANISM CERT: enable the schedule and prove it will run.
+verify_renewal() {
+  local kind=${1%% *} what=${1#* } cert=$2 next conf=$SYSROOT$LE_DIR/renewal/$2.conf
+  case "$kind" in
+    timer)
+      systemctl enable --now "$what" > /dev/null 2>&1 || return 1
+      [ "$(systemctl is-enabled "$what" 2> /dev/null || true)" = enabled ] || { note "renewal: $what is not enabled"; return 1; }
+      systemctl is-active --quiet "$what" || { note "renewal: $what is not active"; return 1; }
+      next=$(systemctl show -p NextElapseUSecRealtime --value "$what" 2> /dev/null || true)
+      [ -n "$next" ] && [ "$next" != n/a ] && [ "$next" != 0 ] || { note "renewal: $what has no next run"; return 1; }
+      note "renewal: $what enabled, next run $next" ;;
+    cron)
+      [ -f "$SYSROOT$what" ] || { note "renewal: $what is missing"; return 1; }
+      systemctl is-active --quiet crond || { note "renewal: $what needs crond, which is not running"; return 1; }
+      note "renewal: $what with crond active" ;;
+    *) return 1 ;;
+  esac
+  [ -f "$conf" ] || { note "renewal: $conf is missing"; return 1; }
+  grep -Eq '^authenticator = webroot$' "$conf" || { note "renewal: $conf does not use the webroot authenticator"; return 1; }
+  grep -Eq '^renew_hook = systemctl reload nginx$' "$conf" || { note "renewal: $conf has no nginx reload hook"; return 1; }
+}
+
+cmd_enable() {
+  local host="" staging=0 email="" cert ok_curl renewal
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --staging) staging=1 ;;
+      --email) [ $# -ge 2 ] || die "--email needs an address" 2; email=$2; shift ;;
+      -*) die "unknown option $1" 2 ;;
+      *) [ -z "$host" ] || die "only one HOST" 2; host=$1 ;;
+    esac
+    shift
+  done
+  [ -n "$host" ] || die "usage: flh-public-https enable HOST [--staging] [--email ADDRESS]" 2
+  require_root
+  preflight "$host"
+  [ "$staging" = 1 ] && cert=flh-demo-staging || cert=flh-demo
+
+  dnf -y -q install nginx certbot
+  inspect_nginx
+  renewal=$(renewal_mechanism)
+  [ -n "$renewal" ] || die "the installed certbot package ships no renewal timer or cron file; refusing before issuing a certificate (no other renewal source is added)"
+  install -d -m 0755 -o "$OWNER" -g "$GROUP" "$SITE_DIR" "$SYSROOT$WEBROOT"
+  [ -e "$ORIGINAL" ] || cp -p "$NGINX_DIR/nginx.conf" "$ORIGINAL"
+  # Global, not local: the EXIT trap runs after this function's scope ends.
+  RENDER_TMP=$(mktemp -d)
+  trap 'rm -rf "${RENDER_TMP:-}"' EXIT
+  local tmp=$RENDER_TMP
+  cmd_render "$tmp" "$host" "$cert"
+
+  # Stage 1: port 80 only, so the ACME challenge can be answered.
+  rm -f "$SITE_DIR/20-https.conf"
+  install_conf "$tmp/nginx.conf" "$NGINX_DIR/nginx.conf"
+  install_conf "$tmp/10-http.conf" "$SITE_DIR/10-http.conf"
+  nginx -t -q || die "nginx -t failed for the HTTP configuration; run: flh-public-https disable"
+  systemctl enable nginx > /dev/null 2>&1 || die "could not enable nginx"
+  systemctl restart nginx
+
+  # Stage 2: certificate (webroot; certbot does not edit nginx files).
+  local args=(certonly --webroot -w "$WEBROOT" -d "$host" --cert-name "$cert" --non-interactive --agree-tos
+              --keep-until-expiring --deploy-hook "systemctl reload nginx")
+  if [ -n "$email" ]; then args+=(--email "$email"); else args+=(--register-unsafely-without-email); fi
+  [ "$staging" = 1 ] && args+=(--staging)
+  certbot "${args[@]}" || die "certbot failed; port 80 stays up for diagnosis. Check DNS and inbound 80, or run: flh-public-https disable"
+
+  # Stage 2b: no HTTPS without a working renewal schedule.
+  verify_renewal "$renewal" "$cert" || die "INCOMPLETE: certificate $cert issued, but automatic renewal ($renewal) is not working; HTTPS was NOT enabled. Fix renewal and rerun enable, or run: flh-public-https disable" 3
+
+  # Stage 3: HTTPS server block, then the public host name for the demo.
+  install_conf "$tmp/20-https.conf" "$SITE_DIR/20-https.conf"
+  if ! nginx -t -q; then
+    rm -f "$SITE_DIR/20-https.conf"; systemctl reload nginx || true
+    die "nginx -t failed for the HTTPS configuration; HTTPS block removed"
+  fi
+  install -d -m 0755 -o "$OWNER" -g "$GROUP" "$DROPIN_DIR"
+  printf '# FLH-088 (flh-public-https): public host name for the demo boundary.\n[Service]\nEnvironment=HTTP_ALLOWED_HOSTS=%s\n' "$host" > "$DROPIN.new"
+  chmod 0644 "$DROPIN.new"; mv -f "$DROPIN.new" "$DROPIN"
+  systemctl daemon-reload
+  systemctl restart "$SERVICE"
+  systemctl reload nginx
+  install -d -m 0755 -o "$OWNER" -g "$GROUP" "$(dirname "$STATE")"
+  printf 'PUBLIC_HOST=%s\nCERT_NAME=%s\nRENEWAL=%s\n' "$host" "$cert" "$renewal" > "$STATE"
+
+  "$RELEASE_TOOL" status || die "demo identity check failed after enabling HTTPS"
+  ok_curl=(-fsS --max-time 5 --resolve "$host:443:127.0.0.1")
+  [ "$staging" = 1 ] && ok_curl+=(-k)
+  curl "${ok_curl[@]}" "https://$host/readyz" > /dev/null || die "HTTPS /readyz through nginx failed on the host"
+  if [ "$staging" = 1 ]; then
+    note "enabled https://$host/ with the STAGING certificate (browsers will not trust it); next: enable $host without --staging"
+  else
+    note "enabled https://$host/ (certificate $cert, renewal: $renewal)"
+    [ ! -d "$SYSROOT$LE_DIR/live/flh-demo-staging" ] || note "the staging certificate is no longer used; remove it with: certbot delete --cert-name flh-demo-staging"
+  fi
+}
+
+state_value() { # KEY
+  [ -r "$STATE" ] && sed -n "s/^$1=//p" "$STATE" || true
+}
+
+cmd_status() {
+  local host cert renewal
+  host=$(state_value PUBLIC_HOST); cert=$(state_value CERT_NAME); renewal=$(state_value RENEWAL)
+  echo "public host:  ${host:-none}"
+  echo "certificate:  ${cert:-none}"
+  if [ -n "$cert" ] && [ -r "$SYSROOT$LE_DIR/live/$cert/fullchain.pem" ]; then
+    echo "cert expiry:  $(openssl x509 -noout -enddate -in "$SYSROOT$LE_DIR/live/$cert/fullchain.pem" | cut -d= -f2)"
+  fi
+  echo "nginx:        $(systemctl is-active nginx 2>/dev/null || true)"
+  case "$renewal" in
+    timer\ *) echo "renewal:      ${renewal#timer } $(systemctl is-active "${renewal#timer }" 2>/dev/null || true), next $(systemctl show -p NextElapseUSecRealtime --value "${renewal#timer }" 2>/dev/null || true)" ;;
+    cron\ *) echo "renewal:      ${renewal#cron } (crond $(systemctl is-active crond 2>/dev/null || true))" ;;
+    *) echo "renewal:      none" ;;
+  esac
+  echo "drop-in:      $([ -e "$DROPIN" ] && grep '^Environment=' "$DROPIN" || echo none)"
+  echo "public IPv4:  $(public_ipv4)"
+  if [ -n "$host" ]; then
+    local insecure=()
+    [ "$cert" = flh-demo-staging ] && insecure=(-k)
+    echo "local HTTPS:  $(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 --resolve "$host:443:127.0.0.1" "${insecure[@]}" "https://$host/readyz" 2>&1 || true)"
+  fi
+}
+
+cmd_disable() {
+  require_root
+  local renewal
+  renewal=$(state_value RENEWAL)
+  # After an INCOMPLETE enable there is no state file; ask the package.
+  [ -n "$renewal" ] || renewal=$(renewal_mechanism)
+  case "$renewal" in timer\ *) systemctl disable --now "${renewal#timer }" > /dev/null 2>&1 || true ;; esac
+  systemctl disable --now nginx > /dev/null 2>&1 || true
+  rm -f "$SITE_DIR/10-http.conf" "$SITE_DIR/20-https.conf"
+  if [ -e "$ORIGINAL" ]; then mv -f "$ORIGINAL" "$NGINX_DIR/nginx.conf"; fi
+  rm -f "$DROPIN" "$STATE"
+  rmdir "$DROPIN_DIR" 2> /dev/null || true
+  systemctl daemon-reload
+  systemctl restart "$SERVICE"
+  "$RELEASE_TOOL" status || die "demo identity check failed after disabling HTTPS"
+  note "disabled: nginx stopped, renewal schedule stopped, drop-in removed, demo on loopback with loopback host names only"
+}
+
+case "${1:-}" in
+  preflight) shift; [ $# = 1 ] || die "usage: flh-public-https preflight HOST" 2; require_root; preflight "$1" ;;
+  enable) shift; cmd_enable "$@" ;;
+  status) cmd_status ;;
+  disable) cmd_disable ;;
+  render) shift; cmd_render "$@" ;;
+  *) die "usage: flh-public-https preflight HOST | enable HOST [--staging] [--email ADDRESS] | status | disable | render DIR HOST CERT_NAME" 2 ;;
+esac

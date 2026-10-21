@@ -139,6 +139,12 @@ variable "app_port" {
   }
 }
 
+variable "public_https_enabled" {
+  description = "FLH-088: allocate an Elastic IP for the instance and open inbound TCP 80/443 for the host's nginx. false (default) keeps the FLH-084 private-only stack. The application port is never opened."
+  type        = bool
+  default     = false
+}
+
 variable "extra_tags" {
   description = "Additional tags applied to every resource."
   type        = map(string)

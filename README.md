@@ -203,7 +203,7 @@ The development history, organized by theme and linked to that evidence, is in
 | [docs/DEMO.md](docs/DEMO.md) | The synthetic Knowledge Library demo |
 | [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | Optional semantic search: setup, index operations, recovery, Go walkthrough |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker release, backup, restore, upgrades, browser boundary settings |
-| [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | Prepared (not deployed) AWS runbook for the read-only public demo: one EC2 instance, no inbound access, private preview over Session Manager |
+| [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | AWS runbook for the read-only public demo: one EC2 instance, private preview over Session Manager; optional public HTTPS entry point prepared, not applied (FLH-088) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the system works, with the HTTP API reference in Appendix A |
 | [web/README.md](web/README.md) | Workbench views and annotation behaviour |
 | [docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md) | Reusable local learning loop (Simplified Chinese), with the [capture prompt](docs/CAPTURE_PROMPT.zh-CN.md) |
@@ -227,7 +227,7 @@ captures/, seed_demo.py    16 synthetic captures and an importer that posts them
 scripts/demo/flh034/       synthetic Knowledge Library demo
 scripts/validation/        isolated validation harnesses used by the reports
 deploy/aws/                Terraform and host tooling for the read-only demo on EC2
-                           (prepared only; see docs/AWS_DEMO.md)
+                           (see docs/AWS_DEMO.md)
 docs/                      documentation listed above
 ```
 

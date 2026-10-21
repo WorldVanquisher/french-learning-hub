@@ -8,7 +8,7 @@ action or failed condition. Add only that, and record it.
 | File | Created as | Attached to | Purpose |
 |---|---|---|---|
 | `flh-demo-host-boundary-policy.json` | `flh-demo-host-boundary` (exact name; Terraform looks it up) | nobody: it is the **permissions boundary** of the host role | ceiling on the host role: the minimal Session Manager actions and `s3:GetObject` on `flh-demo-artifacts-*/releases/*` |
-| `flh-experiment-demo-deploy-policy.json` | `flh-demo-deploy` | `flh-experiment`, only while applying or destroying | create, change and tear down the 19-resource stack. It may create, change or delete `flh-demo-host-*` roles only when they carry `flh-demo-host-boundary`, and it explicitly denies removing or changing any role boundary or editing these policies |
+| `flh-experiment-demo-deploy-policy.json` | `flh-demo-deploy` | `flh-experiment`, only while applying or destroying | create, change and tear down the 19-resource stack, plus (FLH-088, untested) the optional Elastic IP and inbound 80/443 rules of `public_https.tf`. It may create, change or delete `flh-demo-host-*` roles only when they carry `flh-demo-host-boundary`, and it explicitly denies removing or changing any role boundary or editing these policies |
 | `flh-experiment-demo-operate-policy.json` | `flh-demo-operate` | `flh-experiment`, while operating | release upload, Session Manager shell and port forwarding, start/stop/reboot of the stack instance |
 
 **Keep `ReadOnlyAccess` on the user.** Terraform's reads and the Session

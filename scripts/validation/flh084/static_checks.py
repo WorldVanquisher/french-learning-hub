@@ -37,7 +37,11 @@ def strip_comments(text):
 tf_files = sorted(f for f in os.listdir(TF) if f.endswith(".tf"))
 tf = {f: read(os.path.join(TF, f)) for f in tf_files}
 code = "\n".join(strip_comments(t) for t in tf.values())
-check("terraform files present", tf_files == ["main.tf", "outputs.tf", "storage.tf", "variables.tf", "versions.tf"], tf_files)
+check("terraform files present", tf_files == ["main.tf", "outputs.tf", "public_https.tf", "storage.tf", "variables.tf", "versions.tf"], tf_files)
+# FLH-088: the optional public entry point lives only in public_https.tf; the
+# FLH-084 base stack (every other file) keeps its private-only guarantees.
+base = "\n".join(strip_comments(t) for f, t in tf.items() if f != "public_https.tf")
+pub = strip_comments(tf["public_https.tf"])
 
 # Brace balance per file (catches truncated blocks; not a parser).
 for f, t in tf.items():
@@ -53,22 +57,43 @@ check("every declared variable is used", declared <= referenced, sorted(declared
 for v in ("aws_region", "architecture", "instance_type"):
     block = re.search(r'variable "%s" \{(.*?)\n\}' % v, tf["variables.tf"], re.S).group(1)
     check(f"variable {v} has no default (owner choice)", not re.search(r"^\s*default\s*=", block, re.M))
-local_names = set(re.findall(r"^\s{2}([a-z_]+)\s*=", re.search(r"locals \{(.*?)\n\}", tf["main.tf"], re.S).group(1), re.M))
+local_names = set(n for t in tf.values() for block in re.findall(r"^locals \{(.*?)\n\}", t, re.S | re.M)
+                  for n in re.findall(r"^\s{2}([a-z_]+)\s*=", block, re.M))
 check("every local.* reference is defined", set(re.findall(r"\blocal\.([a-z_]+)", code)) <= local_names)
 
 # Network exposure.
-check("no ingress rule resources", not re.search(r"aws_vpc_security_group_ingress_rule|aws_security_group_rule|\bingress\s*\{", code))
+check("base stack: no ingress rule resources", not re.search(r"aws_vpc_security_group_ingress_rule|aws_security_group_rule|\bingress\s*\{", base))
 egress = re.findall(r'resource "aws_vpc_security_group_egress_rule" "[a-z_]+" \{(.*?)\n\}', code, re.S)
 check("exactly one egress rule", len(egress) == 1)
 check("egress is TCP 443 only", egress and all(re.search(r'from_port\s*=\s*443', e) and re.search(r'to_port\s*=\s*443', e)
                                                 and '"tcp"' in e for e in egress))
-check("no port 22 / application port in security rules", not re.search(r"(from|to)_port\s*=\s*(22|18970|80|8080)\b", code))
-check("0.0.0.0/0 only in the egress rule and the IGW route", code.count('"0.0.0.0/0"') == 2)
+check("no port 22 / application port in security rules", not re.search(r"(from|to)_port\s*=\s*(22|18970|8080)\b", code))
+check("base stack: no port 80 rule", not re.search(r"(from|to)_port\s*=\s*80\b", base))
+check("base stack: 0.0.0.0/0 only in the egress rule and the IGW route", base.count('"0.0.0.0/0"') == 2)
 check("subnet does not auto-assign public IPs (set per instance)", "map_public_ip_on_launch = false" in code)
-check("no load balancer / NAT / RDS / ECS / EKS / EIP / interface endpoints",
-      not re.search(r'"aws_(lb|alb|elb|nat_gateway|db_instance|rds_cluster|ecs_|eks_|eip)', code)
+check("no load balancer / NAT / RDS / ECS / EKS / interface endpoints; no EIP in the base stack",
+      not re.search(r'"aws_(lb|alb|elb|nat_gateway|db_instance|rds_cluster|ecs_|eks_)', code)
+      and not re.search(r'"aws_eip', base)
       and 'vpc_endpoint_type = "Interface"' not in code)
 check("no Route 53 or DNS records", "aws_route53" not in code)
+
+# FLH-088 public entry point: exactly an EIP, its association and inbound 80/443.
+pub_resources = re.findall(r'^resource "([a-z0-9_]+)" "([a-z_]+)"', pub, re.M)
+check("public_https.tf: only EIP, EIP association and two ingress rules", sorted(pub_resources) == [
+    ("aws_eip", "public"), ("aws_eip_association", "public"),
+    ("aws_vpc_security_group_ingress_rule", "http"), ("aws_vpc_security_group_ingress_rule", "https")], pub_resources)
+pub_blocks = re.findall(r'^resource "[a-z0-9_]+" "[a-z_]+" \{(.*?)\n\}', pub, re.M | re.S)
+check("public_https.tf: every resource gated by public_https_enabled", len(pub_blocks) == 4
+      and all(re.search(r"^\s*count\s*=\s*local\.public_https$", b, re.M) for b in pub_blocks)
+      and "public_https = var.public_https_enabled ? 1 : 0" in pub)
+ingress = re.findall(r'resource "aws_vpc_security_group_ingress_rule" "[a-z_]+" \{(.*?)\n\}', pub, re.S)
+check("public ingress: TCP 80 and 443 only, IPv4, to the host group",
+      sorted((re.search(r"from_port\s*=\s*(\d+)", i).group(1), re.search(r"to_port\s*=\s*(\d+)", i).group(1)) for i in ingress) == [("443", "443"), ("80", "80")]
+      and all('"tcp"' in i and "aws_security_group.host.id" in i and "cidr_ipv6" not in i for i in ingress))
+check("public_https.tf: does not touch the instance or its user data",
+      not re.search(r'resource "aws_instance"|user_data|aws_security_group" "', pub))
+pv = re.search(r'variable "public_https_enabled" \{(.*?)\n\}', tf["variables.tf"], re.S)
+check("public_https_enabled is a bool defaulting to false", pv and re.search(r"type\s*=\s*bool", pv.group(1)) and re.search(r"default\s*=\s*false", pv.group(1)))
 check("default security group not adopted (needs account-wide revoke; FLH-086)", "aws_default_security_group" not in code)
 check("host role requires the administrator-managed permissions boundary",
       "permissions_boundary = data.aws_iam_policy.host_boundary.arn" in code and 'data "aws_iam_policy" "host_boundary"' in code)
@@ -157,10 +182,12 @@ check("user data carries no non-loopback URL or credential",
       not re.search(r"https?://(?!127\.0\.0\.1:)|AKIA|X-Amz", doc))
 
 # Host scripts.
-for f in ("flh-release",):
+for f in ("flh-release", "flh-public-https"):
     p = subprocess.run(["bash", "-n", os.path.join(HOST, f)], capture_output=True, text=True)
     check(f"bash -n {f}", p.returncode == 0, p.stderr.strip())
-check("flh-release is executable", os.access(os.path.join(HOST, "flh-release"), os.X_OK))
+    check(f"{f} is executable", os.access(os.path.join(HOST, f), os.X_OK))
+check("flh-public-https is not part of the user data (changing it must not replace the instance)",
+      "flh-public-https" not in cc_tpl and "flh-public-https" not in tf["main.tf"])
 
 failed = [r for r in results if not r[1]]
 for name, ok, detail in results:
