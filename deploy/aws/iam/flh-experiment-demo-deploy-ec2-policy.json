@@ -1,0 +1,215 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Ec2CreateVpcTagged",
+      "Effect": "Allow",
+      "Action": "ec2:CreateVpc",
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:vpc/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "flh",
+          "aws:RequestTag/Component": "public-demo"
+        }
+      }
+    },
+    {
+      "Sid": "Ec2CreateChildResourcesTagged",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSubnet",
+        "ec2:CreateRouteTable",
+        "ec2:CreateSecurityGroup",
+        "ec2:CreateInternetGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:subnet/*",
+        "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:route-table/*",
+        "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:security-group/*",
+        "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:internet-gateway/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "flh",
+          "aws:RequestTag/Component": "public-demo"
+        }
+      }
+    },
+    {
+      "Sid": "Ec2CreateEgressRuleTagged",
+      "Effect": "Allow",
+      "Action": "ec2:AuthorizeSecurityGroupEgress",
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:security-group-rule/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "flh",
+          "aws:RequestTag/Component": "public-demo"
+        }
+      }
+    },
+    {
+      "Sid": "Ec2AllocateTaggedElasticIp",
+      "Effect": "Allow",
+      "Action": "ec2:AllocateAddress",
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:elastic-ip/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "flh",
+          "aws:RequestTag/Component": "public-demo"
+        }
+      }
+    },
+    {
+      "Sid": "Ec2CreateIngressRuleTagged",
+      "Effect": "Allow",
+      "Action": "ec2:AuthorizeSecurityGroupIngress",
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:security-group-rule/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "flh",
+          "aws:RequestTag/Component": "public-demo"
+        }
+      }
+    },
+    {
+      "Sid": "Ec2AssociateAddressWithInstanceInterface",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AssociateAddress",
+        "ec2:DisassociateAddress"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:network-interface/*"
+    },
+    {
+      "Sid": "Ec2CreateS3GatewayEndpointTagged",
+      "Effect": "Allow",
+      "Action": "ec2:CreateVpcEndpoint",
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:vpc-endpoint/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "flh",
+          "aws:RequestTag/Component": "public-demo",
+          "ec2:VpceServiceName": "com.amazonaws.us-east-1.s3"
+        }
+      }
+    },
+    {
+      "Sid": "Ec2ManageStackTaggedResources",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSubnet",
+        "ec2:CreateRouteTable",
+        "ec2:CreateSecurityGroup",
+        "ec2:CreateVpcEndpoint",
+        "ec2:ModifyVpcAttribute",
+        "ec2:DeleteVpc",
+        "ec2:ModifySubnetAttribute",
+        "ec2:DeleteSubnet",
+        "ec2:AttachInternetGateway",
+        "ec2:DetachInternetGateway",
+        "ec2:DeleteInternetGateway",
+        "ec2:CreateRoute",
+        "ec2:ReplaceRoute",
+        "ec2:DeleteRoute",
+        "ec2:AssociateRouteTable",
+        "ec2:DisassociateRouteTable",
+        "ec2:DeleteRouteTable",
+        "ec2:ModifyVpcEndpoint",
+        "ec2:DeleteVpcEndpoints",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:ModifySecurityGroupRules",
+        "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+        "ec2:AssociateAddress",
+        "ec2:DisassociateAddress",
+        "ec2:ReleaseAddress",
+        "ec2:DeleteSecurityGroup",
+        "ec2:RunInstances",
+        "ec2:StartInstances",
+        "ec2:StopInstances",
+        "ec2:RebootInstances",
+        "ec2:TerminateInstances",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:ModifyInstanceMetadataOptions",
+        "ec2:ModifyInstanceCreditSpecification",
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Project": "flh",
+          "aws:ResourceTag/Component": "public-demo"
+        }
+      }
+    },
+    {
+      "Sid": "Ec2RunOnlyTheReviewedInstanceShape",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "flh",
+          "aws:RequestTag/Component": "public-demo",
+          "ec2:InstanceType": "t4g.micro",
+          "ec2:MetadataHttpTokens": "required"
+        },
+        "ArnLike": {
+          "ec2:InstanceProfile": "arn:aws:iam::__AWS_ACCOUNT_ID__:instance-profile/flh-demo-host-*"
+        }
+      }
+    },
+    {
+      "Sid": "Ec2RunInstancesLaunchInputs",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": [
+        "arn:aws:ec2:us-east-1::image/ami-04048e843b318bc37",
+        "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:volume/*",
+        "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:network-interface/*"
+      ]
+    },
+    {
+      "Sid": "Ec2TagOnCreateOnly",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:CreateAction": [
+            "CreateVpc",
+            "CreateSubnet",
+            "CreateRouteTable",
+            "CreateSecurityGroup",
+            "CreateInternetGateway",
+            "CreateVpcEndpoint",
+            "AuthorizeSecurityGroupEgress",
+            "RunInstances",
+            "AllocateAddress",
+            "AuthorizeSecurityGroupIngress"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "Ec2TagRootVolumeName",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": "arn:aws:ec2:us-east-1:__AWS_ACCOUNT_ID__:volume/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Name": "flh-demo-root"
+        },
+        "ForAllValues:StringEquals": {
+          "aws:TagKeys": [
+            "Name"
+          ]
+        }
+      }
+    }
+  ]
+}

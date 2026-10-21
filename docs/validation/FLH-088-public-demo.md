@@ -136,7 +136,10 @@ existing instance. It is the smallest supported path:
   - `AssociateAddress`/`DisassociateAddress` on the instance's network
     interface, which carries no stack tag.
 
-  Untested until used (see §7).
+  Untested until used (see §7). **Correction (§13):** these statements, with
+  every other EC2 statement, now live in the separate policy
+  `flh-demo-deploy-ec2` (`flh-experiment-demo-deploy-ec2-policy.json`),
+  because the merged policy exceeded IAM's size limit.
 
 **Preserved:**
 - read-only public-demo mode and the server-side allowlist
@@ -160,7 +163,7 @@ policy. **No rebuild is required.**
 | 2 | The current `<host>` A, AAAA and CNAME values with TTLs, and the authoritative nameservers | operator check §8 D0, before any change |
 | 3 | CAA at `<host>` and its parent domain: empty, or allowing `letsencrypt.org` | operator check §8 D0b |
 | 4 | Optional ACME contact address for `--email`. Without it, `--register-unsafely-without-email` is used; Let's Encrypt no longer sends expiry emails, and renewal is automatic | owner choice |
-| 5 | An IAM administrator creates a new version of `flh-demo-deploy` from the updated JSON (the account ID is substituted locally, never committed) | owner action |
+| 5 | An IAM administrator creates `flh-demo-deploy-ec2` and saves a new, smaller version of `flh-demo-deploy` (§13; `deploy/aws/iam/README.md` §2b). The account ID is substituted locally, never committed | owner action |
 | 6 | Explicit go-ahead for public exposure of the synthetic demo (this task authorises preparation only) | owner decision |
 | 7 | Optional: an AWS Budgets alert threshold for data transfer | owner choice |
 
@@ -305,9 +308,10 @@ does not cap spending.
    checked only as JSON. Whether `AssociateAddress` evaluates the network
    interface (untagged) is not verified. The unconditioned network-interface
    statement is broader than the rest of the policy: it is limited to
-   associate/disassociate, and only while `flh-demo-deploy` is attached.
+   associate/disassociate, and only while the deploy policies are attached.
+   Since §13 these statements are in `flh-demo-deploy-ec2`.
    - An `AccessDenied` names the missing action: add only that.
-   - Detach the policy after apply. FLH-087's detachment is also still
+   - Detach both deploy policies after apply. FLH-087's detachment is also still
      unconfirmed.
 3. **Plan review by the owner:**
    - the plan must keep the deployed inputs and AMI;
@@ -394,8 +398,13 @@ static checks forbid it.
    `letsencrypt.org`.
 
 **AWS (operator workstation):**
-1. **A1.** The IAM administrator publishes the new `flh-demo-deploy`
-   version (`deploy/aws/iam/README.md` §1–2) and attaches it.
+1. **A1.** The IAM administrator follows `deploy/aws/iam/README.md` §1 and
+   §2b:
+   - creates `flh-demo-deploy-ec2`;
+   - saves the new, smaller `flh-demo-deploy` version;
+   - attaches both to `flh-experiment`.
+
+   The boundary and operate policies are not recreated.
 2. **A2.** Keep the deployed Terraform inputs. Use exactly the `-var`/tfvars
    values of the applied FLH-086r2 plan.
    - **AMI:** pin the AMI the instance actually runs. Read it from the state
@@ -424,7 +433,8 @@ static checks forbid it.
    Then record `<eip>`.
 4. **A4.** SSM is still `Online`:
    `aws ssm describe-instance-information --profile flh-plan --region us-east-1 --query 'InstanceInformationList[].PingStatus'`.
-5. **A5.** Detach `flh-demo-deploy`, and confirm the FLH-087 detachment too.
+5. **A5.** Detach both `flh-demo-deploy` and `flh-demo-deploy-ec2`, and
+   confirm the FLH-087 detachment too.
 6. **A6.** Upload the tool:
    `aws s3 cp --profile flh-plan deploy/aws/host/flh-public-https s3://<bucket>/releases/host-tools/flh-public-https`.
 
@@ -541,13 +551,13 @@ by AWS until their caches expire:
    - the drop-in is removed and the demo runs on loopback hosts only;
    - `flh-release status` is checked, and the SSM preview works as before.
 4. **R4, AWS, only after R2:**
-   - attach `flh-demo-deploy`;
+   - attach `flh-demo-deploy` and `flh-demo-deploy-ec2`;
    - plan with the same deployed inputs and `-var public_https_enabled=false`.
      It must show exactly **4 to destroy**, 0 to add or change; then apply;
    - the instance receives a new auto-assigned public IPv4 (per AWS
      documentation; not verified here), so outbound SSM continues;
    - confirm SSM `Online` and `flh-release status`;
-   - detach the policy.
+   - detach both policies.
 
    Releasing the Elastic IP while any resolver can still return it could let
    another AWS customer receive traffic for `<host>`.
@@ -663,3 +673,54 @@ repository untouched):
 `fmt -check`, offline `init -backend=false -lockfile=readonly` and `validate`
 passed on an isolated copy, with the lock file unchanged. No Terraform file
 changed since.
+
+## 13. Correction: IAM managed-policy size limit (after §12)
+
+**What happened (operator-reported):** the AWS console rejected the merged
+`flh-demo-deploy` policy because it exceeded the 6,144-character limit for
+customer managed policies. That limit counts characters other than
+whitespace.
+
+**Fix:** the policy is split in two, without changing any permission:
+- **`flh-demo-deploy`** (`deploy/aws/iam/flh-experiment-demo-deploy-policy.json`,
+  same file and AWS name) keeps the 9 non-EC2 statements:
+  - IAM host role, tags, instance profile and PassRole;
+  - the three S3 artifact-bucket statements;
+  - both explicit Denies.
+- **`flh-demo-deploy-ec2`** (`deploy/aws/iam/flh-experiment-demo-deploy-ec2-policy.json`,
+  new) holds the 12 EC2 statements, moved unchanged and in their original
+  order.
+- **The only content change:** `DenyEditingGuardPolicies` also names
+  `arn:aws:iam::__AWS_ACCOUNT_ID__:policy/flh-demo-deploy-ec2`, so
+  `flh-experiment` cannot edit the new policy either.
+- **Both are attached** while applying or destroying, and both are detached
+  afterwards. The boundary and operate policies are unchanged and are not
+  recreated.
+
+**Validation (agent-run, synthetic account ID `123456789012`; no AWS):**
+- `python3 -I -B <scratch>/check_split.py <copy of the merged policy> deploy/aws/iam/flh-experiment-demo-deploy-policy.json deploy/aws/iam/flh-experiment-demo-deploy-ec2-policy.json`
+  → all checks passed:
+
+| Policy | Non-whitespace characters | Limit |
+|---|---|---|
+| merged `flh-demo-deploy` before the split | 7,037 | over |
+| `flh-demo-deploy` | 2,503 | 6,144 |
+| `flh-demo-deploy-ec2` | 4,627 | 6,144 |
+
+- **What the check proves:**
+  - both files parse with `Version` 2012-10-17, and placeholders remain in
+    the repository files;
+  - the Sids are unique, and are exactly the original 21;
+  - every statement is identical to the original (Effect, Action, Resource,
+    Condition) except `DenyEditingGuardPolicies`, which only gains the new
+    ARN;
+  - the EC2 file holds only `ec2:` Allow statements, and the other file holds
+    no `ec2:` action and both Denies;
+  - no new wildcard was introduced.
+- `python3 -B scripts/validation/flh084/static_checks.py` → **262 passed, 0
+  failed**. That is 253 plus the 9 forbidden-pattern scans of the new file,
+  which found no account ID or secret.
+
+**Earlier results in this report are unchanged.** The §5 line "valid JSON, 21
+statements" described the merged file; the 21 statements are now split 9 + 12.
+
