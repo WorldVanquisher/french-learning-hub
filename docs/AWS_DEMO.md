@@ -23,6 +23,9 @@ previews it privately over AWS Systems Manager Session Manager.
     were not separately accepted.
   - Detachment of `flh-demo-deploy` is unconfirmed.
   - Evidence: `docs/validation/FLH-087-aws-first-deployment.md`.
+- **FLH-088 (prepared, not applied):** an optional public HTTPS entry point
+  (§11), off by default. Public HTTPS is unproven until live evidence is
+  recorded.
 
 Every step below is run by the human owner.
 
@@ -41,10 +44,12 @@ runs all month, about $10.42/month in us-east-1 on `t4g.micro` before tax and
 transfer; other regions are in plan §4.2. Stop/start (§8) is for maintenance,
 not a cost-saving routine.
 
-**Frozen in this phase:**
+**Frozen in this phase** (the default, `public_https_enabled = false`):
 - **DNS:** Namecheap stays authoritative. Add or change no records.
 - **Public access:** no security-group ingress, no public HTTP/HTTPS, no
   host name in `HTTP_ALLOWED_HOSTS`.
+- **Lifting it:** only through §11 (FLH-088), after the owner supplies the
+  host name and decides to expose the demo.
 - **Workloads:** the personal database, the write-capable workbench, the model
   service and Qdrant never go on this host.
 
@@ -184,6 +189,7 @@ export AWS_PROFILE=<profile>
 
 ```sh
 python3 -B scripts/validation/flh084/static_checks.py
+python3 -B scripts/validation/flh088/public_https_test.py   # FLH-088 host tool, offline
 python3 -B scripts/validation/flh084/release_tool_test.py \
   --tarball /path/to/flh-public-demo-<label>.tar.gz --work /tmp/flh084-test --port 18996
 cd deploy/aws/terraform
@@ -385,7 +391,7 @@ curl -s http://127.0.0.1:18970/knowledge-library/demo | python3 -m json.tool | h
   `localPortNumber`.
 - **Host header:** requests arrive with a loopback `Host`, which the server
   always accepts. Public host names stay refused because `HTTP_ALLOWED_HOSTS`
-  is empty.
+  is empty, unless §11 is enabled.
 - **Boundary:** the read-only allowlist is unchanged. Non-demo routes are 404
   and other methods are 405.
 - **Tunnel scope:** closing the port-forward session ends only the preview.
@@ -429,8 +435,12 @@ aws ec2 start-instances --instance-ids "$(terraform output -raw instance_id)"
 - **Not billed:** instance hours and the auto-assigned public IPv4, which is
   released.
 
+**With public HTTPS enabled (§11):** the Elastic IP is kept, so the DNS record
+stays valid. It bills $0.005/h (about $3.65/month) while the instance is
+stopped. nginx and the demo start on boot.
+
 **On start:**
-- The instance gets a new public IP. Nothing depends on it.
+- Without §11, the instance gets a new public IP. Nothing depends on it.
 - The unit is enabled, so the selected release starts on boot. Confirm with
   `/usr/local/sbin/flh-release status`.
 - `terraform plan` does not track the running or stopped state.
@@ -517,9 +527,61 @@ terraform -chdir=deploy/aws/terraform init -lockfile=readonly
 terraform -chdir=deploy/aws/terraform plan -out <new-name>.tfplan
 ```
 
-**Lifting the freeze is outside this runbook.** It needs separate, explicit
-decisions:
+**Lifting the freeze** is §11. It needs separate, explicit decisions:
 - the public host name;
 - the Namecheap record, preserving the existing records;
-- the HTTPS option and inbound path (plan §3);
-- `HTTP_ALLOWED_HOSTS`.
+- the HTTPS option and inbound path (plan §3), chosen in FLH-088 as option A;
+- `HTTP_ALLOWED_HOSTS`, set by `flh-public-https` through a unit drop-in.
+
+## 11. Optional public HTTPS (FLH-088)
+
+**Prepared, not applied.** The full procedure, cost, acceptance checks and
+rollback are in
+[docs/validation/FLH-088-public-demo.md](validation/FLH-088-public-demo.md)
+(§8–§10).
+
+**Design:**
+- **Edge:** nginx with a Let's Encrypt certificate, on the existing instance,
+  in front of the unchanged loopback demo.
+- **Packages:** nginx and certbot from the Amazon Linux repositories.
+- **Terraform:** `public_https_enabled = true` adds an Elastic IP, its
+  association and inbound TCP 80/443. It does not replace the instance.
+- **Unchanged:** port 18970 stays closed; SSM is unchanged.
+- **Host tool:** `deploy/aws/host/flh-public-https`, installed over SSM:
+  `preflight`, `enable` (with a `--staging` dry run), `status`, `disable`.
+
+**Host tool safeguards (FLH-088 §12):**
+- **DNS:** `preflight` requires exactly one A record equal to the instance's
+  public IPv4, no CNAME, and a verified empty AAAA answer. A failed lookup is
+  a refusal.
+- **nginx:** `enable` refuses a modified or foreign nginx configuration. A
+  rerun is safe.
+- **Renewal:** HTTPS is served only once the certbot package's own renewal
+  schedule works; otherwise the result is exit 3, INCOMPLETE.
+
+**Order** (the host name currently points at the owner's VPS; this is a
+controlled cutover of that one A record):
+1. **Record DNS facts:** A, AAAA, CNAME and TTL values; CAA at the host and its
+   parent; the nameservers.
+2. **IAM:** the administrator updates `flh-demo-deploy`.
+3. **Plan** with the deployed inputs and the deployed AMI (from `terraform
+   output -raw ami_id`). Review the full plan: exactly 4 to add, nothing
+   changed, destroyed or replaced. Then apply.
+4. **Install the tool** over SSM. Run `preflight`: before the cutover it must
+   fail only at the DNS check.
+5. **Cut over DNS:** lower the TTL, then **replace** the A value with the
+   Elastic IP and remove any AAAA record. Wait for propagation.
+6. **Enable:** `preflight`, then `enable --staging`, then `enable`; then
+   `certbot delete --cert-name flh-demo-staging`.
+7. **Verify renewal:** `status`, `systemctl list-timers`,
+   `certbot renew --dry-run`.
+8. **Record** the live acceptance checks.
+
+**Recovery to the VPS:**
+1. Restore the recorded A (and any AAAA) records with their TTL.
+2. Wait out caches until resolvers return the VPS address again. Check that
+   the VPS's `:8443` entry loads.
+3. Run `flh-public-https disable`.
+4. Only then apply `public_https_enabled = false`: exactly 4 to destroy.
+
+The VPS, its xray/nginx and its `:8443` configuration are never changed.

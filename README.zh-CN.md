@@ -160,7 +160,7 @@ Knowledge Library 在 Linux 上的验收和在 macOS 真实浏览器中的演练
 | [docs/DEMO.md](docs/DEMO.md) | 合成数据的 Knowledge Library 演示 |
 | [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | 可选语义检索：配置、索引操作、故障恢复、Go 代码导读 |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker 发布、备份、恢复、升级、浏览器边界设置 |
-| [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | 只读公开演示的 AWS 运维手册（仅准备、尚未部署）：单台 EC2，无入站访问，通过 Session Manager 私下预览 |
+| [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | 只读公开演示的 AWS 运维手册：单台 EC2，通过 Session Manager 私下预览；可选的公开 HTTPS 入口已准备、尚未启用（FLH-088） |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 系统如何工作；附录 A 为 HTTP API 参考 |
 | [web/README.md](web/README.md) | 工作台各视图与标注行为 |
 | [docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md) | 可重复的本地学习流程（简体中文），配合[捕获提示词](docs/CAPTURE_PROMPT.zh-CN.md) |
@@ -186,7 +186,7 @@ captures/, seed_demo.py    16 个合成 capture 及其导入脚本，脚本会�
 scripts/demo/flh034/       合成数据的 Knowledge Library 演示
 scripts/validation/        各验证报告使用的隔离验证脚本
 deploy/aws/                在 EC2 上运行只读演示的 Terraform 与主机工具
-                           （仅准备；见 docs/AWS_DEMO.md）
+                           （见 docs/AWS_DEMO.md）
 docs/                      上面列出的文档
 ```
 
