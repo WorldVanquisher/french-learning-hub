@@ -348,6 +348,73 @@ details.raw pre {
   font: inherit;
 }
 
+/* FLH-089: "Go to record" sits beside the record filters. */
+.records-jump {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+}
+
+/* FLH-091 question intake. */
+.intake-modes {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.intake-modes button[aria-pressed="true"] {
+  font-weight: 600;
+  border-color: var(--text);
+}
+
+.intake-field {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.intake-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  white-space: pre-wrap;
+}
+
+.records-search {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.records-search input {
+  width: min(28ch, 100%);
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
+.records-jump input {
+  width: 9ch;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
 .inspector-list {
   display: grid;
   gap: 16px;

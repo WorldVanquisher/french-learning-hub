@@ -62,6 +62,17 @@ export interface ReviewableUnit {
   confidence: number;
   candidate_identity: ConceptIdentity;
   signature: string;
+  // Present only in the paged queue (FLH-090): the unit's learning entry.
+  entry_id?: number;
+}
+
+// One page of the paged review queue (FLH-090), in the backend's strict
+// (entry, ordinal, unit) order. next_cursor is opaque and null when no further
+// unit followed at read time. Pages are separate reads, not one snapshot.
+export interface ReviewableUnitPage {
+  reviewable_units: ReviewableUnit[];
+  next_cursor: string | null;
+  limit: number;
 }
 
 // The deterministic resolver's read-only decision for a unit and the concepts that

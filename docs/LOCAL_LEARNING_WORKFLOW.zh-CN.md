@@ -162,6 +162,36 @@ Capture 回执只保存来源、摘要和引用；原问题在 Entry，候选解
 `imported:chatgpt-web:learning_capture_v1`；不含 Analysis 的记录为 `unanalyzed`。
 Inventory 按 Entry 选择最新 Analysis 和其最新 Feedback，不会把导入分析自动视为人工认可。
 
+在工作台中直接保存一个问题（FLH-091）：
+- **入口：** 在 **Learning Records** 中点击 **Add a learning question**，默认模式 **Question**。
+- **保存：** 输入问题和可选的来源，点击 **Save question**。
+  - 问题按原文保存为未分析（unanalyzed）的记录，不运行分析或提取，也不代表人工认可。
+  - 之后可在记录中显式请求分析和提取。
+- **导入 JSON：** **Capture JSON** 模式就是原有的 JSON 导入；导入的候选 Analysis 保持未审阅（unreviewed）。
+- **没有收到确认：** 文本会保留。
+  - 用 **Check whether it was saved** 查询，或用 **Send the same question again** 重发同一次提交；它不会被保存两次。
+- **浏览器存储：** 问题文本不会写入浏览器存储。
+
+记录增多后，在工作台 **Learning Records** 中查找旧记录（FLH-089）：
+- **跳转：** 在 **Go to record #** 输入记录编号可直接定位，只需一次请求，不必反复点击
+  **Load older records**。
+  - 列表顶部会说明从哪条记录开始；**Show newest records** 回到最新记录。
+  - 编号不存在或不符合筛选条件时，列表会说明，并从下一条更早的匹配记录开始。
+- **筛选：** **Effective category** 按后端计算的有效类别筛选，可与 **Record state** 组合。
+- **文本搜索（FLH-090）：** 在 **Search text** 中输入文字并点击 **Search**。
+  - **匹配范围：** 后端在学习者的原始输入或上下文中查找字面子串，忽略大小写，但重音须一致；
+    `%`、`_` 按普通字符处理。
+  - **不搜索的内容：** 不搜索生成的解释。
+  - **组合：** 可与状态、类别筛选和跳转组合使用。
+
+对应的 API：
+
+```bash
+curl -fsS "$FRENCH_HUB_URL/learning-records?limit=20&before_entry_id=$((ENTRY_ID + 1))" | python3 -m json.tool
+curl -fsS "$FRENCH_HUB_URL/learning-records?category=grammar&limit=20" | python3 -m json.tool
+curl -fsS "$FRENCH_HUB_URL/learning-records?q=bien%20que&limit=20" | python3 -m json.tool
+```
+
 如果重启或开启新终端后要恢复本次 ID，可从已保存的文件和回执读取：
 
 ```bash
@@ -260,6 +290,17 @@ FRENCH_HUB_URL=http://localhost:18080 npm run dev
 
 打开 Vite 打印的地址，进入 **Concept Review**。它显示当前 Extraction 中等待处理的 Unit。
 根据实际判断记录 SAME、NEW CONCEPT、DISTINCT、BROADER/NARROWER/RELATED 或 INVALID。
+
+**离开后返回（FLH-089）：**
+- **分页读取（FLH-090）：** 队列按页读取，每页 50 个 Unit；跳过最后一个已加载的 Unit 时
+  才读取下一页。
+- **恢复位置：** 切换到其他视图再回来，或点击 reload queue，会从离开时的 Unit 读取一页，并
+  恢复为它输入的搜索文本。
+  - 更早的 Unit 不会加载；**Start from the beginning of the queue** 会从队列开头重新读取。
+- **Unit 已不在队列中：** 例如已在记录中处理过，队列会从队列顺序中的下一个 Unit 继续，并
+  提示哪个 Unit 已不再等待审阅。
+- **大型 Concept 目录：** 搜索结果每次显示 50 个，并标明总数；用 **Show 50 more** 查看
+  其余结果。
 
 候选的展示、搜索、选择或跳过不会创建标签；只有显式动作才写入人工权威。NEW CONCEPT
 可以为尚未解析的 Unit 建立 seed SAME；选择现有 Concept 的普通 SAME 才可能成为后续检索

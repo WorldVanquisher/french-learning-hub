@@ -2458,6 +2458,28 @@ analysis's provenance, not a substring). Pagination: `limit` (default `50`, max
 `200`; out-of-range values are clamped) and `before_entry_id` for descending
 cursor pagination. Records are ordered by entry id descending.
 
+**Text filter `q`** (FLH-090, optional; also accepted by `/export`):
+- **What it searches:** a literal substring of the learner-authored
+  `original_input` **or** `original_context`. It never searches analyses,
+  corrections, feedback notes or provenance.
+- **Matching:**
+  - case-insensitive through Unicode lower-casing (Go `strings.ToLower`, applied
+    to both sides by the read-time SQLite function `flh_search_fold_v1`);
+  - no accent folding (`etat` does not match `état`);
+  - no Unicode normalization (composed and decomposed accents differ).
+- **Wildcards:** the test is `instr()`, not `LIKE`, so `%`, `_` and `\` are
+  ordinary characters.
+- **Bounds:** surrounding whitespace is trimmed, and a blank `q` means no
+  filter. More than 200 characters (runes), or invalid UTF-8, is a `400`.
+- **Ordering and composition:** there is no relevance ranking. It composes with
+  every other filter and with `before_entry_id`.
+- **Cost:** each request scans every entry's input and context; it is not an
+  index lookup.
+
+```bash
+curl 'localhost:8080/learning-records?q=bien%20que&state=corrected&limit=20'
+```
+
 Response `200 OK`:
 
 ```json
@@ -2899,7 +2921,30 @@ Handlers contain no SQL; all decisions run through the application
 - `GET  /reviewable-units` (optional `?entry_id=`) — units with no accepted SAME
   membership, with their derived candidate identity for a reviewer. Each entry also
   carries the unit's `example` and extraction `confidence` (milestone 10.6) so the
-  review UI needs no extra round-trip.
+  review UI needs no extra round-trip. Without the paging parameters below, the
+  response is the original complete list `{"reviewable_units":[...]}`, unchanged
+  (entry order is now explicit `entry_id ASC`, then ordinal).
+
+  **Paged contract** (FLH-090; opt-in by any of `limit`, `after`, `from_unit_id`):
+  - **Eligibility:** the same as the complete list, including `entry_id` scoping.
+  - **Order:** one strict total order, `entry_id ASC, ordinal ASC, unit_id ASC`.
+  - **`limit`:** default `50`, max `200`; clamped.
+  - **`after=<cursor>`:** continues strictly after an opaque cursor taken from
+    `next_cursor`.
+  - **`from_unit_id=<id>`:** starts at that unit's own position (inclusive). It
+    works even if the unit is no longer reviewable or no longer current, so a
+    reviewer can resume without loading earlier pages; it is one bounded lookup.
+    `after` and `from_unit_id` are exclusive.
+  - **Response:** `{"reviewable_units":[...], "next_cursor": "..."|null,
+    "limit": 50}`. Paged items add `entry_id`, and `next_cursor` is `null` when
+    no unit followed at read time.
+  - **Errors:** `400` for an invalid limit, cursor or locator, for both
+    parameters together, and for a locator outside the scoped entry. `404` for
+    an unknown entry or unit.
+  - **Consistency:** pages are separate reads, not a snapshot. A unit decided
+    between requests is simply absent from later pages. A unit whose key sorts
+    before the cursor, for example a new extraction of an earlier entry, appears
+    only on a later restart. No unit is returned twice within one cursor chain.
 - `GET  /entries/{id}/current-extraction` — inspect selected extraction and mode.
 - `PUT  /entries/{id}/current-extraction` — explicit persistent pin (including a
   pin to the latest version); request `{"extraction_id":34}`.

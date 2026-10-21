@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
-import { CaptureImport } from "../components/CaptureImport";
+import { QuestionIntake } from "../components/QuestionIntake";
 import { RecordDetail } from "../components/RecordDetail";
 import type { UnitTarget } from "../navigation";
 import {
+  FR_L2_TAXONOMY_V1,
   LEARNING_RECORD_STATES,
   type LearningRecord,
   type LearningRecordState,
@@ -15,6 +16,16 @@ import { useI18n } from "../i18n";
 export const RECORDS_PAGE_SIZE = 20;
 
 type StateFilter = "all" | LearningRecordState;
+// An effective fr_l2_taxonomy_v1 category, matched by the backend.
+type CategoryFilter = "all" | string;
+
+// parseRecordId accepts a positive decimal record ID ("#" optional), else null.
+export function parseRecordId(value: string): number | null {
+  const text = value.trim().replace(/^#/, "");
+  if (!/^[0-9]{1,15}$/.test(text)) return null;
+  const id = Number(text);
+  return id >= 1 && Number.isSafeInteger(id) ? id : null;
+}
 
 type ListStatus =
   | { status: "loading" }
@@ -30,10 +41,22 @@ function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+// The longest text query the backend accepts (characters).
+export const RECORD_SEARCH_MAX = 200;
+
 // RecordsBrowser is a GET-only view of the learning inventory: a filtered,
-// cursor-paginated list and a per-record detail. The list's loaded pages, filter,
-// and position live here, so opening a record and returning keeps them intact.
-// Responses for a superseded filter are discarded.
+// cursor-paginated list and a per-record detail. The list's loaded pages, filters,
+// jump position and scroll position live here, so opening a record and returning
+// keeps them intact. Responses for a superseded filter or jump are discarded.
+//
+// "Go to record" starts the list at a record ID through the existing exclusive
+// before_entry_id cursor (ID + 1), so an old record is one request away instead
+// of many "Load older" pages. Newer records are not hidden: the list says where
+// it starts and offers to return to the newest records.
+//
+// "Search text" (FLH-090) is applied explicitly and sent as ?q=; the backend
+// matches a literal, case-insensitive substring of the learner's original input
+// or context only. Nothing is filtered in the browser over loaded pages.
 export function RecordsBrowser({
   returnEpoch = 0,
   onNavigateToUnit,
@@ -45,6 +68,15 @@ export function RecordsBrowser({
 } = {}) {
   const { t, tp, status } = useI18n();
   const [filter, setFilter] = useState<StateFilter>("all");
+  const [category, setCategory] = useState<CategoryFilter>("all");
+  // The record ID the list starts at (inclusive), or null for the newest records.
+  const [anchor, setAnchor] = useState<number | null>(null);
+  const [jumpDraft, setJumpDraft] = useState("");
+  // The applied text query ("" = none) and the editable draft.
+  const [search, setSearch] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
+  const searchTooLong = Array.from(searchDraft.trim()).length > RECORD_SEARCH_MAX;
+  const [jumpInvalid, setJumpInvalid] = useState(false);
   const [records, setRecords] = useState<LearningRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [list, setList] = useState<ListStatus>({ status: "loading" });
@@ -66,7 +98,13 @@ export function RecordsBrowser({
     setMore({ status: "idle" });
     setRecords([]);
     setNextCursor(null);
-    api.listLearningRecords({ state: filter === "all" ? undefined : filter, limit: RECORDS_PAGE_SIZE })
+    api.listLearningRecords({
+      state: filter === "all" ? undefined : filter,
+      category: category === "all" ? undefined : category,
+      q: search || undefined,
+      limit: RECORDS_PAGE_SIZE,
+      beforeEntryId: anchor === null ? undefined : anchor + 1,
+    })
       .then((page) => {
         if (generation.current !== current) return;
         setRecords(page.records);
@@ -78,7 +116,7 @@ export function RecordsBrowser({
         if (generation.current !== current) return;
         setList({ status: "error", message: describeError(error) });
       });
-  }, [filter, reloadCount]);
+  }, [filter, category, search, anchor, reloadCount]);
 
   const loadOlder = useCallback(() => {
     if (nextCursor === null || more.status === "loading") return;
@@ -86,6 +124,8 @@ export function RecordsBrowser({
     setMore({ status: "loading" });
     api.listLearningRecords({
       state: filter === "all" ? undefined : filter,
+      category: category === "all" ? undefined : category,
+      q: search || undefined,
       limit: RECORDS_PAGE_SIZE,
       beforeEntryId: nextCursor,
     })
@@ -99,7 +139,26 @@ export function RecordsBrowser({
         if (generation.current !== current) return;
         setMore({ status: "error", message: describeError(error) });
       });
-  }, [filter, more.status, nextCursor]);
+  }, [filter, category, search, more.status, nextCursor]);
+
+  const submitSearch = (event: FormEvent) => {
+    event.preventDefault();
+    if (searchTooLong) return;
+    // Applying (or re-applying) a query restarts from its first page.
+    setSearch(searchDraft.trim());
+  };
+  const clearSearch = () => {
+    setSearchDraft("");
+    setSearch("");
+  };
+
+  const submitJump = (event: FormEvent) => {
+    event.preventDefault();
+    const id = parseRecordId(jumpDraft);
+    setJumpInvalid(id === null);
+    if (id !== null) setAnchor(id);
+  };
+  const filtered = filter !== "all" || category !== "all" || search !== "";
 
   // refreshRecord re-reads one changed record's inventory row from the backend after
   // a write in its detail, so the list never derives a state itself. A row read for
@@ -170,9 +229,11 @@ export function RecordsBrowser({
             {showImport ? t("records.hideImport") : t("records.showImport")}
           </button>
         </div>
-        {/* Kept mounted while hidden so a pending import and its outcome survive. */}
+        {/* Kept mounted while hidden so a pending save, its outcome and both drafts
+            survive. "Open saved record" opens the detail directly, whether or not the
+            record matches the current search, filters or jump. */}
         <div id="capture-import" hidden={!showImport}>
-          <CaptureImport onImported={() => setReloadCount((n) => n + 1)} onOpenRecord={openRecord} />
+          <QuestionIntake onSaved={() => setReloadCount((n) => n + 1)} onOpenRecord={openRecord} />
         </div>
 
         <div className="inspector-filters" aria-label={t("records.filters")}>
@@ -187,7 +248,83 @@ export function RecordsBrowser({
               ))}
             </select>
           </label>
+          <label>
+            {t("records.category")}
+            <select value={category} onChange={(event) => setCategory(event.target.value)}>
+              <option value="all">{t("common.all")}</option>
+              {FR_L2_TAXONOMY_V1.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <form className="records-search" onSubmit={submitSearch} role="search">
+            <label>
+              {t("records.search.label")}
+              <input
+                type="search"
+                value={searchDraft}
+                aria-invalid={searchTooLong}
+                aria-describedby={searchTooLong ? "records-search-error" : undefined}
+                onChange={(event) => setSearchDraft(event.target.value)}
+              />
+            </label>
+            <button type="submit" className="ghost" disabled={searchTooLong}>
+              {t("records.search.go")}
+            </button>
+            {search !== "" ? (
+              <button type="button" className="ghost" onClick={clearSearch}>
+                {t("records.search.clear")}
+              </button>
+            ) : null}
+          </form>
+          <form className="records-jump" onSubmit={submitJump}>
+            <label>
+              {t("records.jump.label")}
+              <input
+                type="text"
+                inputMode="numeric"
+                value={jumpDraft}
+                aria-invalid={jumpInvalid}
+                aria-describedby={jumpInvalid ? "records-jump-error" : undefined}
+                onChange={(event) => {
+                  setJumpDraft(event.target.value);
+                  setJumpInvalid(false);
+                }}
+              />
+            </label>
+            <button type="submit" className="ghost">
+              {t("records.jump.go")}
+            </button>
+          </form>
         </div>
+        {searchTooLong ? (
+          <p className="hint" id="records-search-error" role="alert">
+            {t("records.search.tooLong", { max: RECORD_SEARCH_MAX })}
+          </p>
+        ) : null}
+        {search !== "" ? (
+          <p className="hint" role="status">
+            {t("records.search.active", { q: search })}
+          </p>
+        ) : null}
+        {jumpInvalid ? (
+          <p className="hint" id="records-jump-error" role="alert">
+            {t("records.jump.invalid")}
+          </p>
+        ) : null}
+        {anchor !== null ? (
+          <div className="banner info" role="status">
+            {t("records.jump.showing", { id: anchor })}{" "}
+            <button type="button" className="ghost" onClick={() => setAnchor(null)}>
+              {t("records.jump.newest")}
+            </button>
+          </div>
+        ) : null}
+        {anchor !== null && list.status === "ready" && records[0]?.entry_id !== anchor ? (
+          <p className="hint">{t(filtered ? "records.jump.missingFiltered" : "records.jump.missing", { id: anchor })}</p>
+        ) : null}
 
         {list.status === "loading" ? (
           <div className="empty">{t("records.loading")}</div>
@@ -200,7 +337,15 @@ export function RecordsBrowser({
           </div>
         ) : records.length === 0 ? (
           <div className="empty">
-            {filter === "all" ? t("records.empty") : t("records.emptyFiltered", { state: status(filter) })}
+            {anchor !== null
+              ? t("records.jump.none", { id: anchor })
+              : search !== ""
+                ? t("records.search.none", { q: search })
+                : category !== "all"
+                ? t("records.emptyFilters")
+                : filter === "all"
+                  ? t("records.empty")
+                  : t("records.emptyFiltered", { state: status(filter) })}
           </div>
         ) : (
           <>

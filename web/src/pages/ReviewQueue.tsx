@@ -14,7 +14,7 @@ import { IdentityEditor } from "../components/IdentityEditor";
 import { MembershipPanel } from "../components/MembershipPanel";
 import { HistoryPanel } from "../components/HistoryPanel";
 import { ResolutionActions, type ActionKind } from "../components/ResolutionActions";
-import { discoverConcepts } from "../conceptSearch";
+import { createConceptDiscovery, DISCOVERY_PAGE_SIZE, visibleDiscovery } from "../conceptSearch";
 import type { UnitTarget } from "../navigation";
 import {
   ExplicitAction,
@@ -49,6 +49,20 @@ import { msg, useI18n, type MessageKey, type MessageRef, type Msg } from "../i18
 // Notice and reconciliation texts are kept as messages, so they follow a language
 // switch; raw server error details inside them are never translated.
 type Notice = { kind: "success" | "error" | "info"; text: Msg } | null;
+
+// ReviewResume is where the general queue was left: the unit shown (by ID), its
+// position, and the catalog search text. App keeps it while the queue is
+// unmounted, so switching views or reloading does not restart the queue at its
+// first unit. It is navigation state only and never annotation authority: the
+// queue is always re-read from the backend, and a unit that is no longer
+// reviewable is never restored.
+export type ReviewResume = { unitId: number | null; index: number; searchQuery: string };
+
+// Paged loading (FLH-090): the general queue reads REVIEW_QUEUE_PAGE units at a
+// time and the next page only when the reviewer moves past the loaded end. A
+// record-scoped queue reads up to the backend maximum per page.
+export const REVIEW_QUEUE_PAGE = 50;
+const RECORD_QUEUE_PAGE = 200;
 
 // The latest decision outcome and the re-read that followed it, per unit.
 type UnitStatus = { outcome: Outcome | null; refresh: { what: Msg; state: RefreshState } | null };
@@ -94,10 +108,15 @@ export function ReviewQueue({
   focus = null,
   onBack,
   onInspect,
+  resume,
+  onResumeChange,
 }: {
   focus?: UnitTarget | null;
   onBack?: () => void;
   onInspect?: (unitId: number) => void;
+  // General queue only: the position to restore, and where to report it.
+  resume?: ReviewResume | null;
+  onResumeChange?: (resume: ReviewResume) => void;
 } = {}) {
   const [queue, setQueue] = useState<ReviewableUnit[]>([]);
   // Set after the first focused load when the focused unit is not reviewable now.
@@ -107,6 +126,27 @@ export function ReviewQueue({
   const focusHeadingRef = useRef<HTMLHeadingElement>(null);
   const [index, setIndex] = useState(0);
   const [loadingQueue, setLoadingQueue] = useState(true);
+  // The position to keep across queue reads: the restored one until the first
+  // read succeeds, then the unit currently shown.
+  const position = useRef<{ unitId: number | null; index: number }>({
+    unitId: focus ? null : resume?.unitId ?? null,
+    index: focus ? 0 : resume?.index ?? 0,
+  });
+  // Reported only after a queue read succeeded, so a failed or pending first read
+  // never overwrites the saved position with "no unit".
+  const queueLoaded = useRef(false);
+  // Shown when the unit the reviewer was on is no longer awaiting review.
+  const [resumeNote, setResumeNote] = useState<MessageRef | null>(null);
+  // The loaded window of the queue: the cursor after its last unit (null = no
+  // further unit at read time) and whether it starts at the queue's beginning.
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const nextCursorRef = useRef<string | null>(null);
+  const [windowFromStart, setWindowFromStart] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
+  // A failed next-page read, kept apart from decision notices so a decision's
+  // own outcome never hides it.
+  const [moreError, setMoreError] = useState<Msg | null>(null);
   // The decision currently being sent. While set, no decision or unit switch is possible.
   const { t, render } = useI18n();
   const [pendingWrite, setPendingWrite] = useState<{ unitId: number; label: MessageRef } | null>(null);
@@ -163,13 +203,25 @@ export function ReviewQueue({
   const [loadedUnitContextId, setLoadedUnitContextId] = useState<number | null>(null);
   const [membership, setMembership] = useState<CurrentMembership | null>(null);
   const [candidates, setCandidates] = useState<Concept[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(focus ? "" : resume?.searchQuery ?? "");
+  // The reviewer's own search text for the restored unit. It replaces the seeded
+  // candidate target only for that unit, and is dropped once another unit loads.
+  const restoredSearch = useRef<{ unitId: number; query: string } | null>(
+    !focus && resume?.unitId != null ? { unitId: resume.unitId, query: resume.searchQuery } : null,
+  );
   const [selectedConceptId, setSelectedConceptId] = useState<number | null>(null);
   const [identityDraft, setIdentityDraft] = useState<IdentityDraft | null>(null);
   const [history, setHistory] = useState<UnitConceptLink[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const current: ReviewableUnit | undefined = queue[index];
+  // Report the general queue's position (unit, index, search text) to App.
+  const currentId = current?.unit_id ?? null;
+  useEffect(() => {
+    if (focus || !queueLoaded.current) return;
+    position.current = { unitId: currentId, index };
+    onResumeChange?.({ unitId: currentId, index, searchQuery });
+  }, [focus, currentId, index, searchQuery, onResumeChange]);
   // Read by asynchronous results, which must only change the unit still shown.
   const currentUnitRef = useRef<number | null>(null);
   currentUnitRef.current = current?.unit_id ?? null;
@@ -178,23 +230,70 @@ export function ReviewQueue({
   const unitContextReady = current !== undefined && loadedUnitContextId === current.unit_id;
   const identity = current !== undefined && identityDraft?.unitId === current.unit_id ? identityDraft.value : null;
   const exactConceptIds = useMemo(() => new Set(candidates.map((concept) => concept.id)), [candidates]);
+  // The catalog is normalized once per load; each keystroke filters prepared text.
+  const discovery = useMemo(() => createConceptDiscovery(catalog), [catalog]);
   const discoveryCandidates = useMemo(
-    () => discoverConcepts(catalog, searchQuery, exactConceptIds),
-    [catalog, exactConceptIds, searchQuery],
+    () => discovery(searchQuery, exactConceptIds),
+    [discovery, exactConceptIds, searchQuery],
+  );
+  // How many matches are rendered for this unit and search; a new unit or search
+  // starts again at one page. The total is always stated, so nothing is hidden.
+  const discoveryKey = `${current?.unit_id ?? ""}|${searchQuery}`;
+  const [discoveryShown, setDiscoveryShown] = useState({ key: "", shown: DISCOVERY_PAGE_SIZE });
+  const shownCount = discoveryShown.key === discoveryKey ? discoveryShown.shown : DISCOVERY_PAGE_SIZE;
+  const visibleCandidates = useMemo(
+    () => visibleDiscovery(discoveryCandidates, shownCount, selectedConceptId),
+    [discoveryCandidates, shownCount, selectedConceptId],
   );
 
   // loadQueue fetches the reviewable units. Any error is surfaced, never swallowed.
   const loadQueue = useCallback(async () => {
     const request = ++queueRequest.current;
     setLoadingQueue(true);
+    loadingMoreRef.current = false;
+    setLoadingMore(false);
+    setMoreError(null);
+    const resumeId = focus ? null : position.current.unitId;
     try {
-      // Backend eligibility only: a focused view reads the record's reviewable units.
-      const units = await api.listReviewableUnits(focus?.entryId);
+      // Backend eligibility and order only. A focused view reads the record's
+      // units; the general queue reads one page, starting at the unit the
+      // reviewer left (the backend's bounded from_unit_id locator) when there is one.
+      let page = await api.listReviewableUnitsPage(
+        focus
+          ? { entryId: focus.entryId, limit: RECORD_QUEUE_PAGE }
+          : resumeId !== null
+            ? { limit: REVIEW_QUEUE_PAGE, fromUnitId: resumeId }
+            : { limit: REVIEW_QUEUE_PAGE },
+      ).catch((e: unknown) => {
+        // A unit that no longer exists cannot anchor the queue: read from the start.
+        if (resumeId !== null && e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      });
       if (request !== queueRequest.current) return;
+      const fromStart = focus !== null || resumeId === null || page === null;
+      if (page === null) page = await api.listReviewableUnitsPage({ limit: REVIEW_QUEUE_PAGE });
+      if (request !== queueRequest.current) return;
+      const units = page.reviewable_units;
       setQueue(units);
-      const focusedIndex = focus ? units.findIndex((u) => u.unit_id === focus.unitId) : -1;
-      setIndex(Math.max(0, focusedIndex));
-      setFocusMissing(focus !== null && focusedIndex < 0);
+      queueRef.current = units;
+      setNextCursor(page.next_cursor);
+      nextCursorRef.current = page.next_cursor;
+      setWindowFromStart(fromStart);
+      if (focus) {
+        const focusedIndex = units.findIndex((u) => u.unit_id === focus.unitId);
+        setIndex(Math.max(0, focusedIndex));
+        setFocusMissing(focusedIndex < 0);
+      } else {
+        // The page starts at the reviewer's unit if it is still reviewable,
+        // otherwise at the next unit in queue order.
+        setIndex(0);
+        setResumeNote(
+          resumeId !== null && units.length > 0 && units[0].unit_id !== resumeId
+            ? msg("review.resume.moved", { id: resumeId })
+            : null,
+        );
+      }
+      queueLoaded.current = true;
     } catch (e) {
       if (request !== queueRequest.current) return;
       setNotice({ kind: "error", text: describe(e, "review.error.queue") });
@@ -202,6 +301,50 @@ export function ReviewQueue({
       if (request === queueRequest.current) setLoadingQueue(false);
     }
   }, [focus]);
+
+  // loadMore appends the next page after the loaded window, once, on demand.
+  // Units already shown are never added twice. A newer queue read supersedes it.
+  // Returns how many new units were appended.
+  const loadMore = useCallback(async (): Promise<number> => {
+    const cursor = nextCursorRef.current;
+    if (cursor === null || loadingMoreRef.current) return 0;
+    const request = queueRequest.current;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setMoreError(null);
+    try {
+      const page = await api.listReviewableUnitsPage({
+        entryId: focus?.entryId,
+        limit: focus ? RECORD_QUEUE_PAGE : REVIEW_QUEUE_PAGE,
+        after: cursor,
+      });
+      if (request !== queueRequest.current) return 0;
+      const known = new Set(queueRef.current.map((u) => u.unit_id));
+      const fresh = page.reviewable_units.filter((u) => !known.has(u.unit_id));
+      const merged = [...queueRef.current, ...fresh];
+      queueRef.current = merged;
+      setQueue(merged);
+      setNextCursor(page.next_cursor);
+      nextCursorRef.current = page.next_cursor;
+      return fresh.length;
+    } catch (e) {
+      if (request === queueRequest.current) setMoreError(describe(e, "review.error.more"));
+      return 0;
+    } finally {
+      if (request === queueRequest.current) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
+    }
+  }, [focus]);
+
+  // restartQueue forgets the resume point and reads the queue from its start.
+  const restartQueue = useCallback(() => {
+    position.current = { unitId: null, index: 0 };
+    restoredSearch.current = null;
+    setResumeNote(null);
+    void loadQueue();
+  }, [loadQueue]);
 
   // Opened from a record: move keyboard focus to the record context.
   useEffect(() => {
@@ -255,7 +398,9 @@ export function ReviewQueue({
     setLoadedUnitContextId(null);
     setMembership(null);
     setCandidates([]);
-    setSearchQuery(unit.candidate_identity.target);
+    const restored = restoredSearch.current;
+    if (restored && restored.unitId !== unit.unit_id) restoredSearch.current = null;
+    setSearchQuery(restored?.unitId === unit.unit_id ? restored.query : unit.candidate_identity.target);
     setSelectedConceptId(null);
     setHistory([]);
     setIdentityDraft({
@@ -295,9 +440,19 @@ export function ReviewQueue({
     const at = q.findIndex((u) => u.unit_id === unitId);
     if (at < 0) return;
     const next = q.filter((u) => u.unit_id !== unitId);
+    queueRef.current = next;
     setQueue(next);
+    if (at === q.length - 1 && nextCursorRef.current !== null) {
+      // The last loaded unit was decided and more follow: read the next page
+      // (one request) and continue with its first unit instead of moving back.
+      setIndex(at);
+      void loadMore().then((added) => {
+        if (added === 0) setIndex((i) => Math.min(i, Math.max(0, queueRef.current.length - 1)));
+      });
+      return;
+    }
     setIndex((i) => Math.min(i > at ? i - 1 : i, Math.max(0, next.length - 1)));
-  }, []);
+  }, [loadMore]);
 
   // rereadUnit re-reads a unit's backend authority after a write and reports that
   // re-read separately from the write's outcome. The shown context changes only if
@@ -585,16 +740,43 @@ export function ReviewQueue({
         {missing}
         {notice ? <div className={`banner ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{render(notice.text)}</div> : null}
         <div className="empty">
-          <p>{focus ? t("review.empty.focus", { id: focus.entryId }) : t("review.empty")}</p>
-          <button
-            className="ghost"
-            onClick={() => {
-              void loadQueue();
-              void loadCatalog();
-            }}
-          >
-            {t("review.reloadQueue")}
-          </button>
+          {nextCursor !== null ? (
+            // Units follow the decided ones: the next page is being (or can be) read.
+            <>
+              {moreError ? <div className="banner error" role="alert">{render(moreError)}</div> : null}
+              <p>{loadingMore ? t("review.loadingMore") : t("review.moreAvailable")}</p>
+              {!loadingMore ? (
+                <button
+                  className="ghost"
+                  onClick={() =>
+                    void loadMore().then(() => setIndex((i) => Math.min(i, Math.max(0, queueRef.current.length - 1))))
+                  }
+                >
+                  {t("review.loadMore")}
+                </button>
+              ) : null}
+            </>
+          ) : !windowFromStart ? (
+            <>
+              <p>{t("review.empty.resumed")}</p>
+              <button className="ghost" onClick={restartQueue}>
+                {t("review.restart")}
+              </button>
+            </>
+          ) : (
+            <>
+              <p>{focus ? t("review.empty.focus", { id: focus.entryId }) : t("review.empty")}</p>
+              <button
+                className="ghost"
+                onClick={() => {
+                  void loadQueue();
+                  void loadCatalog();
+                }}
+              >
+                {t("review.reloadQueue")}
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -611,23 +793,56 @@ export function ReviewQueue({
         <p className="hint">{t("review.focus.others", { id: focus.entryId })}</p>
       ) : null}
       {notice ? <div className={`banner ${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>{render(notice.text)}</div> : null}
+      {resumeNote ? <p className="hint" role="status">{render(resumeNote)}</p> : null}
+      {moreError ? <div className="banner error" role="alert">{render(moreError)}</div> : null}
 
       <div className="queue-nav">
         <button
           className="ghost"
           disabled={index === 0 || pendingWrite !== null}
-          onClick={() => setIndex((i) => Math.max(0, i - 1))}
+          onClick={() => {
+            setResumeNote(null);
+            setIndex((i) => Math.max(0, i - 1));
+          }}
         >
           {t("review.previous")}
         </button>
-        <span className="position">{t("review.position", { index: index + 1, total: queue.length })}</span>
+        <span className="position">
+          {/* The total is shown only when the whole queue is loaded; otherwise the
+              text says how many units are loaded, never presenting a page as the queue. */}
+          {windowFromStart && nextCursor === null
+            ? t("review.position", { index: index + 1, total: queue.length })
+            : t(
+                windowFromStart
+                  ? "review.position.more"
+                  : nextCursor === null
+                    ? "review.position.resumed"
+                    : "review.position.resumedMore",
+                { index: index + 1, loaded: queue.length },
+              )}
+        </span>
         <button
           className="ghost"
-          disabled={index >= queue.length - 1 || pendingWrite !== null}
-          onClick={() => setIndex((i) => Math.min(queue.length - 1, i + 1))}
+          disabled={pendingWrite !== null || loadingMore || (index >= queue.length - 1 && nextCursor === null)}
+          onClick={() => {
+            setResumeNote(null);
+            if (index < queue.length - 1) {
+              setIndex((i) => i + 1);
+              return;
+            }
+            // Past the loaded end: read the next page once, then advance into it.
+            void loadMore().then((added) => {
+              if (added > 0) setIndex((i) => i + 1);
+            });
+          }}
         >
-          {t("review.skip")}
+          {loadingMore ? t("review.loadingMoreShort") : t("review.skip")}
         </button>
+        {!focus && !windowFromStart ? (
+          <button className="ghost" disabled={pendingWrite !== null} onClick={restartQueue}>
+            {t("review.restart")}
+          </button>
+        ) : null}
         <button
           className="ghost"
           onClick={() => {
@@ -681,9 +896,19 @@ export function ReviewQueue({
                 type="search"
                 aria-label={t("review.search.title")}
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setDiscoveryShown({ key: "", shown: DISCOVERY_PAGE_SIZE });
+                }}
               />
-              <button type="button" className="ghost" onClick={() => setSearchQuery("")}>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  setSearchQuery("");
+                  setDiscoveryShown({ key: "", shown: DISCOVERY_PAGE_SIZE });
+                }}
+              >
                 {t("common.clear")}
               </button>
             </div>
@@ -696,18 +921,34 @@ export function ReviewQueue({
                 <em>{t("review.search.none")}</em>
               </p>
             ) : (
-              <div className="candidate-list discovery-results">
-                {discoveryCandidates.map((concept) => (
-                  <CandidateConceptCard
-                    key={concept.id}
-                    concept={concept}
-                    selected={selectedConceptId === concept.id}
-                    onSelect={() =>
-                      setSelectedConceptId(selectedConceptId === concept.id ? null : concept.id)
-                    }
-                  />
-                ))}
-              </div>
+              <>
+                <div className="candidate-list discovery-results">
+                  {visibleCandidates.map((concept) => (
+                    <CandidateConceptCard
+                      key={concept.id}
+                      concept={concept}
+                      selected={selectedConceptId === concept.id}
+                      onSelect={() =>
+                        setSelectedConceptId(selectedConceptId === concept.id ? null : concept.id)
+                      }
+                    />
+                  ))}
+                </div>
+                {discoveryCandidates.length > shownCount ? (
+                  <p className="hint">
+                    {t("review.search.showing", { shown: shownCount, total: discoveryCandidates.length })}{" "}
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => setDiscoveryShown({ key: discoveryKey, shown: shownCount + DISCOVERY_PAGE_SIZE })}
+                    >
+                      {t("review.search.more", {
+                        count: Math.min(DISCOVERY_PAGE_SIZE, discoveryCandidates.length - shownCount),
+                      })}
+                    </button>
+                  </p>
+                ) : null}
+              </>
             )}
           </div>
 

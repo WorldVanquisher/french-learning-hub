@@ -102,6 +102,39 @@ search query belong to the unit being reviewed:
   one concept and then create a NEW CONCEPT from the edited identity. The
   selection is cleared so the concept just judged is not reused by accident.
 
+**Bounded loading (FLH-090).** Concept Review reads the queue in pages through the
+paged `GET /reviewable-units` contract:
+- **Page sizes:** 50 units for the general queue; up to 200 for a record's queue.
+- **The next page:** it is read only when you skip past the last loaded unit,
+  or when you decide it. One request, never a loop over the whole queue.
+- **Duplicates:** a unit already loaded is never added twice.
+- **Position text:** "unit 3 of 12" only when the whole queue is loaded.
+  Otherwise it says how many units are loaded and that more follow, or that
+  earlier units are not loaded. A page is never presented as the queue total.
+- **A failed next-page read:** it is shown as its own error, apart from the
+  decision's outcome. **skip →** (or **Load the next units**) reads it again on
+  request. Nothing is retried automatically, and no decision is ever resent.
+- **No snapshot:** pages are separate reads. A unit decided elsewhere between
+  pages is simply absent.
+
+**Leaving and returning (FLH-089, paged in FLH-090).** The general queue unmounts
+when another view is shown. App keeps where it was left, and the queue resumes
+there:
+- **What is kept:** the unit shown (by unit ID) and the search text typed for that
+  unit.
+- **On return, and on reload queue:** one page is read from that unit
+  (`from_unit_id`, a bounded locator), and the same unit is shown again. Earlier
+  units are not loaded, and **Start from the beginning of the queue** reads the
+  first page.
+- **If that unit left the queue meanwhile:** for example, it was decided from a
+  record. The page starts at the next unit in queue order, and the queue says
+  which unit is no longer awaiting review. The old unit's search text is not
+  carried over to another unit.
+- **What is not kept:** the identity draft and the selected Concept stay
+  per-unit and are re-seeded from the backend.
+- **Pending decisions:** their saved-operation and unknown-outcome protections are
+  unchanged.
+
 ### Decision outcomes (FLH-027)
 
 Every Concept Review decision (SAME or REASSIGN SAME, NEW CONCEPT,
@@ -153,6 +186,17 @@ The page keeps two candidate sources visibly and semantically separate:
   retired concepts, and keeps orphaned durable identities discoverable. Concepts
   already shown as exact matches are deduplicated by Concept ID.
 
+**A large catalog (FLH-089).**
+- **One normalization per load:** the catalog is normalized once when it loads,
+  not on every keystroke.
+- **Fifty at a time:** matches render 50 at a time, in catalog order. "Showing
+  50 of 500 matching concepts" states the total, and **Show 50 more** adds the
+  next page, so every match stays reachable.
+- **When it restarts:** a new search or a new unit starts again at one page.
+- **Selection stays visible:** a selected Concept further down the list is
+  always shown.
+- **Unchanged:** matching rules, order and exact-match deduplication.
+
 Catalog discovery is retrieval evidence only, never annotation authority. Showing,
 searching, selecting, or skipping a candidate writes nothing and does not imply
 SAME or DISTINCT. Both sections share one selected Concept; only an explicit human
@@ -174,10 +218,34 @@ Writes happen only through the explicit actions described in the next section.
 
 - `GET /learning-records` supplies the list, newest first, 20 records per
   request. The **Record state** filter (`unanalyzed`, `unreviewed`, `accepted`,
-  `corrected`, `rejected`) is sent to the backend as `state`; **Load older
-  records** passes the returned `next_before_entry_id` cursor back as
-  `before_entry_id` and appends the next page. "End of records." appears when the
-  cursor is null.
+  `corrected`, `rejected`) is sent to the backend as `state`. The **Effective
+  category** filter (`fr_l2_taxonomy_v1`) is sent as `category`; the backend
+  matches the effective interpretation, so rejected and unanalyzed records never
+  match a category. **Load older records** passes the returned
+  `next_before_entry_id` cursor back as `before_entry_id` and appends the next
+  page. "End of records." appears when the cursor is null.
+- **Go to record #** (FLH-089) starts the list at a record ID with one request.
+  - **How it works:** it uses the same exclusive cursor (`before_entry_id = ID + 1`)
+    under the current filters.
+  - **What it shows:** a banner says that the list starts at #ID and that newer
+    records are not shown, and **Show newest records** returns to the top.
+  - **Absent or filtered-out ID:** the list says so and starts at the next older
+    matching record. Older pages stay reachable with **Load older records**.
+  - **Invalid input:** it is refused without a request.
+- **Search text** (FLH-090) is applied with **Search** and sent as `q`.
+  - **What it matches:** the backend matches a literal substring of the
+    learner's original input or context. Letter case is ignored and accents
+    must match; `%` and `_` are ordinary characters. Generated interpretations
+    are never searched.
+  - **Combination:** it combines with the state and category filters and with
+    **Go to record #**.
+  - **Pagination:** applying or clearing a search restarts from its first page,
+    and **Load older records** pages through all matches. A response for an
+    earlier search is discarded.
+  - **Limits:** a blank search means no search. Over 200 characters is refused
+    in the browser, before any request.
+  - **Messages:** "no records", "no search matches" and "jump target excluded by
+    the filters" are three different messages.
 - Opening a record reads `GET /entries/{id}` for the original input and context
   and `GET /entries/{id}/analyses` for every immutable analysis version. The
   latest version is selected by default; choosing another version only changes
@@ -197,9 +265,12 @@ not hide another section.
 Responses that arrive after the reader has moved on are discarded: a list
 response for a superseded filter, an older page requested under a previous
 filter, a detail read for a record that is no longer open, and an effective
-interpretation for a version that is no longer selected. Returning from a detail
-keeps the loaded pages and filter and moves focus back to the record's **Open**
-button. Switching to another workbench tab still resets the view.
+interpretation for a version that is no longer selected. A list requested under
+an earlier jump is discarded the same way.
+- **Returning from a detail:** the loaded pages, filters and jump position are
+  kept, and focus moves back to the record's **Open** button.
+- **Switching to another workbench tab and back:** the Learning Records view
+  stays mounted, so it keeps them too.
 
 ## Capture import, analysis, and extraction (FLH-014)
 
@@ -207,6 +278,37 @@ The daily path capture → record → analysis → extraction runs in the Learni
 Records view through existing endpoints only. The browser never decides
 interpretation or eligibility.
 
+- **Add a learning question** (FLH-091) opens one intake panel with two modes.
+  **Question** is the default; **Capture JSON** is the import described in the
+  next item. Both modes stay mounted, so switching keeps each draft and sends
+  nothing.
+  - **What Question saves:** your question and optional context, exactly as
+    typed. The server trims only the ends; interior spaces and line breaks are
+    kept.
+  - **How it is sent:** through the same `POST /captures` as a
+    `learning_capture_v1` with `source: "manual"`, a fresh
+    `capture_id = question-<uuid>`, and no `analysis` or `discussion_summary`.
+  - **What it creates:** an `unanalyzed` record. There is no analysis,
+    extraction, provider request or human acceptance; request those later in
+    the record.
+  - **Same attempt, same identity:** one submission keeps one `capture_id` and
+    one byte-identical body. Repeated clicks send one request, and a write is
+    never retried automatically.
+  - **Lost response or `5xx`:** the outcome is *unknown*, not failed, and the
+    text is kept. **Check whether it was saved** reads the receipt
+    (`GET /captures/{id}`), and **Send the same question again** resends the
+    identical attempt, which the server replays (`200`) and cannot store twice.
+  - **Text edited while unknown:** **Save** is blocked until you check or
+    explicitly **Stop tracking the earlier attempt**. Edited text never reuses
+    the earlier identity.
+  - **Outcomes:** new save (`201`), replay (`200`), validation rejection
+    (`400`/`422`, text kept, the next save gets a new identity) and conflict
+    (`409`) are reported separately.
+  - **After a confirmed save:** the list is reloaded, and **Open saved record
+    #N** opens the record directly, even when the current search, filters or
+    jump would not list it. A failed list refresh is shown separately and does
+    not undo or hide the confirmed save.
+  - **Browser storage:** none of the learner's text is written there.
 - **Import a capture** (`POST /captures`) sends one pasted or loaded
   `learning_capture_v1` JSON document unchanged, like the capture CLI. The browser
   checks only JSON syntax (invalid JSON is never sent); the server validates

@@ -13,6 +13,7 @@ import type {
   RelationKind,
   ResolutionOutcome,
   ReviewableUnit,
+  ReviewableUnitPage,
   UnitConceptLink,
   UnitDistinction,
   UnitInvalidEnvelope,
@@ -125,10 +126,14 @@ async function request<T>(
 // ---- read endpoints ----
 
 // LearningRecordQuery selects one page of the read-only learning inventory. The
-// state filter and cursor are passed through unchanged; the backend validates
-// them and owns the page-size bounds.
+// state and effective-category filters and the cursor are passed through
+// unchanged; the backend validates them, matches the category against the
+// effective interpretation, and owns the page-size bounds.
 export interface LearningRecordQuery {
   state?: LearningRecordState;
+  category?: string;
+  // Literal text over the learner's original input and context (FLH-090).
+  q?: string;
   limit?: number;
   beforeEntryId?: number;
 }
@@ -141,6 +146,8 @@ export async function listLearningRecords(
 ): Promise<LearningRecordPage> {
   const params = new URLSearchParams();
   if (query.state) params.set("state", query.state);
+  if (query.category) params.set("category", query.category);
+  if (query.q) params.set("q", query.q);
   if (query.limit !== undefined) params.set("limit", String(query.limit));
   if (query.beforeEntryId !== undefined) params.set("before_entry_id", String(query.beforeEntryId));
   const q = params.toString();
@@ -184,6 +191,35 @@ export async function listReviewableUnits(
     fetchImpl,
   );
   return data.reviewable_units ?? [];
+}
+
+// ReviewQueuePageQuery selects one bounded page of the review queue (FLH-090).
+// after continues from an opaque cursor; fromUnitId starts at that unit's queue
+// position (inclusive) even if it is no longer reviewable. They are exclusive.
+export interface ReviewQueuePageQuery {
+  entryId?: number;
+  limit?: number;
+  after?: string;
+  fromUnitId?: number;
+}
+
+// listReviewableUnitsPage reads one page of GET /reviewable-units with the paged
+// contract. Eligibility, order and page bounds are backend-owned.
+export async function listReviewableUnitsPage(
+  query: ReviewQueuePageQuery = {},
+  fetchImpl: typeof fetch = fetch,
+): Promise<ReviewableUnitPage> {
+  const params = new URLSearchParams();
+  if (query.entryId !== undefined) params.set("entry_id", String(query.entryId));
+  params.set("limit", String(query.limit ?? 50));
+  if (query.after !== undefined) params.set("after", query.after);
+  if (query.fromUnitId !== undefined) params.set("from_unit_id", String(query.fromUnitId));
+  const data = await request<ReviewableUnitPage>("GET", `/reviewable-units?${params.toString()}`, undefined, fetchImpl);
+  return {
+    reviewable_units: data.reviewable_units ?? [],
+    next_cursor: data.next_cursor ?? null,
+    limit: data.limit,
+  };
 }
 
 // listConcepts reads the existing durable-concept catalog. The annotation UI uses

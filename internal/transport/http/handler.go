@@ -803,6 +803,12 @@ func parseLearningRecordQuery(r *http.Request) (domain.LearningRecordQuery, erro
 	if v := q.Get("analyzer"); v != "" {
 		out.Analyzer = &v
 	}
+	// q: optional literal text filter over the learner-authored input and
+	// context (FLH-090). Blank means no filter; the domain bounds its length.
+	if q.Has("q") {
+		v := q.Get("q")
+		out.Text = &v
+	}
 	if v := q.Get("limit"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil {

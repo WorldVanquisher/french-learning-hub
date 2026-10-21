@@ -13,6 +13,7 @@ import (
 // LinkSame calls so tests can assert whether the auto-resolver created a
 // membership.
 type fakeConceptRepo struct {
+	lastPageQuery   domain.ReviewQueuePageQuery
 	unit            *domain.KnowledgeUnit
 	unitErr         error
 	bySignature     []domain.KnowledgeConcept
@@ -89,6 +90,10 @@ func (f *fakeConceptRepo) SetPreferredUnit(context.Context, int64, int64) (*doma
 }
 func (f *fakeConceptRepo) ListReviewableUnits(context.Context, *int64) ([]domain.ReviewableUnit, error) {
 	return nil, nil
+}
+func (f *fakeConceptRepo) ListReviewableUnitsPage(_ context.Context, q domain.ReviewQueuePageQuery) (*domain.ReviewQueuePage, error) {
+	f.lastPageQuery = q
+	return &domain.ReviewQueuePage{}, nil
 }
 func (f *fakeConceptRepo) ActiveSupportUnitIDs(context.Context, int64) ([]int64, error) {
 	return nil, nil
