@@ -453,6 +453,41 @@ type ConceptView struct {
 type ReviewableUnit struct {
 	Unit      KnowledgeUnit
 	Candidate ConceptIdentity
+	// EntryID is the learning entry the unit's extraction belongs to.
+	EntryID int64
+}
+
+// ReviewQueueCursor is a position in the paged review queue (FLH-090). The paged
+// queue has one deterministic total order: entry ID, then the unit's ordinal in
+// its extraction, then unit ID as the final tie-breaker. A cursor names the last
+// unit of a page by that key, never by an array offset.
+type ReviewQueueCursor struct {
+	EntryID int64
+	Ordinal int
+	UnitID  int64
+}
+
+// ReviewQueuePageQuery selects one bounded page of reviewable units. After and
+// FromUnitID are mutually exclusive: After continues strictly after a cursor;
+// FromUnitID starts at that unit's queue position (inclusive), whether or not
+// the unit is still reviewable, which lets a reviewer resume without loading
+// earlier pages. EntryID scopes the queue to one entry. Limit is normalized by
+// the service.
+type ReviewQueuePageQuery struct {
+	EntryID    *int64
+	After      *ReviewQueueCursor
+	FromUnitID *int64
+	Limit      int
+}
+
+// ReviewQueuePage is one page and the cursor of its last unit, or nil when the
+// queue had no further unit at read time. Pages are separate reads, not a
+// snapshot: a unit decided or newly extracted between requests can disappear or
+// appear, but no unit is returned twice for one cursor chain because the order is
+// strict and total.
+type ReviewQueuePage struct {
+	Units []ReviewableUnit
+	Next  *ReviewQueueCursor
 }
 
 // CurrentConceptMembership is the read model for a unit's CURRENT SAME membership.
@@ -678,6 +713,11 @@ type ConceptRepository interface {
 	// current extractions. Only current-extraction units are considered (historical
 	// units are queryable elsewhere but are not part of the live review queue).
 	ListReviewableUnits(ctx context.Context, entryID *int64) ([]ReviewableUnit, error)
+	// ListReviewableUnitsPage returns one bounded page of the same reviewable units
+	// in the paged queue order (ReviewQueueCursor), optionally scoped to one entry.
+	// The query must be normalized (positive bounded Limit). Returns ErrNotFound if
+	// the scoped entry or the FromUnitID unit does not exist.
+	ListReviewableUnitsPage(ctx context.Context, q ReviewQueuePageQuery) (*ReviewQueuePage, error)
 	// ActiveSupportUnitIDs returns the ids of units that currently provide automatic
 	// support to conceptID (current SAME membership + belongs to their entry's
 	// current extraction + effective admission active). Computed from current data.

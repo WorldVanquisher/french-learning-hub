@@ -642,3 +642,124 @@ describe("ReviewQueue conflict refresh outcome", () => {
     expect(screen.getByText(/unit 1 of 1/)).toBeInTheDocument();
   });
 });
+
+// FLH-089: a large catalog renders one page of discovery results at a time, with
+// an explicit total, so every match stays reachable.
+describe("ReviewQueue discovery with a large catalog", () => {
+  it("renders 50 matches with the total, shows more on request, and restarts at one page for a new search", async () => {
+    const unit = reviewableUnitFixture(5);
+    const concepts = Array.from({ length: 120 }, (_, i) => conceptFixture(i + 1, `concept ${String(i + 1).padStart(3, "0")}`));
+    globalThis.fetch = routeFetch({
+      "/api/reviewable-units": { reviewable_units: [unit] },
+      "/api/concepts": { concepts },
+      "/api/knowledge-units/5/concept-membership": { unit_id: 5, current_membership: null },
+      "/api/knowledge-units/5/concept-resolution": {
+        unit_id: 5, candidate_identity: unit.candidate_identity, signature: unit.signature, decision: "no_match", matches: [],
+      },
+      "/api/knowledge-units/5/concept-distinctions": { distinctions: [] },
+    });
+    render(<ReviewQueue />);
+    const search = await screen.findByRole("searchbox");
+    fireEvent.change(search, { target: { value: "concept" } });
+    const cards = () => document.querySelectorAll(".discovery-results > *").length;
+
+    await screen.findByText("Showing 50 of 120 matching concepts. Narrow the search, or show more.");
+    expect(cards()).toBe(50);
+    fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
+    expect(cards()).toBe(100);
+    fireEvent.click(screen.getByRole("button", { name: "Show 20 more" }));
+    expect(cards()).toBe(120);
+    expect(screen.queryByText(/matching concepts\. Narrow/)).not.toBeInTheDocument();
+    expect(screen.getByText("concept 120")).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "concept 1" } });
+    // Token "1" matches any padded number containing a 1: 001, 010–019, 021…091 and
+    // 100–120, i.e. 1 + 10 + 8 + 21 = 40 matches, all on the first page.
+    expect(cards()).toBe(40);
+    fireEvent.change(search, { target: { value: "concept" } });
+    expect(cards()).toBe(50);
+  });
+});
+
+// FLH-090: deciding the last loaded unit reads the next page once and continues;
+// a failed page read is reported and never resends the decision.
+describe("ReviewQueue paged loading after a decision", () => {
+  function pagedBackend(options: { failNext: boolean }) {
+    const calls: Array<{ method: string; url: string }> = [];
+    let nextFails = options.failNext;
+    const unit = (id: number) => ({ ...reviewableUnitFixture(id), statement: `statement ${id}`, entry_id: 1 });
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input), "http://localhost");
+      const method = (init?.method ?? "GET").toUpperCase();
+      calls.push({ method, url: url.pathname + url.search });
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+      const unitPath = url.pathname.match(/^\/api\/knowledge-units\/(\d+)\/(concept-membership|concept-resolution|concept-distinctions|invalid)$/);
+      if (url.pathname === "/api/reviewable-units") {
+        if (url.searchParams.get("after") === null) {
+          return json({ reviewable_units: Array.from({ length: 50 }, (_, i) => unit(i + 1)), next_cursor: "1.49.50", limit: 50 });
+        }
+        if (nextFails) {
+          nextFails = false;
+          return json({ error: "temporarily unavailable" }, 503);
+        }
+        return json({ reviewable_units: [unit(51), unit(52)], next_cursor: null, limit: 50 });
+      }
+      if (url.pathname === "/api/concepts") return json({ concepts: [] });
+      if (unitPath) {
+        const id = Number(unitPath[1]);
+        if (unitPath[2] === "concept-membership") return json({ unit_id: id, current_membership: null });
+        if (unitPath[2] === "concept-resolution")
+          return json({ unit_id: id, candidate_identity: unit(id).candidate_identity, signature: "{...}", decision: "no_match", matches: [] });
+        if (unitPath[2] === "concept-distinctions") return json({ distinctions: [] });
+        if (unitPath[2] === "invalid" && method === "POST")
+          return json({ unit_id: id, invalid: true, current_membership: null, judgment: { id: 1, unit_id: id, judgment: "invalid", decision_source: "human", note: "", evidence: "{}", created_at: "t" } });
+      }
+      return json({ error: "not found" }, 404);
+    }) as unknown as typeof fetch;
+    return calls;
+  }
+  const toLastLoaded = async () => {
+    render(<ReviewQueue />);
+    await screen.findByText("statement 1");
+    for (let i = 0; i < 49; i++) fireEvent.click(screen.getByRole("button", { name: "skip →" }));
+    await screen.findByText("statement 50");
+  };
+  const posts = (calls: Array<{ method: string; url: string }>) => calls.filter((c) => c.method !== "GET");
+  const pageReads = (calls: Array<{ method: string; url: string }>) => calls.filter((c) => c.url.startsWith("/api/reviewable-units"));
+
+  it("continues with the first unit of the next page after deciding the last loaded unit", async () => {
+    const calls = pagedBackend({ failNext: false });
+    await toLastLoaded();
+    fireEvent.click(screen.getByRole("button", { name: "INVALID" }));
+    expect(await screen.findByText("statement 51")).toBeInTheDocument();
+    expect(screen.getByText("unit 50 of 51")).toBeInTheDocument();
+    expect(posts(calls).map((c) => c.url)).toEqual(["/api/knowledge-units/50/invalid"]);
+    expect(pageReads(calls).map((c) => c.url)).toEqual([
+      "/api/reviewable-units?limit=50",
+      "/api/reviewable-units?limit=50&after=1.49.50",
+    ]);
+  });
+
+  it("reports a failed next-page read, retries only on an explicit skip, and never resends the decision", async () => {
+    const calls = pagedBackend({ failNext: true });
+    await toLastLoaded();
+    fireEvent.click(screen.getByRole("button", { name: "INVALID" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("alert").some((a) => /Could not load the next units in the review queue\..*\(503\) temporarily unavailable/.test(a.textContent ?? "")),
+      ).toBe(true),
+    );
+    // The reviewer stays on the last loaded unit; more units are still announced.
+    expect(screen.getByText("statement 49")).toBeInTheDocument();
+    expect(screen.getByText("unit 49 of 49 loaded; more units follow in the queue")).toBeInTheDocument();
+    expect(posts(calls)).toHaveLength(1);
+    expect(pageReads(calls)).toHaveLength(2); // no automatic retry
+
+    fireEvent.click(screen.getByRole("button", { name: "skip →" })); // explicit retry
+    expect(await screen.findByText("statement 51")).toBeInTheDocument();
+    expect(posts(calls).map((c) => c.url)).toEqual(["/api/knowledge-units/50/invalid"]);
+    expect(pageReads(calls)).toHaveLength(3);
+    expect(screen.queryByText(/Could not load the next units/)).not.toBeInTheDocument();
+  });
+});

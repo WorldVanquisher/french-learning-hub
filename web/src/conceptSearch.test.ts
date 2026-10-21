@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Concept } from "./types/concept";
-import { discoverConcepts, normalizeConceptSearch } from "./conceptSearch";
+import { createConceptDiscovery, discoverConcepts, normalizeConceptSearch, visibleDiscovery } from "./conceptSearch";
 
 function concept(id: number, target: string, overrides: Partial<Concept> = {}): Concept {
   return {
@@ -51,5 +51,34 @@ describe("concept discovery search", () => {
     ];
 
     expect(discoverConcepts(concepts, "", new Set([1])).map((item) => item.id)).toEqual([2]);
+  });
+});
+
+// FLH-089: the catalog is prepared once; results and order must not change.
+describe("prepared concept discovery", () => {
+  const catalog = [
+    concept(3, "subjonctif après il faut que", { identity_features: { mood: "subjonctif" } }),
+    concept(2, "passé composé", { lifecycle_state: "retired" }),
+    concept(1, "accord du participe", { support_state: "orphaned", state: "orphaned" }),
+    concept(4, "Être ou avoir", { scope: "auxiliaire" }),
+  ];
+
+  it("returns exactly what discoverConcepts returns, in catalog order, for every query", () => {
+    const prepared = createConceptDiscovery(catalog);
+    for (const query of ["", "subjonctif", "ETRE", "etre auxiliaire", "participe", "mood", "nothing", "  "]) {
+      for (const exact of [new Set<number>(), new Set([3])]) {
+        expect(prepared(query, exact)).toEqual(discoverConcepts(catalog, query, exact));
+      }
+    }
+    expect(prepared("", new Set()).map((c) => c.id)).toEqual([3, 1, 4]);
+  });
+
+  it("shows one page of matches and keeps a selected match visible beyond it", () => {
+    const many = Array.from({ length: 7 }, (_, i) => concept(i + 1, `c${i + 1}`));
+    expect(visibleDiscovery(many, 3, null).map((c) => c.id)).toEqual([1, 2, 3]);
+    expect(visibleDiscovery(many, 3, 6).map((c) => c.id)).toEqual([1, 2, 3, 6]);
+    expect(visibleDiscovery(many, 3, 2).map((c) => c.id)).toEqual([1, 2, 3]);
+    // A selection that no longer matches is not invented into the results.
+    expect(visibleDiscovery(many, 3, 99).map((c) => c.id)).toEqual([1, 2, 3]);
   });
 });

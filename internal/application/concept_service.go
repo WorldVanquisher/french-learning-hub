@@ -244,6 +244,27 @@ func (s *ConceptService) ListReviewableUnits(ctx context.Context, entryID *int64
 	return s.concepts.ListReviewableUnits(ctx, entryID)
 }
 
+// Review-queue page bounds (FLH-090). A non-positive limit becomes the default;
+// a larger one is clamped, so every page read is bounded.
+const (
+	DefaultReviewQueuePageSize = 50
+	MaxReviewQueuePageSize     = 200
+)
+
+// ListReviewableUnitsPage returns one bounded page of the review queue, in the
+// strict (entry, ordinal, unit) order, optionally scoped to one entry. Read-only.
+// The applied limit is returned with the page.
+func (s *ConceptService) ListReviewableUnitsPage(ctx context.Context, q domain.ReviewQueuePageQuery) (*domain.ReviewQueuePage, int, error) {
+	if q.Limit <= 0 {
+		q.Limit = DefaultReviewQueuePageSize
+	}
+	if q.Limit > MaxReviewQueuePageSize {
+		q.Limit = MaxReviewQueuePageSize
+	}
+	page, err := s.concepts.ListReviewableUnitsPage(ctx, q)
+	return page, q.Limit, err
+}
+
 // GetCurrentExtraction returns the entry's selected current extraction id (nil
 // when the entry has no successful extraction). Read-only.
 func (s *ConceptService) GetCurrentExtraction(ctx context.Context, entryID int64) (*int64, error) {

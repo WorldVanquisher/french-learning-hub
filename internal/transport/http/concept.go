@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"french-learning-app/internal/application"
@@ -33,6 +36,7 @@ type ConceptService interface {
 	GetCurrentMembership(ctx context.Context, unitID int64) (*domain.CurrentConceptMembership, error)
 	ListConcepts(ctx context.Context, state *domain.ConceptState) ([]domain.KnowledgeConcept, error)
 	ListReviewableUnits(ctx context.Context, entryID *int64) ([]domain.ReviewableUnit, error)
+	ListReviewableUnitsPage(ctx context.Context, q domain.ReviewQueuePageQuery) (*domain.ReviewQueuePage, int, error)
 	GetCurrentExtraction(ctx context.Context, entryID int64) (*int64, error)
 	GetCurrentExtractionSelection(ctx context.Context, entryID int64) (domain.CurrentExtractionSelection, error)
 	ClearCurrentExtraction(ctx context.Context, entryID int64) (domain.CurrentExtractionSelection, error)
@@ -816,6 +820,13 @@ func (h *Handler) handleListReviewableUnits(w http.ResponseWriter, r *http.Reque
 		}
 		entryID = &n
 	}
+	// FLH-090: limit, after or from_unit_id opts in to the paged contract. Without
+	// them the response is the original complete list, unchanged.
+	query := r.URL.Query()
+	if query.Has("limit") || query.Has("after") || query.Has("from_unit_id") {
+		h.listReviewableUnitsPage(w, r, entryID)
+		return
+	}
 	units, err := h.concept.ListReviewableUnits(r.Context(), entryID)
 	if errors.Is(err, domain.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "entry not found")
@@ -830,6 +841,99 @@ func (h *Handler) handleListReviewableUnits(w http.ResponseWriter, r *http.Reque
 		resp = append(resp, toReviewableUnitResponse(u))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"reviewable_units": resp})
+}
+
+// reviewableUnitPageItem is a paged queue item: the original unit fields plus
+// the entry it belongs to.
+type reviewableUnitPageItem struct {
+	reviewableUnitResponse
+	EntryID int64 `json:"entry_id"`
+}
+
+// formatReviewQueueCursor encodes a cursor as "entry.ordinal.unit". Clients must
+// treat it as opaque and only pass it back as ?after=.
+func formatReviewQueueCursor(c *domain.ReviewQueueCursor) *string {
+	if c == nil {
+		return nil
+	}
+	s := fmt.Sprintf("%d.%d.%d", c.EntryID, c.Ordinal, c.UnitID)
+	return &s
+}
+
+func parseReviewQueueCursor(v string) (*domain.ReviewQueueCursor, bool) {
+	parts := strings.Split(v, ".")
+	if len(parts) != 3 {
+		return nil, false
+	}
+	entry, err1 := strconv.ParseInt(parts[0], 10, 64)
+	ordinal, err2 := strconv.Atoi(parts[1])
+	unit, err3 := strconv.ParseInt(parts[2], 10, 64)
+	if err1 != nil || err2 != nil || err3 != nil || entry <= 0 || ordinal < 0 || unit <= 0 {
+		return nil, false
+	}
+	return &domain.ReviewQueueCursor{EntryID: entry, Ordinal: ordinal, UnitID: unit}, true
+}
+
+// listReviewableUnitsPage serves the paged review queue: ?limit= (default 50,
+// max 200), ?after=<cursor> to continue, or ?from_unit_id= to start at a unit's
+// position (inclusive) without loading earlier pages. Read-only.
+func (h *Handler) listReviewableUnitsPage(w http.ResponseWriter, r *http.Request, entryID *int64) {
+	query := r.URL.Query()
+	q := domain.ReviewQueuePageQuery{EntryID: entryID}
+	if query.Has("limit") {
+		n, err := strconv.Atoi(query.Get("limit"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "limit must be an integer")
+			return
+		}
+		q.Limit = n
+	}
+	if query.Has("after") && query.Has("from_unit_id") {
+		writeError(w, http.StatusBadRequest, "after and from_unit_id are mutually exclusive")
+		return
+	}
+	if query.Has("after") {
+		c, ok := parseReviewQueueCursor(query.Get("after"))
+		if !ok {
+			writeError(w, http.StatusBadRequest, "invalid after cursor")
+			return
+		}
+		q.After = c
+	}
+	if query.Has("from_unit_id") {
+		n, err := parseInt64(query.Get("from_unit_id"))
+		if err != nil || n <= 0 {
+			writeError(w, http.StatusBadRequest, "invalid from_unit_id")
+			return
+		}
+		q.FromUnitID = &n
+	}
+	page, limit, err := h.concept.ListReviewableUnitsPage(r.Context(), q)
+	if errors.Is(err, domain.ErrNotFound) {
+		if q.FromUnitID != nil {
+			writeError(w, http.StatusNotFound, "unit not found")
+		} else {
+			writeError(w, http.StatusNotFound, "entry not found")
+		}
+		return
+	}
+	if errors.Is(err, domain.ErrValidation) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not list reviewable units")
+		return
+	}
+	items := make([]reviewableUnitPageItem, 0, len(page.Units))
+	for _, u := range page.Units {
+		items = append(items, reviewableUnitPageItem{reviewableUnitResponse: toReviewableUnitResponse(u), EntryID: u.EntryID})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"reviewable_units": items,
+		"next_cursor":      formatReviewQueueCursor(page.Next),
+		"limit":            limit,
+	})
 }
 
 // handleGetCurrentExtraction returns the entry's selected current extraction id

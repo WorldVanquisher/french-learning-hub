@@ -400,7 +400,9 @@ describe("Records list refresh after writes", () => {
 
     render(<RecordsBrowser />);
     expect(await screen.findByText(/No learning records exist yet/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Import a capture" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add a learning question" }));
+    // The JSON import is the intake panel's second mode (FLH-091).
+    fireEvent.click(screen.getByRole("button", { name: "Capture JSON" }));
     fireEvent.change(screen.getByLabelText("Capture JSON"), {
       target: { value: '{"capture_id":"flh-014-list","schema_version":"learning_capture_v1","source":"manual","original_input":"x","original_context":"","discussion_summary":""}' },
     });

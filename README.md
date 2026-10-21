@@ -51,8 +51,9 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   deterministic rule-based analyzer (no API key) or an opt-in OpenAI analyzer.
 - Record immutable human **Feedback** and read the derived effective
   interpretation and a cross-entry **learning inventory** with JSONL export.
-- Import prepared `learning_capture_v1` documents idempotently, through the API,
-  the workbench or the `cmd/capture` CLI. Capture never calls a model.
+- Save a typed learning question in the workbench as an unanalyzed record, or
+  import prepared `learning_capture_v1` documents idempotently, through the API,
+  the workbench or the `cmd/capture` CLI. Neither calls a model.
 - Run explicit **knowledge extraction** (OpenAI adapter, disabled by default)
   with a fixed admission ruleset and append-only human overrides.
 - Review units in the **Concept Review** workbench: SAME, NEW CONCEPT, BROADER,

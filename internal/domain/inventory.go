@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // LearningRecordState is the current inventory state of a learning entry: the
@@ -126,12 +127,20 @@ type LearningInventorySummary struct {
 // LearningRecordQuery is a validated filter + pagination request for the
 // inventory. A nil filter pointer means "no filter on that dimension".
 type LearningRecordQuery struct {
-	State         *LearningRecordState
-	Category      *Category
-	Analyzer      *string
+	State    *LearningRecordState
+	Category *Category
+	Analyzer *string
+	// Text is an optional literal text filter over the learner-authored source
+	// only (original input or original context), never over interpretations. It
+	// is matched as a case-insensitive substring (Unicode lower-casing), with no
+	// wildcard, accent folding or Unicode normalization. Blank means no filter.
+	Text          *string
 	Limit         int
 	BeforeEntryID *int64
 }
+
+// MaxLearningRecordTextQuery bounds the text filter, in characters (runes).
+const MaxLearningRecordTextQuery = 200
 
 // Normalize validates and normalizes the query in place, returning a wrapped
 // ErrValidation on failure. Limit handling is normalizing, not rejecting: a
@@ -161,6 +170,19 @@ func (q *LearningRecordQuery) Normalize(defaultLimit, maxLimit int) error {
 			q.Analyzer = nil
 		} else {
 			q.Analyzer = &trimmed
+		}
+	}
+	if q.Text != nil {
+		trimmed := strings.TrimSpace(*q.Text)
+		switch {
+		case trimmed == "":
+			q.Text = nil
+		case !utf8.ValidString(trimmed):
+			return errWrap("q must be valid UTF-8 text")
+		case utf8.RuneCountInString(trimmed) > MaxLearningRecordTextQuery:
+			return errWrap("q must be at most 200 characters")
+		default:
+			q.Text = &trimmed
 		}
 	}
 	if q.BeforeEntryID != nil && *q.BeforeEntryID <= 0 {

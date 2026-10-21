@@ -137,6 +137,11 @@ LIMIT ?`
 // positional args. Category filtering uses effective_category, so rejected and
 // unanalyzed rows (NULL effective_category) never match a category filter.
 // Analyzer matching is exact.
+//
+// The text filter (FLH-090) is a literal substring test with instr(), never
+// LIKE, so %, _ and \ in the query are ordinary characters. Both sides pass
+// through flh_search_fold_v1 (Unicode lower-casing). It reads only the
+// learner-authored original input and context, never analyses or feedback.
 func buildFilters(q domain.LearningRecordQuery) (string, []any) {
 	var conds []string
 	var args []any
@@ -152,6 +157,12 @@ func buildFilters(q domain.LearningRecordQuery) (string, []any) {
 	if q.Analyzer != nil {
 		conds = append(conds, "analyzer = ?")
 		args = append(args, *q.Analyzer)
+	}
+	if q.Text != nil {
+		folded := foldSearchText(*q.Text)
+		conds = append(conds, "(instr("+searchFoldFunction+"(original_input), ?) > 0 OR instr("+
+			searchFoldFunction+"(COALESCE(original_context, '')), ?) > 0)")
+		args = append(args, folded, folded)
 	}
 	if q.BeforeEntryID != nil {
 		conds = append(conds, "entry_id < ?")

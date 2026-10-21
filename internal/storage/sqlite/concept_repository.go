@@ -1152,7 +1152,9 @@ func (r *ConceptRepository) ListReviewableUnits(ctx context.Context, entryID *in
 	if entryID != nil {
 		entryIDs = []int64{*entryID}
 	} else {
-		rows, err := r.db.QueryContext(ctx, `SELECT DISTINCT entry_id FROM knowledge_extractions`)
+		// Entry order made explicit (FLH-090); it matches the order SQLite already
+		// produced for DISTINCT and the paged queue's entry-major order.
+		rows, err := r.db.QueryContext(ctx, `SELECT DISTINCT entry_id FROM knowledge_extractions ORDER BY entry_id ASC`)
 		if err != nil {
 			return nil, fmt.Errorf("list entries with extractions: %w", err)
 		}
@@ -1206,7 +1208,7 @@ func (r *ConceptRepository) ListReviewableUnits(ctx context.Context, entryID *in
 				urows.Close()
 				return nil, fmt.Errorf("scan unit: %w", err)
 			}
-			out = append(out, domain.ReviewableUnit{Unit: *u, Candidate: domain.DeriveCandidateIdentity(*u)})
+			out = append(out, domain.ReviewableUnit{Unit: *u, Candidate: domain.DeriveCandidateIdentity(*u), EntryID: eid})
 		}
 		urows.Close()
 		if err := urows.Err(); err != nil {
@@ -1214,6 +1216,121 @@ func (r *ConceptRepository) ListReviewableUnits(ctx context.Context, entryID *in
 		}
 	}
 	return out, nil
+}
+
+// reviewableQueueSQL is the paged review queue (FLH-090) as one statement: the
+// same eligibility as ListReviewableUnits (units of each entry's current
+// extraction, with no CURRENT SAME membership and not currently INVALID), in the
+// strict total order (entry_id, ordinal, unit id). The current extraction is
+// the pinned selection, else the highest version, exactly as in
+// currentExtractionSelection. %s is replaced by extra AND conditions.
+const reviewableQueueSQL = `
+WITH cur AS (
+    SELECT e.entry_id AS entry_id,
+           COALESCE(p.extraction_id, (
+               SELECT k.id FROM knowledge_extractions k WHERE k.entry_id = e.entry_id
+               ORDER BY k.version DESC LIMIT 1)) AS extraction_id
+    FROM (SELECT DISTINCT entry_id FROM knowledge_extractions) e
+    LEFT JOIN entry_current_extractions p ON p.entry_id = e.entry_id
+)
+SELECT u.id, u.extraction_id, u.ordinal, u.kind, u.canonical, u.statement, u.example, u.confidence, u.created_at,
+       cur.entry_id
+FROM cur
+JOIN knowledge_units u ON u.extraction_id = cur.extraction_id
+WHERE u.id NOT IN (SELECT unit_id FROM unit_concept_memberships)
+  AND u.id NOT IN (
+      SELECT j.unit_id FROM unit_resolution_judgments j
+      WHERE j.id = (
+          SELECT id FROM unit_resolution_judgments
+          WHERE unit_id = j.unit_id
+          ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC LIMIT 1
+      ) AND j.judgment = 'invalid'
+  )%s
+ORDER BY cur.entry_id ASC, u.ordinal ASC, u.id ASC
+LIMIT ?`
+
+// withEntryID scans a unit row followed by its entry ID.
+type withEntryID struct {
+	rows  *sql.Rows
+	entry *int64
+}
+
+func (w withEntryID) Scan(dest ...any) error { return w.rows.Scan(append(dest, w.entry)...) }
+
+// ListReviewableUnitsPage returns one bounded page of the review queue. It reads
+// Limit+1 rows to know whether another unit followed at read time.
+func (r *ConceptRepository) ListReviewableUnitsPage(ctx context.Context, q domain.ReviewQueuePageQuery) (*domain.ReviewQueuePage, error) {
+	if q.Limit <= 0 {
+		return nil, domain.NewValidationError("limit must be positive")
+	}
+	if q.After != nil && q.FromUnitID != nil {
+		return nil, domain.NewValidationError("after and from_unit_id are mutually exclusive")
+	}
+	var conds []string
+	var args []any
+	if q.EntryID != nil {
+		if err := entryExists(ctx, r.db, *q.EntryID); err != nil {
+			return nil, err
+		}
+		conds = append(conds, "cur.entry_id = ?")
+		args = append(args, *q.EntryID)
+	}
+	start, inclusive := q.After, false
+	if q.FromUnitID != nil {
+		// A bounded locator: the unit's own key, whether or not it is still
+		// reviewable or still in its entry's current extraction.
+		var c domain.ReviewQueueCursor
+		err := r.db.QueryRowContext(ctx,
+			`SELECT ke.entry_id, ku.ordinal, ku.id FROM knowledge_units ku
+			 JOIN knowledge_extractions ke ON ke.id = ku.extraction_id WHERE ku.id = ?`, *q.FromUnitID).
+			Scan(&c.EntryID, &c.Ordinal, &c.UnitID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		if err != nil {
+			return nil, fmt.Errorf("locate review queue unit: %w", err)
+		}
+		if q.EntryID != nil && c.EntryID != *q.EntryID {
+			return nil, domain.NewValidationError("from_unit_id belongs to another entry")
+		}
+		start, inclusive = &c, true
+	}
+	if start != nil {
+		last := "u.id > ?"
+		if inclusive {
+			last = "u.id >= ?"
+		}
+		conds = append(conds, "(cur.entry_id > ? OR (cur.entry_id = ? AND (u.ordinal > ? OR (u.ordinal = ? AND "+last+"))))")
+		args = append(args, start.EntryID, start.EntryID, start.Ordinal, start.Ordinal, start.UnitID)
+	}
+	extra := ""
+	for _, c := range conds {
+		extra += "\n  AND " + c
+	}
+	args = append(args, q.Limit+1)
+	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(reviewableQueueSQL, extra), args...)
+	if err != nil {
+		return nil, fmt.Errorf("list reviewable units page: %w", err)
+	}
+	defer rows.Close()
+	page := &domain.ReviewQueuePage{}
+	for rows.Next() {
+		var entryID int64
+		u, err := scanUnit(withEntryID{rows: rows, entry: &entryID})
+		if err != nil {
+			return nil, fmt.Errorf("scan unit: %w", err)
+		}
+		page.Units = append(page.Units, domain.ReviewableUnit{Unit: *u, Candidate: domain.DeriveCandidateIdentity(*u), EntryID: entryID})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(page.Units) > q.Limit {
+		page.Units = page.Units[:q.Limit]
+		last := page.Units[q.Limit-1]
+		page.Next = &domain.ReviewQueueCursor{EntryID: last.EntryID, Ordinal: last.Unit.Ordinal, UnitID: last.Unit.ID}
+	}
+	return page, nil
 }
 
 // ActiveSupportUnitIDs returns unit ids currently supporting the concept.

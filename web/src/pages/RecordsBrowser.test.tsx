@@ -236,6 +236,334 @@ describe("RecordsBrowser list, pagination, and filter", () => {
   });
 });
 
+describe("RecordsBrowser finding old records (FLH-089)", () => {
+  const jumpTo = (value: string) => {
+    fireEvent.change(screen.getByLabelText("Go to record #"), { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: "Go" }));
+  };
+  const headings = () =>
+    within(screen.getByRole("list", { name: "Learning records" }))
+      .getAllByRole("heading")
+      .map((h) => h.textContent);
+
+  it("jumps to an old record with one cursor request, reaches the last page, and returns to the newest", async () => {
+    const calls = routeFetch({
+      [firstPage]: { body: { records: [record(1000), record(999)], next_before_entry_id: 999 } },
+      [`/api/learning-records?limit=${RECORDS_PAGE_SIZE}&before_entry_id=4`]: {
+        body: { records: [record(3), record(2), record(1)], next_before_entry_id: null },
+      },
+    });
+
+    render(<RecordsBrowser />);
+    await screen.findByText("question 1000");
+    jumpTo("#3");
+
+    expect(await screen.findByText("question 3")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Showing records from #3 and older. Newer records are not shown.");
+    expect(headings()).toEqual(["Record #3", "Record #2", "Record #1"]);
+    // The oldest page is reachable: the backend cursor ended.
+    expect(screen.getByText("End of records.")).toBeInTheDocument();
+    expect(screen.queryByText(/does not exist/)).not.toBeInTheDocument();
+    expect(calls.filter((c) => c.url.startsWith("/api/learning-records")).map((c) => c.url)).toEqual([
+      firstPage,
+      `/api/learning-records?limit=${RECORDS_PAGE_SIZE}&before_entry_id=4`,
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show newest records" }));
+    expect(await screen.findByText("question 1000")).toBeInTheDocument();
+    expect(screen.queryByText(/Showing records from #3/)).not.toBeInTheDocument();
+    expect(calls.every((c) => c.method === "GET")).toBe(true);
+  });
+
+  it("says when the requested record is absent or filtered out, and starts at the next older match", async () => {
+    routeFetch({
+      [firstPage]: { body: { records: [record(60)], next_before_entry_id: null } },
+      [pageFor("state=accepted")]: { body: { records: [record(60, { state: "accepted" })], next_before_entry_id: null } },
+      [`/api/learning-records?state=accepted&limit=${RECORDS_PAGE_SIZE}&before_entry_id=51`]: {
+        body: { records: [record(48, { state: "accepted" })], next_before_entry_id: 48 },
+      },
+    });
+
+    render(<RecordsBrowser />);
+    await screen.findByText("question 60");
+    fireEvent.change(screen.getByLabelText("Record state"), { target: { value: "accepted" } });
+    await screen.findByText("question 60");
+    jumpTo("50");
+
+    expect(await screen.findByText("question 48")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Record #50 does not exist or does not match the current filters; the list starts at the next older matching record.",
+      ),
+    ).toBeInTheDocument();
+    // Older matching pages stay reachable after a jump.
+    expect(screen.getByRole("button", { name: "Load older records" })).toBeEnabled();
+  });
+
+  it("rejects an invalid record number without sending a request", async () => {
+    const calls = routeFetch({ [firstPage]: { body: { records: [record(5)], next_before_entry_id: null } } });
+    render(<RecordsBrowser />);
+    await screen.findByText("question 5");
+    const before = calls.length;
+
+    for (const value of ["abc", "0", "-3", "1.5", ""]) {
+      jumpTo(value);
+      expect(screen.getByRole("alert")).toHaveTextContent("Enter a record number, such as 42.");
+    }
+    expect(screen.getByLabelText("Go to record #")).toHaveAttribute("aria-invalid", "true");
+    expect(calls).toHaveLength(before);
+    expect(screen.getByText("question 5")).toBeInTheDocument();
+  });
+
+  it("filters by effective category through the backend, keeps it on older pages, and reports an empty match", async () => {
+    const calls = routeFetch({
+      [firstPage]: { body: { records: [record(30)], next_before_entry_id: null } },
+      [pageFor("category=grammar")]: { body: { records: [record(20)], next_before_entry_id: 20 } },
+      [`/api/learning-records?category=grammar&limit=${RECORDS_PAGE_SIZE}&before_entry_id=20`]: {
+        body: { records: [record(4)], next_before_entry_id: null },
+      },
+      [pageFor("category=translation")]: { body: { records: [], next_before_entry_id: null } },
+    });
+
+    render(<RecordsBrowser />);
+    await screen.findByText("question 30");
+    fireEvent.change(screen.getByLabelText("Effective category"), { target: { value: "grammar" } });
+    expect(await screen.findByText("question 20")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load older records" }));
+    expect(await screen.findByText("question 4")).toBeInTheDocument();
+    expect(calls.map((c) => c.url)).toContain(`/api/learning-records?category=grammar&limit=${RECORDS_PAGE_SIZE}&before_entry_id=20`);
+
+    fireEvent.change(screen.getByLabelText("Effective category"), { target: { value: "translation" } });
+    expect(await screen.findByText("No learning records match the current filters.")).toBeInTheDocument();
+  });
+
+  it("discards a slow newest-first page that finishes after a jump", async () => {
+    const slowFirst = deferred();
+    routeFetch({
+      [firstPage]: () => slowFirst.promise,
+      [`/api/learning-records?limit=${RECORDS_PAGE_SIZE}&before_entry_id=8`]: {
+        body: { records: [record(7)], next_before_entry_id: null },
+      },
+    });
+
+    render(<RecordsBrowser />);
+    jumpTo("7");
+    expect(await screen.findByText("question 7")).toBeInTheDocument();
+    await act(async () => {
+      slowFirst.resolve({ body: { records: [record(900)], next_before_entry_id: 900 } });
+    });
+    expect(screen.queryByText("question 900")).not.toBeInTheDocument();
+    expect(headings()).toEqual(["Record #7"]);
+  });
+
+  it("keeps the jump position, category, and loaded pages when returning from a detail", async () => {
+    const calls = routeFetch({
+      [firstPage]: { body: { records: [record(900)], next_before_entry_id: 900 } },
+      [pageFor("category=grammar")]: { body: { records: [record(900)], next_before_entry_id: 900 } },
+      [`/api/learning-records?category=grammar&limit=${RECORDS_PAGE_SIZE}&before_entry_id=13`]: {
+        body: { records: [record(12), record(11)], next_before_entry_id: 11 },
+      },
+      ...detailHandlers(12),
+    });
+
+    render(<RecordsBrowser />);
+    await screen.findByText("question 900");
+    fireEvent.change(screen.getByLabelText("Effective category"), { target: { value: "grammar" } });
+    await screen.findByText("question 900");
+    jumpTo("12");
+    fireEvent.click(await screen.findByRole("button", { name: "Open record #12" }));
+    expect(await screen.findByText("Pourquoi 12 ?")).toBeInTheDocument();
+    const listRequests = calls.filter((c) => c.url.startsWith("/api/learning-records")).length;
+
+    fireEvent.click(screen.getByRole("button", { name: "← Back to records" }));
+    expect(screen.getByLabelText("Effective category")).toHaveValue("grammar");
+    expect(screen.getByText(/Showing records from #12 and older/)).toBeInTheDocument();
+    expect(headings()).toEqual(["Record #12", "Record #11"]);
+    expect(screen.getByRole("button", { name: "Open record #12" })).toHaveFocus();
+    expect(calls.filter((c) => c.url.startsWith("/api/learning-records"))).toHaveLength(listRequests);
+  });
+});
+
+describe("RecordsBrowser text search (FLH-090)", () => {
+  const searchFor = (value: string) => {
+    fireEvent.change(screen.getByLabelText("Search text"), { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  };
+  const qs = (params: Record<string, string>) => `/api/learning-records?${new URLSearchParams(params).toString()}`;
+  const headings = () =>
+    within(screen.getByRole("list", { name: "Learning records" }))
+      .getAllByRole("heading")
+      .map((h) => h.textContent);
+
+  it("sends the trimmed query to the backend, pages matches beyond the first page, and clears back to all records", async () => {
+    const calls = routeFetch({
+      [firstPage]: { body: { records: [record(900)], next_before_entry_id: null } },
+      [qs({ q: "bien que", limit: String(RECORDS_PAGE_SIZE) })]: { body: { records: [record(40), record(30)], next_before_entry_id: 30 } },
+      [qs({ q: "bien que", limit: String(RECORDS_PAGE_SIZE), before_entry_id: "30" })]: {
+        body: { records: [record(3)], next_before_entry_id: null },
+      },
+    });
+    render(<RecordsBrowser />);
+    await screen.findByText("question 900");
+    searchFor("  bien que  ");
+
+    expect(await screen.findByText("question 40")).toBeInTheDocument();
+    expect(screen.getByText(/contains “bien que”/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load older records" }));
+    expect(await screen.findByText("question 3")).toBeInTheDocument();
+    expect(headings()).toEqual(["Record #40", "Record #30", "Record #3"]);
+    expect(screen.getByText("End of records.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(await screen.findByText("question 900")).toBeInTheDocument();
+    expect(screen.getByLabelText("Search text")).toHaveValue("");
+    expect(calls.filter((c) => c.url.startsWith("/api/learning-records")).map((c) => c.url)).toEqual([
+      firstPage,
+      qs({ q: "bien que", limit: String(RECORDS_PAGE_SIZE) }),
+      qs({ q: "bien que", limit: String(RECORDS_PAGE_SIZE), before_entry_id: "30" }),
+      firstPage,
+    ]);
+    // The browser never filters loaded rows itself: every list read went to the backend.
+    expect(calls.every((c) => c.method === "GET")).toBe(true);
+  });
+
+  it("passes wildcard characters literally, composes with filters and a jump, and reports no match", async () => {
+    const calls = routeFetch({
+      [firstPage]: { body: { records: [record(900)], next_before_entry_id: null } },
+      [qs({ state: "corrected", category: "grammar", q: "50%_x", limit: String(RECORDS_PAGE_SIZE) })]: {
+        body: { records: [], next_before_entry_id: null },
+      },
+      [qs({ state: "corrected", category: "grammar", limit: String(RECORDS_PAGE_SIZE) })]: { body: { records: [record(70, { state: "corrected" })], next_before_entry_id: null } },
+      [pageFor("state=corrected")]: { body: { records: [record(70, { state: "corrected" })], next_before_entry_id: null } },
+      [qs({ state: "corrected", category: "grammar", q: "50%_x", limit: String(RECORDS_PAGE_SIZE), before_entry_id: "13" })]: {
+        body: { records: [record(9, { state: "corrected" })], next_before_entry_id: null },
+      },
+    });
+    render(<RecordsBrowser />);
+    await screen.findByText("question 900");
+    fireEvent.change(screen.getByLabelText("Record state"), { target: { value: "corrected" } });
+    await screen.findByText("question 70");
+    fireEvent.change(screen.getByLabelText("Effective category"), { target: { value: "grammar" } });
+    await screen.findByText("question 70");
+    searchFor("50%_x");
+
+    expect(await screen.findByText("No records contain “50%_x” with the current filters.")).toBeInTheDocument();
+    expect(calls.map((c) => c.url)).toContain("/api/learning-records?state=corrected&category=grammar&q=50%25_x&limit=20");
+
+    fireEvent.change(screen.getByLabelText("Go to record #"), { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: "Go" }));
+    expect(await screen.findByText("question 9")).toBeInTheDocument();
+    expect(
+      screen.getByText("Record #12 does not exist or does not match the current filters; the list starts at the next older matching record."),
+    ).toBeInTheDocument();
+  });
+
+  it("refuses a query over 200 characters without a request, and accepts exactly 200", async () => {
+    const max = "é".repeat(200);
+    const calls = routeFetch({
+      [firstPage]: { body: { records: [record(5)], next_before_entry_id: null } },
+      [qs({ q: max, limit: String(RECORDS_PAGE_SIZE) })]: { body: { records: [record(5)], next_before_entry_id: null } },
+    });
+    render(<RecordsBrowser />);
+    await screen.findByText("question 5");
+    const before = calls.length;
+    fireEvent.change(screen.getByLabelText("Search text"), { target: { value: max + "x" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("Search text can be at most 200 characters.");
+    expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
+    expect(calls).toHaveLength(before);
+
+    searchFor(max);
+    await waitFor(() => expect(calls.map((c) => c.url)).toContain(qs({ q: max, limit: String(RECORDS_PAGE_SIZE) })));
+  });
+
+  it("treats a blank query as no search", async () => {
+    const calls = routeFetch({ [firstPage]: { body: { records: [record(5)], next_before_entry_id: null } } });
+    render(<RecordsBrowser />);
+    await screen.findByText("question 5");
+    searchFor("   ");
+    await screen.findByText("question 5");
+    expect(calls.every((c) => !c.url.includes("q="))).toBe(true);
+    expect(screen.queryByText(/contains “/)).not.toBeInTheDocument();
+  });
+
+  it("discards a slower earlier search that finishes after a newer one", async () => {
+    const slow = deferred();
+    routeFetch({
+      [firstPage]: { body: { records: [record(900)], next_before_entry_id: null } },
+      [qs({ q: "avoir", limit: String(RECORDS_PAGE_SIZE) })]: () => slow.promise,
+      [qs({ q: "être", limit: String(RECORDS_PAGE_SIZE) })]: { body: { records: [record(22)], next_before_entry_id: null } },
+    });
+    render(<RecordsBrowser />);
+    await screen.findByText("question 900");
+    searchFor("avoir");
+    searchFor("être");
+    expect(await screen.findByText("question 22")).toBeInTheDocument();
+    await act(async () => {
+      slow.resolve({ body: { records: [record(11)], next_before_entry_id: null } });
+    });
+    expect(screen.queryByText("question 11")).not.toBeInTheDocument();
+    expect(headings()).toEqual(["Record #22"]);
+  });
+});
+
+describe("RecordsBrowser question intake (FLH-091)", () => {
+  const saveQuestion = (text: string) => {
+    fireEvent.click(screen.getByRole("button", { name: "Add a learning question" }));
+    fireEvent.change(screen.getByLabelText("Your question"), { target: { value: text } });
+    fireEvent.click(screen.getByRole("button", { name: "Save question" }));
+  };
+
+  it("keeps a confirmed save, and its open button, when the list refresh fails", async () => {
+    let listReads = 0;
+    const calls = routeFetch({
+      [firstPage]: () => {
+        listReads += 1;
+        return listReads === 1
+          ? { body: { records: [record(1)], next_before_entry_id: null } }
+          : { status: 500, body: { error: "could not list learning records" } };
+      },
+      "/api/captures": { status: 201, body: { capture_id: "question-x", entry_id: 2, analysis_id: null, created: true } },
+      ...detailHandlers(2),
+    });
+    render(<RecordsBrowser />);
+    await screen.findByText("question 1");
+    saveQuestion("Une nouvelle question ?");
+
+    expect(await screen.findByText(/Saved as new record #2, not yet analyzed\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Could not load learning records/)).toBeInTheDocument();
+    // The failed refresh does not erase or contradict the confirmed save.
+    expect(screen.getByText(/Saved as new record #2/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open saved record #2" }));
+    expect(await screen.findByText("Pourquoi 2 ?")).toBeInTheDocument();
+    expect(calls.filter((c) => c.method === "POST").map((c) => c.url)).toEqual(["/api/captures"]);
+  });
+
+  it("opens a saved record that the current search and filters exclude", async () => {
+    const searched = `/api/learning-records?${new URLSearchParams({ state: "accepted", q: "subjonctif", limit: String(RECORDS_PAGE_SIZE) })}`;
+    routeFetch({
+      [firstPage]: { body: { records: [record(1)], next_before_entry_id: null } },
+      [pageFor("state=accepted")]: { body: { records: [record(1, { state: "accepted" })], next_before_entry_id: null } },
+      [searched]: { body: { records: [], next_before_entry_id: null } },
+      "/api/captures": { status: 201, body: { capture_id: "question-y", entry_id: 3, analysis_id: null, created: true } },
+      ...detailHandlers(3),
+    });
+    render(<RecordsBrowser />);
+    await screen.findByText("question 1");
+    fireEvent.change(screen.getByLabelText("Record state"), { target: { value: "accepted" } });
+    await screen.findByText("question 1");
+    fireEvent.change(screen.getByLabelText("Search text"), { target: { value: "subjonctif" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await screen.findByText(/No records contain “subjonctif”/);
+
+    saveQuestion("Hors filtre");
+    await screen.findByText(/Saved as new record #3/);
+    // The refreshed list (still filtered) does not show #3, but it opens directly.
+    expect(screen.queryByRole("button", { name: "Open record #3" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open saved record #3" }));
+    expect(await screen.findByText("Pourquoi 3 ?")).toBeInTheDocument();
+  });
+});
+
 describe("RecordsBrowser detail navigation", () => {
   it("preserves loaded pages, the filter, and focus when returning from a detail", async () => {
     const calls = routeFetch({

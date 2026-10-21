@@ -41,7 +41,8 @@ Concept 判断——作为独立的、版本化或只追加的记录保存。当
 - 保存学习 **Entry**，并追加版本化的 **Analysis**：默认使用本地确定性规则分析器（无需 API key），也可选用
   OpenAI 分析器。
 - 记录不可变的人工 **Feedback**，读取推导出的有效解释，以及支持 JSONL 导出的跨条目**学习清单**。
-- 通过 API、工作台或 `cmd/capture` 命令行幂等导入事先准备好的 `learning_capture_v1` 文档。导入从不调用模型。
+- 在工作台中把输入的学习问题保存为未分析的记录；或通过 API、工作台或 `cmd/capture` 命令行幂等导入事先准备好的
+  `learning_capture_v1` 文档。两者都不调用模型。
 - 显式运行**知识抽取**（OpenAI 适配器，默认关闭），配合固定的准入规则集和只追加的人工覆盖。
 - 在 **Concept Review** 工作台中审核单元：SAME、NEW CONCEPT、BROADER、NARROWER、RELATED、DISTINCT 与
   INVALID 判断，保留只追加的历史和显式更正（也可在记录的单元查看页中更正）；DISTINCT 与关系类请求在响应丢失时可幂等恢复。

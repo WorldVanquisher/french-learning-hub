@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnnotationInspector } from "./pages/AnnotationInspector";
 import { ExperimentDashboard } from "./pages/ExperimentDashboard";
 import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
-import { ReviewQueue } from "./pages/ReviewQueue";
+import { ReviewQueue, type ReviewResume } from "./pages/ReviewQueue";
 import { UnitInspection } from "./pages/UnitInspection";
 import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n";
@@ -25,6 +25,9 @@ const VIEWS: View[] = ["records", "library", "review", "inspector", "experiments
 // are read-only, except that a unit inspection opened from a record can send
 // explicit corrections of an already reviewed current unit;
 // Concept Review records annotation decisions.
+//
+// The general Concept Review queue is re-read from the backend whenever it is
+// shown, but resumes at the unit (and catalog search) where the reviewer left it.
 //
 // A record's extracted unit can be opened in Concept Review or a focused
 // inspection. Learning Records stays mounted (hidden) meanwhile, so returning
@@ -51,6 +54,10 @@ function Workbench() {
   // Bumped on return so the record re-reads what may have changed elsewhere.
   const [returnEpoch, setReturnEpoch] = useState(0);
   const [returnFocus, setReturnFocus] = useState<UnitTarget | null>(null);
+  // Where the general Concept Review queue was left (unit, position, search text).
+  // The queue unmounts when another view is shown; this restores its place.
+  const [reviewResume, setReviewResume] = useState<ReviewResume | null>(null);
+  const keepReviewResume = useCallback((next: ReviewResume) => setReviewResume(next), []);
   // A unit opened from a record may be historical, so the inspector's general
   // description ("current-extraction units") would not fit it.
   const copy =
@@ -124,7 +131,7 @@ function Workbench() {
             onInspect={(unitId) => openUnit({ ...focus, kind: "inspect", unitId })}
           />
         ) : (
-          <ReviewQueue />
+          <ReviewQueue resume={reviewResume} onResumeChange={keepReviewResume} />
         )
       ) : view === "inspector" ? (
         focus ? (

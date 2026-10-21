@@ -89,8 +89,13 @@ function fixtureBackend() {
       },
     },
     "GET /api/entries/1/current-extraction": { body: { entry_id: 1, current_extraction_id: 20, selection_mode: "automatic" } },
+    // The record's extraction panel reads the legacy complete list; Concept Review
+    // reads bounded pages (FLH-090): one record page, or one global page.
     "GET /api/reviewable-units?entry_id=1": () => ({ body: { reviewable_units: [...reviewable].map((id) => reviewableUnit(id, `unit ${id}`)) } }),
-    "GET /api/reviewable-units": { body: { reviewable_units: [] } },
+    "GET /api/reviewable-units?entry_id=1&limit=200": () => ({
+      body: { reviewable_units: [...reviewable].map((id) => reviewableUnit(id, `unit ${id}`)), next_cursor: null, limit: 200 },
+    }),
+    "GET /api/reviewable-units?limit=50": { body: { reviewable_units: [], next_cursor: null, limit: 50 } },
     "GET /api/concepts": { body: { concepts: [] } },
     "GET /api/knowledge-units/201/concept-membership": { body: { unit_id: 201, current_membership: null } },
     "GET /api/knowledge-units/201/concept-resolution": { body: { unit_id: 201, decision: "no_match", matches: [] } },
@@ -166,9 +171,11 @@ describe("Record → unit → other view → back", () => {
     const backend = fixtureBackend();
     await openRecordOne();
     await screen.findByText("Awaiting concept review.");
-    const reviewReads = backend.count("GET", "/api/reviewable-units?entry_id=1");
+    const recordReads = () =>
+      backend.count("GET", "/api/reviewable-units?entry_id=1") + backend.count("GET", "/api/reviewable-units?entry_id=1&limit=200");
+    const reviewReads = recordReads();
     // App starts on the global Concept Review, so that queue was read before.
-    const globalReads = backend.count("GET", "/api/reviewable-units");
+    const globalReads = backend.count("GET", "/api/reviewable-units?limit=50");
 
     fireEvent.click(screen.getByRole("button", { name: "Review unit #201 in Concept Review" }));
     expect(await screen.findByRole("heading", { name: "Concept Review for record #1" })).toHaveFocus();
@@ -176,14 +183,14 @@ describe("Record → unit → other view → back", () => {
     expect(reviewCard()).toHaveTextContent("Énoncé unit 201");
     expect(screen.getByText("unit 1 of 1")).toBeInTheDocument();
     // Focus mode read only the record's reviewable units, never the global queue.
-    expect(backend.count("GET", "/api/reviewable-units")).toBe(globalReads);
+    expect(backend.count("GET", "/api/reviewable-units?limit=50")).toBe(globalReads);
 
     fireEvent.click(screen.getByRole("button", { name: "INVALID" }));
     expect(await screen.findByText("No units of record #1 are awaiting review.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "← Back to record #1" }));
     await waitFor(() => expect(document.getElementById("extracted-unit-201")).toHaveFocus());
-    await waitFor(() => expect(backend.count("GET", "/api/reviewable-units?entry_id=1")).toBeGreaterThan(reviewReads + 1));
+    await waitFor(() => expect(recordReads()).toBeGreaterThan(reviewReads + 1));
     const unit201 = document.getElementById("extracted-unit-201") as HTMLElement;
     await waitFor(() => expect(unit201).toHaveTextContent("Not awaiting review (already resolved or marked INVALID)."));
     expect(within(unit201).queryByRole("button", { name: /Concept Review/ })).not.toBeInTheDocument();
@@ -232,10 +239,10 @@ describe("Record → unit → other view → back", () => {
     await screen.findByText("Awaiting concept review.");
     fireEvent.click(screen.getByRole("button", { name: "Review unit #201 in Concept Review" }));
     await screen.findByRole("heading", { name: "Concept Review for record #1" });
-    const globalReads = backend.count("GET", "/api/reviewable-units");
+    const globalReads = backend.count("GET", "/api/reviewable-units?limit=50");
 
     fireEvent.click(screen.getByRole("button", { name: "Concept Review" }));
-    await waitFor(() => expect(backend.count("GET", "/api/reviewable-units")).toBeGreaterThan(globalReads));
+    await waitFor(() => expect(backend.count("GET", "/api/reviewable-units?limit=50")).toBeGreaterThan(globalReads));
     expect(screen.queryByRole("region", { name: "Record context" })).not.toBeInTheDocument();
 
     // The record is still open where it was left.
