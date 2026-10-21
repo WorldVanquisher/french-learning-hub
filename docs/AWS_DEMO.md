@@ -119,8 +119,9 @@ These are proved only by §3 to §7 against the real account.
 
     It cannot create or change anything.
   - **Apply and destroy (recommended):** attach the customer-managed
-    `flh-demo-deploy` policy (`deploy/aws/iam/`), only while applying or
-    destroying. It requires the host role to carry the administrator-managed
+    `flh-demo-deploy` and `flh-demo-deploy-ec2` policies together
+    (`deploy/aws/iam/`; split in FLH-088 for the 6,144-character limit), only
+    while applying or destroying. It requires the host role to carry the administrator-managed
     permissions boundary `flh-demo-host-boundary`, and explicitly denies
     removing or changing that boundary. Procedure: `deploy/aws/iam/README.md`.
     It is **untested against AWS**: an `AccessDenied` names the missing action
@@ -493,7 +494,7 @@ tarballs remain on the operator's machine.
    (§2), with its `source_revision` label.
 7. **Operator identity and permission set:** `ReadOnlyAccess` for the plan.
    For apply, the administrator-created `flh-demo-host-boundary` plus
-   `flh-demo-deploy` (or `AdministratorAccess`); `flh-demo-operate` to operate
+   `flh-demo-deploy` and `flh-demo-deploy-ec2` (or `AdministratorAccess`); `flh-demo-operate` to operate
    (§1). Plus the budget alert threshold.
 8. **Defaults to confirm or change:**
    - root volume size and `delete_on_termination`, defaults 8 GiB and true;
@@ -563,7 +564,9 @@ rollback are in
 controlled cutover of that one A record):
 1. **Record DNS facts:** A, AAAA, CNAME and TTL values; CAA at the host and its
    parent; the nameservers.
-2. **IAM:** the administrator updates `flh-demo-deploy`.
+2. **IAM:** the administrator creates `flh-demo-deploy-ec2` and saves the new,
+   smaller `flh-demo-deploy` version (`deploy/aws/iam/README.md` §2b). Attach
+   both while applying, and detach both afterwards.
 3. **Plan** with the deployed inputs and the deployed AMI (from `terraform
    output -raw ami_id`). Review the full plan: exactly 4 to add, nothing
    changed, destroyed or replaced. Then apply.
