@@ -61,6 +61,11 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   Explanation-language preference chooses what is shown; older records stay
   readable and are labelled when their language was not recorded. Feedback
   records which languages you reviewed and can correct each one.
+- Ask for **AI-assisted Concept suggestions** (opt-in, `SUGGESTION_PROVIDER`)
+  for a small, explicitly selected batch of reviewable units. The model only
+  proposes existing Concepts from a bounded candidate list, with a short
+  reason; suggestions are stored as advisory evidence and change nothing until
+  you confirm one item at a time. There is no bulk acceptance.
 - Review units in the **Concept Review** workbench: SAME, NEW CONCEPT, BROADER,
   NARROWER, RELATED, DISTINCT and INVALID decisions, with append-only history,
   read-only inspection of each candidate's current supporting evidence and of
@@ -185,6 +190,7 @@ credentials:
 | `DB_PATH` | `data/app.db` | SQLite database file |
 | `AI_PROVIDER` | `rule-based` | Analyzer: `rule-based` or `openai` |
 | `EXTRACTOR_PROVIDER` | `disabled` | Knowledge extractor: `disabled` or `openai` |
+| `SUGGESTION_PROVIDER` | `disabled` | Concept suggestions: `disabled` or `openai` |
 | `EMBEDDING_PROVIDER` | `disabled` | Embedding service: `disabled` or `http` |
 | `SEMANTIC_SEARCH` | `disabled` | Persistent semantic index: `disabled` or `qdrant` |
 | `HTTP_ALLOWED_HOSTS` | loopback names only | Extra exact Host names or IPs to accept |

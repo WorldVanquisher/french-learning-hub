@@ -46,6 +46,8 @@ Concept 判断——作为独立的、版本化或只追加的记录保存。当
 - 显式运行**知识抽取**（OpenAI 适配器，默认关闭），配合固定的准入规则集和只追加的人工覆盖。
 - 以**英文和简体中文**阅读生成的说明和单元陈述；两种语言由同一次显式提供方请求返回。独立的“说明语言”偏好决定显示哪种语言；
   旧记录仍可阅读，未记录语言时会明确标注。反馈会记录您审阅过的语言，并可分别更正每种语言。
+- 为显式选择的一小批可审阅单元请求 **AI 辅助的概念建议**（可选，`SUGGESTION_PROVIDER`）。模型只会从有限的候选列表中提议
+  已有概念并给出简短理由；建议作为参考证据存储，在您逐条确认之前不会改变任何内容。没有批量接受。
 - 在 **Concept Review** 工作台中审核单元：SAME、NEW CONCEPT、BROADER、NARROWER、RELATED、DISTINCT 与
   INVALID 判断，决定前可只读查看每个候选的当前支持证据及其背后的原始问题，保留只追加的历史和显式更正（也可在记录的单元查看页中更正）；DISTINCT 与关系类请求在响应丢失时可幂等恢复。
 - 在只读的 **Knowledge Library** 中检索和浏览已整理的 Concept：以平实的语言显示状态，并能从每个单元链接到
@@ -143,6 +145,7 @@ docker compose stop
 | `DB_PATH` | `data/app.db` | SQLite 数据库文件 |
 | `AI_PROVIDER` | `rule-based` | 分析器：`rule-based` 或 `openai` |
 | `EXTRACTOR_PROVIDER` | `disabled` | 知识抽取器：`disabled` 或 `openai` |
+| `SUGGESTION_PROVIDER` | `disabled` | 概念建议：`disabled` 或 `openai` |
 | `EMBEDDING_PROVIDER` | `disabled` | 嵌入服务：`disabled` 或 `http` |
 | `SEMANTIC_SEARCH` | `disabled` | 持久语义索引：`disabled` 或 `qdrant` |
 | `HTTP_ALLOWED_HOSTS` | 仅回环名称 | 额外允许的精确 Host 名称或 IP |

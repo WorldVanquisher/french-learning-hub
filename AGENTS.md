@@ -490,6 +490,24 @@ FLH-095 bilingual explanations:
 - The workbench Explanation-language preference (`flh.explanation-language.v1`,
   default both) is separate from the UI locale and read-only.
 
+FLH-097 AI-assisted Concept suggestions:
+
+- Optional `SUGGESTION_PROVIDER=openai` (default `disabled`, reuses `OPENAI_*`)
+  enables explicit, bounded generation (`POST /concept-suggestion-runs`, UUID
+  `Idempotency-Key` required): at most 10 reviewable units, at most 5 candidates
+  each (exact signature, then BM25 over the non-retired catalog minus DISTINCT
+  Concepts), oversized text rejected, one provider call, no transaction held,
+  output validated against the supplied IDs. Failures store a failed run only.
+- Migration 013 stores runs/items/confirmations apart from every authority. A
+  suggestion never writes membership, Concepts, judgments, distinctions,
+  admission or preferred units, and is never a human label by itself.
+- `POST /concept-suggestion-items/{id}/confirm` revalidates unit and target
+  state in the same transaction as the human SAME (evidence reason
+  `human_same_ai_suggestion`, linked to the item); one confirmation per item;
+  never reassigns a resolved unit. M12 evaluation counts these SAMEs as
+  unclassified provenance, not samples. No bulk acceptance, no background work.
+- Contract: `docs/ARCHITECTURE.md` §7.6 and `docs/plans/FLH-097-concept-suggestions.md`.
+
 FLH-084 AWS demo deployment preparation:
 
 - `deploy/aws/` prepares (does not perform) the read-only public demo on one EC2

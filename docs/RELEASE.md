@@ -63,7 +63,7 @@ disabled extraction and `./data/release`.
   boundary described below. Empty values use the server defaults.
 - Only these provider variables are forwarded, with the server's defaults:
   `AI_PROVIDER` (`rule-based`), `EXTRACTOR_PROVIDER` (`disabled`),
-  `EMBEDDING_PROVIDER` (`disabled`), and `OPENAI_API_KEY`, `OPENAI_MODEL`,
+  `SUGGESTION_PROVIDER` (`disabled`), `EMBEDDING_PROVIDER` (`disabled`), and `OPENAI_API_KEY`, `OPENAI_MODEL`,
   `OPENAI_BASE_URL`, `OPENAI_TIMEOUT`, `EMBEDDING_API_KEY`, `EMBEDDING_MODEL`,
   `EMBEDDING_BASE_URL`, `EMBEDDING_TIMEOUT`, `HTTP_READ_TIMEOUT`,
   `HTTP_WRITE_TIMEOUT`, which default to empty. Empty means unset, so the

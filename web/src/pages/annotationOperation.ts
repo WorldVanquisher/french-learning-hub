@@ -90,12 +90,16 @@ export function recheckStorage(): StoredDecision[] {
 }
 export function newOperation(d: Decision): Decision {
   if (d.kind !== "distinct" && d.kind !== "relation") return d;
-  // getRandomValues also works on explicitly allowed HTTP origins, where
-  // randomUUID may be unavailable because the page is not a secure context.
+  return { ...d, operationId: randomOperationId() };
+}
+
+// randomOperationId returns a version-4 UUID for an Idempotency-Key.
+// getRandomValues also works on explicitly allowed HTTP origins, where
+// randomUUID may be unavailable because the page is not a secure context.
+export function randomOperationId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-  const operationId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-  return { ...d, operationId };
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }

@@ -81,6 +81,7 @@ type Handler struct {
 	library             KnowledgeLibraryService
 	semantic            SemanticSearchService
 	hybrid              HybridSearchService
+	suggestions         ConceptSuggestionService
 	// demo is set only in the FLH-073 public demo mode.
 	demo *publicDemo
 	// readiness reports whether the backing store can serve requests. It is
@@ -205,6 +206,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /knowledge-library/units/{id}/source", h.handleGetLibraryUnitSource)
 	mux.HandleFunc("GET /knowledge-library/semantic-search", h.handleSemanticSearch)
 	mux.HandleFunc("GET /knowledge-library/hybrid-search", h.handleHybridSearch)
+	h.registerConceptSuggestionRoutes(mux)
 	h.registerPublicDemoRoutes(mux)
 	return mux
 }

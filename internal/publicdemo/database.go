@@ -116,8 +116,11 @@ var orderedTables = []string{"analysis_feedback", "knowledge_admission_recommend
 
 // emptyTables must hold no rows in a demo artifact: semantic index state is
 // replaced by the artifact's own vectors, and the demo records no operations.
+// FLH-097 advisory suggestion tables are empty too: the demo shows no
+// suggestions and records no confirmations.
 var emptyTables = []string{"annotation_operations", "semantic_embedding_cache", "semantic_index_collections",
-	"semantic_index_manifest", "semantic_index_physical_collections", "semantic_index_points", "semantic_index_spaces"}
+	"semantic_index_manifest", "semantic_index_physical_collections", "semantic_index_points", "semantic_index_spaces",
+	"concept_suggestion_runs", "concept_suggestion_items", "concept_suggestion_confirmations"}
 
 // unfingerprintedTables are bookkeeping, checked elsewhere or not data.
 var unfingerprintedTables = map[string]string{

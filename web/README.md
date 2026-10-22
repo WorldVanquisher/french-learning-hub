@@ -189,6 +189,25 @@ the reviewer asks; nothing is written and no provider is called.
   Inspector. The Knowledge Library and public demo still show the primary
   statement only.
 
+### AI suggestions (FLH-097)
+
+- **Where:** Concept Review has two modes, **Unit queue** and **AI
+  suggestions**. Switching modes sends nothing.
+- **Generate:** select at most the server's `max_units` reviewable units, then
+  **Generate suggestions**. This is the only control that may call the model.
+  The key and unit ids are saved in browser storage
+  (`flh.concept-suggestion-requests.v1`) before sending; if storage fails,
+  nothing is sent. A lost answer shows an unknown outcome with **Check for a
+  stored result**, **Send the same request again** (same key) and **Forget**.
+- **Review:** each item shows the unit, the model outcome and reason, the
+  supplied candidates, the proposed Concept's current content (FLH-093) and
+  the derived state (open, confirmed, stale with reasons, nothing to confirm).
+  The page states that candidates were limited.
+- **Decide:** **Confirm SAME to Concept #n** sends one confirmation; the
+  backend revalidates and refuses stale state. **Leave unused** records
+  nothing. There is no bulk acceptance. Correcting an already-resolved unit
+  stays in the unit queue.
+
 ### Decision outcomes (FLH-027)
 
 Every Concept Review decision (SAME or REASSIGN SAME, NEW CONCEPT,

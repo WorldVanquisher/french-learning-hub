@@ -4,6 +4,7 @@ import { ExperimentDashboard } from "./pages/ExperimentDashboard";
 import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue, type ReviewResume } from "./pages/ReviewQueue";
+import { ConceptSuggestions } from "./pages/ConceptSuggestions";
 import { UnitInspection } from "./pages/UnitInspection";
 import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n";
@@ -25,7 +26,9 @@ const VIEWS: View[] = ["records", "library", "review", "inspector", "experiments
 // extraction requests; the Knowledge Library, Inspector and Experiment Dashboard
 // are read-only, except that a unit inspection opened from a record can send
 // explicit corrections of an already reviewed current unit;
-// Concept Review records annotation decisions.
+// Concept Review records annotation decisions. Its "AI suggestions" mode
+// (FLH-097) lists stored advisory suggestions; generating them is an explicit
+// request and only an explicit per-item confirmation records a human SAME.
 //
 // The general Concept Review queue is re-read from the backend whenever it is
 // shown, but resumes at the unit (and catalog search) where the reviewer left it.
@@ -61,6 +64,8 @@ function Workbench() {
   // The queue unmounts when another view is shown; this restores its place.
   const [reviewResume, setReviewResume] = useState<ReviewResume | null>(null);
   const keepReviewResume = useCallback((next: ReviewResume) => setReviewResume(next), []);
+  // The general Concept Review shows either the unit queue or AI suggestions.
+  const [reviewMode, setReviewMode] = useState<"queue" | "suggestions">("queue");
   // A unit opened from a record may be historical, so the inspector's general
   // description ("current-extraction units") would not fit it.
   const copy =
@@ -135,7 +140,21 @@ function Workbench() {
             onInspect={(unitId) => openUnit({ ...focus, kind: "inspect", unitId })}
           />
         ) : (
-          <ReviewQueue resume={reviewResume} onResumeChange={keepReviewResume} />
+          <>
+            <div className="view-tabs review-modes" role="group" aria-label={t("review.mode.label")}>
+              <button type="button" aria-pressed={reviewMode === "queue"} onClick={() => setReviewMode("queue")}>
+                {t("review.mode.queue")}
+              </button>
+              <button type="button" aria-pressed={reviewMode === "suggestions"} onClick={() => setReviewMode("suggestions")}>
+                {t("review.mode.suggestions")}
+              </button>
+            </div>
+            {reviewMode === "queue" ? (
+              <ReviewQueue resume={reviewResume} onResumeChange={keepReviewResume} />
+            ) : (
+              <ConceptSuggestions />
+            )}
+          </>
         )
       ) : view === "inspector" ? (
         focus ? (

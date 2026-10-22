@@ -144,6 +144,11 @@ Then open `http://127.0.0.1:8080/`.
 | 3. **Request analysis…** → **Create a new analysis version** | **Yes**, once, `AI_PROVIDER` | A new immutable analysis version, `unreviewed`, provenance `openai:<your model>:fr_l2_taxonomy_v1.explanation_en_zh_v1`, with English and Chinese explanations from the same call. **Accept**, **Correct** or **Reject** are your separate decisions and call nothing |
 | 4. **Request extraction…** → **Send to the extraction provider** | **Yes**, once, `EXTRACTOR_PROVIDER` | Refused before any call when the record has no analysis or its latest analysis was rejected. Otherwise a new extraction version with **zero or more** units, provenance `openai:<your model>:knowledge_extraction_v2`, each statement in English and Chinese from the same call |
 | 5. **Concept Review**: SAME, NEW CONCEPT, … | **No** | Only your explicit decision is recorded. Nothing is filed automatically |
+| 6. **Concept Review → AI suggestions** → select at most 10 units → **Generate suggestions** | **Yes**, once per request, `SUGGESTION_PROVIDER` (optional, default `disabled`) | A stored suggestion run, provenance `openai:<your model>:concept_suggestion_v1`: for each unit an existing Concept from at most 5 candidates, *no suitable candidate* or *uncertain*, with a short reason. Nothing is filed. A unit with no candidate is not sent |
+| 7. **Confirm SAME to Concept #n** on one suggestion | **No** | A human SAME, recorded only if the unit and Concept are still in the state the suggestion saw; otherwise it is refused as stale. **Leave unused** records nothing |
+
+Suggestion requests use more tokens than one analysis (up to 10 units and 5
+candidates each), so allow `OPENAI_TIMEOUT` headroom as for extraction.
 
 Every request is sent once and never retried automatically. If no response
 arrives, the workbench says the outcome is unknown rather than failed. Use

@@ -1450,6 +1450,96 @@ The exact contract is [FLH-029](plans/FLH-029-annotation-idempotency.md). The
 lost-response analysis that motivated it is in
 [FLH-028](validation/FLH-028-review-response-loss.md).
 
+### 7.6 AI-assisted Concept suggestions (FLH-097)
+
+Concept Review has an **AI suggestions** mode beside the unit queue. The owner
+explicitly selects a bounded batch of reviewable units and asks the configured
+model which **existing** Concept each may belong to. Suggestions are advisory
+evidence, stored apart from every authority; only an explicit per-item human
+confirmation records a human SAME.
+
+**Generation** (`POST /concept-suggestion-runs`, the only call that may contact
+the provider):
+- Opt-in with `SUGGESTION_PROVIDER=openai` (default `disabled`), independent of
+  the analyzer and extractor, reusing `OPENAI_*`. Generator provenance:
+  `openai:<model>:concept_suggestion_v1`. No other provider, no fallback, no
+  retry, no background work, nothing on startup or on reading.
+- A UUID `Idempotency-Key` is required. A committed run under the key is the
+  answer for that key: the same `unit_ids` replay it (header
+  `Idempotency-Replayed: true`, no provider call, even when the suggester is
+  now disabled); different `unit_ids` are `409`. A second request under a key
+  that this server is still generating is `409`.
+- Every unit must be reviewable **now** (current extraction, no CURRENT SAME,
+  not INVALID); otherwise `422` names it. Nothing is dropped silently.
+- **Candidates** (`concept_suggestion_candidates_v1`): from the non-retired
+  catalog (orphaned Concepts included), excluding Concepts the unit has a
+  recorded DISTINCT with, take exact identity-signature matches first, then
+  the existing `bm25_retriever_v1` ranking, deduplicated, at most 5 per unit.
+  Each candidate is sent with its identity and up to 2 CURRENT SAME members'
+  canonical and statement (preferred unit first). The catalogue and the
+  learning database are never sent whole.
+- **Limits** (rejected with `422`, never truncated): at most 10 units; unit
+  text (canonical + statement + example) at most 1,200 characters; each
+  Concept's supplied text at most 800 characters. Output: response body at
+  most 64 KiB, reason at most 500 characters.
+- A unit with no candidate gets the local outcome `no_candidates` and is not
+  sent. If no unit has a candidate, no provider call is made.
+- The provider call happens with no SQLite transaction open. Learner text is
+  sent only as user-role data with an instruction to ignore instructions in it.
+- **Output validation:** exactly one answer per supplied unit; no foreign or
+  duplicate unit; `suggested` must name one of **that unit's** supplied
+  candidates; `no_suitable_candidate` and `uncertain` name none; a non-empty
+  reason. Any violation fails the whole run as `invalid_output`.
+- **Failure:** a timeout (`504`), provider error (`502`) or invalid output
+  (`502`) stores a **failed run** receipt (code only, no provider body) and
+  returns it; no item and no semantic row is written. Retrying means a new,
+  explicit request with a new key.
+
+**Storage** (migration `013`): `concept_suggestion_runs` (key, request unit
+ids, status, failure code, generator, candidate policy and limit, whether the
+provider was called), `concept_suggestion_items` (unit, entry, source
+extraction, the exact candidates with rank, source, signature and target
+snapshot, outcome, suggested Concept, reason) and
+`concept_suggestion_confirmations`. Rows are written once. A stored suggestion
+never creates or reassigns membership, creates a Concept, marks INVALID or
+suppressed, sets a preferred unit, or counts as a human label.
+
+**Derived item state** (on read, never stored): `confirmed`;
+`no_suggestion` (outcome not `suggested`); `stale` with reasons
+`unit_not_in_current_extraction`, `unit_has_current_same`, `unit_invalid`,
+`target_retired`, `target_identity_changed` (signature differs from the
+recorded candidate) or `target_distinct_recorded`; else `open`. Stored runs stay
+inspectable whatever changes later.
+
+**Confirmation** (`POST /concept-suggestion-items/{id}/confirm`, body
+`{"concept_id": n}` equal to the suggested Concept):
+- One transaction takes the write lock, replays an existing confirmation of the
+  item (same event, `Idempotency-Replayed: true`), recomputes every stale
+  reason and refuses with `409` and `stale_reasons` if any applies, then
+  appends a **human** SAME event through the existing membership path, updates
+  the CURRENT SAME projection and stores the confirmation receipt
+  (`UNIQUE(item_id)`, `UNIQUE(link_id)`).
+- It never reassigns an already-resolved unit; correction stays with the
+  existing REASSIGN workflow.
+- The event's evidence is `{"reason":"human_same_ai_suggestion",
+  "suggestion_item_id", "suggestion_run_id", "generator", "resolver"}`. It is a
+  human decision with AI-assisted provenance: the M11 dataset includes it as
+  human SAME, and M12 retrieval evaluation counts it under
+  `unclassified_human_same_provenance` instead of as a sample, because the
+  candidates were themselves chosen by retrieval.
+
+**Workbench.** Selecting units, opening runs and reading candidates send no
+write. **Generate suggestions** stores the key and unit ids in browser storage
+(`flh.concept-suggestion-requests.v1`, no text) before sending, and refuses to
+send if storage fails. A lost answer is shown as an unknown outcome with
+**Check for a stored result** (GET by key), **Send the same request again**
+(same key) and **Forget**. Each open item has **Confirm SAME to Concept #n** and
+**Leave unused**; leaving records nothing (not DISTINCT, not INVALID). There is
+no bulk acceptance. The UI states that candidates were limited, so “no suitable
+candidate” is not proof that the catalogue has none.
+
+Contract: [FLH-097](plans/FLH-097-concept-suggestions.md).
+
 ## 8. Annotation dataset and retrieval research
 
 These read-only reports turn collected annotations into an auditable dataset and
@@ -2150,6 +2240,7 @@ empty values behave as unset. Defaults work out of the box:
 | `HTTP_WRITE_TIMEOUT` | `10`                        | Write timeout (seconds)                       |
 | `AI_PROVIDER`        | `rule-based`                | Analyzer provider: `rule-based` or `openai`   |
 | `EXTRACTOR_PROVIDER` | `disabled`                  | Knowledge extractor: `disabled` or `openai`   |
+| `SUGGESTION_PROVIDER` | `disabled`                 | Concept suggester (FLH-097): `disabled` or `openai`; reuses `OPENAI_*` |
 | `OPENAI_API_KEY`     | _(none)_                    | Required for `openai`; never logged           |
 | `OPENAI_MODEL`       | _(none)_                    | Required for `openai`; the model to use       |
 | `OPENAI_BASE_URL`    | `https://api.openai.com/v1` | API base URL (override for gateways/testing)  |
@@ -2258,6 +2349,7 @@ forward-only; there are no down migrations.
 | `010_semantic_index` | `semantic_embedding_cache` (still used); `semantic_index_collections`, `semantic_index_points` (FLH-040 bookkeeping, unused since FLH-042) |
 | `011_semantic_index_runs` | `semantic_index_spaces` (lease, publication, last run), `semantic_index_physical_collections`, `semantic_index_manifest` (FLH-042) |
 | `012_bilingual_explanations` | nullable explanation/statement language variants, per-language corrections and reviewed languages on feedback (FLH-095; see [§3.9](#39-bilingual-explanations-flh-095)) |
+| `013_concept_suggestions` | advisory `concept_suggestion_runs`, `concept_suggestion_items`, `concept_suggestion_confirmations` (FLH-097; see [§7.6](#76-ai-assisted-concept-suggestions-flh-097)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -2287,6 +2379,8 @@ committed roadmap items:
 - No automatic retry of provider or annotation writes.
 - No learned or automatically applied Concept resolver, no automatic
   BROADER/NARROWER inference, and no forced merging of ambiguous candidates.
+  FLH-097 AI suggestions are advisory and are never applied without an explicit
+  per-item human confirmation; there is no bulk acceptance.
 - No spaced repetition, review scheduling, mastery estimation, CEFR or
   difficulty scoring.
 - No knowledge or prerequisite graph and no cross-interaction normalization.
@@ -3117,3 +3211,25 @@ returns schema `knowledge_library_hybrid_search_v1`:
 `q` is required. Invalid parameters return `400`; without semantic search the
 route returns `503`, and other failures use the semantic status codes
 ([§9.4](#94-explicit-hybrid-search-flh-071)).
+
+### A.14 Concept suggestions (FLH-097)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `GET /concept-suggestion-runs?limit=` | `enabled`, `generator` (null when disabled), `candidate_policy`, `limits`, recent `runs` (newest first, default 20, max 50, no items) |
+| `POST /concept-suggestion-runs` | Body `{"unit_ids":[…]}`, header `Idempotency-Key` (UUID, required). `201` run with items (replay adds `Idempotency-Replayed: true`); `400` missing/invalid key or JSON; `409` key used for other `unit_ids` or in progress; `422` invalid, oversized or not-reviewable input; `502`/`504` `{error, run}` with the stored failed run; `503` disabled |
+| `GET /concept-suggestion-runs/{id}` | Run with items and derived state; `404` unknown |
+| `GET /concept-suggestion-runs/operations/{key}` | Run committed under the key; `404` means nothing committed, never canceled |
+| `POST /concept-suggestion-items/{id}/confirm` | Body `{"concept_id": n}`. `201` `{item, link, replayed}` (replay adds `Idempotency-Replayed: true`); `404` unknown item; `409` `{error, stale_reasons}` or membership conflict; `422` no suggestion or a different Concept |
+
+A run has `id`, `operation_id`, `status` (`completed`/`failed`),
+`failure_code` (`provider_timeout`, `provider_unavailable`, `invalid_output` or
+null), `generator`, `candidate_policy`, `candidate_limit`, `provider_called`,
+`unit_ids`, `item_count`, `suggested_count`, `created_at` and `items`. An item
+has `id`, `run_id`, `ordinal`, `unit_id`, `entry_id`, `source_extraction_id`,
+`outcome` (`suggested`, `no_suitable_candidate`, `uncertain`,
+`no_candidates`), `suggested_concept_id`, `reason`, `candidates` (`concept_id`,
+`rank`, `source`, `signature`, `target`), `state`, `stale_reasons`,
+`current_concept_id`, `confirmation` (`id`, `link_id`, `created_at` or null),
+`unit` (the reviewable-unit shape) and `created_at`. The public demo boundary
+does not expose these routes.

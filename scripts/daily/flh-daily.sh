@@ -68,7 +68,9 @@ for key in ("AI_PROVIDER", "EXTRACTOR_PROVIDER"):
 ai, ex = envr.get("AI_PROVIDER", ""), envr.get("EXTRACTOR_PROVIDER", "")
 if ai not in ("openai", "rule-based"): problems.append("AI_PROVIDER must be openai or rule-based")
 if ex not in ("openai", "disabled"): problems.append("EXTRACTOR_PROVIDER must be openai or disabled")
-real = "openai" in (ai, ex)
+sg = envr.get("SUGGESTION_PROVIDER", "") or "disabled"
+if sg not in ("openai", "disabled"): problems.append("SUGGESTION_PROVIDER must be openai or disabled")
+real = "openai" in (ai, ex, sg)
 if real:
     if not envr.get("OPENAI_API_KEY"): problems.append("OPENAI_API_KEY must be set (the value is never shown)")
     if not envr.get("OPENAI_MODEL"): problems.append("OPENAI_MODEL must be set to the model you chose")

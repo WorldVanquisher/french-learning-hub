@@ -39,6 +39,18 @@ const (
 	ExtractorOpenAI ExtractorProvider = "openai"
 )
 
+// SuggestionProvider selects the FLH-097 Concept membership suggester. It is
+// independent of the analyzer and extractor selections and reuses OPENAI_*.
+type SuggestionProvider string
+
+const (
+	// SuggestionDisabled is the default: no suggester is wired in and the
+	// generation endpoint reports the feature as unavailable.
+	SuggestionDisabled SuggestionProvider = "disabled"
+	// SuggestionOpenAI selects the OpenAI-backed suggester (opt-in).
+	SuggestionOpenAI SuggestionProvider = "openai"
+)
+
 // EmbeddingProvider selects the text-to-vector implementation used only by the
 // semantic retrieval baseline. It is independent of analyzer and extractor
 // provider selection.
@@ -71,6 +83,8 @@ type Config struct {
 
 	// Extractor holds knowledge-extractor configuration, independent of AI.
 	Extractor ExtractorConfig
+	// Suggestion holds the Concept suggester configuration (FLH-097).
+	Suggestion SuggestionConfig
 
 	// Embedding holds semantic-retrieval provider configuration, independent of
 	// both the analyzer and extractor.
@@ -146,6 +160,17 @@ type ExtractorConfig struct {
 	OpenAITimeout time.Duration
 }
 
+// SuggestionConfig holds the Concept suggester selection and its OpenAI
+// settings, resolved and validated independently of the other providers. The
+// API key must never be logged or placed in error messages.
+type SuggestionConfig struct {
+	Provider      SuggestionProvider
+	OpenAIAPIKey  string
+	OpenAIModel   string
+	OpenAIBaseURL string
+	OpenAITimeout time.Duration
+}
+
 // EmbeddingConfig holds the optional semantic-retrieval provider settings.
 // APIKey is optional so a trusted local service can be used without credentials;
 // when present it must never be logged or included in errors.
@@ -192,6 +217,7 @@ const (
 //	OPENAI_MODEL     -> AI.OpenAIModel (required for openai)
 //	OPENAI_BASE_URL  -> AI.OpenAIBaseURL, default https://api.openai.com/v1
 //	OPENAI_TIMEOUT   -> AI.OpenAITimeout (seconds), default 8
+//	SUGGESTION_PROVIDER -> Suggestion.Provider, default disabled (reuses OPENAI_*)
 //	EMBEDDING_PROVIDER -> Embedding.Provider, default disabled
 //	EMBEDDING_MODEL    -> Embedding.Model (required for http)
 //	EMBEDDING_BASE_URL -> Embedding.BaseURL (required for http)
@@ -253,6 +279,13 @@ func load(src source) (Config, error) {
 			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
+		Suggestion: SuggestionConfig{
+			Provider:      SuggestionProvider(getenv("SUGGESTION_PROVIDER", string(SuggestionDisabled))),
+			OpenAIAPIKey:  src.get("OPENAI_API_KEY"),
+			OpenAIModel:   strings.TrimSpace(src.get("OPENAI_MODEL")),
+			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
+			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
+		},
 		Embedding: EmbeddingConfig{
 			Provider: EmbeddingProvider(getenv("EMBEDDING_PROVIDER", string(EmbeddingDisabled))),
 			APIKey:   src.get("EMBEDDING_API_KEY"),
@@ -277,6 +310,9 @@ func load(src source) (Config, error) {
 		return Config{}, err
 	}
 	if err := cfg.Extractor.validate(); err != nil {
+		return Config{}, err
+	}
+	if err := cfg.Suggestion.validate(); err != nil {
 		return Config{}, err
 	}
 	if err := cfg.Embedding.validate(); err != nil {
@@ -421,5 +457,28 @@ func (c *EmbeddingConfig) validate() error {
 		return nil
 	default:
 		return fmt.Errorf("unknown EMBEDDING_PROVIDER %q (supported: disabled, http)", string(c.Provider))
+	}
+}
+
+// validate checks the suggester selection and its required OpenAI settings,
+// independently of AI_PROVIDER and EXTRACTOR_PROVIDER. Messages never include
+// the key value.
+func (c *SuggestionConfig) validate() error {
+	switch c.Provider {
+	case SuggestionDisabled:
+		return nil
+	case SuggestionOpenAI:
+		if strings.TrimSpace(c.OpenAIAPIKey) == "" {
+			return fmt.Errorf("SUGGESTION_PROVIDER=openai requires OPENAI_API_KEY to be set")
+		}
+		if c.OpenAIModel == "" {
+			return fmt.Errorf("SUGGESTION_PROVIDER=openai requires OPENAI_MODEL to be set")
+		}
+		if strings.TrimSpace(c.OpenAIBaseURL) == "" {
+			return fmt.Errorf("OPENAI_BASE_URL must not be empty")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown SUGGESTION_PROVIDER %q (supported: disabled, openai)", string(c.Provider))
 	}
 }
