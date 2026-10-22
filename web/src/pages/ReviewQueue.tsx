@@ -14,6 +14,7 @@ import { IdentityEditor } from "../components/IdentityEditor";
 import { MembershipPanel } from "../components/MembershipPanel";
 import { HistoryPanel } from "../components/HistoryPanel";
 import { ResolutionActions, type ActionKind } from "../components/ResolutionActions";
+import { MembershipComparison } from "../components/ConceptContent";
 import { createConceptDiscovery, DISCOVERY_PAGE_SIZE, visibleDiscovery } from "../conceptSearch";
 import type { UnitTarget } from "../navigation";
 import {
@@ -861,6 +862,8 @@ export function ReviewQueue({
         </div>
 
         <div>
+          {/* Read-only: the selected Concept's current content, beside the unit card. */}
+          <MembershipComparison conceptId={selectedConceptId} membership={membership} />
           <div className="panel">
             <h2>{t("review.exact.title")}</h2>
             <p className="hint">{t("review.exact.hint")}</p>

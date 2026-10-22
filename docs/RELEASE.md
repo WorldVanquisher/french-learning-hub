@@ -48,6 +48,12 @@ answers.
 
 ## Configuration
 
+For private daily use with real providers, prefer `scripts/daily/flh-daily.sh`
+([DAILY_USE.md](DAILY_USE.md)). It runs this same service with one settings
+file on every command. A plain `docker compose up` run without the values used
+before recreates the container with the defaults below: the rule-based analyzer,
+disabled extraction and `./data/release`.
+
 `compose.yaml` passes configuration explicitly:
 
 - `PORT=8080` and `DB_PATH=/data/app.db` are fixed. A host `DB_PATH` or `PORT`
@@ -242,7 +248,8 @@ requires the complete output to be exactly `ok` (apart from the final newline).
 ## Restore
 
 Restore at the **same configured path**, so ordinary `down`/`up` and
-`up --build` keep selecting it. Preserve the old directory by renaming it;
+`up --build` keep selecting it. Run the final `up` with the same configuration
+source as before (or use `scripts/daily/flh-daily.sh restore`, which does). Preserve the old directory by renaming it;
 do not delete it or use a one-command `FLH_DATA_DIR` override. The staging and
 old paths below are siblings of `active`, on the same filesystem. They must
 not already exist. Use a known backup from the procedure above.

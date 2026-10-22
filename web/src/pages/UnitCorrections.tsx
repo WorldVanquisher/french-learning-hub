@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, NetworkError } from "../api/client";
 import type { Concept } from "../types/concept";
 import { CandidateConceptCard } from "../components/CandidateConceptCard";
+import { ConceptContent } from "../components/ConceptContent";
 import {
   ExplicitAction,
   OutcomeBanner,
@@ -305,6 +306,13 @@ export function UnitCorrections({
               ) : null}
             </>
           )}
+          {target ? (
+            // Read-only: what the reassignment target currently contains (FLH-093).
+            <section className="panel comparison" aria-label={t("correction.targetContent", { id: target.id })}>
+              <h3>{t("correction.targetContent", { id: target.id })}</h3>
+              <ConceptContent key={target.id} conceptId={target.id} />
+            </section>
+          ) : null}
           <ExplicitAction
             label={target ? t("correction.reassign.to", { id: target.id }) : t("correction.reassign")}
             confirmLabel={target ? t("correction.reassign.confirmTo", { id: target.id }) : t("correction.reassign.confirm")}

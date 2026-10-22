@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"french-learning-app/internal/domain"
@@ -54,8 +55,12 @@ func TestRuleBased_Analyze_Deterministic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Analyze: %v", err)
 	}
-	if first != second {
+	if !reflect.DeepEqual(first, second) {
 		t.Fatalf("analyzer not deterministic: %+v vs %+v", first, second)
+	}
+	// FLH-095: the rule engine's English text is recorded as English only.
+	if first.Explanations.EN == nil || *first.Explanations.EN != first.Explanation || first.Explanations.ZH != nil {
+		t.Fatalf("rule-based variants = %+v, want en = explanation and no zh", first.Explanations)
 	}
 }
 

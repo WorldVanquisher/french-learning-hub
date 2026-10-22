@@ -37,6 +37,11 @@ type EffectiveAnalysis struct {
 
 	// Original is always the analysis as stored.
 	Original AnalysisValues
+	// OriginalExplanations are the stored language variants (FLH-095).
+	OriginalExplanations ExplanationVariants
+	// Explanations is the per-language effective explanation; nil exactly when
+	// Effective is nil (a rejected analysis).
+	Explanations *EffectiveExplanations
 	// Effective is the current interpretation. It is nil for a rejected analysis,
 	// which deliberately has no effective category or explanation rather than
 	// silently reusing the original values.
@@ -59,6 +64,12 @@ func ResolveEffective(a *Analysis, latest *Feedback) EffectiveAnalysis {
 		EntryID:    a.EntryID,
 		Version:    a.Version,
 		Original:   AnalysisValues{Category: a.Category, Explanation: a.Explanation},
+
+		OriginalExplanations: a.Explanations,
+	}
+	if latest == nil || latest.Status != FeedbackRejected {
+		x := resolveExplanations(a.Explanations, latest)
+		eff.Explanations = &x
 	}
 
 	// No feedback: the analysis stands as its own effective interpretation.
@@ -82,9 +93,17 @@ func ResolveEffective(a *Analysis, latest *Feedback) EffectiveAnalysis {
 		if latest.CorrectedCategory != nil {
 			category = *latest.CorrectedCategory
 		}
+		// The language-independent effective explanation (read by the extraction
+		// source and every existing consumer) is the person's corrected text in
+		// any language, else the original.
 		explanation := a.Explanation
-		if latest.CorrectedExplanation != nil {
+		switch c := latest.CorrectedExplanations; {
+		case latest.CorrectedExplanation != nil:
 			explanation = *latest.CorrectedExplanation
+		case c.EN != nil:
+			explanation = *c.EN
+		case c.ZH != nil:
+			explanation = *c.ZH
 		}
 		eff.Effective = &AnalysisValues{Category: category, Explanation: explanation}
 	case FeedbackRejected:

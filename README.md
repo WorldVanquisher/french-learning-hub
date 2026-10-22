@@ -56,9 +56,15 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   the workbench or the `cmd/capture` CLI. Neither calls a model.
 - Run explicit **knowledge extraction** (OpenAI adapter, disabled by default)
   with a fixed admission ruleset and append-only human overrides.
+- Read generated explanations and unit statements in **English and Simplified
+  Chinese**, both returned by the same explicit provider request. A separate
+  Explanation-language preference chooses what is shown; older records stay
+  readable and are labelled when their language was not recorded. Feedback
+  records which languages you reviewed and can correct each one.
 - Review units in the **Concept Review** workbench: SAME, NEW CONCEPT, BROADER,
   NARROWER, RELATED, DISTINCT and INVALID decisions, with append-only history,
-  explicit corrections (also from a record's unit inspection), and idempotent
+  read-only inspection of each candidate's current supporting evidence and of
+  the original questions behind it before deciding, explicit corrections (also from a record's unit inspection), and idempotent
   recovery for lost DISTINCT and relation responses.
 - Search and browse curated Concepts in the read-only **Knowledge Library**,
   with plain-language status and links from each unit to the record and the exact
@@ -160,6 +166,12 @@ service is stopped, restore through a staging directory, and back up before
 every upgrade: migrations are forward-only and an older image must not run on a
 newer database. The exact procedures are in [docs/RELEASE.md](docs/RELEASE.md).
 
+For private daily use with the real analyzer and extractor, run the same
+service through `scripts/daily/flh-daily.sh` with one private settings file
+outside the repository (data directory, providers, model, key). It checks the
+settings without printing secrets, and provides `up`, `stop`, `backup` and
+`restore`. See [docs/DAILY_USE.md](docs/DAILY_USE.md).
+
 ## Configuration defaults
 
 The server reads the process environment and an optional untracked `.env` file
@@ -204,6 +216,7 @@ The development history, organized by theme and linked to that evidence, is in
 | [docs/DEMO.md](docs/DEMO.md) | The synthetic Knowledge Library demo |
 | [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | Optional semantic search: setup, index operations, recovery, Go walkthrough |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker release, backup, restore, upgrades, browser boundary settings |
+| [docs/DAILY_USE.md](docs/DAILY_USE.md) | Private daily use with real providers: settings file, start/stop, tunnel, what calls a model, backup/restore |
 | [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | AWS runbook for the read-only public demo: one EC2 instance, private preview over Session Manager; optional public HTTPS entry point prepared, not applied (FLH-088) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the system works, with the HTTP API reference in Appendix A |
 | [web/README.md](web/README.md) | Workbench views and annotation behaviour |

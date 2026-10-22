@@ -23,7 +23,10 @@ import (
 // extractor uses. It is part of stored provenance. It is deliberately distinct
 // from the analyzer's prompt version: knowledge extraction is a separate task
 // with its own instructions and output schema.
-const schemaVersion = "knowledge_extraction_v1"
+//
+// v2 (FLH-095) adds statement_zh: each unit's statement in Simplified Chinese,
+// returned in the same response as the English statement.
+const schemaVersion = "knowledge_extraction_v2"
 
 // maxErrorBodyBytes bounds how much of a provider error/response body is read
 // into memory, protecting against unexpectedly large upstream payloads.
@@ -57,7 +60,9 @@ Extraction rules:
 Field rules:
 - kind: exactly one allowed kind above.
 - canonical: a short, stable human label for the objective (e.g. "vouloir — présent"). Not a sentence.
-- statement: one concise sentence stating the knowledge, preferred over a long explanation.
+- statement: one concise sentence in English stating the knowledge, preferred over a long explanation.
+- statement_zh: the same statement in Simplified Chinese, with the same content; not a summary or a different claim.
+- In both statements, quote French words and forms exactly as written in French; never translate them.
 - example: an optional short example, or null when none is warranted. Do not invent unrelated examples.
 - confidence: your heuristic confidence in [0, 1] that this is a genuine learning objective. It is not a mastery probability.
 - Do not rewrite, correct, translate, or normalize the learner's original input.`
@@ -168,11 +173,12 @@ type unitsPayload struct {
 }
 
 type unitPayload struct {
-	Kind       string  `json:"kind"`
-	Canonical  string  `json:"canonical"`
-	Statement  string  `json:"statement"`
-	Example    *string `json:"example"`
-	Confidence float64 `json:"confidence"`
+	Kind        string  `json:"kind"`
+	Canonical   string  `json:"canonical"`
+	Statement   string  `json:"statement"`
+	StatementZH *string `json:"statement_zh"`
+	Example     *string `json:"example"`
+	Confidence  float64 `json:"confidence"`
 }
 
 // outputSchema is the JSON Schema requested for structured output. It disallows
@@ -184,13 +190,14 @@ func outputSchema() map[string]any {
 	unit := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"kind":       map[string]any{"type": "string", "enum": domain.KnowledgeKindStrings()},
-			"canonical":  map[string]any{"type": "string"},
-			"statement":  map[string]any{"type": "string"},
-			"example":    map[string]any{"type": []string{"string", "null"}},
-			"confidence": map[string]any{"type": "number", "minimum": 0, "maximum": 1},
+			"kind":         map[string]any{"type": "string", "enum": domain.KnowledgeKindStrings()},
+			"canonical":    map[string]any{"type": "string"},
+			"statement":    map[string]any{"type": "string"},
+			"statement_zh": map[string]any{"type": "string"},
+			"example":      map[string]any{"type": []string{"string", "null"}},
+			"confidence":   map[string]any{"type": "number", "minimum": 0, "maximum": 1},
 		},
-		"required":             []string{"kind", "canonical", "statement", "example", "confidence"},
+		"required":             []string{"kind", "canonical", "statement", "statement_zh", "example", "confidence"},
 		"additionalProperties": false,
 	}
 	return map[string]any{
@@ -327,10 +334,17 @@ func (o *OpenAI) Extract(ctx context.Context, source domain.ExtractionSource) (d
 
 	result := domain.ExtractionResult{Units: make([]domain.ExtractedUnit, 0, len(payload.Units))}
 	for _, u := range payload.Units {
+		// Both languages are part of the v2 contract: a missing or blank
+		// Chinese statement is invalid output, never stored as English-only.
+		if u.StatementZH == nil || strings.TrimSpace(*u.StatementZH) == "" {
+			return domain.ExtractionResult{}, fmt.Errorf("%w: statement_zh is required for every unit", domain.ErrValidation)
+		}
+		en := strings.TrimSpace(u.Statement)
 		result.Units = append(result.Units, domain.ExtractedUnit{
 			Kind:       domain.KnowledgeKind(u.Kind),
 			Canonical:  u.Canonical,
-			Statement:  u.Statement,
+			Statement:  en,
+			Statements: domain.ExplanationVariants{EN: &en, ZH: u.StatementZH},
 			Example:    u.Example,
 			Confidence: u.Confidence,
 		})

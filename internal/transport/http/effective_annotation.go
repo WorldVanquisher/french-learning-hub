@@ -18,15 +18,18 @@ type EffectiveAnnotationInspectorService interface {
 }
 
 type effectiveAnnotationUnitResponse struct {
-	ID           int64   `json:"id"`
-	ExtractionID int64   `json:"extraction_id"`
-	Ordinal      int     `json:"ordinal"`
-	Kind         string  `json:"kind"`
-	Canonical    string  `json:"canonical"`
-	Statement    string  `json:"statement"`
-	Example      *string `json:"example"`
-	Confidence   float64 `json:"confidence"`
-	CreatedAt    string  `json:"created_at"`
+	ID           int64  `json:"id"`
+	ExtractionID int64  `json:"extraction_id"`
+	Ordinal      int    `json:"ordinal"`
+	Kind         string `json:"kind"`
+	Canonical    string `json:"canonical"`
+	Statement    string `json:"statement"`
+	// Statements are the stored English/Chinese variants (FLH-095); both null
+	// when the statement's language was not recorded.
+	Statements explanationVariantsResponse `json:"statements"`
+	Example    *string                     `json:"example"`
+	Confidence float64                     `json:"confidence"`
+	CreatedAt  string                      `json:"created_at"`
 }
 
 func toEffectiveAnnotationUnitResponse(unit domain.KnowledgeUnit) effectiveAnnotationUnitResponse {
@@ -37,6 +40,7 @@ func toEffectiveAnnotationUnitResponse(unit domain.KnowledgeUnit) effectiveAnnot
 		Kind:         string(unit.Kind),
 		Canonical:    unit.Canonical,
 		Statement:    unit.Statement,
+		Statements:   toVariants(unit.Statements),
 		Example:      unit.Example,
 		Confidence:   unit.Confidence,
 		CreatedAt:    unit.CreatedAt.Format(time.RFC3339Nano),

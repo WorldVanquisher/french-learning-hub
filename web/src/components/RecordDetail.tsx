@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import type { Analysis, EffectiveAnalysis, Entry } from "../types/learning";
+import { EffectiveText, StoredText } from "./ExplanationText";
 import { AnalysisRequest } from "./AnalysisRequest";
 import type { RefreshState } from "./ExplicitAction";
 import { ExtractionPanel } from "./ExtractionPanel";
@@ -254,6 +255,7 @@ export function RecordDetail({
             </span>
           </h2>
           <dl className="unit-evidence">
+            <div><dt>{t("record.explanation")}</dt><dd><StoredText primary={selected.explanation} variants={selected.explanations} kind="explanation" /></dd></div>
             <div><dt>{t("record.analyzer")}</dt><dd className="mono">{selected.analyzer}</dd></div>
             <div><dt>{t("record.confidence")}</dt><dd>{selected.confidence}</dd></div>
             <div><dt>{t("record.uncertainty")}</dt><dd>{selected.uncertainty || <em>{t("record.noneStated")}</em>}</dd></div>
@@ -329,20 +331,30 @@ function EffectiveInterpretation({ load }: { load: Load<EffectiveAnalysis> }) {
           </div>
           <dl className="unit-evidence">
             <div><dt>{t("effective.rejectedCategory")}</dt><dd>{eff.original.category}</dd></div>
-            <div><dt>{t("effective.rejectedExplanation")}</dt><dd>{eff.original.explanation}</dd></div>
+            <div><dt>{t("effective.rejectedExplanation")}</dt><dd><StoredText primary={eff.original.explanation} variants={eff.original_explanations} kind="explanation" /></dd></div>
           </dl>
         </>
       ) : (
         <>
           <dl className="unit-evidence">
             <div><dt>{t("effective.category")}</dt><dd>{eff.effective.category}</dd></div>
-            <div><dt>{t("effective.explanation")}</dt><dd>{eff.effective.explanation}</dd></div>
+            <div>
+              <dt>{t("effective.explanation")}</dt>
+              <dd>
+                <EffectiveText
+                  fallback={eff.effective.explanation}
+                  original={eff.original.explanation}
+                  originalVariants={eff.original_explanations}
+                  effective={eff.effective_explanations}
+                />
+              </dd>
+            </div>
           </dl>
           {eff.resolution === "unreviewed" ? <p className="hint">{t("effective.unreviewed")}</p> : null}
           {eff.resolution === "corrected" ? (
             <dl className="unit-evidence">
               <div><dt>{t("effective.originalCategory")}</dt><dd>{eff.original.category}</dd></div>
-              <div><dt>{t("effective.originalExplanation")}</dt><dd>{eff.original.explanation}</dd></div>
+              <div><dt>{t("effective.originalExplanation")}</dt><dd><StoredText primary={eff.original.explanation} variants={eff.original_explanations} kind="explanation" /></dd></div>
             </dl>
           ) : null}
         </>

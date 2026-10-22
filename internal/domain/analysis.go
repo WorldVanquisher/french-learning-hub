@@ -93,10 +93,13 @@ type Analysis struct {
 	Version     int64
 	Category    string
 	Explanation string
-	Confidence  float64
-	Uncertainty string
-	Analyzer    string
-	CreatedAt   time.Time
+	// Explanations holds the English/Chinese variants of Explanation (FLH-095).
+	// Both nil means the explanation's language was not recorded.
+	Explanations ExplanationVariants
+	Confidence   float64
+	Uncertainty  string
+	Analyzer     string
+	CreatedAt    time.Time
 }
 
 // AnalysisResult is the raw output an Analyzer produces for an entry, before
@@ -104,8 +107,11 @@ type Analysis struct {
 type AnalysisResult struct {
 	Category    string
 	Explanation string
-	Confidence  float64
-	Uncertainty string
+	// Explanations are optional language variants; a present English variant
+	// must equal Explanation.
+	Explanations ExplanationVariants
+	Confidence   float64
+	Uncertainty  string
 }
 
 // Validate normalizes and checks analyzer output, returning a wrapped
@@ -129,6 +135,9 @@ func (r *AnalysisResult) Validate() error {
 	}
 	if len(r.Explanation) > maxExplanationLen {
 		return errWrap("explanation exceeds maximum length")
+	}
+	if err := r.Explanations.normalize(r.Explanation, "explanation", maxExplanationLen); err != nil {
+		return err
 	}
 	if r.Confidence < 0 || r.Confidence > 1 {
 		return errWrap("confidence must be between 0 and 1")

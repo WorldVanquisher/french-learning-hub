@@ -517,6 +517,61 @@ existing binary timestamp indexes cannot supply the custom ordering directly.
 
 Introduced by FLH-004.
 
+### 3.9 Bilingual explanations (FLH-095)
+
+Generated explanatory text may carry an English and a Simplified Chinese
+variant. Only two fields have variants: an analysis **explanation** and a
+knowledge-unit **statement**. Category, uncertainty, a unit's canonical label,
+French examples, learner text, Concept identity and signatures are unchanged.
+
+- **Storage (migration `012`, additive, no backfill):** `explanation_en`/`_zh` on
+  `entry_analyses`, `statement_en`/`_zh` on `knowledge_units`. The existing
+  `explanation` and `statement` stay the primary text read by every existing
+  consumer (extraction source, admission, retrieval, embedding and search
+  representations); for new bilingual rows they equal the English variant.
+  NULL variants mean the language was not recorded: all earlier rows, imported
+  Capture analyses and fixture units. Rule-based analyses record their English
+  text as `en` only.
+- **Providers:** the analyzer asks for `explanation` (English) and
+  `explanation_zh` in the same request
+  (`openai:<model>:fr_l2_taxonomy_v1.explanation_en_zh_v1`); the extractor asks
+  for `statement` (English) and `statement_zh` per unit
+  (`openai:<model>:knowledge_extraction_v2`). A missing or blank Chinese field
+  is invalid output (`422`), never stored as English-only. No translation call
+  is ever made, including when a reader switches language.
+- **Human feedback** (`analysis_feedback`, migration `012`):
+  `reviewed_explanation_languages` records the explanation languages shown when
+  the decision was made, and must name languages stored on that analysis;
+  `corrected_explanation_en`/`_zh` are per-language corrections. The
+  language-unspecified `corrected_explanation` still works and is never
+  combined with them. Per-language corrections require an analysis with at
+  least one recorded variant: on an analysis with none (rows before `012`,
+  Capture imports) they are refused with `422` inside the feedback transaction
+  and nothing is stored, because the original's language is unknown and is
+  never inferred from a correction. There only `corrected_explanation` applies.
+  On a language-recorded analysis either language may be corrected (for
+  example a Chinese correction of an English-only rule-based analysis).
+- **Effective explanation per language** (derived on read, never stored):
+
+  | Basis | When |
+  | --- | --- |
+  | `corrected` | a person supplied text in that language |
+  | `reviewed` | accepted (or only the category corrected) while that language was shown |
+  | `not_reviewed` | feedback exists, but that language was not shown |
+  | `outdated` | the explanation was corrected in another or an unspecified language; the generated text is kept but may no longer match |
+  | `unreviewed` | no feedback |
+  | `unavailable` | no text stored in that language |
+
+  A rejected analysis has no effective explanation in any language. The
+  language-independent `effective.explanation` is the person's corrected text
+  in any language (unspecified, then English, then Chinese), else the original;
+  the extraction source keeps reading it.
+- **Workbench:** a separate **Explanation language** preference (Both stored
+  languages / English / 中文, `localStorage` key `flh.explanation-language.v1`,
+  default Both) chooses which stored variants are shown. It is independent of
+  the UI language and is read-only. A missing variant is stated, never filled
+  with the other language; text without a recorded language is labelled so.
+
 ## 4. Capture import and the capture CLI
 
 ### 4.1 `learning_capture_v1` import
@@ -1149,6 +1204,14 @@ data-collection instrument**: its purpose is to let a human record high-quality
 resolution decisions that can later become ML training data. It is **not** the
 Review Engine, mastery, scheduling, or an ML resolver — those remain separate and
 deferred. It does not change the semantics above.
+
+**Reading content before a decision (FLH-093).** The unit card and candidate cards
+read the existing Knowledge Library projections on demand: a unit's source
+(`GET /knowledge-library/units/{id}/source`) and a Concept's preferred unit and
+derived current support (`GET /knowledge-library/concepts/{id}`). The browser
+labels only `supporting_units` as current support and only counts
+filed-but-not-supporting and historical units. These reads create no annotation,
+call no provider, and add no endpoint or schema.
 
 **Membership-level clear (`RejectSame`).** The model could express
 `unresolved → SAME A` and `A → B` (`ReassignSame`), but not `A → no concept`.
@@ -2194,6 +2257,7 @@ forward-only; there are no down migrations.
 | `009_annotation_operations` | `annotation_operations` idempotency receipts |
 | `010_semantic_index` | `semantic_embedding_cache` (still used); `semantic_index_collections`, `semantic_index_points` (FLH-040 bookkeeping, unused since FLH-042) |
 | `011_semantic_index_runs` | `semantic_index_spaces` (lease, publication, last run), `semantic_index_physical_collections`, `semantic_index_manifest` (FLH-042) |
+| `012_bilingual_explanations` | nullable explanation/statement language variants, per-language corrections and reviewed languages on feedback (FLH-095; see [§3.9](#39-bilingual-explanations-flh-095)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -2387,6 +2451,17 @@ Response `201 Created`:
   "created_at": "2026-07-28T12:00:00Z"
 }
 ```
+
+Since FLH-095 the body may also carry `corrected_explanation_en` and
+`corrected_explanation_zh` (per-language corrections, `corrected` only, never
+combined with `corrected_explanation`) and `reviewed_explanation_languages`
+(a subset of `["en","zh"]`: the explanation languages shown; each must be
+stored on the analysis). Per-language corrections on an analysis with no
+recorded explanation language return `422`. The response echoes them; reviewed languages are
+`null` when not recorded. Analyses and units carry `explanations` /
+`statements` objects `{"en": …, "zh": …}` (null when not stored), and the
+effective analysis adds `original_explanations` and `effective_explanations`
+(per language `{"text", "basis"}`; see [§3.9](#39-bilingual-explanations-flh-095)).
 
 A missing analysis returns `404`; input that fails validation (unknown status,
 a `corrected` status with neither corrected field, a `corrected_category`

@@ -42,6 +42,13 @@ type Feedback struct {
 	// Populated only when Status is FeedbackCorrected.
 	CorrectedCategory    *string
 	CorrectedExplanation *string
+	// CorrectedExplanations are per-language corrections (FLH-095); never
+	// combined with the language-unspecified CorrectedExplanation.
+	CorrectedExplanations ExplanationVariants
+
+	// ReviewedLanguages are the explanation languages shown when the decision
+	// was recorded, in canonical order; nil means not recorded.
+	ReviewedLanguages []ExplanationLanguage
 
 	UserNote  string
 	CreatedAt time.Time
@@ -49,10 +56,14 @@ type Feedback struct {
 
 // NewFeedbackInput carries the fields a caller may supply when adding feedback.
 type NewFeedbackInput struct {
-	Status               FeedbackStatus
-	CorrectedCategory    *string
-	CorrectedExplanation *string
-	UserNote             string
+	Status                FeedbackStatus
+	CorrectedCategory     *string
+	CorrectedExplanation  *string
+	CorrectedExplanations ExplanationVariants
+	// ReviewedLanguages must be languages stored on the analysis; the
+	// repository checks that against the analysis it writes to.
+	ReviewedLanguages []ExplanationLanguage
+	UserNote          string
 }
 
 // Validate normalizes and checks feedback input, returning a wrapped
@@ -69,15 +80,34 @@ func (in *NewFeedbackInput) Validate() error {
 
 	in.CorrectedCategory = trimOptional(in.CorrectedCategory)
 	in.CorrectedExplanation = trimOptional(in.CorrectedExplanation)
+	in.CorrectedExplanations.EN = trimOptional(in.CorrectedExplanations.EN)
+	in.CorrectedExplanations.ZH = trimOptional(in.CorrectedExplanations.ZH)
 	in.UserNote = strings.TrimSpace(in.UserNote)
+	codes := make([]string, len(in.ReviewedLanguages))
+	for i, l := range in.ReviewedLanguages {
+		codes[i] = string(l)
+	}
+	reviewed, err := ParseExplanationLanguages(codes)
+	if err != nil {
+		return err
+	}
+	in.ReviewedLanguages = reviewed
 
 	if len(in.UserNote) > maxUserNoteLen {
 		return errWrap("user_note exceeds maximum length")
 	}
 
 	if in.Status == FeedbackCorrected {
-		if in.CorrectedCategory == nil && in.CorrectedExplanation == nil {
-			return errWrap("at least one of corrected_category or corrected_explanation is required when status is corrected")
+		if in.CorrectedCategory == nil && in.CorrectedExplanation == nil && !in.CorrectedExplanations.Recorded() {
+			return errWrap("at least one of corrected_category, corrected_explanation, corrected_explanation_en or corrected_explanation_zh is required when status is corrected")
+		}
+		if in.CorrectedExplanation != nil && in.CorrectedExplanations.Recorded() {
+			return errWrap("corrected_explanation cannot be combined with corrected_explanation_en or corrected_explanation_zh")
+		}
+		for _, s := range []*string{in.CorrectedExplanations.EN, in.CorrectedExplanations.ZH} {
+			if s != nil && len(*s) > maxExplanationLen {
+				return errWrap("corrected explanation variant exceeds maximum length")
+			}
 		}
 		// A corrected category is a persisted category, so it must use the shared
 		// fr_l2_taxonomy_v1 taxonomy. Normalize to lowercase (trimOptional already
@@ -95,7 +125,7 @@ func (in *NewFeedbackInput) Validate() error {
 		}
 	} else {
 		// accepted / rejected must not carry corrected content.
-		if in.CorrectedCategory != nil || in.CorrectedExplanation != nil {
+		if in.CorrectedCategory != nil || in.CorrectedExplanation != nil || in.CorrectedExplanations.Recorded() {
 			return errWrap("corrected content is only allowed when status is corrected")
 		}
 	}

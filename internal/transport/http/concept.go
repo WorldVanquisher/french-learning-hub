@@ -177,6 +177,9 @@ type reviewableUnitResponse struct {
 	Kind      string `json:"kind"`
 	Canonical string `json:"canonical"`
 	Statement string `json:"statement"`
+	// Statements are the stored English/Chinese variants (FLH-095); both null
+	// when the statement's language was not recorded.
+	Statements explanationVariantsResponse `json:"statements"`
 	// Example is the unit's optional illustrative example (null when absent). The
 	// review UI shows it verbatim; it is evidence, not identity.
 	Example *string `json:"example"`
@@ -193,6 +196,7 @@ func toReviewableUnitResponse(ru domain.ReviewableUnit) reviewableUnitResponse {
 		Kind:       string(ru.Unit.Kind),
 		Canonical:  ru.Unit.Canonical,
 		Statement:  ru.Unit.Statement,
+		Statements: toVariants(ru.Unit.Statements),
 		Example:    ru.Unit.Example,
 		Confidence: ru.Unit.Confidence,
 		Candidate:  toIdentityDTO(ru.Candidate),

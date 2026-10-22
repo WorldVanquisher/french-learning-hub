@@ -21,6 +21,26 @@ export interface AnalysisValues {
   explanation: string;
 }
 
+// FLH-095: stored English/Chinese variants of one generated text (an analysis
+// explanation or a unit statement). null means not stored; both null (or the
+// field absent, from an older server) means the language was not recorded.
+export type ExplanationLanguage = "en" | "zh";
+export interface ExplanationVariants {
+  en: string | null;
+  zh: string | null;
+}
+
+// Where an effective explanation variant comes from (backend-derived).
+export type ExplanationBasis = "unreviewed" | "reviewed" | "not_reviewed" | "corrected" | "outdated" | "unavailable";
+export interface EffectiveExplanation {
+  text: string | null;
+  basis: ExplanationBasis;
+}
+export interface EffectiveExplanations {
+  en: EffectiveExplanation;
+  zh: EffectiveExplanation;
+}
+
 // One row of GET /learning-records. Analysis fields are null when the entry has
 // no analysis; `effective` is also null when the latest analysis was rejected.
 export interface LearningRecord {
@@ -63,6 +83,7 @@ export interface Analysis {
   version: number;
   category: string;
   explanation: string;
+  explanations?: ExplanationVariants;
   confidence: number;
   uncertainty: string;
   analyzer: string;
@@ -82,6 +103,9 @@ export interface EffectiveAnalysis {
   effective: AnalysisValues | null;
   resolution: AnalysisResolution;
   feedback_id: number | null;
+  original_explanations?: ExplanationVariants;
+  // null exactly when `effective` is null (rejected).
+  effective_explanations?: EffectiveExplanations | null;
 }
 
 // ---- capture import (POST /captures, GET /captures/{capture_id}) ----
@@ -134,6 +158,7 @@ export interface ExtractedUnit {
   kind: string;
   canonical: string;
   statement: string;
+  statements?: ExplanationVariants;
   example: string | null;
   confidence: number;
   created_at: string;
@@ -178,6 +203,11 @@ export interface Feedback {
   status: FeedbackStatus;
   corrected_category?: string;
   corrected_explanation?: string;
+  corrected_explanation_en?: string;
+  corrected_explanation_zh?: string;
+  // The explanation languages shown when the decision was recorded; null when
+  // not recorded.
+  reviewed_explanation_languages?: ExplanationLanguage[] | null;
   user_note: string;
   created_at: string;
 }
@@ -187,7 +217,12 @@ export interface Feedback {
 export interface NewFeedback {
   status: FeedbackStatus;
   corrected_category?: string;
+  // The language-unspecified correction, for analyses without recorded
+  // explanation languages; never combined with the per-language fields.
   corrected_explanation?: string;
+  corrected_explanation_en?: string;
+  corrected_explanation_zh?: string;
+  reviewed_explanation_languages?: ExplanationLanguage[];
   user_note?: string;
 }
 

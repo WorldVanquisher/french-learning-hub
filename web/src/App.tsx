@@ -7,6 +7,7 @@ import { ReviewQueue, type ReviewResume } from "./pages/ReviewQueue";
 import { UnitInspection } from "./pages/UnitInspection";
 import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n";
+import { ExplanationLanguageProvider, ExplanationLanguageSelect } from "./explanationLanguage";
 
 type View = "records" | "library" | "review" | "inspector" | "experiments";
 
@@ -37,7 +38,9 @@ export default function App() {
   // place and never remounts a view or discards its state.
   return (
     <LocaleProvider>
-      <Workbench />
+      <ExplanationLanguageProvider>
+        <Workbench />
+      </ExplanationLanguageProvider>
     </LocaleProvider>
   );
 }
@@ -104,6 +107,7 @@ function Workbench() {
           <p className="subtitle">{copy.subtitle}</p>
         </div>
         <LanguageSelect />
+        <ExplanationLanguageSelect />
       </header>
       <nav className="view-tabs" aria-label={t("nav.label")}>
         {VIEWS.map((v) => (

@@ -313,6 +313,14 @@ cloud-init output.
 
 ## 5. Upload the release
 
+**Migration compatibility (FLH-095).** A release package is self-contained: its
+binary and artifact were built from one tree, and the server checks that the
+artifact's migration ledger matches the binary's exactly. Packages built and
+deployed before migration `012` keep working unchanged. A new package from a
+tree with `012` must contain an artifact rebuilt from that same tree; never
+copy an older artifact into a newer package (see `docs/PUBLIC_DEMO.md`,
+"Migration 012").
+
 ```sh
 BUCKET=$(terraform output -raw artifact_bucket)
 aws s3 cp /path/to/flh-public-demo-<label>.tar.gz "s3://$BUCKET/releases/"

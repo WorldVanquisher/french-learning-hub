@@ -44,8 +44,10 @@ Concept 判断——作为独立的、版本化或只追加的记录保存。当
 - 在工作台中把输入的学习问题保存为未分析的记录；或通过 API、工作台或 `cmd/capture` 命令行幂等导入事先准备好的
   `learning_capture_v1` 文档。两者都不调用模型。
 - 显式运行**知识抽取**（OpenAI 适配器，默认关闭），配合固定的准入规则集和只追加的人工覆盖。
+- 以**英文和简体中文**阅读生成的说明和单元陈述；两种语言由同一次显式提供方请求返回。独立的“说明语言”偏好决定显示哪种语言；
+  旧记录仍可阅读，未记录语言时会明确标注。反馈会记录您审阅过的语言，并可分别更正每种语言。
 - 在 **Concept Review** 工作台中审核单元：SAME、NEW CONCEPT、BROADER、NARROWER、RELATED、DISTINCT 与
-  INVALID 判断，保留只追加的历史和显式更正（也可在记录的单元查看页中更正）；DISTINCT 与关系类请求在响应丢失时可幂等恢复。
+  INVALID 判断，决定前可只读查看每个候选的当前支持证据及其背后的原始问题，保留只追加的历史和显式更正（也可在记录的单元查看页中更正）；DISTINCT 与关系类请求在响应丢失时可幂等恢复。
 - 在只读的 **Knowledge Library** 中检索和浏览已整理的 Concept：以平实的语言显示状态，并能从每个单元链接到
   它所来自的记录及当时使用的确切解释。可选的**语义检索**模式按嵌入相似度排序 Concept，使用持久、可重建的
   Qdrant 索引和 SQLite 中的嵌入缓存，索引只能由显式的运维命令构建。索引任务通过租约串行执行，
@@ -125,6 +127,10 @@ docker compose stop
 现有的 `data/app.db` 不会被自动迁移。只在服务停止时备份，通过暂存目录恢复，并在每次升级前备份：迁移只能向前
 执行，旧镜像不得运行在新版本数据库上。完整流程见 [docs/RELEASE.md](docs/RELEASE.md)（英文）。
 
+如需在私人日常使用中启用真实的分析器与抽取器，请通过 `scripts/daily/flh-daily.sh` 运行同一服务，并使用仓库之外的
+一个私有设置文件（数据目录、提供方、模型、密钥）。脚本检查设置时不会打印密钥，并提供 `up`、`stop`、`backup` 与
+`restore`。详见 [docs/DAILY_USE.md](docs/DAILY_USE.md)（英文）。
+
 ## 配置默认值
 
 服务读取进程环境变量，以及其工作目录中可选的、未纳入版本控制的 `.env` 文件；进程环境变量优先。默认配置不需要
@@ -161,6 +167,7 @@ Knowledge Library 在 Linux 上的验收和在 macOS 真实浏览器中的演练
 | [docs/DEMO.md](docs/DEMO.md) | 合成数据的 Knowledge Library 演示 |
 | [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | 可选语义检索：配置、索引操作、故障恢复、Go 代码导读 |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker 发布、备份、恢复、升级、浏览器边界设置 |
+| [docs/DAILY_USE.md](docs/DAILY_USE.md) | 使用真实提供方的私人日常使用：设置文件、启动/停止、隧道、哪些步骤调用模型、备份/恢复 |
 | [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | 只读公开演示的 AWS 运维手册：单台 EC2，通过 Session Manager 私下预览；可选的公开 HTTPS 入口已准备、尚未启用（FLH-088） |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 系统如何工作；附录 A 为 HTTP API 参考 |
 | [web/README.md](web/README.md) | 工作台各视图与标注行为 |

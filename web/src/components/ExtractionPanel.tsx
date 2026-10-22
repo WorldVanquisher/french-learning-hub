@@ -11,6 +11,7 @@ import {
   type RefreshState,
 } from "./ExplicitAction";
 import { msg, useI18n } from "../i18n";
+import { StoredText } from "./ExplanationText";
 
 type Load<T> =
   | { status: "loading" }
@@ -535,7 +536,7 @@ function ExtractionVersionView({
               <dl className="unit-evidence">
                 <div><dt>{t("unit.unit")}</dt><dd>#{unit.id} · {unit.kind}</dd></div>
                 <div><dt>{t("unit.canonical")}</dt><dd className="french">{unit.canonical}</dd></div>
-                <div><dt>{t("unit.statement")}</dt><dd className="french">{unit.statement}</dd></div>
+                <div><dt>{t("unit.statement")}</dt><dd className="french"><StoredText primary={unit.statement} variants={unit.statements} kind="statement" /></dd></div>
                 {unit.example ? <div><dt>{t("unit.example")}</dt><dd className="french">{unit.example}</dd></div> : null}
                 <div><dt>{t("unit.confidence")}</dt><dd>{unit.confidence}</dd></div>
                 <div>

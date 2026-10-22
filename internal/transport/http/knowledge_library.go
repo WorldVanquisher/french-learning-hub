@@ -28,22 +28,25 @@ func WithKnowledgeLibrary(service KnowledgeLibraryService) HandlerOption {
 // ---- DTOs ----
 
 type libraryUnitResponse struct {
-	UnitID              int64   `json:"unit_id"`
-	Kind                string  `json:"kind"`
-	Canonical           string  `json:"canonical"`
-	Statement           string  `json:"statement"`
-	Example             *string `json:"example"`
-	EntryID             int64   `json:"entry_id"`
-	ExtractionID        int64   `json:"extraction_id"`
-	ExtractionVersion   int64   `json:"extraction_version"`
-	InCurrentExtraction bool    `json:"in_current_extraction"`
-	Admission           string  `json:"admission"`
+	UnitID    int64  `json:"unit_id"`
+	Kind      string `json:"kind"`
+	Canonical string `json:"canonical"`
+	Statement string `json:"statement"`
+	// Statements are the stored English/Chinese variants (FLH-095); both null
+	// when the statement's language was not recorded.
+	Statements          explanationVariantsResponse `json:"statements"`
+	Example             *string                     `json:"example"`
+	EntryID             int64                       `json:"entry_id"`
+	ExtractionID        int64                       `json:"extraction_id"`
+	ExtractionVersion   int64                       `json:"extraction_version"`
+	InCurrentExtraction bool                        `json:"in_current_extraction"`
+	Admission           string                      `json:"admission"`
 }
 
 func toLibraryUnit(u application.LibraryUnit) libraryUnitResponse {
 	return libraryUnitResponse{
 		UnitID: u.Unit.ID, Kind: string(u.Unit.Kind), Canonical: u.Unit.Canonical, Statement: u.Unit.Statement,
-		Example: u.Unit.Example, EntryID: u.EntryID, ExtractionID: u.Unit.ExtractionID,
+		Statements: toVariants(u.Unit.Statements), Example: u.Unit.Example, EntryID: u.EntryID, ExtractionID: u.Unit.ExtractionID,
 		ExtractionVersion: u.ExtractionVersion, InCurrentExtraction: u.InCurrentExtraction, Admission: string(u.Admission),
 	}
 }

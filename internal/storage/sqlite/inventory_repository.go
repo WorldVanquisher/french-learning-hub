@@ -51,7 +51,11 @@ WITH la AS (
 lf AS (
     SELECT id, analysis_id, status, corrected_category, corrected_explanation, created_at
     FROM (
-        SELECT id, analysis_id, status, corrected_category, corrected_explanation, created_at,
+        SELECT id, analysis_id, status, corrected_category,
+               -- FLH-095: the language-independent corrected text, in the
+               -- domain's order (unspecified, then en, then zh).
+               COALESCE(corrected_explanation, corrected_explanation_en, corrected_explanation_zh) AS corrected_explanation,
+               created_at,
                ROW_NUMBER() OVER (PARTITION BY analysis_id ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC) AS rn
         FROM analysis_feedback
     )

@@ -117,9 +117,12 @@ func NormalizeCanonical(s string) string {
 // independently reviewable learning objective, not the smallest linguistic
 // token: "vouloir — présent de l'indicatif" is normally one unit, not six forms.
 type ExtractedUnit struct {
-	Kind       KnowledgeKind
-	Canonical  string
-	Statement  string
+	Kind      KnowledgeKind
+	Canonical string
+	Statement string
+	// Statements are optional language variants of Statement (FLH-095); a
+	// present English variant must equal Statement.
+	Statements ExplanationVariants
 	Example    *string
 	Confidence float64
 }
@@ -148,6 +151,9 @@ func (u *ExtractedUnit) Validate() error {
 	}
 	if len(u.Statement) > maxStatementLen {
 		return errWrap("statement exceeds maximum length")
+	}
+	if err := u.Statements.normalize(u.Statement, "statement", maxStatementLen); err != nil {
+		return err
 	}
 
 	u.Example = trimOptional(u.Example)
@@ -245,9 +251,12 @@ type KnowledgeUnit struct {
 	Kind         KnowledgeKind
 	Canonical    string
 	Statement    string
-	Example      *string
-	Confidence   float64
-	CreatedAt    time.Time
+	// Statements are the stored language variants (FLH-095); both nil when the
+	// statement's language was not recorded.
+	Statements ExplanationVariants
+	Example    *string
+	Confidence float64
+	CreatedAt  time.Time
 }
 
 // KnowledgeExtraction is an immutable, per-entry versioned record of one
