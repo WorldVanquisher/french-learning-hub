@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"french-learning-app/internal/domain"
@@ -48,17 +49,41 @@ func (r *FeedbackRepository) Create(ctx context.Context, analysisID int64, in do
 	if err := analysisExists(ctx, tx, analysisID); err != nil {
 		return nil, err
 	}
+	// Reviewed explanation languages must be stored on this analysis: a decision
+	// can only record that a person was shown text that exists. Per-language
+	// corrections need an analysis with recorded language variants; on one
+	// without (legacy rows, Capture imports) only the language-unspecified
+	// corrected_explanation applies, so no language is inferred for its text.
+	if len(in.ReviewedLanguages) > 0 || in.CorrectedExplanations.Recorded() {
+		var hasEN, hasZH bool
+		if err := tx.QueryRowContext(ctx,
+			`SELECT explanation_en IS NOT NULL, explanation_zh IS NOT NULL FROM entry_analyses WHERE id = ?`,
+			analysisID).Scan(&hasEN, &hasZH); err != nil {
+			return nil, fmt.Errorf("read analysis languages: %w", err)
+		}
+		if in.CorrectedExplanations.Recorded() && !hasEN && !hasZH {
+			return nil, fmt.Errorf("%w: corrected_explanation_en and corrected_explanation_zh require an analysis with recorded explanation languages; use corrected_explanation", domain.ErrValidation)
+		}
+		for _, l := range in.ReviewedLanguages {
+			if (l == domain.LanguageEnglish && !hasEN) || (l == domain.LanguageChinese && !hasZH) {
+				return nil, fmt.Errorf("%w: reviewed_explanation_languages names %s, which is not stored on this analysis", domain.ErrValidation, l)
+			}
+		}
+	}
 
 	now := r.now()
 	ts := now.Format(rfc3339)
 
 	res, err := tx.ExecContext(ctx,
 		`INSERT INTO analysis_feedback
-		   (analysis_id, status, corrected_category, corrected_explanation, user_note, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
+		   (analysis_id, status, corrected_category, corrected_explanation, user_note, created_at,
+		    corrected_explanation_en, corrected_explanation_zh, reviewed_explanation_languages)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		analysisID, string(in.Status),
 		nullString(in.CorrectedCategory), nullString(in.CorrectedExplanation),
 		in.UserNote, ts,
+		nullString(in.CorrectedExplanations.EN), nullString(in.CorrectedExplanations.ZH),
+		languagesColumn(in.ReviewedLanguages),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert feedback: %w", err)
@@ -73,13 +98,15 @@ func (r *FeedbackRepository) Create(ctx context.Context, analysisID int64, in do
 	}
 
 	return &domain.Feedback{
-		ID:                   id,
-		AnalysisID:           analysisID,
-		Status:               in.Status,
-		CorrectedCategory:    in.CorrectedCategory,
-		CorrectedExplanation: in.CorrectedExplanation,
-		UserNote:             in.UserNote,
-		CreatedAt:            now,
+		ID:                    id,
+		AnalysisID:            analysisID,
+		Status:                in.Status,
+		CorrectedCategory:     in.CorrectedCategory,
+		CorrectedExplanation:  in.CorrectedExplanation,
+		CorrectedExplanations: in.CorrectedExplanations,
+		ReviewedLanguages:     in.ReviewedLanguages,
+		UserNote:              in.UserNote,
+		CreatedAt:             now,
 	}, nil
 }
 
@@ -91,7 +118,8 @@ func (r *FeedbackRepository) ListByAnalysis(ctx context.Context, analysisID int6
 	}
 
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, analysis_id, status, corrected_category, corrected_explanation, user_note, created_at
+		`SELECT id, analysis_id, status, corrected_category, corrected_explanation, user_note, created_at,
+		        corrected_explanation_en, corrected_explanation_zh, reviewed_explanation_languages
 		 FROM analysis_feedback
 		 WHERE analysis_id = ?
 		 ORDER BY id ASC`, analysisID)
@@ -135,7 +163,8 @@ func (r *FeedbackRepository) GetLatestByAnalysis(ctx context.Context, analysisID
 // the analysis has no feedback; it does not check that the analysis exists.
 func latestFeedback(ctx context.Context, q querier, analysisID int64) (*domain.Feedback, error) {
 	row := q.QueryRowContext(ctx,
-		`SELECT id, analysis_id, status, corrected_category, corrected_explanation, user_note, created_at
+		`SELECT id, analysis_id, status, corrected_category, corrected_explanation, user_note, created_at,
+		        corrected_explanation_en, corrected_explanation_zh, reviewed_explanation_languages
 		 FROM analysis_feedback
 		 WHERE analysis_id = ?
 		 ORDER BY created_at COLLATE flh_timestamp_v1 DESC, id DESC
@@ -174,9 +203,20 @@ func scanFeedback(s scanner) (*domain.Feedback, error) {
 		category   sql.NullString
 		expl       sql.NullString
 		createdStr string
+		en, zh     sql.NullString
+		reviewed   sql.NullString
 	)
-	if err := s.Scan(&f.ID, &f.AnalysisID, &status, &category, &expl, &f.UserNote, &createdStr); err != nil {
+	if err := s.Scan(&f.ID, &f.AnalysisID, &status, &category, &expl, &f.UserNote, &createdStr,
+		&en, &zh, &reviewed); err != nil {
 		return nil, err
+	}
+	f.CorrectedExplanations = domain.ExplanationVariants{EN: optString(en), ZH: optString(zh)}
+	if reviewed.Valid && reviewed.String != "" {
+		langs, err := domain.ParseExplanationLanguages(strings.Split(reviewed.String, ","))
+		if err != nil {
+			return nil, fmt.Errorf("stored reviewed_explanation_languages: %w", err)
+		}
+		f.ReviewedLanguages = langs
 	}
 	f.Status = domain.FeedbackStatus(status)
 	if category.Valid {
@@ -190,6 +230,28 @@ func scanFeedback(s scanner) (*domain.Feedback, error) {
 		return nil, fmt.Errorf("parse created_at: %w", err)
 	}
 	return &f, nil
+}
+
+// optString converts a nullable column to an optional string.
+func optString(s sql.NullString) *string {
+	if !s.Valid {
+		return nil
+	}
+	v := s.String
+	return &v
+}
+
+// languagesColumn stores reviewed explanation languages as "en", "zh" or
+// "en,zh" (canonical order), or NULL when not recorded.
+func languagesColumn(langs []domain.ExplanationLanguage) any {
+	if len(langs) == 0 {
+		return nil
+	}
+	parts := make([]string, len(langs))
+	for i, l := range langs {
+		parts[i] = string(l)
+	}
+	return strings.Join(parts, ",")
 }
 
 // nullString converts an optional string pointer to a sql-friendly value.

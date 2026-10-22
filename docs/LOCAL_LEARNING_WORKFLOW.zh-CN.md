@@ -302,6 +302,14 @@ FRENCH_HUB_URL=http://localhost:18080 npm run dev
 - **大型 Concept 目录：** 搜索结果每次显示 50 个，并标明总数；用 **Show 50 more** 查看
   其余结果。
 
+**决定前阅读内容（FLH-093）：**
+- 单元卡片先显示知识陈述与例句；**Show the original question for unit #N** 会在原地展开原始问题和上下文，
+  不会丢失队列位置、搜索文本或身份草稿。
+- 候选卡片的 **Show what concept #N contains** 显示该 Concept 的首选解释（仅在人工选定时）和后端计算的
+  当前支持单元，每个单元都能查看自己的原始问题。不计为支持的成员与历史单元只显示数量。
+- 选中候选后，右栏顶部的 **Compare before deciding** 与左侧单元卡片并排，说明 SAME 只是新增归属，
+  不会合并或删除任何单元或记录。这些查看都是只读请求。
+
 候选的展示、搜索、选择或跳过不会创建标签；只有显式动作才写入人工权威。NEW CONCEPT
 可以为尚未解析的 Unit 建立 seed SAME；选择现有 Concept 的普通 SAME 才可能成为后续检索
 评估的合格人工 truth。不要为了得到非空指标随意创建标签。

@@ -235,28 +235,32 @@ func toResponse(e *domain.Entry) entryResponse {
 }
 
 type analysisResponse struct {
-	ID          int64   `json:"id"`
-	EntryID     int64   `json:"entry_id"`
-	Version     int64   `json:"version"`
-	Category    string  `json:"category"`
-	Explanation string  `json:"explanation"`
-	Confidence  float64 `json:"confidence"`
-	Uncertainty string  `json:"uncertainty"`
-	Analyzer    string  `json:"analyzer"`
-	CreatedAt   string  `json:"created_at"`
+	ID          int64  `json:"id"`
+	EntryID     int64  `json:"entry_id"`
+	Version     int64  `json:"version"`
+	Category    string `json:"category"`
+	Explanation string `json:"explanation"`
+	// Explanations are the stored language variants (FLH-095); both null when
+	// the explanation's language was not recorded.
+	Explanations explanationVariantsResponse `json:"explanations"`
+	Confidence   float64                     `json:"confidence"`
+	Uncertainty  string                      `json:"uncertainty"`
+	Analyzer     string                      `json:"analyzer"`
+	CreatedAt    string                      `json:"created_at"`
 }
 
 func toAnalysisResponse(a *domain.Analysis) analysisResponse {
 	return analysisResponse{
-		ID:          a.ID,
-		EntryID:     a.EntryID,
-		Version:     a.Version,
-		Category:    a.Category,
-		Explanation: a.Explanation,
-		Confidence:  a.Confidence,
-		Uncertainty: a.Uncertainty,
-		Analyzer:    a.Analyzer,
-		CreatedAt:   a.CreatedAt.Format(time.RFC3339Nano),
+		ID:           a.ID,
+		EntryID:      a.EntryID,
+		Version:      a.Version,
+		Category:     a.Category,
+		Explanation:  a.Explanation,
+		Explanations: toVariants(a.Explanations),
+		Confidence:   a.Confidence,
+		Uncertainty:  a.Uncertainty,
+		Analyzer:     a.Analyzer,
+		CreatedAt:    a.CreatedAt.Format(time.RFC3339Nano),
 	}
 }
 
@@ -264,7 +268,12 @@ type createFeedbackRequest struct {
 	Status               string  `json:"status"`
 	CorrectedCategory    *string `json:"corrected_category"`
 	CorrectedExplanation *string `json:"corrected_explanation"`
-	UserNote             string  `json:"user_note"`
+	// FLH-095, optional: per-language corrections (never combined with
+	// corrected_explanation) and the explanation languages shown to the person.
+	CorrectedExplanationEN       *string  `json:"corrected_explanation_en"`
+	CorrectedExplanationZH       *string  `json:"corrected_explanation_zh"`
+	ReviewedExplanationLanguages []string `json:"reviewed_explanation_languages"`
+	UserNote                     string   `json:"user_note"`
 }
 
 type feedbackResponse struct {
@@ -273,8 +282,13 @@ type feedbackResponse struct {
 	Status               string  `json:"status"`
 	CorrectedCategory    *string `json:"corrected_category,omitempty"`
 	CorrectedExplanation *string `json:"corrected_explanation,omitempty"`
-	UserNote             string  `json:"user_note"`
-	CreatedAt            string  `json:"created_at"`
+	// FLH-095: per-language corrections, and the reviewed explanation languages
+	// (null when not recorded).
+	CorrectedExplanationEN       *string  `json:"corrected_explanation_en,omitempty"`
+	CorrectedExplanationZH       *string  `json:"corrected_explanation_zh,omitempty"`
+	ReviewedExplanationLanguages []string `json:"reviewed_explanation_languages"`
+	UserNote                     string   `json:"user_note"`
+	CreatedAt                    string   `json:"created_at"`
 }
 
 func toFeedbackResponse(f *domain.Feedback) feedbackResponse {
@@ -284,8 +298,12 @@ func toFeedbackResponse(f *domain.Feedback) feedbackResponse {
 		Status:               string(f.Status),
 		CorrectedCategory:    f.CorrectedCategory,
 		CorrectedExplanation: f.CorrectedExplanation,
-		UserNote:             f.UserNote,
-		CreatedAt:            f.CreatedAt.Format(time.RFC3339Nano),
+
+		CorrectedExplanationEN:       f.CorrectedExplanations.EN,
+		CorrectedExplanationZH:       f.CorrectedExplanations.ZH,
+		ReviewedExplanationLanguages: languageCodes(f.ReviewedLanguages),
+		UserNote:                     f.UserNote,
+		CreatedAt:                    f.CreatedAt.Format(time.RFC3339Nano),
 	}
 }
 
@@ -306,6 +324,10 @@ type effectiveAnalysisResponse struct {
 	Resolution string          `json:"resolution"`
 	// FeedbackID is null for an unreviewed analysis.
 	FeedbackID *int64 `json:"feedback_id"`
+	// FLH-095: the stored explanation variants, and the per-language effective
+	// explanation with its basis (null exactly when effective is null).
+	OriginalExplanations  explanationVariantsResponse    `json:"original_explanations"`
+	EffectiveExplanations *effectiveExplanationsResponse `json:"effective_explanations"`
 }
 
 func toEffectiveResponse(e domain.EffectiveAnalysis) effectiveAnalysisResponse {
@@ -316,6 +338,9 @@ func toEffectiveResponse(e domain.EffectiveAnalysis) effectiveAnalysisResponse {
 		Original:   analysisValues{Category: e.Original.Category, Explanation: e.Original.Explanation},
 		Resolution: string(e.Resolution),
 		FeedbackID: e.FeedbackID,
+
+		OriginalExplanations:  toVariants(e.OriginalExplanations),
+		EffectiveExplanations: toEffectiveExplanations(e.Explanations),
 	}
 	if e.Effective != nil {
 		resp.Effective = &analysisValues{Category: e.Effective.Category, Explanation: e.Effective.Explanation}
@@ -635,11 +660,20 @@ func (h *Handler) handleCreateFeedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Unknown or repeated codes are rejected by domain validation (422).
+	reviewed := make([]domain.ExplanationLanguage, len(req.ReviewedExplanationLanguages))
+	for i, c := range req.ReviewedExplanationLanguages {
+		reviewed[i] = domain.ExplanationLanguage(c)
+	}
 	feedback, err := h.feedback.AddFeedback(r.Context(), id, domain.NewFeedbackInput{
 		Status:               domain.FeedbackStatus(req.Status),
 		CorrectedCategory:    req.CorrectedCategory,
 		CorrectedExplanation: req.CorrectedExplanation,
-		UserNote:             req.UserNote,
+		CorrectedExplanations: domain.ExplanationVariants{
+			EN: req.CorrectedExplanationEN, ZH: req.CorrectedExplanationZH,
+		},
+		ReviewedLanguages: reviewed,
+		UserNote:          req.UserNote,
 	})
 	if errors.Is(err, domain.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "analysis not found")

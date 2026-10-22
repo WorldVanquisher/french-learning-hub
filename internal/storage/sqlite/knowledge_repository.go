@@ -149,10 +149,12 @@ func (r *KnowledgeRepository) Create(ctx context.Context, in domain.NewExtractio
 		ordinal := i + 1
 		uRes, err := tx.ExecContext(ctx,
 			`INSERT INTO knowledge_units
-			   (extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			   (extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at,
+			    statement_en, statement_zh)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			extractionID, ordinal, string(u.Kind), u.Canonical, u.Statement,
 			nullString(u.Example), u.Confidence, ts,
+			nullString(u.Statements.EN), nullString(u.Statements.ZH),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("insert unit: %w", err)
@@ -180,6 +182,7 @@ func (r *KnowledgeRepository) Create(ctx context.Context, in domain.NewExtractio
 				Kind:         u.Kind,
 				Canonical:    u.Canonical,
 				Statement:    u.Statement,
+				Statements:   u.Statements,
 				Example:      u.Example,
 				Confidence:   u.Confidence,
 				CreatedAt:    now,
@@ -303,7 +306,8 @@ func (r *KnowledgeRepository) GetByID(ctx context.Context, extractionID int64) (
 // override, all against r.db.
 func (r *KnowledgeRepository) loadUnits(ctx context.Context, extractionID int64) ([]domain.KnowledgeUnitView, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at
+		`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at,
+		        statement_en, statement_zh
 		 FROM knowledge_units
 		 WHERE extraction_id = ?
 		 ORDER BY ordinal ASC`, extractionID)
@@ -532,11 +536,13 @@ func scanUnit(s scanner) (*domain.KnowledgeUnit, error) {
 		kind       string
 		example    sql.NullString
 		createdStr string
+		en, zh     sql.NullString
 	)
 	if err := s.Scan(&u.ID, &u.ExtractionID, &u.Ordinal, &kind, &u.Canonical,
-		&u.Statement, &example, &u.Confidence, &createdStr); err != nil {
+		&u.Statement, &example, &u.Confidence, &createdStr, &en, &zh); err != nil {
 		return nil, err
 	}
+	u.Statements = domain.ExplanationVariants{EN: optString(en), ZH: optString(zh)}
 	u.Kind = domain.KnowledgeKind(kind)
 	if example.Valid {
 		u.Example = &example.String

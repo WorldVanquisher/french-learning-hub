@@ -2,6 +2,7 @@
 // These are the exact JSON shapes the backend returns; keep them in sync with the
 // Go structs. Nothing here infers current membership from history — see MembershipEnvelope.
 
+import type { ExplanationVariants } from "./learning";
 // A concept's identity under the explicit versioned schema.
 export interface ConceptIdentity {
   target: string;
@@ -58,6 +59,7 @@ export interface ReviewableUnit {
   kind: string;
   canonical: string;
   statement: string;
+  statements?: ExplanationVariants;
   example: string | null;
   confidence: number;
   candidate_identity: ConceptIdentity;
@@ -159,6 +161,7 @@ export interface EffectiveAnnotationUnit {
   kind: string;
   canonical: string;
   statement: string;
+  statements?: ExplanationVariants;
   example: string | null;
   confidence: number;
   created_at: string;

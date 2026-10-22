@@ -27,6 +27,8 @@ def units_for(n, version):
             "kind": kind,
             "canonical": f"{topic} note {n}-{i}",
             "statement": f"Synthetic {kind} statement v{version} for {topic} (record {n}, unit {i}).",
+            # FLH-095 extraction v2: the same statement in Simplified Chinese.
+            "statement_zh": f"合成的 {kind} 陈述 v{version}，主题 {topic}（记录 {n}，单元 {i}）。",
             "example": f"Exemple synthétique {n}-{i}." if i != 2 else None,
             # A few low-confidence units, so admission recommendations are mixed.
             "confidence": 0.45 if k % 17 == 0 else 0.9,

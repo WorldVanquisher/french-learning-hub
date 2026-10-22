@@ -135,6 +135,60 @@ there:
 - **Pending decisions:** their saved-operation and unknown-outcome protections are
   unchanged.
 
+### Reading a candidate before deciding (FLH-093)
+
+Concept Review makes the content of a membership decision readable. Every view
+below is a read of the existing Knowledge Library endpoints, started only when
+the reviewer asks; nothing is written and no provider is called.
+- **The unit:** the card leads with the knowledge statement and example, then
+  kind and record. **Show the original question for unit #N** opens the
+  original input and context inline (`GET /knowledge-library/units/{id}/source`),
+  so the position, search text, selection and identity draft are kept. Unit ID,
+  confidence, identity features and signature are under **Technical details**.
+- **A candidate:** each card leads with the Concept's target, type and scope.
+  **Show what concept #N contains** reads `GET /knowledge-library/concepts/{id}`
+  and shows the preferred explanation (only when a person chose one), then the
+  backend-derived current supporting units, three at a time with
+  **Show all N**, each with its own original question. Filed-but-not-supporting
+  and historical units (older extraction, INVALID, moved away) are only counted,
+  never shown as support. A Concept without current support says so; a missing
+  Concept, a loading read and a failed read (with **Retry**) are each stated.
+- **Compare before deciding:** the selected Concept's content is shown at the
+  top of the right column, beside the unit card, with what SAME does (adds a
+  membership; the unit and its record are unchanged, nothing is merged or
+  deleted), what it does when the unit already belongs to another Concept, and
+  what NEW CONCEPT does. A late answer for an earlier selection is discarded.
+- **Reassignment:** selecting a target in a unit's **Corrections** shows
+  "What concept #N currently contains" the same way. Confirmation, eligibility
+  and unknown-outcome handling are unchanged.
+- **Limits:** the Concept detail response is complete but not paginated; the
+  view renders a bounded number and states how many are shown. There is no
+  generated summary of a Concept.
+
+### Explanation languages (FLH-095)
+
+- **Two separate choices in the header:** **Language** is the application UI
+  language; **Explanation language** (Both stored languages / English / 中文,
+  default Both, stored as `flh.explanation-language.v1`) chooses which stored
+  variants of generated explanations and unit statements are shown. Neither
+  changes the other, and switching sends no request.
+- **Honest labels:** a missing variant reads "No Chinese explanation is stored
+  for this version." (never the other language's text); text without a
+  recorded language is labelled "language not recorded". Learner text, French
+  examples and IDs are never translated or relabelled.
+- **Effective interpretation:** each language shows its basis (not yet
+  reviewed, reviewed by a person in this language, not reviewed in this
+  language, corrected by a person, or generated before a correction in another
+  language).
+- **Feedback:** every decision on a bilingual analysis records the explanation
+  languages shown (the panel says which). **Correct** offers one field per
+  language; an analysis without recorded languages keeps the single
+  **Corrected explanation** field.
+- **Where:** the record's analysis and effective interpretation, extracted
+  units, the Concept Review unit card, Concept contents and the Annotation
+  Inspector. The Knowledge Library and public demo still show the primary
+  statement only.
+
 ### Decision outcomes (FLH-027)
 
 Every Concept Review decision (SAME or REASSIGN SAME, NEW CONCEPT,

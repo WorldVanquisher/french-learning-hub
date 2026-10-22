@@ -6,6 +6,7 @@ import type {
   EffectiveAnnotationStatus,
 } from "../types/concept";
 import { useI18n } from "../i18n";
+import { StoredText } from "../components/ExplanationText";
 
 type StatusFilter = "all" | EffectiveAnnotationStatus;
 type SameSourceFilter = "all" | "human" | "automatic";
@@ -87,7 +88,7 @@ export function InspectorItem({
       <dl className="unit-evidence">
         <div><dt>{t("unit.kind")}</dt><dd>{unit.kind}</dd></div>
         <div><dt>{t("unit.canonical")}</dt><dd className="french">{unit.canonical}</dd></div>
-        <div><dt>{t("unit.statement")}</dt><dd className="french">{unit.statement}</dd></div>
+        <div><dt>{t("unit.statement")}</dt><dd className="french"><StoredText primary={unit.statement} variants={unit.statements} kind="statement" /></dd></div>
         {unit.example ? <div><dt>{t("unit.example")}</dt><dd className="french">{unit.example}</dd></div> : null}
         <div><dt>{t("unit.confidence")}</dt><dd>{unit.confidence}</dd></div>
       </dl>

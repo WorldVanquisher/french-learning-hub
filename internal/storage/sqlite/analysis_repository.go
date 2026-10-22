@@ -62,10 +62,12 @@ func (r *AnalysisRepository) Create(ctx context.Context, entryID int64, result d
 
 	res, err := tx.ExecContext(ctx,
 		`INSERT INTO entry_analyses
-		   (entry_id, version, category, explanation, confidence, uncertainty, analyzer, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		   (entry_id, version, category, explanation, confidence, uncertainty, analyzer, created_at,
+		    explanation_en, explanation_zh)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		entryID, version, result.Category, result.Explanation,
 		result.Confidence, result.Uncertainty, analyzer, ts,
+		nullString(result.Explanations.EN), nullString(result.Explanations.ZH),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert analysis: %w", err)
@@ -80,22 +82,24 @@ func (r *AnalysisRepository) Create(ctx context.Context, entryID int64, result d
 	}
 
 	return &domain.Analysis{
-		ID:          id,
-		EntryID:     entryID,
-		Version:     version,
-		Category:    result.Category,
-		Explanation: result.Explanation,
-		Confidence:  result.Confidence,
-		Uncertainty: result.Uncertainty,
-		Analyzer:    analyzer,
-		CreatedAt:   now,
+		ID:           id,
+		EntryID:      entryID,
+		Version:      version,
+		Category:     result.Category,
+		Explanation:  result.Explanation,
+		Explanations: result.Explanations,
+		Confidence:   result.Confidence,
+		Uncertainty:  result.Uncertainty,
+		Analyzer:     analyzer,
+		CreatedAt:    now,
 	}, nil
 }
 
 // ListByEntry returns all analyses for entryID, oldest version first.
 func (r *AnalysisRepository) ListByEntry(ctx context.Context, entryID int64) ([]*domain.Analysis, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, entry_id, version, category, explanation, confidence, uncertainty, analyzer, created_at
+		`SELECT id, entry_id, version, category, explanation, confidence, uncertainty, analyzer, created_at,
+		        explanation_en, explanation_zh
 		 FROM entry_analyses
 		 WHERE entry_id = ?
 		 ORDER BY version ASC`, entryID)
@@ -121,7 +125,8 @@ func (r *AnalysisRepository) ListByEntry(ctx context.Context, entryID int64) ([]
 // GetByID returns the single analysis with the given id, or domain.ErrNotFound.
 func (r *AnalysisRepository) GetByID(ctx context.Context, id int64) (*domain.Analysis, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, entry_id, version, category, explanation, confidence, uncertainty, analyzer, created_at
+		`SELECT id, entry_id, version, category, explanation, confidence, uncertainty, analyzer, created_at,
+		        explanation_en, explanation_zh
 		 FROM entry_analyses
 		 WHERE id = ?`, id)
 	a, err := scanAnalysis(row)
@@ -138,11 +143,13 @@ func scanAnalysis(s scanner) (*domain.Analysis, error) {
 	var (
 		a          domain.Analysis
 		createdStr string
+		en, zh     sql.NullString
 	)
 	if err := s.Scan(&a.ID, &a.EntryID, &a.Version, &a.Category, &a.Explanation,
-		&a.Confidence, &a.Uncertainty, &a.Analyzer, &createdStr); err != nil {
+		&a.Confidence, &a.Uncertainty, &a.Analyzer, &createdStr, &en, &zh); err != nil {
 		return nil, err
 	}
+	a.Explanations = domain.ExplanationVariants{EN: optString(en), ZH: optString(zh)}
 	var err error
 	if a.CreatedAt, err = time.Parse(rfc3339, createdStr); err != nil {
 		return nil, fmt.Errorf("parse created_at: %w", err)

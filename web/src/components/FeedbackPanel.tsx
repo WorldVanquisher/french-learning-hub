@@ -9,6 +9,7 @@ import {
   type NewFeedback,
 } from "../types/learning";
 import { OutcomeBanner, RefreshBanner, type Outcome, type RefreshState } from "./ExplicitAction";
+import { recorded, reviewedLanguages, useExplanationLanguage, type ExplanationMode } from "../explanationLanguage";
 import { msg, useI18n, type MessageKey } from "../i18n";
 
 type Load<T> =
@@ -17,8 +18,17 @@ type Load<T> =
   | { status: "ready"; data: T };
 
 // A reviewer's unsent feedback for one analysis version.
-type Draft = { status: FeedbackStatus | null; category: string; explanation: string; note: string };
-const EMPTY_DRAFT: Draft = { status: null, category: "", explanation: "", note: "" };
+// explanation is the language-unspecified correction (analyses without recorded
+// explanation languages); explanationEn/Zh are per-language corrections (FLH-095).
+type Draft = {
+  status: FeedbackStatus | null;
+  category: string;
+  explanation: string;
+  explanationEn: string;
+  explanationZh: string;
+  note: string;
+};
+const EMPTY_DRAFT: Draft = { status: null, category: "", explanation: "", explanationEn: "", explanationZh: "", note: "" };
 
 // Everything the panel tracks for one analysis version. Keeping it per version
 // means a draft, a pending request, or a late response can only ever affect the
@@ -52,16 +62,29 @@ function describeError(error: unknown): string {
 }
 
 // toRequest sends only the fields the feedback contract accepts for the chosen
-// decision. The server trims, normalizes, and validates them.
-function toRequest(draft: Draft): NewFeedback {
+// decision. The server trims, normalizes, and validates them. For an analysis
+// with recorded explanation languages it sends per-language corrections and the
+// explanation languages shown when the decision was made (FLH-095), so a
+// decision never approves a language the reviewer was not shown.
+function toRequest(draft: Draft, analysis: Analysis, mode: ExplanationMode): NewFeedback {
   const body: NewFeedback = { status: draft.status as FeedbackStatus };
+  const bilingual = recorded(analysis.explanations);
   if (draft.status === "corrected") {
     if (draft.category !== "") body.corrected_category = draft.category;
-    if (draft.explanation.trim() !== "") body.corrected_explanation = draft.explanation;
+    if (bilingual) {
+      if (draft.explanationEn.trim() !== "") body.corrected_explanation_en = draft.explanationEn;
+      if (draft.explanationZh.trim() !== "") body.corrected_explanation_zh = draft.explanationZh;
+    } else if (draft.explanation.trim() !== "") {
+      body.corrected_explanation = draft.explanation;
+    }
   }
+  const shown = reviewedLanguages(mode, analysis.explanations);
+  if (shown.length > 0) body.reviewed_explanation_languages = shown;
   if (draft.note.trim() !== "") body.user_note = draft.note;
   return body;
 }
+
+const LANGUAGE_NAMES = { en: "English", zh: "中文" } as const;
 
 // FeedbackPanel records explicit human feedback for the selected analysis version
 // and shows that version's immutable feedback history. It stays mounted for the
@@ -86,6 +109,7 @@ export function FeedbackPanel({
   onRecorded: (analysisId: number) => void;
 }) {
   const { t, status: statusLabel } = useI18n();
+  const { mode } = useExplanationLanguage();
   const [slots, setSlots] = useState<Record<number, Slot>>({});
   const inFlight = useRef(new Set<number>());
   const mounted = useRef(true);
@@ -154,7 +178,7 @@ export function FeedbackPanel({
     let stored = false;
     let reread = false;
     try {
-      const created = await api.createFeedback(targetId, toRequest(draft));
+      const created = await api.createFeedback(targetId, toRequest(draft, target, mode));
       stored = true;
       reread = true;
       const latestVersion = latest?.version ?? "?";
@@ -199,6 +223,8 @@ export function FeedbackPanel({
   const setDraft = (change: Partial<Draft>) => update(target.id, (s) => ({ ...s, draft: { ...s.draft, ...change } }));
   const blocked = slot.outcome?.kind === "uncertain" && slot.historyRefresh.kind !== "refreshed";
   const prefix = `feedback-${target.id}`;
+  const bilingual = recorded(target.explanations);
+  const shownNow = reviewedLanguages(mode, target.explanations);
 
   return (
     <section className="panel" aria-label={t("feedback.region")}>
@@ -256,14 +282,39 @@ export function FeedbackPanel({
                   </option>
                 ))}
               </select>
-              <label htmlFor={`${prefix}-explanation`}>{t("feedback.correctedExplanation")}</label>
-              <textarea
-                id={`${prefix}-explanation`}
-                rows={4}
-                value={draft.explanation}
-                placeholder={t("feedback.keepExplanation")}
-                onChange={(event) => setDraft({ explanation: event.target.value })}
-              />
+              {bilingual ? (
+                <>
+                  <label htmlFor={`${prefix}-explanation-en`}>{t("feedback.correctedExplanationEn")}</label>
+                  <textarea
+                    id={`${prefix}-explanation-en`}
+                    lang="en"
+                    rows={3}
+                    value={draft.explanationEn}
+                    placeholder={t("feedback.keepVariant")}
+                    onChange={(event) => setDraft({ explanationEn: event.target.value })}
+                  />
+                  <label htmlFor={`${prefix}-explanation-zh`}>{t("feedback.correctedExplanationZh")}</label>
+                  <textarea
+                    id={`${prefix}-explanation-zh`}
+                    lang="zh-Hans"
+                    rows={3}
+                    value={draft.explanationZh}
+                    placeholder={t("feedback.keepVariant")}
+                    onChange={(event) => setDraft({ explanationZh: event.target.value })}
+                  />
+                </>
+              ) : (
+                <>
+                  <label htmlFor={`${prefix}-explanation`}>{t("feedback.correctedExplanation")}</label>
+                  <textarea
+                    id={`${prefix}-explanation`}
+                    rows={4}
+                    value={draft.explanation}
+                    placeholder={t("feedback.keepExplanation")}
+                    onChange={(event) => setDraft({ explanation: event.target.value })}
+                  />
+                </>
+              )}
               <p className="hint">{t("feedback.correctionRequired")}</p>
             </div>
           ) : null}
@@ -277,6 +328,13 @@ export function FeedbackPanel({
           />
         </fieldset>
 
+        {bilingual ? (
+          <p className="hint">
+            {shownNow.length > 0
+              ? t("feedback.reviewedLanguages", { languages: shownNow.map((l) => LANGUAGE_NAMES[l]).join(", ") })
+              : t("feedback.reviewedNone")}
+          </p>
+        ) : null}
         <div className="actions">
           <button type="submit" className="primary" disabled={slot.pending || blocked || draft.status === null}>
             {slot.pending
@@ -334,6 +392,23 @@ function FeedbackHistory({
           {f.id === effectiveFeedbackId ? <span className="record-state accepted"> {t("feedback.inEffect")}</span> : null}
           {f.corrected_category !== undefined ? <div>{t("feedback.categoryArrow")} {f.corrected_category}</div> : null}
           {f.corrected_explanation !== undefined ? <div>{t("feedback.explanationArrow")} {f.corrected_explanation}</div> : null}
+          {f.corrected_explanation_en !== undefined ? (
+            <div>
+              {t("feedback.explanationEnArrow")} <span lang="en">{f.corrected_explanation_en}</span>
+            </div>
+          ) : null}
+          {f.corrected_explanation_zh !== undefined ? (
+            <div>
+              {t("feedback.explanationZhArrow")} <span lang="zh-Hans">{f.corrected_explanation_zh}</span>
+            </div>
+          ) : null}
+          {f.reviewed_explanation_languages && f.reviewed_explanation_languages.length > 0 ? (
+            <div className="hint">
+              {t("feedback.reviewedArrow", {
+                languages: f.reviewed_explanation_languages.map((l) => LANGUAGE_NAMES[l]).join(", "),
+              })}
+            </div>
+          ) : null}
           {f.user_note ? <div className="hint">{t("feedback.noteLabel")} {f.user_note}</div> : null}
           <time className="hint" dateTime={f.created_at}>{f.created_at}</time>
         </li>

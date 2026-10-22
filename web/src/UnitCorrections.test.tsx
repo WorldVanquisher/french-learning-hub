@@ -234,6 +234,30 @@ describe("Correcting a reviewed unit from the Inspector", () => {
     expect(backend.writes()).toEqual(["PUT /api/knowledge-units/201/concept-membership"]);
   });
 
+  it("shows the reassignment target's current support before confirming, with reads only (FLH-093)", async () => {
+    const backend = fixtureBackend();
+    const supporting = { unit_id: 301, kind: "grammar", canonical: "avoir + participe", statement: "Avec avoir, le participe s'accorde avec le COD placé avant.", example: "Les lettres que j'ai écrites.", entry_id: 3, extraction_id: 30, extraction_version: 1, in_current_extraction: true, admission: "active" };
+    backend.handlers["GET /api/knowledge-library/concepts/8"] = {
+      body: { schema_version: "knowledge_library_concept_v1", concept: concept(8, "participe passé avec avoir"), preferred_unit: null, supporting_units: [supporting], non_supporting_members: [], current_relations: [], historical_units: [], history_event_count: 1 },
+    };
+    backend.handlers["GET /api/knowledge-library/units/301/source"] = {
+      body: { schema_version: "knowledge_library_source_v1", unit: supporting, entry: { id: 3, original_input: "Pourquoi « écrites » avec -es ?", original_context: "", created_at: "t" }, extraction: { id: 30, version: 1, extractor: "x", source_analysis_id: 1, source_feedback_id: null, created_at: "t" }, current_extraction: { extraction_id: 30, selection_mode: "automatic" }, source_interpretation: {} },
+    };
+    await inspect(201);
+    selectTarget(8);
+    const content = await within(panel()).findByRole("region", { name: "Contents of concept #8" });
+    expect(within(panel()).getByRole("heading", { name: "What concept #8 currently contains" })).toBeInTheDocument();
+    expect(content).toHaveTextContent("Avec avoir, le participe s'accorde avec le COD placé avant.");
+    fireEvent.click(within(content).getByRole("button", { name: "Show the original question for unit #301" }));
+    expect(await within(content).findByText("Pourquoi « écrites » avec -es ?")).toBeInTheDocument();
+    expect(backend.writes()).toEqual([]);
+
+    fireEvent.click(within(panel()).getByRole("button", { name: "Reassign SAME to concept #8…" }));
+    fireEvent.click(within(panel()).getByRole("button", { name: "Confirm reassignment to concept #8" }));
+    await waitFor(() => expect(backend.writes()).toEqual(["PUT /api/knowledge-units/201/concept-membership"]));
+    expect(backend.calls.find((c) => c.method === "PUT")?.body).toEqual({ concept_id: 8 });
+  });
+
   it("marks a resolved unit INVALID, then offers only RESTORE", async () => {
     const backend = fixtureBackend();
     await inspect(201);

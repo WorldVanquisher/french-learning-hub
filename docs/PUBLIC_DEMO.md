@@ -145,6 +145,13 @@ covered nor explicitly exempted.
   the same fixtures differed. 15 consecutive v3 builds were identical.
 - The exact bytes, including displayed dates, are still bound by
   `files["demo.db"]`.
+- **Migration 012 columns are not fingerprinted.** The column lists predate
+  FLH-095, so `entry_analyses.explanation_en/_zh`,
+  `knowledge_units.statement_en/_zh` and the per-language feedback columns are
+  outside the domain fingerprint (the coverage test checks tables, not
+  columns). They are protected only by the `files["demo.db"]` hash. Demo unit
+  and source responses now include `statements` from those columns; fixture
+  artifacts store NULL there.
 
 **Changing any covered authority invalidates the artifact,** even when someone
 also refreshes `files["demo.db"]`. For example, suppressing an admission
@@ -172,6 +179,18 @@ directory unchanged if you want it for comparison. The rebuilt artifact has a
 new manifest SHA-256 and artifact version. For model vectors, rerun
 `prepare import` from the completed work directory into a new directory: it
 sends nothing.
+
+### Migration 012 (FLH-095) and existing artifacts
+
+The server compares the artifact's `schema_migrations` ledger with its own
+embedded migrations exactly. A binary built with migration
+`012_bilingual_explanations` therefore refuses any artifact built before it
+(`database migrations … differ from this server's …`), and an older binary
+refuses an artifact built with 012. Rebuild the artifact with the same tree as
+the binary, as above.
+
+A release package bundles its own binary and artifact, so an already packaged
+or deployed release is unaffected. Only a new package needs a matching rebuild.
 
 ## Real-model vectors (FLH-076)
 

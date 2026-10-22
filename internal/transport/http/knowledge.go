@@ -81,15 +81,18 @@ func toAdmissionOverrideResponse(o *domain.AdmissionOverride) admissionOverrideR
 // knowledgeUnitResponse is the wire shape of one knowledge unit plus its resolved
 // admission state.
 type knowledgeUnitResponse struct {
-	ID         int64             `json:"id"`
-	Ordinal    int               `json:"ordinal"`
-	Kind       string            `json:"kind"`
-	Canonical  string            `json:"canonical"`
-	Statement  string            `json:"statement"`
-	Example    *string           `json:"example"`
-	Confidence float64           `json:"confidence"`
-	CreatedAt  string            `json:"created_at"`
-	Admission  admissionResponse `json:"admission"`
+	ID        int64  `json:"id"`
+	Ordinal   int    `json:"ordinal"`
+	Kind      string `json:"kind"`
+	Canonical string `json:"canonical"`
+	Statement string `json:"statement"`
+	// Statements are the stored English/Chinese variants (FLH-095); both null
+	// when the statement's language was not recorded.
+	Statements explanationVariantsResponse `json:"statements"`
+	Example    *string                     `json:"example"`
+	Confidence float64                     `json:"confidence"`
+	CreatedAt  string                      `json:"created_at"`
+	Admission  admissionResponse           `json:"admission"`
 }
 
 func toKnowledgeUnitResponse(v domain.KnowledgeUnitView) knowledgeUnitResponse {
@@ -99,6 +102,7 @@ func toKnowledgeUnitResponse(v domain.KnowledgeUnitView) knowledgeUnitResponse {
 		Kind:       string(v.Unit.Kind),
 		Canonical:  v.Unit.Canonical,
 		Statement:  v.Unit.Statement,
+		Statements: toVariants(v.Unit.Statements),
 		Example:    v.Unit.Example,
 		Confidence: v.Unit.Confidence,
 		CreatedAt:  v.Unit.CreatedAt.Format(time.RFC3339Nano),

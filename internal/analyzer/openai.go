@@ -17,8 +17,9 @@ import (
 // promptVersion is a stable identifier for the instruction/schema contract this
 // analyzer uses. It is part of stored provenance. It tracks the domain taxonomy
 // version, since the developer instruction and output schema are defined in
-// terms of that taxonomy.
-const promptVersion = domain.TaxonomyVersion
+// terms of that taxonomy, plus the FLH-095 bilingual explanation contract (an
+// English explanation and a Simplified Chinese explanation_zh in one response).
+const promptVersion = domain.TaxonomyVersion + ".explanation_en_zh_v1"
 
 // maxErrorBodyBytes bounds how much of a provider error/response body is read
 // into memory, protecting against unexpectedly large upstream payloads.
@@ -64,6 +65,8 @@ Decision rules:
 
 Output rules:
 - Explanation must cite observable cues from the entry or context, not vague pedagogy.
+- explanation is written in English. explanation_zh gives the same explanation in Simplified Chinese: the same content and cues, not a summary or a different judgment.
+- In both explanations, quote French words, examples and the learner's text exactly as written in French; never translate the quotations themselves.
 - If context is insufficient, lower confidence and say why in uncertainty.
 - Be conservative for pragmatics, discourse, and pronunciation when explicit cues are weak.
 - Do not rewrite, correct, translate, or normalize the learner's original input.
@@ -173,10 +176,11 @@ type outputContent struct {
 
 // analysisPayload is the strict-schema JSON the model returns.
 type analysisPayload struct {
-	Category    string  `json:"category"`
-	Explanation string  `json:"explanation"`
-	Confidence  float64 `json:"confidence"`
-	Uncertainty string  `json:"uncertainty"`
+	Category      string  `json:"category"`
+	Explanation   string  `json:"explanation"`
+	ExplanationZH *string `json:"explanation_zh"`
+	Confidence    float64 `json:"confidence"`
+	Uncertainty   string  `json:"uncertainty"`
 }
 
 // outputSchema is the JSON Schema requested for structured output. It disallows
@@ -187,12 +191,13 @@ func outputSchema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"category":    map[string]any{"type": "string", "enum": domain.Categories()},
-			"explanation": map[string]any{"type": "string"},
-			"confidence":  map[string]any{"type": "number", "minimum": 0, "maximum": 1},
-			"uncertainty": map[string]any{"type": "string"},
+			"category":       map[string]any{"type": "string", "enum": domain.Categories()},
+			"explanation":    map[string]any{"type": "string"},
+			"explanation_zh": map[string]any{"type": "string"},
+			"confidence":     map[string]any{"type": "number", "minimum": 0, "maximum": 1},
+			"uncertainty":    map[string]any{"type": "string"},
 		},
-		"required":             []string{"category", "explanation", "confidence", "uncertainty"},
+		"required":             []string{"category", "explanation", "explanation_zh", "confidence", "uncertainty"},
 		"additionalProperties": false,
 	}
 }
@@ -313,11 +318,18 @@ func (o *OpenAI) Analyze(ctx context.Context, entry *domain.Entry) (domain.Analy
 		return domain.AnalysisResult{}, fmt.Errorf("%w: structured output was not valid JSON", domain.ErrProviderUnavailable)
 	}
 
+	// Both languages are part of this contract: a missing or blank Chinese
+	// explanation is invalid output, never stored as English-only.
+	if payload.ExplanationZH == nil || strings.TrimSpace(*payload.ExplanationZH) == "" {
+		return domain.AnalysisResult{}, fmt.Errorf("%w: explanation_zh is required", domain.ErrValidation)
+	}
+	en := strings.TrimSpace(payload.Explanation)
 	result := domain.AnalysisResult{
-		Category:    payload.Category,
-		Explanation: payload.Explanation,
-		Confidence:  payload.Confidence,
-		Uncertainty: payload.Uncertainty,
+		Category:     payload.Category,
+		Explanation:  en,
+		Explanations: domain.ExplanationVariants{EN: &en, ZH: payload.ExplanationZH},
+		Confidence:   payload.Confidence,
+		Uncertainty:  payload.Uncertainty,
 	}
 	// Validate here so obviously-bad model output is rejected as ErrValidation
 	// (422) rather than reaching storage. The service validates again; the

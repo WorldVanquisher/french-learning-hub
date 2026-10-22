@@ -17,9 +17,18 @@ import (
 const testAPIKey = "sk-test-secret-value"
 
 // okResponseBody builds a well-formed Responses API body whose structured output
-// encodes the given units payload.
+// encodes the given units payload. A unit without statement_zh gets a
+// placeholder Chinese statement, since the v2 contract (FLH-095) requires one;
+// tests of a missing variant use rawResponseBody, so every other validation test
+// exercises the rule it names.
 func okResponseBody(t *testing.T, payload unitsPayload) string {
 	t.Helper()
+	for i := range payload.Units {
+		if payload.Units[i].StatementZH == nil {
+			zh := "测试用中文陈述。"
+			payload.Units[i].StatementZH = &zh
+		}
+	}
 	inner, err := json.Marshal(payload)
 	if err != nil {
 		t.Fatalf("marshal payload: %v", err)
@@ -192,6 +201,39 @@ func TestExtractor_ParsesMultipleUnits(t *testing.T) {
 	if res.Units[1].Example != nil {
 		t.Fatalf("expected nil example on second unit")
 	}
+	s := res.Units[0].Statements
+	if s.EN == nil || *s.EN != "vouloir takes a bare infinitive" || s.ZH == nil || *s.ZH != "测试用中文陈述。" {
+		t.Fatalf("statement variants = %+v, want en = statement and the Chinese variant", s)
+	}
+}
+
+// FLH-095: every unit carries both statement languages from one request; a
+// missing or blank Chinese statement rejects the whole result before storage.
+func TestExtractor_BilingualStatementRequired(t *testing.T) {
+	for name, inner := range map[string]string{
+		"missing": `{"units":[{"kind":"grammar","canonical":"c","statement":"s","example":null,"confidence":0.9}]}`,
+		"blank":   `{"units":[{"kind":"grammar","canonical":"c","statement":"s","statement_zh":" ","example":null,"confidence":0.9}]}`,
+		"one of two": `{"units":[{"kind":"grammar","canonical":"a","statement":"s","statement_zh":"陈述","example":null,"confidence":0.9},` +
+			`{"kind":"usage","canonical":"b","statement":"t","example":null,"confidence":0.9}]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, ex := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+				io.WriteString(w, rawResponseBody(t, inner))
+			})
+			_, err := ex.Extract(context.Background(), testSource())
+			if !errors.Is(err, domain.ErrValidation) {
+				t.Fatalf("expected ErrValidation, got %v", err)
+			}
+		})
+	}
+	unit := outputSchema()["properties"].(map[string]any)["units"].(map[string]any)["items"].(map[string]any)
+	found := false
+	for _, r := range unit["required"].([]string) {
+		found = found || r == "statement_zh"
+	}
+	if !found {
+		t.Fatalf("statement_zh is not required by the unit schema")
+	}
 }
 
 func TestExtractor_ZeroUnitsIsValid(t *testing.T) {
@@ -210,7 +252,7 @@ func TestExtractor_ZeroUnitsIsValid(t *testing.T) {
 
 func TestExtractor_ProvenanceName(t *testing.T) {
 	ex := NewOpenAI(testAPIKey, "gpt-4o-mini", "https://api.openai.com/v1", time.Second)
-	want := "openai:gpt-4o-mini:knowledge_extraction_v1"
+	want := "openai:gpt-4o-mini:knowledge_extraction_v2"
 	if got := ex.Name(); got != want {
 		t.Fatalf("Name() = %q, want %q", got, want)
 	}

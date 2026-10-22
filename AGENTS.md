@@ -471,6 +471,25 @@ FLH-083 UI localization:
   (no markup in strings, no sentences assembled from fragments), and outcome or
   notice text stored as message references so a language switch re-renders it.
 
+FLH-095 bilingual explanations:
+
+- Only an analysis explanation and a unit statement have English/Chinese
+  variants. Migration 012 adds nullable `explanation_en/_zh`, `statement_en/_zh`,
+  and feedback `corrected_explanation_en/_zh` + `reviewed_explanation_languages`.
+  No backfill: NULL means the language was not recorded (legacy, Capture
+  imports, fixtures).
+- The primary `explanation`/`statement` remain what every existing consumer
+  reads; for new bilingual rows they equal English. Identity, signatures,
+  admission, retrieval and embedding representations never read the variants.
+- Providers return both languages in the same explicit request (analyzer
+  `…fr_l2_taxonomy_v1.explanation_en_zh_v1`, extractor `knowledge_extraction_v2`);
+  a missing Chinese field is invalid output. Never add translation calls.
+- Effective explanation per language has a basis (`unreviewed`, `reviewed`,
+  `not_reviewed`, `corrected`, `outdated`, `unavailable`); feedback approves only
+  languages it recorded as shown. Contract: `docs/ARCHITECTURE.md` §3.9.
+- The workbench Explanation-language preference (`flh.explanation-language.v1`,
+  default both) is separate from the UI locale and read-only.
+
 FLH-084 AWS demo deployment preparation:
 
 - `deploy/aws/` prepares (does not perform) the read-only public demo on one EC2

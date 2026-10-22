@@ -1,7 +1,7 @@
 // FLH-034 Knowledge Library wire types (read-only GET /knowledge-library/...).
 // Every field is a backend fact; the browser only renders and labels them.
 import type { Concept, UnitConceptLink } from "./concept";
-import type { Analysis, EffectiveAnalysis, Entry, Feedback } from "./learning";
+import type { Analysis, EffectiveAnalysis, Entry, ExplanationVariants, Feedback } from "./learning";
 
 export type LibraryStateFilter = "all" | "active" | "orphaned" | "retired";
 
@@ -150,6 +150,7 @@ export interface LibraryUnit {
   kind: string;
   canonical: string;
   statement: string;
+  statements?: ExplanationVariants;
   example: string | null;
   entry_id: number;
   extraction_id: number;

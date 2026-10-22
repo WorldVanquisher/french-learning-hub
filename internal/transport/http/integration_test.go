@@ -303,14 +303,16 @@ func TestIntegration_FeedbackCorrectedSingleField(t *testing.T) {
 }
 
 // fakeProviderResponse builds a well-formed OpenAI Responses API body whose
-// structured output encodes the given analysis fields.
+// structured output encodes the given analysis fields, with the Chinese
+// explanation the bilingual contract (FLH-095) requires.
 func fakeProviderResponse(t *testing.T, category, explanation string, confidence float64) string {
 	t.Helper()
 	inner, err := json.Marshal(map[string]any{
-		"category":    category,
-		"explanation": explanation,
-		"confidence":  confidence,
-		"uncertainty": "",
+		"category":       category,
+		"explanation":    explanation,
+		"explanation_zh": "测试用中文解释。",
+		"confidence":     confidence,
+		"uncertainty":    "",
 	})
 	if err != nil {
 		t.Fatalf("marshal inner payload: %v", err)
@@ -369,7 +371,7 @@ func TestIntegration_OpenAISuccessCreatesOneAnalysis(t *testing.T) {
 	if a.Category != "grammar" {
 		t.Fatalf("category = %q, want grammar", a.Category)
 	}
-	wantProvenance := "openai:gpt-test:fr_l2_taxonomy_v1"
+	wantProvenance := "openai:gpt-test:fr_l2_taxonomy_v1.explanation_en_zh_v1"
 	if a.Analyzer != wantProvenance {
 		t.Fatalf("provenance = %q, want %q", a.Analyzer, wantProvenance)
 	}

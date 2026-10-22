@@ -61,11 +61,15 @@ func (r RuleBased) Analyze(ctx context.Context, entry *domain.Entry) (domain.Ana
 	if err != nil {
 		return domain.AnalysisResult{}, err
 	}
+	// The rule engine writes its explanation in English; it records that
+	// (FLH-095) and produces no Chinese variant.
+	explanation := buildExplanation(a)
 	return domain.AnalysisResult{
-		Category:    a.Category,
-		Explanation: buildExplanation(a),
-		Confidence:  a.Confidence,
-		Uncertainty: buildUncertainty(a),
+		Category:     a.Category,
+		Explanation:  explanation,
+		Explanations: domain.ExplanationVariants{EN: &explanation},
+		Confidence:   a.Confidence,
+		Uncertainty:  buildUncertainty(a),
 	}, nil
 }
 

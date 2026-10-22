@@ -355,7 +355,8 @@ func deriveSupportState(ctx context.Context, q txQuerier, conceptID int64) (doma
 // UnitByID returns one persisted knowledge unit by id, or domain.ErrNotFound.
 func (r *ConceptRepository) UnitByID(ctx context.Context, unitID int64) (*domain.KnowledgeUnit, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at
+		`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at,
+		        statement_en, statement_zh
 		 FROM knowledge_units WHERE id = ?`, unitID)
 	u, err := scanUnit(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -401,7 +402,8 @@ func (r *ConceptRepository) ListCurrentExtractionUnits(ctx context.Context) ([]d
 			continue
 		}
 		unitRows, err := r.db.QueryContext(ctx,
-			`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at
+			`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at,
+		        statement_en, statement_zh
 			 FROM knowledge_units WHERE extraction_id = ? ORDER BY ordinal ASC, id ASC`, *extractionID)
 		if err != nil {
 			return nil, fmt.Errorf("list current extraction units: %w", err)
@@ -1186,7 +1188,8 @@ func (r *ConceptRepository) ListReviewableUnits(ctx context.Context, entryID *in
 		// (by created_at, then id) is 'invalid'; a later 'restored' judgment (or none)
 		// keeps it reviewable. Absence of a judgment means unresolved, not invalid.
 		urows, err := r.db.QueryContext(ctx,
-			`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at
+			`SELECT id, extraction_id, ordinal, kind, canonical, statement, example, confidence, created_at,
+		        statement_en, statement_zh
 			 FROM knowledge_units
 			 WHERE extraction_id = ?
 			   AND id NOT IN (SELECT unit_id FROM unit_concept_memberships)
@@ -1233,7 +1236,7 @@ WITH cur AS (
     FROM (SELECT DISTINCT entry_id FROM knowledge_extractions) e
     LEFT JOIN entry_current_extractions p ON p.entry_id = e.entry_id
 )
-SELECT u.id, u.extraction_id, u.ordinal, u.kind, u.canonical, u.statement, u.example, u.confidence, u.created_at,
+SELECT u.id, u.extraction_id, u.ordinal, u.kind, u.canonical, u.statement, u.example, u.confidence, u.created_at, u.statement_en, u.statement_zh,
        cur.entry_id
 FROM cur
 JOIN knowledge_units u ON u.extraction_id = cur.extraction_id

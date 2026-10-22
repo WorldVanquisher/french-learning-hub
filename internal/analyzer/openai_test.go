@@ -17,20 +17,32 @@ import (
 const testAPIKey = "sk-test-secret-value"
 
 // okResponseBody builds a well-formed Responses API body whose structured
-// output encodes the given analysis payload.
+// output encodes the given analysis payload. A payload without explanation_zh
+// gets a placeholder Chinese explanation, since the bilingual contract (FLH-095)
+// requires one; tests of a missing variant use rawResponseBody.
 func okResponseBody(t *testing.T, payload analysisPayload) string {
 	t.Helper()
+	if payload.ExplanationZH == nil {
+		zh := "测试用中文解释。"
+		payload.ExplanationZH = &zh
+	}
 	inner, err := json.Marshal(payload)
 	if err != nil {
 		t.Fatalf("marshal payload: %v", err)
 	}
+	return rawResponseBody(t, string(inner))
+}
+
+// rawResponseBody wraps an exact structured-output text in a Responses body.
+func rawResponseBody(t *testing.T, inner string) string {
+	t.Helper()
 	resp := responsesResponse{
 		Status: "completed",
 		Output: []outputItem{{
 			Type: "message",
 			Content: []outputContent{{
 				Type: "output_text",
-				Text: string(inner),
+				Text: inner,
 			}},
 		}},
 	}
@@ -180,11 +192,50 @@ func TestOpenAI_ParsesValidResponse(t *testing.T) {
 	if res.Confidence != 0.9 {
 		t.Fatalf("confidence = %v, want 0.9", res.Confidence)
 	}
+	if res.Explanations.EN == nil || *res.Explanations.EN != "present tense of être" ||
+		res.Explanations.ZH == nil || *res.Explanations.ZH != "测试用中文解释。" {
+		t.Fatalf("explanation variants = %+v, want en = explanation and the Chinese variant", res.Explanations)
+	}
+}
+
+// FLH-095: both explanation languages come from one request; output missing
+// or blanking the Chinese variant is invalid and never stored as English-only.
+func TestOpenAI_BilingualExplanationRequired(t *testing.T) {
+	for name, inner := range map[string]string{
+		"missing": `{"category":"grammar","explanation":"ok","confidence":0.5,"uncertainty":""}`,
+		"blank":   `{"category":"grammar","explanation":"ok","explanation_zh":"   ","confidence":0.5,"uncertainty":""}`,
+		"null":    `{"category":"grammar","explanation":"ok","explanation_zh":null,"confidence":0.5,"uncertainty":""}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, an := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+				io.WriteString(w, rawResponseBody(t, inner))
+			})
+			_, err := an.Analyze(context.Background(), testEntry())
+			if !errors.Is(err, domain.ErrValidation) {
+				t.Fatalf("expected ErrValidation, got %v", err)
+			}
+		})
+	}
+}
+
+func TestOpenAI_SchemaRequiresChineseExplanation(t *testing.T) {
+	schema := outputSchema()
+	required := schema["required"].([]string)
+	found := false
+	for _, r := range required {
+		found = found || r == "explanation_zh"
+	}
+	if !found {
+		t.Fatalf("explanation_zh is not required: %v", required)
+	}
+	if !strings.Contains(developerInstruction, "Simplified Chinese") {
+		t.Fatalf("instruction does not ask for the Chinese explanation")
+	}
 }
 
 func TestOpenAI_ProvenanceName(t *testing.T) {
 	an := NewOpenAI(testAPIKey, "gpt-4o-mini", "https://api.openai.com/v1", time.Second)
-	want := "openai:gpt-4o-mini:fr_l2_taxonomy_v1"
+	want := "openai:gpt-4o-mini:fr_l2_taxonomy_v1.explanation_en_zh_v1"
 	if got := an.Name(); got != want {
 		t.Fatalf("Name() = %q, want %q", got, want)
 	}
