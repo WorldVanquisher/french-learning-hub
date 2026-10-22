@@ -806,3 +806,18 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .basis-tag { font-size: 11px; color: var(--muted); font-style: normal; }
 .basis-tag.outdated, .basis-tag.not_reviewed { color: #b54708; }
 .basis-tag.corrected, .basis-tag.reviewed { color: var(--same); }
+
+/* FLH-097 AI-assisted Concept suggestions */
+.review-modes { margin-top: -0.25rem; }
+.suggestions .suggest-queue { list-style: none; padding: 0; max-height: 28rem; overflow-y: auto; }
+.suggestions .suggest-queue li { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.suggestions .suggest-runs { list-style: none; padding: 0; }
+.suggestions .suggest-item { border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin: 0.75rem 0; background: var(--panel); }
+.suggestions .suggest-stale { border-color: var(--warn-border); background: var(--warn-bg); }
+.suggestions .suggest-confirmed { border-color: var(--same); }
+.suggestions .stale-reasons { color: var(--invalid); margin: 0.5rem 0; }
+.suggestions .suggest-target { margin-top: 0.5rem; }
+.suggestions .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.suggestions .muted { color: var(--muted); }
+.suggestions .error { color: var(--invalid); }
+.suggestions .notice { color: var(--same); }

@@ -27,6 +27,7 @@ services:
       HTTP_TRUSTED_ORIGINS: ${HTTP_TRUSTED_ORIGINS:-}
       AI_PROVIDER: ${AI_PROVIDER:-rule-based}
       EXTRACTOR_PROVIDER: ${EXTRACTOR_PROVIDER:-disabled}
+      SUGGESTION_PROVIDER: ${SUGGESTION_PROVIDER:-disabled}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-disabled}
       # Empty means unset: the server applies its own defaults.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

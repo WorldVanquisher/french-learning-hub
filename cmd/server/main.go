@@ -19,6 +19,7 @@ import (
 	"french-learning-app/internal/embedding"
 	"french-learning-app/internal/extractor"
 	"french-learning-app/internal/storage/sqlite"
+	"french-learning-app/internal/suggester"
 	transporthttp "french-learning-app/internal/transport/http"
 	"french-learning-app/internal/vectorindex"
 )
@@ -85,6 +86,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	// FLH-097: the suggester is opt-in (SUGGESTION_PROVIDER) and advisory.
+	selectedSuggester, err := suggester.New(cfg.Suggestion)
+	if err != nil {
+		return err
+	}
 	selectedEmbeddingProvider, err := embedding.New(cfg.Embedding)
 	if err != nil {
 		return err
@@ -121,6 +127,7 @@ func run() error {
 
 	log.Printf("analyzer provider: %s", cfg.AI.Provider)
 	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
+	log.Printf("suggestion provider: %s", cfg.Suggestion.Provider)
 	log.Printf("embedding provider: %s", cfg.Embedding.Provider)
 
 	libraryService := application.NewKnowledgeLibraryService(
@@ -132,6 +139,8 @@ func run() error {
 		transporthttp.WithRetrievalComparison(retrievalComparisonSvc),
 		transporthttp.WithKnowledgeLibrary(libraryService),
 		transporthttp.WithReadiness(db.PingContext),
+		transporthttp.WithConceptSuggestions(application.NewConceptSuggestionService(
+			sqlite.NewConceptSuggestionRepository(db), selectedSuggester)),
 	}
 	// Semantic search is opt-in (SEMANTIC_SEARCH=qdrant). The server only reads
 	// the index; building it is an explicit operator command (semantic-index).

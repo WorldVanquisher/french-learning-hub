@@ -35,6 +35,7 @@ import type {
   NewFeedback,
   LearningRecordState,
 } from "../types/learning";
+import type { SuggestionConfirmResult, SuggestionOverview, SuggestionRun } from "../types/suggestion";
 import type { HybridSearch, LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, PublicDemoInfo, SemanticSearch } from "../types/library";
 
 // ApiError carries the HTTP status so callers can react specifically — most
@@ -588,4 +589,35 @@ export type AnnotationOperationReceipt = {
 };
 export function getAnnotationOperation(id: string, fetchImpl: typeof fetch = fetch): Promise<AnnotationOperationReceipt> {
   return request("GET", `/annotation-operations/${encodeURIComponent(id)}`, undefined, fetchImpl);
+}
+
+// ---- FLH-097 advisory Concept suggestions ----
+
+// getSuggestionOverview reads whether suggestions are enabled, the fixed limits
+// and recent runs. Read-only; no provider call.
+export function getSuggestionOverview(fetchImpl: typeof fetch = fetch): Promise<SuggestionOverview> {
+  return request<SuggestionOverview>("GET", "/concept-suggestion-runs", undefined, fetchImpl);
+}
+
+export function getSuggestionRun(runId: number, fetchImpl: typeof fetch = fetch): Promise<SuggestionRun> {
+  return request<SuggestionRun>("GET", `/concept-suggestion-runs/${runId}`, undefined, fetchImpl);
+}
+
+// getSuggestionRunByOperation looks a request up by its key. 404 means nothing is
+// committed under it; it never means canceled.
+export function getSuggestionRunByOperation(operationId: string, fetchImpl: typeof fetch = fetch): Promise<SuggestionRun> {
+  return request<SuggestionRun>("GET", `/concept-suggestion-runs/operations/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// createSuggestionRun is the only call that may contact the provider. The key
+// must be stored before sending; a failed provider call answers 502/504 with the
+// stored failed run in the error body.
+export function createSuggestionRun(unitIds: number[], operationId: string, fetchImpl: typeof fetch = fetch): Promise<SuggestionRun> {
+  return request<SuggestionRun>("POST", "/concept-suggestion-runs", { unit_ids: unitIds }, fetchImpl, operationId);
+}
+
+// confirmSuggestion records the explicit human SAME for one suggested item. A
+// repeated confirmation replays the original event.
+export function confirmSuggestion(itemId: number, conceptId: number, fetchImpl: typeof fetch = fetch): Promise<SuggestionConfirmResult> {
+  return request<SuggestionConfirmResult>("POST", `/concept-suggestion-items/${itemId}/confirm`, { concept_id: conceptId }, fetchImpl);
 }
