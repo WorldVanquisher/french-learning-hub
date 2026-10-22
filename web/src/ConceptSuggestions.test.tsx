@@ -148,7 +148,7 @@ describe("ConceptSuggestions", () => {
 
   it("confirms one item explicitly; Leave unused records nothing", async () => {
     const second = item("open", { id: 901, unit_id: 102, unit: U2, suggested_concept_id: 41, reason: "Same verb and tense." });
-    const confirmed = item("confirmed", { confirmation: { id: 1, link_id: 77, created_at: "t" } });
+    const confirmed = item("confirmed", { confirmation: { id: 1, link_id: 77, created_at: "t", still_current: true } });
     const calls = router({
       ...base,
       "GET /api/concept-suggestion-runs": overview(true, [run([])]),
@@ -202,5 +202,47 @@ describe("ConceptSuggestions", () => {
     expect(await screen.findByText(/Browser storage is unavailable.*Nothing was sent/)).toBeInTheDocument();
     spy.mockRestore();
     expect(writes(calls)).toHaveLength(0);
+  });
+
+  it("a same-key resend that finds a failed run says so, and retrying is an explicit new request with a new key", async () => {
+    const oldKey = "11111111-2222-4333-8444-555555555555";
+    window.localStorage.setItem("flh.concept-suggestion-requests.v1", JSON.stringify({ version: 1, pending: { operationId: oldKey, unitIds: [101] } }));
+    let posts = 0;
+    const calls = router({
+      ...base,
+      "POST /api/concept-suggestion-runs": () => {
+        posts++;
+        return posts === 1
+          ? { status: 201, body: run([], { operation_id: oldKey, status: "failed", failure_code: "provider_timeout", unit_ids: [101] }) }
+          : { status: 201, body: run([item("open")], { id: 8 }) };
+      },
+    });
+    render(<ConceptSuggestions />);
+    fireEvent.click(await screen.findByRole("button", { name: "Send the same request again" }));
+    expect(await screen.findByText(/The model call failed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Suggestions stored as run/)).toBeNull();
+    expect(screen.getByText(/This run failed \(provider_timeout\)/)).toBeInTheDocument();
+    expect(writes(calls)).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate again as a new request" }));
+    await screen.findByText("Suggestion run #8");
+    const sent = writes(calls);
+    expect(sent).toHaveLength(2);
+    expect(sent[1].body).toEqual({ unit_ids: [101] });
+    expect(sent[1].key).not.toBe(oldKey);
+    expect(sent[1].storedAtSend).toContain(sent[1].key!);
+  });
+
+  it("a confirmation that was later corrected is shown as historical, not current", async () => {
+    const superseded = item("confirmed", {
+      confirmation: { id: 1, link_id: 77, created_at: "t", still_current: false },
+      stale_reasons: ["unit_has_current_same"], current_concept_id: 12,
+    });
+    router({ ...base, "GET /api/concept-suggestion-runs": overview(true, [run([])]), "GET /api/concept-suggestion-runs/7": run([superseded]) });
+    render(<ConceptSuggestions />);
+    fireEvent.click(await screen.findByRole("button", { name: /Run #7/ }));
+    expect(await screen.findByText(/no longer the unit's CURRENT SAME/)).toBeInTheDocument();
+    expect(screen.queryByText(/The unit already has a CURRENT SAME/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Confirm SAME/ })).toBeNull();
   });
 });

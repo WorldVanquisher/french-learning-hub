@@ -140,8 +140,14 @@ export function ConceptSuggestions() {
       const created = await createSuggestionRun(request.unitIds, request.operationId);
       forget(request.operationId);
       setRun(created);
-      setSelected([]);
-      setNotice({ tone: "info", text: msg("suggest.notice.stored", { id: created.id }) });
+      if (created.status === "failed") {
+        // A same-key replay of an earlier failed run: known outcome, nothing new
+        // was called. Retrying is a separate, explicit new request.
+        setNotice({ tone: "error", text: msg("suggest.notice.failedStored") });
+      } else {
+        setSelected([]);
+        setNotice({ tone: "info", text: msg("suggest.notice.stored", { id: created.id }) });
+      }
     } catch (e) {
       if (e instanceof ApiError && e.body && typeof e.body === "object" && "run" in e.body) {
         // Provider or output failure: the failed run is stored; the outcome is known.
@@ -161,9 +167,12 @@ export function ConceptSuggestions() {
     }
   };
 
-  const generate = async () => {
-    if (selected.length === 0 || pending) return;
-    const request = { operationId: randomOperationId(), unitIds: [...selected] };
+  // startNew sends a NEW request (fresh key) for the given units. It is used by
+  // Generate and by the explicit retry of a failed run; nothing calls it
+  // automatically.
+  const startNew = async (unitIds: number[]) => {
+    if (unitIds.length === 0 || pending || sending) return;
+    const request = { operationId: randomOperationId(), unitIds: [...unitIds] };
     try {
       savePendingRequest(request);
     } catch (e) {
@@ -176,6 +185,7 @@ export function ConceptSuggestions() {
     setPending(request);
     await send(request);
   };
+  const generate = () => startNew(selected);
 
   const checkPending = async () => {
     if (!pending) return;
@@ -183,7 +193,11 @@ export function ConceptSuggestions() {
       const stored = await getSuggestionRunByOperation(pending.operationId);
       forget(pending.operationId);
       setRun(stored);
-      setNotice({ tone: "info", text: msg("suggest.notice.found", { id: stored.id }) });
+      setNotice(
+        stored.status === "failed"
+          ? { tone: "error", text: msg("suggest.notice.foundFailed", { id: stored.id }) }
+          : { tone: "info", text: msg("suggest.notice.found", { id: stored.id }) },
+      );
     } catch (e) {
       if (e instanceof ApiError && e.isNotFound) setNotice({ tone: "info", text: msg("suggest.notice.notCommitted") });
       else setNotice({ tone: "error", text: serverDetail(e) });
@@ -272,7 +286,14 @@ export function ConceptSuggestions() {
         </section>
       ) : null}
 
-      {run ? <RunView run={run} onRunChange={setRun} /> : null}
+      {run ? (
+        <RunView
+          run={run}
+          onRunChange={setRun}
+          canRetry={enabled && !pending && !sending}
+          onRetry={() => void startNew(run.unit_ids)}
+        />
+      ) : null}
 
       <section className="panel" aria-labelledby="suggest-runs-heading">
         <h2 id="suggest-runs-heading">{t("suggest.runs.title")}</h2>
@@ -294,7 +315,17 @@ export function ConceptSuggestions() {
   );
 }
 
-function RunView({ run, onRunChange }: { run: SuggestionRun; onRunChange: (r: SuggestionRun) => void }) {
+function RunView({
+  run,
+  onRunChange,
+  canRetry,
+  onRetry,
+}: {
+  run: SuggestionRun;
+  onRunChange: (r: SuggestionRun) => void;
+  canRetry: boolean;
+  onRetry: () => void;
+}) {
   const { t } = useI18n();
   const [left, setLeft] = useState<number[]>([]);
   const replaceItem = (item: SuggestionItem) =>
@@ -307,7 +338,13 @@ function RunView({ run, onRunChange }: { run: SuggestionRun; onRunChange: (r: Su
         {t("suggest.run.meta", { generator: run.generator, policy: run.candidate_policy, created: run.created_at })}
       </p>
       {run.status === "failed" ? (
-        <p className="error">{t("suggest.run.failedBody", { code: run.failure_code ?? "" })}</p>
+        <>
+          <p className="error">{t("suggest.run.failedBody", { code: run.failure_code ?? "" })}</p>
+          <button type="button" disabled={!canRetry} onClick={onRetry}>
+            {t("suggest.run.retryNew")}
+          </button>
+          <p className="hint">{t("suggest.run.retryNote")}</p>
+        </>
       ) : (
         <p className="hint">{t("suggest.run.limitNote", { candidates: run.candidate_limit })}</p>
       )}
@@ -403,7 +440,7 @@ function ItemView({
           ))}
         </ol>
       </details>
-      {item.stale_reasons.length > 0 ? (
+      {item.state !== "confirmed" && item.stale_reasons.length > 0 ? (
         <ul className="stale-reasons">
           {item.stale_reasons.map((r) => (
             <li key={r}>{t(staleKey[r])}</li>
@@ -417,7 +454,11 @@ function ItemView({
         </div>
       ) : null}
       {item.state === "confirmed" && item.confirmation ? (
-        <p className="notice">{t("suggest.item.confirmed", { link: item.confirmation.link_id })}</p>
+        <p className="notice">
+          {t(item.confirmation.still_current ? "suggest.item.confirmed" : "suggest.item.confirmedSuperseded", {
+            link: item.confirmation.link_id,
+          })}
+        </p>
       ) : null}
       {item.state === "open" && target !== null ? (
         left ? (

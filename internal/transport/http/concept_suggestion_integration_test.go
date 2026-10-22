@@ -131,7 +131,9 @@ func buildSuggestionServer(t *testing.T, dbPath string, sug domain.ConceptSugges
 	datasetSvc := application.NewConceptAnnotationDatasetService(effectiveAnnotationSvc, knowledgeRepo, conceptRepo)
 	qualitySvc := application.NewConceptAnnotationDatasetQualityService(datasetSvc)
 	evaluationSvc := application.NewConceptRetrievalEvaluationServiceWithRegistry(datasetSvc, qualitySvc, conceptSvc,
-		application.NewConceptRetrieverRegistry(application.NewExactSignatureConceptRetriever(), application.NewBM25ConceptRetriever()))
+		application.NewConceptRetrieverRegistry(application.NewExactSignatureConceptRetriever(),
+			application.NewWeightedLexicalConceptRetriever(), application.NewBM25ConceptRetriever()))
+	comparisonSvc := application.NewConceptRetrievalComparisonService(evaluationSvc)
 	handler := transporthttp.NewHandler(
 		application.NewEntryService(entryRepo), application.NewAnalysisService(entryRepo, analysisRepo, nil),
 		application.NewFeedbackService(feedbackRepo), application.NewEffectiveAnalysisService(analysisRepo, feedbackRepo),
@@ -140,6 +142,7 @@ func buildSuggestionServer(t *testing.T, dbPath string, sug domain.ConceptSugges
 		conceptSvc, effectiveAnnotationSvc, datasetSvc,
 		transporthttp.WithAnnotationDatasetQuality(qualitySvc),
 		transporthttp.WithRetrievalEvaluation(evaluationSvc),
+		transporthttp.WithRetrievalComparison(comparisonSvc),
 		transporthttp.WithConceptSuggestions(application.NewConceptSuggestionService(sqlite.NewConceptSuggestionRepository(db), sug)),
 	)
 	srv := httptest.NewServer(handler.Routes())
@@ -664,5 +667,134 @@ func TestConceptSuggestions_InFlightKeyIsNotDuplicated(t *testing.T) {
 	}
 	if f.provider.callCount() != 1 {
 		t.Fatalf("provider calls %d", f.provider.callCount())
+	}
+}
+
+// ---- FLH-097 follow-up regressions ----
+
+// A confirmed item's own SAME is its result, not a staleness reason; the
+// confirmation reports that its event is the CURRENT SAME.
+func TestConceptSuggestions_ConfirmedItemIsNotStaleBecauseOfItsOwnSame(t *testing.T) {
+	f := newSuggestionFixture(t, 2*time.Second)
+	_, _, run := f.generate(t, keyA, f.units[0])
+	_, _, body := f.confirm(t, num(items(run)[0]["id"]), f.c1)
+	it := body["item"].(map[string]any)
+	if it["state"] != "confirmed" || len(it["stale_reasons"].([]any)) != 0 || path(it, "confirmation", "still_current") != true {
+		t.Fatalf("confirmed item %v", it)
+	}
+}
+
+// A replay after a later legitimate correction returns the original historical
+// event, says it is no longer current, and restores nothing.
+func TestConceptSuggestions_ReplayAfterCorrectionIsHistoricalOnly(t *testing.T) {
+	f := newSuggestionFixture(t, 2*time.Second)
+	_, _, run := f.generate(t, keyA, f.units[0])
+	itemID := num(items(run)[0]["id"])
+	_, _, first := f.confirm(t, itemID, f.c1)
+	original := num(first["link"].(map[string]any)["id"])
+	if s, b := doJSON(t, http.MethodPut, f.srv.URL+"/knowledge-units/"+itoa(f.units[0])+"/concept-membership",
+		fmt.Sprintf(`{"concept_id":%d}`, f.c3)); s != http.StatusOK && s != http.StatusCreated {
+		t.Fatalf("reassign %d %v", s, b)
+	}
+	s, hdr, again := f.confirm(t, itemID, f.c1)
+	it := again["item"].(map[string]any)
+	if s != http.StatusCreated || hdr.Get("Idempotency-Replayed") != "true" || num(again["link"].(map[string]any)["id"]) != original ||
+		path(it, "confirmation", "still_current") != false || num(it["current_concept_id"]) != f.c3 ||
+		!strings.Contains(fmt.Sprint(it["stale_reasons"]), "unit_has_current_same") {
+		t.Fatalf("replay after correction %d %v", s, again)
+	}
+	_, m := doJSON(t, http.MethodGet, f.srv.URL+"/knowledge-units/"+itoa(f.units[0])+"/concept-membership", "")
+	var links int
+	f.db.QueryRow(`SELECT COUNT(*) FROM unit_concept_links WHERE unit_id = ?`, f.units[0]).Scan(&links)
+	if num(path(m, "current_membership", "concept_id")) != f.c3 || links != 2 {
+		t.Fatalf("replay changed authority: membership %v, links %d", m, links)
+	}
+}
+
+// Two suggestions for the same unit (two runs): confirming one resolves the
+// unit, and the other is refused as stale instead of reassigning it.
+func TestConceptSuggestions_SecondSuggestionForResolvedUnitIsRefused(t *testing.T) {
+	f := newSuggestionFixture(t, 2*time.Second)
+	_, _, runA := f.generate(t, keyA, f.units[0])
+	f.provider.respond = func(units []fakeSuggestUnit) (int, string) {
+		u := units[0]
+		b, _ := json.Marshal(map[string]any{"suggestions": []any{map[string]any{"unit_id": u.UnitID, "outcome": "suggested",
+			"concept_id": u.Candidates[len(u.Candidates)-1].ConceptID, "reason": "Alternative."}}})
+		return 200, envelope(string(b))
+	}
+	_, _, runB := f.generate(t, keyB, f.units[0])
+	itemB := items(runB)[0]
+	if num(itemB["suggested_concept_id"]) == f.c1 {
+		t.Fatalf("fixture needs a different target in run B: %v", itemB)
+	}
+	if s, _, b := f.confirm(t, num(items(runA)[0]["id"]), f.c1); s != http.StatusCreated {
+		t.Fatalf("confirm A %d %v", s, b)
+	}
+	s, _, body := f.confirm(t, num(itemB["id"]), num(itemB["suggested_concept_id"]))
+	if s != http.StatusConflict || !strings.Contains(fmt.Sprint(body["stale_reasons"]), "unit_has_current_same") {
+		t.Fatalf("confirm B %d %v", s, body)
+	}
+	_, m := doJSON(t, http.MethodGet, f.srv.URL+"/knowledge-units/"+itoa(f.units[0])+"/concept-membership", "")
+	if num(path(m, "current_membership", "concept_id")) != f.c1 {
+		t.Fatalf("membership moved: %v", m)
+	}
+}
+
+// Traces human_same_ai_suggestion through effective annotation, the dataset,
+// the quality report, retrieval evaluation and comparison.
+func TestConceptSuggestions_AnnotationAndEvaluationBoundaries(t *testing.T) {
+	f := newSuggestionFixture(t, 2*time.Second)
+	_, _, run := f.generate(t, keyA, f.units[0])
+	unit := itoa(f.units[0])
+	record := func() map[string]any {
+		_, ds := doJSON(t, http.MethodGet, f.srv.URL+"/annotation-dataset/v1", "")
+		for _, r := range ds["records"].([]any) {
+			if num(path(r, "unit", "id")) == f.units[0] {
+				return r.(map[string]any)
+			}
+		}
+		t.Fatalf("unit missing from dataset %v", ds)
+		return nil
+	}
+
+	// Generation alone: no label, no effective SAME, nothing counted.
+	_, ea := doJSON(t, http.MethodGet, f.srv.URL+"/knowledge-units/"+unit+"/effective-annotation", "")
+	if path(ea, "snapshot", "current_same") != nil {
+		t.Fatalf("effective annotation after generation %v", ea)
+	}
+	if path(record(), "human_labels", "same") != nil {
+		t.Fatal("suggestion became a human label")
+	}
+	_, q := doJSON(t, http.MethodGet, f.srv.URL+"/annotation-dataset/v1/quality", "")
+	if path(q, "label_inventory", "human_same_records") != float64(0) {
+		t.Fatalf("quality after generation %v", q["label_inventory"])
+	}
+
+	// Explicit confirmation: a human SAME with suggestion provenance.
+	_, _, conf := f.confirm(t, num(items(run)[0]["id"]), f.c1)
+	link := num(conf["link"].(map[string]any)["id"])
+	_, ea = doJSON(t, http.MethodGet, f.srv.URL+"/knowledge-units/"+unit+"/effective-annotation", "")
+	decision := path(ea, "snapshot", "current_same", "decision").(map[string]any)
+	var ev map[string]any
+	_ = json.Unmarshal([]byte(decision["evidence"].(string)), &ev)
+	if path(ea, "snapshot", "status") != "resolved" || decision["decision_source"] != "human" || num(decision["id"]) != link ||
+		ev["reason"] != domain.ConceptSuggestionEvidenceReason || num(ev["suggestion_item_id"]) != num(items(run)[0]["id"]) {
+		t.Fatalf("effective annotation after confirmation %v", ea)
+	}
+	if num(path(record(), "human_labels", "same", "event_id")) != link {
+		t.Fatal("dataset human SAME label does not name the confirmation's event")
+	}
+	_, q = doJSON(t, http.MethodGet, f.srv.URL+"/annotation-dataset/v1/quality", "")
+	if q["valid"] != true || path(q, "label_inventory", "human_same_records") != float64(1) {
+		t.Fatalf("quality after confirmation valid=%v %v", q["valid"], q["label_inventory"])
+	}
+	_, e := doJSON(t, http.MethodGet, f.srv.URL+"/retrieval-evaluation/v1", "")
+	if path(e, "evaluation_samples", "human_same_records") != float64(1) || path(e, "evaluation_samples", "eligible_samples") != float64(0) ||
+		path(e, "evaluation_samples", "excluded", "unclassified_human_same_provenance") != float64(1) {
+		t.Fatalf("evaluation %v", e["evaluation_samples"])
+	}
+	_, c := doJSON(t, http.MethodGet, f.srv.URL+"/retrieval-comparison/v1", "")
+	if c["dataset_valid"] != true || path(c, "evaluation_samples", "eligible_samples") != float64(0) {
+		t.Fatalf("comparison %v", c)
 	}
 }

@@ -289,12 +289,16 @@ type SuggestionCandidate struct {
 	Target    string `json:"target"`
 }
 
-// SuggestionConfirmation links a confirmed item to the human SAME event.
+// SuggestionConfirmation links a confirmed item to the human SAME event. It is
+// historical: StillCurrent (derived on read) reports whether that event is the
+// unit's CURRENT SAME now; a later correction makes it false and is never
+// undone by reading or replaying the confirmation.
 type SuggestionConfirmation struct {
-	ID        int64
-	ItemID    int64
-	LinkID    int64
-	CreatedAt time.Time
+	ID           int64
+	ItemID       int64
+	LinkID       int64
+	CreatedAt    time.Time
+	StillCurrent bool
 }
 
 // ConceptSuggestionItem is one unit's stored suggestion plus its derived
