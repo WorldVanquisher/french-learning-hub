@@ -112,6 +112,7 @@ base = "custom" if envr.get("OPENAI_BASE_URL") else "default (public OpenAI API)
 if mode == "summary":
     print(f"analysis:   {ai}" + (" — explicit requests call the provider and may be billed" if ai == "openai" else " — local, no provider call"))
     print(f"extraction: {ex}" + (" — explicit requests call the provider and may be billed" if ex == "openai" else " — off"))
+    print(f"suggestions: {sg}" + (" — explicit requests call the provider and may be billed" if sg == "openai" else " — off"))
     if real:
         print(f"OPENAI_MODEL: set · OPENAI_API_KEY: set · OPENAI_BASE_URL: {base} · timeouts: provider {pt}s < write {wt}s")
     print(f"database:   {data}/app.db")

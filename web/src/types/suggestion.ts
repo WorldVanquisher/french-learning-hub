@@ -36,7 +36,9 @@ export interface SuggestionItem {
   state: SuggestionItemState;
   stale_reasons: SuggestionStaleReason[];
   current_concept_id: number | null;
-  confirmation: { id: number; link_id: number; created_at: string } | null;
+  // Historical attribution; still_current says whether link_id is the unit's
+  // CURRENT SAME now.
+  confirmation: { id: number; link_id: number; created_at: string; still_current: boolean } | null;
   unit: ReviewableUnit | null;
   created_at: string;
 }

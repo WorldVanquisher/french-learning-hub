@@ -1158,6 +1158,10 @@ export const en = {
   "suggest.confirm.unknown": "No clear answer. Re-read the run to see whether the confirmation was recorded; confirming again is safe.",
   "suggest.confirm.stale": "Not recorded: the state changed since the suggestion was made.",
   "suggest.confirm.reread": "Re-read this run",
+  "suggest.notice.foundFailed": "Found the stored result: run #{id} failed. No suggestion was stored.",
+  "suggest.run.retryNew": "Generate again as a new request",
+  "suggest.run.retryNote": "This sends a new request with a new key for the same units. It calls the model again and may be billed again. Re-sending the old key would only return this failed run.",
+  "suggest.item.confirmedSuperseded": "Confirmed earlier as human SAME event #{link}, which is no longer the unit's CURRENT SAME (it was corrected later).",
 } satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

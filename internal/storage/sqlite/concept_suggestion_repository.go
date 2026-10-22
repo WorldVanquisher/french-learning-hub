@@ -134,8 +134,8 @@ func (r *ConceptSuggestionRepository) ConceptMemberExamples(ctx context.Context,
 }
 
 // unitStaleReasons reports what makes a unit not reviewable for the recorded
-// source extraction, plus its current SAME Concept (nil when none).
-func unitStaleReasons(ctx context.Context, q txQuerier, unitID, entryID, sourceExtractionID int64) ([]domain.SuggestionStaleReason, *int64, error) {
+// source extraction, plus its current SAME membership (nil when none).
+func unitStaleReasons(ctx context.Context, q txQuerier, unitID, entryID, sourceExtractionID int64) ([]domain.SuggestionStaleReason, *membership, error) {
 	var reasons []domain.SuggestionStaleReason
 	current, err := currentExtractionID(ctx, q, entryID)
 	if err != nil {
@@ -148,10 +148,7 @@ func unitStaleReasons(ctx context.Context, q txQuerier, unitID, entryID, sourceE
 	if err != nil {
 		return nil, nil, err
 	}
-	var currentConcept *int64
 	if m != nil {
-		cid := m.conceptID
-		currentConcept = &cid
 		reasons = append(reasons, domain.StaleUnitHasCurrentSame)
 	}
 	latest, err := latestUnitJudgment(ctx, q, unitID)
@@ -161,7 +158,7 @@ func unitStaleReasons(ctx context.Context, q txQuerier, unitID, entryID, sourceE
 	if domain.EffectiveUnitInvalid(latest) {
 		reasons = append(reasons, domain.StaleUnitInvalid)
 	}
-	return reasons, currentConcept, nil
+	return reasons, m, nil
 }
 
 // deriveItemState fills an item's derived state from current data.
@@ -170,7 +167,25 @@ func deriveItemState(ctx context.Context, q txQuerier, item *domain.ConceptSugge
 	if err != nil {
 		return err
 	}
-	item.CurrentConceptID = current
+	item.CurrentConceptID = nil
+	if current != nil {
+		cid := current.conceptID
+		item.CurrentConceptID = &cid
+	}
+	if item.Confirmation != nil {
+		// A confirmed item's own SAME is its result, not a staleness reason. A
+		// later correction (another CURRENT SAME event) is still reported.
+		item.Confirmation.StillCurrent = current != nil && current.linkID == item.Confirmation.LinkID
+		if item.Confirmation.StillCurrent {
+			kept := reasons[:0]
+			for _, r := range reasons {
+				if r != domain.StaleUnitHasCurrentSame {
+					kept = append(kept, r)
+				}
+			}
+			reasons = kept
+		}
+	}
 	if item.Outcome == domain.SuggestionSuggested && item.SuggestedConceptID != nil {
 		target := *item.SuggestedConceptID
 		var lifecycle, signature string

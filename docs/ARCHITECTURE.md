@@ -1467,8 +1467,13 @@ the provider):
 - A UUID `Idempotency-Key` is required. A committed run under the key is the
   answer for that key: the same `unit_ids` replay it (header
   `Idempotency-Replayed: true`, no provider call, even when the suggester is
-  now disabled); different `unit_ids` are `409`. A second request under a key
-  that this server is still generating is `409`.
+  now disabled), **including a failed run**; different `unit_ids` are `409`.
+  A second request under a key that this server is still generating is `409`.
+  The in-flight slot is taken **before** the key is looked up and released on
+  every return, so a same-key request can neither overtake a committing one
+  into a second provider call nor stay "in progress" past its own handler
+  (FLH-097 follow-up). The slot is per process and in memory; a restart clears
+  it.
 - Every unit must be reviewable **now** (current extraction, no CURRENT SAME,
   not INVALID); otherwise `422` names it. Nothing is dropped silently.
 - **Candidates** (`concept_suggestion_candidates_v1`): from the non-retired
@@ -1493,7 +1498,17 @@ the provider):
 - **Failure:** a timeout (`504`), provider error (`502`) or invalid output
   (`502`) stores a **failed run** receipt (code only, no provider body) and
   returns it; no item and no semantic row is written. Retrying means a new,
-  explicit request with a new key.
+  explicit request with a new key (**Generate again as a new request**).
+- **When a run is stored.** After the provider answers (or fails on its own
+  side), the run is committed with a context detached from the request's
+  cancellation (bounded to 10 s), so a client that disconnects does not
+  discard a possibly billed result. Nothing is stored when the request is
+  canceled **during** the provider call (outcome unknown on the provider's
+  side), when the server stops before committing, or when the commit itself
+  fails (`500`); the key then stays open and a same-key resend may call the
+  provider again. Exactly-once provider execution is not guaranteed across a
+  crash, a lost commit or two server processes on one database; at most one run
+  is ever stored per key.
 
 **Storage** (migration `013`): `concept_suggestion_runs` (key, request unit
 ids, status, failure code, generator, candidate policy and limit, whether the
@@ -1521,6 +1536,11 @@ inspectable whatever changes later.
   (`UNIQUE(item_id)`, `UNIQUE(link_id)`).
 - It never reassigns an already-resolved unit; correction stays with the
   existing REASSIGN workflow.
+- A confirmation is historical attribution. Its `still_current` (derived on
+  read) says whether its event is the unit's CURRENT SAME now. A confirmed
+  item whose own SAME is current lists no stale reason; after a later
+  correction, a replay returns the original event with `still_current: false`
+  and restores nothing.
 - The event's evidence is `{"reason":"human_same_ai_suggestion",
   "suggestion_item_id", "suggestion_run_id", "generator", "resolver"}`. It is a
   human decision with AI-assisted provenance: the M11 dataset includes it as
@@ -3230,6 +3250,7 @@ has `id`, `run_id`, `ordinal`, `unit_id`, `entry_id`, `source_extraction_id`,
 `outcome` (`suggested`, `no_suitable_candidate`, `uncertain`,
 `no_candidates`), `suggested_concept_id`, `reason`, `candidates` (`concept_id`,
 `rank`, `source`, `signature`, `target`), `state`, `stale_reasons`,
-`current_concept_id`, `confirmation` (`id`, `link_id`, `created_at` or null),
+`current_concept_id`, `confirmation` (`id`, `link_id`, `created_at`,
+`still_current`, or null),
 `unit` (the reviewable-unit shape) and `created_at`. The public demo boundary
 does not expose these routes.
