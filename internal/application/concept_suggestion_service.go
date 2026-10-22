@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"french-learning-app/internal/domain"
 )
@@ -69,6 +70,16 @@ func (s *ConceptSuggestionService) Generate(ctx context.Context, operationID str
 	if err := domain.ValidateSuggestionUnitIDs(unitIDs); err != nil {
 		return nil, false, err
 	}
+	// Take the in-flight slot BEFORE looking the key up. Looking up first let a
+	// request read "not committed", wait while an earlier request under the key
+	// committed and released the slot, and then call the provider a second time.
+	// The slot is released on every return (and on panic), so a request can never
+	// stay "in progress" past its own handler; it is per process and in memory,
+	// so a restart clears it.
+	if _, busy := s.inFlight.LoadOrStore(operationID, struct{}{}); busy {
+		return nil, false, domain.ErrSuggestionInProgress
+	}
+	defer s.inFlight.Delete(operationID)
 	prior, err := s.repo.GetSuggestionRunByOperation(ctx, operationID)
 	if err == nil {
 		if !domain.SameUnitIDs(prior.RequestUnitIDs, unitIDs) {
@@ -82,10 +93,6 @@ func (s *ConceptSuggestionService) Generate(ctx context.Context, operationID str
 	if s.suggester == nil {
 		return nil, false, domain.ErrSuggesterDisabled
 	}
-	if _, busy := s.inFlight.LoadOrStore(operationID, struct{}{}); busy {
-		return nil, false, domain.ErrSuggestionInProgress
-	}
-	defer s.inFlight.Delete(operationID)
 
 	plan, err := s.prepare(ctx, unitIDs)
 	if err != nil {
@@ -104,9 +111,15 @@ func (s *ConceptSuggestionService) Generate(ctx context.Context, operationID str
 			got, perr = domain.ValidateSuggestionProposals(plan.request, got)
 		}
 		if perr != nil {
+			if errors.Is(ctx.Err(), context.Canceled) && !errors.Is(perr, domain.ErrValidation) {
+				// The client went away during the call: nothing is known about the
+				// provider's side, so nothing is stored and the key stays open. A
+				// resend under the key may call the provider again.
+				return nil, false, perr
+			}
 			code := failureCode(perr)
 			run.Status, run.FailureCode = domain.SuggestionRunFailed, &code
-			stored, replay, cerr := s.repo.CommitSuggestionRun(ctx, run)
+			stored, replay, cerr := s.commit(ctx, run)
 			if cerr != nil {
 				return nil, false, cerr
 			}
@@ -132,6 +145,19 @@ func (s *ConceptSuggestionService) Generate(ctx context.Context, operationID str
 		}
 		run.Items = append(run.Items, item)
 	}
+	return s.commit(ctx, run)
+}
+
+// commitTimeout bounds storing a run after the provider has answered.
+const commitTimeout = 10 * time.Second
+
+// commit stores a run with a context detached from the request's cancellation,
+// so a client that disconnects after the provider answered does not discard a
+// (possibly billed) result: it is stored under the key and found by lookup or
+// same-key replay. The write is still bounded by commitTimeout.
+func (s *ConceptSuggestionService) commit(ctx context.Context, run domain.NewSuggestionRun) (*domain.ConceptSuggestionRun, bool, error) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), commitTimeout)
+	defer cancel()
 	return s.repo.CommitSuggestionRun(ctx, run)
 }
 

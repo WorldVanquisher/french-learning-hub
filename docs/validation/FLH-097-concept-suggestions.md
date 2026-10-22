@@ -3,6 +3,11 @@
 Owner: NAS Claude Code. Same working tree as the uncommitted FLH-092 to FLH-095
 work, which is kept.
 
+> Follow-up note: the statement above described the working tree when this
+> report was written. FLH-092 to FLH-095 were later merged through PR119; see
+> [FLH-097 follow-up](FLH-097-followup-correctness.md), which also records
+> corrections found after merge.
+
 **Status: implemented. Validated with authored synthetic content, isolated
 temporary databases, a local fake provider, Go tests and jsdom tests only.**
 - **No paid provider call** was made, so real-model suggestion quality is

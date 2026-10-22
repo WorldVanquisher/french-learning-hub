@@ -48,10 +48,13 @@ type suggestionCandidateResponse struct {
 	Target    string `json:"target"`
 }
 
+// suggestionConfirmationResponse is historical attribution. still_current
+// says whether link_id is the unit's CURRENT SAME now.
 type suggestionConfirmationResponse struct {
-	ID        int64  `json:"id"`
-	LinkID    int64  `json:"link_id"`
-	CreatedAt string `json:"created_at"`
+	ID           int64  `json:"id"`
+	LinkID       int64  `json:"link_id"`
+	CreatedAt    string `json:"created_at"`
+	StillCurrent bool   `json:"still_current"`
 }
 
 type suggestionItemResponse struct {
@@ -106,6 +109,7 @@ func toSuggestionItemResponse(it domain.ConceptSuggestionItem) suggestionItemRes
 	if it.Confirmation != nil {
 		out.Confirmation = &suggestionConfirmationResponse{
 			ID: it.Confirmation.ID, LinkID: it.Confirmation.LinkID, CreatedAt: it.Confirmation.CreatedAt.Format(time.RFC3339Nano),
+			StillCurrent: it.Confirmation.StillCurrent,
 		}
 	}
 	if it.Unit != nil {

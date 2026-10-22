@@ -1072,4 +1072,8 @@ export const zhCN: Record<MessageKey, string> = {
   "suggest.confirm.unknown": "没有明确答复。请重新读取此运行，查看确认是否已记录；再次确认是安全的。",
   "suggest.confirm.stale": "未记录：自建议生成以来状态已改变。",
   "suggest.confirm.reread": "重新读取此运行",
+  "suggest.notice.foundFailed": "找到已存储的结果：运行 #{id} 失败。没有存储任何建议。",
+  "suggest.run.retryNew": "作为新请求重新生成",
+  "suggest.run.retryNote": "这会为相同的单元发送一个使用新键的新请求。它会再次调用模型，可能再次产生费用。重新发送旧键只会返回这次失败的运行。",
+  "suggest.item.confirmedSuperseded": "此前已确认为人工 SAME 事件 #{link}，但它已不再是该单元的 CURRENT SAME（之后已被更正）。",
 };

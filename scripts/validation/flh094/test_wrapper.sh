@@ -91,7 +91,22 @@ good "$WORK/defaults.env"; sed -i '/^OPENAI_TIMEOUT=/d; /^HTTP_WRITE_TIMEOUT=/d'
 run "the default timeouts (8 s < 10 s) are accepted" 0 "provider 8s < write 10s" "$WORK/defaults.env" check
 good "$WORK/local.env"; sed -i 's/^AI_PROVIDER=.*/AI_PROVIDER=rule-based/; s/^EXTRACTOR_PROVIDER=.*/EXTRACTOR_PROVIDER=disabled/; /^OPENAI_/d' "$WORK/local.env"
 run "explicitly local providers are accepted and labelled" 0 "analysis:   rule-based — local" "$WORK/local.env" check
+# FLH-097: SUGGESTION_PROVIDER accepts only disabled or openai, and openai needs
+# the same key and model as the other providers.
+good "$WORK/badsuggest.env"; echo "SUGGESTION_PROVIDER=anthropic" >> "$WORK/badsuggest.env"
+run "an unknown suggestion provider is refused" 2 "SUGGESTION_PROVIDER must be openai or disabled" "$WORK/badsuggest.env" check
+good "$WORK/badsuggest-up.env"; echo "SUGGESTION_PROVIDER=anthropic" >> "$WORK/badsuggest-up.env"
+run "up with an unknown suggestion provider is refused" 2 "SUGGESTION_PROVIDER must be openai or disabled" "$WORK/badsuggest-up.env" up
+good "$WORK/suggestnokey.env"
+sed -i 's/^AI_PROVIDER=.*/AI_PROVIDER=rule-based/; s/^EXTRACTOR_PROVIDER=.*/EXTRACTOR_PROVIDER=disabled/; /^OPENAI_API_KEY=/d' "$WORK/suggestnokey.env"
+echo "SUGGESTION_PROVIDER=openai" >> "$WORK/suggestnokey.env"
+run "openai suggestions alone still require the key" 2 "OPENAI_API_KEY must be set" "$WORK/suggestnokey.env" check
 if grep -q "^docker compose .* \(up\|start\|stop\|restart\)" "$WORK/shim.log" 2> /dev/null; then fail "refusals started or stopped nothing"; else pass "refusals started or stopped nothing"; fi
+run "suggestions default to disabled when unset" 0 "suggestions: disabled — off" "$WORK/defaults.env" check
+good "$WORK/suggestoff.env"; echo "SUGGESTION_PROVIDER=disabled" >> "$WORK/suggestoff.env"
+run "explicitly disabled suggestions are accepted" 0 "suggestions: disabled — off" "$WORK/suggestoff.env" check
+good "$WORK/suggeston.env"; echo "SUGGESTION_PROVIDER=openai" >> "$WORK/suggeston.env"
+run "openai suggestions are accepted and labelled as billable" 0 "suggestions: openai — explicit requests call the provider" "$WORK/suggeston.env" check
 
 # ---- A valid configuration; inherited shell variables must not override it. ----
 good "$WORK/daily.env"
