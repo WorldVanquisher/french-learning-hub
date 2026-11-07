@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiError,
   NetworkError,
@@ -63,7 +63,24 @@ function serverDetail(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-export function ConceptSuggestions() {
+// Navigation out of the suggestions view. Both only open read views; neither
+// records anything.
+export interface SuggestionLinks {
+  // Opens the unit's original record in Learning Records.
+  onOpenRecord?: (entryId: number) => void;
+  // Opens a Concept in the Knowledge Library.
+  onOpenConcept?: (conceptId: number) => void;
+}
+
+export function ConceptSuggestions({
+  refreshEpoch = 0,
+  onOpenRecord,
+  onOpenConcept,
+}: {
+  // Changes when the reader returns to this view: the queue, the run list and
+  // the open run are read again, because decisions may have changed elsewhere.
+  refreshEpoch?: number;
+} & SuggestionLinks = {}) {
   const { t } = useI18n();
   const [overview, setOverview] = useState<SuggestionOverview | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
@@ -104,6 +121,34 @@ export function ConceptSuggestions() {
       setNotice({ tone: "error", text: msg("suggest.storage.unreadable") });
     }
   }, [refreshOverview]);
+
+  // On return from another view, re-read what may have changed there. The
+  // selection keeps only units that are still awaiting review; the open run is
+  // re-read so its states (open, confirmed, stale) are current.
+  const firstEpoch = useRef(refreshEpoch);
+  const openRunId = run?.id ?? null;
+  useEffect(() => {
+    if (refreshEpoch === firstEpoch.current) return;
+    firstEpoch.current = refreshEpoch;
+    void refreshOverview();
+    void (async () => {
+      try {
+        const page = await listReviewableUnitsPage({ limit: QUEUE_PAGE });
+        setQueue(page.reviewable_units);
+        setCursor(page.next_cursor);
+        const still = new Set(page.reviewable_units.map((u) => u.unit_id));
+        setSelected((s) => s.filter((id) => still.has(id)));
+      } catch (e) {
+        setNotice({ tone: "error", text: serverDetail(e) });
+      }
+    })();
+    if (openRunId !== null) {
+      getSuggestionRun(openRunId)
+        .then(setRun)
+        .catch((e: unknown) => setNotice({ tone: "error", text: serverDetail(e) }));
+    }
+    // Only a new epoch triggers this; the run ID is read at that moment.
+  }, [refreshEpoch]);
 
   const loadMore = async () => {
     if (!cursor) return;
@@ -243,6 +288,11 @@ export function ConceptSuggestions() {
                   <span className="french">{u.canonical}</span>{" "}
                   <span className="muted">{t("suggest.queue.unitMeta", { id: u.unit_id, entry: u.entry_id ?? "—" })}</span>
                 </label>
+                {onOpenRecord && u.entry_id !== undefined ? (
+                  <button type="button" className="link-button" onClick={() => onOpenRecord(u.entry_id!)}>
+                    {t("suggest.openRecord", { id: u.entry_id })}
+                  </button>
+                ) : null}
                 <div className="french statement">
                   <StoredText primary={u.statement} variants={u.statements} kind="statement" />
                 </div>
@@ -292,6 +342,8 @@ export function ConceptSuggestions() {
           onRunChange={setRun}
           canRetry={enabled && !pending && !sending}
           onRetry={() => void startNew(run.unit_ids)}
+          onOpenRecord={onOpenRecord}
+          onOpenConcept={onOpenConcept}
         />
       ) : null}
 
@@ -320,12 +372,14 @@ function RunView({
   onRunChange,
   canRetry,
   onRetry,
+  onOpenRecord,
+  onOpenConcept,
 }: {
   run: SuggestionRun;
   onRunChange: (r: SuggestionRun) => void;
   canRetry: boolean;
   onRetry: () => void;
-}) {
+} & SuggestionLinks) {
   const { t } = useI18n();
   const [left, setLeft] = useState<number[]>([]);
   const replaceItem = (item: SuggestionItem) =>
@@ -346,7 +400,10 @@ function RunView({
           <p className="hint">{t("suggest.run.retryNote")}</p>
         </>
       ) : (
-        <p className="hint">{t("suggest.run.limitNote", { candidates: run.candidate_limit })}</p>
+        <>
+          <p className="notice" role="note">{t("suggest.run.advisory")}</p>
+          <p className="hint">{t("suggest.run.limitNote", { candidates: run.candidate_limit })}</p>
+        </>
       )}
       {(run.items ?? []).map((item) => (
         <ItemView
@@ -357,6 +414,8 @@ function RunView({
           onShow={() => setLeft((l) => l.filter((id) => id !== item.id))}
           onItem={replaceItem}
           onReread={reread}
+          onOpenRecord={onOpenRecord}
+          onOpenConcept={onOpenConcept}
         />
       ))}
     </section>
@@ -370,6 +429,8 @@ function ItemView({
   onShow,
   onItem,
   onReread,
+  onOpenRecord,
+  onOpenConcept,
 }: {
   item: SuggestionItem;
   left: boolean;
@@ -377,7 +438,7 @@ function ItemView({
   onShow: () => void;
   onItem: (item: SuggestionItem) => void;
   onReread: () => Promise<void>;
-}) {
+} & SuggestionLinks) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<Notice>(null);
@@ -412,6 +473,13 @@ function ItemView({
   return (
     <article className={`suggest-item suggest-${item.state}`} aria-label={t("suggest.item.label", { id: item.unit_id })}>
       {item.unit ? <UnitCard unit={item.unit} /> : null}
+      {onOpenRecord ? (
+        <p className="hint">
+          <button type="button" className="link-button" onClick={() => onOpenRecord(item.entry_id)}>
+            {t("suggest.openRecord", { id: item.entry_id })}
+          </button>
+        </p>
+      ) : null}
       <div className="field-row">
         <span className="label">{t("suggest.item.outcome")}</span>
         <span className="value">{t(outcomeKey[item.outcome])}</span>
@@ -454,16 +522,27 @@ function ItemView({
         </div>
       ) : null}
       {item.state === "confirmed" && item.confirmation ? (
-        <p className="notice">
-          {t(item.confirmation.still_current ? "suggest.item.confirmed" : "suggest.item.confirmedSuperseded", {
-            link: item.confirmation.link_id,
-          })}
+        <>
+          <p className="notice">
+            {t(item.confirmation.still_current ? "suggest.item.confirmed" : "suggest.item.confirmedSuperseded", {
+              link: item.confirmation.link_id,
+            })}
+          </p>
+          {item.confirmation.still_current ? <p className="hint">{t("suggest.item.confirmedHistory")}</p> : null}
+        </>
+      ) : null}
+      {item.current_concept_id !== null && onOpenConcept ? (
+        <p className="hint">
+          {t("suggest.item.currentConcept", { id: item.current_concept_id })}{" "}
+          <button type="button" className="ghost" onClick={() => onOpenConcept(item.current_concept_id!)}>
+            {t("unitLinks.openConcept", { id: item.current_concept_id })}
+          </button>
         </p>
       ) : null}
       {item.state === "open" && target !== null ? (
         left ? (
           <p className="muted">
-            {t("suggest.item.left")}{" "}
+            <span>{t("suggest.item.left")}</span> <span>{t("suggest.item.leftNote")}</span>{" "}
             <button type="button" onClick={onShow}>{t("suggest.item.showAgain")}</button>
           </p>
         ) : (

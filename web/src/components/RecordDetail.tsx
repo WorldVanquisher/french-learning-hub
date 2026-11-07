@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import type { Analysis, EffectiveAnalysis, Entry } from "../types/learning";
@@ -7,6 +7,8 @@ import { AnalysisRequest } from "./AnalysisRequest";
 import type { RefreshState } from "./ExplicitAction";
 import { ExtractionPanel } from "./ExtractionPanel";
 import { FeedbackPanel } from "./FeedbackPanel";
+import { RecordStage } from "./RecordStage";
+import { deriveRecordStage, type AnalysisFacts, type ExtractionFacts } from "./recordStage";
 import { recordHeadingId, type UnitTarget } from "../navigation";
 import { useI18n } from "../i18n";
 
@@ -45,6 +47,7 @@ export function RecordDetail({
   onRecordChanged,
   returnEpoch = 0,
   onNavigateToUnit,
+  onOpenConcept,
 }: {
   entryId: number;
   onBack: () => void;
@@ -52,6 +55,7 @@ export function RecordDetail({
   // Changes when the reader returns from Concept Review or the Inspector.
   returnEpoch?: number;
   onNavigateToUnit?: (target: UnitTarget) => void;
+  onOpenConcept?: (conceptId: number, from: UnitTarget) => void;
 }) {
   const { t } = useI18n();
   const [entry, setEntry] = useState<Load<Entry>>({ status: "loading" });
@@ -74,6 +78,12 @@ export function RecordDetail({
   const entryRef = useRef(entryId);
   entryRef.current = entryId;
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // What the extraction panel read, for the stage summary.
+  const [extractionFacts, setExtractionFacts] = useState<ExtractionFacts>({ status: "loading" });
+  const keepExtractionFacts = useCallback((facts: ExtractionFacts) => setExtractionFacts(facts), []);
+  // The latest version's effective resolution when another version is selected
+  // (otherwise the selected interpretation already is the latest one).
+  const [latestEffective, setLatestEffective] = useState<Load<EffectiveAnalysis> | null>(null);
 
   // Move focus to the detail heading so keyboard and screen-reader users land on
   // the record they opened.
@@ -147,6 +157,41 @@ export function RecordDetail({
   const selected = analysisList.find((a) => a.id === selectedAnalysisId);
   const anyError = entry.status === "error" || analyses.status === "error" || effective.status === "error";
 
+  const latestId = latest?.id ?? null;
+  const latestIsSelected = latestId !== null && latestId === selectedAnalysisId;
+  // The latest interpretation read while it was selected is kept, so selecting
+  // or retrying a historical version never re-reads the latest one.
+  useEffect(() => {
+    if (effective.status === "ready" && effective.data.analysis_id === latestId) setLatestEffective(effective);
+  }, [effective, latestId]);
+  const latestCached = latestEffective?.status === "ready" && latestEffective.data.analysis_id === latestId;
+  useEffect(() => {
+    if (latestId === null || latestIsSelected || latestCached) return;
+    let active = true;
+    setLatestEffective({ status: "loading" });
+    api.getEffectiveAnalysis(latestId)
+      .then((data) => active && setLatestEffective({ status: "ready", data }))
+      .catch((error: unknown) => active && setLatestEffective({ status: "error", message: describeError(error) }));
+    return () => {
+      active = false;
+    };
+  }, [latestId, latestIsSelected, latestCached]);
+
+  const latestLoad = latestIsSelected ? effective : latestEffective;
+  const analysisFacts: AnalysisFacts =
+    analyses.status === "loading"
+      ? { status: "loading" }
+      : analyses.status === "error"
+        ? { status: "unknown" }
+        : !latest
+          ? { status: "ready", latest: null }
+          : latestLoad?.status === "error"
+            ? { status: "unknown" }
+            : latestLoad?.status !== "ready" || latestLoad.data.analysis_id !== latest.id
+              ? { status: "loading" }
+              : { status: "ready", latest: { version: latest.version, resolution: latestLoad.data.resolution } };
+  const stage = deriveRecordStage(analysisFacts, extractionFacts);
+
   // A confirmed or uncertain analysis request re-reads the record, which selects
   // the latest version; a request the server rejected leaves the selection alone.
   const analysisAction = (
@@ -192,6 +237,8 @@ export function RecordDetail({
         {t("record.heading", { id: entryId })}
       </h2>
 
+      <RecordStage entryId={entryId} stage={stage} onNavigateToUnit={onNavigateToUnit} />
+
       <section className="panel" aria-label={t("record.original")}>
         <h2>{t("record.original")}</h2>
         {entry.status === "loading" ? (
@@ -214,6 +261,7 @@ export function RecordDetail({
 
       <section className="panel" aria-label={t("record.analyses")}>
         <h2>{t("record.analyses")}</h2>
+        <p className="hint">{t("record.analysesPurpose")}</p>
         {analyses.status === "loading" ? (
           <p className="value">{t("record.analysesLoading")}</p>
         ) : analyses.status === "error" ? (
@@ -297,6 +345,8 @@ export function RecordDetail({
         latestVersion={latest?.version ?? null}
         returnEpoch={returnEpoch}
         onNavigateToUnit={onNavigateToUnit}
+        onOpenConcept={onOpenConcept}
+        onFacts={keepExtractionFacts}
       />
     </main>
   );

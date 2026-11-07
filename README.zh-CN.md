@@ -48,6 +48,8 @@ Concept 判断——作为独立的、版本化或只追加的记录保存。当
   旧记录仍可阅读，未记录语言时会明确标注。反馈会记录您审阅过的语言，并可分别更正每种语言。
 - 为显式选择的一小批可审阅单元请求 **AI 辅助的概念建议**（可选，`SUGGESTION_PROVIDER`）。模型只会从有限的候选列表中提议
   已有概念并给出简短理由；建议作为参考证据存储，在您逐条确认之前不会改变任何内容。没有批量接受。
+- 通过**阶段摘要**（分析 → 提取 → 概念决定）跟踪每条学习记录，并给出唯一的下一步；摘要由服务器的当前记录推导。
+  可以在记录、已归入单元的 Concept、它们的来源记录和 AI 建议之间来回跳转，而不丢失当前位置。
 - 在 **Concept Review** 工作台中审核单元：SAME、NEW CONCEPT、BROADER、NARROWER、RELATED、DISTINCT 与
   INVALID 判断，决定前可只读查看每个候选的当前支持证据及其背后的原始问题，保留只追加的历史和显式更正（也可在记录的单元查看页中更正）；DISTINCT 与关系类请求在响应丢失时可幂等恢复。
 - 在只读的 **Knowledge Library** 中检索和浏览已整理的 Concept：以平实的语言显示状态，并能从每个单元链接到
@@ -170,7 +172,7 @@ Knowledge Library 在 Linux 上的验收和在 macOS 真实浏览器中的演练
 | [docs/DEMO.md](docs/DEMO.md) | 合成数据的 Knowledge Library 演示 |
 | [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | 可选语义检索：配置、索引操作、故障恢复、Go 代码导读 |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker 发布、备份、恢复、升级、浏览器边界设置 |
-| [docs/DAILY_USE.md](docs/DAILY_USE.md) | 使用真实提供方的私人日常使用：设置文件、启动/停止、隧道、哪些步骤调用模型、备份/恢复 |
+| [docs/DAILY_USE.md](docs/DAILY_USE.md) | 使用真实提供方的私人日常使用：设置文件、启动/停止、隧道、哪些步骤调用模型、日常流程、备份/恢复、升级与健康检查 |
 | [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | 只读公开演示的 AWS 运维手册：单台 EC2，通过 Session Manager 私下预览；可选的公开 HTTPS 入口已准备、尚未启用（FLH-088） |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 系统如何工作；附录 A 为 HTTP API 参考 |
 | [web/README.md](web/README.md) | 工作台各视图与标注行为 |

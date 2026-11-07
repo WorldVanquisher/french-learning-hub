@@ -821,3 +821,15 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .suggestions .muted { color: var(--muted); }
 .suggestions .error { color: var(--invalid); }
 .suggestions .notice { color: var(--same); }
+
+/* Daily workflow v1.0 RC: record stage summary and cross-view return banner. */
+.record-stage .stage-steps { margin: 0.5rem 0; padding-left: 0; list-style: none; display: grid; gap: 0.5rem; }
+.record-stage .stage-step { border-left: 3px solid var(--border-strong); padding-left: 0.6rem; }
+.record-stage .stage-step.stage-done { border-left-color: var(--same); }
+.record-stage .stage-step.stage-pending { border-left-color: #175cd3; }
+.record-stage .stage-step.stage-blocked { border-left-color: #b54708; }
+.tag.stage-tag-done { color: var(--same); border-color: var(--same); }
+.tag.stage-tag-pending { color: #175cd3; border-color: #175cd3; }
+.tag.stage-tag-blocked { color: #b54708; border-color: #b54708; }
+.tag.stage-tag-unknown { color: var(--muted); border-color: var(--border-strong); }
+.unit-links { flex-wrap: wrap; }

@@ -60,11 +60,18 @@ export const RECORD_SEARCH_MAX = 200;
 export function RecordsBrowser({
   returnEpoch = 0,
   onNavigateToUnit,
+  onOpenConcept,
+  openRequest = null,
 }: {
   // Changes when the reader returns from another workbench view.
   returnEpoch?: number;
   // Opens an extracted unit in Concept Review or the Inspector.
   onNavigateToUnit?: (target: UnitTarget) => void;
+  // Opens the Concept a decided unit is filed under, in the Knowledge Library.
+  onOpenConcept?: (conceptId: number, from: UnitTarget) => void;
+  // A record another view asked to open (e.g. from a Concept's source). The
+  // nonce makes a repeated request for the same record open it again.
+  openRequest?: { entryId: number; nonce: number } | null;
 } = {}) {
   const { t, tp, status } = useI18n();
   const [filter, setFilter] = useState<StateFilter>("all");
@@ -193,6 +200,14 @@ export function RecordsBrowser({
     setOpenEntryId(entryId);
   }, []);
 
+  // Opening a record from another view uses the same path as the list's Open
+  // button, so the list, filters and search stay as they were.
+  const openNonce = openRequest?.nonce ?? null;
+  const openEntry = openRequest?.entryId ?? null;
+  useEffect(() => {
+    if (openNonce !== null && openEntry !== null) openRecord(openEntry);
+  }, [openNonce, openEntry, openRecord]);
+
   // Returning from a detail moves focus back to the record's Open button, which
   // also scrolls the preserved list back to where the reader left it.
   useEffect(() => {
@@ -211,6 +226,7 @@ export function RecordsBrowser({
           onRecordChanged={refreshRecord}
           returnEpoch={returnEpoch}
           onNavigateToUnit={onNavigateToUnit}
+          onOpenConcept={onOpenConcept}
         />
       ) : null}
 

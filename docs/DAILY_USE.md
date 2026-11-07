@@ -113,7 +113,7 @@ bash scripts/daily/flh-daily.sh restart
 
 - **`up`:** prints `ready at http://127.0.0.1:8080/` and the tunnel command.
 - **Rebuilding:** run `up` again after updating the checkout. **Back up first**:
-  a newer image may migrate the database (see Section 5).
+  a newer image may migrate the database (see Section 6).
 - **Same container as plain Compose:** this is the Compose project from
   `compose.yaml` (`french-learning-hub`), so `docker compose ps` shows the same
   container.
@@ -145,7 +145,8 @@ Then open `http://127.0.0.1:8080/`.
 | 4. **Request extraction…** → **Send to the extraction provider** | **Yes**, once, `EXTRACTOR_PROVIDER` | Refused before any call when the record has no analysis or its latest analysis was rejected. Otherwise a new extraction version with **zero or more** units, provenance `openai:<your model>:knowledge_extraction_v2`, each statement in English and Chinese from the same call |
 | 5. **Concept Review**: SAME, NEW CONCEPT, … | **No** | Only your explicit decision is recorded. Nothing is filed automatically |
 | 6. **Concept Review → AI suggestions** → select at most 10 units → **Generate suggestions** | **Yes**, once per request, `SUGGESTION_PROVIDER` (optional, default `disabled`) | A stored suggestion run, provenance `openai:<your model>:concept_suggestion_v1`: for each unit an existing Concept from at most 5 candidates, *no suitable candidate* or *uncertain*, with a short reason. Nothing is filed. A unit with no candidate is not sent |
-| 7. **Confirm SAME to Concept #n** on one suggestion | **No** | A human SAME, recorded only if the unit and Concept are still in the state the suggestion saw; otherwise it is refused as stale. **Leave unused** records nothing |
+| 7. **Confirm SAME to Concept #n** on one suggestion | **No** | A human SAME, recorded only if the unit and Concept are still in the state the suggestion saw; otherwise it is refused as stale. **Leave unused** records nothing: the item stays open and it is not DISTINCT or any other label |
+| 8. Any **Open …** / **← Back to …** link between views | **No** | Opens a read-only view; nothing is recorded |
 
 Suggestion requests use more tokens than one analysis (up to 10 units and 5
 candidates each), so allow `OPENAI_TIMEOUT` headroom as for extraction.
@@ -156,7 +157,52 @@ its check or explicit resend controls; the server shows whether a new version
 was stored. Each analysis or extraction request may be billed by your
 provider.
 
-## 5. Backup and restore [NAS]
+## 5. Where a record stands, and what to do next
+
+Every record detail starts with **Where this record stands**. It is read from
+the server's current records each time the record is shown; nothing in it is
+stored.
+
+| Step | What it is | When it is done |
+|---|---|---|
+| 1. **Analysis** | Describes and classifies your question (category and explanation). It is **not** knowledge yet | You accepted or corrected the latest version |
+| 2. **Extraction** | Produces the knowledge statements (**units**). The units, not the analysis, are what you file | A current extraction exists (zero units is a valid result) |
+| 3. **Concept decisions** | Your explicit SAME / NEW CONCEPT (files the unit) or INVALID (sets it aside) per unit | No current unit awaits review |
+
+The **Next:** line names one action:
+
+| Next says | Do this |
+|---|---|
+| Request analysis below | **Request analysis…** (one provider call) |
+| Review analysis vN below | **Accept**, **Correct** or **Reject**, then request extraction. Extraction is allowed without review, but it then uses an unchecked interpretation |
+| The latest analysis was rejected | Request a new analysis; extraction is refused until then |
+| Request extraction below | **Request extraction…** (one provider call) |
+| Nothing to file: extraction vN found no knowledge statements | Nothing; request another extraction only if you expected units |
+| N of M units await a decision | **Open unit #N in Concept Review**, or select those units under **AI suggestions** |
+| Nothing is left to decide | Done. Each filed unit says **Filed under Concept #N (CURRENT SAME …)** and links to it |
+
+**Moving between views without losing your place:**
+- **Open Concept #N in Knowledge Library** on a filed unit (or in a reviewed
+  unit's inspection) opens that Concept.
+- On the Concept, **View source record #N** shows the unit's original question.
+  **Open record #N in Learning Records** opens that record.
+- An AI suggestion offers **Open record #N** and, once the unit is filed,
+  **Open Concept #N**.
+- The **← Back to …** banner returns to the record, AI suggestions or the
+  library exactly as you left them. Leaving AI suggestions keeps the open run;
+  coming back re-reads it.
+
+**Three distinctions to keep in mind:**
+- **A suggestion is advisory.** Generating suggestions records nothing. Only
+  **Confirm SAME** on one item records a human SAME, after the server re-checks
+  the state.
+- **A confirmed SAME can later become history.** The unit's CURRENT SAME is
+  what counts now. A later correction moves it, and the earlier decision stays
+  visible as history.
+- **"No suitable candidate"** applies only to the at most 5 candidates the
+  model was shown. Another Concept may still fit.
+
+## 6. Backup and restore [NAS]
 
 ```bash
 bash scripts/daily/flh-daily.sh backup
@@ -188,23 +234,73 @@ bash scripts/daily/flh-daily.sh restore <FLH_DATA_DIR>.backups/flh-<UTC time>
 A checksum or integrity failure changes no data, but the service stays stopped
 until you run `start`. After a restore, check the records you expect.
 
-## 6. Shortest real-question walkthrough
+### Health check [NAS]
+
+```bash
+bash scripts/daily/flh-daily.sh status          # settings summary + "(healthy)" in docker compose ps
+curl -fsS http://127.0.0.1:8080/healthz         # {"status":"ok"}: the process answers
+curl -fsS http://127.0.0.1:8080/readyz          # {"status":"ready"}: SQLite is reachable
+```
+
+Use your `FLH_HOST_PORT` instead of `8080`. `up`, `start`, `restart`, `backup`
+and `restore` already wait for the container's own `/readyz` healthcheck.
+
+### Upgrade [NAS]
+
+Migrations are forward-only (RELEASE.md, **Upgrades and migration rollback
+limits**). Always back up first:
+
+```bash
+bash scripts/daily/flh-daily.sh backup          # note the printed backup directory
+# update the checkout to the new version (your own Git step)
+bash scripts/daily/flh-daily.sh check
+bash scripts/daily/flh-daily.sh up              # rebuilds the image, starts, waits until healthy
+curl -fsS http://127.0.0.1:8080/readyz
+```
+
+### Roll back a failed upgrade [NAS]
+
+`restore` recreates the container from the image that is **currently built**;
+it does not rebuild. If the newer image is still built, it would migrate the
+restored database again. Never start an older image on a newer database. Use
+this order instead:
+
+```bash
+bash scripts/daily/flh-daily.sh stop
+# check out the previous version (your own Git step)
+docker compose build app                        # rebuilds french-learning-hub:local; starts nothing
+bash scripts/daily/flh-daily.sh restore <FLH_DATA_DIR>.backups/flh-<time of the pre-upgrade backup>
+curl -fsS http://127.0.0.1:8080/readyz
+```
+
+Run `docker compose build app` in the repository directory. Building needs no
+settings. Data written after that backup is not carried back; the replaced
+data stays in `<FLH_DATA_DIR>.before-restore-<time>`.
+
+## 7. Shortest real-question walkthrough
 
 1. **[NAS]** `bash scripts/daily/flh-daily.sh up`.
 2. **[Mac]** Run the tunnel, then open `http://127.0.0.1:8080/`. Click
    **Learning Records**, then **Add a learning question**.
 3. Type a real question under **Your question**, add the context, and click
    **Save question**. Nothing is sent to a model. Then click
-   **Open saved record #N**.
+   **Open saved record #N**. **Where this record stands** says
+   "Next: Request analysis below".
 4. Click **Request analysis…**, then **Create a new analysis version**. That
    is one provider call. Read it, then **Accept**, **Correct** or **Reject**.
 5. Click **Request extraction…**, then **Send to the extraction provider**.
    That is one provider call. Zero units is a valid result.
-6. For each unit, click **Review unit #N in Concept Review**:
+6. For each unit, click **Open unit #N in Concept Review** (in the stage
+   summary) or **Review unit #N in Concept Review**:
    - read the unit and its original question;
    - inspect a candidate's contents;
    - decide SAME or NEW CONCEPT explicitly.
-7. **[NAS]** `bash scripts/daily/flh-daily.sh backup` when you finish a session.
+   Optionally, **Concept Review → AI suggestions** proposes an existing
+   Concept for selected units; confirm one item at a time or leave it unused.
+7. **← Back to record #N**: the stage now says the unit is filed. Click
+   **Open Concept #N in Knowledge Library** to see the Concept and each unit's
+   source record.
+8. **[NAS]** `bash scripts/daily/flh-daily.sh backup` when you finish a session.
 
 ## Troubleshooting
 
