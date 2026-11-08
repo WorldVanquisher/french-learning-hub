@@ -4,6 +4,7 @@
 #
 #   bash scripts/validation/v1_rehearsal/rehearse.sh run   WORK_DIR BASELINE_IMAGE [--inject-failure after-seed] [--keep]
 #   bash scripts/validation/v1_rehearsal/rehearse.sh serve WORK_DIR    # RC package + fake provider, empty DB (browser smoke)
+#   bash scripts/validation/v1_rehearsal/rehearse.sh verify WORK_DIR   # read-only: does the URL belong to that `serve`?
 #   bash scripts/validation/v1_rehearsal/rehearse.sh down  WORK_DIR    # remove what `serve` started
 #
 # BASELINE_IMAGE is the known-good image to upgrade from, given by its
@@ -14,8 +15,8 @@
 # Isolation: project flh-rehearsal-<run>, images flh-rehearsal-<run>:*,
 # 127.0.0.1:${REHEARSAL_PORT:-18995}, settings/data/evidence under WORK_DIR
 # (new or empty, outside the repository). The fake OpenAI-compatible provider
-# runs as a second service of the same project (local python:3.12-slim image,
-# no published port); the key is a placeholder, so no paid call is possible.
+# runs as a second service of the same project (python:3.12-slim pinned by digest,
+# never pulled by the harness, no published port); the key is a placeholder, so no paid call is possible.
 # Before the first mutating command every resolved Compose configuration is
 # checked against the daily instance (project, images, port, /data mount),
 # whose container and image fingerprints must be unchanged at the end.
@@ -30,10 +31,14 @@ DAILY_PROJECT=french-learning-hub
 DAILY_IMAGE=french-learning-hub:local
 PORT=${REHEARSAL_PORT:-18995}
 MODE=${1:-}; WORK=${2:-}
-[ -n "$MODE" ] && [ -n "$WORK" ] || { sed -n '4,7p' "$0" >&2; exit 2; }
+[ -n "$MODE" ] && [ -n "$WORK" ] || { sed -n '4,8p' "$0" >&2; exit 2; }
 WORK=$(realpath -m "$WORK")
 case "$WORK/" in "$REPO"/*) echo "refused: WORK_DIR must be outside the repository" >&2; exit 2 ;; esac
-for tool in docker sqlite3 curl python3 sha256sum; do command -v $tool > /dev/null || { echo "refused: $tool is required" >&2; exit 2; }; done
+TOOLS="docker curl python3"; [ "$MODE" = run ] && TOOLS="$TOOLS sqlite3 sha256sum"
+for tool in $TOOLS; do command -v $tool > /dev/null || { echo "refused: $tool is required" >&2; exit 2; }; done
+# The fake provider's image. Pinned so CI and the NAS run the same one; the
+# harness never pulls it (CI pulls it beforehand).
+FAKE_IMAGE=${REHEARSAL_FAKE_IMAGE:-python:3.12-slim@sha256:6c4dd321d176d61ea848dc8c73a4f7dbae8f70e0ee48bb411ea2f045b599fa8e}
 
 E="$WORK/evidence"; RES="$E/results.tsv"
 FAILED=0
@@ -94,7 +99,7 @@ write_overrides() { # BASELINE_ID may be empty (serve)
   local fake
   fake=$(cat <<EOF
   fake-provider:
-    image: python:3.12-slim
+    image: $FAKE_IMAGE
     pull_policy: never
     user: "$(id -u):$(id -g)"
     restart: "no"
@@ -209,6 +214,18 @@ if [ "$MODE" = down ]; then
   cleanup
 fi
 
+# ---------------------------------------------------------------- verify
+# Read-only proof that 127.0.0.1:PORT is the instance `serve` started in this
+# WORK_DIR (ownership.py lists every check). Writes evidence/ownership.json,
+# which browser_smoke.mjs requires before it seeds anything. Fails closed.
+if [ "$MODE" = verify ]; then
+  python3 -I -B "$H/ownership.py" --work "$WORK" --project "$PROJECT" --port "$PORT" --repo "$REPO" \
+    --image "$IMG:app" --fake-image "$FAKE_IMAGE" --out "$E/ownership.json" > "$E/ownership.txt" 2>&1
+  rc=$?
+  grep -E '^FAIL|^ownership verdict' "$E/ownership.txt" | tee -a "$RES"
+  exit $rc
+fi
+
 # ---------------------------------------------------------------- serve
 if [ "$MODE" = serve ]; then
   KEEP=1
@@ -219,7 +236,7 @@ if [ "$MODE" = serve ]; then
   wrap upgrade serve-up up && pass "RC package started through the wrapper" || abort "RC up" "$(tail -3 "$E/serve-up.log")"
   ok "readyz" "$(ready)" '{"status":"ready"}'
   ok "served bundle has the record stage summary" "$(bundle_has_stage)" 1
-  note "browser" "on the Mac: ssh -N -L $PORT:127.0.0.1:$PORT <NAS_SSH_HOST>; then run browser_smoke.mjs (see README.md); afterwards: rehearse.sh down $WORK"
+  note "browser" "next: rehearse.sh verify $WORK, then browser_smoke.mjs --ownership $E/ownership.json (see README.md); afterwards: rehearse.sh down $WORK"
   exit 0
 fi
 
