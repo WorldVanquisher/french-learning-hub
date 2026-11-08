@@ -227,6 +227,7 @@ The development history, organized by theme and linked to that evidence, is in
 | [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | Optional semantic search: setup, index operations, recovery, Go walkthrough |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker release, backup, restore, upgrades, browser boundary settings |
 | [docs/DAILY_USE.md](docs/DAILY_USE.md) | Private daily use with real providers: settings file, start/stop, tunnel, what calls a model, the daily journey, backup/restore, upgrade and health checks |
+| [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md) | v1.0.0 release notes, with [clean install and health check](docs/releases/v1.0.0-install.md) commands |
 | [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | AWS runbook for the read-only public demo: one EC2 instance, private preview over Session Manager; optional public HTTPS entry point prepared, not applied (FLH-088) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the system works, with the HTTP API reference in Appendix A |
 | [web/README.md](web/README.md) | Workbench views and annotation behaviour |
