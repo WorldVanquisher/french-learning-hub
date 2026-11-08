@@ -55,9 +55,10 @@ jobs:
   packaged-browser:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    env:
-      WORK: ${{ runner.temp }}/flh-v1-browser
     steps:
+      - name: Set rehearsal work directory
+        run: printf 'WORK=%s/flh-v1-browser\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+
       - name: Check out repository
         uses: actions/checkout@v6
         with:
