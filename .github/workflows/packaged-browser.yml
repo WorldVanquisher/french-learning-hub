@@ -1,0 +1,138 @@
+name: Packaged browser smoke
+
+# v1.0 packaged browser acceptance. Builds the release image from this tree,
+# starts it through the daily wrapper in an isolated Compose project with the
+# fake OpenAI-compatible provider (placeholder key: no paid call, no secret),
+# proves the URL belongs to that project, drives the daily journey in the
+# runner's Google Chrome, and always tears down. A missing browser fails the
+# job (exit 3), never passes it. A controlled-failure probe then proves that a
+# failing smoke exits nonzero, keeps its evidence and removes only its own
+# resources. Reproduce locally: docs/validation/V1-PACKAGED-BROWSER-SMOKE.md.
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/packaged-browser.yml"
+      - ".dockerignore"
+      - "Dockerfile"
+      - "compose.yaml"
+      - "cmd/**"
+      - "internal/**"
+      - "migrations/**"
+      - "web/**"
+      - "go.mod"
+      - "go.sum"
+      - "scripts/daily/**"
+      - "scripts/validation/daily_v1_rc/**"
+      - "scripts/validation/v1_rehearsal/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/packaged-browser.yml"
+      - ".dockerignore"
+      - "Dockerfile"
+      - "compose.yaml"
+      - "cmd/**"
+      - "internal/**"
+      - "migrations/**"
+      - "web/**"
+      - "go.mod"
+      - "go.sum"
+      - "scripts/daily/**"
+      - "scripts/validation/daily_v1_rc/**"
+      - "scripts/validation/v1_rehearsal/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packaged-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      WORK: ${{ runner.temp }}/flh-v1-browser
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Tooling self-tests
+        timeout-minutes: 3
+        run: |
+          python3 -B -m unittest discover -s scripts/validation/v1_rehearsal -p 'test_*.py'
+          bash scripts/validation/flh094/test_wrapper.sh "$WORK/wrapper-test"
+
+      # The harness never pulls. The fake provider's pinned image is read from
+      # rehearse.sh so that there is one source of truth.
+      - name: Pull the fake provider image
+        timeout-minutes: 5
+        run: |
+          image="$(grep -oE 'python:3\.12-slim@sha256:[0-9a-f]{64}' scripts/validation/v1_rehearsal/rehearse.sh | head -1)"
+          test -n "$image"
+          docker pull "$image"
+
+      - name: Browser and Docker versions
+        run: |
+          docker version --format 'docker {{.Server.Version}}'
+          docker compose version
+          google-chrome --version
+
+      - name: Packaged browser acceptance
+        timeout-minutes: 20
+        run: bash scripts/validation/v1_rehearsal/browser_check.sh "$WORK/accept" --npm-cache "$HOME/.npm"
+
+      - name: Controlled failure probe
+        if: ${{ !cancelled() }}
+        timeout-minutes: 15
+        run: bash scripts/validation/v1_rehearsal/failure_probe.sh "$WORK/probe" sources --npm-cache "$HOME/.npm"
+
+      # Safety net if a harness was killed before its own teardown: only
+      # projects recorded under $WORK, and only the smoke's browser label.
+      - name: Remove leftover rehearsal resources
+        if: always()
+        timeout-minutes: 3
+        run: |
+          for inst in "$WORK"/accept/instance "$WORK"/probe/instance; do
+            [ -f "$inst/project" ] || continue
+            p="$(cat "$inst/project")"
+            if [ -n "$(docker ps -aq --filter "label=com.docker.compose.project=$p")" ] || [ -n "$(docker image ls -q "$p")" ]; then
+              bash scripts/validation/v1_rehearsal/rehearse.sh down "$inst" || true
+            fi
+          done
+          ids="$(docker ps -aq --filter label=org.flh.task=v1-browser-smoke)"
+          if [ -n "$ids" ]; then docker rm -f $ids; fi
+
+      # Bounded: results, screenshots and sanitized log tails that the harness
+      # wrote to diagnostics/. Never databases, settings, images or node_modules.
+      - name: Collect bounded diagnostics
+        if: ${{ failure() || cancelled() }}
+        run: |
+          out="$RUNNER_TEMP/flh-v1-browser-diagnostics"
+          mkdir -p "$out"
+          for name in accept probe; do
+            if [ -d "$WORK/$name/diagnostics" ]; then cp -R "$WORK/$name/diagnostics" "$out/$name"; fi
+            if [ -f "$WORK/$name.log" ]; then tail -c 200000 "$WORK/$name.log" > "$out/$name-probe.log"; fi
+          done
+          grep -rlE 'sk-[A-Za-z0-9_-]{8,}' "$out" | xargs -r rm -f
+          du -sh "$out"
+
+      - name: Upload diagnostics
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-browser-diagnostics
+          path: ${{ runner.temp }}/flh-v1-browser-diagnostics
+          if-no-files-found: warn
+          retention-days: 5
