@@ -248,34 +248,45 @@ and `restore` already wait for the container's own `/readyz` healthcheck.
 ### Upgrade [NAS]
 
 Migrations are forward-only (RELEASE.md, **Upgrades and migration rollback
-limits**). Always back up first:
+limits**). Always back up first, and keep the image that works under a second
+tag. That is what you go back to if the upgrade fails:
 
 ```bash
 bash scripts/daily/flh-daily.sh backup          # note the printed backup directory
+docker image tag french-learning-hub:local french-learning-hub:before-upgrade
 # update the checkout to the new version (your own Git step)
 bash scripts/daily/flh-daily.sh check
 bash scripts/daily/flh-daily.sh up              # rebuilds the image, starts, waits until healthy
 curl -fsS http://127.0.0.1:8080/readyz
 ```
 
+When `up` fails, it says so after 60 s: "the service did not become healthy
+… See: … logs". `bash scripts/daily/flh-daily.sh logs --tail 50` shows why.
+
 ### Roll back a failed upgrade [NAS]
 
-`restore` recreates the container from the image that is **currently built**;
-it does not rebuild. If the newer image is still built, it would migrate the
-restored database again. Never start an older image on a newer database. Use
-this order instead:
+`restore` recreates the container from the image currently tagged
+`french-learning-hub:local`; it does not rebuild. If that is still the newer
+image, it would migrate the restored database again. Never start an older
+image on a newer database. Use this order:
 
 ```bash
-bash scripts/daily/flh-daily.sh stop
-# check out the previous version (your own Git step)
-docker compose build app                        # rebuilds french-learning-hub:local; starts nothing
-bash scripts/daily/flh-daily.sh restore <FLH_DATA_DIR>.backups/flh-<time of the pre-upgrade backup>
+bash scripts/daily/flh-daily.sh stop                                        # 1. stop the failed service
+docker image tag french-learning-hub:before-upgrade french-learning-hub:local  # 2. the known-good image
+bash scripts/daily/flh-daily.sh restore <FLH_DATA_DIR>.backups/flh-<time of the pre-upgrade backup>  # 3.
 curl -fsS http://127.0.0.1:8080/readyz
 ```
 
-Run `docker compose build app` in the repository directory. Building needs no
-settings. Data written after that backup is not carried back; the replaced
-data stays in `<FLH_DATA_DIR>.before-restore-<time>`.
+- **Check out the previous version** (your own Git step) before the next `up`,
+  because `up` rebuilds the image from the checkout.
+- **No `before-upgrade` tag?** In step 2, check out the previous version and
+  run `docker compose build app` in the repository directory instead. Building
+  needs no settings and starts nothing.
+- **Data written after that backup is not carried back.** The replaced data
+  stays in `<FLH_DATA_DIR>.before-restore-<time>`.
+- **Rehearsed:** this order was exercised end to end with real Docker in an
+  isolated project. See
+  [V1-RELEASE-REHEARSAL](validation/V1-RELEASE-REHEARSAL.md).
 
 ## 7. Shortest real-question walkthrough
 

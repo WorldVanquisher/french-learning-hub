@@ -368,6 +368,17 @@ migrations.
 - To roll back, stop the service, restore the backup taken before the upgrade
   at the configured path using Restore above, and start the older image there.
   Data written after that backup is not carried back.
+- Make the older image current **before** the restore recreates the
+  container: Restore's `up -d --force-recreate` uses whatever
+  `french-learning-hub:local` is at that moment. The simplest way:
+  - **before upgrading:** run
+    `docker image tag french-learning-hub:local french-learning-hub:before-upgrade`;
+  - **to roll back:** stop, run
+    `docker image tag french-learning-hub:before-upgrade french-learning-hub:local`,
+    then Restore.
+
+  The daily wrapper's order is in
+  [DAILY_USE.md](DAILY_USE.md#roll-back-a-failed-upgrade-nas).
 
 ## Troubleshooting
 

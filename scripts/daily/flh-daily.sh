@@ -18,6 +18,15 @@
 #
 # Nothing here calls a provider. Analysis and extraction run only when you
 # request them in the workbench.
+#
+# Isolated rehearsal mode (v1.0 release rehearsal; never needed for daily use):
+# set BOTH FLH_COMPOSE_PROJECT (a project name other than french-learning-hub)
+# and FLH_COMPOSE_OVERRIDE (a Compose file layered over compose.yaml that gives
+# the app another image name). Every command then runs
+# `docker compose -p <project> -f compose.yaml -f <override> --env-file ...`.
+# The resolved configuration must use that project and must not use a
+# french-learning-hub image, so a rehearsal can never rebuild, restart or
+# restore the daily instance. With neither set, nothing changes.
 set -euo pipefail
 
 REPO=$(cd "$(dirname "$0")/../.." && pwd -P)
@@ -43,25 +52,47 @@ command -v python3 > /dev/null || die "missing prerequisite: python3"
 
 # Every variable compose.yaml interpolates, plus Compose's own selectors, is
 # removed from the inherited environment, so the settings file is the only source.
-mapfile -t COMPOSE_VARS < <(grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*' "$REPO/compose.yaml" | cut -c3- | sort -u)
+DAILY_PROJECT=french-learning-hub
+ISOLATED=${FLH_COMPOSE_PROJECT:-}
+OVERRIDE=${FLH_COMPOSE_OVERRIDE:-}
+PROJECT_ARGS=()
+COMPOSE_FILES=("$REPO/compose.yaml")
+if [ -n "$ISOLATED" ] || [ -n "$OVERRIDE" ]; then
+  [ -n "$ISOLATED" ] && [ -n "$OVERRIDE" ] || die "isolated mode needs both FLH_COMPOSE_PROJECT and FLH_COMPOSE_OVERRIDE"
+  [[ "$ISOLATED" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || die "FLH_COMPOSE_PROJECT must be a Compose project name (lowercase letters, digits, - and _)"
+  [ "$ISOLATED" != "$DAILY_PROJECT" ] || die "FLH_COMPOSE_PROJECT must not be the daily project ($DAILY_PROJECT)"
+  [ -f "$OVERRIDE" ] || die "FLH_COMPOSE_OVERRIDE not found: $OVERRIDE"
+  OVERRIDE=$(realpath "$OVERRIDE")
+  COMPOSE_FILES+=("$OVERRIDE")
+  PROJECT_ARGS=(-p "$ISOLATED" -f "$REPO/compose.yaml" -f "$OVERRIDE")
+fi
+mapfile -t COMPOSE_VARS < <(cat "${COMPOSE_FILES[@]}" | grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*' | cut -c3- | sort -u)
 UNSET=()
 for v in "${COMPOSE_VARS[@]}" COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_ENV_FILES COMPOSE_PROFILES; do UNSET+=(-u "$v"); done
-compose() { (cd "$REPO" && env "${UNSET[@]}" docker compose --env-file "$ENV_FILE" "$@"); }
+compose() { (cd "$REPO" && env "${UNSET[@]}" docker compose "${PROJECT_ARGS[@]}" --env-file "$ENV_FILE" "$@"); }
 
 # validate checks the configuration Compose will actually run, reading the
 # resolved config and interpolation environment through a pipe (never a file,
 # never printed). On success it prints a value-free summary and the data path.
 VALIDATE_PY='
 import json, os, stat, sys
-repo, uid, mode = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+repo, uid, mode, isolated = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
 cfg_raw, env_raw = sys.stdin.read().split("\n=====FLH094=====\n", 1)
-app = json.loads(cfg_raw)["services"]["app"]
+cfg = json.loads(cfg_raw)
+app = cfg["services"]["app"]
 envr = app.get("environment") or {}
 given = set()
 for line in env_raw.splitlines():
     key = line.split("=", 1)[0]
     if key: given.add(key)
 problems = []
+image = app.get("image") or ""
+if isolated:
+    project = cfg.get("name")
+    if project != isolated:
+        problems.append(f"isolated mode: the resolved project is {project!r}, not {isolated!r}")
+    if not image or image.split(":")[0] == "french-learning-hub":
+        problems.append("isolated mode: the override must give the app an image name other than french-learning-hub")
 for key in ("AI_PROVIDER", "EXTRACTOR_PROVIDER"):
     if key not in given:
         problems.append(f"{key} must be stated explicitly in the settings file (no implicit default)")
@@ -110,6 +141,8 @@ ports = app.get("ports") or [{}]
 host_port = ports[0].get("published", "8080")
 base = "custom" if envr.get("OPENAI_BASE_URL") else "default (public OpenAI API)"
 if mode == "summary":
+    if isolated:
+        print(f"project:    {isolated} (isolated rehearsal; image {image})")
     print(f"analysis:   {ai}" + (" — explicit requests call the provider and may be billed" if ai == "openai" else " — local, no provider call"))
     print(f"extraction: {ex}" + (" — explicit requests call the provider and may be billed" if ex == "openai" else " — off"))
     print(f"suggestions: {sg}" + (" — explicit requests call the provider and may be billed" if sg == "openai" else " — off"))
@@ -124,7 +157,7 @@ validate() {
   local mode=$1 cfg envs
   cfg=$(compose config --format json) || die "docker compose could not read the configuration (see the message above)"
   envs=$(compose config --environment) || die "docker compose could not read the settings file"
-  printf '%s\n=====FLH094=====\n%s' "$cfg" "$envs" | python3 -I -c "$VALIDATE_PY" "$REPO" "$(id -u)" "$mode" \
+  printf '%s\n=====FLH094=====\n%s' "$cfg" "$envs" | python3 -I -c "$VALIDATE_PY" "$REPO" "$(id -u)" "$mode" "$ISOLATED" \
     || die "configuration refused; nothing was started or changed"
 }
 
