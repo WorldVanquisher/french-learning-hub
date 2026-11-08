@@ -27,10 +27,12 @@ export function UnitInspection({
   focus,
   onBack,
   onReview,
+  onOpenConcept,
 }: {
   focus: UnitTarget;
   onBack: () => void;
   onReview: () => void;
+  onOpenConcept?: (conceptId: number) => void;
 }) {
   const { t } = useI18n();
   const [load, setLoad] = useState<Load<Inspection>>({ status: "loading" });
@@ -138,7 +140,7 @@ export function UnitInspection({
         </div>
       ) : (
         <>
-          <Currency inspection={load.data} focus={focus} onReview={onReview} />
+          <Currency inspection={load.data} focus={focus} onReview={onReview} onOpenConcept={writing ? undefined : onOpenConcept} />
           <InspectorItem item={load.data.item} concepts={conceptsById} />
           {/* A correction's re-read replaces only the data, so this stays mounted
               and its outcome stays visible. */}
@@ -159,10 +161,12 @@ function Currency({
   inspection,
   focus,
   onReview,
+  onOpenConcept,
 }: {
   inspection: Inspection;
   focus: UnitTarget;
   onReview: () => void;
+  onOpenConcept?: (conceptId: number) => void;
 }) {
   const { t, status } = useI18n();
   const { item, current } = inspection;
@@ -191,7 +195,21 @@ function Currency({
           </button>
         </>
       ) : (
-        <>{" "}{t("currency.notAwaiting", { status: status(item.snapshot.status) })}</>
+        <>
+          {" "}{t("currency.notAwaiting", { status: status(item.snapshot.status) })}
+          {item.snapshot.current_same && onOpenConcept ? (
+            <>
+              {" "}
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => onOpenConcept(item.snapshot.current_same!.membership.concept_id)}
+              >
+                {t("unitLinks.openConcept", { id: item.snapshot.current_same.membership.concept_id })}
+              </button>
+            </>
+          ) : null}
+        </>
       )}
     </div>
   );

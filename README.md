@@ -66,6 +66,10 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   proposes existing Concepts from a bounded candidate list, with a short
   reason; suggestions are stored as advisory evidence and change nothing until
   you confirm one item at a time. There is no bulk acceptance.
+- Follow each learning record through a **stage summary** (analysis →
+  extraction → Concept decisions) with one next action, derived from the
+  server's current records, and move between a record, its filed units'
+  Concepts, their source records and AI suggestions without losing your place.
 - Review units in the **Concept Review** workbench: SAME, NEW CONCEPT, BROADER,
   NARROWER, RELATED, DISTINCT and INVALID decisions, with append-only history,
   read-only inspection of each candidate's current supporting evidence and of
@@ -222,7 +226,7 @@ The development history, organized by theme and linked to that evidence, is in
 | [docs/DEMO.md](docs/DEMO.md) | The synthetic Knowledge Library demo |
 | [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | Optional semantic search: setup, index operations, recovery, Go walkthrough |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker release, backup, restore, upgrades, browser boundary settings |
-| [docs/DAILY_USE.md](docs/DAILY_USE.md) | Private daily use with real providers: settings file, start/stop, tunnel, what calls a model, backup/restore |
+| [docs/DAILY_USE.md](docs/DAILY_USE.md) | Private daily use with real providers: settings file, start/stop, tunnel, what calls a model, the daily journey, backup/restore, upgrade and health checks |
 | [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | AWS runbook for the read-only public demo: one EC2 instance, private preview over Session Manager; optional public HTTPS entry point prepared, not applied (FLH-088) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the system works, with the HTTP API reference in Appendix A |
 | [web/README.md](web/README.md) | Workbench views and annotation behaviour |

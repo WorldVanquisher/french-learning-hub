@@ -110,7 +110,18 @@ const searchFailedKey: Record<LibrarySearchMode, MessageKey> = {
 //
 // With `demo` (FLH-073 public demo) keyword search stays free text, while
 // semantic and hybrid search run only the demo's preset queries.
-export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
+export function KnowledgeLibrary({
+  demo,
+  openRequest = null,
+  onOpenRecord,
+}: {
+  demo?: PublicDemoInfo;
+  // A Concept another workbench view asked to open (a record's filed unit, a
+  // confirmed suggestion). The nonce makes a repeated request open it again.
+  openRequest?: { conceptId: number; nonce: number } | null;
+  // Opens a source record in Learning Records (private workbench only).
+  onOpenRecord?: (entryId: number) => void;
+} = {}) {
   const i18n = useI18n();
   const { t, tn } = i18n;
   const [draft, setDraft] = useState<LibraryQuery>({ q: "", state: "all" });
@@ -156,6 +167,11 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
     setScreen({ kind: "results" });
   };
   const openConcept = (conceptId: number) => setScreen({ kind: "concept", conceptId });
+  const requestedNonce = openRequest?.nonce ?? null;
+  const requestedConcept = openRequest?.conceptId ?? null;
+  useEffect(() => {
+    if (requestedNonce !== null && requestedConcept !== null) setScreen({ kind: "concept", conceptId: requestedConcept });
+  }, [requestedNonce, requestedConcept]);
   const resultsLabel = query.q ? t(resultsLabelKey[mode], { q: query.q }) : t(modeSearchKey[mode]);
   const strong = (key: MessageKey) => <strong>{t(key)}</strong>;
 
@@ -302,6 +318,7 @@ export function KnowledgeLibrary({ demo }: { demo?: PublicDemoInfo } = {}) {
           onBackToConcept={() => openConcept(screen.conceptId)}
           onBackToResults={() => backToResults(screen.conceptId)}
           onOpenConcept={openConcept}
+          onOpenRecord={onOpenRecord}
         />
       ) : null}
     </main>
@@ -789,6 +806,7 @@ function SourceScreen({
   onBackToConcept,
   onBackToResults,
   onOpenConcept,
+  onOpenRecord,
 }: {
   unitId: number;
   conceptId: number;
@@ -796,6 +814,7 @@ function SourceScreen({
   onBackToConcept: () => void;
   onBackToResults: () => void;
   onOpenConcept: (conceptId: number) => void;
+  onOpenRecord?: (entryId: number) => void;
 }) {
   const i18n = useI18n();
   const { t, tn, status } = i18n;
@@ -879,6 +898,11 @@ function SourceScreen({
           <Row label={t("library.source.context")}>{s.entry.original_context || <em>{t("library.noneLower")}</em>}</Row>
           <Row label={t("library.source.recorded")}>{s.entry.created_at}</Row>
         </dl>
+        {onOpenRecord ? (
+          <button type="button" className="ghost" onClick={() => onOpenRecord(s.entry.id)}>
+            {t("library.source.openRecord", { id: s.entry.id })}
+          </button>
+        ) : null}
       </section>
 
       <section className={`panel library-section ${isCurrent ? "current" : "history"}`} aria-labelledby="src-extraction">

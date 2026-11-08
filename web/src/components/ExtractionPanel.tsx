@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError, NetworkError } from "../api/client";
 import type { CurrentExtraction, Extraction } from "../types/learning";
+import type { EffectiveAnnotationItem } from "../types/concept";
+import type { ExtractionFacts } from "./recordStage";
 import { unitFocusId, type UnitTarget } from "../navigation";
 import {
   ExplicitAction,
@@ -30,6 +32,11 @@ type Requested =
 // GET /reviewable-units?entry_id. It is the only source of review eligibility.
 type Reviewability = Load<ReadonlySet<number>> & { forExtractionId?: number };
 
+// The effective annotation of each current unit the backend no longer lists as
+// awaiting review, read from GET /knowledge-units/{id}/effective-annotation. It
+// says where a decided unit is filed now (CURRENT SAME) or that it is INVALID.
+type Decisions = { forExtractionId: number; items: Record<number, Load<EffectiveAnnotationItem>> };
+
 function describeError(error: unknown): string {
   if (error instanceof ApiError) return `(${error.status}) ${error.message}`;
   return error instanceof Error ? error.message : String(error);
@@ -49,6 +56,8 @@ export function ExtractionPanel({
   latestVersion = null,
   returnEpoch = 0,
   onNavigateToUnit,
+  onOpenConcept,
+  onFacts,
 }: {
   entryId: number;
   // The record's latest analysis version, only to explain the extraction source.
@@ -57,6 +66,11 @@ export function ExtractionPanel({
   // may have changed there is read again.
   returnEpoch?: number;
   onNavigateToUnit?: (target: UnitTarget) => void;
+  // Opens the Concept a decided unit is filed under (Knowledge Library).
+  onOpenConcept?: (conceptId: number, from: UnitTarget) => void;
+  // Receives what this panel read, so the record can show its stage. Purely a
+  // restatement of the reads below; nothing is derived that the server did not say.
+  onFacts?: (facts: ExtractionFacts) => void;
 }) {
   const { t } = useI18n();
   const [state, setState] = useState<Load<ExtractionState>>({ status: "loading" });
@@ -72,6 +86,7 @@ export function ExtractionPanel({
   const [selectOutcome, setSelectOutcome] = useState<Outcome | null>(null);
   const [requested, setRequested] = useState<Requested | null>(null);
   const [reviewable, setReviewable] = useState<Reviewability | null>(null);
+  const [decisions, setDecisions] = useState<Decisions | null>(null);
   const [reviewReload, setReviewReload] = useState(0);
   // The re-read after a write, reported separately from the write's outcome.
   const [refresh, setRefresh] = useState<RefreshState>({ kind: "idle" });
@@ -124,7 +139,7 @@ export function ExtractionPanel({
     state.status === "ready" && (state.data.extractions.find((e) => e.id === currentId)?.units.length ?? 0) > 0;
   // Read only when unit links are offered. A boolean, not the callback, is the
   // dependency, because the callback's identity changes on every parent render.
-  const linksEnabled = onNavigateToUnit !== undefined;
+  const linksEnabled = onNavigateToUnit !== undefined || onFacts !== undefined;
   useEffect(() => {
     if (!linksEnabled || currentId === null || !currentHasUnits) {
       setReviewable(null);
@@ -143,6 +158,79 @@ export function ExtractionPanel({
       active = false;
     };
   }, [entryId, linksEnabled, currentId, currentHasUnits, reloadCount, reviewReload, returnEpoch]);
+
+  // Where each decided current unit stands now. Read only after the reviewable
+  // list for the same current extraction arrived; each unit is one small GET.
+  const currentUnitIds =
+    state.status === "ready" ? (state.data.extractions.find((e) => e.id === currentId)?.units.map((u) => u.id) ?? []) : [];
+  const decidedKey =
+    reviewable?.status === "ready" && reviewable.forExtractionId === currentId
+      ? currentUnitIds.filter((id) => !reviewable.data.has(id)).join(",")
+      : null;
+  useEffect(() => {
+    if (decidedKey === null || currentId === null) {
+      setDecisions(null);
+      return;
+    }
+    const ids = decidedKey === "" ? [] : decidedKey.split(",").map(Number);
+    const forExtractionId = currentId;
+    let active = true;
+    setDecisions({ forExtractionId, items: Object.fromEntries(ids.map((id) => [id, { status: "loading" }])) });
+    for (const id of ids) {
+      api.getEffectiveAnnotation(id)
+        .then((data) => {
+          if (!active) return;
+          setDecisions((d) =>
+            d && d.forExtractionId === forExtractionId ? { ...d, items: { ...d.items, [id]: { status: "ready", data } } } : d,
+          );
+        })
+        .catch((error: unknown) => {
+          if (!active) return;
+          setDecisions((d) =>
+            d && d.forExtractionId === forExtractionId
+              ? { ...d, items: { ...d.items, [id]: { status: "error", message: describeError(error) } } }
+              : d,
+          );
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [decidedKey, currentId]);
+
+  // Report the reads to the record's stage summary.
+  useEffect(() => {
+    if (!onFacts) return;
+    if (state.status === "loading") return onFacts({ status: "loading" });
+    if (state.status === "error") return onFacts({ status: "unknown" });
+    const { extractions } = state.data;
+    const current = extractions.find((e) => e.id === currentId);
+    const awaitingReady = reviewable?.status === "ready" && reviewable.forExtractionId === currentId;
+    const awaiting = !current
+      ? null
+      : current.units.length === 0
+        ? []
+        : awaitingReady
+          ? current.units.map((u) => u.id).filter((id) => reviewable.data.has(id))
+          : null;
+    if (current && current.units.length > 0 && !awaitingReady && reviewable?.status !== "error") {
+      return onFacts({ status: "loading" });
+    }
+    const decided: Record<number, "resolved" | "invalid" | "unresolved" | null> = {};
+    if (decisions && decisions.forExtractionId === currentId) {
+      for (const [id, load] of Object.entries(decisions.items)) {
+        decided[Number(id)] = load.status === "ready" ? load.data.snapshot.status : null;
+      }
+    }
+    onFacts({
+      status: "ready",
+      anyStored: extractions.length > 0,
+      current: current ? { id: current.id, version: current.version, unitIds: current.units.map((u) => u.id) } : null,
+      awaiting,
+      decided,
+    });
+    // onFacts is a stable setter from the parent.
+  }, [state, currentId, reviewable, decisions, onFacts]);
 
   async function submit() {
     setPending(true);
@@ -224,6 +312,7 @@ export function ExtractionPanel({
   return (
     <section className="panel" aria-label={t("extraction.title")}>
       <h2>{t("extraction.title")}</h2>
+      <p className="hint">{t("extraction.purpose")}</p>
       <p className="hint">
         {latestVersion !== null ? t("extraction.hint.version", { version: latestVersion }) : t("extraction.hint")}
       </p>
@@ -238,8 +327,10 @@ export function ExtractionPanel({
         onPin={pin}
         onResumeAutomatic={resumeAutomatic}
         reviewable={reviewable}
+        decisions={decisions}
         onRecheckReview={() => setReviewReload((n) => n + 1)}
         onNavigateToUnit={onNavigateToUnit}
+        onOpenConcept={onOpenConcept}
       />
       <OutcomeBanner outcome={selectOutcome} />
       <SelectionCheck requested={requested} load={state} refresh={refresh} />
@@ -322,8 +413,10 @@ function ExtractionBrowser({
   onPin,
   onResumeAutomatic,
   reviewable,
+  decisions,
   onRecheckReview,
   onNavigateToUnit,
+  onOpenConcept,
 }: {
   entryId: number;
   load: Load<ExtractionState>;
@@ -335,8 +428,10 @@ function ExtractionBrowser({
   onPin: (target: Extraction) => Promise<void>;
   onResumeAutomatic: () => Promise<void>;
   reviewable: Reviewability | null;
+  decisions: Decisions | null;
   onRecheckReview: () => void;
   onNavigateToUnit?: (target: UnitTarget) => void;
+  onOpenConcept?: (conceptId: number, from: UnitTarget) => void;
 }) {
   const { t, tp } = useI18n();
   if (load.status === "loading") {
@@ -434,8 +529,10 @@ function ExtractionBrowser({
         isLatest={viewed.id === latest.id}
         currentVersion={currentExtraction?.version ?? null}
         reviewable={reviewable}
+        decisions={decisions && decisions.forExtractionId === viewed.id ? decisions : null}
         onRecheckReview={onRecheckReview}
         onNavigateToUnit={onNavigateToUnit}
+        onOpenConcept={onOpenConcept}
       />
       {viewed.id !== currentExtraction?.id || !pinned ? (
         <div className="workflow-action">
@@ -468,8 +565,10 @@ function ExtractionVersionView({
   isLatest,
   currentVersion,
   reviewable,
+  decisions,
   onRecheckReview,
   onNavigateToUnit,
+  onOpenConcept,
 }: {
   entryId: number;
   extraction: Extraction;
@@ -477,8 +576,10 @@ function ExtractionVersionView({
   isLatest: boolean;
   currentVersion: number | null;
   reviewable: Reviewability | null;
+  decisions: Decisions | null;
   onRecheckReview: () => void;
   onNavigateToUnit?: (target: UnitTarget) => void;
+  onOpenConcept?: (conceptId: number, from: UnitTarget) => void;
 }) {
   const target = (kind: UnitTarget["kind"], unitId: number): UnitTarget => ({
     kind,
@@ -559,8 +660,10 @@ function ExtractionVersionView({
                   unitId={unit.id}
                   isCurrent={isCurrent}
                   status={status}
+                  decision={isCurrent ? (decisions?.items[unit.id] ?? null) : null}
                   onReview={() => onNavigateToUnit(target("review", unit.id))}
                   onInspect={() => onNavigateToUnit(target("inspect", unit.id))}
+                  onOpenConcept={onOpenConcept ? (conceptId) => onOpenConcept(conceptId, target("inspect", unit.id)) : undefined}
                 />
               ) : null}
             </li>
@@ -577,14 +680,18 @@ function UnitLinks({
   unitId,
   isCurrent,
   status,
+  decision,
   onReview,
   onInspect,
+  onOpenConcept,
 }: {
   unitId: number;
   isCurrent: boolean;
   status: Reviewability | null;
+  decision: Load<EffectiveAnnotationItem> | null;
   onReview: () => void;
   onInspect: () => void;
+  onOpenConcept?: (conceptId: number) => void;
 }) {
   const { t } = useI18n();
   let note: string;
@@ -601,9 +708,36 @@ function UnitLinks({
   } else {
     note = t("unitLinks.notAwaiting");
   }
+  // Where a decided current unit stands now, from its effective annotation.
+  const same = decision?.status === "ready" ? decision.data.snapshot.current_same : null;
+  const decided =
+    !canReview && decision ? (
+      decision.status === "loading" ? (
+        <span className="hint">{t("unitLinks.decision.loading")}</span>
+      ) : decision.status === "error" ? (
+        <span className="hint">{t("unitLinks.decision.failed", { message: decision.message })}</span>
+      ) : same ? (
+        <span className="hint" role="note">
+          {t("unitLinks.decision.filed", {
+            concept: same.membership.concept_id,
+            link: same.decision.id,
+            source: same.decision.decision_source,
+          })}{" "}
+          {t("unitLinks.decision.filedHistory")}
+        </span>
+      ) : decision.data.snapshot.status === "invalid" ? (
+        <span className="hint" role="note">{t("unitLinks.decision.invalid")}</span>
+      ) : null
+    ) : null;
   return (
     <div className="actions unit-links">
       <span className="hint">{note}</span>
+      {decided}
+      {same && onOpenConcept ? (
+        <button type="button" className="ghost" onClick={() => onOpenConcept(same.membership.concept_id)}>
+          {t("unitLinks.openConcept", { id: same.membership.concept_id })}
+        </button>
+      ) : null}
       {canReview ? (
         <button type="button" className="ghost" onClick={onReview}>
           {t("unitLinks.review", { id: unitId })}

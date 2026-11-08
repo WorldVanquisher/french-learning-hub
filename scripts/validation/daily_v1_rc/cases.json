@@ -1,0 +1,52 @@
+{
+  "_comment": "Authored synthetic cases for the daily-workflow v1.0 RC fixture. The fake provider answers from this file; its text proves mechanics, not language quality.",
+  "en_concept_identity": {
+    "target": "en",
+    "pedagogical_intent": "grammar",
+    "scope": "pronoun replacing a partitive or de + noun complement",
+    "identity_features": {"form": "pronoun"}
+  },
+  "records": {
+    "en_first": {
+      "match": "du pain",
+      "original_input": "Dans « Tu as du pain ? Oui, j'en ai. », que remplace « en » ?",
+      "original_context": "Conversation à la boulangerie.",
+      "units": [{"kind": "grammar", "canonical": "en pronom partitif",
+                 "statement": "« en » replaces a partitive complement such as « du pain ».",
+                 "statement_zh": "« en » 替代部分冠词引导的补语，例如 « du pain »。",
+                 "example": "Oui, j'en ai.", "confidence": 0.9}]
+    },
+    "en_second": {
+      "match": "de l'eau",
+      "original_input": "« Elle boit de l'eau ? Oui, elle en boit. » Pourquoi « en » ici ?",
+      "original_context": "Exercice de grammaire.",
+      "units": [{"kind": "grammar", "canonical": "pronom en remplaçant un partitif",
+                 "statement": "« en » stands for a partitive noun phrase such as « de l'eau ».",
+                 "statement_zh": "« en » 代替部分冠词名词短语，例如 « de l'eau »。",
+                 "example": "Oui, elle en boit.", "confidence": 0.9}]
+    },
+    "y_related": {
+      "match": "à Paris",
+      "original_input": "Dans « Tu vas à Paris ? Oui, j'y vais. », que remplace « y » ?",
+      "original_context": "Message à un ami.",
+      "units": [{"kind": "grammar", "canonical": "y pronom de lieu",
+                 "statement": "« y » replaces a place introduced by « à », like « à Paris »; it is not the partitive pronoun « en ».",
+                 "statement_zh": "« y » 替代由 « à » 引导的地点，例如 « à Paris »；它不是部分代词 « en »。",
+                 "example": "Oui, j'y vais.", "confidence": 0.9}]
+    },
+    "en_stale": {
+      "match": "des frères",
+      "original_input": "« Vous avez des frères ? Oui, j'en ai deux. » Pourquoi « en » avec un nombre ?",
+      "original_context": "Présentation personnelle.",
+      "units": [{"kind": "grammar", "canonical": "en avec une quantité",
+                 "statement": "« en » replaces the noun after a number, as in « j'en ai deux ».",
+                 "statement_zh": "« en » 替代数字后面的名词，例如 « j'en ai deux »。",
+                 "example": "Oui, j'en ai deux.", "confidence": 0.9}]
+    }
+  },
+  "suggestions": {
+    "pronom en remplaçant un partitif": {"target": "en", "reason": "Fake provider: same partitive use of « en » as the existing Concept."},
+    "en avec une quantité": {"target": "en", "reason": "Fake provider: recommends the « en » Concept (used for the stale boundary)."},
+    "y pronom de lieu": {"target": "en", "reason": "Fake provider: deliberately unsuitable recommendation; « y » is not « en »."}
+  }
+}

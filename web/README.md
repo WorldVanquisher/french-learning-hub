@@ -212,6 +212,10 @@ the reviewer asks; nothing is written and no provider is called.
   backend revalidates and refuses stale state. **Leave unused** records
   nothing. There is no bulk acceptance. Correcting an already-resolved unit
   stays in the unit queue.
+- **Advisory, stated on the run:** a completed run says that generating
+  recorded nothing and that only one explicit confirmation records a human
+  SAME. A confirmed, still-current item adds that a later correction can make
+  it history. A left item says it is not DISTINCT or any other judgment.
 
 ### Decision outcomes (FLH-027)
 
@@ -517,6 +521,38 @@ while another view is shown.
   list filter, loaded pages, feedback drafts, and moves keyboard focus to the
   unit (or the record heading). Review status is read again on return. Choosing
   a tab directly leaves the record-scoped mode.
+
+## Record stage and cross-view links (Daily workflow v1.0 RC)
+
+A record detail starts with **Where this record stands**: three steps and one
+**Next:** line. It is derived on every render from reads the detail already
+makes; nothing is stored and there is no second workflow state.
+
+| Step | Says | Source |
+|---|---|---|
+| 1. Analysis | describes and classifies the question; not knowledge yet | latest analysis version and its effective resolution (`GET /analyses/{id}/effective`) |
+| 2. Extraction | produces the knowledge statements (units) | stored extractions and `GET /entries/{id}/current-extraction` |
+| 3. Concept decisions | units awaiting a decision vs. decided (filed / INVALID) | `GET /reviewable-units?entry_id=…` plus `GET /knowledge-units/{id}/effective-annotation` for each decided current unit |
+
+- **Next action, in order:** request analysis → request a new analysis after a
+  rejected one → review an unreviewed analysis (extraction is allowed, but
+  uses an unchecked interpretation) → request extraction → nothing to file
+  (zero units) → "N of M units await a decision" with **Open unit #N in
+  Concept Review** → nothing left to decide. A failed read says "unknown";
+  counts are never guessed from unread data.
+- **Decided units say where they are.** A current unit that is no longer
+  awaiting review shows "Filed under Concept #N (CURRENT SAME, event #L,
+  source)" and that a later correction can make this history, or "Marked
+  INVALID". **Open Concept #N in Knowledge Library** opens that Concept.
+- **Links, all read-only:** a record's filed unit or a reviewed unit's
+  inspection → its Concept; a Concept's source screen → **Open record #N in
+  Learning Records**; an AI suggestion → **Open record #N** and, for a filed
+  unit, its current Concept. The view that was left stays mounted, and a
+  **← Back to …** banner returns to it (the record, AI suggestions or the
+  Knowledge Library). Choosing a tab directly drops the banner.
+- **AI suggestions stay mounted** once opened. Returning re-reads the run
+  list, the open run and the queue (keeping only still-reviewable selected
+  units); "left unused" stays a local, unrecorded choice.
 
 ## Correcting a reviewed unit from the inspection (FLH-082)
 

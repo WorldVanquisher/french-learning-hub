@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnnotationInspector } from "./pages/AnnotationInspector";
 import { ExperimentDashboard } from "./pages/ExperimentDashboard";
 import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
@@ -11,6 +11,9 @@ import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n
 import { ExplanationLanguageProvider, ExplanationLanguageSelect } from "./explanationLanguage";
 
 type View = "records" | "library" | "review" | "inspector" | "experiments";
+
+// Where a cross-view link came from, for the "Back to …" banner.
+type Origin = { kind: "record"; target: UnitTarget } | { kind: "suggestions" } | { kind: "library" };
 
 const viewCopy: Record<View, { title: MessageKey; subtitle: MessageKey; tab: MessageKey }> = {
   records: { title: "app.records.title", subtitle: "app.records.subtitle", tab: "nav.records" },
@@ -36,6 +39,12 @@ const VIEWS: View[] = ["records", "library", "review", "inspector", "experiments
 // A record's extracted unit can be opened in Concept Review or a focused
 // inspection. Learning Records stays mounted (hidden) meanwhile, so returning
 // restores the record, its viewed extraction, filters, drafts, and position.
+//
+// The daily journey also crosses views (Daily workflow v1.0 RC): a decided unit
+// opens its Concept in the Knowledge Library; a Concept's source opens its
+// record; an AI suggestion opens its unit's record or the Concept the unit is
+// filed under. Every such link only opens a read view. The view that was left
+// stays mounted, and a "Back to …" banner returns to it.
 export default function App() {
   // The provider sits above every view, so switching the language re-renders text in
   // place and never remounts a view or discards its state.
@@ -66,6 +75,16 @@ function Workbench() {
   const keepReviewResume = useCallback((next: ReviewResume) => setReviewResume(next), []);
   // The general Concept Review shows either the unit queue or AI suggestions.
   const [reviewMode, setReviewMode] = useState<"queue" | "suggestions">("queue");
+  // AI suggestions stay mounted once opened, so an open run survives a visit to
+  // a record or a Concept; returning re-reads it (refreshEpoch).
+  const [suggestionsMounted, setSuggestionsMounted] = useState(false);
+  const [suggestionsEpoch, setSuggestionsEpoch] = useState(0);
+  // Cross-view open requests; the nonce makes a repeated request open again.
+  const nonce = useRef(0);
+  const [libraryOpen, setLibraryOpen] = useState<{ conceptId: number; nonce: number } | null>(null);
+  const [recordOpen, setRecordOpen] = useState<{ entryId: number; nonce: number } | null>(null);
+  // The view a cross-view link left, shown as a "Back to …" banner on view `on`.
+  const [origin, setOrigin] = useState<{ from: Origin; on: View } | null>(null);
   // A unit opened from a record may be historical, so the inspector's general
   // description ("current-extraction units") would not fit it.
   const copy =
@@ -79,15 +98,62 @@ function Workbench() {
 
   const show = (next: View) => {
     setFocus(null);
+    setOrigin(null);
     setView(next);
     if (next === "records") setRecordsMounted(true);
     if (next === "library") setLibraryMounted(true);
+  };
+
+  const suggestionsVisible = view === "review" && !focus && reviewMode === "suggestions";
+  useEffect(() => {
+    if (suggestionsVisible) setSuggestionsMounted(true);
+  }, [suggestionsVisible]);
+  // Each time the suggestions become visible again, they re-read current state.
+  const wasVisible = useRef(false);
+  useEffect(() => {
+    if (suggestionsVisible && !wasVisible.current && suggestionsMounted) setSuggestionsEpoch((n) => n + 1);
+    wasVisible.current = suggestionsVisible;
+  }, [suggestionsVisible, suggestionsMounted]);
+
+  // openConcept shows one Concept in the Knowledge Library.
+  const openConcept = (conceptId: number, from: Origin) => {
+    setFocus(null);
+    setLibraryMounted(true);
+    setLibraryOpen({ conceptId, nonce: ++nonce.current });
+    setOrigin({ from, on: "library" });
+    setView("library");
+  };
+  // openRecord shows one record in Learning Records; its list keeps its filters.
+  const openRecord = (entryId: number, from: Origin) => {
+    setFocus(null);
+    setRecordsMounted(true);
+    setRecordOpen({ entryId, nonce: ++nonce.current });
+    setOrigin({ from, on: "records" });
+    setView("records");
+    setReturnEpoch((n) => n + 1);
+  };
+  const goBack = (from: Origin) => {
+    setOrigin(null);
+    if (from.kind === "record") {
+      setReturnFocus(from.target);
+      setFocus(null);
+      setView("records");
+      setReturnEpoch((n) => n + 1);
+    } else if (from.kind === "suggestions") {
+      setFocus(null);
+      setReviewMode("suggestions");
+      setView("review");
+    } else {
+      setFocus(null);
+      setView("library");
+    }
   };
   const openUnit = (target: UnitTarget) => {
     setFocus(target);
     setView(target.kind === "review" ? "review" : "inspector");
   };
   const backToRecord = () => {
+    setOrigin(null);
     setReturnFocus(focus);
     setFocus(null);
     setView("records");
@@ -121,14 +187,20 @@ function Workbench() {
           </button>
         ))}
       </nav>
+      {origin && origin.on === view && !focus ? <BackBanner origin={origin.from} onBack={() => goBack(origin.from)} /> : null}
       {recordsMounted ? (
         <div hidden={view !== "records"}>
-          <RecordsBrowser returnEpoch={returnEpoch} onNavigateToUnit={openUnit} />
+          <RecordsBrowser
+            returnEpoch={returnEpoch}
+            onNavigateToUnit={openUnit}
+            onOpenConcept={(conceptId, from) => openConcept(conceptId, { kind: "record", target: from })}
+            openRequest={recordOpen}
+          />
         </div>
       ) : null}
       {libraryMounted ? (
         <div hidden={view !== "library"}>
-          <KnowledgeLibrary />
+          <KnowledgeLibrary openRequest={libraryOpen} onOpenRecord={(entryId) => openRecord(entryId, { kind: "library" })} />
         </div>
       ) : null}
       {view === "review" ? (
@@ -149,20 +221,28 @@ function Workbench() {
                 {t("review.mode.suggestions")}
               </button>
             </div>
-            {reviewMode === "queue" ? (
-              <ReviewQueue resume={reviewResume} onResumeChange={keepReviewResume} />
-            ) : (
-              <ConceptSuggestions />
-            )}
+            {reviewMode === "queue" ? <ReviewQueue resume={reviewResume} onResumeChange={keepReviewResume} /> : null}
           </>
         )
-      ) : view === "inspector" ? (
+      ) : null}
+      {/* After the review-mode tabs; kept mounted once opened (see suggestionsMounted). */}
+      {suggestionsMounted ? (
+        <div hidden={!suggestionsVisible}>
+          <ConceptSuggestions
+            refreshEpoch={suggestionsEpoch}
+            onOpenRecord={(entryId) => openRecord(entryId, { kind: "suggestions" })}
+            onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "suggestions" })}
+          />
+        </div>
+      ) : null}
+      {view === "inspector" ? (
         focus ? (
           <UnitInspection
             key={`inspect-${focus.entryId}-${focus.unitId}`}
             focus={focus}
             onBack={backToRecord}
             onReview={() => openUnit({ ...focus, kind: "review" })}
+            onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "record", target: focus })}
           />
         ) : (
           <AnnotationInspector />
@@ -170,6 +250,32 @@ function Workbench() {
       ) : view === "experiments" ? (
         <ExperimentDashboard />
       ) : null}
+    </div>
+  );
+}
+
+// BackBanner returns to the view a cross-view link was followed from. That view
+// stayed mounted, so it shows its state as it was left.
+function BackBanner({ origin, onBack }: { origin: Origin; onBack: () => void }) {
+  const { t } = useI18n();
+  const label =
+    origin.kind === "record"
+      ? t("trail.backToRecord", { id: origin.target.entryId })
+      : origin.kind === "suggestions"
+        ? t("trail.backToSuggestions")
+        : t("trail.backToLibrary");
+  const from =
+    origin.kind === "record"
+      ? t("trail.fromRecord", { id: origin.target.entryId })
+      : origin.kind === "suggestions"
+        ? t("trail.fromSuggestions")
+        : t("trail.fromLibrary");
+  return (
+    <div className="banner info trail" role="navigation" aria-label={t("trail.label")}>
+      {from}{" "}
+      <button type="button" className="ghost" onClick={onBack}>
+        {label}
+      </button>
     </div>
   );
 }

@@ -314,6 +314,14 @@ FRENCH_HUB_URL=http://localhost:18080 npm run dev
 可以为尚未解析的 Unit 建立 seed SAME；选择现有 Concept 的普通 SAME 才可能成为后续检索
 评估的合格人工 truth。不要为了得到非空指标随意创建标签。
 
+**记录阶段与跨视图链接（Daily workflow v1.0 RC）：**
+- 记录详情顶部的 **Where this record stands** 列出三步：分析（只描述并归类问题）、提取（生成知识陈述）、
+  概念决定，并给出唯一的 **Next:**。它每次都从服务器的当前记录读取，不存储任何状态。
+- 已有决定的当前 Unit 会显示 “Filed under Concept #N (CURRENT SAME …)” 或 INVALID，并可
+  **Open Concept #N in Knowledge Library**；知识库的来源页可 **Open record #N in Learning Records**；
+  AI 建议条目可打开其记录或当前 Concept。顶部的 **← Back to …** 返回原视图，原视图状态保持不变。
+  这些链接都是只读的。
+
 **Annotation Inspector** 只读展示后端计算的有效标注；**Experiment Dashboard** 只读展示
 数据质量和检索比较。它们不是复习调度器或掌握度系统。也可直接查看报告：
 
