@@ -1,6 +1,10 @@
 """Daily-workflow v1.0 RC fake OpenAI-compatible provider (loopback, no key, no network).
 
-Usage: python3 -I -B fake_openai.py PORT CALL_LOG CASES_JSON
+Usage: python3 -I -B fake_openai.py PORT CALL_LOG CASES_JSON [BIND_HOST]
+
+BIND_HOST defaults to 127.0.0.1. The v1.0 release rehearsal runs this file as
+a service inside its isolated Compose project and binds 0.0.0.0 there, on the
+project's private network only (no published port).
 
 Answers POST /v1/responses for the three existing schemas, from authored cases:
 - "analysis_result": one fixed, schema-valid bilingual interpretation;
@@ -17,6 +21,7 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT, LOG, CASES = int(sys.argv[1]), sys.argv[2], sys.argv[3]
+BIND = sys.argv[4] if len(sys.argv) > 4 else "127.0.0.1"
 with open(CASES, encoding="utf-8") as f:
     cases = json.load(f)
 
@@ -85,4 +90,4 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
-ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+ThreadingHTTPServer((BIND, PORT), Handler).serve_forever()

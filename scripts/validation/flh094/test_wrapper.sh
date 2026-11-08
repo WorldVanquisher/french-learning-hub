@@ -1,5 +1,6 @@
 #!/bin/bash
-# FLH-094 checks for scripts/daily/flh-daily.sh, without starting any container.
+# FLH-094 checks for scripts/daily/flh-daily.sh, without starting any container
+# (plus the v1.0 rehearsal's opt-in isolated-project mode).
 #
 #   bash scripts/validation/flh094/test_wrapper.sh WORK_DIR
 #
@@ -143,6 +144,32 @@ old=$(ls -d "$DATA".before-restore-* 2> /dev/null | head -1)
   && pass "restored data is active and the previous data is preserved" || fail "restore result"
 grep -q "^docker compose --env-file $WORK/daily.env up -d --force-recreate" "$WORK/shim.log" \
   && pass "restore recreates the container with the same settings file" || fail "restore recreate command"
+
+# ---- v1.0 rehearsal: opt-in isolated project (FLH_COMPOSE_PROJECT + FLH_COMPOSE_OVERRIDE). ----
+grep -q "^docker compose -p\|^docker compose -f" "$WORK/shim.log" && fail "normal mode passes no -p/-f" || pass "normal mode passes no -p/-f (invocation unchanged)"
+printf 'services:\n  app:\n    image: flh-rehearsal-test:app\n' > "$WORK/iso.yaml"
+printf 'services:\n  app:\n    user: "1000:1000"\n' > "$WORK/noimage.yaml"
+iso() { # iso NAME EXPECT_RC PATTERN PROJECT OVERRIDE args...
+  local name=$1 want=$2 pattern=$3 project=$4 override=$5; shift 5
+  local out rc
+  out=$(FLH_COMPOSE_PROJECT="$project" FLH_COMPOSE_OVERRIDE="$override" FLH_DAILY_ENV="$WORK/daily.env" bash "$W" "$@" 2>&1); rc=$?
+  echo "$out" >> "$WORK/outputs.log"
+  if [ "$rc" = "$want" ] && grep -qE -- "$pattern" <<< "$out"; then pass "$name"; else fail "$name (rc=$rc) :: $(head -c 400 <<< "$out")"; fi
+}
+: > "$WORK/shim.log"
+iso "isolated mode needs both variables (project only)" 2 "needs both" flh-rehearsal-test "" check
+iso "isolated mode needs both variables (override only)" 2 "needs both" "" "$WORK/iso.yaml" check
+iso "isolated mode refuses the daily project name" 2 "must not be the daily project" french-learning-hub "$WORK/iso.yaml" check
+iso "isolated mode refuses an invalid project name" 2 "Compose project name" "Bad Name" "$WORK/iso.yaml" check
+iso "isolated mode refuses an override that keeps the daily image" 2 "image name other than french-learning-hub" flh-rehearsal-test "$WORK/noimage.yaml" up
+if grep -q " up \| stop \| start " "$WORK/shim.log" 2> /dev/null; then fail "isolated refusals started or stopped nothing"; else pass "isolated refusals started or stopped nothing"; fi
+iso "isolated mode reports its project and image" 0 "project:    flh-rehearsal-test \(isolated rehearsal; image flh-rehearsal-test:app\)" flh-rehearsal-test "$WORK/iso.yaml" up
+grep -q "^docker compose -p flh-rehearsal-test -f $REPO/compose.yaml -f $WORK/iso.yaml --env-file $WORK/daily.env up -d --build" "$WORK/shim.log" \
+  && pass "isolated up runs 'docker compose -p <project> -f compose.yaml -f <override> --env-file <settings> up -d --build'" || fail "isolated up command line"
+: > "$WORK/shim.log"
+run "normal up after isolated runs is unchanged" 0 "ready at" "$WORK/daily.env" up
+grep -q "^docker compose --env-file $WORK/daily.env up -d --build" "$WORK/shim.log" && ! grep -q -- " -p " "$WORK/shim.log" \
+  && pass "normal up still runs 'docker compose --env-file <settings> up -d --build'" || fail "normal up changed"
 
 # ---- Secrets ----
 if grep -rq "$SECRET" "$WORK/outputs.log" "$WORK/shim.log"; then fail "the key never appears in output"; else pass "the key never appears in output or in docker command lines"; fi
