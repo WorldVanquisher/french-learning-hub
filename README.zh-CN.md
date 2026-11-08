@@ -173,6 +173,7 @@ Knowledge Library 在 Linux 上的验收和在 macOS 真实浏览器中的演练
 | [docs/SEMANTIC_SEARCH.md](docs/SEMANTIC_SEARCH.md) | 可选语义检索：配置、索引操作、故障恢复、Go 代码导读 |
 | [docs/RELEASE.md](docs/RELEASE.md) | Docker 发布、备份、恢复、升级、浏览器边界设置 |
 | [docs/DAILY_USE.md](docs/DAILY_USE.md) | 使用真实提供方的私人日常使用：设置文件、启动/停止、隧道、哪些步骤调用模型、日常流程、备份/恢复、升级与健康检查 |
+| [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md) | v1.0.0 发布说明，以及[全新安装与健康检查](docs/releases/v1.0.0-install.md)命令 |
 | [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | 只读公开演示的 AWS 运维手册：单台 EC2，通过 Session Manager 私下预览；可选的公开 HTTPS 入口已准备、尚未启用（FLH-088） |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 系统如何工作；附录 A 为 HTTP API 参考 |
 | [web/README.md](web/README.md) | 工作台各视图与标注行为 |
