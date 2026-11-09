@@ -651,6 +651,36 @@ owner guide: [DAILY_USE.md §10](../docs/DAILY_USE.md#10-daily-listening-pull-pr
   again anyway (it may arrive twice)** with `confirm_unknown_retry` after an
   unknown delivery. Lost responses follow the same key lookup.
 
+## Reading (Exam Reading v1)
+
+A private **Reading** view (never in the public demo). Contract:
+[ARCHITECTURE.md §4.5](../docs/ARCHITECTURE.md#45-exam-reading-v1).
+
+- **Authored examples** lists the embedded pack (`GET /reading/examples`).
+  **Use this example** imports one with its reviewed exercise (no provider
+  call); **Open** opens one already imported. They are labelled as original
+  practice material, not official exam items.
+- **Add a passage:** a title, an optional `https` source link (stored, never
+  fetched) and the French passage; blank lines separate paragraphs `p1…`.
+- **Lesson:** the passage stays visible (beside the exercise on wide screens)
+  with its paragraph IDs.
+  - Before reveal: only the French questions and an answer field each.
+  - **Reveal answers and evidence** shows the reference answer, **Also
+    accepted**, **Plausible but wrong** with reasons (authored), and **Why:**
+    through `StoredText` (Explanation language).
+  - **Show in the passage (pN)** scrolls there and marks the excerpt with
+    `<mark>`. Inference items read "Inference — not stated directly in the
+    text".
+  - Self-checks are session-only.
+- **Prepare exercise** (own passages, `READING_PROVIDER=openai`) follows the
+  Listening flow: a fresh key; a lost response is looked up at
+  `GET /reading/preparations/{key}` before **Send the same request again**; an
+  unknown outcome needs **Retry preparation (may be billed again)**.
+- **Save as a learning question…** posts one `learning_capture_v1` only on
+  **Save learning record**, with the lesson, passage version, question and
+  excerpts as context and a capture ID fixed for the form; **Open record #N**
+  comes back with **← Back to Reading**.
+
 ## Correcting a reviewed unit from the inspection (FLH-082)
 
 The unit inspection opened from a record offers corrections for a unit of the

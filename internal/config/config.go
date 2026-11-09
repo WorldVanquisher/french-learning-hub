@@ -102,6 +102,8 @@ type Config struct {
 	// ListeningDaily holds Daily Listening: playlist pull, the daily automatic
 	// preparation and the lesson-ready notification. Every part is off by default.
 	ListeningDaily ListeningDailyConfig
+	// Reading holds the Exam Reading v1 exercise generator configuration.
+	Reading ReadingConfig
 
 	// Embedding holds semantic-retrieval provider configuration, independent of
 	// both the analyzer and extractor.
@@ -247,6 +249,7 @@ const (
 //	OPENAI_TIMEOUT   -> AI.OpenAITimeout (seconds), default 8
 //	SUGGESTION_PROVIDER -> Suggestion.Provider, default disabled (reuses OPENAI_*)
 //	LISTENING_PROVIDER  -> Listening.Provider, default disabled (reuses OPENAI_*)
+//	READING_PROVIDER    -> Reading.Provider, default disabled (reuses OPENAI_*)
 //	LISTENING_PLAYLIST_SOURCE, LISTENING_AUTO_PREPARE, LISTENING_NOTIFY and their
 //	settings -> ListeningDaily (see loadListeningDaily), all default disabled
 //	EMBEDDING_PROVIDER -> Embedding.Provider, default disabled
@@ -324,6 +327,13 @@ func load(src source) (Config, error) {
 			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
+		Reading: ReadingConfig{
+			Provider:      ReadingProvider(getenv("READING_PROVIDER", string(ReadingDisabled))),
+			OpenAIAPIKey:  src.get("OPENAI_API_KEY"),
+			OpenAIModel:   strings.TrimSpace(src.get("OPENAI_MODEL")),
+			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
+			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
+		},
 		Embedding: EmbeddingConfig{
 			Provider: EmbeddingProvider(getenv("EMBEDDING_PROVIDER", string(EmbeddingDisabled))),
 			APIKey:   src.get("EMBEDDING_API_KEY"),
@@ -354,6 +364,9 @@ func load(src source) (Config, error) {
 		return Config{}, err
 	}
 	if err := cfg.Listening.validate(); err != nil {
+		return Config{}, err
+	}
+	if err := cfg.Reading.validate(); err != nil {
 		return Config{}, err
 	}
 	daily, err := loadListeningDaily(src, getenv, getdur, cfg.Listening.Provider)

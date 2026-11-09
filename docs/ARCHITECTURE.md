@@ -85,6 +85,7 @@ internal/analyzer     local rule-based Analyzer + OpenAI Analyzer + named rule e
 internal/extractor    OpenAI knowledge Extractor (opt-in) selected by EXTRACTOR_PROVIDER
 internal/embedding    optional HTTP text-to-vector provider (M12-D evaluation, FLH-040 index)
 internal/listening    listening exercise generator, YouTube playlist source, Telegram notifier, wiring
+internal/reading      reading exercise generator (opt-in, READING_PROVIDER) and the embedded authored pack
 internal/vectorindex  single-instance Qdrant REST adapter for the optional semantic index
 internal/captureclient   thin HTTP client for POST /captures (used by cmd/capture)
 internal/storage/sqlite  SQLite repositories + migration runner
@@ -969,6 +970,71 @@ recorded and the other steps still run. The last run is the visible outcome
 
 The public demo refuses to start with any Daily Listening part enabled, does
 not route `/listening`, and requires the four tables to be empty.
+
+### 4.5 Exam Reading v1
+
+A private workbench section for exam-style reading practice over a French
+passage. It is source material plus exercises; it feeds the learning workflow
+only through §4.1. Migration `016`.
+
+- **Lesson** (`reading_lessons`): a title, an optional `https` source link
+  (stored as text, **never fetched**) and its origin:
+  - `learner`: the learner's own passage;
+  - `authored`: a passage of the embedded pack `internal/reading/pack/reading_pack_v1.json`
+    (`flh_reading_pack_v1`, original practice material, not official exam
+    items, no certified CEFR level), unique by `pack_passage_id`.
+- **Passage** (`reading_passages`): versions of the text as paragraphs with
+  stable IDs `p1…pN`.
+  - Split on blank lines; each paragraph's wording is kept exactly (outer
+    whitespace trimmed).
+  - Bounds: 6,000 characters, 30 paragraphs, 1,500 characters per paragraph.
+  - A new version never rewrites an earlier one, and an authored passage
+    cannot be replaced.
+- **Exercise** (`reading_exercises`): one exercise over one exact passage
+  version: validated content (`items` with `kind`, French `question` and
+  `reference_answer`, `accepted_alternatives`, `wrong_answers` with English and
+  Chinese reasons, `evidence` as `{segment, excerpt}`, `explanation_en`/`_zh`)
+  or a non-secret failure code. Provenance is `authored:flh_reading_pack_v1`
+  or `openai:<model>:reading_exercise_v1`. `ValidateReadingExercise` refuses:
+  - anything but 2–5 items with exactly one `main_idea`, at least one `detail`
+    and at most one `inference`;
+  - a citation of a paragraph that does not exist;
+  - an excerpt that is not verbatim in its paragraph, **or occurs there more
+    than once** (it could not be highlighted unambiguously);
+  - an answer listed as both accepted and wrong;
+  - blank or oversized text.
+
+  Authored exercises additionally need wrong answers and a
+  `no_inference_reason` when there is no inference item. The pack is validated
+  at startup; a bad pack stops the server.
+- **Authored examples:** `GET /reading/examples` lists them, and
+  `POST /reading/examples/{id}` imports one with its reviewed exercise. It makes
+  no model call; importing again replays it, and different content conflicts.
+- **Generation:** `READING_PROVIDER=openai` (default `disabled`, reuses
+  `OPENAI_*`) enables one explicit `POST /reading/lessons/{id}/exercises` per
+  click over the latest passage version.
+  - The request discipline is the Listening generator's. The model sees
+    paragraph IDs and text only.
+  - **Attempts before calls:** `reading_preparations` follows the same rules as
+    §4.4 — optional `Idempotency-Key`; lookup by key; `in_progress`,
+    `completed`, `failed`, or `unknown` (timeout, lost response, or unfinished
+    past its deadline); a new call after `unknown` needs
+    `confirm_unknown_retry`; nothing retries automatically.
+  - Disabled answers `503` and stores nothing; reads never call a provider.
+- **Workbench:**
+  - The passage stays visible while the learner answers.
+  - Reference answers, alternatives, wrong-answer reasons, explanations
+    (English/Chinese per the Explanation-language preference) and evidence
+    highlights appear only after reveal.
+  - **Show in the passage** scrolls to the paragraph and marks the excerpt.
+  - Inference items are labelled as such; the material is labelled practice,
+    not an official assessment.
+  - Answers and self-checks stay in component state.
+  - A missed point becomes a `learning_capture_v1` (`source: manual`) only on
+    **Save learning record**; its context names the lesson, passage version,
+    question and excerpts.
+- **Not in the public demo:** the routes are not allowlisted and the four
+  tables must be empty in demo artifacts.
 
 ## 5. Knowledge extraction and admission
 
@@ -2450,6 +2516,7 @@ empty values behave as unset. Defaults work out of the box:
 | `EXTRACTOR_PROVIDER` | `disabled`                  | Knowledge extractor: `disabled` or `openai`   |
 | `SUGGESTION_PROVIDER` | `disabled`                 | Concept suggester (FLH-097): `disabled` or `openai`; reuses `OPENAI_*` |
 | `LISTENING_PROVIDER` | `disabled`                  | Listening exercise generator ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)): `disabled` or `openai`; reuses `OPENAI_*` |
+| `READING_PROVIDER`   | `disabled`                  | Reading exercise generator ([§4.5](#45-exam-reading-v1)): `disabled` or `openai`; reuses `OPENAI_*`; authored examples work without it |
 | `LISTENING_PLAYLIST_SOURCE` | `disabled`           | Daily Listening playlist ([§4.4](#44-daily-listening-pull-prepare-notify)): `disabled` or `youtube` |
 | `LISTENING_PLAYLIST_ID` | _(none)_                 | Required for `youtube`: the playlist ID |
 | `YOUTUBE_API_KEY`    | _(none)_                    | Required for `youtube`; sent only in the `X-Goog-Api-Key` header; never logged |
@@ -2528,8 +2595,8 @@ the NAS guidance are documented once, in
 ### 10.4 Workbench
 
 The workbench (`web/`) is an internal annotation and data-collection UI, not a
-consumer product. It has six views — Learning Records, Knowledge Library,
-Listening ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)), Concept Review (write-capable),
+consumer product. It has seven views — Learning Records, Knowledge Library,
+Listening ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)), Reading ([§4.5](#45-exam-reading-v1)), Concept Review (write-capable),
 Annotation Inspector and Experiment Dashboard —
 and keeps business rules and current authority in the backend: the browser
 renders backend facts and never recomputes them. In development, Vite proxies
@@ -2574,6 +2641,7 @@ forward-only; there are no down migrations.
 | `012_bilingual_explanations` | nullable explanation/statement language variants, per-language corrections and reviewed languages on feedback (FLH-095; see [§3.9](#39-bilingual-explanations-flh-095)) |
 | `013_concept_suggestions` | advisory `concept_suggestion_runs`, `concept_suggestion_items`, `concept_suggestion_confirmations` (FLH-097; see [§7.6](#76-ai-assisted-concept-suggestions-flh-097)) |
 | `014_listening_lessons` | `listening_materials`, `listening_transcripts`, `listening_exercises`, all append-only (Listening v1; see [§4.3](#43-listening-lessons-exam-listening-lesson-v1)) |
+| `016_reading_lessons` | `reading_lessons`, `reading_passages`, `reading_exercises`, `reading_preparations` (Reading v1; see [§4.5](#45-exam-reading-v1)) |
 | `015_listening_daily` | `listening_pull_runs`, `listening_playlist_items`, `listening_preparations`, `listening_notifications`: receipts inserted before each outside call and finished once (Daily Listening; see [§4.4](#44-daily-listening-pull-prepare-notify)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
@@ -3506,6 +3574,21 @@ Lesson reads also carry `state` (`waiting_for_transcript`, `ready_to_prepare`,
 `trigger` (`explicit`/`pull`), `pull_run_id`, `after_unknown`, `started_at`,
 `deadline_at`, `finished_at`, `state` (`in_progress`, `completed`, `failed`,
 `unknown`) and `exercise_id`.
+
+### A.17 Reading (Reading v1)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `GET /reading/lessons` | `lessons` (newest first: `lesson`, `passage_version`, `paragraphs`, `state`) and `generation`. No provider call |
+| `POST /reading/lessons` | Body `{"title", "text", "source_url"?}` (unknown fields refused, 32 KiB). `201` lesson; `422` invalid title, text or link (https only, never fetched) |
+| `GET /reading/lessons/{id}` | `lesson`, `passage` (latest: `id`, `version`, `segments` [`id`, `text`]), `versions`, `exercises` (newest first, with `content`), `preparations`, `state` (`ready_to_prepare`, `in_progress`, `prepared`, `failed`, `outcome_unknown`), `generation`. No provider call |
+| `POST /reading/lessons/{id}/passages` | Body `{"text"}`: the next passage version (`201`); `422` for an authored example |
+| `GET /reading/examples` | `pack`, `notice`, `examples` (`id`, `title`, `format`, `style_level`, `paragraphs`, `questions`, `has_inference`, `imported_lesson_id`) |
+| `POST /reading/examples/{passage_id}` | Imports the authored passage and its reviewed exercise (no provider call). `201` new; `200` already imported (`Idempotency-Replayed: true`); `404`; `409 pack_conflict` |
+| `POST /reading/lessons/{id}/exercises` | Optional UUID `Idempotency-Key`, optional `{"confirm_unknown_retry": true}`. One provider call. `201` `{preparation, exercise}`; `200` same-key replay; `502`/`504` stored failure or unknown outcome; `409` `{code}`: `preparation_in_progress`, `outcome_unknown`, `key_conflict`; `503` disabled; `404` |
+| `GET /reading/preparations/{key}` | `{preparation, exercise}`; `404` nothing recorded under the key |
+
+The public demo boundary does not expose these routes.
 
 ### A.16 Daily Listening
 

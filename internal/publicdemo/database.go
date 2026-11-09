@@ -118,13 +118,14 @@ var orderedTables = []string{"analysis_feedback", "knowledge_admission_recommend
 // replaced by the artifact's own vectors, and the demo records no operations.
 // FLH-097 advisory suggestion tables are empty too: the demo shows no
 // suggestions and records no confirmations. Listening lessons (migration 014)
-// and Daily Listening receipts (migration 015) are private workbench features:
-// the demo holds none and serves no route.
+// Daily Listening receipts (migration 015) and Reading lessons (migration 016)
+// are private workbench features: the demo holds none and serves no route.
 var emptyTables = []string{"annotation_operations", "semantic_embedding_cache", "semantic_index_collections",
 	"semantic_index_manifest", "semantic_index_physical_collections", "semantic_index_points", "semantic_index_spaces",
 	"concept_suggestion_runs", "concept_suggestion_items", "concept_suggestion_confirmations",
 	"listening_materials", "listening_transcripts", "listening_exercises",
-	"listening_pull_runs", "listening_playlist_items", "listening_preparations", "listening_notifications"}
+	"listening_pull_runs", "listening_playlist_items", "listening_preparations", "listening_notifications",
+	"reading_lessons", "reading_passages", "reading_exercises", "reading_preparations"}
 
 // unfingerprintedTables are bookkeeping, checked elsewhere or not data.
 var unfingerprintedTables = map[string]string{

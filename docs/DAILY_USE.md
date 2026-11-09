@@ -149,6 +149,8 @@ Then open `http://127.0.0.1:8080/`.
 | 8. Any **Open …** / **← Back to …** link between views | **No** | Opens a read-only view; nothing is recorded |
 | 9. **Listening → Prepare exercise** | **Yes**, once, `LISTENING_PROVIDER` (optional, default `disabled`) | One exercise over your own transcript, checked against it before it is stored ([§9](#9-listening-practice-with-your-own-transcript)) |
 | 10. **Listening → Pull now**, `flh-daily.sh listening-pull` or the timer | Only the parts you enabled (optional, all default off) | A YouTube playlist metadata read; at most one preparation per day (`LISTENING_AUTO_PREPARE`); one Telegram message for that lesson (`LISTENING_NOTIFY`) ([§10](#10-daily-listening-pull-prepare-notify)) |
+| 11. **Reading → Use this example**, reading, answering, revealing | **No** | An authored lesson with its reviewed exercise; nothing is sent while you read or answer ([§11](#11-reading-practice)) |
+| 12. **Reading → Prepare exercise** (your own passage) | **Yes**, once, `READING_PROVIDER` (optional, default `disabled`) | One exercise over your exact passage, checked before it is stored ([§11](#11-reading-practice)) |
 
 Suggestion requests use more tokens than one analysis (up to 10 units and 5
 candidates each), so allow `OPENAI_TIMEOUT` headroom as for extraction.
@@ -484,6 +486,38 @@ fakes of YouTube, the model and Telegram.
 - A **Pull now** can take longer than `HTTP_WRITE_TIMEOUT` when the playlist,
   the model and Telegram are all slow (`check` prints a note). The pull still
   finishes; the page finds it by its key.
+
+## 11. Reading practice
+
+**Using the authored examples, reading, answering and revealing call no
+model.** Only **Prepare exercise** on your own passage calls the provider,
+and only when `READING_PROVIDER=openai` is in your settings file.
+
+1. **[Mac]** Open **Reading**. Either:
+   - under **Authored examples**, choose **Use this example**. These are six
+     original practice passages with reviewed questions, written in an A2–B1
+     style; they are not official exam items; or
+   - add your own: a title, the French passage (blank lines separate
+     paragraphs) and, optionally, the `https` link where you found it, which is
+     stored and never fetched.
+2. For your own passage, **Prepare exercise** sends one request. If no answer
+   arrives, the page looks the request up first; an unknown outcome is shown
+   and needs **Retry preparation (may be billed again)**.
+3. Read and answer with the passage beside the questions. Then **Reveal
+   answers and evidence**: the reference answer, the other accepted answers,
+   plausible wrong answers with their reasons (authored examples), and the
+   explanation (Explanation language applies). **Show in the passage (pN)**
+   highlights the cited words. An inference question is labelled as one.
+4. On a question you missed, choose **Save as a learning question…**, write
+   what you missed, and choose **Save learning record**. The record keeps the
+   lesson, question and excerpt, and links back with **← Back to Reading**.
+
+**Limitations:**
+- A generated exercise is checked mechanically: real paragraphs, verbatim and
+  unambiguous excerpts, a valid kind mix. The quality of its questions has not
+  been evaluated with a real model.
+- It is practice: there is no score, level or official exam claim, and your
+  answers are not saved.
 
 ## Troubleshooting
 

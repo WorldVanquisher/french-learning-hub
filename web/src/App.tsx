@@ -3,6 +3,7 @@ import { AnnotationInspector } from "./pages/AnnotationInspector";
 import { ExperimentDashboard } from "./pages/ExperimentDashboard";
 import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import { Listening } from "./pages/Listening";
+import { Reading } from "./pages/Reading";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue, type ReviewResume } from "./pages/ReviewQueue";
 import { ConceptSuggestions } from "./pages/ConceptSuggestions";
@@ -11,20 +12,26 @@ import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n";
 import { ExplanationLanguageProvider, ExplanationLanguageSelect } from "./explanationLanguage";
 
-type View = "records" | "library" | "listening" | "review" | "inspector" | "experiments";
+type View = "records" | "library" | "listening" | "reading" | "review" | "inspector" | "experiments";
 
 // Where a cross-view link came from, for the "Back to …" banner.
-type Origin = { kind: "record"; target: UnitTarget } | { kind: "suggestions" } | { kind: "library" } | { kind: "listening" };
+type Origin =
+  | { kind: "record"; target: UnitTarget }
+  | { kind: "suggestions" }
+  | { kind: "library" }
+  | { kind: "listening" }
+  | { kind: "reading" };
 
 const viewCopy: Record<View, { title: MessageKey; subtitle: MessageKey; tab: MessageKey }> = {
   records: { title: "app.records.title", subtitle: "app.records.subtitle", tab: "nav.records" },
   library: { title: "app.library.title", subtitle: "app.library.subtitle", tab: "nav.library" },
   listening: { title: "app.listening.title", subtitle: "app.listening.subtitle", tab: "nav.listening" },
+  reading: { title: "app.reading.title", subtitle: "app.reading.subtitle", tab: "nav.reading" },
   review: { title: "app.review.title", subtitle: "app.review.subtitle", tab: "nav.review" },
   inspector: { title: "app.inspector.title", subtitle: "app.inspector.subtitle", tab: "nav.inspector" },
   experiments: { title: "app.experiments.title", subtitle: "app.experiments.subtitle", tab: "nav.experiments" },
 };
-const VIEWS: View[] = ["records", "library", "listening", "review", "inspector", "experiments"];
+const VIEWS: View[] = ["records", "library", "listening", "reading", "review", "inspector", "experiments"];
 
 // App keeps the internal workbench views behind a local tab switch. Learning
 // Records writes only through explicit capture import, analysis, feedback, and
@@ -69,6 +76,8 @@ function Workbench() {
   // Listening stays mounted once opened, so a lesson's typed answers and reveal
   // survive opening a saved record and coming back (they are never stored).
   const [listeningMounted, setListeningMounted] = useState(false);
+  // Reading stays mounted once opened, for the same reason.
+  const [readingMounted, setReadingMounted] = useState(false);
   // The unit opened from a record, or null for the ordinary tab views.
   const [focus, setFocus] = useState<UnitTarget | null>(null);
   // Bumped on return so the record re-reads what may have changed elsewhere.
@@ -108,6 +117,7 @@ function Workbench() {
     if (next === "records") setRecordsMounted(true);
     if (next === "library") setLibraryMounted(true);
     if (next === "listening") setListeningMounted(true);
+    if (next === "reading") setReadingMounted(true);
   };
 
   const suggestionsVisible = view === "review" && !focus && reviewMode === "suggestions";
@@ -152,6 +162,9 @@ function Workbench() {
     } else if (from.kind === "listening") {
       setFocus(null);
       setView("listening");
+    } else if (from.kind === "reading") {
+      setFocus(null);
+      setView("reading");
     } else {
       setFocus(null);
       setView("library");
@@ -217,6 +230,11 @@ function Workbench() {
           <Listening onOpenRecord={(entryId) => openRecord(entryId, { kind: "listening" })} />
         </div>
       ) : null}
+      {readingMounted ? (
+        <div hidden={view !== "reading"}>
+          <Reading onOpenRecord={(entryId) => openRecord(entryId, { kind: "reading" })} />
+        </div>
+      ) : null}
       {view === "review" ? (
         focus ? (
           <ReviewQueue
@@ -279,7 +297,9 @@ function BackBanner({ origin, onBack }: { origin: Origin; onBack: () => void }) 
         ? t("trail.backToSuggestions")
         : origin.kind === "listening"
           ? t("trail.backToListening")
-          : t("trail.backToLibrary");
+          : origin.kind === "reading"
+            ? t("trail.backToReading")
+            : t("trail.backToLibrary");
   const from =
     origin.kind === "record"
       ? t("trail.fromRecord", { id: origin.target.entryId })
@@ -287,7 +307,9 @@ function BackBanner({ origin, onBack }: { origin: Origin; onBack: () => void }) 
         ? t("trail.fromSuggestions")
         : origin.kind === "listening"
           ? t("trail.fromListening")
-          : t("trail.fromLibrary");
+          : origin.kind === "reading"
+            ? t("trail.fromReading")
+            : t("trail.fromLibrary");
   return (
     <div className="banner info trail" role="navigation" aria-label={t("trail.label")}>
       {from}{" "}

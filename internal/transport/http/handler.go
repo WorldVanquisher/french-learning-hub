@@ -84,6 +84,7 @@ type Handler struct {
 	suggestions         ConceptSuggestionService
 	listening           ListeningService
 	listeningDaily      ListeningDailyService
+	reading             ReadingService
 	// demo is set only in the FLH-073 public demo mode.
 	demo *publicDemo
 	// readiness reports whether the backing store can serve requests. It is
@@ -211,6 +212,7 @@ func (h *Handler) Routes() http.Handler {
 	h.registerConceptSuggestionRoutes(mux)
 	// Exam Listening Lesson v1 (private; refused by the public-demo allowlist).
 	h.registerListeningRoutes(mux)
+	h.registerReadingRoutes(mux)
 	h.registerPublicDemoRoutes(mux)
 	return mux
 }

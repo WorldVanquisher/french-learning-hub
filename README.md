@@ -91,6 +91,11 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   record. Optionally, a daily pull reads your YouTube playlist's metadata (new
   videos wait for your transcript), prepares at most one lesson a day and can
   announce it on Telegram; nothing is retried by itself.
+- Practise exam-style **Reading** with authored example passages or your own
+  French article: the passage stays visible, answers and highlighted evidence
+  appear only when you reveal them, one opt-in request (`READING_PROVIDER`)
+  prepares questions for your own text, and a missed point can be saved as a
+  normal learning record.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation
