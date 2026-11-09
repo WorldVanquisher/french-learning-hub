@@ -88,7 +88,9 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   you supply: one explicit, opt-in request (`LISTENING_PROVIDER`) prepares a few
   questions checked against your transcript; answers and evidence stay hidden
   until you reveal them, and a missed point can be saved as a normal learning
-  record.
+  record. Optionally, a daily pull reads your YouTube playlist's metadata (new
+  videos wait for your transcript), prepares at most one lesson a day and can
+  announce it on Telegram; nothing is retried by itself.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation

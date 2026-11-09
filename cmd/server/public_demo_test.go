@@ -126,6 +126,9 @@ func TestPublicDemo_RefusesLiveProvidersAndMechanicalReleaseArtifacts(t *testing
 		"http embedding":    func(c *config.Config) { c.Embedding.Provider = config.EmbeddingHTTP },
 		"qdrant semantic":   func(c *config.Config) { c.Semantic.Mode = config.SemanticQdrant },
 		"unknown analyzer?": func(c *config.Config) { c.AI.Provider = "something-else" },
+		"daily playlist":    func(c *config.Config) { c.ListeningDaily.Source = config.ListeningSourceYouTube },
+		"daily preparation": func(c *config.Config) { c.ListeningDaily.AutoPrepare = true },
+		"daily notify":      func(c *config.Config) { c.ListeningDaily.Notify = config.ListeningNotifyTelegram },
 	}
 	for name, mutate := range cases {
 		cfg := demoConfig()

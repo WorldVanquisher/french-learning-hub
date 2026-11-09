@@ -19,6 +19,8 @@ mkdir -p "$WORK"
 REAL_DOCKER=$(command -v docker) || { echo "refused: docker CLI required for compose config" >&2; exit 2; }
 W="$REPO/scripts/daily/flh-daily.sh"
 SECRET=placeholder-flh094-not-a-real-key
+YT_SECRET=placeholder-youtube-not-a-real-key
+TG_SECRET=123456:placeholder-telegram-not-a-real-token
 failures=0
 pass() { echo "PASS $1"; }
 fail() { echo "FAIL $1"; failures=$((failures + 1)); }
@@ -35,6 +37,7 @@ case " \$* " in
   " inspect "*) echo healthy; exit 0 ;;
   *" stop "*) rm -f "$WORK/state/running"; exit 0 ;;
   *" up "*|*" start "*|*" restart "*) touch "$WORK/state/running"; exit 0 ;;
+  *" exec "*) exit "\$(cat "$WORK/state/pull_rc" 2> /dev/null || echo 0)" ;;
   *) exit 0 ;;
 esac
 EOF
@@ -118,6 +121,39 @@ run "openai listening alone still requires the key" 2 "OPENAI_API_KEY must be se
 run "listening defaults to disabled when unset" 0 "listening:  disabled — off" "$WORK/defaults.env" check
 good "$WORK/listenon.env"; echo "LISTENING_PROVIDER=openai" >> "$WORK/listenon.env"
 run "openai listening is accepted and labelled as billable" 0 "listening:  openai — explicit requests call the provider" "$WORK/listenon.env" check
+# Daily Listening: every part off by default; each enabled part needs its settings.
+daily() { # daily FILE: a valid settings file with every Daily Listening part on
+  good "$1"
+  {
+    echo "LISTENING_PROVIDER=openai"
+    echo "LISTENING_PLAYLIST_SOURCE=youtube"
+    echo "LISTENING_PLAYLIST_ID=PLflh094WrapperTest"
+    echo "YOUTUBE_API_KEY='$YT_SECRET'"
+    echo "LISTENING_AUTO_PREPARE=daily"
+    echo "LISTENING_TIMEZONE=Europe/Paris"
+    echo "LISTENING_NOTIFY=telegram"
+    echo "TELEGRAM_BOT_TOKEN='$TG_SECRET'"
+    echo "TELEGRAM_CHAT_ID=-1001234567890"
+  } >> "$1"
+}
+run "daily listening is off by default" 0 "daily listening: off" "$WORK/defaults.env" check
+daily "$WORK/dailyon.env"
+run "a full daily listening configuration is accepted and labelled" 0 "daily preparation: daily — at most 1 lesson per day \(Europe/Paris\); a pull calls the provider and may be billed" "$WORK/dailyon.env" check
+run "the daily notifier is labelled without values" 0 "daily notify: telegram \(TELEGRAM_BOT_TOKEN set · TELEGRAM_CHAT_ID set\)" "$WORK/dailyon.env" check
+daily "$WORK/badsource.env"; sed -i 's/^LISTENING_PLAYLIST_SOURCE=.*/LISTENING_PLAYLIST_SOURCE=rss/' "$WORK/badsource.env"
+run "an unknown playlist source is refused" 2 "LISTENING_PLAYLIST_SOURCE must be youtube or disabled" "$WORK/badsource.env" check
+daily "$WORK/noytkey.env"; sed -i '/^YOUTUBE_API_KEY=/d' "$WORK/noytkey.env"
+run "a playlist source without its key is refused" 2 "needs YOUTUBE_API_KEY" "$WORK/noytkey.env" check
+daily "$WORK/noplaylist.env"; sed -i '/^LISTENING_PLAYLIST_ID=/d' "$WORK/noplaylist.env"
+run "a playlist source without a playlist is refused" 2 "needs LISTENING_PLAYLIST_ID" "$WORK/noplaylist.env" check
+daily "$WORK/autonogen.env"; sed -i 's/^LISTENING_PROVIDER=.*/LISTENING_PROVIDER=disabled/' "$WORK/autonogen.env"
+run "automatic preparation without the generator is refused" 2 "LISTENING_AUTO_PREPARE=daily needs LISTENING_PROVIDER=openai" "$WORK/autonogen.env" check
+daily "$WORK/notifyonly.env"; sed -i 's/^LISTENING_AUTO_PREPARE=.*/LISTENING_AUTO_PREPARE=disabled/' "$WORK/notifyonly.env"
+run "a notifier without automatic preparation is refused" 2 "LISTENING_NOTIFY=telegram needs LISTENING_AUTO_PREPARE=daily" "$WORK/notifyonly.env" check
+daily "$WORK/notoken.env"; sed -i '/^TELEGRAM_BOT_TOKEN=/d' "$WORK/notoken.env"
+run "a notifier without its token is refused" 2 "needs TELEGRAM_BOT_TOKEN" "$WORK/notoken.env" check
+daily "$WORK/badtz.env"; sed -i 's/^LISTENING_TIMEZONE=.*/LISTENING_TIMEZONE=Paris time/' "$WORK/badtz.env"
+run "a malformed timezone is refused" 2 "LISTENING_TIMEZONE must be an IANA time zone name" "$WORK/badtz.env" check
 
 # ---- A valid configuration; inherited shell variables must not override it. ----
 good "$WORK/daily.env"
@@ -181,8 +217,25 @@ run "normal up after isolated runs is unchanged" 0 "ready at" "$WORK/daily.env" 
 grep -q "^docker compose --env-file $WORK/daily.env up -d --build" "$WORK/shim.log" && ! grep -q -- " -p " "$WORK/shim.log" \
   && pass "normal up still runs 'docker compose --env-file <settings> up -d --build'" || fail "normal up changed"
 
+# ---- Daily Listening pull: only inside the running container, never started here. ----
+rm -f "$WORK/state/running"; : > "$WORK/shim.log"
+run "listening-pull refuses when the service is not running" 2 "the service is not running" "$WORK/dailyon.env" listening-pull
+grep -q " exec " "$WORK/shim.log" && fail "a refused listening-pull ran nothing" || pass "a refused listening-pull ran nothing"
+touch "$WORK/state/running"
+run "listening-pull refuses an unknown argument" 2 "usage" "$WORK/dailyon.env" listening-pull --hourly
+echo 3 > "$WORK/state/pull_rc"
+run "listening-pull --scheduled passes the command's exit status through" 3 "" "$WORK/dailyon.env" listening-pull --scheduled
+grep -q "^docker compose --env-file $WORK/dailyon.env exec -T app /app/listening-pull -trigger scheduled" "$WORK/shim.log" \
+  && pass "listening-pull runs 'docker compose --env-file <settings> exec -T app /app/listening-pull -trigger scheduled'" || fail "listening-pull command line"
+echo 0 > "$WORK/state/pull_rc"; : > "$WORK/shim.log"
+run "listening-pull without --scheduled is a manual pull" 0 "" "$WORK/dailyon.env" listening-pull
+grep -q "exec -T app /app/listening-pull -trigger manual" "$WORK/shim.log" && pass "a manual pull is labelled manual" || fail "manual trigger"
+run "listening-status reads the last pull" 0 "" "$WORK/dailyon.env" listening-status
+grep -q "exec -T app /app/listening-pull status" "$WORK/shim.log" && pass "listening-status runs the read-only status" || fail "listening-status command line"
+grep -qE " (up|start|stop|restart|enable|systemctl)( |$)" "$WORK/shim.log" && fail "listening-pull starts, stops or enables nothing" || pass "listening-pull starts, stops or enables nothing"
+
 # ---- Secrets ----
-if grep -rq "$SECRET" "$WORK/outputs.log" "$WORK/shim.log"; then fail "the key never appears in output"; else pass "the key never appears in output or in docker command lines"; fi
+if grep -rq -e "$SECRET" -e "$YT_SECRET" -e "$TG_SECRET" "$WORK/outputs.log" "$WORK/shim.log"; then fail "the keys never appear in output"; else pass "the keys and the bot token never appear in output or in docker command lines"; fi
 
 echo "{\"failures\": $failures}"
 exit $((failures > 0))

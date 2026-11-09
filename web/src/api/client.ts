@@ -3,7 +3,14 @@
 // in one file. All calls go through the "/api" prefix, which Vite proxies to the Go
 // backend in development (see vite.config.ts).
 
-import type { ListeningExercise, ListeningLesson, ListeningList } from "../types/listening";
+import type {
+  ListeningDaily,
+  ListeningLesson,
+  ListeningList,
+  ListeningNotification,
+  ListeningPreparationResult,
+  ListeningPullRun,
+} from "../types/listening";
 import type {
   Concept,
   ConceptIdentity,
@@ -651,10 +658,69 @@ export function addListeningTranscript(materialId: number, transcript: string, f
   return request<ListeningLesson>("POST", `/listening/materials/${materialId}/transcripts`, { transcript }, fetchImpl);
 }
 
-// prepareListeningExercise is the one explicit provider call. A provider
-// failure or invalid output rejects with an ApiError (502/504) whose body
-// carries the stored failed exercise; 503 means generation is not enabled and
-// 409 that there is no transcript (nothing stored, no call).
-export function prepareListeningExercise(materialId: number, fetchImpl: typeof fetch = fetch): Promise<ListeningExercise> {
-  return request<ListeningExercise>("POST", `/listening/materials/${materialId}/exercises`, undefined, fetchImpl);
+// prepareListeningExercise is the explicit Prepare button: one provider call
+// under the caller's key. Resending the same key after a lost response returns
+// the stored attempt instead of calling again. confirmUnknownRetry acknowledges
+// that the previous attempt's outcome is unknown (it may have been billed).
+// Failures (502/504) and refusals (409 with a code) carry the stored attempt.
+export function prepareListeningExercise(
+  materialId: number,
+  operationId: string,
+  confirmUnknownRetry = false,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ListeningPreparationResult> {
+  return request<ListeningPreparationResult>(
+    "POST",
+    `/listening/materials/${materialId}/exercises`,
+    confirmUnknownRetry ? { confirm_unknown_retry: true } : undefined,
+    fetchImpl,
+    operationId,
+  );
+}
+
+// getListeningPreparation looks an attempt up by its key. 404 means nothing is
+// recorded under it yet; it never proves the request was not received.
+export function getListeningPreparation(operationId: string, fetchImpl: typeof fetch = fetch): Promise<ListeningPreparationResult> {
+  return request<ListeningPreparationResult>("GET", `/listening/preparations/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// ---- Daily Listening (pull, prepare, notify) ----
+
+// getListeningDaily reads the settings, today's use of the daily cap and the
+// last pull. It calls no outside service.
+export function getListeningDaily(fetchImpl: typeof fetch = fetch): Promise<ListeningDaily> {
+  return request<ListeningDaily>("GET", "/listening/daily", undefined, fetchImpl);
+}
+
+// pullListening is "Pull now": the same pull the operator command runs. 409
+// (code busy) means another pull is running and nothing was started.
+export function pullListening(operationId: string, fetchImpl: typeof fetch = fetch): Promise<ListeningPullRun> {
+  return request<ListeningPullRun>("POST", "/listening/pull", undefined, fetchImpl, operationId);
+}
+
+// getListeningPullRun looks a pull up by its key (404: nothing recorded yet).
+export function getListeningPullRun(operationId: string, fetchImpl: typeof fetch = fetch): Promise<ListeningPullRun> {
+  return request<ListeningPullRun>("GET", `/listening/pull-runs/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// retryListeningNotification explicitly sends a failed or unknown notification
+// again. confirmUnknownRetry is required after an unknown outcome.
+export function retryListeningNotification(
+  exerciseId: number,
+  operationId: string,
+  confirmUnknownRetry = false,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ListeningNotification> {
+  return request<ListeningNotification>(
+    "POST",
+    `/listening/exercises/${exerciseId}/notifications`,
+    confirmUnknownRetry ? { confirm_unknown_retry: true } : undefined,
+    fetchImpl,
+    operationId,
+  );
+}
+
+// getListeningNotification looks a send attempt up by its key.
+export function getListeningNotification(operationId: string, fetchImpl: typeof fetch = fetch): Promise<ListeningNotification> {
+  return request<ListeningNotification>("GET", `/listening/notifications/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
 }

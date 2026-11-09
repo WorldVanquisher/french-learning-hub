@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"french-learning-app/internal/domain"
@@ -167,8 +169,10 @@ type userSegment struct {
 // Generate makes one provider call. Transport, HTTP and provider errors wrap
 // domain.ErrProviderTimeout or domain.ErrProviderUnavailable; output that is
 // malformed, oversized, has unknown fields or does not fit the transcript wraps
-// domain.ErrValidation. Errors never carry the key, headers, provider body or
-// transcript text.
+// domain.ErrValidation. A request that was sent but got no usable answer (a
+// dropped connection or an unreadable body) also wraps domain.ErrOutcomeUnknown,
+// as a timeout does implicitly. Errors never carry the key, headers, provider
+// body or transcript text.
 func (o *OpenAI) Generate(ctx context.Context, req domain.ListeningGenerationRequest) (domain.ListeningExerciseContent, error) {
 	var none domain.ListeningExerciseContent
 	if o.client.Timeout > 0 {
@@ -208,11 +212,21 @@ func (o *OpenAI) Generate(ctx context.Context, req domain.ListeningGenerationReq
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+o.apiKey)
+	// Whether the request left this process decides between "not sent" (a
+	// definite failure) and "sent, no usable answer" (outcome unknown: the
+	// provider may have finished and billed).
+	var wrote atomic.Bool
+	httpReq = httpReq.WithContext(httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+		WroteRequest: func(info httptrace.WroteRequestInfo) { wrote.Store(info.Err == nil) },
+	}))
 
 	resp, err := o.client.Do(httpReq)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return none, fmt.Errorf("%w: request deadline exceeded", domain.ErrProviderTimeout)
+		}
+		if wrote.Load() {
+			return none, fmt.Errorf("%w: %w: no response to the sent request", domain.ErrProviderUnavailable, domain.ErrOutcomeUnknown)
 		}
 		return none, fmt.Errorf("%w: request failed", domain.ErrProviderUnavailable)
 	}
@@ -222,7 +236,7 @@ func (o *OpenAI) Generate(ctx context.Context, req domain.ListeningGenerationReq
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return none, fmt.Errorf("%w: reading response timed out", domain.ErrProviderTimeout)
 		}
-		return none, fmt.Errorf("%w: reading response body", domain.ErrProviderUnavailable)
+		return none, fmt.Errorf("%w: %w: reading response body", domain.ErrProviderUnavailable, domain.ErrOutcomeUnknown)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return none, fmt.Errorf("%w: provider returned HTTP %d", domain.ErrProviderUnavailable, resp.StatusCode)

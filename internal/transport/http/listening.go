@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -19,7 +20,9 @@ type ListeningService interface {
 	AddTranscript(ctx context.Context, materialID int64, transcript string) (*application.ListeningLesson, error)
 	GetLesson(ctx context.Context, materialID int64) (*application.ListeningLesson, error)
 	ListMaterials(ctx context.Context) ([]application.ListeningMaterialSummary, error)
-	GenerateExercise(ctx context.Context, materialID int64) (*domain.ListeningExercise, error)
+	PrepareExercise(ctx context.Context, req application.ListeningPrepareRequest) (*application.ListeningPreparationResult, bool, error)
+	GetPreparation(ctx context.Context, operationID string) (*application.ListeningPreparationResult, error)
+	Now() time.Time
 }
 
 // WithListening enables the private /listening routes. Without it they answer
@@ -38,6 +41,8 @@ func (h *Handler) registerListeningRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /listening/materials/{id}", h.handleGetListening)
 	mux.HandleFunc("POST /listening/materials/{id}/transcripts", h.handleAddListeningTranscript)
 	mux.HandleFunc("POST /listening/materials/{id}/exercises", h.handleGenerateListeningExercise)
+	mux.HandleFunc("GET /listening/preparations/{operation_id}", h.handleGetListeningPreparation)
+	h.registerListeningDailyRoutes(mux)
 }
 
 type listeningMaterialResponse struct {
@@ -76,6 +81,12 @@ type listeningLessonResponse struct {
 	Transcript *listeningTranscriptResponse `json:"transcript"`
 	Exercises  []listeningExerciseResponse  `json:"exercises"`
 	Generation listeningGenerationResponse  `json:"generation"`
+	// Daily Listening: derived state, playlist membership and every attempt.
+	State         string                          `json:"state"`
+	InPlaylist    bool                            `json:"in_playlist"`
+	Preparations  []listeningPreparationResponse  `json:"preparations"`
+	Notifications []listeningNotificationResponse `json:"notifications"`
+	Notification  listeningNotifySettings         `json:"notification"`
 }
 
 type listeningSummaryResponse struct {
@@ -83,6 +94,8 @@ type listeningSummaryResponse struct {
 	TranscriptVersion *int                       `json:"transcript_version"`
 	SegmentCount      int                        `json:"segment_count"`
 	LatestExercise    *listeningExerciseResponse `json:"latest_exercise"`
+	State             string                     `json:"state"`
+	InPlaylist        bool                       `json:"in_playlist"`
 }
 
 func ts(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
@@ -115,7 +128,17 @@ func (h *Handler) listeningGeneration() listeningGenerationResponse {
 }
 
 func (h *Handler) toListeningLesson(l *application.ListeningLesson) listeningLessonResponse {
-	out := listeningLessonResponse{Material: toListeningMaterial(l.Material), Exercises: []listeningExerciseResponse{}, Generation: h.listeningGeneration()}
+	out := listeningLessonResponse{
+		Material: toListeningMaterial(l.Material), Exercises: []listeningExerciseResponse{}, Generation: h.listeningGeneration(),
+		State: l.Status.State, InPlaylist: l.Status.InPlaylist, Notification: h.listeningNotifySettings(),
+		Preparations: []listeningPreparationResponse{}, Notifications: []listeningNotificationResponse{},
+	}
+	for _, p := range l.Status.Preparations {
+		out.Preparations = append(out.Preparations, toListeningPreparation(p, l.Now))
+	}
+	for _, n := range l.Status.Notifications {
+		out.Notifications = append(out.Notifications, toListeningNotification(n, l.Now))
+	}
 	if l.Transcript != nil {
 		t := l.Transcript
 		out.Transcript = &listeningTranscriptResponse{ID: t.ID, Version: t.Version, HasTimestamps: t.HasTimestamps, Segments: t.Segments, CreatedAt: ts(t.CreatedAt)}
@@ -182,7 +205,7 @@ func (h *Handler) handleListListening(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]listeningSummaryResponse, 0, len(rows))
 	for _, row := range rows {
-		s := listeningSummaryResponse{Material: toListeningMaterial(row.Material), SegmentCount: row.SegmentCount}
+		s := listeningSummaryResponse{Material: toListeningMaterial(row.Material), SegmentCount: row.SegmentCount, State: row.State, InPlaylist: row.InPlaylist}
 		if row.TranscriptVersion > 0 {
 			v := row.TranscriptVersion
 			s.TranscriptVersion = &v
@@ -263,11 +286,73 @@ func (h *Handler) handleAddListeningTranscript(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusCreated, h.toListeningLesson(lesson))
 }
 
-// handleGenerateListeningExercise is the one explicit provider call. Status:
-// 201 completed exercise; 503 generation not enabled (nothing stored); 404
-// unknown material; 409 no transcript (no call, nothing stored); 502/504 with
-// the stored failed exercise for provider failure, timeout or invalid output.
-// The request body must be empty.
+type prepareListeningRequest struct {
+	ConfirmUnknownRetry bool `json:"confirm_unknown_retry"`
+}
+
+// decodeOptionalListening accepts an empty body or one bounded JSON object.
+func decodeOptionalListening(w http.ResponseWriter, r *http.Request, into any) bool {
+	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 4<<10))
+	if err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, "request body is too large")
+		return false
+	}
+	if len(raw) == 0 {
+		return true
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	var extra any
+	if dec.Decode(into) != nil || dec.Decode(&extra) != io.EOF {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return false
+	}
+	return true
+}
+
+// optionalKey reads at most one Idempotency-Key header.
+func optionalKey(w http.ResponseWriter, r *http.Request) (string, bool) {
+	keys := r.Header.Values("Idempotency-Key")
+	switch {
+	case len(keys) == 0:
+		return "", true
+	case len(keys) > 1:
+		writeError(w, http.StatusBadRequest, "at most one Idempotency-Key header is allowed")
+		return "", false
+	}
+	if _, err := domain.NormalizeAnnotationOperationID(keys[0]); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid idempotency key")
+		return "", false
+	}
+	return keys[0], true
+}
+
+func (h *Handler) toPreparationResult(res *application.ListeningPreparationResult, now time.Time) map[string]any {
+	out := map[string]any{"preparation": nil, "exercise": nil}
+	if res == nil {
+		return out
+	}
+	out["preparation"] = toListeningPreparation(res.Preparation, now)
+	if res.Exercise != nil {
+		out["exercise"] = toListeningExercise(*res.Exercise, false)
+	}
+	return out
+}
+
+// handleGenerateListeningExercise is the explicit Prepare button: one provider
+// call through the shared preparation path. An optional UUID Idempotency-Key
+// makes it safe to resend after a lost response; the attempt is recorded before
+// the call and can be looked up at GET /listening/preparations/{key}. The
+// optional body {"confirm_unknown_retry": true} acknowledges that the previous
+// attempt's outcome is unknown. The call is not canceled when the client goes
+// away, so its result is stored either way.
+//
+// Status: 201 completed ({preparation, exercise}); 200 same-key replay (header
+// Idempotency-Replayed: true) in any state; 502/504 with the stored failed
+// exercise and attempt (provider failure, unknown outcome, invalid output);
+// 409 {code}: no_transcript (no call), preparation_in_progress or
+// outcome_unknown (no call; the blocking attempt is returned), key_conflict;
+// 503 generation not enabled (nothing stored); 404 unknown material; 400.
 func (h *Handler) handleGenerateListeningExercise(w http.ResponseWriter, r *http.Request) {
 	if h.listeningUnavailable(w) {
 		return
@@ -276,28 +361,75 @@ func (h *Handler) handleGenerateListeningExercise(w http.ResponseWriter, r *http
 	if !ok {
 		return
 	}
-	if body, _ := io.ReadAll(io.LimitReader(r.Body, 1)); len(body) > 0 {
-		writeError(w, http.StatusBadRequest, "this request takes no body")
+	key, ok := optionalKey(w, r)
+	if !ok {
 		return
 	}
-	exercise, err := h.listening.GenerateExercise(r.Context(), id)
+	var req prepareListeningRequest
+	if !decodeOptionalListening(w, r, &req) {
+		return
+	}
+	res, replay, err := h.listening.PrepareExercise(context.WithoutCancel(r.Context()), application.ListeningPrepareRequest{
+		MaterialID: id, OperationID: key, ConfirmUnknownRetry: req.ConfirmUnknownRetry,
+	})
+	now := h.listening.Now()
+	if res != nil {
+		w.Header().Set("Idempotency-Key", res.Preparation.OperationID)
+	}
 	var genErr *application.ListeningGenerationError
 	switch {
 	case errors.As(err, &genErr):
 		status, msg := http.StatusBadGateway, "the exercise provider is unavailable; the material and transcript are kept"
-		if errors.Is(err, domain.ErrProviderTimeout) {
-			status, msg = http.StatusGatewayTimeout, "the exercise provider timed out; the material and transcript are kept"
-		} else if errors.Is(err, domain.ErrValidation) {
+		switch {
+		case errors.Is(err, domain.ErrProviderTimeout):
+			status, msg = http.StatusGatewayTimeout, "the exercise provider timed out, so the outcome is unknown; the material and transcript are kept"
+		case errors.Is(err, domain.ErrOutcomeUnknown):
+			msg = "the request reached the exercise provider but no usable answer came back, so the outcome is unknown; the material and transcript are kept"
+		case errors.Is(err, domain.ErrValidation):
 			msg = "the exercise provider returned output that does not fit the transcript; the material and transcript are kept"
 		}
-		writeJSON(w, status, map[string]any{"error": msg, "exercise": toListeningExercise(genErr.Exercise, false)})
+		body := h.toPreparationResult(res, now)
+		body["error"] = msg
+		writeJSON(w, status, body)
 	case errors.Is(err, domain.ErrListeningDisabled):
 		writeError(w, http.StatusServiceUnavailable, "listening exercise generation is not enabled (LISTENING_PROVIDER)")
 	case errors.Is(err, domain.ErrListeningNoTranscript):
-		writeError(w, http.StatusConflict, domain.ErrListeningNoTranscript.Error())
+		writeJSON(w, http.StatusConflict, map[string]any{"error": domain.ErrListeningNoTranscript.Error(), "code": "no_transcript"})
+	case errors.Is(err, domain.ErrListeningPreparationInProgress):
+		body := h.toPreparationResult(res, now)
+		body["error"], body["code"] = err.Error(), "preparation_in_progress"
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, domain.ErrListeningOutcomeUnknown):
+		body := h.toPreparationResult(res, now)
+		body["error"], body["code"] = err.Error(), "outcome_unknown"
+		writeJSON(w, http.StatusConflict, body)
+	case errors.Is(err, domain.ErrListeningOperationConflict):
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "key_conflict"})
 	case err != nil:
 		writeListeningError(w, err, "prepare the exercise")
+	case replay:
+		w.Header().Set("Idempotency-Replayed", "true")
+		writeJSON(w, http.StatusOK, h.toPreparationResult(res, now))
 	default:
-		writeJSON(w, http.StatusCreated, toListeningExercise(*exercise, true))
+		writeJSON(w, http.StatusCreated, h.toPreparationResult(res, now))
 	}
+}
+
+// handleGetListeningPreparation looks an attempt up by its key: its state and,
+// once finished, its exercise (without content; the lesson read has it). 404
+// means nothing is recorded under the key, which never proves it was not sent.
+func (h *Handler) handleGetListeningPreparation(w http.ResponseWriter, r *http.Request) {
+	if h.listeningUnavailable(w) {
+		return
+	}
+	res, err := h.listening.GetPreparation(r.Context(), r.PathValue("operation_id"))
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "no preparation is recorded under this key")
+		return
+	}
+	if err != nil {
+		writeListeningError(w, err, "read the preparation")
+		return
+	}
+	writeJSON(w, http.StatusOK, h.toPreparationResult(res, h.listening.Now()))
 }

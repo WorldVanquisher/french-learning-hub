@@ -31,6 +31,13 @@ func checkPublicDemoConfig(cfg config.Config) error {
 	if cfg.Semantic.Mode != config.SemanticDisabled {
 		bad = append(bad, fmt.Sprintf("SEMANTIC_SEARCH=%s (must be %s; the demo reads vectors from its artifact)", cfg.Semantic.Mode, config.SemanticDisabled))
 	}
+	// Daily Listening is a private feature: the demo never pulls, prepares or
+	// notifies, so a configured source, automatic preparation or notifier is a
+	// mistake, not something to ignore.
+	if d := cfg.ListeningDaily; (d.Source != "" && d.Source != config.ListeningSourceDisabled) || d.AutoPrepare ||
+		(d.Notify != "" && d.Notify != config.ListeningNotifyDisabled) {
+		bad = append(bad, "LISTENING_PLAYLIST_SOURCE, LISTENING_AUTO_PREPARE and LISTENING_NOTIFY (must all be disabled)")
+	}
 	if len(bad) > 0 {
 		return fmt.Errorf("public demo refuses live providers: %s", strings.Join(bad, "; "))
 	}

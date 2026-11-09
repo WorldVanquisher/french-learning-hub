@@ -161,10 +161,11 @@ func TestListeningLesson_PrepareReopenAndSaveMissedPoint(t *testing.T) {
 	}
 
 	// One explicit preparation, one call.
-	status, ex := doJSON(t, http.MethodPost, fmt.Sprintf("%s/listening/materials/%d/exercises", srv.URL, id), "")
+	status, res := doJSON(t, http.MethodPost, fmt.Sprintf("%s/listening/materials/%d/exercises", srv.URL, id), "")
+	ex, _ := res["exercise"].(map[string]any)
 	if status != http.StatusCreated || ex["status"] != "completed" || ex["generator"] != "openai:fake-model:listening_exercise_v1" ||
-		len(path(ex, "content", "items").([]any)) != 3 || fake.count() != 1 {
-		t.Fatalf("prepare: %d %v (calls %d)", status, ex, fake.count())
+		path(res, "preparation", "state") != "completed" || path(res, "preparation", "trigger") != "explicit" || fake.count() != 1 {
+		t.Fatalf("prepare: %d %v (calls %d)", status, res, fake.count())
 	}
 	// The list carries the status, never the answers.
 	_, list := doJSON(t, http.MethodGet, srv.URL+"/listening/materials", "")
@@ -285,7 +286,7 @@ func TestListeningLesson_FailuresAreStoredAndPreserveTheSource(t *testing.T) {
 	// The next explicit request may succeed; failures stay in the history.
 	fake.set(http.StatusOK, listeningExercise)
 	status, ex := doJSON(t, http.MethodPost, fmt.Sprintf("%s/listening/materials/%d/exercises", srv.URL, id), "")
-	if status != http.StatusCreated || ex["status"] != "completed" {
+	if status != http.StatusCreated || path(ex, "exercise", "status") != "completed" {
 		t.Fatalf("retry by request: %d %v", status, ex)
 	}
 }

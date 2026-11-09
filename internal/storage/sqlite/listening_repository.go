@@ -14,6 +14,7 @@ import (
 // ListeningRepository stores Exam Listening Lesson v1 records in their own
 // tables (migration 014). Every row is inserted once and never updated; it
 // writes nothing to entries, analyses, Concepts, annotations or admission.
+// Daily Listening receipts (migration 015) are in listening_daily_repository.go.
 type ListeningRepository struct {
 	db  *sql.DB
 	now func() time.Time
@@ -157,29 +158,33 @@ func (r *ListeningRepository) GetTranscript(ctx context.Context, id int64) (doma
 
 // CreateExercise stores one generation attempt (completed or failed).
 func (r *ListeningRepository) CreateExercise(ctx context.Context, e domain.ListeningExercise) (domain.ListeningExercise, error) {
+	id, err := insertExercise(ctx, r.db, e, r.now().Format(rfc3339))
+	if err != nil {
+		return domain.ListeningExercise{}, err
+	}
+	return readExercise(ctx, r.db, `id = ?`, id)
+}
+
+func insertExercise(ctx context.Context, x execer, e domain.ListeningExercise, ts string) (int64, error) {
 	var content, failure any
 	if e.Content != nil {
 		raw, err := json.Marshal(e.Content)
 		if err != nil {
-			return domain.ListeningExercise{}, err
+			return 0, err
 		}
 		content = string(raw)
 	}
 	if e.FailureCode != "" {
 		failure = e.FailureCode
 	}
-	res, err := r.db.ExecContext(ctx,
+	res, err := x.ExecContext(ctx,
 		`INSERT INTO listening_exercises (material_id, transcript_id, status, failure_code, generator, content, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		e.MaterialID, e.TranscriptID, e.Status, failure, e.Generator, content, r.now().Format(rfc3339))
+		e.MaterialID, e.TranscriptID, e.Status, failure, e.Generator, content, ts)
 	if err != nil {
-		return domain.ListeningExercise{}, fmt.Errorf("insert listening exercise: %w", err)
+		return 0, fmt.Errorf("insert listening exercise: %w", err)
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return domain.ListeningExercise{}, err
-	}
-	return readExercise(ctx, r.db, `id = ?`, id)
+	return res.LastInsertId()
 }
 
 // ListExercises returns a material's exercises, newest first.

@@ -77,12 +77,14 @@ selected at startup.
 cmd/server            program entry point + graceful shutdown
 cmd/capture           thin CLI that posts a learning_capture_v1 file/stdin to POST /captures
 cmd/semantic-index    operator CLI for the optional semantic index (build/sync/rebuild/status)
+cmd/listening-pull    operator CLI for the Daily Listening pull (the same operation as "Pull now")
 internal/domain       entities from Entry to Concept and annotation, small interfaces, validation
 internal/application  use cases: entries, analysis, feedback, effective views, inventory, capture,
                       extraction, concepts and annotation, dataset/quality/retrieval, Knowledge Library
 internal/analyzer     local rule-based Analyzer + OpenAI Analyzer + named rule engine (assessment)
 internal/extractor    OpenAI knowledge Extractor (opt-in) selected by EXTRACTOR_PROVIDER
 internal/embedding    optional HTTP text-to-vector provider (M12-D evaluation, FLH-040 index)
+internal/listening    listening exercise generator, YouTube playlist source, Telegram notifier, wiring
 internal/vectorindex  single-instance Qdrant REST adapter for the optional semantic index
 internal/captureclient   thin HTTP client for POST /captures (used by cmd/capture)
 internal/storage/sqlite  SQLite repositories + migration runner
@@ -865,7 +867,12 @@ the learning workflow only through §4.1.
   provenance. A timeout, provider failure or invalid output stores a `failed`
   row with a non-secret code and leaves the material and transcript untouched.
   There is no retry and no background call. Disabled answers `503` and stores
-  nothing; no transcript answers `409` without a provider call.
+  nothing; no transcript answers `409` without a provider call. Every
+  preparation, explicit or made by a Daily Listening pull, goes through one path
+  that first records an attempt (`listening_preparations`, migration `015`;
+  see [§4.4](#44-daily-listening-pull-prepare-notify)), so a timeout or lost
+  response leaves an `unknown` attempt; the explicit request takes an optional
+  `Idempotency-Key` and needs `confirm_unknown_retry` after an unknown outcome.
 - **Missed point:** the workbench posts a normal `learning_capture_v1` with
   `source: manual` (§4.1), only on an explicit "Save learning record". The
   learner's text is `original_input`; the title, the video link (at the source
@@ -877,6 +884,91 @@ the learning workflow only through §4.1.
   Because the demo's migration ledger must equal the embedded migrations, a demo
   artifact built before `014` is refused by a server that has it; the deployed
   demo keeps its own pinned release.
+
+### 4.4 Daily Listening (pull, prepare, notify)
+
+One **pull** operation, `ListeningDailyService.Pull`, is shared by the
+workbench's "Pull now" (`POST /listening/pull`) and the operator command
+`cmd/listening-pull` (`/app/listening-pull` in the image; run by hand or by a
+timer the owner installs from `scripts/daily/systemd/`). Both are built from the
+same configuration by `listening.NewServices`. The server runs no scheduler and
+no background work. Every part is off by default; a pull is possible when a
+playlist source or the automatic preparation is enabled, otherwise `503`.
+
+1. **Source** (`LISTENING_PLAYLIST_SOURCE=youtube`): one playlist's official
+   metadata through YouTube Data API v3 `playlistItems.list` (`part=snippet,
+   contentDetails,status`, `fields` restricted to video ID, title, position,
+   publication time and privacy status). Bounded: at most
+   `LISTENING_PLAYLIST_MAX_ITEMS` (1–200, default 50) entries, 50 per request,
+   `YOUTUBE_TIMEOUT` per request, 1 MiB per response, no redirects, page tokens
+   validated. The key travels in the `X-Goog-Api-Key` header, never in a URL,
+   error or log. Private, deleted and malformed entries are skipped and counted.
+   Nothing else is fetched: no media, captions, pages or transcripts, and no
+   speech recognition.
+2. **Deduplication by video ID** (`listening_playlist_items`, primary key
+   `video_id`): a video is recorded once. A new ID creates a material (the
+   official title, the canonical link) with no transcript, which is
+   "Waiting for a transcript"; an ID that already has a material, including one
+   saved by hand, is linked to it and creates nothing.
+3. **Preparation** (`LISTENING_AUTO_PREPARE=daily`, which requires
+   `LISTENING_PROVIDER=openai`): at most `ListeningDailyPreparationCap` = 1
+   attempt per local day in `LISTENING_TIMEZONE` (an IANA name; the binary
+   embeds the zone data), whatever its outcome, counted across the button, the
+   command and the timer and enforced by a partial unique index on `pull_day`.
+   The candidate is the oldest playlist material whose latest transcript has no
+   exercise and no attempt, and whose latest attempt is neither unfinished nor
+   unknown. It goes through the same `prepare` path as the explicit button
+   (§4.3). A failed or unknown attempt is never retried by a pull; a material
+   with an unknown attempt does not block the others. Explicit clicks are not
+   counted against the cap.
+4. **Notification** (`LISTENING_NOTIFY=telegram`, which requires the automatic
+   preparation): only the lesson this pull prepared, once (a partial unique
+   index on `exercise_id` for pull attempts). One Telegram Bot API `sendMessage`
+   with `domain.LessonReadyNotice.Text()`, the title only: never transcript
+   text, answers, links or credentials. The token is in the Bot API path, so no
+   error includes the URL; redirects are refused. A material waiting for its
+   transcript never produces a notification.
+
+**Attempts before calls.** A preparation (`listening_preparations`) or a send
+(`listening_notifications`) is inserted before the outside call, with a
+deadline (the call's timeout plus 30 s), and finished once by an UPDATE guarded
+by `finished_at IS NULL`, in a write detached from the caller's cancellation.
+The decision to start (in progress, unknown, eligibility, cap, key replay or
+conflict) is taken in the same SQLite write transaction as the insert, so the
+server and the command, on one database file, cannot both start one. Outcomes:
+
+| Outside answer | Preparation | Notification |
+| --- | --- | --- |
+| usable answer | `completed` | `sent` |
+| answered with an error, or unusable output | `failed` | `failed` (`refused`) |
+| the request never left (connection refused, DNS) | `failed` | `failed` (`not_sent`) |
+| sent, then a timeout, a dropped connection or an unreadable answer | `unknown` | `unknown` (`no_response`) |
+| unfinished after its deadline (the process died) | `unknown` (derived on read) | `unknown` (derived on read) |
+
+"Sent" is decided with `httptrace.WroteRequest`. An `unknown` outcome may have
+been processed and billed, or delivered: nothing retries it, and a new explicit
+call needs `confirm_unknown_retry: true`. A client that lost a response looks
+its key up first (`GET /listening/preparations/{key}`,
+`/listening/pull-runs/{key}`, `/listening/notifications/{key}`); resending the
+same key replays the stored record and never calls again. The HTTP handlers
+detach the work from the client's cancellation, so a closed browser tab does
+not discard a result.
+
+**Runs never overlap.** `listening_pull_runs` holds at most one `running` row
+(a partial unique index). A pull inserts it with a lease (the source budget,
+the preparation and notification deadlines, plus one minute) and finishes it
+once with each step's outcome: source `disabled`/`ok`/`failed` (with
+`source_timeout`, `source_unavailable`, `source_refused` or `invalid_response`),
+item counts, preparation `disabled`/`nothing_to_prepare`/`daily_cap_reached`/
+`completed`/`failed`/`unknown`, and notification `disabled`/`nothing_ready`/
+`sent`/`failed`/`unknown`. While another run holds an unexpired lease, a pull
+starts nothing (`409` with that run; the command exits 4). A run past its lease
+reads as `interrupted` and is marked so by the next pull. A source failure is
+recorded and the other steps still run. The last run is the visible outcome
+(`GET /listening/daily`, `listening-pull status`).
+
+The public demo refuses to start with any Daily Listening part enabled, does
+not route `/listening`, and requires the four tables to be empty.
 
 ## 5. Knowledge extraction and admission
 
@@ -2358,6 +2450,19 @@ empty values behave as unset. Defaults work out of the box:
 | `EXTRACTOR_PROVIDER` | `disabled`                  | Knowledge extractor: `disabled` or `openai`   |
 | `SUGGESTION_PROVIDER` | `disabled`                 | Concept suggester (FLH-097): `disabled` or `openai`; reuses `OPENAI_*` |
 | `LISTENING_PROVIDER` | `disabled`                  | Listening exercise generator ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)): `disabled` or `openai`; reuses `OPENAI_*` |
+| `LISTENING_PLAYLIST_SOURCE` | `disabled`           | Daily Listening playlist ([§4.4](#44-daily-listening-pull-prepare-notify)): `disabled` or `youtube` |
+| `LISTENING_PLAYLIST_ID` | _(none)_                 | Required for `youtube`: the playlist ID |
+| `YOUTUBE_API_KEY`    | _(none)_                    | Required for `youtube`; sent only in the `X-Goog-Api-Key` header; never logged |
+| `YOUTUBE_API_BASE_URL` | `https://www.googleapis.com/youtube/v3` | YouTube Data API base URL; https, or plain http only for a loopback test server |
+| `YOUTUBE_TIMEOUT`    | `10`                        | Per-request playlist timeout (seconds) |
+| `LISTENING_PLAYLIST_MAX_ITEMS` | `50`              | Entries read per pull, 1–200 (50 per request) |
+| `LISTENING_AUTO_PREPARE` | `disabled`              | `daily`: a pull prepares at most one lesson per local day; requires `LISTENING_PROVIDER=openai` |
+| `LISTENING_TIMEZONE` | `UTC`                       | IANA zone whose calendar day the cap counts |
+| `LISTENING_NOTIFY`   | `disabled`                  | `telegram`: announce a lesson a pull prepared; requires `LISTENING_AUTO_PREPARE=daily` |
+| `TELEGRAM_BOT_TOKEN` | _(none)_                    | Required for `telegram`; never logged |
+| `TELEGRAM_CHAT_ID`   | _(none)_                    | Required for `telegram`: a numeric chat ID or `@channel` |
+| `TELEGRAM_API_BASE_URL` | `https://api.telegram.org` | Bot API base URL; https, or plain http only for a loopback test server |
+| `TELEGRAM_TIMEOUT`   | `10`                        | Send timeout (seconds) |
 | `OPENAI_API_KEY`     | _(none)_                    | Required for `openai`; never logged           |
 | `OPENAI_MODEL`       | _(none)_                    | Required for `openai`; the model to use       |
 | `OPENAI_BASE_URL`    | `https://api.openai.com/v1` | API base URL (override for gateways/testing)  |
@@ -2469,6 +2574,7 @@ forward-only; there are no down migrations.
 | `012_bilingual_explanations` | nullable explanation/statement language variants, per-language corrections and reviewed languages on feedback (FLH-095; see [§3.9](#39-bilingual-explanations-flh-095)) |
 | `013_concept_suggestions` | advisory `concept_suggestion_runs`, `concept_suggestion_items`, `concept_suggestion_confirmations` (FLH-097; see [§7.6](#76-ai-assisted-concept-suggestions-flh-097)) |
 | `014_listening_lessons` | `listening_materials`, `listening_transcripts`, `listening_exercises`, all append-only (Listening v1; see [§4.3](#43-listening-lessons-exam-listening-lesson-v1)) |
+| `015_listening_daily` | `listening_pull_runs`, `listening_playlist_items`, `listening_preparations`, `listening_notifications`: receipts inserted before each outside call and finished once (Daily Listening; see [§4.4](#44-daily-listening-pull-prepare-notify)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -3382,7 +3488,8 @@ does not expose these routes.
 | `POST /listening/materials` | Body `{"source_url", "title", "transcript"?}` (unknown fields refused, 32 KiB). `201` lesson; `400` invalid JSON; `413` too large; `422` invalid link, title or transcript (messages name the field or line, never the text) |
 | `GET /listening/materials/{id}` | Lesson: `material`, `transcript` (`id`, `version`, `has_timestamps`, `segments` [`index`, `start_seconds` or null, `text`]) or null, `exercises` (newest first, with `content`), `generation`. `404` unknown. No provider call |
 | `POST /listening/materials/{id}/transcripts` | Body `{"transcript"}`. `201` lesson with the next transcript version; `404`; `422` |
-| `POST /listening/materials/{id}/exercises` | No body. One provider call. `201` completed exercise; `409` no transcript (no call, nothing stored); `502`/`504` `{error, exercise}` with the stored failed exercise; `503` disabled (nothing stored); `404` |
+| `POST /listening/materials/{id}/exercises` | Optional UUID `Idempotency-Key`; optional body `{"confirm_unknown_retry": true}`. One provider call through the shared preparation path. `201` `{preparation, exercise}`; `200` same-key replay (`Idempotency-Replayed: true`) in any state, no call; `502`/`504` `{error, preparation, exercise}` with the stored attempt and failed exercise (`preparation.state` is `failed` or `unknown`); `409` `{code}`: `no_transcript` (no call), `preparation_in_progress` or `outcome_unknown` (no call; the blocking `preparation` is returned), `key_conflict`; `503` disabled (nothing stored); `404`; `400` invalid key or body |
+| `GET /listening/preparations/{key}` | `{preparation, exercise}` for an attempt (`exercise` without `content`, null while unfinished). `404` nothing recorded under the key (never proof it was not sent) |
 
 An exercise has `id`, `transcript_id`, `status` (`completed`/`failed`),
 `failure_code` (`provider_timeout`, `provider_unavailable`, `invalid_output`
@@ -3390,3 +3497,33 @@ or null), `generator`, `created_at` and `content` (`items`: `kind`, `question`,
 `expected_answer`, `rationale_en`, `rationale_zh`, `segments`; `annotations`:
 `kind`, `segment`, `excerpt`, `note_en`, `note_zh`; null when failed). The
 public demo boundary does not expose these routes.
+
+Lesson reads also carry `state` (`waiting_for_transcript`, `ready_to_prepare`,
+`in_progress`, `prepared`, `failed`, `outcome_unknown`), `in_playlist`,
+`preparations` and `notifications` (newest first) and `notification`
+(`enabled`, `channel`); list rows carry `state` and `in_playlist`. A
+`preparation` has `id`, `operation_id`, `material_id`, `transcript_id`,
+`trigger` (`explicit`/`pull`), `pull_run_id`, `after_unknown`, `started_at`,
+`deadline_at`, `finished_at`, `state` (`in_progress`, `completed`, `failed`,
+`unknown`) and `exercise_id`.
+
+### A.16 Daily Listening
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `GET /listening/daily` | `pull_enabled`; `source` (`enabled`, `name`); `preparation` (`enabled`, `generator`, `daily_cap`, `timezone`, `today`, `used_today`); `notification` (`enabled`, `channel`); `last_run` or null. No outside call |
+| `POST /listening/pull` | Required UUID `Idempotency-Key`, no body. Runs one pull (trigger `manual`). `201` the finished run; `200` same-key replay (`Idempotency-Replayed: true`), running or finished; `409` `{code: "busy", run}` while another run holds its lease (nothing started); `503` not configured; `400`; `500` (check the run by its key) |
+| `GET /listening/pull-runs/{key}` | The run. `404` nothing recorded under the key |
+| `POST /listening/exercises/{id}/notifications` | Required UUID `Idempotency-Key`; optional body `{"confirm_unknown_retry": true}`. Explicitly sends again when the exercise's latest notification `failed` or is `unknown` (the latter needs the confirmation). `201` the recorded attempt with its `state`; `200` same-key replay; `409` `{code}`: `outcome_unknown`, `in_progress`, `not_retryable` (none yet, or already sent), `not_completed`, `key_conflict`; `503` notifications off; `404` |
+| `GET /listening/notifications/{key}` | The send attempt. `404` nothing recorded under the key |
+
+A run has `id`, `operation_id`, `trigger` (`manual`/`scheduled`), `status`
+(`running`, `finished`, `interrupted`; a running run past its lease reads as
+interrupted), `started_at`, `lease_expires_at`, `finished_at`, `source`
+(`outcome`, `failure`), `items` (`seen`, `created`, `known`, `skipped`),
+`preparation` (`outcome`, `attempt`) and `notification` (`outcome`, `attempt`).
+A notification has `id`, `operation_id`, `exercise_id`, `channel`, `trigger`,
+`pull_run_id`, `after_unknown`, `started_at`, `deadline_at`, `finished_at`,
+`state` (`in_progress`, `sent`, `failed`, `unknown`) and `failure_code`
+(`not_sent`, `refused`, `no_response` or null). The public demo boundary does
+not expose these routes.

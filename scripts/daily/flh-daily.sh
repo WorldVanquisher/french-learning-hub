@@ -5,6 +5,8 @@
 #   bash scripts/daily/flh-daily.sh check | up | stop | start | restart | status | logs
 #   bash scripts/daily/flh-daily.sh backup
 #   bash scripts/daily/flh-daily.sh restore BACKUP_DIR
+#   bash scripts/daily/flh-daily.sh listening-pull [--scheduled]
+#   bash scripts/daily/flh-daily.sh listening-status
 #
 # Settings file: $FLH_DAILY_ENV, default ~/.config/flh/daily.env (template:
 # scripts/daily/daily.env.example). It must be outside the repository, owned by
@@ -16,8 +18,10 @@
 # second one. Values are never printed: checks report only set/empty and
 # non-secret choices.
 #
-# Nothing here calls a provider. Analysis and extraction run only when you
-# request them in the workbench.
+# Nothing here calls a provider, except listening-pull: it runs the Daily
+# Listening pull inside the running container (/app/listening-pull), the same
+# operation as the workbench's "Pull now" button. A systemd timer may run it
+# (scripts/daily/systemd/); this script never installs or enables one.
 #
 # Isolated rehearsal mode (v1.0 release rehearsal; never needed for daily use):
 # set BOTH FLH_COMPOSE_PROJECT (a project name other than french-learning-hub)
@@ -34,7 +38,7 @@ ENV_FILE=${FLH_DAILY_ENV:-$HOME/.config/flh/daily.env}
 die() { echo "flh-daily: $*" >&2; exit 2; }
 
 usage() {
-  echo "usage: flh-daily.sh check|up|stop|start|restart|status|logs|backup|restore BACKUP_DIR" >&2
+  echo "usage: flh-daily.sh check|up|stop|start|restart|status|logs|backup|restore BACKUP_DIR|listening-pull [--scheduled]|listening-status" >&2
   exit 2
 }
 CMD=${1:-}
@@ -117,6 +121,25 @@ def secs(key, default):
 pt, wt = secs("OPENAI_TIMEOUT", 8), secs("HTTP_WRITE_TIMEOUT", 10)
 if real and pt >= wt:
     problems.append(f"OPENAI_TIMEOUT ({pt}s) must be below HTTP_WRITE_TIMEOUT ({wt}s), or a stored result can look like a lost response")
+# Daily Listening: every part off unless stated; the server re-checks all of it.
+src = envr.get("LISTENING_PLAYLIST_SOURCE", "") or "disabled"
+auto = envr.get("LISTENING_AUTO_PREPARE", "") or "disabled"
+notify = envr.get("LISTENING_NOTIFY", "") or "disabled"
+tz = envr.get("LISTENING_TIMEZONE", "") or "UTC"
+if src not in ("youtube", "disabled"): problems.append("LISTENING_PLAYLIST_SOURCE must be youtube or disabled")
+if src == "youtube":
+    if not envr.get("YOUTUBE_API_KEY"): problems.append("LISTENING_PLAYLIST_SOURCE=youtube needs YOUTUBE_API_KEY (the value is never shown)")
+    if not envr.get("LISTENING_PLAYLIST_ID"): problems.append("LISTENING_PLAYLIST_SOURCE=youtube needs LISTENING_PLAYLIST_ID")
+if auto not in ("daily", "disabled"): problems.append("LISTENING_AUTO_PREPARE must be daily or disabled")
+if auto == "daily" and ls != "openai": problems.append("LISTENING_AUTO_PREPARE=daily needs LISTENING_PROVIDER=openai")
+if notify not in ("telegram", "disabled"): problems.append("LISTENING_NOTIFY must be telegram or disabled")
+if notify == "telegram":
+    if auto != "daily": problems.append("LISTENING_NOTIFY=telegram needs LISTENING_AUTO_PREPARE=daily (only a lesson a pull prepared is announced)")
+    if not envr.get("TELEGRAM_BOT_TOKEN"): problems.append("LISTENING_NOTIFY=telegram needs TELEGRAM_BOT_TOKEN (the value is never shown)")
+    if not envr.get("TELEGRAM_CHAT_ID"): problems.append("LISTENING_NOTIFY=telegram needs TELEGRAM_CHAT_ID")
+import re
+if not re.fullmatch(r"[A-Za-z_]+(/[A-Za-z0-9_+-]+)*", tz) or tz == "Local":
+    problems.append("LISTENING_TIMEZONE must be an IANA time zone name such as Europe/Paris")
 if "FLH_DATA_DIR" not in given:
     problems.append("FLH_DATA_DIR must be set in the settings file (the default ./data/release is not used for daily data)")
 mounts = [v for v in app.get("volumes", []) if v.get("target") == "/data"]
@@ -149,6 +172,18 @@ if mode == "summary":
     print(f"extraction: {ex}" + (" — explicit requests call the provider and may be billed" if ex == "openai" else " — off"))
     print(f"suggestions: {sg}" + (" — explicit requests call the provider and may be billed" if sg == "openai" else " — off"))
     print(f"listening:  {ls}" + (" — explicit requests call the provider and may be billed" if ls == "openai" else " — off"))
+    if src == "disabled" and auto == "disabled":
+        print("daily listening: off")
+    else:
+        print(f"daily pull: playlist {src}" + (" (LISTENING_PLAYLIST_ID set · YOUTUBE_API_KEY set) — reads official metadata only, when you press Pull now or run listening-pull" if src == "youtube" else ""))
+        print(f"daily preparation: {auto}" + (f" — at most 1 lesson per day ({tz}); a pull calls the provider and may be billed" if auto == "daily" else " — off"))
+        print(f"daily notify: {notify}" + (" (TELEGRAM_BOT_TOKEN set · TELEGRAM_CHAT_ID set) — only for a lesson a pull prepared" if notify == "telegram" else " — off"))
+        budget = (pt if auto == "daily" else 0) + (secs("TELEGRAM_TIMEOUT", 10) if notify == "telegram" else 0)
+        if src == "youtube":
+            pages = -(-max(1, min(200, secs("LISTENING_PLAYLIST_MAX_ITEMS", 50))) // 50)
+            budget += pages * secs("YOUTUBE_TIMEOUT", 10)
+        if budget >= wt:
+            print(f"note:       a Pull now can take up to {budget}s, beyond HTTP_WRITE_TIMEOUT ({wt}s); the workbench then checks the stored run by its key")
     if real:
         print(f"OPENAI_MODEL: set · OPENAI_API_KEY: set · OPENAI_BASE_URL: {base} · timeouts: provider {pt}s < write {wt}s")
     print(f"database:   {data}/app.db")
@@ -245,6 +280,24 @@ case "$CMD" in
     echo "flh-daily: restored $backup into $active; the previous data is kept at $old"
     compose up -d --force-recreate
     wait_healthy
+    ;;
+  listening-pull)
+    trigger=manual
+    case "${2:-}" in
+      "") ;;
+      --scheduled) trigger=scheduled ;;
+      *) usage ;;
+    esac
+    validate summary > /dev/null
+    running || die "the service is not running; start it with: bash scripts/daily/flh-daily.sh up"
+    # Exit status is the command's: 0 ok, 3 a step needs attention, 4 another
+    # pull is running, 5 not configured, 1 error.
+    compose exec -T app /app/listening-pull -trigger "$trigger"
+    ;;
+  listening-status)
+    validate summary > /dev/null
+    running || die "the service is not running; start it with: bash scripts/daily/flh-daily.sh up"
+    compose exec -T app /app/listening-pull status
     ;;
   *) usage ;;
 esac

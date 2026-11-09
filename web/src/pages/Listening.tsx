@@ -4,6 +4,7 @@ import { ApiError, NetworkError } from "../api/client";
 import { StoredText } from "../components/ExplanationText";
 import { useI18n, type MessageKey } from "../i18n";
 import type {
+  ListeningDaily,
   ListeningExercise,
   ListeningFailureCode,
   ListeningItem,
@@ -11,18 +12,25 @@ import type {
   ListeningLesson,
   ListeningList,
   ListeningMaterial,
+  ListeningMaterialState,
+  ListeningPreparation,
   ListeningTranscript,
   TranscriptSegment,
 } from "../types/listening";
 import { randomOperationId } from "./annotationOperation";
+import { DailyPanel, NotificationsSection } from "./ListeningDaily";
 
 // Exam Listening Lesson v1 (private workbench only; never in the public demo).
 //
 // - Material: a YouTube link, a title and an optional learner-supplied French
 //   transcript. The link is opened on YouTube; nothing is downloaded, scraped or
 //   fetched, and opening it calls no provider.
-// - Preparation is one explicit request to the opt-in provider. A failure is
-//   shown as stored; the material and transcript are kept; nothing retries.
+// - Preparation is one explicit request to the opt-in provider, under a key.
+//   A failure is shown as stored; the material and transcript are kept; nothing
+//   retries. After a lost response the key is looked up first; an unknown
+//   outcome needs an acknowledged retry.
+// - Daily Listening (ListeningDaily.tsx): "Pull now" and the last pull; pulled
+//   videos wait here for the learner's transcript.
 // - The exercise view hides the transcript, answers and notes until the learner
 //   reveals them. Answers and self-checks stay in component state: never sent,
 //   logged or stored, and there is no score or level.
@@ -54,6 +62,14 @@ const kindKey: Record<ListeningItemKind, MessageKey> = {
   main_idea: "listening.kind.main_idea",
   detail: "listening.kind.detail",
   inference: "listening.kind.inference",
+};
+const stateKey: Record<ListeningMaterialState, MessageKey> = {
+  waiting_for_transcript: "listening.state.waiting",
+  ready_to_prepare: "listening.state.prepare",
+  in_progress: "listening.state.inProgress",
+  prepared: "listening.state.ready",
+  failed: "listening.state.failed",
+  outcome_unknown: "listening.state.unknown",
 };
 const failureKey: Record<ListeningFailureCode, MessageKey> = {
   provider_timeout: "listening.failure.provider_timeout",
@@ -109,9 +125,18 @@ export function Listening({ onOpenRecord }: { onOpenRecord?: (entryId: number) =
 function MaterialList({ epoch, onOpen, onSaved }: { epoch: number; onOpen: (id: number) => void; onSaved: (id: number) => void }) {
   const { t } = useI18n();
   const [retry, setRetry] = useState(0);
-  const list = useLoad<ListeningList>("list", () => api.listListening(), epoch * 1000 + retry);
+  const [pulls, setPulls] = useState(0);
+  const list = useLoad<ListeningList>("list", () => api.listListening(), epoch * 1000 + retry * 100 + pulls);
+  const daily = useLoad<ListeningDaily>("daily", () => api.getListeningDaily(), epoch * 1000 + retry);
   return (
     <>
+      {daily.status === "ready" ? (
+        <DailyPanel daily={daily.data} onPulled={() => setPulls((n) => n + 1)} />
+      ) : daily.status === "error" ? (
+        <p className="hint" role="status">
+          {t("listening.daily.statusFailed", { message: daily.message })}
+        </p>
+      ) : null}
       <AddMaterialForm onSaved={onSaved} />
       <section className="panel" aria-label={t("listening.list.region")}>
         <h2>{t("listening.list.heading")}</h2>
@@ -133,15 +158,13 @@ function MaterialList({ epoch, onOpen, onSaved }: { epoch: number; onOpen: (id: 
                 <button type="button" className="link-button" onClick={() => onOpen(row.material.id)}>
                   {row.material.title}
                 </button>{" "}
-                <span className="tag">
-                  {row.transcript_version === null
-                    ? t("listening.state.waiting")
-                    : row.latest_exercise?.status === "completed"
-                      ? t("listening.state.ready")
-                      : row.latest_exercise?.status === "failed"
-                        ? t("listening.state.failed")
-                        : t("listening.state.prepare")}
-                </span>
+                <span className="tag">{t(stateKey[row.state])}</span>
+                {row.in_playlist ? (
+                  <>
+                    {" "}
+                    <span className="tag">{t("listening.state.fromPlaylist")}</span>
+                  </>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -225,10 +248,12 @@ function LessonScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => 
         )}
       </section>
     );
-  const { material, transcript, exercises, generation } = lesson.data;
+  const { material, transcript, exercises, generation, preparations, notifications, notification } = lesson.data;
   const current = transcript ? exercises.find((e) => e.transcript_id === transcript.id && e.status === "completed") ?? null : null;
   const latest = exercises[0] ?? null;
-  const lastFailed = latest && latest.status === "failed" && transcript && latest.transcript_id === transcript.id ? latest : null;
+  const latestPrep = preparations[0] ?? null;
+  const settled = !latestPrep || (latestPrep.state !== "unknown" && latestPrep.state !== "in_progress");
+  const lastFailed = settled && latest && latest.status === "failed" && transcript && latest.transcript_id === transcript.id ? latest : null;
   return (
     <div>
       <section className="panel" aria-label={t("listening.lesson.region")}>
@@ -240,6 +265,7 @@ function LessonScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => 
           <VideoLink material={material} label={t("listening.video.open")} />
         </div>
         <p className="hint">{t("listening.video.hint")}</p>
+        {lesson.data.in_playlist ? <p className="hint">{t("listening.lesson.inPlaylist")}</p> : null}
         <p className="hint">
           {transcript
             ? t(transcript.has_timestamps ? "listening.transcript.summaryTimed" : "listening.transcript.summary", {
@@ -262,10 +288,17 @@ function LessonScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => 
           {current ? (
             <ExerciseView key={current.id} material={material} transcript={transcript} exercise={current} onOpenRecord={onOpenRecord} />
           ) : (
-            <PrepareSection id={id} enabled={generation.enabled} generator={generation.generator} onDone={() => setEpoch((n) => n + 1)} />
+            <PrepareSection
+              id={id}
+              enabled={generation.enabled}
+              generator={generation.generator}
+              latest={latestPrep}
+              onDone={() => setEpoch((n) => n + 1)}
+            />
           )}
         </>
       )}
+      <NotificationsSection notifications={notifications} enabled={notification.enabled} onChanged={() => setEpoch((n) => n + 1)} />
     </div>
   );
 }
@@ -308,39 +341,104 @@ function AddTranscriptForm({ id, onSaved }: { id: number; onSaved: () => void })
   );
 }
 
-function PrepareSection({ id, enabled, generator, onDone }: { id: number; enabled: boolean; generator: string | null; onDone: () => void }) {
+type PrepareState =
+  | { status: "idle" }
+  | { status: "sending" }
+  | { status: "unknown"; key: string; confirm: boolean }
+  | { status: "error"; message: string };
+
+// PrepareSection is the explicit Prepare button. Each click has its own key.
+// When no response arrives, the key is looked up before anything else; only if
+// nothing is recorded is the SAME request offered again (the server replays
+// it). After an attempt whose outcome is unknown, a new call needs the
+// learner's acknowledgement that it may be billed again.
+function PrepareSection({
+  id,
+  enabled,
+  generator,
+  latest,
+  onDone,
+}: {
+  id: number;
+  enabled: boolean;
+  generator: string | null;
+  latest: ListeningPreparation | null;
+  onDone: () => void;
+}) {
   const { t } = useI18n();
-  const [state, setState] = useState<{ status: "idle" | "sending" } | { status: "error"; message: string }>({ status: "idle" });
-  const prepare = async () => {
-    setState({ status: "sending" });
+  const [state, setState] = useState<PrepareState>({ status: "idle" });
+  const check = async (key: string, confirm: boolean) => {
     try {
-      await api.prepareListeningExercise(id);
-      onDone();
-    } catch (e) {
-      if (e instanceof ApiError && (e.status === 502 || e.status === 504)) {
-        onDone(); // the failure is stored; the lesson re-read shows it
-        return;
-      }
-      setState({
-        status: "error",
-        message: e instanceof NetworkError ? t("listening.prepare.unknown") : t("listening.prepare.failed", { message: describe(e) }),
-      });
+      await api.getListeningPreparation(key);
+      onDone(); // recorded: the lesson re-read shows its state
+    } catch {
+      setState({ status: "unknown", key, confirm });
     }
   };
+  const send = async (key: string, confirm: boolean) => {
+    setState({ status: "sending" });
+    try {
+      await api.prepareListeningExercise(id, key, confirm);
+      onDone();
+    } catch (e) {
+      if (e instanceof ApiError && (e.status === 502 || e.status === 504 || e.status === 409)) {
+        onDone(); // stored (a failure or an unknown outcome), or refused by an attempt the re-read shows
+        return;
+      }
+      if (e instanceof NetworkError || (e instanceof ApiError && e.status >= 500 && e.status !== 503)) {
+        await check(key, confirm);
+        return;
+      }
+      setState({ status: "error", message: t("listening.prepare.failed", { message: describe(e) }) });
+    }
+  };
+  const inProgress = latest?.state === "in_progress";
+  const unknown = latest?.state === "unknown";
   return (
     <section className="panel" aria-label={t("listening.prepare.region")}>
       <h3>{t("listening.prepare.heading")}</h3>
-      {enabled ? (
+      {!enabled ? (
+        <p className="hint">{t("listening.prepare.disabled")}</p>
+      ) : inProgress ? (
+        <div className="banner info" role="status">
+          {t("listening.prepare.inProgress", { when: new Date(latest.started_at).toLocaleString() })}{" "}
+          <button type="button" className="ghost" onClick={onDone}>
+            {t("listening.daily.checkAgain")}
+          </button>
+        </div>
+      ) : (
         <>
           <p className="hint">{t("listening.prepare.hint", { generator: generator ?? "" })}</p>
-          <button type="button" className="primary" disabled={state.status === "sending"} onClick={prepare}>
-            {state.status === "sending" ? t("listening.prepare.sending") : t("listening.prepare.button")}
+          {unknown ? (
+            <div className="banner info" role="status">
+              {t("listening.prepare.outcomeUnknown")}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className={unknown ? "ghost" : "primary"}
+            disabled={state.status === "sending"}
+            onClick={() => send(randomOperationId(), unknown)}
+          >
+            {state.status === "sending"
+              ? t("listening.prepare.sending")
+              : unknown
+                ? t("listening.prepare.retryUnknown")
+                : t("listening.prepare.button")}
           </button>
         </>
-      ) : (
-        <p className="hint">{t("listening.prepare.disabled")}</p>
       )}
-      {state.status === "error" ? (
+      {state.status === "unknown" ? (
+        <div className="banner info" role="alert">
+          {t("listening.prepare.unknown")}{" "}
+          <button type="button" className="ghost" onClick={() => check(state.key, state.confirm)}>
+            {t("listening.daily.checkAgain")}
+          </button>
+          <button type="button" className="ghost" onClick={() => send(state.key, state.confirm)}>
+            {t("listening.daily.sendSame")}
+          </button>
+        </div>
+      ) : state.status === "error" ? (
         <div className="banner error" role="alert">
           {state.message}
         </div>

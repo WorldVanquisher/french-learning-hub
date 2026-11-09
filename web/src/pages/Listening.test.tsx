@@ -1,12 +1,30 @@
-// Exam Listening Lesson v1 in the private workbench, against a stateful fake
-// server built from the authored French fixture (test/listeningFixture).
+// Exam Listening Lesson v1 and Daily Listening in the private workbench, against
+// a stateful fake server built from the authored French fixture
+// (test/listeningFixture).
 import { StrictMode } from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import PublicDemoApp from "../PublicDemoApp";
-import { completed, content, lesson, material, parseTranscript, segments, transcriptText } from "../test/listeningFixture";
-import type { ListeningExercise, ListeningLesson } from "../types/listening";
+import {
+  completed,
+  content,
+  lesson,
+  material,
+  notificationAttempt,
+  parseTranscript,
+  preparation,
+  segments,
+  transcriptText,
+} from "../test/listeningFixture";
+import type {
+  ListeningDaily,
+  ListeningExercise,
+  ListeningLesson,
+  ListeningNotification,
+  ListeningPreparationResult,
+  ListeningPullRun,
+} from "../types/listening";
 
 afterEach(() => {
   cleanup();
@@ -14,24 +32,79 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-type Call = { method: string; path: string; body: string };
+type Call = { method: string; path: string; body: string; key: string | null };
 type Server = {
   lessons: ListeningLesson[];
-  prepare: "ok" | "invalid_output" | "disabled";
+  prepare: "ok" | "invalid_output" | "disabled" | "timeout" | "lost";
   calls: Call[];
+  // Daily Listening; off when absent.
+  daily?: ListeningDaily;
+  pull?: "ok" | "busy" | "lost";
+  notify?: "ok";
+  // Attempts and runs recorded under their keys.
+  prepared?: Map<string, ListeningPreparationResult>;
+  runs?: Map<string, ListeningPullRun>;
+  sent?: Map<string, ListeningNotification>;
 };
+
+const dailyOff: ListeningDaily = {
+  pull_enabled: false,
+  source: { enabled: false, name: null },
+  preparation: { enabled: false, generator: null, daily_cap: 1, timezone: "UTC", today: "2026-11-09", used_today: 0 },
+  notification: { enabled: false, channel: null },
+  last_run: null,
+};
+const dailyOn: ListeningDaily = {
+  pull_enabled: true,
+  source: { enabled: true, name: "youtube-data-api-v3:playlistItems" },
+  preparation: { enabled: true, generator: "openai:fake-model:listening_exercise_v1", daily_cap: 1, timezone: "Europe/Paris", today: "2026-11-09", used_today: 0 },
+  notification: { enabled: true, channel: "telegram" },
+  last_run: null,
+};
+
+const pullRun = (id: number, key: string, overrides: Partial<ListeningPullRun> = {}): ListeningPullRun => ({
+  id,
+  operation_id: key,
+  trigger: "manual",
+  status: "finished",
+  started_at: "2026-11-09T07:30:00Z",
+  lease_expires_at: "2026-11-09T07:33:00Z",
+  finished_at: "2026-11-09T07:30:02Z",
+  source: { outcome: "ok", failure: null },
+  items: { seen: 1, created: 1, known: 0, skipped: 0 },
+  preparation: { outcome: "nothing_to_prepare", attempt: null },
+  notification: { outcome: "nothing_ready", attempt: null },
+  ...overrides,
+});
+
+// stateOf derives a material's state the way the backend does.
+function stateOf(l: ListeningLesson): ListeningLesson["state"] {
+  if (!l.transcript) return "waiting_for_transcript";
+  const p = l.preparations[0];
+  if (p?.state === "in_progress") return "in_progress";
+  if (p?.state === "unknown") return "outcome_unknown";
+  const ex = l.exercises.filter((e) => e.transcript_id === l.transcript!.id);
+  if (ex.some((e) => e.status === "completed")) return "prepared";
+  return ex[0]?.status === "failed" ? "failed" : "ready_to_prepare";
+}
 
 // serve keeps lessons across renders (a "reload" re-reads the same state).
 function serve(server: Server) {
+  server.prepared ??= new Map();
+  server.runs ??= new Map();
+  server.sent ??= new Map();
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
   globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input), "http://localhost");
     const method = (init?.method ?? "GET").toUpperCase();
     const body = String(init?.body ?? "");
-    server.calls.push({ method, path: url.pathname, body });
+    const key = (init?.headers as Record<string, string> | undefined)?.["Idempotency-Key"] ?? null;
+    server.calls.push({ method, path: url.pathname, body, key });
     const p = url.pathname;
     const generation = server.prepare === "disabled" ? { enabled: false, generator: null } : lesson().generation;
+    const notification = { enabled: !!server.daily?.notification.enabled, channel: server.daily?.notification.channel ?? null };
+    const view = (l: ListeningLesson) => ({ ...l, generation, notification, state: stateOf(l) });
     const find = (id: number) => server.lessons.find((l) => l.material.id === id);
     let m: RegExpExecArray | null;
     if (method === "GET" && p === "/api/listening/materials") {
@@ -42,37 +115,85 @@ function serve(server: Server) {
           transcript_version: l.transcript?.version ?? null,
           segment_count: l.transcript?.segments.length ?? 0,
           latest_exercise: l.exercises[0] ? { ...l.exercises[0], content: null } : null,
+          state: stateOf(l),
+          in_playlist: l.in_playlist,
         })),
       });
     }
     if (method === "POST" && p === "/api/listening/materials") {
       const req = JSON.parse(body) as { source_url: string; title: string; transcript: string };
       const id = server.lessons.length + 1;
-      const l: ListeningLesson = {
+      const l: ListeningLesson = lesson({
         material: { ...material, id, title: req.title },
         transcript: req.transcript.trim() ? { id: id * 10, version: 1, has_timestamps: true, segments: parseTranscript(req.transcript), created_at: "t" } : null,
-        exercises: [],
-        generation,
-      };
+      });
       server.lessons.push(l);
-      return json(201, l);
+      return json(201, view(l));
     }
     if ((m = /^\/api\/listening\/materials\/(\d+)$/.exec(p)) && method === "GET") {
       const l = find(Number(m[1]));
-      return l ? json(200, { ...l, generation }) : json(404, { error: "listening material not found" });
+      return l ? json(200, view(l)) : json(404, { error: "listening material not found" });
     }
     if ((m = /^\/api\/listening\/materials\/(\d+)\/exercises$/.exec(p)) && method === "POST") {
       const l = find(Number(m[1]))!;
       if (server.prepare === "disabled") return json(503, { error: "listening exercise generation is not enabled (LISTENING_PROVIDER)" });
-      if (!l.transcript) return json(409, { error: "this material has no transcript, so no exercise can be prepared" });
-      if (server.prepare === "invalid_output") {
-        const failed: ListeningExercise = { ...completed(200 + l.exercises.length), transcript_id: l.transcript.id, status: "failed", failure_code: "invalid_output", content: null };
-        l.exercises.unshift(failed);
-        return json(502, { error: "the exercise provider returned output that does not fit the transcript; the material and transcript are kept", exercise: failed });
+      if (!l.transcript) return json(409, { code: "no_transcript", error: "this material has no transcript, so no exercise can be prepared" });
+      if (key && server.prepared!.has(key)) return json(200, server.prepared!.get(key));
+      const confirm = body.includes('"confirm_unknown_retry":true');
+      const latest = l.preparations[0];
+      if (latest?.state === "unknown" && !confirm)
+        return json(409, { code: "outcome_unknown", error: "unknown", preparation: latest, exercise: null });
+      const n = 100 + l.exercises.length;
+      const prep = preparation({ id: n, operation_id: key ?? "generated", material_id: l.material.id, transcript_id: l.transcript.id, trigger: "explicit", pull_run_id: null, after_unknown: confirm && latest?.state === "unknown", exercise_id: n });
+      let ex: ListeningExercise = { ...completed(n), transcript_id: l.transcript.id };
+      if (server.prepare === "invalid_output" || server.prepare === "timeout") {
+        const timeout = server.prepare === "timeout";
+        ex = { ...ex, status: "failed", failure_code: timeout ? "provider_timeout" : "invalid_output", content: null };
+        prep.state = timeout ? "unknown" : "failed";
       }
-      const ex = { ...completed(100 + l.exercises.length), transcript_id: l.transcript.id };
       l.exercises.unshift(ex);
-      return json(201, ex);
+      l.preparations.unshift(prep);
+      const result = { preparation: prep, exercise: { ...ex, content: null } };
+      server.prepared!.set(key ?? "generated", result);
+      if (server.prepare === "lost") throw new TypeError("network down"); // stored, but the response is lost
+      if (prep.state === "failed") return json(502, { ...result, error: "the exercise provider returned output that does not fit the transcript; the material and transcript are kept" });
+      if (prep.state === "unknown") return json(504, { ...result, error: "the exercise provider timed out, so the outcome is unknown" });
+      return json(201, result);
+    }
+    if ((m = /^\/api\/listening\/preparations\/(.+)$/.exec(p)) && method === "GET") {
+      const r = server.prepared!.get(decodeURIComponent(m[1]));
+      return r ? json(200, r) : json(404, { error: "no preparation is recorded under this key" });
+    }
+    if (method === "GET" && p === "/api/listening/daily") return json(200, server.daily ?? dailyOff);
+    if (method === "POST" && p === "/api/listening/pull") {
+      if (!key) return json(400, { error: "exactly one Idempotency-Key header is required" });
+      if (server.runs!.has(key)) return json(200, server.runs!.get(key));
+      if (server.pull === "busy")
+        return json(409, { code: "busy", error: "another listening pull is running", run: pullRun(9, "other", { trigger: "scheduled", status: "running", finished_at: null }) });
+      if (server.pull === "lost") {
+        server.pull = "ok"; // the request never arrived; the next one will
+        throw new TypeError("network down");
+      }
+      const id = server.lessons.length + 1;
+      server.lessons.push(lesson({ material: { ...material, id, video_id: "FLHplayl01", title: "Vidéo de la playlist" }, transcript: null, in_playlist: true }));
+      const run = pullRun(server.runs!.size + 1, key);
+      server.runs!.set(key, run);
+      return json(201, run);
+    }
+    if ((m = /^\/api\/listening\/pull-runs\/(.+)$/.exec(p)) && method === "GET") {
+      const r = server.runs!.get(decodeURIComponent(m[1]));
+      return r ? json(200, r) : json(404, { error: "no pull is recorded under this key" });
+    }
+    if ((m = /^\/api\/listening\/exercises\/(\d+)\/notifications$/.exec(p)) && method === "POST") {
+      if (key && server.sent!.has(key)) return json(200, server.sent!.get(key));
+      const l = server.lessons.find((x) => x.exercises.some((e) => e.id === Number(m![1])))!;
+      const latest = l.notifications[0];
+      const confirm = body.includes('"confirm_unknown_retry":true');
+      if (latest?.state === "unknown" && !confirm) return json(409, { code: "outcome_unknown", error: "unknown", notification: latest });
+      const n = notificationAttempt({ id: l.notifications.length + 1, operation_id: key!, trigger: "explicit", pull_run_id: null, after_unknown: confirm, state: "sent" });
+      l.notifications.unshift(n);
+      server.sent!.set(key!, n);
+      return json(201, n);
     }
     if (p === "/api/captures" && method === "POST") {
       const doc = JSON.parse(body) as { capture_id: string };
@@ -283,5 +404,125 @@ describe("Listening (private workbench)", () => {
     expect(screen.queryByRole("button", { name: "Listening" })).toBeNull();
     expect(screen.queryByText(/Listening/)).toBeNull();
     expect(server.calls.filter((c) => c.path.startsWith("/api/listening"))).toEqual([]);
+  });
+
+  it("Pull now records new playlist videos as waiting for a transcript, and prepares nothing for them", async () => {
+    const server: Server = { lessons: [], prepare: "ok", calls: [], daily: dailyOn, pull: "ok" };
+    serve(server);
+    const list = await openListening();
+    const daily = screen.getByRole("region", { name: "Daily listening" });
+    expect(within(daily).getByText(/at most 1 lesson per day \(Europe\/Paris\); 0 used on 2026-11-09/)).toBeInTheDocument();
+    expect(within(daily).getByText("Notification: telegram, only for a lesson a pull prepared.")).toBeInTheDocument();
+    expect(within(daily).getByText("No pull has run yet.")).toBeInTheDocument();
+    expect(writes(server)).toEqual([]); // opening Listening sends nothing
+
+    fireEvent.click(within(daily).getByRole("button", { name: "Pull now" }));
+    expect(await within(daily).findByText("Playlist: 1 new (waiting for a transcript), 0 already known, 0 skipped.")).toBeInTheDocument();
+    expect(within(daily).getByText("Preparation: nothing to prepare. Playlist videos need your transcript first.")).toBeInTheDocument();
+    expect(within(daily).getByText("Notification: nothing to announce.")).toBeInTheDocument();
+    const row = (await within(list).findByRole("button", { name: "Vidéo de la playlist" })).closest("li")!;
+    expect(within(row).getByText("Waiting for a transcript")).toBeInTheDocument();
+    expect(within(row).getByText("From your playlist")).toBeInTheDocument();
+
+    const posts = writes(server);
+    expect(posts.map((c) => c.path)).toEqual(["/api/listening/pull"]);
+    expect(posts[0].key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(posts[0].body).toBe("");
+    expect(exercisePosts(server)).toEqual([]);
+  });
+
+  it("after a lost pull response, looks the key up and sends the same request again only on request", async () => {
+    const server: Server = { lessons: [], prepare: "ok", calls: [], daily: dailyOn, pull: "lost" };
+    serve(server);
+    await openListening();
+    const daily = screen.getByRole("region", { name: "Daily listening" });
+    fireEvent.click(within(daily).getByRole("button", { name: "Pull now" }));
+    expect(await within(daily).findByText(/No answer arrived, and nothing is recorded under this request yet/)).toBeInTheDocument();
+    const first = writes(server)[0];
+    expect(server.calls.filter((c) => c.method === "GET" && c.path === `/api/listening/pull-runs/${first.key}`)).toHaveLength(1);
+    expect(writes(server)).toHaveLength(1); // nothing was resent by itself
+
+    fireEvent.click(within(daily).getByRole("button", { name: "Send the same request again" }));
+    expect(await within(daily).findByText("Playlist: 1 new (waiting for a transcript), 0 already known, 0 skipped.")).toBeInTheDocument();
+    const posts = writes(server);
+    expect(posts).toHaveLength(2);
+    expect(posts[1].key).toBe(first.key); // the same key: the server can only replay it
+  });
+
+  it("says another pull is running and that nothing was started", async () => {
+    const server: Server = { lessons: [], prepare: "ok", calls: [], daily: dailyOn, pull: "busy" };
+    serve(server);
+    await openListening();
+    const daily = screen.getByRole("region", { name: "Daily listening" });
+    fireEvent.click(within(daily).getByRole("button", { name: "Pull now" }));
+    expect(await within(daily).findByText(/Another pull is running \(by the timer, started .*\)\. Nothing was started\./)).toBeInTheDocument();
+    expect(writes(server)).toHaveLength(1);
+  });
+
+  it("shows when daily listening is off and offers no pull", async () => {
+    const server: Server = { lessons: [], prepare: "ok", calls: [] };
+    serve(server);
+    await openListening();
+    const daily = screen.getByRole("region", { name: "Daily listening" });
+    expect(within(daily).getByText(/Daily listening is off/)).toBeInTheDocument();
+    expect(within(daily).queryByRole("button", { name: "Pull now" })).toBeNull();
+  });
+
+  it("after a lost Prepare response, finds the stored result by its key instead of asking again", async () => {
+    const server: Server = { lessons: [lesson()], prepare: "lost", calls: [] };
+    serve(server);
+    await openLesson();
+    fireEvent.click(screen.getByRole("button", { name: "Prepare exercise" }));
+    expect(await screen.findByRole("region", { name: "Listening exercise" })).toBeInTheDocument();
+    const posts = exercisePosts(server);
+    expect(posts).toHaveLength(1);
+    expect(server.calls.filter((c) => c.path === `/api/listening/preparations/${posts[0].key}`)).toHaveLength(1);
+  });
+
+  it("an unknown preparation outcome needs an acknowledged retry", async () => {
+    const failed: ListeningExercise = { ...completed(100), status: "failed", failure_code: "provider_timeout", content: null };
+    const server: Server = {
+      lessons: [lesson({ exercises: [failed], preparations: [preparation({ state: "unknown", exercise_id: 100 })], in_playlist: true })],
+      prepare: "ok",
+      calls: [],
+    };
+    serve(server);
+    const list = await openListening();
+    expect(await within(list).findByText("Outcome unknown")).toBeInTheDocument();
+    fireEvent.click(within(list).getByRole("button", { name: material.title }));
+    expect(await screen.findByText(/The last preparation's outcome is unknown: .* It may have been processed and billed\./)).toBeInTheDocument();
+    expect(screen.queryByText(/The last preparation failed/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Prepare exercise" })).toBeNull();
+    expect(screen.getByText("This video is in your daily playlist.")).toBeInTheDocument();
+    expect(writes(server)).toEqual([]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry preparation (may be billed again)" }));
+    expect(await screen.findByRole("region", { name: "Listening exercise" })).toBeInTheDocument();
+    const posts = exercisePosts(server);
+    expect(posts).toHaveLength(1);
+    expect(JSON.parse(posts[0].body)).toEqual({ confirm_unknown_retry: true });
+  });
+
+  it("states an unknown notification delivery, and sends again only on an acknowledged request", async () => {
+    const server: Server = {
+      lessons: [lesson({ exercises: [completed()], notifications: [notificationAttempt({ state: "unknown", failure_code: "no_response", finished_at: "t" })] })],
+      prepare: "ok",
+      calls: [],
+      daily: dailyOn,
+    };
+    serve(server);
+    await openLesson();
+    const section = screen.getByRole("region", { name: "Notifications" });
+    expect(within(section).getByText("delivery unknown")).toBeInTheDocument();
+    expect(within(section).getByText(/it may have arrived\. Send it again only if it did not\./)).toBeInTheDocument();
+    expect(writes(server)).toEqual([]);
+
+    fireEvent.click(within(section).getByRole("button", { name: "Send again anyway (it may arrive twice)" }));
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "Notifications" })).getByText("sent")).toBeInTheDocument());
+    const posts = writes(server);
+    expect(posts.map((c) => c.path)).toEqual(["/api/listening/exercises/100/notifications"]);
+    expect(JSON.parse(posts[0].body)).toEqual({ confirm_unknown_retry: true });
+    expect(posts[0].key).toMatch(/^[0-9a-f-]{36}$/);
+    expect(screen.queryByRole("button", { name: /Send/ })).toBeNull(); // nothing left to retry
   });
 });
