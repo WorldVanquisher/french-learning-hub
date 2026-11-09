@@ -95,7 +95,15 @@ curl -sS -X POST http://localhost:8080/entries \
   -d '{"original_input":"Pourquoi dit-on je vais ?","original_context":"Étude du verbe aller."}'
 curl -sS -X POST http://localhost:8080/entries/1/analysis
 make capture ARGS="-file examples/captures/manual-example.json"
+make capture ARGS="-batch -preview captures/*.json"   # 只做本地检查，不发送任何请求
+make capture ARGS="-batch captures/*.json"            # 每个文件一个请求，逐个报告结果
 ```
+
+批量模式一次最多发送 100 个文件，按路径顺序逐个原样提交；created、replayed、
+conflict、invalid 仍由服务端判定。如果某个响应丢失，该文件会报告为
+`unconfirmed`，命令以退出码 `3` 结束：用同样的文件重新运行即可，已经存储的
+capture 会由服务端报告为 `replayed`，不会产生重复记录。详见
+[docs/ARCHITECTURE.md §A.9](docs/ARCHITECTURE.md#a9-capture-cli)。
 
 用 `cd web && npm run dev` 启动工作台，然后打开 `http://localhost:5173`。
 [docs/QUICKSTART.md](docs/QUICKSTART.md)（英文）完整介绍首次运行，包括可选提供方，以及为什么全新数据库上的

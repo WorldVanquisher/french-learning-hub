@@ -59,7 +59,11 @@ incremental milestones. Implemented so far:
   flag → `FRENCH_HUB_URL` → `http://localhost:8080`. It handles the existing
   server outcomes (201 new, 200 idempotent replay as success, 409 conflict,
   400/422 validation, 500) and never leaks learning content or credentials into
-  errors.
+  errors. `-batch FILE...` sends at most 100 files one request each in byte-wise
+  path order (`internal/captureclient/batch.go`) and reports created / replayed /
+  conflict / invalid / unconfirmed / not_attempted per file; `-batch -preview`
+  makes no HTTP request. No automatic retry: a rerun of the same files lets the
+  server receipt settle unconfirmed files. No new route, schema or migration.
 * **Knowledge extraction** (`POST /entries/{id}/extractions`, `GET
   /entries/{id}/extractions`, `GET /extractions/{id}`, plus admission endpoints
   under `/knowledge-units/{id}`) that turns one interaction into zero or more
