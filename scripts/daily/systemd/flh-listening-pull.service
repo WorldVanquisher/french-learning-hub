@@ -1,0 +1,24 @@
+# Example only; nothing installs or enables it. See docs/DAILY_USE.md §10.
+#
+# A user service that runs ONE Daily Listening pull in the running daily
+# container, the same operation as the workbench's "Pull now" button:
+#   flh-daily.sh listening-pull --scheduled
+# Copy it and flh-listening-pull.timer to ~/.config/systemd/user/, replace
+# /path/to/french-learning-hub with your checkout, then enable the timer
+# yourself. The settings file is the same one flh-daily.sh always uses.
+#
+# Overlap: systemd never starts this oneshot while it is still running, and the
+# pull itself holds a database lease, so a button press and the timer cannot
+# run at once (the second exits 4 and starts nothing). There is no retry: a
+# failed or unknown step exits 3 and waits for you in the workbench.
+[Unit]
+Description=French Learning Hub: Daily Listening pull (scheduled)
+
+[Service]
+Type=oneshot
+Environment=FLH_DAILY_ENV=%h/.config/flh/daily.env
+ExecStart=/usr/bin/bash /path/to/french-learning-hub/scripts/daily/flh-daily.sh listening-pull --scheduled
+# 0 finished; 4 another pull was running (not a failure). 3 (a step needs
+# attention), 5 (not configured) and 1 (error) mark the unit failed.
+SuccessExitStatus=4
+TimeoutStartSec=15min

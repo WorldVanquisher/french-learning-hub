@@ -99,6 +99,9 @@ type Config struct {
 	Suggestion SuggestionConfig
 	// Listening holds the listening exercise generator configuration.
 	Listening ListeningConfig
+	// ListeningDaily holds Daily Listening: playlist pull, the daily automatic
+	// preparation and the lesson-ready notification. Every part is off by default.
+	ListeningDaily ListeningDailyConfig
 
 	// Embedding holds semantic-retrieval provider configuration, independent of
 	// both the analyzer and extractor.
@@ -244,6 +247,8 @@ const (
 //	OPENAI_TIMEOUT   -> AI.OpenAITimeout (seconds), default 8
 //	SUGGESTION_PROVIDER -> Suggestion.Provider, default disabled (reuses OPENAI_*)
 //	LISTENING_PROVIDER  -> Listening.Provider, default disabled (reuses OPENAI_*)
+//	LISTENING_PLAYLIST_SOURCE, LISTENING_AUTO_PREPARE, LISTENING_NOTIFY and their
+//	settings -> ListeningDaily (see loadListeningDaily), all default disabled
 //	EMBEDDING_PROVIDER -> Embedding.Provider, default disabled
 //	EMBEDDING_MODEL    -> Embedding.Model (required for http)
 //	EMBEDDING_BASE_URL -> Embedding.BaseURL (required for http)
@@ -351,6 +356,11 @@ func load(src source) (Config, error) {
 	if err := cfg.Listening.validate(); err != nil {
 		return Config{}, err
 	}
+	daily, err := loadListeningDaily(src, getenv, getdur, cfg.Listening.Provider)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.ListeningDaily = daily
 	if err := cfg.Embedding.validate(); err != nil {
 		return Config{}, err
 	}

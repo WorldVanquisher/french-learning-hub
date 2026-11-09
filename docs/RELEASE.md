@@ -68,6 +68,15 @@ disabled extraction and `./data/release`.
   `EMBEDDING_BASE_URL`, `EMBEDDING_TIMEOUT`, `HTTP_READ_TIMEOUT`,
   `HTTP_WRITE_TIMEOUT`, which default to empty. Empty means unset, so the
   server applies its own defaults (see [`.env.example`](../.env.example)).
+- Daily Listening settings are forwarded the same way, all off by default:
+  `LISTENING_PLAYLIST_SOURCE` and `LISTENING_AUTO_PREPARE` and
+  `LISTENING_NOTIFY` (`disabled`), `LISTENING_TIMEZONE` (`UTC`), and
+  `LISTENING_PLAYLIST_ID`, `LISTENING_PLAYLIST_MAX_ITEMS`, `YOUTUBE_API_KEY`,
+  `YOUTUBE_API_BASE_URL`, `YOUTUBE_TIMEOUT`, `TELEGRAM_BOT_TOKEN`,
+  `TELEGRAM_CHAT_ID`, `TELEGRAM_API_BASE_URL`, `TELEGRAM_TIMEOUT` (empty).
+  The image also contains `/app/listening-pull`, which runs one pull only when
+  invoked (`docker compose exec app /app/listening-pull`); see
+  [DAILY_USE.md §10](DAILY_USE.md#10-daily-listening-pull-prepare-notify).
 - Release-only settings: `FLH_DATA_DIR` (default `./data/release`),
   `FLH_HOST_PORT` (default `8080`), `FLH_UID`/`FLH_GID` (default `1000`).
 

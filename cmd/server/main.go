@@ -92,8 +92,9 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// Exam Listening Lesson v1: the generator is opt-in (LISTENING_PROVIDER).
-	selectedListening, err := listening.New(cfg.Listening)
+	// Exam Listening Lesson v1 and Daily Listening: the generator, playlist
+	// source and notifier are each opt-in. The operator command builds the same.
+	listeningLessons, listeningDaily, err := listening.NewServices(cfg, sqlite.NewListeningRepository(db))
 	if err != nil {
 		return err
 	}
@@ -135,6 +136,8 @@ func run() error {
 	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
 	log.Printf("suggestion provider: %s", cfg.Suggestion.Provider)
 	log.Printf("listening provider: %s", cfg.Listening.Provider)
+	log.Printf("daily listening: playlist %s, automatic preparation %s, notify %s (timezone %s)",
+		cfg.ListeningDaily.Source, onOff(cfg.ListeningDaily.AutoPrepare), cfg.ListeningDaily.Notify, cfg.ListeningDaily.Location)
 	log.Printf("embedding provider: %s", cfg.Embedding.Provider)
 
 	libraryService := application.NewKnowledgeLibraryService(
@@ -148,8 +151,8 @@ func run() error {
 		transporthttp.WithReadiness(db.PingContext),
 		transporthttp.WithConceptSuggestions(application.NewConceptSuggestionService(
 			sqlite.NewConceptSuggestionRepository(db), selectedSuggester)),
-		transporthttp.WithListening(application.NewListeningService(sqlite.NewListeningRepository(db), selectedListening)),
 	}
+	options = append(options, transporthttp.WithListening(listeningLessons), transporthttp.WithListeningDaily(listeningDaily))
 	// Semantic search is opt-in (SEMANTIC_SEARCH=qdrant). The server only reads
 	// the index; building it is an explicit operator command (semantic-index).
 	if cfg.Semantic.Mode == config.SemanticQdrant {
@@ -193,6 +196,13 @@ func run() error {
 		return err
 	}
 	return serve(cfg, routes, "db="+cfg.DBPath)
+}
+
+func onOff(b bool) string {
+	if b {
+		return "daily (at most 1 lesson per day)"
+	}
+	return "disabled"
 }
 
 // serve runs the HTTP server until SIGINT/SIGTERM, then shuts down gracefully.

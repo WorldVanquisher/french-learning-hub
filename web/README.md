@@ -603,9 +603,15 @@ practice. Contract: [ARCHITECTURE.md §4.3](../docs/ARCHITECTURE.md#43-listening
   (`noopener noreferrer`); timestamp links add `&t=<s>s`. Nothing is embedded,
   downloaded or fetched, and no request is sent to FLH.
 - **Prepare exercise** (only when `LISTENING_PROVIDER=openai`) is the one
-  provider call. A stored failure reads "The last preparation failed: …; your
-  link and transcript are kept, and nothing was retried". A lost response says
-  the outcome is unknown. Disabled reads "Exercise preparation is off".
+  provider call, sent with a fresh `Idempotency-Key`. A stored failure reads
+  "The last preparation failed: …; your link and transcript are kept, and
+  nothing was retried". If no response arrives, the page first looks the key up
+  (`GET /listening/preparations/{key}`); only if nothing is recorded does it
+  offer **Send the same request again** (same key, so it cannot prepare twice).
+  An attempt still running shows "still in progress" with **Check again**. An
+  attempt whose outcome is unknown (timeout, dropped connection) replaces the
+  button with **Retry preparation (may be billed again)**, which sends
+  `confirm_unknown_retry`. Disabled reads "Exercise preparation is off".
 - **Attempt, then reveal:** the exercise shows only the French questions and an
   answer field per question. **Reveal answers and evidence** shows the
   reference answer (French), its reason (English / Chinese through
@@ -620,6 +626,30 @@ practice. Contract: [ARCHITECTURE.md §4.3](../docs/ARCHITECTURE.md#43-listening
   form, so **Send the same record again** after a lost response replays it
   instead of duplicating it. **Open record #N in Learning Records** opens it,
   with **← Back to Listening**; the lesson stays mounted meanwhile.
+
+### Daily Listening
+
+Contract: [ARCHITECTURE.md §4.4](../docs/ARCHITECTURE.md#44-daily-listening-pull-prepare-notify);
+owner guide: [DAILY_USE.md §10](../docs/DAILY_USE.md#10-daily-listening-pull-prepare-notify).
+
+- **Daily listening** (top of the list, `ListeningDaily.tsx`) shows the
+  settings from `GET /listening/daily` (playlist, at most one lesson per day in
+  the configured zone with today's use, notification channel) and the **Last
+  pull**: who started it (button or timer), its status and one line per step.
+  When nothing is configured it says so and offers no button.
+- **Pull now** posts `POST /listening/pull` with a fresh key and no body: the
+  same operation as the operator command. "Another pull is running … Nothing
+  was started" answers a `409`. A lost response is looked up by key first; a
+  running pull offers **Check again**, and only an unrecorded one offers
+  **Send the same request again** with the same key.
+- List rows show the backend `state` (Waiting for a transcript, Transcript
+  saved; no exercise yet, Preparing, Exercise ready, Last preparation failed,
+  Outcome unknown) and **From your playlist**.
+- **Notifications** on a lesson list each send (by a pull or by you) with
+  sent / not delivered / delivery unknown. Only the latest one, when it failed
+  or is unknown, offers a retry: **Send the notification again**, or **Send
+  again anyway (it may arrive twice)** with `confirm_unknown_retry` after an
+  unknown delivery. Lost responses follow the same key lookup.
 
 ## Correcting a reviewed unit from the inspection (FLH-082)
 

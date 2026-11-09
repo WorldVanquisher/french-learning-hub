@@ -1,0 +1,20 @@
+# Example only; nothing installs or enables it. See docs/DAILY_USE.md §10.
+#
+# Runs flh-listening-pull.service once a day at 07:30 in the time zone named on
+# the OnCalendar line. Keep that zone equal to LISTENING_TIMEZONE in your
+# settings file, so "one lesson per day" counts the same day the timer fires.
+# Check the next firing times without installing anything:
+#   systemd-analyze calendar --iterations=3 '*-*-* 07:30:00 Europe/Paris'
+#
+# Persistent=false: a pull missed while the machine was off is not run late.
+[Unit]
+Description=French Learning Hub: Daily Listening pull at 07:30 Europe/Paris
+
+[Timer]
+OnCalendar=*-*-* 07:30:00 Europe/Paris
+AccuracySec=1min
+Persistent=false
+Unit=flh-listening-pull.service
+
+[Install]
+WantedBy=timers.target

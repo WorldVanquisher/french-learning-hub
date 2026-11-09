@@ -811,6 +811,12 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .listening-reveal { border-left: 4px solid var(--same); padding: 4px 0 4px 10px; margin: 8px 0; }
 .listening-segment { margin: 4px 0; }
 .listening-context { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; background: var(--warn-bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+/* Daily Listening: pull status and attempts */
+.listening-steps { list-style: none; padding: 0; margin: 6px 0; }
+.listening-steps li { padding: 2px 0; overflow-wrap: anywhere; }
+.listening-run p { margin: 4px 0; }
+.listening-daily h3 { margin: 12px 0 4px; font-size: 14px; }
+.listening .banner .ghost { margin-left: 6px; }
 
 /* Recall practice (Knowledge Library, private workbench only) */
 .practice .label { font-size: 12px; color: var(--muted); margin: 8px 0 2px; }

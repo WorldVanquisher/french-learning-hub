@@ -565,8 +565,34 @@ Exam Listening Lesson v1 (private workbench):
   self-checks stay in component state. A missed point becomes a learning record
   only through an explicit `POST /captures` (`source: manual`). Never in the
   public demo: not on its allowlist, tables must be empty in demo artifacts.
-- Do not download YouTube media, scrape captions, run ASR, or add scheduled
-  discovery here; those are separate assignments.
+- Do not download YouTube media, scrape captions or run ASR.
+
+Daily Listening (pull, prepare, notify):
+
+- One pull, `ListeningDailyService.Pull`, shared by "Pull now"
+  (`POST /listening/pull`) and `cmd/listening-pull` (`/app/listening-pull`;
+  `flh-daily.sh listening-pull [--scheduled]`), both built by
+  `listening.NewServices`. The server runs no scheduler; `scripts/daily/systemd/`
+  holds an example timer that agents must never install or enable.
+- Opt-in parts, all `disabled` by default: `LISTENING_PLAYLIST_SOURCE=youtube`
+  (official playlistItems metadata only, bounded, key in a header);
+  `LISTENING_AUTO_PREPARE=daily` (needs `LISTENING_PROVIDER=openai`; at most one
+  attempt per local day in `LISTENING_TIMEZONE`, shared by button, command and
+  timer); `LISTENING_NOTIFY=telegram` (needs the daily preparation; title only,
+  only for the lesson that pull prepared). Video IDs are recorded once; a new
+  video waits for the learner's transcript and is never announced.
+- Migration 015: `listening_pull_runs` (one running row, lease; interrupted
+  when expired), `listening_playlist_items`, `listening_preparations`,
+  `listening_notifications`. Attempts are inserted before the outside call
+  (start rules in the same write transaction) and finished once. Explicit and
+  pull preparations share one path.
+- No automatic retry. A timeout or a lost response after sending is `unknown`;
+  pulls never retry failed or unknown attempts; an explicit retry after an
+  unknown outcome needs `confirm_unknown_retry`. Clients look a lost response
+  up by its key before resending, and resend only the same key. Handlers detach
+  the work from client cancellation. Contract: `docs/ARCHITECTURE.md` §4.4, A.16.
+- Never in the public demo: demo startup refuses any part enabled, routes are
+  not allowlisted, the four tables must be empty.
 
 ## Design Priorities
 

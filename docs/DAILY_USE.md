@@ -147,6 +147,8 @@ Then open `http://127.0.0.1:8080/`.
 | 6. **Concept Review → AI suggestions** → select at most 10 units → **Generate suggestions** | **Yes**, once per request, `SUGGESTION_PROVIDER` (optional, default `disabled`) | A stored suggestion run, provenance `openai:<your model>:concept_suggestion_v1`: for each unit an existing Concept from at most 5 candidates, *no suitable candidate* or *uncertain*, with a short reason. Nothing is filed. A unit with no candidate is not sent |
 | 7. **Confirm SAME to Concept #n** on one suggestion | **No** | A human SAME, recorded only if the unit and Concept are still in the state the suggestion saw; otherwise it is refused as stale. **Leave unused** records nothing: the item stays open and it is not DISTINCT or any other label |
 | 8. Any **Open …** / **← Back to …** link between views | **No** | Opens a read-only view; nothing is recorded |
+| 9. **Listening → Prepare exercise** | **Yes**, once, `LISTENING_PROVIDER` (optional, default `disabled`) | One exercise over your own transcript, checked against it before it is stored ([§9](#9-listening-practice-with-your-own-transcript)) |
+| 10. **Listening → Pull now**, `flh-daily.sh listening-pull` or the timer | Only the parts you enabled (optional, all default off) | A YouTube playlist metadata read; at most one preparation per day (`LISTENING_AUTO_PREPARE`); one Telegram message for that lesson (`LISTENING_NOTIFY`) ([§10](#10-daily-listening-pull-prepare-notify)) |
 
 Suggestion requests use more tokens than one analysis (up to 10 units and 5
 candidates each), so allow `OPENAI_TIMEOUT` headroom as for extraction.
@@ -380,8 +382,108 @@ example `https://youtu.be/FLHlisten01`, which is not a real video) and leave
   model. It is a self-check, not an exam score or a CEFR level.
 - **Answers and self-checks are not saved.** Leaving the page discards them.
 - **A failed preparation is shown, never retried.** Click again only if you
-  want another (possibly billed) request; a lost response may already have
-  stored an exercise, so reload the lesson first.
+  want another (possibly billed) request. If the answer is lost, the page looks
+  the request up before anything else; if the outcome is unknown (a timeout or
+  a dropped connection after sending), it says so, and a new request needs
+  **Retry preparation (may be billed again)**.
+
+## 10. Daily Listening: pull, prepare, notify
+
+Optional. Every part is off until you enable it in your settings file, and the
+server never starts a pull by itself: a pull runs when you press **Pull now**
+in **Listening**, or run the same pull from the command line (or from a timer
+you install).
+
+**What a pull does:**
+1. **Playlist** (`LISTENING_PLAYLIST_SOURCE=youtube`): reads one YouTube
+   playlist's official metadata (video ID, title, date) with the YouTube Data
+   API. Each new video becomes material marked **Waiting for a transcript** and
+   **From your playlist**; a video already saved, by a pull or by hand, is never
+   added twice. Private and deleted videos are skipped. Nothing is downloaded,
+   scraped or transcribed.
+2. **Preparation** (`LISTENING_AUTO_PREPARE=daily`, needs
+   `LISTENING_PROVIDER=openai`): prepares **at most one lesson per day** in
+   `LISTENING_TIMEZONE`, from the oldest playlist video you gave a transcript.
+   One call, possibly billed. The button, the command and the timer share that
+   one lesson a day.
+3. **Notification** (`LISTENING_NOTIFY=telegram`, needs the daily
+   preparation): one Telegram message for the lesson that pull prepared, with
+   its title only (no transcript, answers, links or credentials). A video still
+   waiting for its transcript never sends anything.
+
+**Nothing retries by itself.** A failed or unknown step is shown on the
+lesson and in **Last pull** and waits for you:
+- **Preparation outcome unknown** (a timeout or a dropped connection after the
+  request was sent): the provider may have finished and billed. Later pulls
+  skip that video. Open it and choose **Retry preparation (may be billed again)**
+  if you want another call.
+- **Notification delivery unknown**: the message may have arrived. Check
+  Telegram; send it again only with **Send again anyway (it may arrive twice)**.
+  A refused or unsent message shows **Send the notification again**.
+- **No answer from the server** after a click: the page first looks the request
+  up by its key. If nothing is recorded yet, **Send the same request again**
+  reuses the same key, so it can never prepare, pull or send twice.
+
+**Set it up [NAS]:**
+1. Create a YouTube Data API key restricted to the YouTube Data API (and, if you
+   can, to your NAS address); make the playlist public or unlisted. Optionally,
+   create a Telegram bot with @BotFather and get your chat ID.
+2. Add the settings to your settings file (see the commented block in
+   `scripts/daily/daily.env.example`): `LISTENING_PLAYLIST_SOURCE=youtube`,
+   `LISTENING_PLAYLIST_ID`, `YOUTUBE_API_KEY`, then optionally
+   `LISTENING_AUTO_PREPARE=daily`, `LISTENING_TIMEZONE=Europe/Paris`,
+   `LISTENING_NOTIFY=telegram`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+3. `bash scripts/daily/flh-daily.sh check`: it shows `daily pull:`,
+   `daily preparation:` and `daily notify:` lines without values. Then
+   `bash scripts/daily/flh-daily.sh up` recreates the container with them.
+   (Changing settings always needs `up`: the running container keeps the old
+   values.)
+4. Press **Pull now**, or run it from the command line:
+
+   ```bash
+   bash scripts/daily/flh-daily.sh listening-pull     # one pull now (manual)
+   bash scripts/daily/flh-daily.sh listening-status   # settings, today's use, last pull
+   ```
+
+   Exit status: `0` done; `3` a step failed or is unknown (look at the lesson);
+   `4` another pull was running, so nothing started; `5` daily listening is not
+   configured; `1` error.
+
+**Optional: a daily timer [NAS].** `scripts/daily/systemd/` has an example
+user service and timer (07:30 Europe/Paris). Nothing installs or enables them.
+To use them, copy both to `~/.config/systemd/user/`, replace
+`/path/to/french-learning-hub` with your checkout, keep the `OnCalendar` zone
+equal to `LISTENING_TIMEZONE`, then:
+
+```bash
+systemd-analyze verify --user ~/.config/systemd/user/flh-listening-pull.timer
+systemctl --user daemon-reload
+systemctl --user enable --now flh-listening-pull.timer
+systemctl --user list-timers flh-listening-pull.timer
+loginctl enable-linger "$USER"   # only if it must run while you are logged out
+```
+
+The timer runs `flh-daily.sh listening-pull --scheduled`. A run missed while
+the NAS was off is not run late. Runs never overlap: systemd does not start the
+service while it is still running, and a pull refuses to start while another
+one (the button, say) holds its database lease. To stop:
+`systemctl --user disable --now flh-listening-pull.timer`.
+
+**A synthetic rehearsal** (no real service): the Go tests
+`TestDailyListening_*` (internal/transport/http) and
+`TestListeningPull_*` (cmd/listening-pull) run every path above against local
+fakes of YouTube, the model and Telegram.
+
+**Limitations:**
+- Not tried against the real YouTube, OpenAI or Telegram services; only local
+  fakes. The YouTube Data API's daily quota applies (each request of up
+  to 50 videos uses quota).
+- The cap counts attempts, not successes: if today's attempt failed or is
+  unknown, the next pull waits until tomorrow; you can still prepare that
+  lesson yourself.
+- A **Pull now** can take longer than `HTTP_WRITE_TIMEOUT` when the playlist,
+  the model and Telegram are all slow (`check` prints a note). The pull still
+  finishes; the page finds it by its key.
 
 ## Troubleshooting
 

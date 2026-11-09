@@ -3,7 +3,14 @@
 // the exercise is what the local fake provider in the Go integration test
 // returns for it. Typed against the wire types, so drift fails the typecheck.
 // Nothing here is a real learner record or a real video.
-import type { ListeningExercise, ListeningLesson, ListeningMaterial, TranscriptSegment } from "../types/listening";
+import type {
+  ListeningExercise,
+  ListeningLesson,
+  ListeningMaterial,
+  ListeningNotification,
+  ListeningPreparation,
+  TranscriptSegment,
+} from "../types/listening";
 
 export const transcriptText = `[00:00] Bonjour à tous, et bienvenue dans « La minute du quartier ».
 [00:04] Aujourd'hui, je vous parle de la nouvelle bibliothèque qui ouvre samedi, rue des Lilas.
@@ -78,9 +85,46 @@ export function lesson(overrides: Partial<ListeningLesson> = {}): ListeningLesso
     transcript: { id: 10, version: 1, has_timestamps: true, segments, created_at: "2026-11-08T09:00:00Z" },
     exercises: [],
     generation: { enabled: true, generator: "openai:fake-model:listening_exercise_v1" },
+    state: "ready_to_prepare",
+    in_playlist: false,
+    preparations: [],
+    notifications: [],
+    notification: { enabled: false, channel: null },
     ...overrides,
   };
 }
+
+export const preparation = (overrides: Partial<ListeningPreparation> = {}): ListeningPreparation => ({
+  id: 1,
+  operation_id: "pull-prepare-1",
+  material_id: 1,
+  transcript_id: 10,
+  trigger: "pull",
+  pull_run_id: 1,
+  after_unknown: false,
+  started_at: "2026-11-09T06:30:00Z",
+  deadline_at: "2026-11-09T06:31:30Z",
+  finished_at: "2026-11-09T06:31:00Z",
+  state: "completed",
+  exercise_id: 100,
+  ...overrides,
+});
+
+export const notificationAttempt = (overrides: Partial<ListeningNotification> = {}): ListeningNotification => ({
+  id: 1,
+  operation_id: "pull-notify-1",
+  exercise_id: 100,
+  channel: "telegram",
+  trigger: "pull",
+  pull_run_id: 1,
+  after_unknown: false,
+  started_at: "2026-11-09T06:31:00Z",
+  deadline_at: "2026-11-09T06:31:40Z",
+  finished_at: "2026-11-09T06:31:10Z",
+  state: "sent",
+  failure_code: null,
+  ...overrides,
+});
 
 export const completed = (id = 100): ListeningExercise => ({
   id,

@@ -83,6 +83,7 @@ type Handler struct {
 	hybrid              HybridSearchService
 	suggestions         ConceptSuggestionService
 	listening           ListeningService
+	listeningDaily      ListeningDailyService
 	// demo is set only in the FLH-073 public demo mode.
 	demo *publicDemo
 	// readiness reports whether the backing store can serve requests. It is
