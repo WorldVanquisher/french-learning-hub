@@ -784,9 +784,43 @@ The client mirrors the server's existing outcomes onto typed results and errors:
   or hostile response cannot make the client buffer without limit. The error
   message is decoded from the leading JSON object, so a truncated or
   junk-suffixed body still yields the intended message.
-- **No retries, no fallback, no AI.** A single request per invocation with a
-  bounded timeout and request context (cancelled on SIGINT/SIGTERM); no automatic
-  retry, no provider fallback, and no model call anywhere in the path.
+- **No retries, no fallback, no AI.** A single request per invocation (per file
+  in batch mode) with a bounded timeout and request context (cancelled on
+  SIGINT/SIGTERM); no automatic retry, no provider fallback, and no model call
+  anywhere in the path.
+
+#### Batch mode
+
+`capture -batch FILE...` sends an explicit list of at most 100
+`learning_capture_v1` files, each as its own unchanged `POST /captures`, one at a
+time, in byte-wise path order. The orchestration lives in
+`internal/captureclient/batch.go` (`PlanBatch`, `PreviewBatch`,
+`Client.RunBatch`) and reuses `Client.Import`; there is no new route, schema,
+migration or server-side behaviour, and the server's receipt remains the only
+idempotency authority.
+
+- **Local checks** (client): 1–100 files, no file listed twice (by path or by
+  identity); each file exists, is a regular readable file, is at most 1 MiB and
+  is not blank. A file that fails is reported `invalid` (checked `local`) and not
+  sent; the other files are still processed. Everything else — JSON shape,
+  fields, schema version, capture-id format, source, entry and analysis
+  validation, taxonomy, created/replayed/conflict — is decided only by the server.
+- **Outcomes:** `201` created, `200` replayed, `409` conflict, `400`/`422`
+  invalid. Any other status, a lost or unreadable response, a timeout or an
+  interruption while waiting is `unconfirmed` (it may or may not be stored). A
+  connection that could not be opened, and every file after an interruption or
+  after 3 files in a row without a server response, is `not_attempted`.
+- **Recovery is a rerun, never a retry.** Rerunning the same unchanged files lets
+  the server's receipt (fingerprint per `capture_id`) report a committed capture
+  as `replayed` and an uncommitted one as `created`, so no duplicate can result.
+- **`-batch -preview`** runs only the local checks and makes no HTTP request.
+- **Exit status:** `0` all created/replayed (preview: all ready); `1` some
+  conflict or invalid; `3` some unconfirmed or not attempted; `2` refused before
+  any file was read or sent. The single-file mode keeps `0`/`1`.
+- **Reports** list position, outcome, path, a `capture_id` label (shown only when
+  it is a portable identifier), who decided, the HTTP status and entry/analysis
+  ids. They never include learner text or request bodies; a server message that
+  repeats request content is withheld.
 
 #### Configuration
 
@@ -3048,6 +3082,26 @@ go run ./cmd/capture -url http://localhost:8080 -file examples/captures/manual-e
 export FRENCH_HUB_URL=http://localhost:8080
 go run ./cmd/capture -file examples/captures/manual-example.json
 ```
+
+#### Batch import and preview
+
+Several prepared files can be sent in one run. Preview first; it reads the files
+and makes no HTTP request:
+
+```bash
+go run ./cmd/capture -batch -preview captures/*.json
+go run ./cmd/capture -url http://localhost:8080 -batch captures/*.json
+```
+
+Flags come before the files. Files are processed in byte-wise path order, one
+request each, at most 100 per run. Each line reports the outcome (`created`,
+`replayed`, `conflict`, `invalid`, `unconfirmed`, `not_attempted`), the path,
+the `capture_id`, whether the client (`local`) or the server decided, and the
+HTTP status; a final `summary:` line counts each outcome. Exit status: `0` all
+created/replayed, `1` some conflict or invalid, `3` some unconfirmed or not
+attempted, `2` refused before anything was sent. After `3`, rerun the same
+command with the same, unchanged files: stored captures come back as `replayed`
+and nothing is duplicated. The design is in [§4.2](#42-capture-cli).
 
 #### Exit status and error handling
 

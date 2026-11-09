@@ -132,7 +132,15 @@ curl -sS -X POST http://localhost:8080/entries \
   -d '{"original_input":"Pourquoi dit-on je vais ?","original_context":"Étude du verbe aller."}'
 curl -sS -X POST http://localhost:8080/entries/1/analysis
 make capture ARGS="-file examples/captures/manual-example.json"
+make capture ARGS="-batch -preview captures/*.json"   # local checks only, no request
+make capture ARGS="-batch captures/*.json"            # one request per file, per-file report
 ```
+
+Batch mode sends at most 100 files, in path order, each unchanged; the server
+still decides created, replayed, conflict or invalid. If a response is lost, the
+file is reported `unconfirmed` and the command exits `3`: rerun it with the same
+files, and the server reports already stored captures as `replayed`. See
+[docs/ARCHITECTURE.md §A.9](docs/ARCHITECTURE.md#a9-capture-cli).
 
 Start the workbench with `cd web && npm run dev` and open
 `http://localhost:5173`. [docs/QUICKSTART.md](docs/QUICKSTART.md) walks through
