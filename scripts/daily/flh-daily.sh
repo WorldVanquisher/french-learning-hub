@@ -101,7 +101,9 @@ if ai not in ("openai", "rule-based"): problems.append("AI_PROVIDER must be open
 if ex not in ("openai", "disabled"): problems.append("EXTRACTOR_PROVIDER must be openai or disabled")
 sg = envr.get("SUGGESTION_PROVIDER", "") or "disabled"
 if sg not in ("openai", "disabled"): problems.append("SUGGESTION_PROVIDER must be openai or disabled")
-real = "openai" in (ai, ex, sg)
+ls = envr.get("LISTENING_PROVIDER", "") or "disabled"
+if ls not in ("openai", "disabled"): problems.append("LISTENING_PROVIDER must be openai or disabled")
+real = "openai" in (ai, ex, sg, ls)
 if real:
     if not envr.get("OPENAI_API_KEY"): problems.append("OPENAI_API_KEY must be set (the value is never shown)")
     if not envr.get("OPENAI_MODEL"): problems.append("OPENAI_MODEL must be set to the model you chose")
@@ -146,6 +148,7 @@ if mode == "summary":
     print(f"analysis:   {ai}" + (" — explicit requests call the provider and may be billed" if ai == "openai" else " — local, no provider call"))
     print(f"extraction: {ex}" + (" — explicit requests call the provider and may be billed" if ex == "openai" else " — off"))
     print(f"suggestions: {sg}" + (" — explicit requests call the provider and may be billed" if sg == "openai" else " — off"))
+    print(f"listening:  {ls}" + (" — explicit requests call the provider and may be billed" if ls == "openai" else " — off"))
     if real:
         print(f"OPENAI_MODEL: set · OPENAI_API_KEY: set · OPENAI_BASE_URL: {base} · timeouts: provider {pt}s < write {wt}s")
     print(f"database:   {data}/app.db")

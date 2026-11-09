@@ -797,6 +797,21 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .evidence-item p { margin: 4px 0; }
 .source-view { border-left: 3px solid var(--border-strong); padding: 4px 0 4px 10px; margin: 6px 0; }
 
+/* Exam Listening Lesson v1 (private workbench only) */
+.listening-add label, .listening-save label, .listening-item label { display: block; font-size: 13px; margin: 8px 0 4px; }
+.listening-add input, .listening-add textarea, .listening-item textarea, .listening-save textarea, .listening form textarea {
+  width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px;
+}
+.listening-list, .listening-items, .listening-notes { padding-left: 20px; }
+.listening-list { list-style: none; padding: 0; }
+.listening-list li { padding: 6px 0; border-top: 1px solid var(--border); }
+.listening-list li:first-child { border-top: 0; }
+.listening-item { margin-bottom: 16px; }
+.listening-item .label, .listening-reveal .label, .listening-save .label { font-size: 12px; color: var(--muted); }
+.listening-reveal { border-left: 4px solid var(--same); padding: 4px 0 4px 10px; margin: 8px 0; }
+.listening-segment { margin: 4px 0; }
+.listening-context { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; background: var(--warn-bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+
 /* Recall practice (Knowledge Library, private workbench only) */
 .practice .label { font-size: 12px; color: var(--muted); margin: 8px 0 2px; }
 .practice-question { font-size: 16px; margin: 4px 0 12px; }

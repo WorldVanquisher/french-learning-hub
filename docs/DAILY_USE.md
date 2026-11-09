@@ -341,6 +341,48 @@ no backup.
   away, or a context that you need, is your choice to skip; the context is
   shown only on the source screen.
 
+## 9. Listening practice with your own transcript
+
+**Saving, browsing and opening a video read only.** Only **Prepare exercise**
+calls the provider, and only when `LISTENING_PROVIDER=openai` is in your
+settings file (then `check` shows `listening:  openai — explicit requests call
+the provider and may be billed`). **Save learning record** creates one ordinary
+learning record.
+
+1. **[Mac]** Open **Listening**. Paste a YouTube video link, a title and the
+   French transcript you have; then **Save material**. Without a transcript the
+   lesson says **Waiting for a transcript** until you paste one.
+2. Click **Prepare exercise**: one request. The lesson shows two to four French
+   questions; the transcript, answers and notes stay hidden.
+3. Watch the video (**Open the video on YouTube ↗**), answer, then click
+   **Reveal answers and evidence**. Compare with the reference answer, its
+   reason (Explanation language applies) and the cited lines of your transcript;
+   a timestamp link opens the video at that point when your source gave one.
+4. On a question you missed, click **Save as a learning question…**, write what
+   you missed or want to ask, check the attached context, and click
+   **Save learning record**. **Open record #N in Learning Records** shows it; it
+   then follows the usual analysis → extraction → Concept path.
+
+**A synthetic rehearsal** (no real video, no billed call): the Go test
+`TestListeningLesson_PrepareReopenAndSaveMissedPoint` runs this whole path
+against a local fake provider with the authored transcript in
+[examples/listening/](../examples/listening/). To see it in the workbench
+without a provider, save that transcript with any well-formed link (for
+example `https://youtu.be/FLHlisten01`, which is not a real video) and leave
+`LISTENING_PROVIDER=disabled`: the lesson says preparation is off.
+
+**Limitations:**
+- **You supply the transcript.** Nothing is transcribed, downloaded or read
+  from YouTube captions. Timestamps exist only where your source gave them.
+- **The exercise is generated.** Its references are checked against your
+  transcript (existing lines, verbatim excerpts, no invented times), but the
+  quality of its questions and French has not been evaluated with a real
+  model. It is a self-check, not an exam score or a CEFR level.
+- **Answers and self-checks are not saved.** Leaving the page discards them.
+- **A failed preparation is shown, never retried.** Click again only if you
+  want another (possibly billed) request; a lost response may already have
+  stored an exercise, so reload the lesson first.
+
 ## Troubleshooting
 
 | Symptom | Cause / action |

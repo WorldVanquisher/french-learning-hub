@@ -548,6 +548,26 @@ Recall Practice v1 (workbench, Knowledge Library):
   persistence: attempts and self-checks stay in component state, never in
   requests, logs or browser storage. Never offered in the public demo.
 
+Exam Listening Lesson v1 (private workbench):
+
+- Migration 014 adds append-only `listening_materials` (YouTube link parsed as
+  text, never fetched), `listening_transcripts` (learner-supplied segments;
+  timestamps only where the source gave them) and `listening_exercises`
+  (completed content or a non-secret failure code, with
+  `openai:<model>:listening_exercise_v1` provenance). Contract:
+  `docs/ARCHITECTURE.md` §4.3 and Appendix A.15.
+- Optional `LISTENING_PROVIDER=openai` (default `disabled`, reuses `OPENAI_*`)
+  enables one explicit `POST /listening/materials/{id}/exercises` per click. No
+  transcript → 409 without a call; output is validated against that transcript
+  (segment references, verbatim excerpts, no invented clock times); failures are
+  stored, never retried. Reads and video links never call a provider.
+- The UI hides transcript, answers and notes until reveal; answers and
+  self-checks stay in component state. A missed point becomes a learning record
+  only through an explicit `POST /captures` (`source: manual`). Never in the
+  public demo: not on its allowlist, tables must be empty in demo artifacts.
+- Do not download YouTube media, scrape captions, run ASR, or add scheduled
+  discovery here; those are separate assignments.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.
