@@ -867,3 +867,15 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .tag.stage-tag-blocked { color: #b54708; border-color: #b54708; }
 .tag.stage-tag-unknown { color: var(--muted); border-color: var(--border-strong); }
 .unit-links { flex-wrap: wrap; }
+
+/* Exam Reading v1 (private workbench only) */
+.reading-layout { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 960px) {
+  .reading-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .reading-layout .reading-passage { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; }
+}
+.reading-paragraph { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reading-paragraph.cited { border-left: 4px solid var(--same); padding-left: 8px; }
+.reading-paragraph mark { background: var(--warn-bg); padding: 0 2px; border-radius: 3px; }
+.reading-pid { font-family: ui-monospace, monospace; font-size: 11px; }
+.reading-example-title { font-weight: 600; }

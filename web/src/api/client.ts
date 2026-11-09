@@ -44,6 +44,7 @@ import type {
   LearningRecordState,
 } from "../types/learning";
 import type { SuggestionConfirmResult, SuggestionOverview, SuggestionRun } from "../types/suggestion";
+import type { ReadingExamples, ReadingList, ReadingLessonView, ReadingPreparationResult } from "../types/reading";
 import type { HybridSearch, LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, PublicDemoInfo, SemanticSearch } from "../types/library";
 
 // ApiError carries the HTTP status so callers can react specifically — most
@@ -723,4 +724,57 @@ export function retryListeningNotification(
 // getListeningNotification looks a send attempt up by its key.
 export function getListeningNotification(operationId: string, fetchImpl: typeof fetch = fetch): Promise<ListeningNotification> {
   return request<ListeningNotification>("GET", `/listening/notifications/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// ---- Exam Reading v1 (private workbench) ----
+
+// listReading lists saved reading lessons with their derived state.
+export function listReading(fetchImpl: typeof fetch = fetch): Promise<ReadingList> {
+  return request<ReadingList>("GET", "/reading/lessons", undefined, fetchImpl);
+}
+
+// getReading reads one lesson: the latest passage version, every exercise and attempt.
+export function getReading(lessonId: number, fetchImpl: typeof fetch = fetch): Promise<ReadingLessonView> {
+  return request<ReadingLessonView>("GET", `/reading/lessons/${lessonId}`, undefined, fetchImpl);
+}
+
+// createReading saves a title, a French passage and an optional https link (never fetched).
+export function createReading(
+  input: { title: string; text: string; source_url: string },
+  fetchImpl: typeof fetch = fetch,
+): Promise<ReadingLessonView> {
+  return request<ReadingLessonView>("POST", "/reading/lessons", input, fetchImpl);
+}
+
+// listReadingExamples lists the embedded authored pack (titles only).
+export function listReadingExamples(fetchImpl: typeof fetch = fetch): Promise<ReadingExamples> {
+  return request<ReadingExamples>("GET", "/reading/examples", undefined, fetchImpl);
+}
+
+// importReadingExample imports one authored passage with its reviewed exercise;
+// no model call. Importing it again returns the existing lesson.
+export function importReadingExample(passageId: string, fetchImpl: typeof fetch = fetch): Promise<ReadingLessonView> {
+  return request<ReadingLessonView>("POST", `/reading/examples/${encodeURIComponent(passageId)}`, undefined, fetchImpl);
+}
+
+// prepareReadingExercise is the one explicit provider call, under the caller's
+// key (the Listening contract): resending the same key replays the attempt.
+export function prepareReadingExercise(
+  lessonId: number,
+  operationId: string,
+  confirmUnknownRetry = false,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ReadingPreparationResult> {
+  return request<ReadingPreparationResult>(
+    "POST",
+    `/reading/lessons/${lessonId}/exercises`,
+    confirmUnknownRetry ? { confirm_unknown_retry: true } : undefined,
+    fetchImpl,
+    operationId,
+  );
+}
+
+// getReadingPreparation looks an attempt up by its key (404: nothing recorded yet).
+export function getReadingPreparation(operationId: string, fetchImpl: typeof fetch = fetch): Promise<ReadingPreparationResult> {
+  return request<ReadingPreparationResult>("GET", `/reading/preparations/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
 }

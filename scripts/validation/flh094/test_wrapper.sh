@@ -121,6 +121,16 @@ run "openai listening alone still requires the key" 2 "OPENAI_API_KEY must be se
 run "listening defaults to disabled when unset" 0 "listening:  disabled — off" "$WORK/defaults.env" check
 good "$WORK/listenon.env"; echo "LISTENING_PROVIDER=openai" >> "$WORK/listenon.env"
 run "openai listening is accepted and labelled as billable" 0 "listening:  openai — explicit requests call the provider" "$WORK/listenon.env" check
+# Reading v1: READING_PROVIDER follows the same rules as LISTENING_PROVIDER.
+good "$WORK/badread.env"; echo "READING_PROVIDER=anthropic" >> "$WORK/badread.env"
+run "an unknown reading provider is refused" 2 "READING_PROVIDER must be openai or disabled" "$WORK/badread.env" check
+good "$WORK/readnokey.env"
+sed -i 's/^AI_PROVIDER=.*/AI_PROVIDER=rule-based/; s/^EXTRACTOR_PROVIDER=.*/EXTRACTOR_PROVIDER=disabled/; /^OPENAI_API_KEY=/d' "$WORK/readnokey.env"
+echo "READING_PROVIDER=openai" >> "$WORK/readnokey.env"
+run "openai reading alone still requires the key" 2 "OPENAI_API_KEY must be set" "$WORK/readnokey.env" check
+run "reading defaults to disabled when unset" 0 "reading:    disabled — off \\(authored examples still work\\)" "$WORK/defaults.env" check
+good "$WORK/readon.env"; echo "READING_PROVIDER=openai" >> "$WORK/readon.env"
+run "openai reading is accepted and labelled as billable" 0 "reading:    openai — explicit requests call the provider" "$WORK/readon.env" check
 # Daily Listening: every part off by default; each enabled part needs its settings.
 daily() { # daily FILE: a valid settings file with every Daily Listening part on
   good "$1"

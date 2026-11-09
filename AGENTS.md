@@ -567,6 +567,24 @@ Exam Listening Lesson v1 (private workbench):
   public demo: not on its allowlist, tables must be empty in demo artifacts.
 - Do not download YouTube media, scrape captions or run ASR.
 
+Exam Reading v1 (private workbench):
+
+- Migration 016: `reading_lessons` (learner or authored; source link stored,
+  never fetched), `reading_passages` (versions of paragraphs `p1…`, exact
+  wording), `reading_exercises` (against one passage version; `authored:<pack>`
+  or `openai:<model>:reading_exercise_v1`), `reading_preparations` (the Daily
+  Listening attempt-first recovery rules). Contract: `docs/ARCHITECTURE.md`
+  §4.5, A.17.
+- `internal/reading/pack/reading_pack_v1.json` is embedded and validated at startup
+  (`domain.ParseReadingPack`). Importing an example makes no model call.
+  `READING_PROVIDER=openai` (default `disabled`, reuses `OPENAI_*`) enables one
+  explicit generation per click.
+- Every evidence excerpt must occur exactly once in its paragraph; the UI
+  highlights it only after reveal. The passage stays visible; answers,
+  explanations and highlights stay hidden until reveal. A missed point is a
+  capture (`source: manual`) on explicit confirmation only. Never in the
+  public demo.
+
 Daily Listening (pull, prepare, notify):
 
 - One pull, `ListeningDailyService.Pull`, shared by "Pull now"

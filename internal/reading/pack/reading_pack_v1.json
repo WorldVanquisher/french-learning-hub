@@ -1,0 +1,783 @@
+{
+  "schema_version": "flh_reading_pack_v1",
+  "notice": "Authored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level.",
+  "passages": [
+    {
+      "id": "rd-notice-piscine",
+      "format": "notice",
+      "style_level": "A2",
+      "title": "Piscine des Tilleuls : fermeture pour travaux",
+      "source": {
+        "kind": "authored",
+        "pack": "flh_reading_pack_v1",
+        "link": null,
+        "notice": "Authored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+      },
+      "segments": [
+        {
+          "id": "p1",
+          "text": "La piscine municipale des Tilleuls sera fermée du lundi 2 mars au dimanche 29 mars inclus. Pendant cette période, l'équipe technique remplacera le système de chauffage de l'eau."
+        },
+        {
+          "id": "p2",
+          "text": "Les cours de natation pour enfants sont maintenus : ils auront lieu à la piscine de Bellevue, aux mêmes jours et aux mêmes horaires. Une navette gratuite partira du parking des Tilleuls à 16 h 45 et reviendra à 18 h 30."
+        },
+        {
+          "id": "p3",
+          "text": "Les abonnements mensuels de mars ne seront pas facturés. Si vous avez déjà payé, le montant sera déduit de votre prochain abonnement ; vous n'avez aucune démarche à faire."
+        },
+        {
+          "id": "p4",
+          "text": "La piscine rouvrira le lundi 30 mars à 7 h. Merci de votre compréhension."
+        }
+      ],
+      "questions": [
+        {
+          "id": "rd-notice-piscine:q1",
+          "kind": "main_idea",
+          "question": "Quel est le message principal de cet avis ?",
+          "reference_answer": "La piscine des Tilleuls est fermée pendant presque tout le mois de mars pour des travaux sur le chauffage de l'eau.",
+          "accepted_alternatives": [
+            "La piscine ferme en mars à cause de travaux de chauffage."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "La piscine ferme définitivement.",
+              "why_wrong_en": "The notice gives a reopening date (p4).",
+              "why_wrong_zh": "通知给出了重新开放的日期（p4）。"
+            },
+            {
+              "answer": "Les cours de natation sont annulés.",
+              "why_wrong_en": "The lessons are kept and moved to Bellevue (p2).",
+              "why_wrong_zh": "游泳课照常进行，只是改到 Bellevue（p2）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p1",
+              "excerpt": "sera fermée du lundi 2 mars au dimanche 29 mars inclus"
+            },
+            {
+              "segment": "p1",
+              "excerpt": "remplacera le système de chauffage de l'eau"
+            }
+          ],
+          "explanation_en": "The first paragraph states the closure dates and the reason; the rest of the notice handles the consequences.",
+          "explanation_zh": "第一段说明了关闭日期和原因，其余部分说明这件事带来的影响。"
+        },
+        {
+          "id": "rd-notice-piscine:q2",
+          "kind": "detail",
+          "question": "Où auront lieu les cours de natation pour enfants pendant les travaux ?",
+          "reference_answer": "À la piscine de Bellevue.",
+          "accepted_alternatives": [
+            "Piscine de Bellevue, aux mêmes horaires."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Au parking des Tilleuls.",
+              "why_wrong_en": "The car park is only where the free shuttle leaves from (p2).",
+              "why_wrong_zh": "停车场只是免费班车出发的地点（p2）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p2",
+              "excerpt": "ils auront lieu à la piscine de Bellevue"
+            }
+          ],
+          "explanation_en": "« Sont maintenus » means the lessons still happen; the next clause says where.",
+          "explanation_zh": "« sont maintenus » 表示课程照常进行，后半句说明了地点。"
+        },
+        {
+          "id": "rd-notice-piscine:q3",
+          "kind": "detail",
+          "question": "Que doit faire une personne qui a déjà payé son abonnement de mars ?",
+          "reference_answer": "Rien : le montant sera déduit de son prochain abonnement.",
+          "accepted_alternatives": [
+            "Aucune démarche ; la somme sera retirée du prochain abonnement."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Demander un remboursement à l'accueil.",
+              "why_wrong_en": "The notice says no action is needed (« aucune démarche »).",
+              "why_wrong_zh": "通知说不需要办理任何手续（« aucune démarche »）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p3",
+              "excerpt": "le montant sera déduit de votre prochain abonnement ; vous n'avez aucune démarche à faire"
+            }
+          ],
+          "explanation_en": "« Déduire » means to subtract: the March amount comes off the next payment, so there is nothing to do.",
+          "explanation_zh": "« déduire » 是“扣除”的意思：三月的费用会从下一次付款中扣掉，所以不需要做任何事。"
+        }
+      ],
+      "no_inference_reason": "A factual notice: every useful point is stated, so an inference question would go beyond the text.",
+      "capture": {
+        "question": "rd-notice-piscine:q3",
+        "excerpt": {
+          "segment": "p3",
+          "excerpt": "le montant sera déduit de votre prochain abonnement"
+        },
+        "learning_capture_v1": {
+          "schema_version": "learning_capture_v1",
+          "capture_id": "reading-pack-v1:rd-notice-piscine:q3",
+          "source": "manual",
+          "original_input": "J'ai compris « le montant sera déduit » comme « on vous rembourse en espèces ». Quelle est la différence entre « déduire » et « rembourser » ?",
+          "original_context": "Reading practice: Piscine des Tilleuls : fermeture pour travaux\nPassage: flh_reading_pack_v1/rd-notice-piscine (notice, authored A2-style)\nQuestion q3 (detail): Que doit faire une personne qui a déjà payé son abonnement de mars ?\nExcerpt (p3): « le montant sera déduit de votre prochain abonnement »\nReference answer: Rien : le montant sera déduit de son prochain abonnement.\nAuthored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+        }
+      }
+    },
+    {
+      "id": "rd-email-chaudiere",
+      "format": "email",
+      "style_level": "B1",
+      "title": "Objet : visite d'entretien de la chaudière",
+      "source": {
+        "kind": "authored",
+        "pack": "flh_reading_pack_v1",
+        "link": null,
+        "notice": "Authored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+      },
+      "segments": [
+        {
+          "id": "p1",
+          "text": "Bonjour Madame Lefèvre, comme chaque année, la chaudière de votre appartement doit être révisée avant l'hiver. Le technicien de l'entreprise Thermo-Services passera le mardi 14 octobre, entre 9 h et 12 h."
+        },
+        {
+          "id": "p2",
+          "text": "La visite dure environ quarante-cinq minutes. Il faudra simplement libérer l'accès au placard de la cuisine, où se trouve la chaudière. Vous n'avez rien à payer : l'entretien est compris dans les charges."
+        },
+        {
+          "id": "p3",
+          "text": "Si vous n'êtes pas disponible ce jour-là, merci de me prévenir avant jeudi soir. Passé ce délai, je ne pourrai plus modifier le rendez-vous, et le technicien ne reviendra pas dans l'immeuble avant le mois de décembre."
+        },
+        {
+          "id": "p4",
+          "text": "Vous pouvez aussi laisser une clé à la gardienne, qui accompagnera le technicien. Bien cordialement, Paul Moreau, propriétaire"
+        }
+      ],
+      "questions": [
+        {
+          "id": "rd-email-chaudiere:q1",
+          "kind": "main_idea",
+          "question": "Pourquoi M. Moreau écrit-il à Mme Lefèvre ?",
+          "reference_answer": "Pour l'informer de la visite annuelle d'entretien de sa chaudière, le mardi 14 octobre au matin.",
+          "accepted_alternatives": [
+            "Pour annoncer la révision de la chaudière le 14 octobre entre 9 h et 12 h."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Pour lui demander de payer une réparation.",
+              "why_wrong_en": "The visit is routine maintenance and costs nothing (p2).",
+              "why_wrong_zh": "这是例行保养，而且不收费（p2）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p1",
+              "excerpt": "la chaudière de votre appartement doit être révisée avant l'hiver"
+            },
+            {
+              "segment": "p1",
+              "excerpt": "passera le mardi 14 octobre, entre 9 h et 12 h"
+            }
+          ],
+          "explanation_en": "The email announces a yearly service visit and gives its date; the other paragraphs are practical details.",
+          "explanation_zh": "邮件通知每年一次的保养上门时间，其余段落是具体安排。"
+        },
+        {
+          "id": "rd-email-chaudiere:q2",
+          "kind": "detail",
+          "question": "Que doit faire Mme Lefèvre si elle ne peut pas être là le 14 octobre ?",
+          "reference_answer": "Prévenir M. Moreau avant jeudi soir, ou laisser une clé à la gardienne.",
+          "accepted_alternatives": [
+            "Prévenir le propriétaire avant jeudi soir.",
+            "Laisser une clé à la gardienne."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Appeler l'entreprise Thermo-Services.",
+              "why_wrong_en": "She is asked to tell the landlord (« me prévenir »), not the company.",
+              "why_wrong_zh": "邮件请她通知房东（« me prévenir »），而不是联系公司。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p3",
+              "excerpt": "merci de me prévenir avant jeudi soir"
+            },
+            {
+              "segment": "p4",
+              "excerpt": "laisser une clé à la gardienne"
+            }
+          ],
+          "explanation_en": "Two options are given: warn the landlord before Thursday evening, or leave a key with the caretaker. Either one alone is an acceptable answer.",
+          "explanation_zh": "邮件给出了两个办法：周四晚上之前通知房东，或者把钥匙留给门房。只答出其中一个也算对。"
+        },
+        {
+          "id": "rd-email-chaudiere:q3",
+          "kind": "inference",
+          "question": "Pourquoi est-il dans l'intérêt de Mme Lefèvre de répondre rapidement ?",
+          "reference_answer": "Parce que, sans réponse avant jeudi soir, l'entretien ne pourrait pas être fait avant décembre, c'est-à-dire probablement après le début de l'hiver.",
+          "accepted_alternatives": [
+            "Sinon, la révision serait repoussée à décembre, trop tard pour l'hiver."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Parce qu'elle devra payer une pénalité.",
+              "why_wrong_en": "No penalty is mentioned; the only consequence is the delay to December.",
+              "why_wrong_zh": "邮件没有提到罚款，唯一的后果是推迟到十二月。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p1",
+              "excerpt": "doit être révisée avant l'hiver"
+            },
+            {
+              "segment": "p3",
+              "excerpt": "Passé ce délai, je ne pourrai plus modifier le rendez-vous"
+            },
+            {
+              "segment": "p3",
+              "excerpt": "le technicien ne reviendra pas dans l'immeuble avant le mois de décembre"
+            }
+          ],
+          "explanation_en": "Inference: the text never says « répondez vite », but the deadline, the December delay and « avant l'hiver » together imply it.",
+          "explanation_zh": "这是推断：原文没有直接说“快回复”，但截止时间、推迟到十二月以及 « avant l'hiver » 放在一起，就能推出这一点。"
+        }
+      ],
+      "capture": {
+        "question": "rd-email-chaudiere:q2",
+        "excerpt": {
+          "segment": "p3",
+          "excerpt": "merci de me prévenir avant jeudi soir"
+        },
+        "learning_capture_v1": {
+          "schema_version": "learning_capture_v1",
+          "capture_id": "reading-pack-v1:rd-email-chaudiere:q2",
+          "source": "manual",
+          "original_input": "J'ai lu « me prévenir » comme « m'empêcher » (prevent). En fait, « prévenir quelqu'un » veut dire l'informer à l'avance ?",
+          "original_context": "Reading practice: Objet : visite d'entretien de la chaudière\nPassage: flh_reading_pack_v1/rd-email-chaudiere (email, authored B1-style)\nQuestion q2 (detail): Que doit faire Mme Lefèvre si elle ne peut pas être là le 14 octobre ?\nExcerpt (p3): « merci de me prévenir avant jeudi soir »\nReference answer: Prévenir M. Moreau avant jeudi soir, ou laisser une clé à la gardienne.\nAuthored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+        }
+      }
+    },
+    {
+      "id": "rd-annonce-ligne-b",
+      "format": "announcement",
+      "style_level": "A2",
+      "title": "Travaux sur la ligne B : week-end du 18 et 19 avril",
+      "source": {
+        "kind": "authored",
+        "pack": "flh_reading_pack_v1",
+        "link": null,
+        "notice": "Authored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+      },
+      "segments": [
+        {
+          "id": "p1",
+          "text": "En raison de travaux de modernisation des voies, aucun train ne circulera entre les gares de Saint-Rémy et de Valcourt le samedi 18 et le dimanche 19 avril, de 6 h à minuit."
+        },
+        {
+          "id": "p2",
+          "text": "Des bus de remplacement partiront toutes les vingt minutes devant chaque gare concernée. Prévoyez environ quarante minutes de trajet supplémentaires."
+        },
+        {
+          "id": "p3",
+          "text": "Les billets et les abonnements habituels restent valables dans les bus. Les vélos, en revanche, ne pourront pas être transportés."
+        },
+        {
+          "id": "p4",
+          "text": "Le trafic normal reprendra le lundi 20 avril dès le premier train."
+        }
+      ],
+      "questions": [
+        {
+          "id": "rd-annonce-ligne-b:q1",
+          "kind": "main_idea",
+          "question": "Qu'annonce ce message ?",
+          "reference_answer": "Les trains ne circuleront pas entre Saint-Rémy et Valcourt le week-end du 18 et 19 avril ; des bus les remplaceront.",
+          "accepted_alternatives": [
+            "Une interruption de la ligne B pendant un week-end, avec des bus de remplacement."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "La fermeture définitive de la ligne B.",
+              "why_wrong_en": "Normal service resumes on Monday 20 April (p4).",
+              "why_wrong_zh": "4 月 20 日星期一恢复正常运行（p4）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p1",
+              "excerpt": "aucun train ne circulera entre les gares de Saint-Rémy et de Valcourt"
+            },
+            {
+              "segment": "p2",
+              "excerpt": "Des bus de remplacement partiront toutes les vingt minutes"
+            }
+          ],
+          "explanation_en": "The announcement is about a temporary interruption and the replacement buses.",
+          "explanation_zh": "这则通知讲的是临时停运以及替代巴士。"
+        },
+        {
+          "id": "rd-annonce-ligne-b:q2",
+          "kind": "detail",
+          "question": "Un voyageur qui a un abonnement doit-il acheter un billet pour le bus ?",
+          "reference_answer": "Non, son abonnement reste valable dans les bus.",
+          "accepted_alternatives": [
+            "Non, les abonnements habituels sont acceptés dans les bus."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Oui, il faut un billet de bus spécial.",
+              "why_wrong_en": "Usual tickets and passes stay valid (p3).",
+              "why_wrong_zh": "原有车票和月票继续有效（p3）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p3",
+              "excerpt": "Les billets et les abonnements habituels restent valables dans les bus"
+            }
+          ],
+          "explanation_en": "« Restent valables » means they are still valid.",
+          "explanation_zh": "« restent valables » 表示仍然有效。"
+        },
+        {
+          "id": "rd-annonce-ligne-b:q3",
+          "kind": "detail",
+          "question": "Qu'est-ce qu'on ne peut pas faire dans les bus de remplacement ?",
+          "reference_answer": "Transporter un vélo.",
+          "accepted_alternatives": [
+            "Monter avec son vélo."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Utiliser son abonnement.",
+              "why_wrong_en": "Passes are accepted; only bicycles are refused (p3).",
+              "why_wrong_zh": "月票可以用，只是不能带自行车（p3）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p3",
+              "excerpt": "Les vélos, en revanche, ne pourront pas être transportés"
+            }
+          ],
+          "explanation_en": "« En revanche » introduces the contrast: tickets are fine, but bicycles are not.",
+          "explanation_zh": "« en revanche » 引出转折：车票没问题，但自行车不行。"
+        }
+      ],
+      "no_inference_reason": "A practical announcement: dates, replacement and consequences are all stated explicitly.",
+      "capture": {
+        "question": "rd-annonce-ligne-b:q3",
+        "excerpt": {
+          "segment": "p3",
+          "excerpt": "Les vélos, en revanche, ne pourront pas être transportés"
+        },
+        "learning_capture_v1": {
+          "schema_version": "learning_capture_v1",
+          "capture_id": "reading-pack-v1:rd-annonce-ligne-b:q3",
+          "source": "manual",
+          "original_input": "J'ai pensé que « en revanche » voulait dire « en retour » ou « de nouveau », donc que les vélos étaient acceptés. Comment utiliser « en revanche » ?",
+          "original_context": "Reading practice: Travaux sur la ligne B : week-end du 18 et 19 avril\nPassage: flh_reading_pack_v1/rd-annonce-ligne-b (announcement, authored A2-style)\nQuestion q3 (detail): Qu'est-ce qu'on ne peut pas faire dans les bus de remplacement ?\nExcerpt (p3): « Les vélos, en revanche, ne pourront pas être transportés »\nReference answer: Transporter un vélo.\nAuthored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+        }
+      }
+    },
+    {
+      "id": "rd-article-jardins",
+      "format": "article",
+      "style_level": "B1",
+      "title": "Les jardins partagés ont la cote à Montclair",
+      "source": {
+        "kind": "authored",
+        "pack": "flh_reading_pack_v1",
+        "link": null,
+        "notice": "Authored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+      },
+      "segments": [
+        {
+          "id": "p1",
+          "text": "Il y a cinq ans, Montclair ne comptait qu'un seul jardin partagé, derrière la gare. Aujourd'hui, la ville en compte six, et près de trois cents habitants y cultivent des légumes, des fleurs et des plantes aromatiques."
+        },
+        {
+          "id": "p2",
+          "text": "Le principe est simple : chaque membre reçoit une petite parcelle pour une cotisation de quinze euros par an et s'engage à participer à deux journées d'entretien collectif. Les outils et l'eau sont partagés."
+        },
+        {
+          "id": "p3",
+          "text": "« Ici, on apprend surtout à se connaître », raconte Nadia, membre depuis trois ans. « Avant, je ne parlais à personne dans mon immeuble. Maintenant, mes voisins m'apportent des tomates et je leur donne du basilic. »"
+        },
+        {
+          "id": "p4",
+          "text": "Le succès a pourtant un revers : plus de cent vingt personnes attendent une parcelle, et la mairie n'a prévu aucun nouveau terrain cette année."
+        }
+      ],
+      "questions": [
+        {
+          "id": "rd-article-jardins:q1",
+          "kind": "main_idea",
+          "question": "Quel est le sujet principal de cet article ?",
+          "reference_answer": "Le succès des jardins partagés à Montclair : ils créent des liens entre habitants, mais il n'y a pas assez de place pour tout le monde.",
+          "accepted_alternatives": [
+            "Les jardins partagés se développent à Montclair et la demande dépasse l'offre."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "La mairie ouvre de nouveaux jardins cette année.",
+              "why_wrong_en": "No new land is planned this year (p4).",
+              "why_wrong_zh": "今年没有计划新增土地（p4）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p1",
+              "excerpt": "Aujourd'hui, la ville en compte six"
+            },
+            {
+              "segment": "p3",
+              "excerpt": "on apprend surtout à se connaître"
+            },
+            {
+              "segment": "p4",
+              "excerpt": "plus de cent vingt personnes attendent une parcelle"
+            }
+          ],
+          "explanation_en": "The article moves from growth (p1), to how it works (p2), to its social value (p3) and its limit (p4).",
+          "explanation_zh": "文章依次讲了发展（p1）、运作方式（p2）、社交意义（p3）和局限（p4）。"
+        },
+        {
+          "id": "rd-article-jardins:q2",
+          "kind": "detail",
+          "question": "Combien coûte une parcelle ?",
+          "reference_answer": "Quinze euros par an.",
+          "accepted_alternatives": [
+            "15 € par an."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Quinze euros par mois.",
+              "why_wrong_en": "The fee is per year (« par an »).",
+              "why_wrong_zh": "费用是按年算的（« par an »）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p2",
+              "excerpt": "une cotisation de quinze euros par an"
+            }
+          ],
+          "explanation_en": "« Cotisation » is a membership fee; « par an » sets the period.",
+          "explanation_zh": "« cotisation » 指会费，« par an » 表示按年计算。"
+        },
+        {
+          "id": "rd-article-jardins:q3",
+          "kind": "inference",
+          "question": "Que peut-on déduire pour les personnes inscrites sur la liste d'attente ?",
+          "reference_answer": "Elles risquent d'attendre longtemps, car la demande est forte et aucun nouveau terrain n'est prévu cette année.",
+          "accepted_alternatives": [
+            "Elles n'auront sans doute pas de parcelle cette année."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Elles auront une parcelle avant la fin de l'année.",
+              "why_wrong_en": "With 120 people waiting and no new land this year, the text points the other way.",
+              "why_wrong_zh": "有 120 人在等，而且今年没有新增土地，原文暗示的恰恰相反。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p4",
+              "excerpt": "plus de cent vingt personnes attendent une parcelle"
+            },
+            {
+              "segment": "p4",
+              "excerpt": "la mairie n'a prévu aucun nouveau terrain cette année"
+            }
+          ],
+          "explanation_en": "Inference: the article does not state the waiting time; it follows from high demand plus no new supply.",
+          "explanation_zh": "这是推断：文章没有直接说要等多久，但需求大、又没有新增供给，就能推出这一点。"
+        }
+      ],
+      "capture": {
+        "question": "rd-article-jardins:q3",
+        "excerpt": {
+          "segment": "p4",
+          "excerpt": "Le succès a pourtant un revers"
+        },
+        "learning_capture_v1": {
+          "schema_version": "learning_capture_v1",
+          "capture_id": "reading-pack-v1:rd-article-jardins:q3",
+          "source": "manual",
+          "original_input": "Je n'ai pas compris « le succès a un revers ». J'ai pensé à « revenir ». Est-ce que « revers » veut dire « inconvénient » ici ?",
+          "original_context": "Reading practice: Les jardins partagés ont la cote à Montclair\nPassage: flh_reading_pack_v1/rd-article-jardins (article, authored B1-style)\nQuestion q3 (inference): Que peut-on déduire pour les personnes inscrites sur la liste d'attente ?\nExcerpt (p4): « Le succès a pourtant un revers »\nReference answer: Elles risquent d'attendre longtemps, car la demande est forte et aucun nouveau terrain n'est prévu cette année.\nAuthored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+        }
+      }
+    },
+    {
+      "id": "rd-annonce-babysitter",
+      "format": "classified_ad",
+      "style_level": "A2",
+      "title": "Petite annonce : famille cherche baby-sitter le mercredi",
+      "source": {
+        "kind": "authored",
+        "pack": "flh_reading_pack_v1",
+        "link": null,
+        "notice": "Authored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+      },
+      "segments": [
+        {
+          "id": "p1",
+          "text": "Famille installée dans le quartier Saint-Paul cherche une personne pour garder ses deux enfants, Léa (6 ans) et Tom (8 ans), le mercredi de 13 h à 18 h, à partir de septembre."
+        },
+        {
+          "id": "p2",
+          "text": "Il faudra aller chercher les enfants à l'école, préparer un goûter simple et accompagner Tom à son cours de judo à 16 h, à dix minutes à pied."
+        },
+        {
+          "id": "p3",
+          "text": "Les enfants parlent espagnol et anglais à la maison. À la rentrée, ils commencent l'école en français. Une personne patiente, qui aime lire des histoires à voix haute, serait idéale."
+        },
+        {
+          "id": "p4",
+          "text": "Rémunération : 12 euros de l'heure. Merci d'envoyer un court message de présentation à famille.ortiz@example.org."
+        }
+      ],
+      "questions": [
+        {
+          "id": "rd-annonce-babysitter:q1",
+          "kind": "main_idea",
+          "question": "Que propose cette annonce ?",
+          "reference_answer": "Un emploi de baby-sitter le mercredi après-midi pour deux enfants, à partir de septembre.",
+          "accepted_alternatives": [
+            "Une famille cherche quelqu'un pour garder ses enfants le mercredi."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Des cours de judo pour enfants.",
+              "why_wrong_en": "Judo is one task of the job, not the offer (p2).",
+              "why_wrong_zh": "柔道只是工作内容之一，并不是广告提供的东西（p2）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p1",
+              "excerpt": "cherche une personne pour garder ses deux enfants"
+            },
+            {
+              "segment": "p1",
+              "excerpt": "le mercredi de 13 h à 18 h, à partir de septembre"
+            }
+          ],
+          "explanation_en": "The first sentence states the offer; the rest lists the tasks and conditions.",
+          "explanation_zh": "第一句说明了招聘内容，其余部分列出工作内容和条件。"
+        },
+        {
+          "id": "rd-annonce-babysitter:q2",
+          "kind": "detail",
+          "question": "Combien gagnera le baby-sitter pour un mercredi entier ?",
+          "reference_answer": "60 euros (5 heures à 12 euros de l'heure).",
+          "accepted_alternatives": [
+            "Soixante euros."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "12 euros.",
+              "why_wrong_en": "12 euros is the hourly rate; the shift lasts five hours (13 h–18 h).",
+              "why_wrong_zh": "12 欧元是时薪，一次要工作五个小时（13 h–18 h）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p1",
+              "excerpt": "de 13 h à 18 h"
+            },
+            {
+              "segment": "p4",
+              "excerpt": "12 euros de l'heure"
+            }
+          ],
+          "explanation_en": "Combine two details: five hours (p1) at 12 euros an hour (p4).",
+          "explanation_zh": "把两个细节结合起来：五个小时（p1），每小时 12 欧元（p4）。"
+        },
+        {
+          "id": "rd-annonce-babysitter:q3",
+          "kind": "inference",
+          "question": "Pourquoi la famille cherche-t-elle quelqu'un qui aime lire des histoires à voix haute ?",
+          "reference_answer": "Probablement pour que les enfants entendent davantage de français avant de commencer l'école en français.",
+          "accepted_alternatives": [
+            "Pour aider les enfants à se préparer au français de l'école."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Parce que les enfants ne savent pas lire.",
+              "why_wrong_en": "Nothing says they cannot read; the point is the switch to French at school (p3).",
+              "why_wrong_zh": "原文没有说孩子不会读书，重点是他们上学后要改用法语（p3）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p3",
+              "excerpt": "Les enfants parlent espagnol et anglais à la maison"
+            },
+            {
+              "segment": "p3",
+              "excerpt": "À la rentrée, ils commencent l'école en français"
+            },
+            {
+              "segment": "p3",
+              "excerpt": "qui aime lire des histoires à voix haute"
+            }
+          ],
+          "explanation_en": "Inference: the ad never says « en français », but the home languages and the move to a French school make it the likely reason.",
+          "explanation_zh": "这是推断：广告没有明说要用法语读，但结合家里说的语言和孩子要进法语学校，这是最可能的原因。"
+        }
+      ],
+      "capture": {
+        "question": "rd-annonce-babysitter:q3",
+        "excerpt": {
+          "segment": "p3",
+          "excerpt": "À la rentrée, ils commencent l'école en français"
+        },
+        "learning_capture_v1": {
+          "schema_version": "learning_capture_v1",
+          "capture_id": "reading-pack-v1:rd-annonce-babysitter:q3",
+          "source": "manual",
+          "original_input": "J'ai compris « à la rentrée » comme « quand ils rentrent à la maison ». C'est plutôt le début de l'année scolaire ?",
+          "original_context": "Reading practice: Petite annonce : famille cherche baby-sitter le mercredi\nPassage: flh_reading_pack_v1/rd-annonce-babysitter (classified_ad, authored A2-style)\nQuestion q3 (inference): Pourquoi la famille cherche-t-elle quelqu'un qui aime lire des histoires à voix haute ?\nExcerpt (p3): « À la rentrée, ils commencent l'école en français »\nReference answer: Probablement pour que les enfants entendent davantage de français avant de commencer l'école en français.\nAuthored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+        }
+      }
+    },
+    {
+      "id": "rd-lettre-mediatheque",
+      "format": "newsletter",
+      "style_level": "A2",
+      "title": "Médiathèque Jules-Verne : ce qui change en janvier",
+      "source": {
+        "kind": "authored",
+        "pack": "flh_reading_pack_v1",
+        "link": null,
+        "notice": "Authored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+      },
+      "segments": [
+        {
+          "id": "p1",
+          "text": "À partir du 6 janvier, la médiathèque Jules-Verne ouvrira aussi le dimanche, de 14 h à 18 h. En échange, elle sera fermée le lundi matin."
+        },
+        {
+          "id": "p2",
+          "text": "Vous pourrez désormais réserver jusqu'à cinq documents en ligne. Lorsqu'un document réservé est disponible, vous recevez un courriel et vous avez dix jours pour venir le chercher."
+        },
+        {
+          "id": "p3",
+          "text": "Les ateliers de conversation en anglais et en espagnol continuent le jeudi soir. Un nouvel atelier de français pour débutants commencera le mardi 14 janvier ; l'inscription est gratuite mais obligatoire, car les places sont limitées à douze personnes."
+        },
+        {
+          "id": "p4",
+          "text": "Toute l'équipe vous souhaite une très belle année de lecture !"
+        }
+      ],
+      "questions": [
+        {
+          "id": "rd-lettre-mediatheque:q1",
+          "kind": "main_idea",
+          "question": "De quoi parle principalement cette lettre ?",
+          "reference_answer": "Des changements à la médiathèque à partir de janvier : de nouveaux horaires, la réservation en ligne et un nouvel atelier de français.",
+          "accepted_alternatives": [
+            "Les nouveautés de la médiathèque en janvier."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "La fermeture de la médiathèque le week-end.",
+              "why_wrong_en": "It will now open on Sunday afternoons (p1).",
+              "why_wrong_zh": "它以后周日下午也会开放（p1）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p1",
+              "excerpt": "ouvrira aussi le dimanche"
+            },
+            {
+              "segment": "p2",
+              "excerpt": "réserver jusqu'à cinq documents en ligne"
+            },
+            {
+              "segment": "p3",
+              "excerpt": "Un nouvel atelier de français pour débutants"
+            }
+          ],
+          "explanation_en": "Each paragraph announces one change taking effect in January.",
+          "explanation_zh": "每一段都宣布了一项一月起生效的变化。"
+        },
+        {
+          "id": "rd-lettre-mediatheque:q2",
+          "kind": "detail",
+          "question": "Combien de temps a-t-on pour récupérer un document réservé ?",
+          "reference_answer": "Dix jours après avoir reçu le courriel.",
+          "accepted_alternatives": [
+            "Dix jours."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Cinq jours.",
+              "why_wrong_en": "Five is the maximum number of reservations, not days (p2).",
+              "why_wrong_zh": "五是最多可以预约的数量，不是天数（p2）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p2",
+              "excerpt": "vous avez dix jours pour venir le chercher"
+            }
+          ],
+          "explanation_en": "Do not mix the two numbers in p2: five documents, ten days.",
+          "explanation_zh": "不要把 p2 里的两个数字搞混：五份资料，十天。"
+        },
+        {
+          "id": "rd-lettre-mediatheque:q3",
+          "kind": "detail",
+          "question": "Pourquoi faut-il s'inscrire à l'atelier de français ?",
+          "reference_answer": "Parce que les places sont limitées à douze personnes.",
+          "accepted_alternatives": [
+            "Il n'y a que douze places."
+          ],
+          "wrong_answers": [
+            {
+              "answer": "Parce que l'atelier est payant.",
+              "why_wrong_en": "Registration is free (« gratuite »).",
+              "why_wrong_zh": "报名是免费的（« gratuite »）。"
+            }
+          ],
+          "evidence": [
+            {
+              "segment": "p3",
+              "excerpt": "l'inscription est gratuite mais obligatoire, car les places sont limitées à douze personnes"
+            }
+          ],
+          "explanation_en": "« Car » gives the reason explicitly; « gratuite mais obligatoire » rules out a fee.",
+          "explanation_zh": "« car » 直接给出了原因；« gratuite mais obligatoire » 排除了收费的可能。"
+        }
+      ],
+      "no_inference_reason": "The letter states its reasons (« car les places sont limitées »), so there is no implied meaning to infer.",
+      "capture": {
+        "question": "rd-lettre-mediatheque:q2",
+        "excerpt": {
+          "segment": "p2",
+          "excerpt": "vous avez dix jours pour venir le chercher"
+        },
+        "learning_capture_v1": {
+          "schema_version": "learning_capture_v1",
+          "capture_id": "reading-pack-v1:rd-lettre-mediatheque:q2",
+          "source": "manual",
+          "original_input": "J'ai traduit « venir le chercher » par « venir le rechercher » (search for it). Ici, « venir chercher » veut dire récupérer, n'est-ce pas ?",
+          "original_context": "Reading practice: Médiathèque Jules-Verne : ce qui change en janvier\nPassage: flh_reading_pack_v1/rd-lettre-mediatheque (newsletter, authored A2-style)\nQuestion q2 (detail): Combien de temps a-t-on pour récupérer un document réservé ?\nExcerpt (p2): « vous avez dix jours pour venir le chercher »\nReference answer: Dix jours après avoir reçu le courriel.\nAuthored practice material (FLH reading pack v1). Not an official exam item; no certified CEFR level."
+        }
+      }
+    }
+  ]
+}

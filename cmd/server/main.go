@@ -19,6 +19,7 @@ import (
 	"french-learning-app/internal/embedding"
 	"french-learning-app/internal/extractor"
 	"french-learning-app/internal/listening"
+	"french-learning-app/internal/reading"
 	"french-learning-app/internal/storage/sqlite"
 	"french-learning-app/internal/suggester"
 	transporthttp "french-learning-app/internal/transport/http"
@@ -136,6 +137,7 @@ func run() error {
 	log.Printf("extractor provider: %s", cfg.Extractor.Provider)
 	log.Printf("suggestion provider: %s", cfg.Suggestion.Provider)
 	log.Printf("listening provider: %s", cfg.Listening.Provider)
+	log.Printf("reading provider: %s", cfg.Reading.Provider)
 	log.Printf("daily listening: playlist %s, automatic preparation %s, notify %s (timezone %s)",
 		cfg.ListeningDaily.Source, onOff(cfg.ListeningDaily.AutoPrepare), cfg.ListeningDaily.Notify, cfg.ListeningDaily.Location)
 	log.Printf("embedding provider: %s", cfg.Embedding.Provider)
@@ -153,6 +155,18 @@ func run() error {
 			sqlite.NewConceptSuggestionRepository(db), selectedSuggester)),
 	}
 	options = append(options, transporthttp.WithListening(listeningLessons), transporthttp.WithListeningDaily(listeningDaily))
+	// Exam Reading v1: the generator is opt-in (READING_PROVIDER); the authored
+	// examples are embedded and validated here, so a bad pack stops startup.
+	selectedReading, err := reading.New(cfg.Reading)
+	if err != nil {
+		return err
+	}
+	readingSvc, err := application.NewReadingService(sqlite.NewReadingRepository(db), selectedReading, reading.ExamplePack(),
+		application.WithReadingDeadline(cfg.Reading.OpenAITimeout+30*time.Second))
+	if err != nil {
+		return err
+	}
+	options = append(options, transporthttp.WithReading(readingSvc))
 	// Semantic search is opt-in (SEMANTIC_SEARCH=qdrant). The server only reads
 	// the index; building it is an explicit operator command (semantic-index).
 	if cfg.Semantic.Mode == config.SemanticQdrant {
