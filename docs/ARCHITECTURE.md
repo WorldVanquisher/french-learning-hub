@@ -2117,6 +2117,19 @@ unit *filed under* the Concept, and support as *currently supporting* it
 ([§6.1](#61-membership-versus-support-canonical-summary)). The synthetic demo
 fixture and walkthrough are in [DEMO.md](DEMO.md).
 
+**Recall practice (workbench only).** A private Concept detail can start a
+session-only recall practice. It is a browser view over the two GETs above,
+with no route, schema or provider of its own:
+- candidates are the detail's `supporting_units`, each re-checked through its
+  source read (current extraction, active admission, not INVALID, still filed
+  under this Concept);
+- the learner chooses the questions, and each answer is revealed only on request;
+- attempts and self-checks stay in component state and are never sent or
+  stored.
+
+The public demo does not render it. Behaviour is in
+[web/README.md](../web/README.md) (*Recall practice*).
+
 ### 9.3 Optional semantic search (FLH-040)
 
 An explicit **Semantic** mode in the Knowledge Library ranks Concepts by

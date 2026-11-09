@@ -187,7 +187,7 @@ the reviewer asks; nothing is written and no provider is called.
 - **Where:** the record's analysis and effective interpretation, extracted
   units, the Concept Review unit card, Concept contents and the Annotation
   Inspector. The Knowledge Library and public demo still show the primary
-  statement only.
+  statement only, except the recall-practice reveal (see *Recall practice*).
 
 ### AI suggestions (FLH-097)
 
@@ -553,6 +553,41 @@ makes; nothing is stored and there is no second workflow state.
 - **AI suggestions stay mounted** once opened. Returning re-reads the run
   list, the open run and the queue (keeping only still-reviewable selected
   units); "left unused" stays a local, unrecorded choice.
+
+## Recall practice (Recall Practice v1)
+
+A private Concept detail in the Knowledge Library has a **Recall practice**
+section with **Start recall practice…**. It is a short, session-only practice
+over the learner's own original questions. It is never offered in the public
+demo.
+
+- **Choosing questions:** the candidates are the Concept's backend-derived
+  current supporting units (at most the first 10), and practice re-reads each
+  one's source (`GET /knowledge-library/units/{id}/source`). A unit is offered
+  only if that read still shows it in the current extraction, active, not
+  INVALID and filed under this Concept. Each candidate shows the original
+  question as written; nothing is preselected, and at most 5 can be chosen.
+  A failed read (with **Retry**), a missing source, a record without question
+  text and a unit that no longer supports the Concept are each listed with the
+  reason and cannot be chosen. Older-extraction members, relations and
+  historical or reassigned units are never read or offered. A retired Concept
+  or one without support says so instead of offering practice.
+- **Answering:** each card shows only the question. The Concept title,
+  statements, examples and the recorded context stay hidden. The optional
+  attempt field is plain component state: it is never sent, logged or written
+  to browser storage, and it is cleared on the next card.
+- **Reveal:** **Reveal stored explanation** shows the unit's stored statement
+  in the languages chosen by **Explanation language**, its French example if
+  one is stored, and **Open the original source (record #N)**. It is labelled a
+  stored reference, not a grading rubric. The source screen opened from
+  practice has **← Back to practice**, which returns to the same card.
+- **Self-check:** **Recalled**, **Try again** or **Skip**. After the first
+  pass, a summary offers one second pass over the items marked **Try again**.
+  Self-checks are not judged against the attempt and are kept only in the
+  session; leaving practice discards them. No score is stored.
+- **Reads only:** the session sends only the two GETs above. It writes nothing
+  to records, analyses, admission, annotations, suggestions or retrieval
+  evaluation, and calls no provider.
 
 ## Correcting a reviewed unit from the inspection (FLH-082)
 

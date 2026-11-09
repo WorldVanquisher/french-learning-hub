@@ -313,6 +313,34 @@ curl -fsS http://127.0.0.1:8080/readyz
    source record.
 8. **[NAS]** `bash scripts/daily/flh-daily.sh backup` when you finish a session.
 
+## 8. Recall practice from a Concept
+
+Recall practice reads only. It sends no write and calls no model, so it needs
+no backup.
+
+1. **[Mac]** Open **Knowledge Library** and then a Concept that at least two
+   of your questions support, such as the `en` Concept from the positive SAME
+   walkthrough.
+2. Under **Recall practice**, click **Start recall practice…**. Tick the
+   questions that make good prompts (up to 5), then **Start practice**.
+3. For each question, answer aloud or in **Your attempt**, then click
+   **Reveal stored explanation**. Compare, click **Open the original source**
+   if you want the record, and **← Back to practice**.
+4. Mark **Recalled**, **Try again** or **Skip**. At the end, run the second
+   pass over the **Try again** items, or **End practice**.
+
+**Limitations:**
+- **The reveal is the explanation stored for the unit.** Reusing it does not
+  establish its linguistic quality, and practising does not demonstrate
+  learning gains. Nothing judges your answer.
+- **Nothing is remembered.** There is no score, schedule or history; leaving
+  practice, switching the Concept or reloading the page discards the session.
+- **Only current support is offered,** at most the first 10 supporting units,
+  in the order the Library lists them, without shuffling.
+- **The question is your record as written.** A question that gives the answer
+  away, or a context that you need, is your choice to skip; the context is
+  shown only on the source screen.
+
 ## Troubleshooting
 
 | Symptom | Cause / action |

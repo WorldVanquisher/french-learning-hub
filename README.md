@@ -82,6 +82,8 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   and an embedding cache in SQLite, built only by an explicit operator command.
   Index runs are serialized by a lease and publish a fully verified collection
   in one step; `semantic-index status` verifies the live index point by point.
+  From a Concept, a private **recall practice** shows the original questions you
+  choose, reveals the stored explanation only when asked, and records nothing.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation

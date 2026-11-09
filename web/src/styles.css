@@ -796,6 +796,19 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .evidence-item:first-child { border-top: 0; }
 .evidence-item p { margin: 4px 0; }
 .source-view { border-left: 3px solid var(--border-strong); padding: 4px 0 4px 10px; margin: 6px 0; }
+
+/* Recall practice (Knowledge Library, private workbench only) */
+.practice .label { font-size: 12px; color: var(--muted); margin: 8px 0 2px; }
+.practice-question { font-size: 16px; margin: 4px 0 12px; }
+.practice-attempt label { display: block; font-size: 13px; margin-bottom: 4px; }
+.practice-attempt textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; }
+.practice-candidates { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin: 12px 0 8px; }
+.practice-candidates legend { font-weight: 600; padding: 0 4px; }
+.practice-candidates ul, .practice-summary { list-style: none; padding: 0; margin: 0; }
+.practice-candidates li { padding: 6px 0; border-top: 1px solid var(--border); }
+.practice-candidates li:first-child { border-top: 0; }
+.practice-candidate { display: flex; align-items: baseline; gap: 6px; }
+.practice-reveal { padding-left: 10px; margin: 12px 0 8px; }
 .source-view p { margin: 4px 0; }
 .source-view .label { font-size: 12px; color: var(--muted); }
 
