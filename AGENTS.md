@@ -535,6 +535,19 @@ FLH-084 AWS demo deployment preparation:
   `scripts/validation/flh084/render_cloud_config.sh` renders it offline.
   Intended operation is continuous.
 
+Recall Practice v1 (workbench, Knowledge Library):
+
+- `web/src/pages/RecallPractice.tsx` is a private, session-only practice started
+  from Concept detail. It uses only `GET /knowledge-library/concepts/{id}` and
+  `GET /knowledge-library/units/{id}/source`; candidates are backend
+  `supporting_units`, re-checked via the source read. The learner selects (none
+  preselected, at most 5 of the first 10).
+- Questions are shown without title, statements, examples or context; the
+  reveal is the stored unit statement (Explanation-language preference) labelled
+  as a reference, not a grading rubric. No answer judging, score, schedule or
+  persistence: attempts and self-checks stay in component state, never in
+  requests, logs or browser storage. Never offered in the public demo.
+
 ## Design Priorities
 
 1. Preserve original learning questions without information loss.

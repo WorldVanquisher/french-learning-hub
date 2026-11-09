@@ -15,6 +15,7 @@ import type {
   SemanticSearch,
 } from "../types/library";
 import { useI18n, type I18n, type MessageKey } from "../i18n";
+import { RecallPractice } from "./RecallPractice";
 
 // One search outcome per submitted query. Semantic and hybrid modes need a
 // query; with an empty one nothing is requested (browsing is keyword search's job).
@@ -28,7 +29,13 @@ type Load<T> = { status: "loading" } | { status: "error"; message: string } | { 
 
 // The library's own navigation: results → concept → source. The query stays in
 // this component's state, so returning shows the same search and results.
-type Screen = { kind: "results" } | { kind: "concept"; conceptId: number } | { kind: "source"; conceptId: number; unitId: number };
+// Recall practice (private workbench only) is opened from a Concept; a source
+// opened from practice keeps that practice session (`practice`) mounted.
+type Screen =
+  | { kind: "results" }
+  | { kind: "concept"; conceptId: number }
+  | { kind: "practice"; conceptId: number; session: number }
+  | { kind: "source"; conceptId: number; unitId: number; practice?: number };
 
 const resultButtonId = (conceptId: number) => `library-result-${conceptId}`;
 
@@ -132,6 +139,8 @@ export function KnowledgeLibrary({
   const [screen, setScreen] = useState<Screen>({ kind: "results" });
   const [retry, setRetry] = useState(0);
   const returnTo = useRef<number | null>(null);
+  // Each start of recall practice is a new, empty session.
+  const practiceSession = useRef(0);
 
   const search = useLoad<SearchOutcome>(
     `${mode}\u0000${query.state}\u0000${query.q}\u0000${query.preset ?? ""}`,
@@ -174,6 +183,13 @@ export function KnowledgeLibrary({
   }, [requestedNonce, requestedConcept]);
   const resultsLabel = query.q ? t(resultsLabelKey[mode], { q: query.q }) : t(modeSearchKey[mode]);
   const strong = (key: MessageKey) => <strong>{t(key)}</strong>;
+  // The practice session on screen, or kept mounted behind a source opened from it.
+  const practice =
+    screen.kind === "practice"
+      ? { conceptId: screen.conceptId, session: screen.session }
+      : screen.kind === "source" && screen.practice !== undefined
+        ? { conceptId: screen.conceptId, session: screen.practice }
+        : null;
 
   return (
     <main className="library">
@@ -307,7 +323,26 @@ export function KnowledgeLibrary({
           onBack={() => backToResults(screen.conceptId)}
           onOpenConcept={openConcept}
           onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId })}
+          // The public demo has no recall practice.
+          onPractice={
+            demo
+              ? undefined
+              : () => setScreen({ kind: "practice", conceptId: screen.conceptId, session: ++practiceSession.current })
+          }
         />
+      ) : null}
+      {practice ? (
+        <div hidden={screen.kind !== "practice"}>
+          <RecallPractice
+            key={`practice-${practice.session}`}
+            conceptId={practice.conceptId}
+            visible={screen.kind === "practice"}
+            onExit={() => openConcept(practice.conceptId)}
+            onOpenSource={(unitId) =>
+              setScreen({ kind: "source", conceptId: practice.conceptId, unitId, practice: practice.session })
+            }
+          />
+        </div>
       ) : null}
       {screen.kind === "source" ? (
         <SourceScreen
@@ -317,6 +352,11 @@ export function KnowledgeLibrary({
           resultsLabel={resultsLabel}
           onBackToConcept={() => openConcept(screen.conceptId)}
           onBackToResults={() => backToResults(screen.conceptId)}
+          onBackToPractice={
+            screen.practice !== undefined
+              ? () => setScreen({ kind: "practice", conceptId: screen.conceptId, session: screen.practice! })
+              : undefined
+          }
           onOpenConcept={openConcept}
           onOpenRecord={onOpenRecord}
         />
@@ -572,12 +612,15 @@ function ConceptScreen({
   onBack,
   onOpenConcept,
   onOpenSource,
+  onPractice,
 }: {
   conceptId: number;
   backLabel: string;
   onBack: () => void;
   onOpenConcept: (conceptId: number) => void;
   onOpenSource: (unitId: number) => void;
+  // Starts recall practice; absent in the public demo, where it is not offered.
+  onPractice?: () => void;
 }) {
   const i18n = useI18n();
   const { t, tp, tn, status } = i18n;
@@ -636,6 +679,24 @@ function ConceptScreen({
           {t("library.concept.meta", { id: c.id, lifecycle: status(c.lifecycle_state), support: status(c.support_state) })}
         </p>
       </section>
+
+      {onPractice ? (
+        <section className="panel library-section" aria-labelledby="lib-practice">
+          <h3 id="lib-practice">{t("practice.entry.heading")}</h3>
+          {c.state === "retired" ? (
+            <p className="hint">{t("practice.entry.retired")}</p>
+          ) : d.supporting_units.length === 0 ? (
+            <p className="hint">{t("practice.entry.noSupport")}</p>
+          ) : (
+            <>
+              <p className="hint">{t("practice.entry.hint")}</p>
+              <button type="button" className="primary" onClick={onPractice}>
+                {t("practice.entry.start")}
+              </button>
+            </>
+          )}
+        </section>
+      ) : null}
 
       <section className="panel library-section current" aria-labelledby="lib-preferred">
         <h3 id="lib-preferred">{t("library.preferred")}</h3>
@@ -805,6 +866,7 @@ function SourceScreen({
   resultsLabel,
   onBackToConcept,
   onBackToResults,
+  onBackToPractice,
   onOpenConcept,
   onOpenRecord,
 }: {
@@ -813,6 +875,9 @@ function SourceScreen({
   resultsLabel: string;
   onBackToConcept: () => void;
   onBackToResults: () => void;
+  // Set when the source was opened from recall practice: the only way back is
+  // to that session, which is kept as it was left.
+  onBackToPractice?: () => void;
   onOpenConcept: (conceptId: number) => void;
   onOpenRecord?: (entryId: number) => void;
 }) {
@@ -821,7 +886,13 @@ function SourceScreen({
   const [retry, setRetry] = useState(0);
   const load = useLoad<LibrarySource>(String(unitId), () => api.getLibraryUnitSource(unitId), retry);
   const headingRef = useFocusedHeading(load.status);
-  const nav = (
+  const nav = onBackToPractice ? (
+    <div className="actions">
+      <button type="button" className="ghost" onClick={onBackToPractice}>
+        {t("practice.source.back")}
+      </button>
+    </div>
+  ) : (
     <div className="actions">
       <button type="button" className="ghost" onClick={onBackToConcept}>
         {t("library.source.backToConcept", { id: conceptId })}
