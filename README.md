@@ -84,6 +84,11 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   in one step; `semantic-index status` verifies the live index point by point.
   From a Concept, a private **recall practice** shows the original questions you
   choose, reveals the stored explanation only when asked, and records nothing.
+- Practise exam-style **Listening** from a YouTube link and a French transcript
+  you supply: one explicit, opt-in request (`LISTENING_PROVIDER`) prepares a few
+  questions checked against your transcript; answers and evidence stay hidden
+  until you reveal them, and a missed point can be saved as a normal learning
+  record.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation

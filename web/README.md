@@ -589,6 +589,38 @@ demo.
   to records, analyses, admission, annotations, suggestions or retrieval
   evaluation, and calls no provider.
 
+## Listening (Exam Listening Lesson v1)
+
+A private **Listening** view (never in the public demo) for exam-style listening
+practice. Contract: [ARCHITECTURE.md §4.3](../docs/ARCHITECTURE.md#43-listening-lessons-exam-listening-lesson-v1).
+
+- **Add a video:** a YouTube link, a title and, optionally, the French transcript
+  you have (one line per segment; a leading `[mm:ss]` only when your source
+  gives one, on every line). Saved without a transcript, the lesson reads
+  **Waiting for a transcript** and offers only a transcript form; no exercise
+  can be prepared.
+- **Open the video on YouTube ↗** opens YouTube's own player in a new tab
+  (`noopener noreferrer`); timestamp links add `&t=<s>s`. Nothing is embedded,
+  downloaded or fetched, and no request is sent to FLH.
+- **Prepare exercise** (only when `LISTENING_PROVIDER=openai`) is the one
+  provider call. A stored failure reads "The last preparation failed: …; your
+  link and transcript are kept, and nothing was retried". A lost response says
+  the outcome is unknown. Disabled reads "Exercise preparation is off".
+- **Attempt, then reveal:** the exercise shows only the French questions and an
+  answer field per question. **Reveal answers and evidence** shows the
+  reference answer (French), its reason (English / Chinese through
+  **Explanation language**), the cited transcript lines with their source
+  timestamps, the vocabulary and grammar notes, and **Show the full
+  transcript**. **I got it** / **I missed it** are session-only; answers and
+  self-checks are never sent, logged or stored, and there is no score or level.
+- **Save as a learning question…** opens a form showing the context that will
+  be attached (title, video link at the cited time, question, cited lines).
+  Nothing is sent until **Save learning record**, which posts one
+  `learning_capture_v1` with `source: manual` and a capture ID fixed for that
+  form, so **Send the same record again** after a lost response replays it
+  instead of duplicating it. **Open record #N in Learning Records** opens it,
+  with **← Back to Listening**; the lesson stays mounted meanwhile.
+
 ## Correcting a reviewed unit from the inspection (FLH-082)
 
 The unit inspection opened from a record offers corrections for a unit of the

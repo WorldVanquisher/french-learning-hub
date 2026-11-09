@@ -82,6 +82,7 @@ type Handler struct {
 	semantic            SemanticSearchService
 	hybrid              HybridSearchService
 	suggestions         ConceptSuggestionService
+	listening           ListeningService
 	// demo is set only in the FLH-073 public demo mode.
 	demo *publicDemo
 	// readiness reports whether the backing store can serve requests. It is
@@ -207,6 +208,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /knowledge-library/semantic-search", h.handleSemanticSearch)
 	mux.HandleFunc("GET /knowledge-library/hybrid-search", h.handleHybridSearch)
 	h.registerConceptSuggestionRoutes(mux)
+	// Exam Listening Lesson v1 (private; refused by the public-demo allowlist).
+	h.registerListeningRoutes(mux)
 	h.registerPublicDemoRoutes(mux)
 	return mux
 }

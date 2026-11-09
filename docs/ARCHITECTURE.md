@@ -829,6 +829,55 @@ The backend URL is resolved with the precedence `-url` flag → `FRENCH_HUB_URL`
 convention without adding a configuration framework or reading `.env` files, in
 keeping with the project's dependency and configuration discipline.
 
+### 4.3 Listening lessons (Exam Listening Lesson v1)
+
+A private workbench section for exam-style listening practice. It is source
+material plus an optional generated exercise; it is not a capture, and it feeds
+the learning workflow only through §4.1.
+
+- **Material** (`listening_materials`, migration `014`): a YouTube video link
+  and a title. `ParseYouTubeURL` accepts `youtube.com` / `www.` / `m.`
+  (`/watch?v=`, `/shorts/`, `/embed/`, `/live/`) and `youtu.be`, refuses other
+  hosts, credentials and ports, and stores the canonical
+  `https://www.youtube.com/watch?v=<id>`. The server never fetches the link,
+  downloads media or reads captions.
+- **Transcript** (`listening_transcripts`): versions of a learner-supplied French
+  transcript, one segment per non-empty line, at most 200 lines, 12,000 bytes and
+  500 characters per line. A line may start with the source's own timestamp
+  (`[01:23]`, `1:02:03`); either every line has one, non-decreasing, or none
+  has. A material without a transcript is a valid, saved state ("waiting for a
+  transcript").
+- **Exercise** (`listening_exercises`): one explicit request
+  (`POST /listening/materials/{id}/exercises`) sends the title and the numbered
+  segments (never the timestamps) to the opt-in generator
+  (`LISTENING_PROVIDER=openai`, reusing `OPENAI_*`; the suggester's Responses API
+  discipline: strict schema, `store:false`, no tools, 64 KiB response bound,
+  secret-safe errors). `ValidateListeningExercise` then checks the output
+  against that exact transcript:
+  - 2–4 items: one `main_idea`, at least one `detail`, at most one `inference`;
+  - each item has a French question and expected answer, English and Chinese
+    rationale, and cites 1–3 existing segments;
+  - 1–6 vocabulary or grammar annotations, each citing one segment with an
+    excerpt that occurs verbatim in it;
+  - no clock time in generated text unless the transcript text contains it;
+  - unknown fields are refused.
+  A success stores the validated content with `openai:<model>:listening_exercise_v1`
+  provenance. A timeout, provider failure or invalid output stores a `failed`
+  row with a non-secret code and leaves the material and transcript untouched.
+  There is no retry and no background call. Disabled answers `503` and stores
+  nothing; no transcript answers `409` without a provider call.
+- **Missed point:** the workbench posts a normal `learning_capture_v1` with
+  `source: manual` (§4.1), only on an explicit "Save learning record". The
+  learner's text is `original_input`; the title, the video link (at the source
+  time, when one exists), the question and the cited excerpts are
+  `original_context`. Nothing becomes a Concept, annotation, admission or
+  mastery record.
+- **Not in the public demo:** the routes are not on its allowlist, the three
+  tables must be empty in a demo artifact, and the demo UI has no Listening view.
+  Because the demo's migration ledger must equal the embedded migrations, a demo
+  artifact built before `014` is refused by a server that has it; the deployed
+  demo keeps its own pinned release.
+
 ## 5. Knowledge extraction and admission
 
 Knowledge extraction (milestone 10) turns one interaction into durable,
@@ -2308,6 +2357,7 @@ empty values behave as unset. Defaults work out of the box:
 | `AI_PROVIDER`        | `rule-based`                | Analyzer provider: `rule-based` or `openai`   |
 | `EXTRACTOR_PROVIDER` | `disabled`                  | Knowledge extractor: `disabled` or `openai`   |
 | `SUGGESTION_PROVIDER` | `disabled`                 | Concept suggester (FLH-097): `disabled` or `openai`; reuses `OPENAI_*` |
+| `LISTENING_PROVIDER` | `disabled`                  | Listening exercise generator ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)): `disabled` or `openai`; reuses `OPENAI_*` |
 | `OPENAI_API_KEY`     | _(none)_                    | Required for `openai`; never logged           |
 | `OPENAI_MODEL`       | _(none)_                    | Required for `openai`; the model to use       |
 | `OPENAI_BASE_URL`    | `https://api.openai.com/v1` | API base URL (override for gateways/testing)  |
@@ -2373,8 +2423,9 @@ the NAS guidance are documented once, in
 ### 10.4 Workbench
 
 The workbench (`web/`) is an internal annotation and data-collection UI, not a
-consumer product. It has five views — Learning Records, Knowledge Library,
-Concept Review (write-capable), Annotation Inspector and Experiment Dashboard —
+consumer product. It has six views — Learning Records, Knowledge Library,
+Listening ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)), Concept Review (write-capable),
+Annotation Inspector and Experiment Dashboard —
 and keeps business rules and current authority in the backend: the browser
 renders backend facts and never recomputes them. In development, Vite proxies
 `/api` to the Go server (stripping the prefix); in production the Go server
@@ -2417,6 +2468,7 @@ forward-only; there are no down migrations.
 | `011_semantic_index_runs` | `semantic_index_spaces` (lease, publication, last run), `semantic_index_physical_collections`, `semantic_index_manifest` (FLH-042) |
 | `012_bilingual_explanations` | nullable explanation/statement language variants, per-language corrections and reviewed languages on feedback (FLH-095; see [§3.9](#39-bilingual-explanations-flh-095)) |
 | `013_concept_suggestions` | advisory `concept_suggestion_runs`, `concept_suggestion_items`, `concept_suggestion_confirmations` (FLH-097; see [§7.6](#76-ai-assisted-concept-suggestions-flh-097)) |
+| `014_listening_lessons` | `listening_materials`, `listening_transcripts`, `listening_exercises`, all append-only (Listening v1; see [§4.3](#43-listening-lessons-exam-listening-lesson-v1)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -3321,3 +3373,20 @@ has `id`, `run_id`, `ordinal`, `unit_id`, `entry_id`, `source_extraction_id`,
 `still_current`, or null),
 `unit` (the reviewable-unit shape) and `created_at`. The public demo boundary
 does not expose these routes.
+
+### A.15 Listening lessons (Listening v1)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `GET /listening/materials` | `materials` (newest first: `material`, `transcript_version` or null, `segment_count`, `latest_exercise` without `content`, or null) and `generation` (`enabled`, `generator` or null). No provider call |
+| `POST /listening/materials` | Body `{"source_url", "title", "transcript"?}` (unknown fields refused, 32 KiB). `201` lesson; `400` invalid JSON; `413` too large; `422` invalid link, title or transcript (messages name the field or line, never the text) |
+| `GET /listening/materials/{id}` | Lesson: `material`, `transcript` (`id`, `version`, `has_timestamps`, `segments` [`index`, `start_seconds` or null, `text`]) or null, `exercises` (newest first, with `content`), `generation`. `404` unknown. No provider call |
+| `POST /listening/materials/{id}/transcripts` | Body `{"transcript"}`. `201` lesson with the next transcript version; `404`; `422` |
+| `POST /listening/materials/{id}/exercises` | No body. One provider call. `201` completed exercise; `409` no transcript (no call, nothing stored); `502`/`504` `{error, exercise}` with the stored failed exercise; `503` disabled (nothing stored); `404` |
+
+An exercise has `id`, `transcript_id`, `status` (`completed`/`failed`),
+`failure_code` (`provider_timeout`, `provider_unavailable`, `invalid_output`
+or null), `generator`, `created_at` and `content` (`items`: `kind`, `question`,
+`expected_answer`, `rationale_en`, `rationale_zh`, `segments`; `annotations`:
+`kind`, `segment`, `excerpt`, `note_en`, `note_zh`; null when failed). The
+public demo boundary does not expose these routes.

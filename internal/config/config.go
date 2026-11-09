@@ -51,6 +51,18 @@ const (
 	SuggestionOpenAI SuggestionProvider = "openai"
 )
 
+// ListeningProvider selects the Exam Listening Lesson v1 exercise generator. It
+// is independent of every other provider selection and reuses OPENAI_*.
+type ListeningProvider string
+
+const (
+	// ListeningDisabled is the default: no generator is wired in; materials and
+	// transcripts can still be saved, and preparation reports it is not enabled.
+	ListeningDisabled ListeningProvider = "disabled"
+	// ListeningOpenAI selects the OpenAI-backed generator (opt-in).
+	ListeningOpenAI ListeningProvider = "openai"
+)
+
 // EmbeddingProvider selects the text-to-vector implementation used only by the
 // semantic retrieval baseline. It is independent of analyzer and extractor
 // provider selection.
@@ -85,6 +97,8 @@ type Config struct {
 	Extractor ExtractorConfig
 	// Suggestion holds the Concept suggester configuration (FLH-097).
 	Suggestion SuggestionConfig
+	// Listening holds the listening exercise generator configuration.
+	Listening ListeningConfig
 
 	// Embedding holds semantic-retrieval provider configuration, independent of
 	// both the analyzer and extractor.
@@ -171,6 +185,17 @@ type SuggestionConfig struct {
 	OpenAITimeout time.Duration
 }
 
+// ListeningConfig holds the listening exercise generator selection and its
+// OpenAI settings, resolved and validated independently of the other providers.
+// The API key must never be logged or placed in error messages.
+type ListeningConfig struct {
+	Provider      ListeningProvider
+	OpenAIAPIKey  string
+	OpenAIModel   string
+	OpenAIBaseURL string
+	OpenAITimeout time.Duration
+}
+
 // EmbeddingConfig holds the optional semantic-retrieval provider settings.
 // APIKey is optional so a trusted local service can be used without credentials;
 // when present it must never be logged or included in errors.
@@ -218,6 +243,7 @@ const (
 //	OPENAI_BASE_URL  -> AI.OpenAIBaseURL, default https://api.openai.com/v1
 //	OPENAI_TIMEOUT   -> AI.OpenAITimeout (seconds), default 8
 //	SUGGESTION_PROVIDER -> Suggestion.Provider, default disabled (reuses OPENAI_*)
+//	LISTENING_PROVIDER  -> Listening.Provider, default disabled (reuses OPENAI_*)
 //	EMBEDDING_PROVIDER -> Embedding.Provider, default disabled
 //	EMBEDDING_MODEL    -> Embedding.Model (required for http)
 //	EMBEDDING_BASE_URL -> Embedding.BaseURL (required for http)
@@ -286,6 +312,13 @@ func load(src source) (Config, error) {
 			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
+		Listening: ListeningConfig{
+			Provider:      ListeningProvider(getenv("LISTENING_PROVIDER", string(ListeningDisabled))),
+			OpenAIAPIKey:  src.get("OPENAI_API_KEY"),
+			OpenAIModel:   strings.TrimSpace(src.get("OPENAI_MODEL")),
+			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
+			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
+		},
 		Embedding: EmbeddingConfig{
 			Provider: EmbeddingProvider(getenv("EMBEDDING_PROVIDER", string(EmbeddingDisabled))),
 			APIKey:   src.get("EMBEDDING_API_KEY"),
@@ -313,6 +346,9 @@ func load(src source) (Config, error) {
 		return Config{}, err
 	}
 	if err := cfg.Suggestion.validate(); err != nil {
+		return Config{}, err
+	}
+	if err := cfg.Listening.validate(); err != nil {
 		return Config{}, err
 	}
 	if err := cfg.Embedding.validate(); err != nil {
@@ -480,5 +516,28 @@ func (c *SuggestionConfig) validate() error {
 		return nil
 	default:
 		return fmt.Errorf("unknown SUGGESTION_PROVIDER %q (supported: disabled, openai)", string(c.Provider))
+	}
+}
+
+// validate checks the listening generator selection and its required OpenAI
+// settings, independently of every other provider. Messages never include the
+// key value.
+func (c *ListeningConfig) validate() error {
+	switch c.Provider {
+	case ListeningDisabled:
+		return nil
+	case ListeningOpenAI:
+		if strings.TrimSpace(c.OpenAIAPIKey) == "" {
+			return fmt.Errorf("LISTENING_PROVIDER=openai requires OPENAI_API_KEY to be set")
+		}
+		if c.OpenAIModel == "" {
+			return fmt.Errorf("LISTENING_PROVIDER=openai requires OPENAI_MODEL to be set")
+		}
+		if strings.TrimSpace(c.OpenAIBaseURL) == "" {
+			return fmt.Errorf("OPENAI_BASE_URL must not be empty")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown LISTENING_PROVIDER %q (supported: disabled, openai)", string(c.Provider))
 	}
 }

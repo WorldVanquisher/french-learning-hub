@@ -108,6 +108,16 @@ good "$WORK/suggestoff.env"; echo "SUGGESTION_PROVIDER=disabled" >> "$WORK/sugge
 run "explicitly disabled suggestions are accepted" 0 "suggestions: disabled — off" "$WORK/suggestoff.env" check
 good "$WORK/suggeston.env"; echo "SUGGESTION_PROVIDER=openai" >> "$WORK/suggeston.env"
 run "openai suggestions are accepted and labelled as billable" 0 "suggestions: openai — explicit requests call the provider" "$WORK/suggeston.env" check
+# Listening v1: LISTENING_PROVIDER follows the same rules as SUGGESTION_PROVIDER.
+good "$WORK/badlisten.env"; echo "LISTENING_PROVIDER=anthropic" >> "$WORK/badlisten.env"
+run "an unknown listening provider is refused" 2 "LISTENING_PROVIDER must be openai or disabled" "$WORK/badlisten.env" check
+good "$WORK/listennokey.env"
+sed -i 's/^AI_PROVIDER=.*/AI_PROVIDER=rule-based/; s/^EXTRACTOR_PROVIDER=.*/EXTRACTOR_PROVIDER=disabled/; /^OPENAI_API_KEY=/d' "$WORK/listennokey.env"
+echo "LISTENING_PROVIDER=openai" >> "$WORK/listennokey.env"
+run "openai listening alone still requires the key" 2 "OPENAI_API_KEY must be set" "$WORK/listennokey.env" check
+run "listening defaults to disabled when unset" 0 "listening:  disabled — off" "$WORK/defaults.env" check
+good "$WORK/listenon.env"; echo "LISTENING_PROVIDER=openai" >> "$WORK/listenon.env"
+run "openai listening is accepted and labelled as billable" 0 "listening:  openai — explicit requests call the provider" "$WORK/listenon.env" check
 
 # ---- A valid configuration; inherited shell variables must not override it. ----
 good "$WORK/daily.env"

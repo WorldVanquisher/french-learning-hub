@@ -3,6 +3,7 @@
 // in one file. All calls go through the "/api" prefix, which Vite proxies to the Go
 // backend in development (see vite.config.ts).
 
+import type { ListeningExercise, ListeningLesson, ListeningList } from "../types/listening";
 import type {
   Concept,
   ConceptIdentity,
@@ -620,4 +621,40 @@ export function createSuggestionRun(unitIds: number[], operationId: string, fetc
 // repeated confirmation replays the original event.
 export function confirmSuggestion(itemId: number, conceptId: number, fetchImpl: typeof fetch = fetch): Promise<SuggestionConfirmResult> {
   return request<SuggestionConfirmResult>("POST", `/concept-suggestion-items/${itemId}/confirm`, { concept_id: conceptId }, fetchImpl);
+}
+
+// ---- Exam Listening Lesson v1 (private workbench) ----
+
+// listListening lists saved materials with their transcript and latest
+// exercise status (no answers). It never calls a provider.
+export function listListening(fetchImpl: typeof fetch = fetch): Promise<ListeningList> {
+  return request<ListeningList>("GET", "/listening/materials", undefined, fetchImpl);
+}
+
+// getListening reads one lesson: material, latest transcript and every stored
+// exercise attempt. It never calls a provider.
+export function getListening(materialId: number, fetchImpl: typeof fetch = fetch): Promise<ListeningLesson> {
+  return request<ListeningLesson>("GET", `/listening/materials/${materialId}`, undefined, fetchImpl);
+}
+
+// createListening saves a YouTube link, a title and an optional transcript.
+// The server validates the link as text and never fetches it.
+export function createListening(
+  input: { source_url: string; title: string; transcript: string },
+  fetchImpl: typeof fetch = fetch,
+): Promise<ListeningLesson> {
+  return request<ListeningLesson>("POST", "/listening/materials", input, fetchImpl);
+}
+
+// addListeningTranscript stores the next transcript version for a material.
+export function addListeningTranscript(materialId: number, transcript: string, fetchImpl: typeof fetch = fetch): Promise<ListeningLesson> {
+  return request<ListeningLesson>("POST", `/listening/materials/${materialId}/transcripts`, { transcript }, fetchImpl);
+}
+
+// prepareListeningExercise is the one explicit provider call. A provider
+// failure or invalid output rejects with an ApiError (502/504) whose body
+// carries the stored failed exercise; 503 means generation is not enabled and
+// 409 that there is no transcript (nothing stored, no call).
+export function prepareListeningExercise(materialId: number, fetchImpl: typeof fetch = fetch): Promise<ListeningExercise> {
+  return request<ListeningExercise>("POST", `/listening/materials/${materialId}/exercises`, undefined, fetchImpl);
 }
