@@ -30,6 +30,7 @@ services:
       SUGGESTION_PROVIDER: ${SUGGESTION_PROVIDER:-disabled}
       LISTENING_PROVIDER: ${LISTENING_PROVIDER:-disabled}
       READING_PROVIDER: ${READING_PROVIDER:-disabled}
+      WRITING_PROVIDER: ${WRITING_PROVIDER:-disabled}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-disabled}
       # Empty means unset: the server applies its own defaults.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

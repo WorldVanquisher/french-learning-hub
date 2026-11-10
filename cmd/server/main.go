@@ -24,6 +24,7 @@ import (
 	"french-learning-app/internal/suggester"
 	transporthttp "french-learning-app/internal/transport/http"
 	"french-learning-app/internal/vectorindex"
+	"french-learning-app/internal/writing"
 )
 
 func main() {
@@ -138,6 +139,7 @@ func run() error {
 	log.Printf("suggestion provider: %s", cfg.Suggestion.Provider)
 	log.Printf("listening provider: %s", cfg.Listening.Provider)
 	log.Printf("reading provider: %s", cfg.Reading.Provider)
+	log.Printf("writing provider: %s", cfg.Writing.Provider)
 	log.Printf("daily listening: playlist %s, automatic preparation %s, notify %s (timezone %s)",
 		cfg.ListeningDaily.Source, onOff(cfg.ListeningDaily.AutoPrepare), cfg.ListeningDaily.Notify, cfg.ListeningDaily.Location)
 	log.Printf("embedding provider: %s", cfg.Embedding.Provider)
@@ -167,6 +169,18 @@ func run() error {
 		return err
 	}
 	options = append(options, transporthttp.WithReading(readingSvc))
+	// Exam Writing v1: feedback is opt-in (WRITING_PROVIDER); drafting and
+	// revising never call a provider. The authored prompts are validated here.
+	selectedWriting, err := writing.New(cfg.Writing)
+	if err != nil {
+		return err
+	}
+	writingSvc, err := application.NewWritingService(sqlite.NewWritingRepository(db), selectedWriting, writing.ExamplePrompts(),
+		application.WithWritingDeadline(cfg.Writing.OpenAITimeout+30*time.Second))
+	if err != nil {
+		return err
+	}
+	options = append(options, transporthttp.WithWriting(writingSvc))
 	// Semantic search is opt-in (SEMANTIC_SEARCH=qdrant). The server only reads
 	// the index; building it is an explicit operator command (semantic-index).
 	if cfg.Semantic.Mode == config.SemanticQdrant {

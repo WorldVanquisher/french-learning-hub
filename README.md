@@ -96,6 +96,11 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   appear only when you reveal them, one opt-in request (`READING_PROVIDER`)
   prepares questions for your own text, and a missed point can be saved as a
   normal learning record.
+- Practise exam-style **Writing** on an authored task or your own: every draft
+  is a version that is never overwritten, one opt-in request
+  (`WRITING_PROVIDER`) gives feedback on the version you choose, with hints
+  before suggestions and quotes checked against that exact text, versions can
+  be compared, and a mistake can be saved as a normal learning record.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation

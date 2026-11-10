@@ -131,6 +131,16 @@ run "openai reading alone still requires the key" 2 "OPENAI_API_KEY must be set"
 run "reading defaults to disabled when unset" 0 "reading:    disabled — off \\(authored examples still work\\)" "$WORK/defaults.env" check
 good "$WORK/readon.env"; echo "READING_PROVIDER=openai" >> "$WORK/readon.env"
 run "openai reading is accepted and labelled as billable" 0 "reading:    openai — explicit requests call the provider" "$WORK/readon.env" check
+# Writing v1: WRITING_PROVIDER follows the same rules.
+good "$WORK/badwrite.env"; echo "WRITING_PROVIDER=anthropic" >> "$WORK/badwrite.env"
+run "an unknown writing provider is refused" 2 "WRITING_PROVIDER must be openai or disabled" "$WORK/badwrite.env" check
+good "$WORK/writenokey.env"
+sed -i 's/^AI_PROVIDER=.*/AI_PROVIDER=rule-based/; s/^EXTRACTOR_PROVIDER=.*/EXTRACTOR_PROVIDER=disabled/; /^OPENAI_API_KEY=/d' "$WORK/writenokey.env"
+echo "WRITING_PROVIDER=openai" >> "$WORK/writenokey.env"
+run "openai writing alone still requires the key" 2 "OPENAI_API_KEY must be set" "$WORK/writenokey.env" check
+run "writing defaults to disabled when unset" 0 "writing:    disabled — off \\(drafting and revising still work\\)" "$WORK/defaults.env" check
+good "$WORK/writeon.env"; echo "WRITING_PROVIDER=openai" >> "$WORK/writeon.env"
+run "openai writing is accepted and labelled as billable" 0 "writing:    openai — explicit feedback requests call the provider" "$WORK/writeon.env" check
 # Daily Listening: every part off by default; each enabled part needs its settings.
 daily() { # daily FILE: a valid settings file with every Daily Listening part on
   good "$1"

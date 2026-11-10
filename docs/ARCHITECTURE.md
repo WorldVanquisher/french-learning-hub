@@ -86,6 +86,7 @@ internal/extractor    OpenAI knowledge Extractor (opt-in) selected by EXTRACTOR_
 internal/embedding    optional HTTP text-to-vector provider (M12-D evaluation, FLH-040 index)
 internal/listening    listening exercise generator, YouTube playlist source, Telegram notifier, wiring
 internal/reading      reading exercise generator (opt-in, READING_PROVIDER) and the embedded authored pack
+internal/writing      writing feedback generator (opt-in, WRITING_PROVIDER) and the embedded authored prompts
 internal/vectorindex  single-instance Qdrant REST adapter for the optional semantic index
 internal/captureclient   thin HTTP client for POST /captures (used by cmd/capture)
 internal/storage/sqlite  SQLite repositories + migration runner
@@ -1033,6 +1034,79 @@ only through §4.1. Migration `016`.
   - A missed point becomes a `learning_capture_v1` (`source: manual`) only on
     **Save learning record**; its context names the lesson, passage version,
     question and excerpts.
+- **Not in the public demo:** the routes are not allowlisted and the four
+  tables must be empty in demo artifacts.
+
+### 4.6 Exam Writing v1
+
+A private workbench section for exam-style writing practice: a task, drafts
+saved as immutable versions, and optional feedback on one chosen version. It
+feeds the learning workflow only through §4.1. Migration `017`.
+
+- **Task** (`writing_tasks`): a title, a French prompt, up to 8 content points
+  and a word range (default 60–120, at most 400). Its origin is:
+  - `learner`: the learner's own task;
+  - `authored`: a prompt of the embedded set
+    `internal/writing/prompts/writing_prompts_v1.json` (`flh_writing_prompts_v1`,
+    original practice tasks, not official exam items, no certified CEFR
+    level), unique by `prompt_id`. Starting it again returns the same task.
+    Each authored prompt carries an example first draft with deliberate
+    mistakes.
+- **Draft** (`writing_drafts`): versions `1…20` of the learner's text (at most
+  3,000 characters). Saving never rewrites an earlier version; a text
+  identical to the latest version is refused (`409 unchanged`).
+  - **Word convention** (`CountWritingWords`, shown with every task): a run of
+    letters or digits is a word, and an apostrophe or hyphen inside it keeps
+    it one word (« l'invitation », « peut-être »); numbers count; punctuation
+    alone does not. The UI's live count uses the same pattern.
+- **Feedback** (`writing_feedback`): one report about exactly one draft
+  version (`draft_id`): validated content or a non-secret failure code, with
+  `openai:<model>:writing_feedback_v1` provenance. The content is:
+  - `task_fulfilment` (`rating` `met`/`partly_met`/`not_met`, which is not a
+    score, plus English and Chinese comments) and `clarity` (comments);
+  - at most 8 `corrections`, each with a `quote` from the draft, a
+    `category` (`grammar`, `vocabulary`, `spelling`, `register`,
+    `punctuation`, `organisation`), a hint and a reason in English and
+    Chinese, and a `suggestion` that differs from the quote.
+
+  `ValidateWritingFeedback` refuses anything else. The model's output is
+  decoded without grounding fields, so it cannot claim a location. The server
+  then **grounds every quote against the exact text of that version**:
+  `located` when it occurs exactly once (with its rune offset `start`),
+  `ambiguous` when it occurs more than once (no position is invented), and
+  `not_found` otherwise. A report is never re-attached to another version: a
+  revision has no feedback until it is requested for that version.
+- **Generation:** `WRITING_PROVIDER=openai` (default `disabled`, reuses
+  `OPENAI_*`) enables one explicit `POST /writing/drafts/{id}/feedback` per
+  click.
+  - The request discipline is the Listening generator's. The model sees the
+    task, its content points and range, the word count and the draft.
+  - **Attempts before calls:** `writing_feedback_requests` follows §4.4's
+    rules — optional `Idempotency-Key`; lookup by key; `in_progress` (at most
+    one per task), `completed`, `failed`, or `unknown`; a new call after
+    `unknown` for that version needs `confirm_unknown_retry`; nothing retries
+    automatically.
+  - Disabled answers `503` and stores nothing. Tasks, drafts, revisions and
+    comparisons never call a provider. A failed or unknown request never
+    changes a draft.
+- **Workbench:**
+  - The versions list shows which version is selected. The editor starts from
+    the latest version and saves the next one.
+  - **Compare** shows a word-level difference between two versions, always
+    from the older to the newer.
+  - The feedback panel says which version it is about. It names the other
+    versions that have their own feedback and never shows their reports.
+  - Hints are shown first; **Show suggested wording** reveals the suggestion
+    and its reason. **Show in version N** marks a quote in that version's text
+    only for a correction the server `located`. An `ambiguous` quote says it
+    appears more than once. A `not_found` quote is listed apart under **Not
+    found in this version**, and a display guard treats any grounding that the
+    version's text contradicts the same way.
+  - Comments, hints and reasons follow the Explanation-language preference.
+  - **Save this mistake…** posts one `learning_capture_v1` (`source: manual`)
+    only on **Save learning record**. The input is the quoted phrase, the
+    learner's revised wording and the stored reason. The context names the
+    task, version, feedback and generator. No Concept and no mastery.
 - **Not in the public demo:** the routes are not allowlisted and the four
   tables must be empty in demo artifacts.
 
@@ -2517,6 +2591,7 @@ empty values behave as unset. Defaults work out of the box:
 | `SUGGESTION_PROVIDER` | `disabled`                 | Concept suggester (FLH-097): `disabled` or `openai`; reuses `OPENAI_*` |
 | `LISTENING_PROVIDER` | `disabled`                  | Listening exercise generator ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)): `disabled` or `openai`; reuses `OPENAI_*` |
 | `READING_PROVIDER`   | `disabled`                  | Reading exercise generator ([§4.5](#45-exam-reading-v1)): `disabled` or `openai`; reuses `OPENAI_*`; authored examples work without it |
+| `WRITING_PROVIDER`   | `disabled`                  | Writing feedback generator ([§4.6](#46-exam-writing-v1)): `disabled` or `openai`; reuses `OPENAI_*`; tasks and drafts work without it |
 | `LISTENING_PLAYLIST_SOURCE` | `disabled`           | Daily Listening playlist ([§4.4](#44-daily-listening-pull-prepare-notify)): `disabled` or `youtube` |
 | `LISTENING_PLAYLIST_ID` | _(none)_                 | Required for `youtube`: the playlist ID |
 | `YOUTUBE_API_KEY`    | _(none)_                    | Required for `youtube`; sent only in the `X-Goog-Api-Key` header; never logged |
@@ -2595,8 +2670,8 @@ the NAS guidance are documented once, in
 ### 10.4 Workbench
 
 The workbench (`web/`) is an internal annotation and data-collection UI, not a
-consumer product. It has seven views — Learning Records, Knowledge Library,
-Listening ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)), Reading ([§4.5](#45-exam-reading-v1)), Concept Review (write-capable),
+consumer product. It has eight views — Learning Records, Knowledge Library,
+Listening ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)), Reading ([§4.5](#45-exam-reading-v1)), Writing ([§4.6](#46-exam-writing-v1)), Concept Review (write-capable),
 Annotation Inspector and Experiment Dashboard —
 and keeps business rules and current authority in the backend: the browser
 renders backend facts and never recomputes them. In development, Vite proxies
@@ -2643,6 +2718,7 @@ forward-only; there are no down migrations.
 | `014_listening_lessons` | `listening_materials`, `listening_transcripts`, `listening_exercises`, all append-only (Listening v1; see [§4.3](#43-listening-lessons-exam-listening-lesson-v1)) |
 | `016_reading_lessons` | `reading_lessons`, `reading_passages`, `reading_exercises`, `reading_preparations` (Reading v1; see [§4.5](#45-exam-reading-v1)) |
 | `015_listening_daily` | `listening_pull_runs`, `listening_playlist_items`, `listening_preparations`, `listening_notifications`: receipts inserted before each outside call and finished once (Daily Listening; see [§4.4](#44-daily-listening-pull-prepare-notify)) |
+| `017_writing_tasks` | `writing_tasks`, `writing_drafts`, `writing_feedback`, `writing_feedback_requests` (Writing v1; see [§4.6](#46-exam-writing-v1)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -3610,3 +3686,21 @@ A notification has `id`, `operation_id`, `exercise_id`, `channel`, `trigger`,
 `state` (`in_progress`, `sent`, `failed`, `unknown`) and `failure_code`
 (`not_sent`, `refused`, `no_response` or null). The public demo boundary does
 not expose these routes.
+
+### A.18 Writing (Writing v1)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `GET /writing/prompts` | `set`, `notice`, `prompts` (`id`, `format`, `style_level`, `title`, `prompt`, `requirements`, `word_min`, `word_max`, `example_draft`, `started_task_id`). No provider call |
+| `POST /writing/prompts/{prompt_id}` | Starts the task for an authored prompt, without a draft. `201` new; `200` already started (`Idempotency-Replayed: true`); `404`; `409 prompt_conflict` |
+| `GET /writing/tasks` | `tasks` (newest first: `task`, `versions`, `feedback`) and `generation` |
+| `POST /writing/tasks` | Body `{"title", "prompt", "requirements"?, "word_min"?, "word_max"?}` (unknown fields refused). `201` task view; `422` invalid |
+| `GET /writing/tasks/{id}` | `task`, `drafts` (oldest first: `id`, `version`, `text`, `word_count`), `feedback` (newest first: `id`, `draft_id`, `status`, `failure_code`, `generator`, `content`), `requests` (newest first, with derived `state`), `generation`, `word_convention`. No provider call |
+| `POST /writing/tasks/{id}/drafts` | Body `{"text"}`: the next immutable version (`201`). `409` `{code}`: `unchanged` (identical to the latest), `too_many_versions` (20); `422`; `404` |
+| `POST /writing/drafts/{id}/feedback` | Optional UUID `Idempotency-Key`, optional `{"confirm_unknown_retry": true}`. One provider call for that version. `201` `{request, feedback}` with grounded corrections (`grounding`: `located` with `start`, `ambiguous`, `not_found`); `200` same-key replay; `502`/`504` stored failure or unknown outcome; `409` `{code}`: `request_in_progress`, `outcome_unknown`, `key_conflict`; `503` disabled; `404` |
+| `GET /writing/feedback-requests/{key}` | `{request, feedback}`; `404` nothing recorded under the key |
+
+A request has `id`, `operation_id`, `draft_id`, `after_unknown`, `started_at`,
+`deadline_at`, `finished_at`, `state` (`in_progress`, `completed`, `failed`,
+`unknown`) and `feedback_id`. The public demo boundary does not expose these
+routes.

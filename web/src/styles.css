@@ -879,3 +879,13 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .reading-paragraph mark { background: var(--warn-bg); padding: 0 2px; border-radius: 3px; }
 .reading-pid { font-family: ui-monospace, monospace; font-size: 11px; }
 .reading-example-title { font-weight: 600; }
+
+/* Exam Writing v1 (private workbench only) */
+.writing-draft { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 14px; line-height: 1.5; background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin: 6px 0; }
+.writing-draft mark { background: var(--warn-bg); outline: 1px solid var(--warn-border); padding: 0 2px; border-radius: 3px; }
+.writing-diff del { color: var(--invalid); text-decoration: line-through; }
+.writing-diff ins { color: var(--same); text-decoration: underline; }
+.writing-report { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 6px; }
+.writing-report .label { font-weight: 600; }
+.writing .banner .ghost { margin-left: 6px; }
+.writing .listening-save input[type="text"] { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; }
