@@ -45,6 +45,7 @@ import type {
 } from "../types/learning";
 import type { SuggestionConfirmResult, SuggestionOverview, SuggestionRun } from "../types/suggestion";
 import type { ReadingExamples, ReadingList, ReadingLessonView, ReadingPreparationResult } from "../types/reading";
+import type { WritingFeedbackResult, WritingPrompts, WritingTaskSummary, WritingTaskView } from "../types/writing";
 import type { HybridSearch, LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, PublicDemoInfo, SemanticSearch } from "../types/library";
 
 // ApiError carries the HTTP status so callers can react specifically — most
@@ -777,4 +778,61 @@ export function prepareReadingExercise(
 // getReadingPreparation looks an attempt up by its key (404: nothing recorded yet).
 export function getReadingPreparation(operationId: string, fetchImpl: typeof fetch = fetch): Promise<ReadingPreparationResult> {
   return request<ReadingPreparationResult>("GET", `/reading/preparations/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// ---- Exam Writing v1 (private workbench) ----
+
+// listWritingPrompts lists the authored practice tasks.
+export function listWritingPrompts(fetchImpl: typeof fetch = fetch): Promise<WritingPrompts> {
+  return request<WritingPrompts>("GET", "/writing/prompts", undefined, fetchImpl);
+}
+
+// startWritingPrompt starts (or reopens) the task for an authored prompt.
+export function startWritingPrompt(promptId: string, fetchImpl: typeof fetch = fetch): Promise<WritingTaskView> {
+  return request<WritingTaskView>("POST", `/writing/prompts/${encodeURIComponent(promptId)}`, undefined, fetchImpl);
+}
+
+// listWritingTasks lists saved tasks.
+export function listWritingTasks(fetchImpl: typeof fetch = fetch): Promise<{ tasks: WritingTaskSummary[] }> {
+  return request<{ tasks: WritingTaskSummary[] }>("GET", "/writing/tasks", undefined, fetchImpl);
+}
+
+// createWritingTask saves the learner's own task.
+export function createWritingTask(
+  input: { title: string; prompt: string; requirements: string[]; word_min?: number; word_max?: number },
+  fetchImpl: typeof fetch = fetch,
+): Promise<WritingTaskView> {
+  return request<WritingTaskView>("POST", "/writing/tasks", input, fetchImpl);
+}
+
+// getWritingTask reads a task with every version, report and request.
+export function getWritingTask(taskId: number, fetchImpl: typeof fetch = fetch): Promise<WritingTaskView> {
+  return request<WritingTaskView>("GET", `/writing/tasks/${taskId}`, undefined, fetchImpl);
+}
+
+// saveWritingDraft saves the next immutable version. No provider call.
+export function saveWritingDraft(taskId: number, text: string, fetchImpl: typeof fetch = fetch): Promise<WritingTaskView> {
+  return request<WritingTaskView>("POST", `/writing/tasks/${taskId}/drafts`, { text }, fetchImpl);
+}
+
+// requestWritingFeedback is the one explicit provider call, for one version,
+// under the caller's key (resending the same key replays it).
+export function requestWritingFeedback(
+  draftId: number,
+  operationId: string,
+  confirmUnknownRetry = false,
+  fetchImpl: typeof fetch = fetch,
+): Promise<WritingFeedbackResult> {
+  return request<WritingFeedbackResult>(
+    "POST",
+    `/writing/drafts/${draftId}/feedback`,
+    confirmUnknownRetry ? { confirm_unknown_retry: true } : undefined,
+    fetchImpl,
+    operationId,
+  );
+}
+
+// getWritingFeedbackRequest looks a request up by its key (404: nothing recorded yet).
+export function getWritingFeedbackRequest(operationId: string, fetchImpl: typeof fetch = fetch): Promise<WritingFeedbackResult> {
+  return request<WritingFeedbackResult>("GET", `/writing/feedback-requests/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
 }

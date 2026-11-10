@@ -585,6 +585,25 @@ Exam Reading v1 (private workbench):
   capture (`source: manual`) on explicit confirmation only. Never in the
   public demo.
 
+Exam Writing v1 (private workbench):
+
+- Migration 017: `writing_tasks` (learner or authored, unique `prompt_id`),
+  `writing_drafts` (immutable versions 1…20; an unchanged text is refused),
+  `writing_feedback` (about exactly one `draft_id`;
+  `openai:<model>:writing_feedback_v1`), `writing_feedback_requests` (the
+  Daily Listening attempt-first recovery rules). Contract:
+  `docs/ARCHITECTURE.md` §4.6, A.18.
+- `internal/writing/prompts/writing_prompts_v1.json` is embedded and validated
+  at startup (`domain.ParseWritingPrompts`). `WRITING_PROVIDER=openai` (default
+  `disabled`, reuses `OPENAI_*`) enables one explicit feedback request per
+  click. Drafting, revising and comparing never call a provider.
+- The model cannot send grounding. The server grounds each quote against that
+  version's exact text: `located` (exactly once, rune `start`), `ambiguous`
+  (repeated, no position) or `not_found`. Never re-attach a report to another
+  version or carry a correction over. No score. A mistake is a capture
+  (`source: manual`) on explicit confirmation only; no Concept, no mastery.
+  Never in the public demo.
+
 Daily Listening (pull, prepare, notify):
 
 - One pull, `ListeningDailyService.Pull`, shared by "Pull now"

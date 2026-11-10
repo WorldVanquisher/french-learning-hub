@@ -1,0 +1,54 @@
+{
+  "schema_version": "flh_writing_prompts_v1",
+  "notice": "Authored practice tasks (FLH writing prompts v1). Not official exam items; no score and no certified CEFR level. Names and places are invented.",
+  "prompts": [
+    {
+      "id": "wr-invitation-anniversaire",
+      "format": "email",
+      "style_level": "A2",
+      "title": "Répondre à une invitation",
+      "prompt": "Votre collègue Sophie vous invite à son anniversaire, samedi soir, chez elle. Répondez-lui par courriel.",
+      "requirements": [
+        "Remerciez-la pour l'invitation.",
+        "Dites si vous venez et à quelle heure vous arriverez.",
+        "Proposez d'apporter quelque chose.",
+        "Posez une question pratique."
+      ],
+      "word_min": 60,
+      "word_max": 90,
+      "example_draft": "Bonjour Sophie,\n\nMerci beaucoup pour ton invitation. Je suis très content de venir à ton anniversaire samedi. Je peux apporter un gâteau au chocolat si tu veux. Est-ce que je dois aussi apporter des boissons ? Je suis arrivé vers 20 heures parce que je travaille jusqu'à 19 heures. C'est où exactement, chez toi ? Je suis pas sûr de l'adresse.\n\nÀ samedi !\nPaul"
+    },
+    {
+      "id": "wr-demande-information",
+      "format": "email",
+      "style_level": "A2",
+      "title": "Demander des informations",
+      "prompt": "Vous voulez suivre le cours de français du soir de la médiathèque de votre quartier. Écrivez un courriel à la médiathèque.",
+      "requirements": [
+        "Présentez-vous en une ou deux phrases.",
+        "Demandez les jours et les horaires du cours.",
+        "Demandez le prix.",
+        "Demandez s'il faut un niveau minimum.",
+        "Utilisez « vous » et une formule de politesse."
+      ],
+      "word_min": 70,
+      "word_max": 100,
+      "example_draft": "Madame, Monsieur,\n\nJe m'appelle Lina et j'habite à Montclair depuis six mois. Je voudrais m'inscrire au cours de français du soir. Pouvez-vous me dire quels sont les jours et les horaires ? Combien ça coûte, le cours ? Aussi, est-ce qu'il faut avoir un niveau minimum ? Je parle un peu français, mais je fais beaucoup des erreurs.\n\nMerci d'avance pour votre réponse.\nCordialement,\nLina Haddad"
+    },
+    {
+      "id": "wr-changement-programme",
+      "format": "message",
+      "style_level": "A2",
+      "title": "Expliquer un changement de programme",
+      "prompt": "Vous deviez aller au cinéma avec votre ami Marc vendredi soir, mais vous ne pouvez plus. Écrivez-lui un message.",
+      "requirements": [
+        "Dites que vous ne pouvez pas venir et expliquez pourquoi.",
+        "Excusez-vous.",
+        "Proposez une autre date ou une autre heure."
+      ],
+      "word_min": 50,
+      "word_max": 80,
+      "example_draft": "Salut Marc,\n\nJe suis désolé, mais je ne peux pas venir au cinéma vendredi. Mon chef m'a demandé de travailler tard parce que on a un projet important. Je suis vraiment désolé. Est-ce que tu es libre samedi après-midi ? On peut voir le même film à 16 heures. Dis-moi si ça te va.\n\nÀ bientôt,\nThéo"
+    }
+  ]
+}

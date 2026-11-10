@@ -104,6 +104,8 @@ type Config struct {
 	ListeningDaily ListeningDailyConfig
 	// Reading holds the Exam Reading v1 exercise generator configuration.
 	Reading ReadingConfig
+	// Writing holds the Exam Writing v1 feedback generator configuration.
+	Writing WritingConfig
 
 	// Embedding holds semantic-retrieval provider configuration, independent of
 	// both the analyzer and extractor.
@@ -250,6 +252,7 @@ const (
 //	SUGGESTION_PROVIDER -> Suggestion.Provider, default disabled (reuses OPENAI_*)
 //	LISTENING_PROVIDER  -> Listening.Provider, default disabled (reuses OPENAI_*)
 //	READING_PROVIDER    -> Reading.Provider, default disabled (reuses OPENAI_*)
+//	WRITING_PROVIDER    -> Writing.Provider, default disabled (reuses OPENAI_*)
 //	LISTENING_PLAYLIST_SOURCE, LISTENING_AUTO_PREPARE, LISTENING_NOTIFY and their
 //	settings -> ListeningDaily (see loadListeningDaily), all default disabled
 //	EMBEDDING_PROVIDER -> Embedding.Provider, default disabled
@@ -334,6 +337,13 @@ func load(src source) (Config, error) {
 			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
+		Writing: WritingConfig{
+			Provider:      WritingProvider(getenv("WRITING_PROVIDER", string(WritingDisabled))),
+			OpenAIAPIKey:  src.get("OPENAI_API_KEY"),
+			OpenAIModel:   strings.TrimSpace(src.get("OPENAI_MODEL")),
+			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
+			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
+		},
 		Embedding: EmbeddingConfig{
 			Provider: EmbeddingProvider(getenv("EMBEDDING_PROVIDER", string(EmbeddingDisabled))),
 			APIKey:   src.get("EMBEDDING_API_KEY"),
@@ -367,6 +377,9 @@ func load(src source) (Config, error) {
 		return Config{}, err
 	}
 	if err := cfg.Reading.validate(); err != nil {
+		return Config{}, err
+	}
+	if err := cfg.Writing.validate(); err != nil {
 		return Config{}, err
 	}
 	daily, err := loadListeningDaily(src, getenv, getdur, cfg.Listening.Provider)

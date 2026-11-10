@@ -151,6 +151,8 @@ Then open `http://127.0.0.1:8080/`.
 | 10. **Listening → Pull now**, `flh-daily.sh listening-pull` or the timer | Only the parts you enabled (optional, all default off) | A YouTube playlist metadata read; at most one preparation per day (`LISTENING_AUTO_PREPARE`); one Telegram message for that lesson (`LISTENING_NOTIFY`) ([§10](#10-daily-listening-pull-prepare-notify)) |
 | 11. **Reading → Use this example**, reading, answering, revealing | **No** | An authored lesson with its reviewed exercise; nothing is sent while you read or answer ([§11](#11-reading-practice)) |
 | 12. **Reading → Prepare exercise** (your own passage) | **Yes**, once, `READING_PROVIDER` (optional, default `disabled`) | One exercise over your exact passage, checked before it is stored ([§11](#11-reading-practice)) |
+| 13. **Writing**: start a task, save, revise and compare versions | **No** | Each save is a new version; earlier versions never change ([§12](#12-writing-practice)) |
+| 14. **Writing → Request feedback on version N** | **Yes**, once, `WRITING_PROVIDER` (optional, default `disabled`) | One report about that version only, its quotes checked against its exact text ([§12](#12-writing-practice)) |
 
 Suggestion requests use more tokens than one analysis (up to 10 units and 5
 candidates each), so allow `OPENAI_TIMEOUT` headroom as for extraction.
@@ -518,6 +520,44 @@ and only when `READING_PROVIDER=openai` is in your settings file.
   been evaluated with a real model.
 - It is practice: there is no score, level or official exam claim, and your
   answers are not saved.
+
+## 12. Writing practice
+
+**Starting a task, writing, revising and comparing call no model.** Only
+**Request feedback on version N** calls the provider, and only when
+`WRITING_PROVIDER=openai` is in your settings file.
+
+1. **[Mac]** Open **Writing**. Either:
+   - under **Practice tasks**, choose **Start this task**. These are three
+     original practice tasks (an email or a message, A2 style); they are not
+     official exam items. **Use the example draft** fills the editor with a
+     first draft that contains mistakes on purpose; or
+   - under **Your own task**, enter a title, the French prompt and, optionally,
+     content points (one per line).
+2. Write and **Save as version 1**. The live count follows the word convention
+   shown with the task. Every save is a new version; an unchanged text is not
+   saved again.
+3. **Request feedback on version 1** sends that version once. The report says
+   which version it is about. You see the hints first. If no answer arrives,
+   the page looks the request up first; an unknown outcome needs **Request
+   again anyway (it may be charged twice)**. Your versions are safe whatever
+   happens.
+4. Revise in the editor from the hints, then **Save as version 2**. Reveal
+   **Show suggested wording** only when you want it. Version 2 has no feedback
+   until you request it, because a report is never carried over. **Compare**
+   shows what changed between two versions.
+5. On a correction, choose **Save this mistake…**, type your revised wording,
+   and choose **Save learning record**. The record keeps your phrase, your
+   wording and the reason, names the task and version, and links back with
+   **← Back to Writing**.
+
+**Limitations:**
+- Quotes are checked mechanically: a quote is shown in the text only when it
+  occurs exactly once in that version. A repeated phrase gets no position, and
+  a quote that is not in the text is listed separately. The quality of the
+  feedback has not been evaluated with a real model.
+- It is practice: the task rating is not a score, and there is no mark, level
+  or official exam claim.
 
 ## Troubleshooting
 

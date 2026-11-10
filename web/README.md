@@ -681,6 +681,43 @@ A private **Reading** view (never in the public demo). Contract:
   excerpts as context and a capture ID fixed for the form; **Open record #N**
   comes back with **← Back to Reading**.
 
+## Writing (Exam Writing v1)
+
+A private **Writing** view (never in the public demo). Contract:
+[ARCHITECTURE.md §4.6](../docs/ARCHITECTURE.md#46-exam-writing-v1).
+
+- **Practice tasks** lists the embedded prompts (`GET /writing/prompts`).
+  **Start this task** creates the task (no draft, no provider call); **Open**
+  opens one already started. **Your own task** saves a title, prompt and
+  content points.
+- **Task:** the prompt, content points, word range and word convention.
+  - **Versions** selects a version (`aria-pressed`) and shows its text and
+    word count. The editor starts from the latest version and saves the next
+    one; the live count uses the backend's word pattern. On a new authored
+    task, **Use the example draft** fills it with the prompt's example (with
+    deliberate mistakes).
+  - **Compare** is a word-level LCS diff (`<del>`/`<ins>`), always from the
+    older version to the newer.
+  - Reloads keep the last data on screen, so an unsaved revision survives a
+    feedback request.
+- **Feedback on version N** shows only reports whose `draft_id` is that
+  version, and names the other versions that have their own.
+  - **Request feedback on version N** follows the Listening flow: a fresh key;
+    a lost response is looked up at `GET /writing/feedback-requests/{key}`
+    before **Send the same request again**; an unknown outcome needs
+    **Request again anyway (it may be charged twice)**.
+  - The rating is shown as a label, not a score. Hints come first; **Show
+    suggested wording** reveals the suggestion and **Why:** (`StoredText`).
+  - **Show in version N** marks a `located` quote with `<mark>`. An
+    `ambiguous` quote says it has no position. A `not_found` quote, or any quote
+    whose grounding the text contradicts (`shownAsGrounded`), is listed under
+    **Not found in this version**, with no hint, suggestion or save action.
+- **Save this mistake…** posts one `learning_capture_v1` only on **Save
+  learning record**: `« phrase » → « revised wording »` and the stored reason as
+  input, and the task, version, feedback and generator as context. The capture
+  ID is fixed for the form. **Open record #N** comes back with **← Back to
+  Writing**.
+
 ## Correcting a reviewed unit from the inspection (FLH-082)
 
 The unit inspection opened from a record offers corrections for a unit of the

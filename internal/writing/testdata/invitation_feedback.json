@@ -1,0 +1,49 @@
+{
+  "task_fulfilment": {
+    "rating": "partly_met",
+    "comment_en": "You thank Sophie, accept, offer to bring a cake and ask practical questions; the arrival time is in a past tense although Saturday is still to come.",
+    "comment_zh": "你感谢了 Sophie，接受了邀请，提出带蛋糕，也问了实际问题；但星期六还没到，到达时间却用了过去时。"
+  },
+  "clarity": {
+    "comment_en": "Clear and easy to follow; three sentences start the same way.",
+    "comment_zh": "清楚易懂；有三个句子的开头一样。"
+  },
+  "corrections": [
+    {
+      "quote": "Je suis arrivé vers 20 heures",
+      "category": "grammar",
+      "hint_en": "Saturday has not happened yet: which tense talks about the future?",
+      "hint_zh": "星期六还没到：哪个时态表示将来？",
+      "suggestion": "J'arriverai vers 20 heures",
+      "reason_en": "An arrival planned for Saturday needs the futur simple, not the passé composé.",
+      "reason_zh": "计划在星期六到达，要用简单将来时，不能用复合过去时。"
+    },
+    {
+      "quote": "Je suis pas sûr",
+      "category": "register",
+      "hint_en": "In writing, a negation keeps both of its parts.",
+      "hint_zh": "书面语中，否定要保留两个部分。",
+      "suggestion": "Je ne suis pas sûr",
+      "reason_en": "Dropping « ne » belongs to spoken French; an email keeps it.",
+      "reason_zh": "省略 « ne » 是口语用法，邮件里要保留。"
+    },
+    {
+      "quote": "Je suis",
+      "category": "vocabulary",
+      "hint_en": "Three sentences start the same way; can you vary one of them?",
+      "hint_zh": "有三个句子开头相同，能换一种说法吗？",
+      "suggestion": "J'ai hâte",
+      "reason_en": "Varied sentence openings read more naturally.",
+      "reason_zh": "句子开头有变化，读起来更自然。"
+    },
+    {
+      "quote": "je viendrai avec plaisir",
+      "category": "grammar",
+      "hint_en": "Start the reply by accepting clearly.",
+      "hint_zh": "回信开头要明确表示接受。",
+      "suggestion": "Je viendrai avec plaisir !",
+      "reason_en": "A clear acceptance answers the invitation first.",
+      "reason_zh": "先明确接受，才算回应了邀请。"
+    }
+  ]
+}
