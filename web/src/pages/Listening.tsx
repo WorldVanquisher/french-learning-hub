@@ -21,7 +21,7 @@ import type {
 import { randomOperationId } from "./annotationOperation";
 import { alreadySaved, sourceRef } from "./notebookLink";
 import { DailyPanel, NotificationsSection } from "./ListeningDaily";
-import { ScriptsPanel } from "./ListeningScripts";
+import { NextScript, ScriptsPanel } from "./ListeningScripts";
 
 // Exam Listening Lesson v1 (private workbench only; never in the public demo).
 //
@@ -136,6 +136,7 @@ export function Listening({
             setScreen({ kind: "list" });
           }}
           onOpenRecord={onOpenRecord}
+          onOpenLesson={(next) => setScreen({ kind: "lesson", id: next })}
           target={openRequest && openRequest.materialId === screen.id ? openRequest.target ?? null : null}
         />
       )}
@@ -250,11 +251,13 @@ function LessonScreen({
   id,
   onBack,
   onOpenRecord,
+  onOpenLesson,
   target = null,
 }: {
   id: number;
   onBack: () => void;
   onOpenRecord?: (entryId: number) => void;
+  onOpenLesson?: (materialId: number) => void;
   target?: NotebookTarget | null;
 }) {
   const { t } = useI18n();
@@ -303,9 +306,14 @@ function LessonScreen({
           <VideoLink material={material} label={t("listening.video.open")} />
         </div>
         {isScript(material) ? (
-          <p className="hint">
-            <span className="tag">{t("listening.source.scriptOnly")}</span> {t("listening.script.hint")}
-          </p>
+          <>
+            <p>
+              <span className="tag">{t("listening.source.scriptOnly")}</span>
+            </p>
+            <div className="banner info" role="note">
+              {t("listening.script.hint")}
+            </div>
+          </>
         ) : (
           <p className="hint">{t("listening.video.hint")}</p>
         )}
@@ -355,6 +363,12 @@ function LessonScreen({
         </>
       )}
       <NotificationsSection notifications={notifications} enabled={notification.enabled} onChanged={() => setEpoch((n) => n + 1)} />
+      <nav className="panel actions" aria-label={t("listening.nav.region")}>
+        <button type="button" className="ghost" onClick={onBack}>
+          {t("listening.nav.back")}
+        </button>
+        {isScript(material) && material.pack_script_id && onOpenLesson ? <NextScript packScriptId={material.pack_script_id} onOpen={onOpenLesson} /> : null}
+      </nav>
     </div>
   );
 }
@@ -625,6 +639,11 @@ function ExerciseView({
           </li>
         ))}
       </ol>
+      <p className="hint" aria-live="polite">
+        {revealed
+          ? t("listening.progress.checked", { checked: Object.keys(checks).length, total: content.items.length })
+          : t("listening.progress.answered", { answered: answers.filter((a) => a.trim() !== "").length, total: content.items.length })}
+      </p>
       {!revealed ? (
         <div className="actions">
           <button type="button" className="primary" onClick={() => setRevealed(true)}>
@@ -889,10 +908,24 @@ function SaveMissedPoint({
   return (
     <form className="listening-save" aria-label={t("listening.save.region", { n: index + 1 })} onSubmit={send}>
       <label htmlFor={fieldId}>{t("listening.save.label")}</label>
-      <textarea id={fieldId} rows={3} value={text} required onChange={(e) => setText(e.target.value)} disabled={state.status === "saving"} />
+      <textarea
+        id={fieldId}
+        rows={3}
+        value={text}
+        required
+        onChange={(e) => setText(e.target.value)}
+        // While the outcome is unknown the record may already exist under this
+        // capture ID, so a resend must be identical: editing is locked.
+        disabled={state.status === "saving" || state.status === "unknown"}
+      />
       {answer.trim() ? (
         <label className="notebook-attempt">
-          <input type="checkbox" checked={includeAnswer} onChange={(e) => setIncludeAnswer(e.target.checked)} disabled={state.status === "saving"} />{" "}
+          <input
+            type="checkbox"
+            checked={includeAnswer}
+            onChange={(e) => setIncludeAnswer(e.target.checked)}
+            disabled={state.status === "saving" || state.status === "unknown"}
+          />{" "}
           {t("notebook.save.includeAnswer", { answer: answer.trim() })}
         </label>
       ) : null}
@@ -915,7 +948,7 @@ function SaveMissedPoint({
         <button type="submit" className="primary" disabled={state.status === "saving" || !text.trim()}>
           {state.status === "unknown" ? t("listening.save.retrySame") : t("listening.save.confirm")}
         </button>
-        <button type="button" className="ghost" onClick={onCancel} disabled={state.status === "saving"}>
+        <button type="button" className="ghost" onClick={onCancel} disabled={state.status === "saving" || state.status === "unknown"}>
           {t("listening.save.cancel")}
         </button>
       </div>

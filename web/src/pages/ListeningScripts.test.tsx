@@ -80,7 +80,30 @@ const authoredExercise = (id: number): ListeningExercise => ({
 });
 
 type Call = { method: string; path: string; body: string };
-type Server = { imported: ListeningLesson | null; calls: Call[]; loseNextImport?: boolean; imports: number };
+type Server = {
+  imported: ListeningLesson | null;
+  calls: Call[];
+  loseNextImport?: boolean;
+  imports: number;
+  // A second script (u06) in the catalogue, for next-script navigation.
+  withSecond?: boolean;
+  second?: ListeningLesson | null;
+  // Captures by capture_id: same id and words replay, different words conflict.
+  captures?: Map<string, string>;
+  loseNextCapture?: boolean;
+};
+const SECOND_TITLE = "Au service client : un colis abîmé";
+const lessonOf = (material: ListeningMaterial, exercise: ListeningExercise): ListeningLesson => ({
+  material,
+  transcript: { id: 500, version: 1, has_timestamps: false, segments: lines, created_at: "2026-11-11T08:00:00Z" },
+  exercises: [exercise],
+  generation: { enabled: false, generator: null },
+  state: "prepared",
+  in_playlist: false,
+  preparations: [],
+  notifications: [],
+  notification: { enabled: false, channel: null },
+});
 
 const summary = (server: Server): ListeningScriptSummary => ({
   id: "ls-wb1-u05",
@@ -103,7 +126,16 @@ function serve(server: Server) {
     const p = url.pathname;
     server.calls.push({ method, path: p, body });
     const view = (l: ListeningLesson) => l;
-    if (method === "GET" && p === "/api/listening/scripts") return json(200, { pack: "flh_listening_script_pack_v1", scripts: [summary(server)] });
+    if (method === "GET" && p === "/api/listening/scripts") {
+      const second: ListeningScriptSummary = { ...summary(server), id: "ls-wb1-u06", title: SECOND_TITLE, imported_material_id: server.second ? 8 : null };
+      return json(200, { pack: "flh_listening_script_pack_v1", scripts: server.withSecond ? [summary(server), second] : [summary(server)] });
+    }
+    if (method === "POST" && p === "/api/listening/scripts/ls-wb1-u06") {
+      const created = !server.second;
+      server.second ??= lessonOf({ ...scriptMaterial(8), title: SECOND_TITLE, pack_script_id: "flh_listening_script_pack_v1/ls-wb1-u06" }, authoredExercise(901));
+      return json(created ? 201 : 200, server.second);
+    }
+    if (method === "GET" && p === "/api/listening/materials/8") return server.second ? json(200, server.second) : json(404, { error: "listening material not found" });
     if (method === "POST" && p === "/api/listening/scripts/ls-wb1-u05") {
       // The server is idempotent: the first import stores, later ones replay.
       const created = server.imported === null;
@@ -144,8 +176,17 @@ function serve(server: Server) {
         last_run: null,
       });
     if (method === "POST" && p === "/api/captures") {
-      const doc = JSON.parse(body) as { capture_id: string };
-      return json(201, { capture_id: doc.capture_id, entry_id: 41, analysis_id: null, created: true });
+      const doc = JSON.parse(body) as { capture_id: string; original_input: string };
+      server.captures ??= new Map();
+      const known = server.captures.get(doc.capture_id);
+      if (known !== undefined && known !== doc.original_input)
+        return json(409, { error: "capture_id already exists with different content" });
+      server.captures.set(doc.capture_id, doc.original_input);
+      if (server.loseNextCapture) {
+        server.loseNextCapture = false;
+        throw new TypeError("network down"); // stored, but the response is lost
+      }
+      return json(known === undefined ? 201 : 200, { capture_id: doc.capture_id, entry_id: 41, analysis_id: null, created: known === undefined });
     }
     if (p === "/api/reviewable-units") return json(200, { reviewable_units: [] });
     if (p === "/api/learning-records") return json(200, { records: [], next_before_entry_id: null });
@@ -177,7 +218,7 @@ describe("Workbook listening scripts (private workbench)", () => {
 
     fireEvent.click(within(panel).getByRole("button", { name: `Import ${TITLE}` }));
     expect(await screen.findByRole("heading", { name: TITLE })).toBeInTheDocument();
-    expect(screen.getByText(/There is no audio, no video and no timestamp/)).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(/^No audio: this lesson is a written script/);
     expect(screen.getByText("Script: 4 lines, without timestamps.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /YouTube/ })).toBeNull();
     const header = screen.getByRole("region", { name: "Listening lesson" });
@@ -335,6 +376,83 @@ describe("Workbook listening scripts (private workbench)", () => {
     const savedAgain = screen.getByRole("region", { name: "Saved listening material" });
     expect(within(savedAgain).getByRole("button", { name: TITLE })).toBeInTheDocument();
     expect(savedAgain.compareDocumentPosition(again) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("groups the catalogue into imported and available scripts", async () => {
+    const server: Server = { imported: null, calls: [], imports: 0 };
+    serve(server);
+    const panel = await openScripts();
+    expect(within(panel).getByRole("heading", { name: "Imported (0)" })).toBeInTheDocument();
+    expect(within(panel).getByText("None yet. Import a script below to start.")).toBeInTheDocument();
+    const available = within(panel).getByRole("list", { name: "Available to import (1)" });
+    expect(within(available).getByRole("button", { name: `Import ${TITLE}` })).toBeInTheDocument();
+    fireEvent.click(within(available).getByRole("button", { name: `Import ${TITLE}` }));
+    await screen.findByRole("heading", { name: TITLE });
+    fireEvent.click(screen.getByRole("button", { name: "← All listening material" }));
+    const again = await screen.findByRole("region", { name: "Workbook listening scripts" });
+    const imported = await within(again).findByRole("list", { name: "Imported (1)" });
+    expect(within(imported).getByRole("button", { name: `Open ${TITLE}` })).toBeInTheDocument();
+    expect(within(again).getByRole("heading", { name: "Available to import (0)" })).toBeInTheDocument();
+    expect(within(again).getByText("All workbook scripts are imported.")).toBeInTheDocument();
+  });
+
+  it("shows progress and leads from the end of a lesson back or to the next script", async () => {
+    const server: Server = { imported: null, calls: [], imports: 0, withSecond: true };
+    serve(server);
+    const panel = await openScripts();
+    fireEvent.click(within(panel).getByRole("button", { name: `Import ${TITLE}` }));
+    await screen.findByRole("heading", { name: TITLE });
+    const exercise = screen.getByRole("region", { name: "Listening exercise" });
+    expect(within(exercise).getByText(/^Answered 0 of 2\./)).toBeInTheDocument();
+    fireEvent.click(within(within(exercise).getByRole("group", { name: "Your choice for question 1" })).getAllByRole("radio")[0]);
+    expect(within(exercise).getByText(/^Answered 1 of 2\./)).toBeInTheDocument();
+    fireEvent.click(within(exercise).getByRole("button", { name: "Reveal answers and evidence" }));
+    expect(within(exercise).getByText(/^Self-checked 0 of 2\./)).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("group", { name: "Reference for question 1" })).getByRole("button", { name: "I got it" }));
+    expect(within(exercise).getByText(/^Self-checked 1 of 2\./)).toBeInTheDocument();
+
+    const nav = screen.getByRole("navigation", { name: "Lesson navigation" });
+    fireEvent.click(await within(nav).findByRole("button", { name: `Next workbook script: ${SECOND_TITLE}` }));
+    expect(await screen.findByRole("heading", { name: SECOND_TITLE })).toBeInTheDocument();
+    expect(writes(server).map((c) => c.path)).toEqual(["/api/listening/scripts/ls-wb1-u05", "/api/listening/scripts/ls-wb1-u06"]);
+    expect(await within(screen.getByRole("navigation", { name: "Lesson navigation" })).findByText("That was the last workbook script.")).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Lesson navigation" })).getByRole("button", { name: "Back to all listening material" }));
+    const list = await screen.findByRole("region", { name: "Workbook listening scripts" });
+    fireEvent.click(await within(list).findByRole("button", { name: `Open ${TITLE}` }));
+    await screen.findByRole("heading", { name: TITLE });
+    // The next script is already imported now: it opens without another import.
+    fireEvent.click(await within(screen.getByRole("navigation", { name: "Lesson navigation" })).findByRole("button", { name: `Next workbook script: ${SECOND_TITLE}` }));
+    expect(await screen.findByRole("heading", { name: SECOND_TITLE })).toBeInTheDocument();
+    expect(writes(server)).toHaveLength(2);
+  });
+
+  it("locks the question after a lost save response, so the resend replays instead of conflicting", async () => {
+    const server: Server = { imported: null, calls: [], imports: 0, loseNextCapture: true };
+    serve(server);
+    const panel = await openScripts();
+    fireEvent.click(within(panel).getByRole("button", { name: `Import ${TITLE}` }));
+    await screen.findByRole("heading", { name: TITLE });
+    fireEvent.change(screen.getByLabelText("Your answer to question 2"), { target: { value: "le mardi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Reveal answers and evidence" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Reference for question 2" })).getByRole("button", { name: "Save as a learning question…" }));
+    const form = screen.getByRole("form", { name: "Save a missed point from question 2" });
+    const box = within(form).getByLabelText("What did you miss, or what do you want to ask?");
+    fireEvent.change(box, { target: { value: "Première version." } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save learning record" }));
+    expect(await within(form).findByText(/may or may not be saved/)).toBeInTheDocument();
+    expect(box).toBeDisabled();
+    expect(within(form).getByRole("button", { name: "Cancel" })).toBeDisabled();
+    // With the Mistake Notebook (private stack) the form also offers to include
+    // the learner's answer; it is part of the resent record, so it locks too.
+    const include = within(form).queryByRole("checkbox");
+    if (include) expect(include).toBeDisabled();
+    fireEvent.click(within(form).getByRole("button", { name: "Send the same record again" }));
+    expect(await screen.findByText("Already saved as learning record #41.")).toBeInTheDocument();
+    const posts = writes(server).filter((c) => c.path === "/api/captures");
+    expect(posts).toHaveLength(2);
+    expect(posts[0].body).toBe(posts[1].body);
+    expect(server.captures!.size).toBe(1);
   });
 
   it("labels the scripts in Simplified Chinese without translating the French", async () => {

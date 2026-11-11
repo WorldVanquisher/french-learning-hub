@@ -69,40 +69,57 @@ export function ScriptsPanel({ epoch, onOpen }: { epoch: number; onOpen: (materi
         <p className="empty">{t("listening.scripts.empty")}</p>
       ) : (
         <>
-        <p className="hint">
-          {t("listening.scripts.importedCount", {
-            imported: load.data.scripts.filter((s) => s.imported_material_id !== null).length,
-            total: load.data.scripts.length,
-          })}
-        </p>
-        <ul className="listening-list">
-          {load.data.scripts.map((s) => (
-            <li key={s.id}>
-              <span lang="fr" className="french">
-                {s.title}
-              </span>{" "}
-              <span className="tag">{t("listening.source.scriptOnly")}</span>
-              {s.imported_material_id !== null ? (
-                <>
-                  {" "}
-                  <span className="tag">{t("listening.scripts.imported")}</span>
-                </>
-              ) : null}
-              <div className="hint">
-                {t("listening.scripts.meta", { genre: s.genre, level: s.style_level, lines: s.lines, questions: s.questions })}
+          <p className="hint">
+            {t("listening.scripts.importedCount", {
+              imported: load.data.scripts.filter((s) => s.imported_material_id !== null).length,
+              total: load.data.scripts.length,
+            })}
+          </p>
+          {(["imported", "available"] as const).map((group) => {
+            const rows = load.data.scripts.filter((s) => (group === "imported") === (s.imported_material_id !== null));
+            const headingId = `listening-scripts-${group}`;
+            return (
+              <div key={group}>
+                <h3 id={headingId}>
+                  {t(group === "imported" ? "listening.scripts.groupImported" : "listening.scripts.groupAvailable", { count: rows.length })}
+                </h3>
+                {rows.length === 0 ? (
+                  <p className="empty">{t(group === "imported" ? "listening.scripts.noneImported" : "listening.scripts.allImported")}</p>
+                ) : (
+                  <ul className="listening-list" aria-labelledby={headingId}>
+                    {rows.map((s) => (
+                      <li key={s.id}>
+                        <span lang="fr" className="french">
+                          {s.title}
+                        </span>{" "}
+                        <span className="tag">{t("listening.source.scriptOnly")}</span>
+                        {s.imported_material_id !== null ? (
+                          <>
+                            {" "}
+                            <span className="tag">{t("listening.scripts.imported")}</span>
+                          </>
+                        ) : null}
+                        <div className="hint">
+                          {t("listening.scripts.meta", { genre: s.genre, level: s.style_level, lines: s.lines, questions: s.questions })}
+                        </div>
+                        {s.imported_material_id !== null ? (
+                          <button type="button" className="ghost" onClick={() => onOpen(s.imported_material_id!)}>
+                            {t("listening.scripts.open", { title: s.title })}
+                          </button>
+                        ) : (
+                          <button type="button" className="ghost" disabled={importing.status === "importing"} onClick={() => importScript(s.id)}>
+                            {importing.status === "importing" && importing.id === s.id
+                              ? t("listening.scripts.importing")
+                              : t("listening.scripts.import", { title: s.title })}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              {s.imported_material_id !== null ? (
-                <button type="button" className="ghost" onClick={() => onOpen(s.imported_material_id!)}>
-                  {t("listening.scripts.open", { title: s.title })}
-                </button>
-              ) : (
-                <button type="button" className="ghost" disabled={importing.status === "importing"} onClick={() => importScript(s.id)}>
-                  {importing.status === "importing" && importing.id === s.id ? t("listening.scripts.importing") : t("listening.scripts.import", { title: s.title })}
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+            );
+          })}
         </>
       )}
       {importing.status === "unknown" ? (
@@ -115,5 +132,59 @@ export function ScriptsPanel({ epoch, onOpen }: { epoch: number; onOpen: (materi
         </div>
       ) : null}
     </section>
+  );
+}
+
+// NextScript is the end-of-lesson step to the next workbook script, in pack
+// order: it opens it when already imported, otherwise imports it on this
+// explicit click (no model call; a lost response is safe to resend because the
+// server replays). Nothing is shown after the last script.
+export function NextScript({ packScriptId, onOpen }: { packScriptId: string; onOpen: (materialId: number) => void }) {
+  const { t } = useI18n();
+  const [scripts, setScripts] = useState<ListeningScripts | null>(null);
+  const [state, setState] = useState<ImportState>({ status: "idle" });
+  useEffect(() => {
+    let active = true;
+    api.listListeningScripts().then(
+      (data) => active && setScripts(data),
+      () => active && setScripts(null), // the lesson works without it; the back button remains
+    );
+    return () => {
+      active = false;
+    };
+  }, [packScriptId]);
+  if (!scripts) return null;
+  const at = scripts.scripts.findIndex((s) => packScriptId.endsWith("/" + s.id));
+  const next = at >= 0 ? scripts.scripts[at + 1] : undefined;
+  if (!next) return at >= 0 ? <p className="hint">{t("listening.nav.lastScript")}</p> : null;
+  const go = async () => {
+    if (next.imported_material_id !== null) {
+      onOpen(next.imported_material_id);
+      return;
+    }
+    setState({ status: "importing", id: next.id });
+    try {
+      const lesson = await api.importListeningScript(next.id);
+      onOpen(lesson.material.id);
+    } catch (e) {
+      setState(e instanceof NetworkError ? { status: "unknown" } : { status: "error", message: t("listening.scripts.importFailed", { message: describe(e) }) });
+    }
+  };
+  return (
+    <>
+      {/* Secondary on purpose: before reveal, "Reveal answers and evidence" stays the one primary action. */}
+      <button type="button" className="ghost" disabled={state.status === "importing"} onClick={go}>
+        {state.status === "importing" ? t("listening.scripts.importing") : t("listening.nav.next", { title: next.title })}
+      </button>
+      {state.status === "unknown" ? (
+        <div className="banner info" role="alert">
+          {t("listening.scripts.importUnknown")}
+        </div>
+      ) : state.status === "error" ? (
+        <div className="banner error" role="alert">
+          {state.message}
+        </div>
+      ) : null}
+    </>
   );
 }

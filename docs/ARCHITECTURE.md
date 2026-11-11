@@ -922,9 +922,16 @@ the learning workflow only through §4.1.
   current transcript, so after such a call it shows the generated questions
   instead of the authored ones. It never offers the Prepare button on a script,
   because the authored exercise already counts as prepared. Pinned by
-  `TestListeningScripts_ModelPreparationOnAScriptUsesTheExistingExplicitPath`. The workbench labels it "Script only · no audio", shows no video link,
-  offers the choices, and can show the script to the person reading it aloud;
-  answers, evidence and notes stay hidden until reveal.
+  `TestListeningScripts_ModelPreparationOnAScriptUsesTheExistingExplicitPath`.
+- **Workbench:** the script catalogue lists **Imported (N)** and **Available to
+  import (N)** separately, after the learner's own material. A script lesson is
+  tagged "Script only · no audio" with a no-audio note and no video link. It
+  offers the choices and can show the script, never the key, to the person
+  reading it aloud. Answers, evidence and notes stay hidden until "Reveal
+  answers and evidence". The page counts answered (then self-checked)
+  questions on the page only. It ends with navigation back to the list and to
+  the next workbook script in pack order, which imports it on that explicit
+  click.
 - **Migration `021`** rebuilds `listening_materials` (SQLite cannot relax
   `NOT NULL`) inside its transaction with foreign keys on: the parent rows are
   re-inserted after the rebuilt table takes the old name, which settles the
@@ -938,7 +945,10 @@ the learning workflow only through §4.1.
   the source time when one exists, or `Source: authored script, no audio or
   video (<pack_script_id>)`), the question and the cited excerpts (with the
   speaker for a script) are `original_context`. Nothing becomes a Concept,
-  annotation, admission or mastery record.
+  annotation, admission or mastery record. When no response arrives, the
+  question and Cancel are locked: the only action is to resend the identical
+  record under the same capture ID, which the server replays (`200`). An
+  edited resend would conflict (`409`) although the record exists.
 - **Not in the public demo:** the routes are not on its allowlist, the three
   tables must be empty in a demo artifact, and the demo UI has no Listening view.
   Because the demo's migration ledger must equal the embedded migrations, a demo
