@@ -18,6 +18,7 @@ import { useI18n, type I18n, type MessageKey } from "../i18n";
 import { RecallPractice } from "./RecallPractice";
 import { DEMO_EXAMPLES } from "../demo/examples";
 import { ExamplePicker, ExampleScreen, focusExampleCard } from "../demo/ExampleScreen";
+import { screenFromHash, urlForScreen } from "../demo/deepLink";
 
 // One search outcome per submitted query. Semantic and hybrid modes need a
 // query; with an empty one nothing is requested (browsing is keyword search's job).
@@ -148,14 +149,15 @@ export function KnowledgeLibrary({
   const [query, setQuery] = useState<LibraryQuery>({ q: "", state: "all" });
   const [draftMode, setDraftMode] = useState<LibrarySearchMode>("keyword");
   const [mode, setMode] = useState<LibrarySearchMode>("keyword");
-  const [screen, setScreenState] = useState<Screen>({ kind: "results" });
+  // The public demo opens the screen a direct link names (demo/deepLink.ts).
+  const [screen, setScreenState] = useState<Screen>(() => (demo ? screenFromHash(window.location.hash) : { kind: "results" }));
   // The public demo keeps each screen in the browser history (same URL, no
   // route), so the browser's or phone's Back returns to the previous screen
   // instead of leaving the demo. The workbench has its own views and does not.
   const screenRef = useRef(screen);
   screenRef.current = screen;
   const setScreen = (next: Screen) => {
-    if (demo) window.history.pushState({ ...(window.history.state ?? {}), flhLibrary: next }, "");
+    if (demo) window.history.pushState({ ...(window.history.state ?? {}), flhLibrary: next }, "", urlForScreen(next));
     setScreenState(next);
   };
   const [retry, setRetry] = useState(0);
@@ -181,9 +183,10 @@ export function KnowledgeLibrary({
 
   useEffect(() => {
     if (!demo) return;
-    window.history.replaceState({ ...(window.history.state ?? {}), flhLibrary: { kind: "results" } }, "");
+    window.history.replaceState({ ...(window.history.state ?? {}), flhLibrary: screenRef.current }, "");
     const onPop = (event: PopStateEvent) => {
-      const next = (event.state as { flhLibrary?: Screen } | null)?.flhLibrary;
+      // A fragment typed or pasted into the address bar has no saved state.
+      const next = (event.state as { flhLibrary?: Screen } | null)?.flhLibrary ?? screenFromHash(window.location.hash);
       if (!next) return;
       const left = screenRef.current;
       if (next.kind === "results") {
@@ -746,11 +749,13 @@ function ConceptScreen({
   );
   if (load.status !== "ready")
     return (
+      <>
+      {demo ? <nav className="demo-return" aria-label={t("demo.return")}>{back}</nav> : null}
       <section className="panel" aria-label={t("library.concept.region")}>
         <h2 ref={headingRef} tabIndex={-1}>
           {t("library.concept.heading", { id: conceptId })}
         </h2>
-        {back}
+        {demo ? null : back}
         {load.status === "loading" ? (
           <p className="hint" role="status">{t("library.concept.loading", { id: conceptId })}</p>
         ) : (
@@ -762,6 +767,7 @@ function ConceptScreen({
           </div>
         )}
       </section>
+      </>
     );
   const d = load.data;
   const c = d.concept;
@@ -1043,11 +1049,13 @@ function SourceScreen({
   );
   if (load.status !== "ready")
     return (
+      <>
+      {demo ? <nav className="demo-return" aria-label={t("demo.return")}>{nav}</nav> : null}
       <section className="panel" aria-label={t("library.source.region")}>
         <h2 ref={headingRef} tabIndex={-1}>
           {t("library.source.heading", { id: unitId })}
         </h2>
-        {nav}
+        {demo ? null : nav}
         {load.status === "loading" ? (
           <p className="hint" role="status">{t("library.source.loading", { id: unitId })}</p>
         ) : (
@@ -1059,6 +1067,7 @@ function SourceScreen({
           </div>
         )}
       </section>
+      </>
     );
   const s = load.data;
   const interp = s.source_interpretation;

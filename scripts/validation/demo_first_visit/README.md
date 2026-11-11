@@ -57,3 +57,23 @@ CHROME=/usr/bin/chromium node accept_resilience.mjs http://127.0.0.1:18990/ /abs
 
 The same failure cases run without a browser in
 `web/src/demo/Resilience.test.tsx`.
+
+## Accessibility and direct links: `accept_a11y.mjs`
+
+- The whole guided path with the keyboard only (Tab, Shift+Tab, Enter) in
+  English at 1280 px and 简体中文 at 390 px, with visible focus at every stop,
+  each screen's heading focused and never under the return bar, focus restored
+  to the starting card, and the number of key presses (`METRIC` lines and
+  `results.json`).
+- Reduced motion: no animation, transition or smooth scrolling on any guided
+  screen.
+- Direct links: example, Concept and evidence fragments open their screens,
+  survive a reload and keep "back to the example"; malformed links open the
+  start; a missing Concept states the failed read; fragments never reach the
+  server.
+- Every button has an accessible name; header, main and the return navigation
+  are present.
+
+```sh
+CHROME=/usr/bin/chromium node accept_a11y.mjs http://127.0.0.1:18990/ /abs/out/a11y
+```

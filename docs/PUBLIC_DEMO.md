@@ -520,6 +520,29 @@ unavailable" until reloaded). Slow, failed, out-of-order and empty reads are
 exercised by `scripts/validation/demo_first_visit/accept_resilience.mjs` and
 `web/src/demo/Resilience.test.tsx`.
 
+Direct links and accessibility:
+
+- **Direct links are URL fragments:** `/#example=y-en`, `/#concept=12`,
+  `/#concept=12&unit=14`, optionally with `example=<key>` so the back actions
+  return to that example. The address bar follows the visitor, so copying it
+  shares the current screen, and a reload stays on it. Path links
+  (`/example/y-en`, `/concept/12`) cannot work with the current serving: the
+  server serves the demo only at `/` (no SPA fallback) and the demo boundary
+  answers unknown paths `404`. A fragment is never sent to the server, so it
+  needs no route, allowlist or nginx change. Malformed or unknown links open
+  the starting screen; a link to a Concept that does not exist shows that
+  read's error with the way back. Links carry IDs only, which are stable for a
+  given catalog and change when the catalog changes.
+- **Keyboard:** the whole guided path (start → example → Concept → evidence
+  → back to the Concept → back to the example → start) works with Tab,
+  Shift+Tab and Enter in 21 key presses. Each screen focuses its heading, which
+  is never hidden under the return bar, and focus returns to the card a visitor
+  started from. The return bar is in the same place in loading and error
+  states.
+- **Motion:** the demo has no animations, transitions or smooth scrolling, so
+  `prefers-reduced-motion` needs no special case.
+- **Check:** `scripts/validation/demo_first_visit/accept_a11y.mjs`.
+
 ## Limits
 
 - **Synthetic data:** 11 questions (3 written in French), 16 units and 14
