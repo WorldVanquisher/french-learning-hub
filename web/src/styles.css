@@ -928,3 +928,15 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .demo-unit p { margin: 4px 0; }
 .demo-unit-canonical, .demo-concept-title { font-weight: 600; }
 .demo-unit .link-button { display: inline; text-align: left; white-space: normal; }
+
+/* Public demo: return actions stay in view while reading evidence; long
+   identifiers and timestamps wrap instead of widening the page. */
+.demo-return {
+  position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px;
+  margin: 0 0 10px; padding: 8px 0; background: var(--bg);
+}
+.demo-return .actions { margin: 0; }
+.demo-why { margin: 8px 0 0; }
+.demo-mechanical-results { margin-bottom: 10px; }
+.unit-evidence div { grid-template-columns: 110px minmax(0, 1fr); }
+.unit-evidence dd, .library .hint { overflow-wrap: anywhere; }

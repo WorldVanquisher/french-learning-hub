@@ -973,6 +973,13 @@ export const zhCN: Record<MessageKey, string> = {
   "demo.example.next": "继续探索",
   "demo.example.searchYourself": "自己搜索知识库",
   "demo.search.heading": "或者搜索知识库",
+  "demo.results.mechanical.strong": "占位向量：",
+  "demo.results.mechanical": "{strong}这个顺序只展示排名机制，不能证明这些概念与查询相关。",
+  "demo.return": "返回",
+  "demo.concept.eyebrow": "概念",
+  "demo.concept.details": "概念详情：状态、类型和身份",
+  "demo.concept.whyEvidence": "证据：取自学习记录 #{record}，并归入此概念。",
+  "demo.source.why": "为什么显示这条记录：单元 #{unit} 取自这条记录，并归入 {concept}。",
   // Concept content and membership comparison (FLH-093)
   "content.show": "查看概念 #{id} 的内容",
   "content.hide": "收起概念 #{id} 的内容",

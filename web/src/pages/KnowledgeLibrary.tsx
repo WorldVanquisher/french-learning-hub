@@ -148,7 +148,16 @@ export function KnowledgeLibrary({
   const [query, setQuery] = useState<LibraryQuery>({ q: "", state: "all" });
   const [draftMode, setDraftMode] = useState<LibrarySearchMode>("keyword");
   const [mode, setMode] = useState<LibrarySearchMode>("keyword");
-  const [screen, setScreen] = useState<Screen>({ kind: "results" });
+  const [screen, setScreenState] = useState<Screen>({ kind: "results" });
+  // The public demo keeps each screen in the browser history (same URL, no
+  // route), so the browser's or phone's Back returns to the previous screen
+  // instead of leaving the demo. The workbench has its own views and does not.
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+  const setScreen = (next: Screen) => {
+    if (demo) window.history.pushState({ ...(window.history.state ?? {}), flhLibrary: next }, "");
+    setScreenState(next);
+  };
   const [retry, setRetry] = useState(0);
   const returnTo = useRef<number | null>(null);
   const returnToExample = useRef<string | null>(null);
@@ -169,6 +178,24 @@ export function KnowledgeLibrary({
     },
     retry,
   );
+
+  useEffect(() => {
+    if (!demo) return;
+    window.history.replaceState({ ...(window.history.state ?? {}), flhLibrary: { kind: "results" } }, "");
+    const onPop = (event: PopStateEvent) => {
+      const next = (event.state as { flhLibrary?: Screen } | null)?.flhLibrary;
+      if (!next) return;
+      const left = screenRef.current;
+      if (next.kind === "results") {
+        if (left.kind === "example") returnToExample.current = left.example;
+        else if (left.kind === "concept" && left.from) returnToExample.current = left.from;
+        else if (left.kind === "concept" || left.kind === "source") returnTo.current = left.conceptId;
+      }
+      setScreenState(next);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [demo]);
 
   // On return, focus the result the reader opened. Detail screens focus their own heading.
   useEffect(() => {
@@ -338,9 +365,9 @@ export function KnowledgeLibrary({
             onRetry={() => setRetry((n) => n + 1)}
           />
         ) : search.status === "ready" && search.data.kind === "semantic" ? (
-          <SemanticResults data={search.data.data} query={query} onOpen={openConcept} />
+          <SemanticResults data={search.data.data} query={query} onOpen={openConcept} mechanical={demo ? !demo.artifact.real_model : false} />
         ) : search.status === "ready" && search.data.kind === "hybrid" ? (
-          <HybridResults data={search.data.data} query={query} onOpen={openConcept} />
+          <HybridResults data={search.data.data} query={query} onOpen={openConcept} mechanical={demo ? !demo.artifact.real_model : false} />
         ) : search.status === "ready" ? (
           <p className="empty" role="status">{t(needsQueryKey[mode])}</p>
         ) : search.status === "loading" ? (
@@ -377,6 +404,7 @@ export function KnowledgeLibrary({
           onBack={() => (screen.from ? openExample(screen.from) : backToResults(screen.conceptId))}
           onOpenConcept={(conceptId) => openConcept(conceptId, screen.from)}
           onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId, from: screen.from })}
+          demo={Boolean(demo)}
           // The public demo has no recall practice.
           onPractice={
             demo
@@ -417,6 +445,7 @@ export function KnowledgeLibrary({
           }
           onOpenConcept={(conceptId) => openConcept(conceptId, screen.from)}
           onOpenRecord={onOpenRecord}
+          demo={Boolean(demo)}
         />
       ) : null}
     </main>
@@ -501,14 +530,29 @@ function Results({
   );
 }
 
+// MechanicalNotice sits next to semantic and hybrid scores in a public demo
+// built with mechanical vectors: those scores show ranking mechanics only and
+// must never read as evidence that a Concept is relevant.
+function MechanicalNotice() {
+  const { t, tn } = useI18n();
+  return (
+    <div className="banner info demo-mechanical-results" role="note">
+      {tn("demo.results.mechanical", { strong: <strong>{t("demo.results.mechanical.strong")}</strong> })}
+    </div>
+  );
+}
+
 function SemanticResults({
   data,
   query,
   onOpen,
+  mechanical = false,
 }: {
   data: SemanticSearch;
   query: LibraryQuery;
   onOpen: (conceptId: number) => void;
+  // Public demo with mechanical vectors.
+  mechanical?: boolean;
 }) {
   const i18n = useI18n();
   const { t, tp, tn, status } = i18n;
@@ -518,6 +562,7 @@ function SemanticResults({
   const outcome = idx.last_run_outcome ? spaced(i18n, idx.last_run_outcome) : "";
   return (
     <section aria-label={t("library.semanticResults")}>
+      {mechanical ? <MechanicalNotice /> : null}
       {!lastRunOk && idx.last_run_outcome ? (
         <div className="banner info" role="status">
           {tn(idx.last_error ? "library.lastRun.failedError" : "library.lastRun.failed", {
@@ -575,10 +620,13 @@ function HybridResults({
   data,
   query,
   onOpen,
+  mechanical = false,
 }: {
   data: HybridSearch;
   query: LibraryQuery;
   onOpen: (conceptId: number) => void;
+  // Public demo with mechanical vectors.
+  mechanical?: boolean;
 }) {
   const i18n = useI18n();
   const { t, tp, status } = i18n;
@@ -590,6 +638,7 @@ function HybridResults({
   const stateFiltered = query.state !== "all";
   return (
     <section aria-label={t("library.hybridResults")}>
+      {mechanical ? <MechanicalNotice /> : null}
       <p className="hint" role="status">
         {data.truncated
           ? t(stateFiltered ? "library.hybrid.truncatedState" : "library.hybrid.truncated", {
@@ -671,6 +720,7 @@ function ConceptScreen({
   onOpenConcept,
   onOpenSource,
   onPractice,
+  demo = false,
 }: {
   conceptId: number;
   backLabel: string;
@@ -679,6 +729,10 @@ function ConceptScreen({
   onOpenSource: (unitId: number) => void;
   // Starts recall practice; absent in the public demo, where it is not offered.
   onPractice?: () => void;
+  // Public demo presentation: the back action stays in view, identity details
+  // fold away, each supporting unit says why it is evidence, and empty
+  // curation sections are left out. The data and its meaning are unchanged.
+  demo?: boolean;
 }) {
   const i18n = useI18n();
   const { t, tp, tn, status } = i18n;
@@ -712,6 +766,22 @@ function ConceptScreen({
   const d = load.data;
   const c = d.concept;
   const features = Object.entries(c.identity_features);
+  const identity = (
+    <>
+      <dl className="unit-evidence">
+        <Row label={t("library.row.status")}>{supportText[c.state] ? t(supportText[c.state]) : c.state}</Row>
+        <Row label={t("library.row.type")}>{c.pedagogical_intent}</Row>
+        <Row label={t("library.row.scope")}>{c.scope || <em>{t("library.notSet")}</em>}</Row>
+        <Row label={t("library.row.identity")}>
+          {features.length ? features.map(([k, v]) => `${k}: ${v}`).join(" · ") : <em>{t("library.noneLower")}</em>}
+        </Row>
+      </dl>
+      <p className="hint">{t("library.filedVersusSupporting")}</p>
+      <p className="hint">
+        {t("library.concept.meta", { id: c.id, lifecycle: status(c.lifecycle_state), support: status(c.support_state) })}
+      </p>
+    </>
+  );
   // Within a section a unit appears once, except relations: one unit may hold
   // several distinct relations to this concept, so those rows key by link ID.
   const unit = (u: LibraryUnit, note?: ReactNode, key: string | number = u.unit_id) => (
@@ -719,23 +789,23 @@ function ConceptScreen({
   );
   return (
     <div>
+      {demo ? <nav className="demo-return" aria-label={t("demo.return")}>{back}</nav> : null}
       <section className="panel library-concept" aria-label={t("library.concept.region")}>
+        {demo ? <p className="demo-eyebrow">{t("demo.concept.eyebrow")}</p> : null}
         <h2 ref={headingRef} tabIndex={-1} className="library-title">
           {c.target} <StateTag state={c.state} />
         </h2>
-        {back}
-        <dl className="unit-evidence">
-          <Row label={t("library.row.status")}>{supportText[c.state] ? t(supportText[c.state]) : c.state}</Row>
-          <Row label={t("library.row.type")}>{c.pedagogical_intent}</Row>
-          <Row label={t("library.row.scope")}>{c.scope || <em>{t("library.notSet")}</em>}</Row>
-          <Row label={t("library.row.identity")}>
-            {features.length ? features.map(([k, v]) => `${k}: ${v}`).join(" · ") : <em>{t("library.noneLower")}</em>}
-          </Row>
-        </dl>
-        <p className="hint">{t("library.filedVersusSupporting")}</p>
-        <p className="hint">
-          {t("library.concept.meta", { id: c.id, lifecycle: status(c.lifecycle_state), support: status(c.support_state) })}
-        </p>
+        {demo ? (
+          <details className="demo-details">
+            <summary>{t("demo.concept.details")}</summary>
+            {identity}
+          </details>
+        ) : (
+          <>
+            {back}
+            {identity}
+          </>
+        )}
       </section>
 
       {onPractice ? (
@@ -768,7 +838,7 @@ function ConceptScreen({
       <section className="panel library-section current" aria-labelledby="lib-support">
         <h3 id="lib-support">{t("library.supporting", { count: d.supporting_units.length })}</h3>
         {d.supporting_units.length ? (
-          d.supporting_units.map((u) => unit(u))
+          d.supporting_units.map((u) => unit(u, demo ? t("demo.concept.whyEvidence", { record: u.entry_id }) : undefined))
         ) : (
           <p className="hint">{t("library.supporting.none")}</p>
         )}
@@ -782,6 +852,7 @@ function ConceptScreen({
         </section>
       ) : null}
 
+      {demo && d.current_relations.length === 0 ? null : (
       <section className="panel library-section" aria-labelledby="lib-relations">
         <h3 id="lib-relations">{t("library.relations", { count: d.current_relations.length })}</h3>
         <p className="hint">{t("library.relations.hint")}</p>
@@ -804,7 +875,9 @@ function ConceptScreen({
           <p className="hint">{t("library.relations.none")}</p>
         )}
       </section>
+      )}
 
+      {demo && d.historical_units.length === 0 ? null : (
       <section className="panel library-section history" aria-labelledby="lib-history">
         <h3 id="lib-history">{t("library.history", { count: d.historical_units.length })}</h3>
         <p className="hint">{tp("library.history.hint", d.history_event_count)}</p>
@@ -812,6 +885,7 @@ function ConceptScreen({
           ? d.historical_units.map((h) => unit(h.unit, <HistoricalNote h={h} onOpenConcept={onOpenConcept} />))
           : <p className="hint">{t("library.history.none")}</p>}
       </section>
+      )}
     </div>
   );
 }
@@ -927,6 +1001,7 @@ function SourceScreen({
   onBackToPractice,
   onOpenConcept,
   onOpenRecord,
+  demo = false,
 }: {
   unitId: number;
   conceptId: number;
@@ -940,6 +1015,10 @@ function SourceScreen({
   onBackToPractice?: () => void;
   onOpenConcept: (conceptId: number) => void;
   onOpenRecord?: (entryId: number) => void;
+  // Public demo presentation: the learner's question first, why this record is
+  // shown, and the back actions kept in view; the extraction and interpretation
+  // (the provenance trail) stay visible after the unit.
+  demo?: boolean;
 }) {
   const i18n = useI18n();
   const { t, tn, status } = i18n;
@@ -988,54 +1067,8 @@ function SourceScreen({
   const resolution = resolutionText[interp.effective.resolution]
     ? t(resolutionText[interp.effective.resolution])
     : interp.effective.resolution;
-  return (
-    <div>
-      <section className="panel" aria-label={t("library.source.region")}>
-        <h2 ref={headingRef} tabIndex={-1} className="library-title">
-          {t("library.source.title", { unit: s.unit.unit_id, record: s.entry.id })}
-        </h2>
-        {nav}
-        <p className="hint">{t("library.source.hint")}</p>
-      </section>
-
-      <section className="panel library-section" aria-labelledby="src-unit">
-        <h3 id="src-unit">{t("library.source.unit", { id: s.unit.unit_id })}</h3>
-        <p>
-          <strong>{s.unit.canonical}</strong>: {s.unit.statement}
-        </p>
-        {s.unit.example ? <FrenchExample text={s.unit.example} /> : null}
-        <p className="hint">
-          {s.annotation.status === "invalid"
-            ? t("library.source.now.invalid")
-            : s.annotation.current_concept_id !== null
-              ? tn("library.source.now.filed", {
-                  concept: (
-                    <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
-                      {t("library.conceptLink", { id: s.annotation.current_concept_id })}
-                    </button>
-                  ),
-                })
-              : t("library.source.now.none")}{" "}
-          {t("library.source.nowMeta", { kind: s.unit.kind, admission: spaced(i18n, s.unit.admission) })}
-        </p>
-      </section>
-
-      <section className="panel library-section current" aria-labelledby="src-entry">
-        <h3 id="src-entry">{t("library.source.entry", { id: s.entry.id })}</h3>
-        <dl className="unit-evidence">
-          <Row label={t("library.source.wrote")}>
-            <span className="french">{s.entry.original_input}</span>
-          </Row>
-          <Row label={t("library.source.context")}>{s.entry.original_context || <em>{t("library.noneLower")}</em>}</Row>
-          <Row label={t("library.source.recorded")}>{s.entry.created_at}</Row>
-        </dl>
-        {onOpenRecord ? (
-          <button type="button" className="ghost" onClick={() => onOpenRecord(s.entry.id)}>
-            {t("library.source.openRecord", { id: s.entry.id })}
-          </button>
-        ) : null}
-      </section>
-
+  const processing = (
+    <>
       <section className={`panel library-section ${isCurrent ? "current" : "history"}`} aria-labelledby="src-extraction">
         <h3 id="src-extraction">{t("library.source.extraction", { version: s.extraction.version })}</h3>
         <p className="hint">{t("library.source.extraction.hint")}</p>
@@ -1090,6 +1123,119 @@ function SourceScreen({
             : t("library.source.latest", { version: interp.analysis.version })}
         </p>
       </section>
+    </>
+  );
+  return (
+    <div>
+      {demo ? <nav className="demo-return" aria-label={t("demo.return")}>{nav}</nav> : null}
+      <section className="panel" aria-label={t("library.source.region")}>
+        <h2 ref={headingRef} tabIndex={-1} className="library-title">
+          {t("library.source.title", { unit: s.unit.unit_id, record: s.entry.id })}
+        </h2>
+        {demo ? null : nav}
+        {demo && s.annotation.status !== "invalid" && s.annotation.current_concept_id !== null ? (
+          <p className="demo-why">
+            {tn("demo.source.why", {
+              concept: (
+                <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
+                  {t("library.conceptLink", { id: s.annotation.current_concept_id })}
+                </button>
+              ),
+              unit: s.unit.unit_id,
+            })}
+          </p>
+        ) : null}
+        <p className="hint">{t("library.source.hint")}</p>
+      </section>
+      {demo ? (
+        <>
+      <section className="panel library-section current" aria-labelledby="src-entry">
+        <h3 id="src-entry">{t("library.source.entry", { id: s.entry.id })}</h3>
+        {demo ? <blockquote className="demo-question french">{s.entry.original_input}</blockquote> : null}
+        <dl className="unit-evidence">
+          {demo ? null : (
+            <Row label={t("library.source.wrote")}>
+              <span className="french">{s.entry.original_input}</span>
+            </Row>
+          )}
+          <Row label={t("library.source.context")}>{s.entry.original_context || <em>{t("library.noneLower")}</em>}</Row>
+          <Row label={t("library.source.recorded")}>{s.entry.created_at}</Row>
+        </dl>
+        {onOpenRecord ? (
+          <button type="button" className="ghost" onClick={() => onOpenRecord(s.entry.id)}>
+            {t("library.source.openRecord", { id: s.entry.id })}
+          </button>
+        ) : null}
+      </section>
+
+      <section className="panel library-section" aria-labelledby="src-unit">
+        <h3 id="src-unit">{t("library.source.unit", { id: s.unit.unit_id })}</h3>
+        <p>
+          <strong>{s.unit.canonical}</strong>: {s.unit.statement}
+        </p>
+        {s.unit.example ? <FrenchExample text={s.unit.example} /> : null}
+        <p className="hint">
+          {s.annotation.status === "invalid"
+            ? t("library.source.now.invalid")
+            : s.annotation.current_concept_id !== null
+              ? tn("library.source.now.filed", {
+                  concept: (
+                    <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
+                      {t("library.conceptLink", { id: s.annotation.current_concept_id })}
+                    </button>
+                  ),
+                })
+              : t("library.source.now.none")}{" "}
+          {t("library.source.nowMeta", { kind: s.unit.kind, admission: spaced(i18n, s.unit.admission) })}
+        </p>
+      </section>
+          {processing}
+        </>
+      ) : (
+        <>
+      <section className="panel library-section" aria-labelledby="src-unit">
+        <h3 id="src-unit">{t("library.source.unit", { id: s.unit.unit_id })}</h3>
+        <p>
+          <strong>{s.unit.canonical}</strong>: {s.unit.statement}
+        </p>
+        {s.unit.example ? <FrenchExample text={s.unit.example} /> : null}
+        <p className="hint">
+          {s.annotation.status === "invalid"
+            ? t("library.source.now.invalid")
+            : s.annotation.current_concept_id !== null
+              ? tn("library.source.now.filed", {
+                  concept: (
+                    <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
+                      {t("library.conceptLink", { id: s.annotation.current_concept_id })}
+                    </button>
+                  ),
+                })
+              : t("library.source.now.none")}{" "}
+          {t("library.source.nowMeta", { kind: s.unit.kind, admission: spaced(i18n, s.unit.admission) })}
+        </p>
+      </section>
+
+      <section className="panel library-section current" aria-labelledby="src-entry">
+        <h3 id="src-entry">{t("library.source.entry", { id: s.entry.id })}</h3>
+        {demo ? <blockquote className="demo-question french">{s.entry.original_input}</blockquote> : null}
+        <dl className="unit-evidence">
+          {demo ? null : (
+            <Row label={t("library.source.wrote")}>
+              <span className="french">{s.entry.original_input}</span>
+            </Row>
+          )}
+          <Row label={t("library.source.context")}>{s.entry.original_context || <em>{t("library.noneLower")}</em>}</Row>
+          <Row label={t("library.source.recorded")}>{s.entry.created_at}</Row>
+        </dl>
+        {onOpenRecord ? (
+          <button type="button" className="ghost" onClick={() => onOpenRecord(s.entry.id)}>
+            {t("library.source.openRecord", { id: s.entry.id })}
+          </button>
+        ) : null}
+      </section>
+          {processing}
+        </>
+      )}
     </div>
   );
 }

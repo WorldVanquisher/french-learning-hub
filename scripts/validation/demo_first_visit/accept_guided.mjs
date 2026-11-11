@@ -93,17 +93,40 @@ for (const locale of ["en", "zh-CN"]) {
       await shot(`${n}-concept-${ex.key}`);
       await page.locator(".library-section.current .library-unit .link-button").first().click();
       await page.waitForSelector("#src-entry");
-      check(`${tag}: ${ex.key}: evidence shows a learner question`, (await page.locator("#src-entry ~ dl .french").innerText()).length > 0);
+      check(`${tag}: ${ex.key}: evidence shows a learner question`, (await page.locator("#src-entry ~ .demo-question, #src-entry ~ dl .french").first().innerText()).length > 0);
       await noSideScroll(`${ex.key} evidence`);
       await shot(`${n}-evidence-${ex.key}`);
-      await page.locator(".actions button").first().click(); // back to the Concept
+      await page.locator(".demo-return .actions button, .actions button").first().click(); // back to the Concept
       await page.waitForSelector(".library-concept h2");
-      await page.locator(".library-concept button.ghost").first().click(); // back to the example
+      await page.locator(".demo-return button, .library-concept button.ghost").first().click(); // back to the example
       await page.waitForSelector(".demo-question");
       check(`${tag}: ${ex.key}: returned to the same example`, (await page.locator(".demo-question").innerText()).includes(ex.question));
       await page.locator(".demo-example > .panel button.ghost").first().click(); // back to the start
       await page.waitForSelector(".demo-example-card");
       check(`${tag}: ${ex.key}: focus back on its example card`, await page.evaluate((k) => document.activeElement?.id === `demo-example-${k}`, ex.key));
+    }
+
+    // The browser's (or phone's) Back retraces the screens without leaving the demo.
+    const startUrl = page.url();
+    await page.click("#demo-example-il-faut-venir");
+    await page.waitForSelector(".demo-question");
+    await page.locator("#demo-step-concepts ~ ul button.primary").first().click();
+    await page.waitForSelector(".library-concept h2");
+    await page.goBack();
+    await page.waitForSelector(".demo-question");
+    check(`${tag}: browser Back from a Concept returns to its example`, (await page.locator(".demo-question").innerText()).includes("viennes"));
+    await page.goBack();
+    await page.waitForSelector(".demo-example-card");
+    check(`${tag}: browser Back from an example returns to the start`, page.url() === startUrl && (await page.locator(".demo-lead").isVisible()));
+    check(`${tag}: browser Back restores focus on the example card`, await page.evaluate(() => document.activeElement?.id === "demo-example-il-faut-venir"));
+
+    // Semantic scores in a mechanical build carry their own notice.
+    if (expectVectors === "mechanical") {
+      await page.check('input[name="library-mode"][value="semantic"]');
+      await page.click('form[role=search] button[type=submit]');
+      await page.waitForSelector(".demo-mechanical-results");
+      check(`${tag}: mechanical notice beside semantic scores`, await page.locator(".demo-mechanical-results").isVisible());
+      await page.check('input[name="library-mode"][value="keyword"]');
     }
 
     // Search state survives a guided example.

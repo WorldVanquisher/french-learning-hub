@@ -496,6 +496,24 @@ below them for returning visitors.
   beside it) walks every example in both languages at both widths, plus the
   loading, failed-read and no-match states.
 
+Navigation and evidence (second change of the same task):
+
+- **Back:** each screen is a browser-history entry on the same URL (no route,
+  nothing sent), so the browser's or phone's Back retraces Concept → example →
+  start instead of leaving the demo. The in-page back actions stay in a bar
+  that remains in view while scrolling.
+- **Concept and evidence:** a Concept page names itself, folds its identity
+  details, says for each supporting unit which record it was taken from, and
+  leaves out empty relation and history sections. The source page puts the
+  learner's question first, says why the record is shown (the unit taken from
+  it and the Concept it is filed under), and keeps the extraction and
+  interpretation (the provenance trail) visible after the unit. Long
+  identifiers wrap instead of widening the page.
+- **Mechanical scores:** in a mechanical build, semantic and hybrid results
+  carry their own notice that the order only shows how ranking works and is
+  not evidence of relevance; a model build shows none.
+- The private workbench's Knowledge Library is unchanged by all of this.
+
 ## Limits
 
 - **Synthetic data:** 11 questions (3 written in French), 16 units and 14

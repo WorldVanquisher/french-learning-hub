@@ -12,6 +12,8 @@
   the example's card;
 - keyboard entry (Tab to the first card, Enter opens it), no horizontal scroll
   on any screen, search query and results kept across an example;
+- the browser's Back: Concept → its example → the start, same URL, focus on the
+  example card; in a mechanical build, the notice beside semantic scores;
 - failure and edge states: a slow source read (loading), a failed Concept read
   (alert with retry, then recovery) and a keyword search with no match;
 - every request a same-origin GET on the demo allowlist, and no console errors.

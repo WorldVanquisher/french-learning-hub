@@ -76,7 +76,7 @@ const info = {
   counters: { preset_vector_lookups: 0, refused_vector_lookups: 0 },
 };
 
-function demoServer(fail: Record<string, number> = {}) {
+function demoServer(fail: Record<string, number> = {}, realModel = false) {
   const calls: Array<{ method: string; url: string }> = [];
   globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input), "http://localhost");
@@ -88,7 +88,13 @@ function demoServer(fail: Record<string, number> = {}) {
       reply(200, { schema_version: "knowledge_library_search_v1", query: url.searchParams.get("q") ?? "", tokens: [], state: "all", limit: 20,
         total_matches: results.length, truncated: false,
         results: results.map(({ c, n }) => ({ concept: c, match_tier: "identity", matched_fields: ["target"], current_member_count: n, supporting_unit_count: n })) });
-    if (path === "/knowledge-library/demo") return reply(200, info);
+    if (path === "/knowledge-library/demo") return reply(200, { ...info, artifact: { ...info.artifact, real_model: realModel } });
+    if (path === "/knowledge-library/demo/semantic-search")
+      return reply(200, { schema_version: "knowledge_library_semantic_search_v2", query: "doing something right now", query_representation: "q", state: "all", limit: 20,
+        index: { space: "s", collection: "c", representation: "r", model_id: "flh073-mechanical-hash@1", dimensions: 64, published_run_id: "p", published_at: null,
+          last_run_operation: "artifact", last_run_outcome: "published", last_run_finished_at: null, last_error: "", health_verified: false, note: "" },
+        considered: 14, skipped: { missing: 0, stale: 0, incompatible: 0, non_positive: 0 }, filtered_by_state: 0, score_note: "",
+        results: [{ concept: concept(12, "the pronouns y and en"), similarity: 0.15, current_member_count: 2, supporting_unit_count: 2 }] });
     if (path === "/knowledge-library/concepts") {
       const q = url.searchParams.get("q");
       if (q === "pronouns") return search([{ c: concept(12, "the pronouns y and en"), n: 2 }]);
@@ -186,5 +192,70 @@ describe("Public demo guided path", () => {
     fireEvent.click(screen.getByRole("button", { name: "One question, two Concepts" }));
     fireEvent.click(await screen.findByRole("button", { name: "Search for “action en cours” instead" }));
     expect(await screen.findByLabelText("Search learned material")).toHaveValue("action en cours");
+  });
+});
+
+describe("Public demo interactions", () => {
+  it("lets the browser's Back retrace example → Concept → example → start without leaving the demo", async () => {
+    demoServer();
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    fireEvent.click(await screen.findByRole("button", { name: /One question, two pronouns/ }));
+    await screen.findByText(QUESTION);
+    fireEvent.click(screen.getByRole("button", { name: "Open the Concept and its evidence" }));
+    await screen.findByRole("heading", { level: 2, name: /the pronouns y and en/ });
+
+    window.history.back();
+    expect(await screen.findByText(QUESTION)).toBeInTheDocument();
+    window.history.back();
+    await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns/ })).toHaveFocus());
+  });
+
+  it("puts a mechanical-vector notice beside semantic scores, and none for a real-model build", async () => {
+    demoServer();
+    const { unmount } = render(<StrictMode><PublicDemoApp /></StrictMode>);
+    await screen.findByRole("button", { name: /One question, two pronouns/ });
+    fireEvent.click(screen.getByRole("radio", { name: "Semantic" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    const results = await screen.findByRole("region", { name: "Semantic results" });
+    expect(within(results).getByRole("note")).toHaveTextContent("It is not evidence that these Concepts are related to the query.");
+    unmount();
+
+    demoServer({}, true);
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    await screen.findByRole("button", { name: /One question, two pronouns/ });
+    expect(screen.queryByText("Development build")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Semantic" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    const real = await screen.findByRole("region", { name: "Semantic results" });
+    expect(within(real).queryByRole("note")).toBeNull();
+  });
+
+  it("separates the Concept, its evidence and the learner's question, and keeps one set of back actions in view", async () => {
+    demoServer();
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    fireEvent.change(await screen.findByLabelText("Search learned material"), { target: { value: "pronouns" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.click(await screen.findByRole("button", { name: "the pronouns y and en" }));
+    await screen.findByRole("heading", { level: 2, name: /the pronouns y and en/ });
+    const nav = screen.getByRole("navigation", { name: "Return" });
+    expect(within(nav).getByRole("button", { name: "← Back to results for “pronouns”" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "← Back to results for “pronouns”" })).toHaveLength(1);
+    expect(screen.getByText("Concept details: status, type and identity")).toBeInTheDocument();
+    expect(screen.getAllByText("Evidence: taken from learning record #9 and filed under this Concept.")).toHaveLength(2);
+    expect(screen.queryByRole("heading", { name: /Linked units/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /History: no longer current/ })).toBeNull();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "View source record #9" })[0]);
+    const entry = await screen.findByRole("heading", { level: 3, name: "Original learning record #9" });
+    const question = screen.getByText(QUESTION);
+    // The learner's question comes before the unit taken from it.
+    expect(question.compareDocumentPosition(screen.getByRole("heading", { level: 3, name: "The unit (#12)" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(entry).toBeInTheDocument();
+    expect(screen.getByText(/Why this record is shown: unit #12 was taken from it and is filed under/)).toBeInTheDocument();
+    // The provenance trail stays visible after the unit.
+    expect(screen.getByRole("heading", { level: 3, name: "Interpretation this extraction used: analysis v1" })).toBeVisible();
+    const sourceNav = screen.getByRole("navigation", { name: "Return" });
+    expect(within(sourceNav).getAllByRole("button")).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "← Back to concept #12" })).toHaveLength(1);
   });
 });

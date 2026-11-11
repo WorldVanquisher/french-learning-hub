@@ -1050,6 +1050,13 @@ export const en = {
   "demo.example.next": "Keep exploring",
   "demo.example.searchYourself": "Search the library yourself",
   "demo.search.heading": "Or search the library",
+  "demo.results.mechanical.strong": "Placeholder vectors:",
+  "demo.results.mechanical": "{strong} this order only shows how the ranking works. It is not evidence that these Concepts are related to the query.",
+  "demo.return": "Return",
+  "demo.concept.eyebrow": "Concept",
+  "demo.concept.details": "Concept details: status, type and identity",
+  "demo.concept.whyEvidence": "Evidence: taken from learning record #{record} and filed under this Concept.",
+  "demo.source.why": "Why this record is shown: unit #{unit} was taken from it and is filed under {concept}.",
   // Concept content and membership comparison (FLH-093). Read-only views; the
   // decision vocabulary stays untranslated.
   "content.show": "Show what concept #{id} contains",
