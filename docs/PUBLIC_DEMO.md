@@ -467,6 +467,83 @@ artifact needs a new real-vector run in a **new** work directory (23 positions,
 3 POSTs). `scripts/validation/demo_refresh/accept_paths.mjs` walks these paths in
 English and 简体中文 at desktop and phone widths against a running package.
 
+## First visit: guided examples (demo first-visit task)
+
+The starting screen says in one sentence what a visitor can do, then offers the
+three authored questions above as **guided examples**, with direct search kept
+below them for returning visitors.
+
+- **Example screen:** the learner's question (marked French, unchanged in every
+  interface language) → the units extracted from it → the Concepts they are
+  filed under, with how much evidence comes from this question and how much
+  from others. Each unit links to its source; each Concept opens with its
+  evidence. Back actions return to the example, and from there to the starting
+  screen with focus on that example's card. The search query and results are
+  kept throughout.
+- **No new API:** an example is resolved in the browser from the existing reads
+  (one keyword search, the matched Concepts, one unit source) using a fixed
+  query and a word from one unit's stored wording (`web/src/demo/examples.ts`).
+  If a build lacks an example, the page says so and offers that search instead
+  of guessing; `GuidedExample.test.tsx` keeps the definitions in step with
+  `scripts/demo/flh073/fixtures/catalog.json`.
+- **Labels:** *Read-only* and *Synthetic data* stay in the header on every
+  screen; a mechanical build adds *Development build* and a plain warning that
+  semantic and hybrid results in that build are not meaningful. The
+  synthetic/read-only/no-AI notice and the artifact identity line stay visible
+  on the starting screen, just below the examples (so the first example fits
+  on a phone's first screen); only the longer explanation of Concepts and
+  search modes is folded under "How this demo works".
+- **Check:** `scripts/validation/demo_first_visit/accept_guided.mjs` (README
+  beside it) walks every example in both languages at both widths, plus the
+  loading, failed-read and no-match states.
+
+Navigation and evidence (second change of the same task):
+
+- **Back:** each screen is a browser-history entry on the same URL (no route,
+  nothing sent), so the browser's or phone's Back retraces Concept → example →
+  start instead of leaving the demo. The in-page back actions stay in a bar
+  that remains in view while scrolling.
+- **Concept and evidence:** a Concept page names itself, folds its identity
+  details, says for each supporting unit which record it was taken from, and
+  leaves out empty relation and history sections. The source page puts the
+  learner's question first, says why the record is shown (the unit taken from
+  it and the Concept it is filed under), and keeps the extraction and
+  interpretation (the provenance trail) visible after the unit. Long
+  identifiers wrap instead of widening the page.
+- **Mechanical scores:** in a mechanical build, semantic and hybrid results
+  carry their own notice that the order only shows how ranking works and is
+  not evidence of relevance; a model build shows none.
+- The private workbench's Knowledge Library is unchanged by all of this.
+
+Resilience: a failed read of the demo description is shown with its status and
+a *Try again* that recovers in place (before, the page stopped at "The demo is
+unavailable" until reloaded). Slow, failed, out-of-order and empty reads are
+exercised by `scripts/validation/demo_first_visit/accept_resilience.mjs` and
+`web/src/demo/Resilience.test.tsx`.
+
+Direct links and accessibility:
+
+- **Direct links are URL fragments:** `/#example=y-en`, `/#concept=12`,
+  `/#concept=12&unit=14`, optionally with `example=<key>` so the back actions
+  return to that example. The address bar follows the visitor, so copying it
+  shares the current screen, and a reload stays on it. Path links
+  (`/example/y-en`, `/concept/12`) cannot work with the current serving: the
+  server serves the demo only at `/` (no SPA fallback) and the demo boundary
+  answers unknown paths `404`. A fragment is never sent to the server, so it
+  needs no route, allowlist or nginx change. Malformed or unknown links open
+  the starting screen; a link to a Concept that does not exist shows that
+  read's error with the way back. Links carry IDs only, which are stable for a
+  given catalog and change when the catalog changes.
+- **Keyboard:** the whole guided path (start → example → Concept → evidence
+  → back to the Concept → back to the example → start) works with Tab,
+  Shift+Tab and Enter in 21 key presses. Each screen focuses its heading, which
+  is never hidden under the return bar, and focus returns to the card a visitor
+  started from. The return bar is in the same place in loading and error
+  states.
+- **Motion:** the demo has no animations, transitions or smooth scrolling, so
+  `prefers-reduced-motion` needs no special case.
+- **Check:** `scripts/validation/demo_first_visit/accept_a11y.mjs`.
+
 ## Limits
 
 - **Synthetic data:** 11 questions (3 written in French), 16 units and 14
