@@ -272,6 +272,9 @@ cmd/semantic-index         operator CLI for the optional semantic index
 internal/                  domain, application, storage/sqlite, transport/http,
                            analyzer, extractor, embedding, config, captureclient
 migrations/                embedded, forward-only SQL migrations
+tools/extraction/          extraction-model data preparation and evaluation harness
+                           (synthetic, unreviewed; no trained model; see its README)
+cmd/extraction-render      renders/validates extraction prompts with the production code
 web/                       React + Vite + TypeScript workbench
 examples/captures/         example learning_capture_v1 documents
 captures/, seed_demo.py    16 synthetic captures and an importer that posts them

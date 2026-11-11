@@ -1,0 +1,18 @@
+{
+  "$comment": "Pinned candidate configuration (not yet run). Qwen/Qwen3-1.7B, Apache-2.0, revision verified on the Hugging Face API 2026-11-10. Weights are supplied as a SageMaker input channel (network isolation); local_files_only stays true.",
+  "model_name_or_path": "/opt/ml/input/data/model",
+  "revision": null,
+  "tokenizer_name_or_path": "/opt/ml/input/data/model",
+  "chat_template_kwargs": {"enable_thinking": false},
+  "max_length": 1024,
+  "learning_rate": 0.0002,
+  "epochs": 3,
+  "batch_size": 4,
+  "grad_accum": 4,
+  "seed": 1,
+  "dtype": "bfloat16",
+  "eval_every": 25,
+  "lora": {"r": 16, "lora_alpha": 32, "lora_dropout": 0.05, "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]},
+  "smoke": false,
+  "local_files_only": true
+}

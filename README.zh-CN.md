@@ -207,6 +207,9 @@ cmd/semantic-index         可选语义索引的运维命令行
 internal/                  domain、application、storage/sqlite、transport/http、
                            analyzer、extractor、embedding、config、captureclient
 migrations/                内嵌、只向前的 SQL 迁移
+tools/extraction/          知识点提取模型的数据准备与评测工具
+                           （合成、未审核；没有训练好的模型；见其 README）
+cmd/extraction-render      用生产代码渲染与校验提取提示词
 web/                       React + Vite + TypeScript 工作台
 examples/captures/         learning_capture_v1 示例文档
 captures/, seed_demo.py    16 个合成 capture 及其导入脚本，脚本会写入你指定的
