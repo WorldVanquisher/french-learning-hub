@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import * as api from "../api/client";
 import { ApiError, NetworkError } from "../api/client";
 import {
@@ -10,6 +10,7 @@ import {
 } from "../types/learning";
 import { OutcomeBanner, RefreshBanner, type Outcome, type RefreshState } from "./ExplicitAction";
 import { recorded, reviewedLanguages, useExplanationLanguage, type ExplanationMode } from "../explanationLanguage";
+import { UnsavedDraftContext } from "./unsavedDraft";
 import { msg, useI18n, type MessageKey } from "../i18n";
 
 type Load<T> =
@@ -29,6 +30,9 @@ type Draft = {
   note: string;
 };
 const EMPTY_DRAFT: Draft = { status: null, category: "", explanation: "", explanationEn: "", explanationZh: "", note: "" };
+// A draft holds unsaved input once a decision, a category or any text was entered.
+const hasInput = (d: Draft) =>
+  d.status !== null || d.category !== "" || [d.explanation, d.explanationEn, d.explanationZh, d.note].some((x) => x.trim() !== "");
 
 // Everything the panel tracks for one analysis version. Keeping it per version
 // means a draft, a pending request, or a late response can only ever affect the
@@ -112,6 +116,13 @@ export function FeedbackPanel({
   const { mode } = useExplanationLanguage();
   const [slots, setSlots] = useState<Record<number, Slot>>({});
   const inFlight = useRef(new Set<number>());
+  // Learning Records asks before discarding a record with unsaved input (unsavedDraft.ts).
+  const reportDraft = useContext(UnsavedDraftContext);
+  const hasDraft = Object.values(slots).some((s) => hasInput(s.draft));
+  useEffect(() => {
+    reportDraft(hasDraft);
+  }, [reportDraft, hasDraft]);
+  useEffect(() => () => reportDraft(false), [reportDraft]);
   const mounted = useRef(true);
   // Set in setup, cleared in cleanup: StrictMode's development effect replay
   // (setup, cleanup, setup) must leave it true, while a real unmount clears it.

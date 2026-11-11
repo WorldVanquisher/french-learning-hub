@@ -198,6 +198,11 @@ export const zhCN: Record<MessageKey, string> = {
 
   // Record detail
   "record.back": "← 返回记录列表",
+  "records.unsaved.open": "记录 #{id} 有未保存的反馈。现在打开记录 #{next} 会丢弃它。",
+  "records.unsaved.close": "记录 #{id} 有未保存的反馈。现在返回列表会丢弃它。",
+  "records.unsaved.discardOpen": "丢弃并打开记录 #{next}",
+  "records.unsaved.discardClose": "丢弃并返回",
+  "records.unsaved.stay": "继续编辑记录 #{id}",
   "record.heading": "记录 #{id}",
   "record.original": "原始输入与上下文",
   "record.originalLoading": "正在加载原始记录…",
