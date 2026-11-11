@@ -52,20 +52,40 @@ const (
 	maxAnnotationNoteRunes   = 300
 )
 
-// ListeningMaterial is one saved video link. It is never updated.
+// Listening material source kinds (migration 021). A YouTube material has a
+// video ID and its canonical link; an authored script (listening_script.go)
+// has neither: it is written text with no audio, video or timestamps.
+const (
+	ListeningSourceYouTube        = "youtube"
+	ListeningSourceAuthoredScript = "authored_script"
+)
+
+// ListeningMaterial is one saved video link or one imported authored script.
+// It is never updated.
 type ListeningMaterial struct {
-	ID        int64
-	VideoID   string
-	SourceURL string // canonical https://www.youtube.com/watch?v=<id>
-	Title     string
-	CreatedAt time.Time
+	ID         int64
+	SourceKind string // ListeningSourceYouTube or ListeningSourceAuthoredScript
+	VideoID    string // YouTube only; empty for an authored script
+	SourceURL  string // YouTube only: canonical https://www.youtube.com/watch?v=<id>
+	// PackScriptID names the imported authored script (<pack>/<script id>);
+	// empty for YouTube material.
+	PackScriptID string
+	Title        string
+	CreatedAt    time.Time
+}
+
+// IsAuthoredScript reports whether the material is script-only.
+func (m ListeningMaterial) IsAuthoredScript() bool {
+	return m.SourceKind == ListeningSourceAuthoredScript
 }
 
 // TranscriptSegment is one learner-supplied line. StartSeconds is set only when
-// the learner's source supplied a timestamp for it.
+// the learner's source supplied a timestamp for it. Speaker is set only for an
+// authored script, whose lines name their speaker; a learner transcript has none.
 type TranscriptSegment struct {
 	Index        int    `json:"index"`
 	StartSeconds *int   `json:"start_seconds"`
+	Speaker      string `json:"speaker,omitempty"`
 	Text         string `json:"text"`
 }
 
@@ -90,13 +110,39 @@ const (
 // French; the rationale is stored in English and Simplified Chinese (FLH-095
 // convention: both from the same request). Segments are 1-based references to
 // the transcript the exercise was generated from.
+//
+// ID, Choices, AcceptedAlternatives, WrongAnswers and Evidence belong to
+// authored scripts only (ValidateAuthoredListeningExercise); generated content
+// never carries them, and ValidateListeningExercise refuses them.
 type ListeningItem struct {
+	ID             string `json:"id,omitempty"`
 	Kind           string `json:"kind"`
 	Question       string `json:"question"`
 	ExpectedAnswer string `json:"expected_answer"`
 	RationaleEN    string `json:"rationale_en"`
 	RationaleZH    string `json:"rationale_zh"`
 	Segments       []int  `json:"segments"`
+	// Choices are the options in authored order (single choice); empty for a
+	// short answer. ExpectedAnswer is exactly one of them.
+	Choices              []string               `json:"choices,omitempty"`
+	AcceptedAlternatives []string               `json:"accepted_alternatives,omitempty"`
+	WrongAnswers         []ListeningWrongAnswer `json:"wrong_answers,omitempty"`
+	Evidence             []ListeningEvidence    `json:"evidence,omitempty"`
+}
+
+// ListeningWrongAnswer is an authored wrong choice with the reason, in the
+// same shape as an authored reading wrong answer.
+type ListeningWrongAnswer = ReadingWrongAnswer
+
+// ListeningEvidence is a verbatim excerpt of one segment of an authored
+// script. It occurs exactly once in that segment.
+type ListeningEvidence struct {
+	Segment int    `json:"segment"`
+	Excerpt string `json:"excerpt"`
+}
+
+func (it ListeningItem) hasAuthoredFields() bool {
+	return it.ID != "" || len(it.Choices) > 0 || len(it.AcceptedAlternatives) > 0 || len(it.WrongAnswers) > 0 || len(it.Evidence) > 0
 }
 
 // ListeningAnnotation is a vocabulary or grammar note tied to one segment.
@@ -162,6 +208,11 @@ type ListeningRepository interface {
 	GetTranscript(ctx context.Context, id int64) (ListeningTranscript, error)
 	CreateExercise(ctx context.Context, e ListeningExercise) (ListeningExercise, error)
 	ListExercises(ctx context.Context, materialID int64) ([]ListeningExercise, error)
+	// ImportAuthoredScript stores an authored script as material (no link),
+	// its lines as transcript version 1 (no timestamps) and its authored
+	// exercise, in one transaction. The same pack script with the same content
+	// replays (true); different content is ErrListeningScriptConflict.
+	ImportAuthoredScript(ctx context.Context, m ListeningMaterial, segments []TranscriptSegment, content ListeningExerciseContent, now time.Time) (ListeningMaterial, bool, error)
 }
 
 var youTubeID = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
@@ -286,8 +337,13 @@ var clockTime = regexp.MustCompile(`\b\d{1,2}:\d{2}(?::\d{2})?\b`)
 // item, unknown kinds, segment references outside the transcript, annotation
 // excerpts that do not occur verbatim in their segment, and any clock time in
 // generated text that does not occur in the transcript (timestamps shown to the
-// learner come only from the learner's own source). Text is trimmed in place.
+// learner come only from the learner's own source), and the fields reserved for
+// authored scripts. Text is trimmed in place.
 func ValidateListeningExercise(segments []TranscriptSegment, c *ListeningExerciseContent) error {
+	return validateListeningContent(segments, c, false)
+}
+
+func validateListeningContent(segments []TranscriptSegment, c *ListeningExerciseContent, authored bool) error {
 	bad := func(format string, a ...any) error {
 		return fmt.Errorf("%w: "+format, append([]any{ErrValidation}, a...)...)
 	}
@@ -298,6 +354,13 @@ func ValidateListeningExercise(segments []TranscriptSegment, c *ListeningExercis
 		transcript.WriteString("\n")
 	}
 	noFabricatedTime := func(field, text string) error {
+		// An authored script has no audio or video, so a clock time in its
+		// explanations is a time of day from the story (the script says "onze
+		// heures et demie", the explanation "11:30"), never a playback position.
+		// Generated content keeps the rule: it must not invent times for a video.
+		if authored {
+			return nil
+		}
 		for _, t := range clockTime.FindAllString(text, -1) {
 			if !strings.Contains(transcript.String(), t) {
 				return bad("%s cites a time (%s) that the transcript does not contain", field, t)
@@ -315,13 +378,27 @@ func ValidateListeningExercise(segments []TranscriptSegment, c *ListeningExercis
 		}
 		return noFabricatedTime(field, *s)
 	}
-	if len(c.Items) < 2 || len(c.Items) > maxListeningItems {
-		return bad("expected 2 to %d items, got %d", maxListeningItems, len(c.Items))
+	maxItems := maxListeningItems
+	if authored {
+		maxItems = maxAuthoredListeningItems
+	}
+	if len(c.Items) < 2 || len(c.Items) > maxItems {
+		return bad("expected 2 to %d items, got %d", maxItems, len(c.Items))
 	}
 	counts := map[string]int{}
+	ids := map[string]bool{}
 	for i := range c.Items {
 		it := &c.Items[i]
 		field := fmt.Sprintf("item %d", i+1)
+		if !authored && it.hasAuthoredFields() {
+			return bad("%s carries fields reserved for authored scripts", field)
+		}
+		if authored {
+			if !authoredItemID.MatchString(it.ID) || ids[it.ID] {
+				return bad("%s id %q is malformed or repeated", field, it.ID)
+			}
+			ids[it.ID] = true
+		}
 		switch it.Kind {
 		case ListeningMainIdea, ListeningDetail, ListeningInference:
 		default:
@@ -351,12 +428,27 @@ func ValidateListeningExercise(segments []TranscriptSegment, c *ListeningExercis
 			}
 			seen[ref] = true
 		}
+		if authored {
+			if err := validateAuthoredListeningItem(segments, it, seen, field, text); err != nil {
+				return err
+			}
+		}
 	}
-	if counts[ListeningMainIdea] != 1 || counts[ListeningDetail] < 1 || counts[ListeningInference] > 1 {
+	// A generated exercise has at most one inference item, so the model cannot
+	// pad it with guesses. An authored script states each of its inferences
+	// with evidence, so it may have several.
+	if counts[ListeningMainIdea] != 1 || counts[ListeningDetail] < 1 || (!authored && counts[ListeningInference] > 1) {
+		if authored {
+			return bad("expected one main_idea and at least one detail item")
+		}
 		return bad("expected one main_idea, at least one detail and at most one inference item")
 	}
-	if len(c.Annotations) < 1 || len(c.Annotations) > maxListeningAnnotations {
-		return bad("expected 1 to %d annotations, got %d", maxListeningAnnotations, len(c.Annotations))
+	minAnnotations := 1
+	if authored {
+		minAnnotations = 0 // a vocabulary note is added only where the script has the exact words
+	}
+	if len(c.Annotations) < minAnnotations || len(c.Annotations) > maxListeningAnnotations {
+		return bad("expected %d to %d annotations, got %d", minAnnotations, maxListeningAnnotations, len(c.Annotations))
 	}
 	for i := range c.Annotations {
 		a := &c.Annotations[i]

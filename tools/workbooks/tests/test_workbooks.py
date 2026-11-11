@@ -100,6 +100,30 @@ class Adapters(unittest.TestCase):
                 for e in q["evidence"]:
                     self.assertEqual(texts[e["segment"]].count(e["excerpt"]), 1)
 
+    def test_listening_script_pack_keeps_every_question_and_invents_nothing(self):
+        pack = adapters.listening_script_pack(self.doc)
+        self.assertEqual(pack["schema_version"], "flh_listening_script_pack_v1")
+        self.assertEqual(len(pack["scripts"]), 12)
+        raw = json.dumps(pack, ensure_ascii=False)
+        for banned in ("http", "youtu", '"audio"', '"video_id"', '"source_url"', '"start_seconds"'):
+            self.assertNotIn(banned, raw)
+        for s, u in zip(pack["scripts"], self.doc["units"]):
+            turns = u["listening"]["turns"]
+            self.assertEqual([(x["id"], x["text"]) for x in s["lines"]], [(t["id"], t["text"]) for t in turns])
+            self.assertEqual([q["id"] for q in s["questions"]], [q["id"] for q in u["listening"]["questions"]])
+            for q, src in zip(s["questions"], u["listening"]["questions"]):
+                if src["type"] == "single_choice":
+                    self.assertEqual(q["choices"], [o["text"] for o in src["options"]])
+                    self.assertEqual(q["expected_answer"], next(o["text"] for o in src["options"] if o["correct"]))
+                    self.assertEqual(len(q["wrong_answers"]), len(src["options"]) - 1)
+                else:
+                    self.assertNotIn("choices", q)
+                for e in q["evidence"]:
+                    self.assertIn(e["segment"], q["segments"])
+                    self.assertEqual(s["lines"][e["segment"] - 1]["text"].count(e["excerpt"]), 1)
+            for a in s["annotations"]:
+                self.assertEqual(s["lines"][a["segment"] - 1]["text"].count(a["excerpt"]), 1)
+
     def test_lesson_text_splits_into_workbook_paragraphs(self):
         for b, u in zip(adapters.learner_lessons(self.doc)["bodies"], self.doc["units"]):
             parts = [p.strip() for p in b["body"]["text"].split("\n\n")]

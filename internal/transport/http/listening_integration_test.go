@@ -82,8 +82,8 @@ func authoredTranscript(t *testing.T) string {
 }
 
 // buildListeningServer serves the full API over dbPath. generator may be nil
-// (LISTENING_PROVIDER=disabled).
-func buildListeningServer(t *testing.T, dbPath string, generator domain.ListeningExerciseGenerator) (*httptest.Server, *sql.DB, *transporthttp.Handler) {
+// (LISTENING_PROVIDER=disabled); opts configure the listening service.
+func buildListeningServer(t *testing.T, dbPath string, generator domain.ListeningExerciseGenerator, opts ...application.ListeningOption) (*httptest.Server, *sql.DB, *transporthttp.Handler) {
 	t.Helper()
 	db, err := sqlite.Open(dbPath)
 	if err != nil {
@@ -103,7 +103,7 @@ func buildListeningServer(t *testing.T, dbPath string, generator domain.Listenin
 		application.NewInventoryService(sqlite.NewInventoryRepository(db)), application.NewCaptureService(sqlite.NewCaptureRepository(db)),
 		application.NewKnowledgeService(entryRepo, analysisRepo, feedbackRepo, knowledgeRepo, sqlite.NewAdmissionRepository(db), nil),
 		conceptSvc, effectiveAnnotationSvc, datasetSvc,
-		transporthttp.WithListening(application.NewListeningService(sqlite.NewListeningRepository(db), generator)),
+		transporthttp.WithListening(application.NewListeningService(sqlite.NewListeningRepository(db), generator, opts...)),
 	)
 	srv := httptest.NewServer(handler.Routes())
 	t.Cleanup(func() { srv.Close(); db.Close() })

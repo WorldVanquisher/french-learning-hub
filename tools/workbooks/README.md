@@ -4,17 +4,20 @@ Build, check and render the synthetic workbooks in `content/workbooks/`. It uses
 the Python 3 standard library only. Run every command from this directory.
 
 ```bash
-python3 -m flh_workbooks build            # authoring modules -> content/workbooks/*.json and adapters/
+python3 -m flh_workbooks build            # authoring modules -> content/workbooks/*.json, adapters/ and
+                                          # internal/listening/pack/listening_scripts_v1.json
 python3 -m flh_workbooks check            # quality gates; generated files must equal a fresh build
 python3 -m flh_workbooks render --out DIR # student/teacher Markdown + printable HTML, listening script, checklist
 python3 -m flh_workbooks report --out DIR # inventory and machine-critique flags (reading/listening)
 python3 -m flh_workbooks scan --workbook rl|pw --html STUDENT.html [--pdf-text T] [--pdf-info I]
 python3 -m flh_workbooks capture --question u05-r05 --text "the learner's own question"
-python3 -m unittest discover -s tests     # 20 stdlib tests
+python3 -m unittest discover -s tests     # 21 stdlib tests
 ```
 
-The Go side is `internal/reading/workbook_adapter_test.go`. It validates the
-reading-pack, learner-lesson and writing adapters with the server's own parsers.
+The Go side is `internal/reading/workbook_adapter_test.go`, which validates the
+reading-pack, learner-lesson and writing adapters with the server's own parsers,
+and `internal/listening/script_pack_test.go`, which checks that the embedded
+listening script pack passes `ParseListeningScriptPack` and equals the workbook.
 
 ## Quality gates
 

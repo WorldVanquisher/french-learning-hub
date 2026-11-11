@@ -1,6 +1,7 @@
 """FLH workbooks command line (run from tools/workbooks):
 
-  python3 -m flh_workbooks build              write content/workbooks/*.json from the authoring modules
+  python3 -m flh_workbooks build              write content/workbooks/*.json (and the embedded listening
+                                              script pack) from the authoring modules
   python3 -m flh_workbooks check              quality gates; committed JSON must equal a fresh build
   python3 -m flh_workbooks render --out DIR   student/teacher Markdown + HTML, recording script, TTS script
   python3 -m flh_workbooks scan [--workbook rl|pw] --html F [--pdf-text F] [--pdf-info F]
@@ -18,6 +19,8 @@ from pathlib import Path
 from . import adapters, model, quality, render, report, scan
 
 ADAPTER_DIR = model.CONTENT / "adapters"
+# The listening script pack is embedded by the server, so it lives in its package.
+LISTENING_PACK = model.ROOT / "internal" / "listening" / "pack" / "listening_scripts_v1.json"
 
 
 def outputs():
@@ -28,6 +31,7 @@ def outputs():
         model.RL_PATH: model.dumps(rl),
         ADAPTER_DIR / "reading_pack_workbook_rl_v1.json": adapters.dumps(adapters.reading_pack(rl)),
         ADAPTER_DIR / "reading_learner_lessons_rl_v1.json": adapters.dumps(adapters.learner_lessons(rl)),
+        LISTENING_PACK: adapters.dumps(adapters.listening_script_pack(rl)),
         model.PW_PATH: model.dumps(pw),
         ADAPTER_DIR / "writing_tasks_pw_v1.json": adapters.dumps(adapters.writing_task_bodies(pw)),
         ADAPTER_DIR / "writing_prompts_workbook_pw_v1.json": adapters.dumps(adapters.writing_prompt_set(pw)),

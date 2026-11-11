@@ -626,6 +626,19 @@ practice. Contract: [ARCHITECTURE.md §4.3](../docs/ARCHITECTURE.md#43-listening
   form, so **Send the same record again** after a lost response replays it
   instead of duplicating it. **Open record #N in Learning Records** opens it,
   with **← Back to Listening**; the lesson stays mounted meanwhile.
+- **Workbook listening scripts** lists the 12 written scripts of the synthetic,
+  unreviewed workbook by title (`GET /listening/scripts`; no line or key).
+  **Import …** (`POST /listening/scripts/{id}`, no model call) opens a
+  script-only lesson labelled **Script only · no audio**: no video link, no
+  timestamp, no transcript form and no Prepare button. A lost response reads
+  "unknown whether this script was imported"; importing again is safe (the
+  server replays), and an imported script offers **Open …** instead. Single-
+  choice questions show their choices as radio buttons. **Show the script to
+  the person reading it aloud** shows the lines with their speakers, still
+  without any answer or note. After reveal, each question also shows the
+  accepted alternatives, **Why not « … »** for every wrong choice and the exact
+  words in the cited line. A saved missed point names `Source: authored script,
+  no audio or video (<pack id>)` instead of a video link.
 
 ### Daily Listening
 

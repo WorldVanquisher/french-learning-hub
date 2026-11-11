@@ -90,7 +90,10 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   until you reveal them, and a missed point can be saved as a normal learning
   record. Optionally, a daily pull reads your YouTube playlist's metadata (new
   videos wait for your transcript), prepares at most one lesson a day and can
-  announce it on Telegram; nothing is retried by itself.
+  announce it on Telegram; nothing is retried by itself. The 12 listening
+  scripts of the synthetic workbook import as script-only lessons with their
+  questions, without a model call; they have no audio, video or timestamp, so
+  someone reads the script aloud.
 - Practise exam-style **Reading** with authored example passages or your own
   French article: the passage stays visible, answers and highlighted evidence
   appear only when you reveal them, one opt-in request (`READING_PROVIDER`)

@@ -1,6 +1,7 @@
 package listening
 
 import (
+	"fmt"
 	"time"
 
 	"french-learning-app/internal/application"
@@ -29,8 +30,15 @@ func NewServices(cfg config.Config, repo application.ListeningStore) (*applicati
 	if err != nil {
 		return nil, nil, err
 	}
+	// The authored-script pack is validated here, so neither the server nor the
+	// operator command starts with an invalid one.
+	scripts, err := domain.ParseListeningScriptPack(ScriptPack())
+	if err != nil {
+		return nil, nil, fmt.Errorf("listening scripts: %w", err)
+	}
 	lessons := application.NewListeningService(repo, generator,
-		application.WithPreparationDeadline(cfg.Listening.OpenAITimeout+deadlineMargin))
+		application.WithPreparationDeadline(cfg.Listening.OpenAITimeout+deadlineMargin),
+		application.WithListeningScripts(scripts))
 	var budget time.Duration
 	if source != nil {
 		pages := (cfg.ListeningDaily.PlaylistMaxItems + domain.PlaylistPageSize - 1) / domain.PlaylistPageSize

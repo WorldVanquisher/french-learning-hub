@@ -21,6 +21,7 @@ import type {
 import { randomOperationId } from "./annotationOperation";
 import { alreadySaved, sourceRef } from "./notebookLink";
 import { DailyPanel, NotificationsSection } from "./ListeningDaily";
+import { ScriptsPanel } from "./ListeningScripts";
 
 // Exam Listening Lesson v1 (private workbench only; never in the public demo).
 //
@@ -38,6 +39,10 @@ import { DailyPanel, NotificationsSection } from "./ListeningDaily";
 //   logged or stored, and there is no score or level.
 // - A missed point becomes a normal learning record only through an explicit
 //   "Save learning record", via the existing capture path (source "manual").
+// - Workbook scripts (ListeningScripts.tsx) import as script-only lessons:
+//   no link, video, audio or timestamp exists, so none is shown or attached.
+//   Their authored questions may offer choices; the script can be shown to the
+//   person reading it aloud, while answers and notes stay hidden until reveal.
 
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
 
@@ -87,12 +92,18 @@ export function clock(seconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
-// videoAt links the standard YouTube player at a source-supplied time.
-const videoAt = (m: ListeningMaterial, seconds: number | null) => (seconds === null ? m.source_url : `${m.source_url}&t=${seconds}s`);
+// videoAt links the standard YouTube player at a source-supplied time. An
+// authored script has no link, so it has no video position either.
+const videoAt = (m: ListeningMaterial, seconds: number | null) =>
+  m.source_url === null ? null : seconds === null ? m.source_url : `${m.source_url}&t=${seconds}s`;
+
+const isScript = (m: ListeningMaterial) => m.source_kind === "authored_script";
 
 function VideoLink({ material, seconds = null, label }: { material: ListeningMaterial; seconds?: number | null; label: string }) {
+  const href = videoAt(material, seconds);
+  if (href === null) return null;
   return (
-    <a href={videoAt(material, seconds)} target="_blank" rel="noopener noreferrer">
+    <a href={href} target="_blank" rel="noopener noreferrer">
       {label}
     </a>
   );
@@ -148,6 +159,7 @@ function MaterialList({ epoch, onOpen, onSaved }: { epoch: number; onOpen: (id: 
         </p>
       ) : null}
       <AddMaterialForm onSaved={onSaved} />
+      <ScriptsPanel epoch={epoch} onOpen={onOpen} />
       <section className="panel" aria-label={t("listening.list.region")}>
         <h2>{t("listening.list.heading")}</h2>
         {list.status === "loading" ? (
@@ -169,6 +181,12 @@ function MaterialList({ epoch, onOpen, onSaved }: { epoch: number; onOpen: (id: 
                   {row.material.title}
                 </button>{" "}
                 <span className="tag">{t(stateKey[row.state])}</span>
+                {isScript(row.material) ? (
+                  <>
+                    {" "}
+                    <span className="tag">{t("listening.source.scriptOnly")}</span>
+                  </>
+                ) : null}
                 {row.in_playlist ? (
                   <>
                     {" "}
@@ -284,15 +302,23 @@ function LessonScreen({
           {back}
           <VideoLink material={material} label={t("listening.video.open")} />
         </div>
-        <p className="hint">{t("listening.video.hint")}</p>
+        {isScript(material) ? (
+          <p className="hint">
+            <span className="tag">{t("listening.source.scriptOnly")}</span> {t("listening.script.hint")}
+          </p>
+        ) : (
+          <p className="hint">{t("listening.video.hint")}</p>
+        )}
         {lesson.data.in_playlist ? <p className="hint">{t("listening.lesson.inPlaylist")}</p> : null}
         <p className="hint">
-          {transcript
-            ? t(transcript.has_timestamps ? "listening.transcript.summaryTimed" : "listening.transcript.summary", {
-                version: transcript.version,
-                count: transcript.segments.length,
-              })
-            : t("listening.transcript.none")}
+          {transcript && isScript(material)
+            ? t("listening.script.summary", { count: transcript.segments.length })
+            : transcript
+              ? t(transcript.has_timestamps ? "listening.transcript.summaryTimed" : "listening.transcript.summary", {
+                  version: transcript.version,
+                  count: transcript.segments.length,
+                })
+              : t("listening.transcript.none")}
         </p>
       </section>
 
@@ -498,11 +524,31 @@ function ExerciseView({
   const [revealed, setRevealed] = useState(false);
   const [checks, setChecks] = useState<Record<number, SelfCheck>>({});
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showForReader, setShowForReader] = useState(false);
   const segment = (n: number) => transcript.segments.find((s) => s.index === n);
+  const script = isScript(material);
+  const authored = exercise.generator.startsWith("authored:");
   return (
     <section className="panel listening-exercise" aria-label={t("listening.exercise.region")}>
       <h3>{t("listening.exercise.heading")}</h3>
-      <p className="hint">{t(revealed ? "listening.exercise.revealedHint" : "listening.exercise.hint")}</p>
+      <p className="hint">{t(revealed ? "listening.exercise.revealedHint" : script ? "listening.exercise.hintScript" : "listening.exercise.hint")}</p>
+      {script && !revealed ? (
+        <>
+          <div className="actions">
+            <button type="button" className="ghost" aria-expanded={showForReader} onClick={() => setShowForReader((v) => !v)}>
+              {t(showForReader ? "listening.script.hideForReader" : "listening.script.showForReader")}
+            </button>
+          </div>
+          {showForReader ? (
+            <section className="source-view" aria-label={t("listening.script.readerRegion")}>
+              <p className="hint">{t("listening.script.readerHint")}</p>
+              {transcript.segments.map((s) => (
+                <SegmentLine key={s.index} material={material} s={s} />
+              ))}
+            </section>
+          ) : null}
+        </>
+      ) : null}
       <ol className="listening-items">
         {content.items.map((item, i) => (
           <li
@@ -514,14 +560,36 @@ function ExerciseView({
             <p lang="fr" className="french">
               {item.question}
             </p>
-            <label htmlFor={`listening-answer-${exercise.id}-${i}`}>{t("listening.answer.label", { n: i + 1 })}</label>
-            <textarea
-              id={`listening-answer-${exercise.id}-${i}`}
-              rows={2}
-              autoComplete="off"
-              value={answers[i]}
-              onChange={(e) => setAnswers((prev) => prev.map((a, j) => (j === i ? e.target.value : a)))}
-            />
+            {item.choices && item.choices.length > 0 ? (
+              <fieldset className="listening-choices">
+                <legend>{t("listening.answer.choiceLabel", { n: i + 1 })}</legend>
+                {item.choices.map((choice, c) => (
+                  <label key={c} className="listening-choice">
+                    <input
+                      type="radio"
+                      name={`listening-choice-${exercise.id}-${i}`}
+                      value={choice}
+                      checked={answers[i] === choice}
+                      onChange={() => setAnswers((prev) => prev.map((a, j) => (j === i ? choice : a)))}
+                    />{" "}
+                    <span lang="fr" className="french">
+                      {choice}
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            ) : (
+              <>
+                <label htmlFor={`listening-answer-${exercise.id}-${i}`}>{t("listening.answer.label", { n: i + 1 })}</label>
+                <textarea
+                  id={`listening-answer-${exercise.id}-${i}`}
+                  rows={2}
+                  autoComplete="off"
+                  value={answers[i]}
+                  onChange={(e) => setAnswers((prev) => prev.map((a, j) => (j === i ? e.target.value : a)))}
+                />
+              </>
+            )}
             {revealed ? (
               <Revealed
                 material={material}
@@ -546,6 +614,7 @@ function ExerciseView({
         </div>
       ) : (
         <>
+          {content.annotations.length > 0 ? (
           <section className="library-section" aria-labelledby={`listening-notes-${exercise.id}`}>
             <h4 id={`listening-notes-${exercise.id}`}>{t("listening.notes.heading")}</h4>
             <ul className="listening-notes">
@@ -563,13 +632,16 @@ function ExerciseView({
               ))}
             </ul>
           </section>
+          ) : null}
           <div className="actions">
             <button type="button" className="ghost" aria-expanded={showTranscript} onClick={() => setShowTranscript((s) => !s)}>
               {t(showTranscript ? "listening.transcript.hide" : "listening.transcript.show")}
             </button>
           </div>
           {showTranscript ? <TranscriptView material={material} transcript={transcript} /> : null}
-          <p className="hint">{tn("listening.exercise.provenance", { generator: <code>{exercise.generator}</code> })}</p>
+          <p className="hint">
+            {tn(authored ? "listening.exercise.provenanceAuthored" : "listening.exercise.provenance", { generator: <code>{exercise.generator}</code> })}
+          </p>
         </>
       )}
     </section>
@@ -589,6 +661,11 @@ function SegmentLine({ material, s }: { material: ListeningMaterial; s: Transcri
           </>
         ) : null}
       </span>{" "}
+      {s.speaker ? (
+        <>
+          <strong lang="fr">{s.speaker} :</strong>{" "}
+        </>
+      ) : null}
       <span lang="fr" className="french">
         {s.text}
       </span>
@@ -638,14 +715,44 @@ function Revealed({
           {item.expected_answer}
         </span>
       </p>
+      {item.accepted_alternatives && item.accepted_alternatives.length > 0 ? (
+        <p>
+          <span className="label">{t("listening.reveal.alsoAccepted")}</span>{" "}
+          <span lang="fr" className="french">
+            {item.accepted_alternatives.join(" / ")}
+          </span>
+        </p>
+      ) : null}
       <p>
         <span className="label">{t("listening.reveal.why")}</span>{" "}
         <StoredText primary={item.rationale_en} variants={{ en: item.rationale_en, zh: item.rationale_zh }} kind="explanation" />
       </p>
-      <p className="label">{t("listening.reveal.evidence")}</p>
+      {item.wrong_answers && item.wrong_answers.length > 0 ? (
+        <ul className="listening-wrong">
+          {item.wrong_answers.map((w, k) => (
+            <li key={k}>
+              <span className="label">{t("listening.reveal.whyNot", { answer: w.answer })}</span>{" "}
+              <StoredText primary={w.why_wrong_en} variants={{ en: w.why_wrong_en, zh: w.why_wrong_zh }} kind="explanation" />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="label">{t(isScript(material) ? "listening.reveal.evidenceScript" : "listening.reveal.evidence")}</p>
       {segments.map((s) => (
         <SegmentLine key={s.index} material={material} s={s} />
       ))}
+      {item.evidence && item.evidence.length > 0 ? (
+        <ul className="listening-evidence">
+          {item.evidence.map((e, k) => (
+            <li key={k}>
+              <span className="label">{t("listening.reveal.quote", { n: e.segment })}</span>{" "}
+              <mark lang="fr" className="french">
+                « {e.excerpt} »
+              </mark>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="actions" role="group" aria-label={t("listening.check.label", { n: index + 1 })}>
         <button type="button" aria-pressed={check === "got"} onClick={() => onCheck("got")}>
           {t("listening.check.got")}
@@ -676,13 +783,18 @@ function Revealed({
 }
 
 // missedPointContext is the source evidence attached to the learner's record:
-// the lesson, the video link (at the cited time when the source supplied one),
-// the question and the cited French excerpts, exactly as stored.
+// the lesson, its source (the video link, at the cited time when the source
+// supplied one; or the authored script, which has no link, video or time), the
+// question and the cited French excerpts, exactly as stored.
 export function missedPointContext(material: ListeningMaterial, item: ListeningItem, segments: TranscriptSegment[]): string {
   const at = segments.find((s) => s.start_seconds !== null)?.start_seconds ?? null;
-  const lines = [`Listening exercise: ${material.title}`, `Video: ${videoAt(material, at)}`, `Question (${item.kind}): ${item.question}`];
+  const video = videoAt(material, at);
+  const source = video === null ? `Source: authored script, no audio or video (${material.pack_script_id ?? "no pack id"})` : `Video: ${video}`;
+  const question = item.id ? `Question ${item.id} (${item.kind}): ${item.question}` : `Question (${item.kind}): ${item.question}`;
+  const lines = [`Listening exercise: ${material.title}`, source, question];
   for (const s of segments) {
-    lines.push(`Excerpt (segment ${s.index}${s.start_seconds !== null ? `, ${clock(s.start_seconds)}` : ""}): « ${s.text} »`);
+    const where = [`segment ${s.index}`, s.speaker, s.start_seconds !== null ? clock(s.start_seconds) : undefined].filter(Boolean).join(", ");
+    lines.push(`Excerpt (${where}): « ${s.text} »`);
   }
   return lines.join("\n");
 }

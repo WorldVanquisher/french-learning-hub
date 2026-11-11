@@ -165,6 +165,7 @@ function serve(server: Server) {
       return r ? json(200, r) : json(404, { error: "no preparation is recorded under this key" });
     }
     if (method === "GET" && p === "/api/listening/daily") return json(200, server.daily ?? dailyOff);
+    if (method === "GET" && p === "/api/listening/scripts") return json(200, { pack: "flh_listening_script_pack_v1", scripts: [] });
     if (method === "POST" && p === "/api/listening/pull") {
       if (!key) return json(400, { error: "exactly one Idempotency-Key header is required" });
       if (server.runs!.has(key)) return json(200, server.runs!.get(key));

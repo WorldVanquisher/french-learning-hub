@@ -218,8 +218,8 @@ func (r *ListeningRepository) RecordPlaylistItem(ctx context.Context, runID int6
 	// A material saved by hand for the same video is matched, never duplicated.
 	err = tx.QueryRowContext(ctx, `SELECT id FROM listening_materials WHERE video_id = ? ORDER BY id LIMIT 1`, item.VideoID).Scan(&known)
 	if errors.Is(err, sql.ErrNoRows) {
-		res, err := tx.ExecContext(ctx, `INSERT INTO listening_materials (video_id, source_url, title, created_at) VALUES (?, ?, ?, ?)`,
-			item.VideoID, domain.YouTubeWatchURL(item.VideoID), title, ts)
+		res, err := tx.ExecContext(ctx, `INSERT INTO listening_materials (source_kind, video_id, source_url, title, created_at) VALUES (?, ?, ?, ?, ?)`,
+			domain.ListeningSourceYouTube, item.VideoID, domain.YouTubeWatchURL(item.VideoID), title, ts)
 		if err != nil {
 			return domain.PlaylistRecord{}, fmt.Errorf("insert listening material: %w", err)
 		}

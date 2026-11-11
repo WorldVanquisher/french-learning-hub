@@ -14,8 +14,13 @@ accepts. Nothing here calls the server; nothing here invents an endpoint.
   only when the learner supplies their own question about a workbook item.
   Importing it creates an ordinary learner record; it implies no acceptance,
   review or mastery.
-* Listening scripts have no adapter: POST /listening/materials requires a
-  YouTube link, and inventing one is not allowed.
+* listening_script_pack: the 12 listening scripts and all their questions in
+  flh_listening_script_pack_v1 form. It is written straight to
+  internal/listening/pack/listening_scripts_v1.json, which the server embeds
+  and validates at startup (domain.ParseListeningScriptPack); the private
+  workbench imports a script with POST /listening/scripts/{id}. A script has
+  no link, video, audio or timestamp, and none is invented: line IDs s1..sN
+  become transcript segments 1..N, each with its speaker.
 """
 
 import hashlib
@@ -66,6 +71,62 @@ def reading_pack(doc):
             p["no_inference_reason"] = "The workbook unit has no single-choice inference question for this passage."
         passages.append(p)
     return {"schema_version": PACK_SCHEMA, "notice": PACK_NOTICE, "passages": passages}
+
+
+LISTENING_PACK_SCHEMA = "flh_listening_script_pack_v1"
+LISTENING_NOTICE = ("Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). "
+                    "Written text only: no audio, no video, no timestamps. Not an official exam item; "
+                    "no certified CEFR level.")
+
+
+def _line(ref):
+    if not ref.startswith("s") or not ref[1:].isdigit():
+        raise ValueError(f"listening evidence must cite a script line, got {ref!r}")
+    return int(ref[1:])
+
+
+def listening_script_pack(doc):
+    """Every listening script with all its questions. Single-choice items keep
+    their options in workbook order; short answers keep their alternatives.
+    Vocabulary becomes a note only where the script line contains the exact
+    words once."""
+    scripts = []
+    for u in doc["units"]:
+        L = u["listening"]
+        if L.get("audio") is not None:
+            raise ValueError(f"{u['id']}: the pack format has no audio field")
+        labels = {s["id"]: s["label"] for s in L["speakers"]}
+        lines = [{"id": t["id"], "speaker": labels[t["speaker"]], "text": t["text"]} for t in L["turns"]]
+        if [x["id"] for x in lines] != [f"s{i}" for i in range(1, len(lines) + 1)]:
+            raise ValueError(f"{u['id']}: script line ids must be s1..sN in order")
+        items = []
+        for q in L["questions"]:
+            evidence = [{"segment": _line(e["ref"]), "excerpt": e["excerpt"]} for e in q["evidence"]]
+            item = {"id": q["id"], "kind": q["kind"], "question": q["stem"]}
+            if q["type"] == "single_choice":
+                correct = next(o for o in q["options"] if o["correct"])
+                item["expected_answer"] = correct["text"]
+            else:
+                item["expected_answer"] = q["reference_answer"]
+            item.update(rationale_en=q["explanation_en"], rationale_zh=q["explanation_zh"],
+                        segments=sorted({e["segment"] for e in evidence}))
+            if q["type"] == "single_choice":
+                item["choices"] = [o["text"] for o in q["options"]]
+                item["wrong_answers"] = [{"answer": o["text"], "why_wrong_en": o["why_wrong_en"], "why_wrong_zh": o["why_wrong_zh"]}
+                                         for o in q["options"] if not o["correct"]]
+            elif q["accepted_alternatives"]:
+                item["accepted_alternatives"] = list(q["accepted_alternatives"])
+            item["evidence"] = evidence
+            items.append(item)
+        notes = []
+        for v in u["vocabulary"]:
+            ref = v.get("ref", "")
+            if ref.startswith("s") and lines[_line(ref) - 1]["text"].count(v["fr"]) == 1:
+                notes.append({"kind": "vocabulary", "segment": _line(ref), "excerpt": v["fr"], "note_en": v["en"], "note_zh": v["zh"]})
+        scripts.append({"id": f"ls-wb1-{u['id']}", "title": L["title"], "genre": L["genre"], "style_level": u["band"],
+                        "source": {"kind": "authored", "pack": doc["schema_version"], "notice": LISTENING_NOTICE},
+                        "lines": lines, "questions": items, "annotations": notes[:6]})
+    return {"schema_version": LISTENING_PACK_SCHEMA, "notice": LISTENING_NOTICE, "scripts": scripts}
 
 
 def learner_lessons(doc):
