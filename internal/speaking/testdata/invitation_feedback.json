@@ -1,0 +1,49 @@
+{
+  "task_fulfilment": {
+    "rating": "partly_met",
+    "comment_en": "You thank Léa, accept and offer a dessert, and you ask where to meet. The arrival time is told in a past tense, so Léa cannot be sure when you will come.",
+    "comment_zh": "你感谢了 Léa、接受了邀请、提出带甜点，也问了见面地点。但到达时间用了过去时，Léa 无法确定你什么时候来。"
+  },
+  "clarity": {
+    "comment_en": "The message is short and in a natural order: thanks, answer, what you bring, questions. A linking word before the questions would make it easier to follow.",
+    "comment_zh": "留言简短，顺序自然：感谢、答复、带什么、提问。在提问前加一个连接词会更容易听懂。"
+  },
+  "improvements": [
+    {
+      "quote": "je suis arrivé vers midi et demi",
+      "category": "grammar",
+      "hint_en": "The picnic is next Saturday. Which tense describes an arrival that has not happened yet?",
+      "hint_zh": "野餐在下周六。描述还没发生的到达，应该用哪个时态？",
+      "suggestion": "j'arriverai vers midi et demi",
+      "reason_en": "A future arrival needs the future tense (or aller + infinitive), not the passé composé.",
+      "reason_zh": "将来的到达要用简单将来时（或 aller + 不定式），不能用复合过去时。"
+    },
+    {
+      "quote": "Je vais amener un dessert",
+      "category": "vocabulary",
+      "hint_en": "Which verb do you use for bringing a thing rather than a person?",
+      "hint_zh": "带“东西”而不是带“人”时，用哪个动词？",
+      "suggestion": "Je vais apporter un dessert",
+      "reason_en": "Apporter is used for things you carry; amener is mainly used for people.",
+      "reason_zh": "带东西用 apporter；amener 主要用于带人。"
+    },
+    {
+      "quote": "très",
+      "category": "vocabulary",
+      "hint_en": "You use the same intensifier twice. Can you vary it?",
+      "hint_zh": "同一个程度副词用了两次，能换一种说法吗？",
+      "suggestion": "vraiment",
+      "reason_en": "Varying intensifiers makes a short message sound less repetitive.",
+      "reason_zh": "换用不同的程度副词，短留言听起来不那么重复。"
+    },
+    {
+      "quote": "je viendrai avec plaisir",
+      "category": "organisation",
+      "hint_en": "Say clearly at the start that you are coming.",
+      "hint_zh": "在开头就清楚地说你会来。",
+      "suggestion": "Oui, je viendrai avec plaisir",
+      "reason_en": "The listener hears the main answer first.",
+      "reason_zh": "听的人先听到最重要的答复。"
+    }
+  ]
+}

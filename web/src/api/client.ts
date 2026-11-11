@@ -46,6 +46,14 @@ import type {
 import type { SuggestionConfirmResult, SuggestionOverview, SuggestionRun } from "../types/suggestion";
 import type { ReadingExamples, ReadingList, ReadingLessonView, ReadingPreparationResult } from "../types/reading";
 import type { WritingFeedbackResult, WritingPrompts, WritingTaskSummary, WritingTaskView } from "../types/writing";
+import type {
+  NewSpeakingTake,
+  SpeakingExerciseSummary,
+  SpeakingExerciseView,
+  SpeakingFeedbackResult,
+  SpeakingPrompts,
+  SpeakingTranscriptionResult,
+} from "../types/speaking";
 import type { HybridSearch, LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, PublicDemoInfo, SemanticSearch } from "../types/library";
 
 // ApiError carries the HTTP status so callers can react specifically — most
@@ -835,4 +843,87 @@ export function requestWritingFeedback(
 // getWritingFeedbackRequest looks a request up by its key (404: nothing recorded yet).
 export function getWritingFeedbackRequest(operationId: string, fetchImpl: typeof fetch = fetch): Promise<WritingFeedbackResult> {
   return request<WritingFeedbackResult>("GET", `/writing/feedback-requests/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// ---- Speaking v1 (private workbench) ----
+
+// listSpeakingPrompts lists the authored practice prompts, providers and limits.
+export function listSpeakingPrompts(fetchImpl: typeof fetch = fetch): Promise<SpeakingPrompts> {
+  return request<SpeakingPrompts>("GET", "/speaking/prompts", undefined, fetchImpl);
+}
+
+// startSpeakingPrompt starts (or reopens) the exercise for an authored prompt.
+export function startSpeakingPrompt(promptId: string, fetchImpl: typeof fetch = fetch): Promise<SpeakingExerciseView> {
+  return request<SpeakingExerciseView>("POST", `/speaking/prompts/${encodeURIComponent(promptId)}`, undefined, fetchImpl);
+}
+
+// listSpeakingExercises lists started exercises.
+export function listSpeakingExercises(fetchImpl: typeof fetch = fetch): Promise<{ exercises: SpeakingExerciseSummary[] }> {
+  return request<{ exercises: SpeakingExerciseSummary[] }>("GET", "/speaking/exercises", undefined, fetchImpl);
+}
+
+// getSpeakingExercise reads an exercise with every take, transcript and report.
+export function getSpeakingExercise(exerciseId: number, fetchImpl: typeof fetch = fetch): Promise<SpeakingExerciseView> {
+  return request<SpeakingExerciseView>("GET", `/speaking/exercises/${exerciseId}`, undefined, fetchImpl);
+}
+
+// addSpeakingTake stores a take's metadata only (never its audio). No provider call.
+export function addSpeakingTake(exerciseId: number, take: NewSpeakingTake, fetchImpl: typeof fetch = fetch): Promise<SpeakingExerciseView> {
+  return request<SpeakingExerciseView>("POST", `/speaking/exercises/${exerciseId}/takes`, take, fetchImpl);
+}
+
+// transcribeSpeakingTake is the one explicit transcription call: it sends this
+// take's audio (base64 in JSON) once, under the caller's key.
+export function transcribeSpeakingTake(
+  takeId: number,
+  audio: { audio_base64: string; audio_mime: string },
+  operationId: string,
+  confirmUnknownRetry = false,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SpeakingTranscriptionResult> {
+  return request<SpeakingTranscriptionResult>(
+    "POST",
+    `/speaking/takes/${takeId}/transcriptions`,
+    { ...audio, confirm_unknown_retry: confirmUnknownRetry },
+    fetchImpl,
+    operationId,
+  );
+}
+
+// getSpeakingTranscriptionRequest looks a transcription request up by its key.
+export function getSpeakingTranscriptionRequest(operationId: string, fetchImpl: typeof fetch = fetch): Promise<SpeakingTranscriptionResult> {
+  return request<SpeakingTranscriptionResult>("GET", `/speaking/transcription-requests/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// confirmSpeakingTranscript saves the learner's confirmed transcript as the
+// take's next version. No provider call.
+export function confirmSpeakingTranscript(
+  takeId: number,
+  text: string,
+  transcriptionId: number | null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SpeakingExerciseView> {
+  return request<SpeakingExerciseView>("POST", `/speaking/takes/${takeId}/transcripts`, { text, transcription_id: transcriptionId }, fetchImpl);
+}
+
+// requestSpeakingFeedback is the one explicit feedback call, for one confirmed
+// transcript version, under the caller's key.
+export function requestSpeakingFeedback(
+  transcriptId: number,
+  operationId: string,
+  confirmUnknownRetry = false,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SpeakingFeedbackResult> {
+  return request<SpeakingFeedbackResult>(
+    "POST",
+    `/speaking/transcripts/${transcriptId}/feedback`,
+    confirmUnknownRetry ? { confirm_unknown_retry: true } : undefined,
+    fetchImpl,
+    operationId,
+  );
+}
+
+// getSpeakingFeedbackRequest looks a feedback request up by its key.
+export function getSpeakingFeedbackRequest(operationId: string, fetchImpl: typeof fetch = fetch): Promise<SpeakingFeedbackResult> {
+  return request<SpeakingFeedbackResult>("GET", `/speaking/feedback-requests/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
 }

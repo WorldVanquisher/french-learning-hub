@@ -940,3 +940,11 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .demo-mechanical-results { margin-bottom: 10px; }
 .unit-evidence div { grid-template-columns: 110px minmax(0, 1fr); }
 .unit-evidence dd, .library .hint { overflow-wrap: anywhere; }
+
+/* Speaking v1: local playback, the file fallback and the "what is sent" panel. */
+.speaking audio { display: block; width: 100%; max-width: 420px; margin: 6px 0; }
+.speaking-file { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.speaking-file input[type="file"] { font: inherit; font-size: 13px; max-width: 240px; }
+.speaking-transcribe { margin: 8px 0; }
+.speaking-transcribe .banner p { margin: 4px 0; }
+.speaking-local { margin: 6px 0; }

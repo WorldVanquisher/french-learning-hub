@@ -604,6 +604,29 @@ Exam Writing v1 (private workbench):
   (`source: manual`) on explicit confirmation only; no Concept, no mastery.
   Never in the public demo.
 
+Speaking v1 (private workbench):
+
+- Migration 018: `speaking_exercises` (authored prompts only, unique
+  `prompt_id`), `speaking_takes` (audio METADATA only: type, size, SHA-256,
+  browser-measured duration; there is no audio column), `speaking_transcriptions`
+  + `speaking_transcription_requests`, `speaking_transcripts` (confirmed,
+  immutable versions; origin `transcription`/`corrected`/`typed`),
+  `speaking_feedback` + `speaking_feedback_requests` (about exactly one
+  transcript version). Contract: `docs/ARCHITECTURE.md` §4.7, A.19.
+- Recording and playback stay in the browser and send nothing. Never store
+  audio (no column, file, log or browser storage). Audio leaves the browser
+  only on an explicit transcription request, as base64 in JSON (do not loosen
+  the browser boundary for it), checked first: accepted type, size, magic
+  bytes and the take's SHA-256.
+- `SPEAKING_TRANSCRIPTION_PROVIDER=openai` (+ `SPEAKING_TRANSCRIPTION_MODEL`)
+  and `SPEAKING_PROVIDER=openai` are opt-in, independent and default
+  `disabled`. No language field, no prompt to the transcriber.
+- Feedback reads the confirmed text only. The server grounds quotes against
+  that version. Categories exclude spelling, punctuation and pronunciation,
+  and comments about pronunciation or scores are refused as `invalid_output`.
+  A mistake is a capture (`source: manual`) on explicit confirmation only.
+  Never in the public demo.
+
 Daily Listening (pull, prepare, notify):
 
 - One pull, `ListeningDailyService.Pull`, shared by "Pull now"

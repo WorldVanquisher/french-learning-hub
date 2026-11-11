@@ -718,6 +718,43 @@ A private **Writing** view (never in the public demo). Contract:
   ID is fixed for the form. **Open record #N** comes back with **← Back to
   Writing**.
 
+## Speaking (Speaking v1)
+
+A private **Speaking** view (never in the public demo). Contract:
+[ARCHITECTURE.md §4.7](../docs/ARCHITECTURE.md#47-speaking-v1).
+
+- **Practice prompts** lists the embedded prompts (`GET /speaking/prompts`);
+  **Start** creates the exercise; **Open** reopens it.
+- **New take** (`speakingRecorder.ts`):
+  - `getUserMedia` + `MediaRecorder` (webm/opus preferred), a live timer, and an
+    automatic stop at the backend's `max_duration_ms`. The take is a `Blob` in
+    memory, played back from an object URL. Nothing is requested while
+    recording or playing back, and nothing goes to browser storage.
+  - A refused permission (`NotAllowedError`), a missing device and a browser
+    without recording each have their own message. **Upload an audio file**
+    (type, size and duration checked in the browser) and **Type what you said
+    instead** remain available.
+  - **Use as take N** posts only metadata: type, size, SHA-256 (WebCrypto) and
+    duration.
+- **Take N:**
+  - local playback while the audio is in memory (`Speaking` stays mounted;
+    an honest note once it is gone);
+  - **Send audio of take N for transcription…** opens a panel naming the take,
+    length, size, type and provider. Only **Send audio** posts the base64 audio
+    under a fresh key, with the Listening/Writing recovery flow;
+  - the transcript editor is prefilled with the machine transcript, then with
+    the latest confirmed version. **Confirm as version N** saves a version;
+  - version tabs (`aria-pressed`) show the origin of each version.
+- **Feedback on take N, version M** shows only reports for that transcript.
+  Hints come first; **Show suggested wording** reveals the rest. **Show in
+  version M** marks a `located` quote. Quotes not found in the text
+  (`shownAsGrounded`) are listed apart.
+- **Compare** diffs any two confirmed transcripts (`diffWords` from Writing),
+  from the earlier take and version to the later one.
+- **Save this mistake…** posts one `learning_capture_v1` only on **Save
+  learning record**. The context names the exercise, take, transcript version
+  and feedback. **Open record #N** comes back with **← Back to Speaking**.
+
 ## Correcting a reviewed unit from the inspection (FLH-082)
 
 The unit inspection opened from a record offers corrections for a unit of the

@@ -106,6 +106,8 @@ type Config struct {
 	Reading ReadingConfig
 	// Writing holds the Exam Writing v1 feedback generator configuration.
 	Writing WritingConfig
+	// Speaking holds the Speaking v1 transcription and feedback configuration.
+	Speaking SpeakingConfig
 
 	// Embedding holds semantic-retrieval provider configuration, independent of
 	// both the analyzer and extractor.
@@ -253,6 +255,9 @@ const (
 //	LISTENING_PROVIDER  -> Listening.Provider, default disabled (reuses OPENAI_*)
 //	READING_PROVIDER    -> Reading.Provider, default disabled (reuses OPENAI_*)
 //	WRITING_PROVIDER    -> Writing.Provider, default disabled (reuses OPENAI_*)
+//	SPEAKING_PROVIDER   -> Speaking.Feedback, default disabled (reuses OPENAI_*)
+//	SPEAKING_TRANSCRIPTION_PROVIDER, SPEAKING_TRANSCRIPTION_MODEL ->
+//	Speaking.Transcription, default disabled (reuses OPENAI_API_KEY/BASE_URL/TIMEOUT)
 //	LISTENING_PLAYLIST_SOURCE, LISTENING_AUTO_PREPARE, LISTENING_NOTIFY and their
 //	settings -> ListeningDaily (see loadListeningDaily), all default disabled
 //	EMBEDDING_PROVIDER -> Embedding.Provider, default disabled
@@ -344,6 +349,15 @@ func load(src source) (Config, error) {
 			OpenAIBaseURL: getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
+		Speaking: SpeakingConfig{
+			Feedback:           SpeakingProvider(getenv("SPEAKING_PROVIDER", string(SpeakingDisabled))),
+			Transcription:      SpeakingProvider(getenv("SPEAKING_TRANSCRIPTION_PROVIDER", string(SpeakingDisabled))),
+			TranscriptionModel: strings.TrimSpace(src.get("SPEAKING_TRANSCRIPTION_MODEL")),
+			OpenAIAPIKey:       src.get("OPENAI_API_KEY"),
+			OpenAIModel:        strings.TrimSpace(src.get("OPENAI_MODEL")),
+			OpenAIBaseURL:      getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
+			OpenAITimeout:      getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
+		},
 		Embedding: EmbeddingConfig{
 			Provider: EmbeddingProvider(getenv("EMBEDDING_PROVIDER", string(EmbeddingDisabled))),
 			APIKey:   src.get("EMBEDDING_API_KEY"),
@@ -380,6 +394,9 @@ func load(src source) (Config, error) {
 		return Config{}, err
 	}
 	if err := cfg.Writing.validate(); err != nil {
+		return Config{}, err
+	}
+	if err := cfg.Speaking.validate(); err != nil {
 		return Config{}, err
 	}
 	daily, err := loadListeningDaily(src, getenv, getdur, cfg.Listening.Provider)

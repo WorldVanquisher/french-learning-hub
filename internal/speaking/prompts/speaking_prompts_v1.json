@@ -1,0 +1,54 @@
+{
+  "schema_version": "flh_speaking_prompts_v1",
+  "notice": "Authored practice prompts (FLH speaking prompts v1). Not official exam items; no score and no certified CEFR level. Names, places and the phone number are invented. Feedback reads the confirmed transcript only and cannot judge pronunciation.",
+  "prompts": [
+    {
+      "id": "sp-invitation-reponse",
+      "format": "message vocal",
+      "style_level": "A2–B1",
+      "title": "Répondre à une invitation",
+      "situation": "Votre amie Léa vous a laissé un message : elle organise un pique-nique samedi prochain à midi, au parc des Tilleuls, et elle vous invite. Rappelez-la et laissez-lui un message vocal.",
+      "requirements": [
+        "Remerciez Léa pour l'invitation.",
+        "Dites si vous venez et à quelle heure vous arriverez.",
+        "Proposez d'apporter quelque chose.",
+        "Posez une question sur l'organisation."
+      ],
+      "seconds_min": 30,
+      "seconds_max": 90,
+      "example_transcript": "Salut Léa, c'est Sam. Merci pour ton invitation, c'est très gentil. Oui, je peux venir samedi, mais je suis arrivé vers midi et demi parce que je travaille le matin. Je vais amener un dessert, euh, une tarte aux pommes. Est-ce que tu veux que je prends des boissons aussi ? Et c'est où exactement dans le parc ? Je suis très content de voir tout le monde. À samedi !"
+    },
+    {
+      "id": "sp-demande-renseignements",
+      "format": "message vocal",
+      "style_level": "A2–B1",
+      "title": "Demander des renseignements",
+      "situation": "Vous voulez vous inscrire au cours de natation pour adultes du centre sportif de votre quartier. Vous appelez l'accueil, personne ne répond : laissez un message.",
+      "requirements": [
+        "Présentez-vous et dites pourquoi vous appelez.",
+        "Demandez les jours et les horaires des cours.",
+        "Demandez le prix et ce qu'il faut apporter.",
+        "Dites comment et quand on peut vous rappeler."
+      ],
+      "seconds_min": 30,
+      "seconds_max": 90,
+      "example_transcript": "Salut, je m'appelle Sam Martin. Je vous appelle pour le cours de natation pour adultes. Je voudrais savoir qu'est-ce que les horaires des cours, et quels jours il y a des cours. Et c'est combien pour un trimestre ? Est-ce qu'il faut apporter un bonnet ou des lunettes ? Vous pouvez me rappeler au zéro six, douze, trente-quatre, cinquante-six, soixante-dix-huit. Je suis libre le soir après dix-huit heures. Merci, au revoir."
+    },
+    {
+      "id": "sp-changement-programme",
+      "format": "message vocal",
+      "style_level": "A2–B1",
+      "title": "Expliquer un changement de programme",
+      "situation": "Vous aviez rendez-vous jeudi à 18 heures avec votre collègue Nadia pour préparer une présentation. Vous ne pouvez plus venir. Laissez-lui un message vocal.",
+      "requirements": [
+        "Dites que vous ne pouvez pas venir et expliquez pourquoi.",
+        "Excusez-vous.",
+        "Proposez un autre jour ou une autre heure.",
+        "Demandez-lui de vous confirmer."
+      ],
+      "seconds_min": 30,
+      "seconds_max": 90,
+      "example_transcript": "Bonjour Nadia, c'est Sam. Je suis désolé, mais je ne peux pas venir jeudi à dix-huit heures, parce que mon train pour Lille est changé et je pars mercredi soir. Est-ce qu'on peut se voir vendredi matin à la place ? Si tu préfères, on peut aussi faire une visio lundi. Encore désolé pour le changement. Tu me dis si vendredi te va ? À bientôt !"
+    }
+  ]
+}

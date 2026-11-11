@@ -87,6 +87,7 @@ internal/embedding    optional HTTP text-to-vector provider (M12-D evaluation, F
 internal/listening    listening exercise generator, YouTube playlist source, Telegram notifier, wiring
 internal/reading      reading exercise generator (opt-in, READING_PROVIDER) and the embedded authored pack
 internal/writing      writing feedback generator (opt-in, WRITING_PROVIDER) and the embedded authored prompts
+internal/speaking     speaking transcriber and feedback generator (opt-in, SPEAKING_*) and the embedded authored prompts
 internal/vectorindex  single-instance Qdrant REST adapter for the optional semantic index
 internal/captureclient   thin HTTP client for POST /captures (used by cmd/capture)
 internal/storage/sqlite  SQLite repositories + migration runner
@@ -1108,6 +1109,91 @@ feeds the learning workflow only through §4.1. Migration `017`.
     learner's revised wording and the stored reason. The context names the
     task, version, feedback and generator. No Concept and no mastery.
 - **Not in the public demo:** the routes are not allowlisted and the four
+  tables must be empty in demo artifacts.
+
+### 4.7 Speaking v1
+
+A private workbench section for spoken practice: authored prompts, takes
+recorded and played back in the browser, confirmed transcripts, and optional
+feedback on one chosen transcript version. It feeds the learning workflow only
+through §4.1. Migration `018`.
+
+- **Exercise** (`speaking_exercises`): one per prompt of the embedded set
+  `internal/speaking/prompts/speaking_prompts_v1.json`
+  (`flh_speaking_prompts_v1`, validated at startup). The set has three
+  original practical prompts: respond to an invitation, ask for information,
+  explain a change of plan. Each has content points, a duration range (at most
+  120 s) and an example transcript with deliberate mistakes. They are not
+  official exam items and carry no certified CEFR level. Starting a prompt
+  again returns the same exercise.
+- **Take** (`speaking_takes`, numbered `1…20`): recorded with MediaRecorder,
+  uploaded as a file, or typed (`audio_source` `recording`, `file` or `none`).
+  - **Audio stays in the browser.** Recording and playback make no request.
+    **Use as take N** stores only metadata: the canonical type, size, SHA-256
+    and browser-measured duration. No column can hold audio.
+  - Accepted types are those both of the provider's pages list: `audio/webm`,
+    `audio/mp4` (m4a), `audio/mpeg` (mp3) and `audio/wav`. The limits are
+    8 MiB and 120 s. The server enforces the size and the declared duration,
+    but it cannot decode audio, so the duration is the browser's measurement.
+- **Transcription** (`speaking_transcriptions`,
+  `speaking_transcription_requests`): opt-in
+  `SPEAKING_TRANSCRIPTION_PROVIDER=openai` with an explicit
+  `SPEAKING_TRANSCRIPTION_MODEL`. It reuses `OPENAI_API_KEY`, `OPENAI_BASE_URL`
+  and `OPENAI_TIMEOUT`.
+  - One `POST /speaking/takes/{id}/transcriptions` per click, after a panel
+    that names the take, its length, size and type, and the provider.
+  - The audio travels as base64 inside JSON: the HTTP boundary accepts browser
+    bodies only as JSON, and it is unchanged.
+  - Before any call, the server checks the type, the size, the magic bytes for
+    that type, and that the audio's SHA-256 and type are the take's.
+  - The adapter sends `multipart/form-data` to `{base}/audio/transcriptions`
+    with `file` (named `take.<ext>`, with its type), `model` and
+    `response_format=json`, and reads only `text`. It sends no language field
+    (its name differs between models) and no prompt, so the transcript is not
+    nudged towards the expected answer.
+  - The audio is held in memory for that call only and never written.
+  - Requests follow §4.4's attempt-first rules: one in progress per exercise;
+    an `unknown` outcome for that take needs `confirm_unknown_retry`; a same-key
+    resend with other audio is `key_conflict`. A machine transcript is
+    `openai:<model>:speaking_transcription_v1`.
+- **Confirmed transcript** (`speaking_transcripts`, versions `1…10` per take):
+  the learner checks the text and confirms it.
+  - The origin is decided by the server: `transcription` (the machine
+    transcript unchanged), `corrected` (an edit of it or of an earlier
+    version) or `typed`.
+  - Versions are immutable; a text identical to the latest is refused
+    (`409 unchanged`). Feedback is requested only for a confirmed version.
+- **Feedback** (`speaking_feedback`, `speaking_feedback_requests`): opt-in
+  `SPEAKING_PROVIDER=openai` (reuses `OPENAI_*`). One explicit
+  `POST /speaking/transcripts/{id}/feedback` per click, with Writing's
+  discipline (§4.6).
+  - **Content:**
+    - `task_fulfilment` (`met`/`partly_met`/`not_met`, which is not a score);
+    - `clarity`;
+    - at most 4 `improvements`, each with `grammar`, `vocabulary`,
+      `register` or `organisation`. There is no spelling, punctuation or
+      pronunciation category: those belong to the transcriber, or cannot be
+      heard in text.
+  - Every quote is grounded server-side against that exact version (`located`
+    with a rune `start`, `ambiguous`, `not_found`).
+  - `ValidateSpeakingFeedback` also refuses any English or Chinese comment
+    that judges pronunciation, accent or intonation, or claims a score, grade,
+    CEFR level or exam result.
+  - A report names its take and version and is never carried over to another
+    version.
+- **Workbench:**
+  - Takes (`aria-pressed`) and their confirmed versions; local playback while
+    the audio is in memory, with an honest note once it is gone.
+  - Hints before **Show suggested wording**. **Show in version N** marks only a
+    `located` quote.
+  - **Compare** diffs any two confirmed transcripts, from earlier to later.
+  - A denied permission, a missing device and a browser that cannot record
+    each say so and keep the file and typed fallbacks.
+  - **Save this mistake…** posts one `learning_capture_v1` (`source: manual`)
+    on explicit confirmation. Its context names the exercise, take,
+    transcript version and feedback. **Open record #N** returns with
+    **← Back to Speaking**. No Concept, score or mastery.
+- **Not in the public demo:** the routes are not allowlisted, and the seven
   tables must be empty in demo artifacts.
 
 ## 5. Knowledge extraction and admission
@@ -2592,6 +2678,9 @@ empty values behave as unset. Defaults work out of the box:
 | `LISTENING_PROVIDER` | `disabled`                  | Listening exercise generator ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)): `disabled` or `openai`; reuses `OPENAI_*` |
 | `READING_PROVIDER`   | `disabled`                  | Reading exercise generator ([§4.5](#45-exam-reading-v1)): `disabled` or `openai`; reuses `OPENAI_*`; authored examples work without it |
 | `WRITING_PROVIDER`   | `disabled`                  | Writing feedback generator ([§4.6](#46-exam-writing-v1)): `disabled` or `openai`; reuses `OPENAI_*`; tasks and drafts work without it |
+| `SPEAKING_PROVIDER`  | `disabled`                  | Speaking feedback generator ([§4.7](#47-speaking-v1)): `disabled` or `openai`; reuses `OPENAI_*`; recording and typed transcripts work without it |
+| `SPEAKING_TRANSCRIPTION_PROVIDER` | `disabled`     | Speaking transcription ([§4.7](#47-speaking-v1)): `disabled` or `openai`; reuses `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_TIMEOUT`; sends one take's audio per explicit request, never stores it |
+| `SPEAKING_TRANSCRIPTION_MODEL` | _(none)_          | Required for `openai` transcription: the operator's transcription model (e.g. `gpt-transcribe`) |
 | `LISTENING_PLAYLIST_SOURCE` | `disabled`           | Daily Listening playlist ([§4.4](#44-daily-listening-pull-prepare-notify)): `disabled` or `youtube` |
 | `LISTENING_PLAYLIST_ID` | _(none)_                 | Required for `youtube`: the playlist ID |
 | `YOUTUBE_API_KEY`    | _(none)_                    | Required for `youtube`; sent only in the `X-Goog-Api-Key` header; never logged |
@@ -2719,6 +2808,7 @@ forward-only; there are no down migrations.
 | `016_reading_lessons` | `reading_lessons`, `reading_passages`, `reading_exercises`, `reading_preparations` (Reading v1; see [§4.5](#45-exam-reading-v1)) |
 | `015_listening_daily` | `listening_pull_runs`, `listening_playlist_items`, `listening_preparations`, `listening_notifications`: receipts inserted before each outside call and finished once (Daily Listening; see [§4.4](#44-daily-listening-pull-prepare-notify)) |
 | `017_writing_tasks` | `writing_tasks`, `writing_drafts`, `writing_feedback`, `writing_feedback_requests` (Writing v1; see [§4.6](#46-exam-writing-v1)) |
+| `018_speaking_exercises` | `speaking_exercises`, `speaking_takes` (audio metadata only), `speaking_transcriptions`, `speaking_transcription_requests`, `speaking_transcripts`, `speaking_feedback`, `speaking_feedback_requests` (Speaking v1; see [§4.7](#47-speaking-v1)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -3704,3 +3794,23 @@ A request has `id`, `operation_id`, `draft_id`, `after_unknown`, `started_at`,
 `deadline_at`, `finished_at`, `state` (`in_progress`, `completed`, `failed`,
 `unknown`) and `feedback_id`. The public demo boundary does not expose these
 routes.
+
+### A.19 Speaking (Speaking v1)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `GET /speaking/prompts` | `set`, `notice`, `prompts` (`id`, `format`, `style_level`, `title`, `situation`, `requirements`, `seconds_min`, `seconds_max`, `started_exercise_id`), `providers`, `limits`. No provider call |
+| `POST /speaking/prompts/{prompt_id}` | Starts the exercise for an authored prompt. `201` new; `200` already started (`Idempotency-Replayed: true`); `404`; `409 prompt_conflict` |
+| `GET /speaking/exercises` | `exercises` (newest first: `exercise`, `takes`) and `providers` |
+| `GET /speaking/exercises/{id}` | `exercise`, `takes` (`id`, `number`, `audio_source`, `audio_mime`, `audio_bytes`, `audio_sha256`, `duration_ms`), `transcriptions` (`status`, `failure_code`, `transcriber`, `text`), `transcription_requests`, `transcripts` (`take_id`, `version`, `text`, `word_count`, `origin`, `transcription_id`), `feedback` (`transcript_id`, `status`, `failure_code`, `generator`, `content`), `feedback_requests`, `example_transcript`, `providers`, `limits`, `word_convention`. No provider call |
+| `POST /speaking/exercises/{id}/takes` | Body `{"audio_source": "recording"\|"file"\|"none", "audio_mime"?, "audio_bytes"?, "audio_sha256"?, "duration_ms"?}`: metadata only, never audio (`201`). `409 too_many_takes` (20); `422`; `404` |
+| `POST /speaking/takes/{id}/transcriptions` | Body `{"audio_base64", "audio_mime", "confirm_unknown_retry"?}` (at most 8 MiB of audio), optional UUID `Idempotency-Key`. One provider call; the audio is not stored. `201` `{request, transcription}`; `200` same-key replay; `502`/`504` stored failure or unknown outcome; `409` `{code}`: `request_in_progress`, `outcome_unknown`, `key_conflict`, `no_audio`; `413`; `422` refused before any call (type, size, magic bytes, not this take's audio); `503` disabled (before the body is read); `404` |
+| `GET /speaking/transcription-requests/{key}` | `{request, transcription}`; `404` nothing recorded under the key |
+| `POST /speaking/takes/{id}/transcripts` | Body `{"text", "transcription_id"?}`: the take's next confirmed version (`201`). `409` `{code}`: `unchanged`, `too_many_versions` (10); `422` (also a transcription that is not a completed transcription of this take); `404` |
+| `POST /speaking/transcripts/{id}/feedback` | Optional UUID `Idempotency-Key`, optional `{"confirm_unknown_retry": true}`. One provider call for that version. `201` `{request, feedback}` with grounded improvements; `200` replay; `502`/`504`; `409` `{code}`: `request_in_progress`, `outcome_unknown`, `key_conflict`; `503` disabled; `404` |
+| `GET /speaking/feedback-requests/{key}` | `{request, feedback}`; `404` nothing recorded under the key |
+
+A request has `id`, `operation_id`, `take_id` (transcription) or
+`transcript_id` (feedback), `after_unknown`, `started_at`, `deadline_at`,
+`finished_at`, `state` (`in_progress`, `completed`, `failed`, `unknown`) and
+`result_id`. The public demo boundary does not expose these routes.

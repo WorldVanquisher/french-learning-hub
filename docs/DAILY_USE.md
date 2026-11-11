@@ -153,6 +153,9 @@ Then open `http://127.0.0.1:8080/`.
 | 12. **Reading → Prepare exercise** (your own passage) | **Yes**, once, `READING_PROVIDER` (optional, default `disabled`) | One exercise over your exact passage, checked before it is stored ([§11](#11-reading-practice)) |
 | 13. **Writing**: start a task, save, revise and compare versions | **No** | Each save is a new version; earlier versions never change ([§12](#12-writing-practice)) |
 | 14. **Writing → Request feedback on version N** | **Yes**, once, `WRITING_PROVIDER` (optional, default `disabled`) | One report about that version only, its quotes checked against its exact text ([§12](#12-writing-practice)) |
+| 15. **Speaking**: record, play back, upload a file, type or correct a transcript, compare | **No** | The audio stays in your browser and is never stored; a take keeps only its type, size, digest and duration ([§13](#13-speaking-practice)) |
+| 16. **Speaking → Send audio for transcription** | **Yes**, once, `SPEAKING_TRANSCRIPTION_PROVIDER` (optional, default `disabled`) | That take's audio is sent once and not stored; you check and confirm the transcript ([§13](#13-speaking-practice)) |
+| 17. **Speaking → Request feedback on version N** | **Yes**, once, `SPEAKING_PROVIDER` (optional, default `disabled`) | One report about that confirmed transcript only; nothing about pronunciation ([§13](#13-speaking-practice)) |
 
 Suggestion requests use more tokens than one analysis (up to 10 units and 5
 candidates each), so allow `OPENAI_TIMEOUT` headroom as for extraction.
@@ -556,6 +559,49 @@ and only when `READING_PROVIDER=openai` is in your settings file.
   occurs exactly once in that version. A repeated phrase gets no position, and
   a quote that is not in the text is listed separately. The quality of the
   feedback has not been evaluated with a real model.
+- It is practice: the task rating is not a score, and there is no mark, level
+  or official exam claim.
+
+## 13. Speaking practice
+
+**Recording, playback, typing and correcting a transcript, and comparing call
+no model.** Only **Send audio for transcription** (with
+`SPEAKING_TRANSCRIPTION_PROVIDER=openai` and `SPEAKING_TRANSCRIPTION_MODEL`)
+and **Request feedback on version N** (with `SPEAKING_PROVIDER=openai`) call the
+provider, each once per click.
+
+1. **[Mac]** Open **Speaking** and **Start** one of the three practice prompts
+   (a voicemail reply to an invitation, a request for information, a change of
+   plan). They are original practice prompts, not official exam items.
+2. **Start recording**. The browser asks for the microphone: the workbench must
+   be opened at `127.0.0.1` or `localhost` (the tunnel) for the browser to
+   allow it. Speak, then **Stop**. Play the take back as often as you like:
+   nothing has been sent. **Use as take 1** saves only its type, size, digest
+   and duration.
+   - If you refuse the microphone, or the browser cannot record, the page says
+     so. Choose **Upload an audio file** (webm, m4a/mp4, mp3 or wav, at most
+     2 minutes and 8 MB) or **Type what you said instead**.
+3. **Send audio of take 1 for transcription…** shows what will be sent (length,
+   size, type, provider). **Send audio** sends it once. The audio is not stored;
+   if you reload the page it is gone, and you can still type the transcript.
+4. Check the machine transcript. Correct what was misheard, but keep your own
+   words, mistakes included. Then **Confirm as version 1**. A later correction
+   is a new version; confirmed versions never change.
+5. **Request feedback on version 1**. The report says which take and version
+   it is about, shows hints first, and never comments on pronunciation. If no
+   answer arrives, the page looks the request up first; an unknown outcome needs
+   an explicit **Request again (may be billed twice)**.
+6. Record **take 2** from the hints. **Compare** shows the word differences
+   between two confirmed transcripts.
+7. On an improvement, choose **Save this mistake…**, type how you would say it
+   now, and **Save learning record**. The record names the exercise, take,
+   transcript version and feedback, and links back with **← Back to Speaking**.
+
+**Limitations:**
+- Feedback reads text. It cannot hear pronunciation, intonation or fluency, and
+  spelling or punctuation come from the transcriber.
+- The 2-minute limit is measured by your browser; the server checks the size
+  and that the audio sent is the take you recorded.
 - It is practice: the task rating is not a score, and there is no mark, level
   or official exam claim.
 

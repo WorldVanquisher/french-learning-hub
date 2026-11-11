@@ -5,6 +5,7 @@ import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import { Listening } from "./pages/Listening";
 import { Reading } from "./pages/Reading";
 import { Writing } from "./pages/Writing";
+import { Speaking } from "./pages/Speaking";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue, type ReviewResume } from "./pages/ReviewQueue";
 import { ConceptSuggestions } from "./pages/ConceptSuggestions";
@@ -13,7 +14,7 @@ import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n";
 import { ExplanationLanguageProvider, ExplanationLanguageSelect } from "./explanationLanguage";
 
-type View = "records" | "library" | "listening" | "reading" | "writing" | "review" | "inspector" | "experiments";
+type View = "records" | "library" | "listening" | "reading" | "writing" | "speaking" | "review" | "inspector" | "experiments";
 
 // Where a cross-view link came from, for the "Back to …" banner.
 type Origin =
@@ -22,7 +23,8 @@ type Origin =
   | { kind: "library" }
   | { kind: "listening" }
   | { kind: "reading" }
-  | { kind: "writing" };
+  | { kind: "writing" }
+  | { kind: "speaking" };
 
 const viewCopy: Record<View, { title: MessageKey; subtitle: MessageKey; tab: MessageKey }> = {
   records: { title: "app.records.title", subtitle: "app.records.subtitle", tab: "nav.records" },
@@ -30,11 +32,12 @@ const viewCopy: Record<View, { title: MessageKey; subtitle: MessageKey; tab: Mes
   listening: { title: "app.listening.title", subtitle: "app.listening.subtitle", tab: "nav.listening" },
   reading: { title: "app.reading.title", subtitle: "app.reading.subtitle", tab: "nav.reading" },
   writing: { title: "app.writing.title", subtitle: "app.writing.subtitle", tab: "nav.writing" },
+  speaking: { title: "app.speaking.title", subtitle: "app.speaking.subtitle", tab: "nav.speaking" },
   review: { title: "app.review.title", subtitle: "app.review.subtitle", tab: "nav.review" },
   inspector: { title: "app.inspector.title", subtitle: "app.inspector.subtitle", tab: "nav.inspector" },
   experiments: { title: "app.experiments.title", subtitle: "app.experiments.subtitle", tab: "nav.experiments" },
 };
-const VIEWS: View[] = ["records", "library", "listening", "reading", "writing", "review", "inspector", "experiments"];
+const VIEWS: View[] = ["records", "library", "listening", "reading", "writing", "speaking", "review", "inspector", "experiments"];
 
 // App keeps the internal workbench views behind a local tab switch. Learning
 // Records writes only through explicit capture import, analysis, feedback, and
@@ -84,6 +87,10 @@ function Workbench() {
   // Writing stays mounted once opened, so an unsaved revision and an open
   // mistake form survive opening a saved record and coming back.
   const [writingMounted, setWritingMounted] = useState(false);
+  // Speaking stays mounted once opened: takes' audio exists only in its memory
+  // (never stored), so leaving it mounted keeps a take playable after opening a
+  // saved record and coming back.
+  const [speakingMounted, setSpeakingMounted] = useState(false);
   // The unit opened from a record, or null for the ordinary tab views.
   const [focus, setFocus] = useState<UnitTarget | null>(null);
   // Bumped on return so the record re-reads what may have changed elsewhere.
@@ -125,6 +132,7 @@ function Workbench() {
     if (next === "listening") setListeningMounted(true);
     if (next === "reading") setReadingMounted(true);
     if (next === "writing") setWritingMounted(true);
+    if (next === "speaking") setSpeakingMounted(true);
   };
 
   const suggestionsVisible = view === "review" && !focus && reviewMode === "suggestions";
@@ -175,6 +183,9 @@ function Workbench() {
     } else if (from.kind === "writing") {
       setFocus(null);
       setView("writing");
+    } else if (from.kind === "speaking") {
+      setFocus(null);
+      setView("speaking");
     } else {
       setFocus(null);
       setView("library");
@@ -250,6 +261,11 @@ function Workbench() {
           <Writing onOpenRecord={(entryId) => openRecord(entryId, { kind: "writing" })} />
         </div>
       ) : null}
+      {speakingMounted ? (
+        <div hidden={view !== "speaking"}>
+          <Speaking onOpenRecord={(entryId) => openRecord(entryId, { kind: "speaking" })} />
+        </div>
+      ) : null}
       {view === "review" ? (
         focus ? (
           <ReviewQueue
@@ -316,7 +332,9 @@ function BackBanner({ origin, onBack }: { origin: Origin; onBack: () => void }) 
             ? t("trail.backToReading")
             : origin.kind === "writing"
               ? t("trail.backToWriting")
-              : t("trail.backToLibrary");
+              : origin.kind === "speaking"
+                ? t("trail.backToSpeaking")
+                : t("trail.backToLibrary");
   const from =
     origin.kind === "record"
       ? t("trail.fromRecord", { id: origin.target.entryId })
@@ -328,7 +346,9 @@ function BackBanner({ origin, onBack }: { origin: Origin; onBack: () => void }) 
             ? t("trail.fromReading")
             : origin.kind === "writing"
               ? t("trail.fromWriting")
-              : t("trail.fromLibrary");
+              : origin.kind === "speaking"
+                ? t("trail.fromSpeaking")
+                : t("trail.fromLibrary");
   return (
     <div className="banner info trail" role="navigation" aria-label={t("trail.label")}>
       {from}{" "}

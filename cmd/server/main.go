@@ -20,6 +20,7 @@ import (
 	"french-learning-app/internal/extractor"
 	"french-learning-app/internal/listening"
 	"french-learning-app/internal/reading"
+	"french-learning-app/internal/speaking"
 	"french-learning-app/internal/storage/sqlite"
 	"french-learning-app/internal/suggester"
 	transporthttp "french-learning-app/internal/transport/http"
@@ -140,6 +141,7 @@ func run() error {
 	log.Printf("listening provider: %s", cfg.Listening.Provider)
 	log.Printf("reading provider: %s", cfg.Reading.Provider)
 	log.Printf("writing provider: %s", cfg.Writing.Provider)
+	log.Printf("speaking providers: transcription %s, feedback %s", cfg.Speaking.Transcription, cfg.Speaking.Feedback)
 	log.Printf("daily listening: playlist %s, automatic preparation %s, notify %s (timezone %s)",
 		cfg.ListeningDaily.Source, onOff(cfg.ListeningDaily.AutoPrepare), cfg.ListeningDaily.Notify, cfg.ListeningDaily.Location)
 	log.Printf("embedding provider: %s", cfg.Embedding.Provider)
@@ -181,6 +183,20 @@ func run() error {
 		return err
 	}
 	options = append(options, transporthttp.WithWriting(writingSvc))
+	// Speaking v1: transcription (SPEAKING_TRANSCRIPTION_PROVIDER) and feedback
+	// (SPEAKING_PROVIDER) are opt-in and independent; recording and playback
+	// happen in the browser and never reach a provider. The authored prompts
+	// are validated here.
+	selectedTranscriber, selectedSpeaking, err := speaking.New(cfg.Speaking)
+	if err != nil {
+		return err
+	}
+	speakingSvc, err := application.NewSpeakingService(sqlite.NewSpeakingRepository(db), selectedTranscriber, selectedSpeaking, speaking.ExamplePrompts(),
+		application.WithSpeakingDeadline(cfg.Speaking.OpenAITimeout+30*time.Second))
+	if err != nil {
+		return err
+	}
+	options = append(options, transporthttp.WithSpeaking(speakingSvc))
 	// Semantic search is opt-in (SEMANTIC_SEARCH=qdrant). The server only reads
 	// the index; building it is an explicit operator command (semantic-index).
 	if cfg.Semantic.Mode == config.SemanticQdrant {

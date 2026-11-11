@@ -101,6 +101,13 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   (`WRITING_PROVIDER`) gives feedback on the version you choose, with hints
   before suggestions and quotes checked against that exact text, versions can
   be compared, and a mistake can be saved as a normal learning record.
+- Practise **Speaking** on authored prompts: record a take and play it back in
+  the browser (nothing is sent, the audio is never stored), or upload a file
+  or type what you said. Opt-in requests transcribe one take you choose
+  (`SPEAKING_TRANSCRIPTION_PROVIDER`) and give feedback on one transcript
+  version you confirmed (`SPEAKING_PROVIDER`), based on the text only and never
+  on pronunciation. Takes can be compared, and a mistake can be saved as a
+  normal learning record.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation

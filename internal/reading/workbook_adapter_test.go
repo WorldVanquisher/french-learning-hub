@@ -154,3 +154,20 @@ func TestWorkbookWritingAdaptersValidate(t *testing.T) {
 		}
 	}
 }
+
+// The productive workbook also publishes its speaking tasks in the Speaking
+// section's prompt format. The server does not embed this file; the test keeps
+// it inside the server's own parser.
+func TestWorkbookSpeakingAdapterValidates(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "content", "workbooks", "adapters", "speaking_prompts_workbook_pw_v1.json"))
+	if err != nil {
+		t.Fatalf("read speaking prompt set: %v", err)
+	}
+	set, err := domain.ParseSpeakingPrompts(raw)
+	if err != nil {
+		t.Fatalf("ParseSpeakingPrompts: %v", err)
+	}
+	if len(set.Prompts) != 12 {
+		t.Fatalf("prompts = %d, want 12", len(set.Prompts))
+	}
+}
