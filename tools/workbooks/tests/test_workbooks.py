@@ -6,7 +6,11 @@ import random
 import re
 import unittest
 
-from flh_workbooks import adapters, model, quality, render, scan
+import copy
+import tempfile
+from pathlib import Path
+
+from flh_workbooks import adapters, model, quality, render, scan, studypack
 from flh_workbooks.__main__ import gates, outputs
 
 
@@ -204,3 +208,47 @@ class Productive(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StudyPack(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = json.loads(model.RL_PATH.read_text(encoding="utf-8"))
+        cls.pack = studypack.load_pack("u05")
+
+    def test_u05_pack_builds_clean_and_only_the_teacher_sheet_has_the_key(self):
+        with tempfile.TemporaryDirectory() as d:
+            summary = studypack.build(self.doc, "u05", Path(d))
+            self.assertEqual(summary["errors"], [])
+            self.assertEqual(summary["flags"], [])
+            self.assertEqual(summary["scan_findings"]["student-checklist"], 0)
+            self.assertEqual(summary["scan_findings"]["reader-sheet"], 0)
+            self.assertGreater(summary["scan_findings"]["teacher-debrief"], 0)
+            checklist = (Path(d) / "u05-student-checklist.html").read_text(encoding="utf-8")
+            for t in find_turns(self.doc, "u05"):
+                self.assertNotIn(t, checklist)
+            reader = (Path(d) / "u05-reader-sheet.html").read_text(encoding="utf-8")
+            self.assertIn("18 h 30", reader)  # the context line is read before the dialogue
+
+    def test_without_the_context_line_the_class_time_is_flagged_with_its_source(self):
+        pack = copy.deepcopy(self.pack)
+        del pack["context"]
+        errors, flags, _ = studypack.verify(self.doc, pack)
+        self.assertEqual(errors, [])
+        self.assertEqual({(f["id"], f["fact"], tuple(f["found_in"])) for f in flags}, {("u05-l04", "18 h 30", ("p1",))})
+
+    def test_broken_evidence_reasons_or_plan_are_refused(self):
+        pack = copy.deepcopy(self.pack)
+        pack["transfer"]["questions"][0]["evidence"][0]["excerpt"] = "le vendredi"
+        pack["transfer"]["questions"][1]["options"][0]["why_wrong_en"] = "He pays today (t9)."
+        errors, _, _ = studypack.verify(self.doc, pack)
+        self.assertTrue(any("occurs 0 times in t2" in e for e in errors), errors)
+        self.assertTrue(any("u05-x02 option A" in e for e in errors), errors)
+        pack = copy.deepcopy(self.pack)
+        pack["context"]["excerpt"] = "de 18 h à 20 h"
+        self.assertTrue(any(e.startswith("context:") for e in studypack.verify(self.doc, pack)[0]))
+        self.assertEqual(sum(s["minutes"] for s in self.pack["plan"]), 10)
+
+
+def find_turns(doc, unit_id):
+    return [t["text"] for t in studypack.find_unit(doc, unit_id)["listening"]["turns"]]

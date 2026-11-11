@@ -9,6 +9,9 @@
   python3 -m flh_workbooks report --out DIR   inventory JSON/Markdown and machine-critique flags
   python3 -m flh_workbooks capture --question ID --text "learner's own question"
                                               print a learning_capture_v1 document (no analysis)
+  python3 -m flh_workbooks studypack --unit u05 --out DIR
+                                              ten-minute listening study pack: student checklist,
+                                              reader sheet, teacher debrief and verification report
 """
 
 import argparse
@@ -16,7 +19,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import adapters, model, quality, render, report, scan
+from . import adapters, model, quality, render, report, scan, studypack
 
 ADAPTER_DIR = model.CONTENT / "adapters"
 # The listening script pack is embedded by the server, so it lives in its package.
@@ -63,6 +66,7 @@ def main(argv=None):
     s = sub.add_parser("scan"); s.add_argument("--workbook", choices=("rl", "pw"), default="rl"); s.add_argument("--html", required=True); s.add_argument("--pdf-text"); s.add_argument("--pdf-info")
     p = sub.add_parser("report"); p.add_argument("--out", required=True)
     c = sub.add_parser("capture"); c.add_argument("--question", required=True); c.add_argument("--text", required=True)
+    sp = sub.add_parser("studypack"); sp.add_argument("--unit", required=True); sp.add_argument("--out", required=True)
     a = ap.parse_args(argv)
 
     if a.cmd in ("build", "check"):
@@ -135,6 +139,12 @@ def main(argv=None):
     if a.cmd == "capture":
         print(adapters.dumps(adapters.capture(rl, a.question, a.text)), end="")
         return 0
+    if a.cmd == "studypack":
+        summary = studypack.build(rl, a.unit, Path(a.out))
+        print(json.dumps(summary, ensure_ascii=False))
+        for e in summary["errors"]:
+            print("ERROR:", e, file=sys.stderr)
+        return 1 if summary["errors"] else 0
     return 2
 
 
