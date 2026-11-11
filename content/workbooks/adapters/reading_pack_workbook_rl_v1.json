@@ -1,0 +1,2062 @@
+{
+ "schema_version": "flh_reading_pack_v1",
+ "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level.",
+ "passages": [
+  {
+   "id": "rd-wb1-u01",
+   "format": "classified_ad",
+   "style_level": "A2",
+   "title": "Annonce : chambre en colocation à Villeurbanne",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "Nous sommes trois étudiants et nous cherchons une quatrième personne pour partager notre appartement, à dix minutes à pied du métro Charpennes. La chambre est libre à partir du 1er septembre."
+    },
+    {
+     "id": "p2",
+     "text": "La chambre fait 12 m² et elle est meublée : un lit, un bureau et une grande armoire. Elle donne sur une cour calme. La cuisine, le salon et la salle de bains sont partagés."
+    },
+    {
+     "id": "p3",
+     "text": "Le loyer est de 420 euros par mois, charges comprises (eau, chauffage et internet). Il faut ajouter une caution d'un mois de loyer, que nous rendons au départ si la chambre est en bon état."
+    },
+    {
+     "id": "p4",
+     "text": "Chez nous, chacun fait ses courses, mais nous dînons souvent ensemble le dimanche soir. Nous ne fumons pas et nous préférons une personne non-fumeuse. Les animaux ne sont pas acceptés, car le propriétaire ne les autorise pas."
+    },
+    {
+     "id": "p5",
+     "text": "Si vous êtes intéressé, envoyez-nous un court message de présentation avant le 20 août. Nous organiserons des visites le week-end des 23 et 24 août."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u01:q1",
+     "kind": "main_idea",
+     "question": "Quel est le but de cette annonce ?",
+     "reference_answer": "Trouver un quatrième colocataire.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Proposer des cours aux étudiants.",
+       "why_wrong_en": "The authors are students looking for a fourth person, not offering lessons (p1).",
+       "why_wrong_zh": "作者是在找第四个人的学生，并不提供课程（p1）。"
+      },
+      {
+       "answer": "Vendre un appartement près du métro.",
+       "why_wrong_en": "Nothing is for sale: they are looking for a flatmate (p1).",
+       "why_wrong_zh": "并没有出售任何东西：他们在找室友（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "nous cherchons une quatrième personne pour partager notre appartement"
+      }
+     ],
+     "explanation_en": "Paragraph 1 states the purpose: a fourth person to share the flat.",
+     "explanation_zh": "第一段说明了目的：找第四个人合租。"
+    },
+    {
+     "id": "rd-wb1-u01:q2",
+     "kind": "detail",
+     "question": "À partir de quand la chambre est-elle libre ?",
+     "reference_answer": "Le 1er septembre.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Le 23 août.",
+       "why_wrong_en": "23 August is a viewing date (p5).",
+       "why_wrong_zh": "8月23日是看房日期（p5）。"
+      },
+      {
+       "answer": "Le 20 août.",
+       "why_wrong_en": "20 August is the deadline for messages (p5).",
+       "why_wrong_zh": "8月20日是发消息的截止日期（p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "La chambre est libre à partir du 1er septembre"
+      }
+     ],
+     "explanation_en": "The room is free from 1 September.",
+     "explanation_zh": "房间从9月1日起空出。"
+    },
+    {
+     "id": "rd-wb1-u01:q3",
+     "kind": "detail",
+     "question": "Qu'est-ce qui est compris dans le loyer ?",
+     "reference_answer": "L'eau, le chauffage et internet.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Les courses de la semaine.",
+       "why_wrong_en": "Each person does their own shopping (p4).",
+       "why_wrong_zh": "每个人自己买东西（p4）。"
+      },
+      {
+       "answer": "Seulement l'eau.",
+       "why_wrong_en": "Heating and internet are included as well (p3).",
+       "why_wrong_zh": "暖气和网络也包含在内（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "charges comprises (eau, chauffage et internet)"
+      }
+     ],
+     "explanation_en": "« Charges comprises » lists water, heating and internet.",
+     "explanation_zh": "« charges comprises » 列出了水、暖气和网络。"
+    },
+    {
+     "id": "rd-wb1-u01:q4",
+     "kind": "detail",
+     "question": "Pourquoi les animaux ne sont-ils pas acceptés ?",
+     "reference_answer": "Parce que le propriétaire ne les autorise pas.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Parce que la chambre est trop petite.",
+       "why_wrong_en": "The room size is given (p2) but is not linked to animals.",
+       "why_wrong_zh": "文中给出了房间面积（p2），但与动物无关。"
+      },
+      {
+       "answer": "Parce qu'un colocataire est allergique.",
+       "why_wrong_en": "No allergy is mentioned; the reason given is the owner (p4).",
+       "why_wrong_zh": "文中没有提到过敏，给出的原因是房东（p4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p4",
+       "excerpt": "car le propriétaire ne les autorise pas"
+      }
+     ],
+     "explanation_en": "« Car » introduces the reason: the owner does not allow animals.",
+     "explanation_zh": "« car » 引出原因：房东不允许养动物。"
+    },
+    {
+     "id": "rd-wb1-u01:q5",
+     "kind": "inference",
+     "question": "Que comprend-on sur la vie dans cette colocation ?",
+     "reference_answer": "Ils sont indépendants mais partagent parfois un repas.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Ils font toujours les courses ensemble.",
+       "why_wrong_en": "Each person does their own shopping (p4).",
+       "why_wrong_zh": "每个人自己买东西（p4）。"
+      },
+      {
+       "answer": "Ils ne se voient presque jamais, car chacun vit de son côté.",
+       "why_wrong_en": "They often have dinner together on Sundays (p4).",
+       "why_wrong_zh": "他们周日晚上常一起吃晚饭（p4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p4",
+       "excerpt": "chacun fait ses courses, mais nous dînons souvent ensemble le dimanche soir"
+      }
+     ],
+     "explanation_en": "Separate shopping plus shared Sunday dinners suggests independence with some shared moments.",
+     "explanation_zh": "各自买东西但周日常一起吃饭，说明大家既独立又有共处时间。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u02",
+   "format": "notice",
+   "style_level": "A2",
+   "title": "Info trafic : grève sur le réseau régional",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "En raison d'un mouvement social, la circulation des trains régionaux sera fortement perturbée le jeudi 14 novembre, de 5 heures à 22 heures."
+    },
+    {
+     "id": "p2",
+     "text": "Sur la ligne Nantes–Angers, un train sur trois circulera. Sur la ligne Nantes–Saint-Nazaire, aucun train ne circulera avant 9 heures ; des cars de remplacement partiront de la gare routière toutes les heures."
+    },
+    {
+     "id": "p3",
+     "text": "Les abonnés peuvent utiliser leur carte dans les cars de remplacement. Les voyageurs avec un billet à date fixe peuvent l'échanger gratuitement ou se faire rembourser jusqu'au 21 novembre."
+    },
+    {
+     "id": "p4",
+     "text": "Nous vous conseillons de vérifier votre trajet la veille au soir sur l'application ou au numéro gratuit affiché en gare. Les informations sont mises à jour à 17 heures."
+    },
+    {
+     "id": "p5",
+     "text": "Les trains de nuit et les lignes nationales ne sont pas concernés. Nous vous remercions de votre compréhension."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u02:q1",
+     "kind": "main_idea",
+     "question": "Qu'annonce ce texte ?",
+     "reference_answer": "Des perturbations de trains régionaux à cause d'une grève.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "De nouveaux horaires pour l'hiver.",
+       "why_wrong_en": "It concerns one strike day, not a new timetable (p1).",
+       "why_wrong_zh": "这是一天的罢工，不是新的冬季时刻表（p1）。"
+      },
+      {
+       "answer": "La fermeture définitive de la ligne Nantes–Angers dès jeudi.",
+       "why_wrong_en": "The disruption lasts one day, from 5:00 to 22:00 (p1).",
+       "why_wrong_zh": "中断只持续一天，从5点到22点（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "la circulation des trains régionaux sera fortement perturbée"
+      }
+     ],
+     "explanation_en": "Paragraph 1 announces one day of strong disruption caused by industrial action.",
+     "explanation_zh": "第一段宣布因劳工运动将有一天的严重中断。"
+    },
+    {
+     "id": "rd-wb1-u02:q2",
+     "kind": "detail",
+     "question": "Combien de trains circuleront entre Nantes et Angers ?",
+     "reference_answer": "Un train sur trois.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Aucun train avant 9 heures.",
+       "why_wrong_en": "That concerns the Nantes–Saint-Nazaire line (p2).",
+       "why_wrong_zh": "那是南特—圣纳泽尔线的情况（p2）。"
+      },
+      {
+       "answer": "Tous les trains, normalement.",
+       "why_wrong_en": "Only one train in three will run (p2).",
+       "why_wrong_zh": "只有三分之一的列车运行（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "Sur la ligne Nantes–Angers, un train sur trois circulera"
+      }
+     ],
+     "explanation_en": "One in three trains runs on Nantes–Angers.",
+     "explanation_zh": "南特—昂热线每三班车开一班。"
+    },
+    {
+     "id": "rd-wb1-u02:q3",
+     "kind": "detail",
+     "question": "Comment aller à Saint-Nazaire tôt le matin ?",
+     "reference_answer": "En car de remplacement depuis la gare routière.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "En train régional à 6 heures, comme les autres jours de la semaine.",
+       "why_wrong_en": "No train runs on that line before 9:00 (p2).",
+       "why_wrong_zh": "该线路9点前没有列车（p2）。"
+      },
+      {
+       "answer": "En train de nuit.",
+       "why_wrong_en": "Night trains are not affected, but none is mentioned for this route (p5).",
+       "why_wrong_zh": "夜车不受影响，但文中没有提到这条线路有夜车（p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "des cars de remplacement partiront de la gare routière toutes les heures"
+      }
+     ],
+     "explanation_en": "Replacement coaches leave every hour from the bus station.",
+     "explanation_zh": "替代大巴每小时从长途汽车站出发。"
+    },
+    {
+     "id": "rd-wb1-u02:q4",
+     "kind": "detail",
+     "question": "Que peuvent faire les abonnés ?",
+     "reference_answer": "Utiliser leur carte dans les cars.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Voyager gratuitement en taxi.",
+       "why_wrong_en": "Taxis are not mentioned (p3).",
+       "why_wrong_zh": "文中没有提到出租车（p3）。"
+      },
+      {
+       "answer": "Se faire rembourser leur abonnement.",
+       "why_wrong_en": "Refunds concern fixed-date tickets, not season tickets (p3).",
+       "why_wrong_zh": "退款针对的是固定日期车票，不是月票（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "Les abonnés peuvent utiliser leur carte dans les cars de remplacement"
+      }
+     ],
+     "explanation_en": "Season-ticket holders may use their card on the coaches.",
+     "explanation_zh": "持月票者可以在大巴上使用卡。"
+    },
+    {
+     "id": "rd-wb1-u02:q5",
+     "kind": "inference",
+     "question": "Un voyageur prend un train de nuit Paris–Nice le 14. Que doit-il faire ?",
+     "reference_answer": "Rien de spécial : son train n'est pas concerné.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Échanger son billet avant le 21.",
+       "why_wrong_en": "Exchange is offered for affected trains; his is not affected (p5).",
+       "why_wrong_zh": "换票针对受影响的列车，他的车不受影响（p5）。"
+      },
+      {
+       "answer": "Prendre un car de remplacement à la gare routière le matin.",
+       "why_wrong_en": "Coaches replace regional trains only; night trains are not affected (p5).",
+       "why_wrong_zh": "大巴只替代地区列车；夜车不受影响（p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p5",
+       "excerpt": "Les trains de nuit et les lignes nationales ne sont pas concernés"
+      }
+     ],
+     "explanation_en": "Night and national trains run normally.",
+     "explanation_zh": "夜车和全国线路正常运行。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u03",
+   "format": "notice",
+   "style_level": "A2",
+   "title": "Pharmacie du Marché : informations utiles",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "La pharmacie est ouverte du lundi au samedi, de 8 h 30 à 19 h 30, sans interruption. Le dimanche et les jours fériés, une pharmacie de garde est ouverte dans le quartier : son adresse est affichée sur la porte."
+    },
+    {
+     "id": "p2",
+     "text": "Campagne de vaccination contre la grippe : nos pharmaciens peuvent vous vacciner sans rendez-vous le mardi et le jeudi après-midi. Apportez votre carte Vitale et, si vous l'avez, votre bon de vaccination."
+    },
+    {
+     "id": "p3",
+     "text": "Vous avez de la fièvre, mal à la gorge ou le nez qui coule ? Reposez-vous, buvez beaucoup d'eau et lavez-vous souvent les mains. Si la fièvre dure plus de trois jours, consultez un médecin."
+    },
+    {
+     "id": "p4",
+     "text": "Pour les ordonnances renouvelables, vous pouvez envoyer une photo de votre ordonnance par notre site. Vos médicaments seront prêts deux heures plus tard."
+    },
+    {
+     "id": "p5",
+     "text": "Attention : les antibiotiques ne sont délivrés que sur ordonnance. Ils ne sont pas efficaces contre les virus comme celui de la grippe."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u03:q1",
+     "kind": "main_idea",
+     "question": "À quoi sert cette affiche ?",
+     "reference_answer": "À donner des informations pratiques aux clients de la pharmacie.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "À vendre un nouveau médicament contre la grippe.",
+       "why_wrong_en": "No product is advertised.",
+       "why_wrong_zh": "没有推销任何产品。"
+      },
+      {
+       "answer": "À recruter des pharmaciens.",
+       "why_wrong_en": "It informs customers; it offers no job (p1–p5).",
+       "why_wrong_zh": "它是给顾客的信息，没有招聘（p1–p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "La pharmacie est ouverte du lundi au samedi"
+      }
+     ],
+     "explanation_en": "Opening hours, vaccination, advice and prescriptions: practical information.",
+     "explanation_zh": "营业时间、疫苗、建议和处方：都是实用信息。"
+    },
+    {
+     "id": "rd-wb1-u03:q2",
+     "kind": "detail",
+     "question": "Que faire un dimanche si on a besoin d'un médicament ?",
+     "reference_answer": "Aller à la pharmacie de garde indiquée sur la porte.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Attendre le lundi à 8 h 30.",
+       "why_wrong_en": "A duty pharmacy is open on Sundays (p1).",
+       "why_wrong_zh": "周日有值班药店营业（p1）。"
+      },
+      {
+       "answer": "Envoyer une photo de son ordonnance par le site de la pharmacie.",
+       "why_wrong_en": "That service is for renewable prescriptions, not Sundays (p4).",
+       "why_wrong_zh": "那项服务针对可续开的处方，与周日无关（p4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "une pharmacie de garde est ouverte dans le quartier"
+      }
+     ],
+     "explanation_en": "The duty pharmacy's address is posted on the door.",
+     "explanation_zh": "值班药店的地址贴在门上。"
+    },
+    {
+     "id": "rd-wb1-u03:q3",
+     "kind": "detail",
+     "question": "Quand peut-on se faire vacciner sans rendez-vous ?",
+     "reference_answer": "Le mardi et le jeudi après-midi.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Le dimanche.",
+       "why_wrong_en": "On Sundays only the duty pharmacy is open (p1).",
+       "why_wrong_zh": "周日只有值班药店营业（p1）。"
+      },
+      {
+       "answer": "Tous les matins.",
+       "why_wrong_en": "Only Tuesday and Thursday afternoons (p2).",
+       "why_wrong_zh": "只有周二和周四下午（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "sans rendez-vous le mardi et le jeudi après-midi"
+      }
+     ],
+     "explanation_en": "Tuesday and Thursday afternoons, walk-in.",
+     "explanation_zh": "周二和周四下午，无需预约。"
+    },
+    {
+     "id": "rd-wb1-u03:q4",
+     "kind": "detail",
+     "question": "Que conseille l'affiche en cas de fièvre ?",
+     "reference_answer": "Se reposer et boire beaucoup d'eau.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Venir se faire vacciner immédiatement.",
+       "why_wrong_en": "Vaccination is a separate campaign, not a treatment for fever (p2).",
+       "why_wrong_zh": "接种是另一项活动，不是退烧的方法（p2）。"
+      },
+      {
+       "answer": "Prendre des antibiotiques tout de suite.",
+       "why_wrong_en": "Antibiotics need a prescription and do not work on viruses (p5).",
+       "why_wrong_zh": "抗生素需要处方，而且对病毒无效（p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "Reposez-vous, buvez beaucoup d'eau"
+      }
+     ],
+     "explanation_en": "Rest and drink plenty of water.",
+     "explanation_zh": "休息并多喝水。"
+    },
+    {
+     "id": "rd-wb1-u03:q5",
+     "kind": "inference",
+     "question": "Pourquoi l'affiche parle-t-elle des antibiotiques à la fin ?",
+     "reference_answer": "Pour expliquer qu'ils ne soignent pas la grippe.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Pour annoncer une promotion.",
+       "why_wrong_en": "No price or offer is mentioned (p5).",
+       "why_wrong_zh": "没有提到价格或优惠（p5）。"
+      },
+      {
+       "answer": "Pour dire qu'ils sont en rupture de stock jusqu'à la fin du mois.",
+       "why_wrong_en": "Stock is not mentioned (p5).",
+       "why_wrong_zh": "没有提到缺货（p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p5",
+       "excerpt": "Ils ne sont pas efficaces contre les virus comme celui de la grippe"
+      }
+     ],
+     "explanation_en": "It warns that antibiotics do not work against the flu virus.",
+     "explanation_zh": "提醒抗生素对流感病毒无效。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u04",
+   "format": "classified_ad",
+   "style_level": "B1",
+   "title": "Offre d'emploi : serveur / serveuse pour la saison d'été",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "Le restaurant « La Terrasse du Port », à La Rochelle, recrute deux serveurs ou serveuses pour la saison, du 15 juin au 15 septembre. Le contrat est un CDD de 35 heures par semaine."
+    },
+    {
+     "id": "p2",
+     "text": "Vos missions : accueillir les clients, prendre les commandes, servir en salle et en terrasse, et participer au rangement à la fermeture. Vous travaillerez cinq jours sur sept, avec deux jours de repos consécutifs."
+    },
+    {
+     "id": "p3",
+     "text": "Profil recherché : une première expérience en restauration est souhaitée, mais pas obligatoire. Nous cherchons surtout des personnes souriantes, organisées et capables de travailler en équipe. Un bon niveau d'anglais est un plus, car beaucoup de nos clients sont étrangers."
+    },
+    {
+     "id": "p4",
+     "text": "Le salaire est de 1 850 euros brut par mois, et les pourboires sont partagés entre toute l'équipe. Le repas du midi est offert. Nous ne proposons pas de logement, mais nous pouvons vous donner des adresses de studios à louer."
+    },
+    {
+     "id": "p5",
+     "text": "Pour postuler, envoyez votre CV et quelques lignes sur vos disponibilités avant le 30 avril. Les entretiens auront lieu par téléphone la première semaine de mai."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u04:q1",
+     "kind": "main_idea",
+     "question": "Que propose cette annonce ?",
+     "reference_answer": "Un emploi saisonnier dans un restaurant.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Un stage non payé pour des étudiants en cuisine.",
+       "why_wrong_en": "It is a paid fixed-term contract for waiting staff (p1, p4).",
+       "why_wrong_zh": "这是有薪水的服务员定期合同（p1、p4）。"
+      },
+      {
+       "answer": "Un poste de cuisinier toute l'année à La Rochelle.",
+       "why_wrong_en": "The job is waiting tables, from June to September only (p1).",
+       "why_wrong_zh": "这份工作是当服务员，而且只有6月到9月（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "recrute deux serveurs ou serveuses pour la saison"
+      }
+     ],
+     "explanation_en": "A seasonal waiting job.",
+     "explanation_zh": "一份季节性的服务员工作。"
+    },
+    {
+     "id": "rd-wb1-u04:q2",
+     "kind": "detail",
+     "question": "Combien de temps dure le contrat ?",
+     "reference_answer": "Trois mois, de mi-juin à mi-septembre.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Un an, renouvelable.",
+       "why_wrong_en": "The contract runs from 15 June to 15 September (p1).",
+       "why_wrong_zh": "合同从6月15日到9月15日（p1）。"
+      },
+      {
+       "answer": "Deux mois, en juillet et en août seulement.",
+       "why_wrong_en": "It starts on 15 June and ends on 15 September (p1).",
+       "why_wrong_zh": "合同6月15日开始，9月15日结束（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "du 15 juin au 15 septembre"
+      }
+     ],
+     "explanation_en": "Three months.",
+     "explanation_zh": "三个月。"
+    },
+    {
+     "id": "rd-wb1-u04:q3",
+     "kind": "detail",
+     "question": "Combien de jours de repos par semaine ?",
+     "reference_answer": "Deux jours qui se suivent.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Deux jours séparés, choisis par l'employeur chaque semaine.",
+       "why_wrong_en": "The two days off are consecutive (p2).",
+       "why_wrong_zh": "两天休息是连续的（p2）。"
+      },
+      {
+       "answer": "Un jour, le lundi.",
+       "why_wrong_en": "The advert gives two consecutive days off (p2).",
+       "why_wrong_zh": "广告说有连续两天休息（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "avec deux jours de repos consécutifs"
+      }
+     ],
+     "explanation_en": "Two consecutive days off.",
+     "explanation_zh": "连续两天休息。"
+    },
+    {
+     "id": "rd-wb1-u04:q4",
+     "kind": "detail",
+     "question": "L'expérience en restauration est-elle obligatoire ?",
+     "reference_answer": "Non, elle est souhaitée mais pas obligatoire.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Oui, il faut au moins deux ans d'expérience.",
+       "why_wrong_en": "No minimum experience is required (p3).",
+       "why_wrong_zh": "没有要求最低工作经验（p3）。"
+      },
+      {
+       "answer": "Oui, mais seulement pour le service en terrasse.",
+       "why_wrong_en": "Experience is wished for, not required, for all tasks (p3).",
+       "why_wrong_zh": "对所有工作来说经验都是加分项，不是必须（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "une première expérience en restauration est souhaitée, mais pas obligatoire"
+      }
+     ],
+     "explanation_en": "Wished for, not required.",
+     "explanation_zh": "希望有，但不是必须。"
+    },
+    {
+     "id": "rd-wb1-u04:q5",
+     "kind": "inference",
+     "question": "Pourquoi l'anglais est-il utile pour ce poste ?",
+     "reference_answer": "Beaucoup de clients viennent de l'étranger.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "L'équipe parle anglais pendant les réunions.",
+       "why_wrong_en": "The reason given is the customers (p3).",
+       "why_wrong_zh": "给出的原因是客人（p3）。"
+      },
+      {
+       "answer": "Le menu est écrit uniquement en anglais.",
+       "why_wrong_en": "The menu is not mentioned (p3).",
+       "why_wrong_zh": "文中没有提到菜单（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "beaucoup de nos clients sont étrangers"
+      }
+     ],
+     "explanation_en": "Many customers are foreign.",
+     "explanation_zh": "很多客人是外国人。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u05",
+   "format": "newsletter",
+   "style_level": "A2",
+   "title": "Maison des langues : cours du soir de français",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "La Maison des langues propose des cours de français pour adultes, du lundi au jeudi, de 18 h 30 à 20 h. Les groupes ont douze personnes au maximum."
+    },
+    {
+     "id": "p2",
+     "text": "Avant l'inscription, chaque personne passe un petit test de niveau gratuit, à l'écrit et à l'oral. Il dure environ quarante minutes et permet de choisir le bon groupe."
+    },
+    {
+     "id": "p3",
+     "text": "Le trimestre coûte 180 euros pour deux soirs par semaine. Les étudiants et les demandeurs d'emploi paient 120 euros, sur présentation d'un justificatif. Le livre n'est pas compris : il coûte 25 euros."
+    },
+    {
+     "id": "p4",
+     "text": "Les cours commencent le 6 octobre. Les inscriptions sont ouvertes à l'accueil du 15 au 30 septembre, le mardi et le jeudi de 14 h à 19 h. Il n'est pas possible de s'inscrire en ligne."
+    },
+    {
+     "id": "p5",
+     "text": "Une absence de plus de trois semaines sans prévenir peut entraîner la perte de la place. En cas de maladie, prévenez l'accueil par téléphone ou par courriel."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u05:q1",
+     "kind": "main_idea",
+     "question": "Qu'est-ce que cette brochure présente ?",
+     "reference_answer": "Des cours de français du soir pour adultes.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Des cours d'anglais pour les enfants le mercredi après-midi.",
+       "why_wrong_en": "The courses are French, for adults, in the evening (p1).",
+       "why_wrong_zh": "课程是给成人的法语晚课（p1）。"
+      },
+      {
+       "answer": "Un examen officiel de français.",
+       "why_wrong_en": "The test is only a placement test (p2).",
+       "why_wrong_zh": "测试只是分级测试（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "propose des cours de français pour adultes"
+      }
+     ],
+     "explanation_en": "Evening French courses for adults.",
+     "explanation_zh": "成人法语夜校课程。"
+    },
+    {
+     "id": "rd-wb1-u05:q2",
+     "kind": "detail",
+     "question": "Combien d'élèves peut-il y avoir dans un groupe ?",
+     "reference_answer": "Douze au maximum.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Six seulement pour les débutants.",
+       "why_wrong_en": "No special size for beginners is given (p1).",
+       "why_wrong_zh": "没有给出初学者的特别人数（p1）。"
+      },
+      {
+       "answer": "Vingt, comme dans une classe normale.",
+       "why_wrong_en": "Groups have twelve people at most (p1).",
+       "why_wrong_zh": "每组最多十二人（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "Les groupes ont douze personnes au maximum"
+      }
+     ],
+     "explanation_en": "Twelve at most.",
+     "explanation_zh": "最多十二人。"
+    },
+    {
+     "id": "rd-wb1-u05:q3",
+     "kind": "detail",
+     "question": "À quoi sert le test de niveau ?",
+     "reference_answer": "À choisir le bon groupe.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "À avoir une réduction sur le prix du trimestre.",
+       "why_wrong_en": "Discounts depend on status, not on the test (p3).",
+       "why_wrong_zh": "折扣取决于身份，而不是测试（p3）。"
+      },
+      {
+       "answer": "À obtenir un diplôme officiel de français.",
+       "why_wrong_en": "It only places learners in a group (p2).",
+       "why_wrong_zh": "它只用来分组（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "permet de choisir le bon groupe"
+      }
+     ],
+     "explanation_en": "To choose the right group.",
+     "explanation_zh": "为了选择合适的班级。"
+    },
+    {
+     "id": "rd-wb1-u05:q4",
+     "kind": "detail",
+     "question": "Combien paie une étudiante pour le trimestre ?",
+     "reference_answer": "120 euros, avec un justificatif.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "180 euros, comme tout le monde.",
+       "why_wrong_en": "Students pay the reduced price (p3).",
+       "why_wrong_zh": "学生付优惠价（p3）。"
+      },
+      {
+       "answer": "100 euros, avec la carte d'étudiant.",
+       "why_wrong_en": "The reduced price is 120 euros, with proof of status (p3).",
+       "why_wrong_zh": "优惠价是120欧元，需要出示证明（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "Les étudiants et les demandeurs d'emploi paient 120 euros"
+      }
+     ],
+     "explanation_en": "120 euros with proof of status.",
+     "explanation_zh": "凭证明付120欧元。"
+    },
+    {
+     "id": "rd-wb1-u05:q5",
+     "kind": "inference",
+     "question": "Un élève a été absent un mois sans prévenir. Que peut-il se passer ?",
+     "reference_answer": "Il peut perdre sa place.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Il doit payer une amende de 25 euros.",
+       "why_wrong_en": "No fine is mentioned (p5).",
+       "why_wrong_zh": "没有提到罚款（p5）。"
+      },
+      {
+       "answer": "Il doit repasser le test de niveau avant de revenir.",
+       "why_wrong_en": "The test is not linked to absences (p5).",
+       "why_wrong_zh": "测试与缺勤无关（p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p5",
+       "excerpt": "peut entraîner la perte de la place"
+      }
+     ],
+     "explanation_en": "More than three weeks without notice can cost the place.",
+     "explanation_zh": "无故缺勤超过三周可能会失去名额。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u06",
+   "format": "notice",
+   "style_level": "B1",
+   "title": "Retours et remboursements – boutique en ligne Maison Lumière",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "Vous avez changé d'avis ? Vous disposez de 30 jours après la réception de votre commande pour nous retourner un article, sans avoir à donner de raison."
+    },
+    {
+     "id": "p2",
+     "text": "L'article doit être dans son emballage d'origine, non utilisé et complet. Les articles personnalisés, par exemple une lampe gravée à votre nom, ne peuvent pas être retournés."
+    },
+    {
+     "id": "p3",
+     "text": "Pour faire un retour, connectez-vous à votre compte et imprimez l'étiquette de retour. Déposez ensuite le colis dans un point relais. Le retour est gratuit, sauf pour les meubles de plus de 30 kilos."
+    },
+    {
+     "id": "p4",
+     "text": "Nous vous remboursons dans un délai de 14 jours après la réception du colis dans notre entrepôt, avec le même moyen de paiement que pour l'achat."
+    },
+    {
+     "id": "p5",
+     "text": "Si votre article est arrivé abîmé, ne le renvoyez pas tout de suite : contactez d'abord notre service client dans les 48 heures, avec une photo du produit et du carton."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u06:q1",
+     "kind": "main_idea",
+     "question": "De quoi parle ce texte ?",
+     "reference_answer": "Des règles pour renvoyer un article et être remboursé.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Des promotions de la boutique pour les fêtes de fin d'année.",
+       "why_wrong_en": "No promotion is mentioned (p1–p5).",
+       "why_wrong_zh": "文中没有提到任何促销（p1–p5）。"
+      },
+      {
+       "answer": "De la livraison gratuite.",
+       "why_wrong_en": "It is about returns, not deliveries (p1).",
+       "why_wrong_zh": "它讲的是退货，不是送货（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "pour nous retourner un article"
+      }
+     ],
+     "explanation_en": "Return and refund rules.",
+     "explanation_zh": "退货和退款的规定。"
+    },
+    {
+     "id": "rd-wb1-u06:q2",
+     "kind": "detail",
+     "question": "Combien de temps a-t-on pour retourner un article ?",
+     "reference_answer": "30 jours après la réception.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "14 jours après l'achat.",
+       "why_wrong_en": "Fourteen days is the refund delay (p4).",
+       "why_wrong_zh": "十四天是退款的期限（p4）。"
+      },
+      {
+       "answer": "48 heures après la livraison.",
+       "why_wrong_en": "48 hours is for reporting a damaged item (p5).",
+       "why_wrong_zh": "四十八小时是报告商品损坏的期限（p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "Vous disposez de 30 jours après la réception de votre commande"
+      }
+     ],
+     "explanation_en": "Thirty days after delivery.",
+     "explanation_zh": "收货后三十天。"
+    },
+    {
+     "id": "rd-wb1-u06:q3",
+     "kind": "detail",
+     "question": "Faut-il expliquer pourquoi on retourne l'article ?",
+     "reference_answer": "Non, aucune raison n'est demandée.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Oui, il faut remplir un formulaire détaillé.",
+       "why_wrong_en": "No reason is required (p1).",
+       "why_wrong_zh": "不需要给出理由（p1）。"
+      },
+      {
+       "answer": "Seulement si l'article coûte plus de 30 euros.",
+       "why_wrong_en": "No price condition is given (p1).",
+       "why_wrong_zh": "没有价格条件（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "sans avoir à donner de raison"
+      }
+     ],
+     "explanation_en": "No reason needed.",
+     "explanation_zh": "不需要理由。"
+    },
+    {
+     "id": "rd-wb1-u06:q4",
+     "kind": "inference",
+     "question": "Quel article ne peut pas être retourné ?",
+     "reference_answer": "Un miroir avec un prénom gravé.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Un fauteuil de 25 kilos.",
+       "why_wrong_en": "Furniture can be returned; only those over 30 kg are not free (p3).",
+       "why_wrong_zh": "家具可以退，只是超过30公斤的不免费（p3）。"
+      },
+      {
+       "answer": "Une lampe neuve dans son emballage d'origine.",
+       "why_wrong_en": "An unused item in its original packaging can be returned (p2).",
+       "why_wrong_zh": "未使用且包装完好的商品可以退（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "Les articles personnalisés"
+      }
+     ],
+     "explanation_en": "Personalised items cannot be returned.",
+     "explanation_zh": "定制商品不能退。"
+    },
+    {
+     "id": "rd-wb1-u06:q5",
+     "kind": "detail",
+     "question": "Le retour est-il gratuit ?",
+     "reference_answer": "Oui, sauf pour les meubles de plus de 30 kilos.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Non, il coûte toujours 5 euros.",
+       "why_wrong_en": "Returns are free except heavy furniture (p3).",
+       "why_wrong_zh": "除重家具外退货免费（p3）。"
+      },
+      {
+       "answer": "Oui, pour tous les articles, même les plus lourds.",
+       "why_wrong_en": "Furniture over 30 kg is the exception (p3).",
+       "why_wrong_zh": "超过30公斤的家具是例外（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "Le retour est gratuit, sauf pour les meubles de plus de 30 kilos"
+      }
+     ],
+     "explanation_en": "Free except furniture over 30 kg.",
+     "explanation_zh": "免费，超过30公斤的家具除外。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u07",
+   "format": "announcement",
+   "style_level": "A2",
+   "title": "Fête du quartier Saint-Michel : le programme",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "La fête du quartier Saint-Michel aura lieu le samedi 7 juin, de 10 heures à minuit, sur la place du Marché et dans les rues voisines. L'entrée est libre pour toutes les activités."
+    },
+    {
+     "id": "p2",
+     "text": "Le matin, un vide-grenier occupe la rue des Tanneurs : les habitants vendent des objets d'occasion. Pour avoir un stand, il faut s'inscrire à la mairie avant le 31 mai ; le stand coûte 5 euros."
+    },
+    {
+     "id": "p3",
+     "text": "L'après-midi, les enfants peuvent participer à un atelier de peinture à 14 heures, puis voir un spectacle de marionnettes à 16 heures, devant l'école Jules-Ferry."
+    },
+    {
+     "id": "p4",
+     "text": "À partir de 19 heures, des stands proposent des plats du monde entier préparés par les associations du quartier. Le concert commence à 21 heures, avec deux groupes locaux, et se termine par un bal."
+    },
+    {
+     "id": "p5",
+     "text": "En cas de pluie, le concert et le bal auront lieu dans la salle des fêtes, mais le vide-grenier sera annulé. Le stationnement sera interdit sur la place du Marché toute la journée."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u07:q1",
+     "kind": "main_idea",
+     "question": "Quel type de document est-ce ?",
+     "reference_answer": "Le programme d'une fête de quartier.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Une publicité pour un magasin.",
+       "why_wrong_en": "Nothing is sold by a shop (p1–p5).",
+       "why_wrong_zh": "并没有商店在推销（p1–p5）。"
+      },
+      {
+       "answer": "Une invitation à un mariage sur la place du Marché.",
+       "why_wrong_en": "It lists public activities for a neighbourhood festival (p1).",
+       "why_wrong_zh": "它列出的是街区节日的公共活动（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "La fête du quartier Saint-Michel aura lieu le samedi 7 juin"
+      }
+     ],
+     "explanation_en": "A festival programme.",
+     "explanation_zh": "节日活动安排。"
+    },
+    {
+     "id": "rd-wb1-u07:q2",
+     "kind": "detail",
+     "question": "Combien coûte l'entrée des activités ?",
+     "reference_answer": "Rien, l'entrée est libre.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "5 euros par personne, payés à la mairie.",
+       "why_wrong_en": "5 euros is the price of a flea-market stand (p2).",
+       "why_wrong_zh": "5欧元是旧货摊位的价格（p2）。"
+      },
+      {
+       "answer": "Seulement le concert est payant.",
+       "why_wrong_en": "Entry is free for all activities (p1).",
+       "why_wrong_zh": "所有活动都免费（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "L'entrée est libre pour toutes les activités"
+      }
+     ],
+     "explanation_en": "Free entry.",
+     "explanation_zh": "免费入场。"
+    },
+    {
+     "id": "rd-wb1-u07:q3",
+     "kind": "detail",
+     "question": "Qu'est-ce qu'un vide-grenier, d'après le texte ?",
+     "reference_answer": "Une vente d'objets d'occasion par les habitants.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Un concours de cuisine entre les associations.",
+       "why_wrong_en": "The food stands are in the evening (p4).",
+       "why_wrong_zh": "美食摊位在晚上（p4）。"
+      },
+      {
+       "answer": "Un atelier pour réparer des meubles.",
+       "why_wrong_en": "No repairing is mentioned (p2).",
+       "why_wrong_zh": "没有提到修理（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "les habitants vendent des objets d'occasion"
+      }
+     ],
+     "explanation_en": "Residents sell second-hand items.",
+     "explanation_zh": "居民出售二手物品。"
+    },
+    {
+     "id": "rd-wb1-u07:q4",
+     "kind": "detail",
+     "question": "Où a lieu le spectacle de marionnettes ?",
+     "reference_answer": "Devant l'école Jules-Ferry.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Sur la place du Marché, à côté des stands de nourriture.",
+       "why_wrong_en": "The puppet show is in front of the school (p3).",
+       "why_wrong_zh": "木偶戏在学校门前（p3）。"
+      },
+      {
+       "answer": "Dans la salle des fêtes.",
+       "why_wrong_en": "The hall is the rain plan for the concert (p5).",
+       "why_wrong_zh": "礼堂是音乐会的雨天备用地点（p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "devant l'école Jules-Ferry"
+      }
+     ],
+     "explanation_en": "In front of the school.",
+     "explanation_zh": "在学校门前。"
+    },
+    {
+     "id": "rd-wb1-u07:q5",
+     "kind": "inference",
+     "question": "S'il pleut, quelle activité n'aura pas lieu ?",
+     "reference_answer": "Le vide-grenier.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Le concert.",
+       "why_wrong_en": "It moves to the community hall (p5).",
+       "why_wrong_zh": "音乐会会改到礼堂举行（p5）。"
+      },
+      {
+       "answer": "Le bal de fin de soirée.",
+       "why_wrong_en": "The ball also moves indoors (p5).",
+       "why_wrong_zh": "舞会也会改到室内（p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p5",
+       "excerpt": "le vide-grenier sera annulé"
+      }
+     ],
+     "explanation_en": "The flea market is cancelled if it rains.",
+     "explanation_zh": "下雨的话旧货市场取消。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u08",
+   "format": "newsletter",
+   "style_level": "B1",
+   "title": "Nouvelles règles de tri à partir du 1er mars",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "À partir du 1er mars, tous les emballages en plastique iront dans la poubelle jaune : bouteilles, mais aussi pots de yaourt, sacs et barquettes. Il n'est plus nécessaire de les laver, il suffit de bien les vider."
+    },
+    {
+     "id": "p2",
+     "text": "Le verre continue d'aller dans les conteneurs verts installés dans les rues. Attention : la vaisselle cassée et les ampoules ne sont pas du verre recyclable ; elles vont à la déchetterie."
+    },
+    {
+     "id": "p3",
+     "text": "Les déchets alimentaires seront collectés dans un bac marron, distribué gratuitement aux habitants en février. Avec ces déchets, la ville produira du compost pour les jardins publics."
+    },
+    {
+     "id": "p4",
+     "text": "La collecte des ordures ménagères passera d'une fois à deux fois par semaine dans le centre-ville, le mardi et le vendredi. Dans les autres quartiers, elle reste le lundi."
+    },
+    {
+     "id": "p5",
+     "text": "Une réunion d'information aura lieu le 20 février à 18 h 30 à la mairie annexe. Les habitants pourront y poser leurs questions et récupérer leur bac marron s'ils ne l'ont pas encore reçu."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u08:q1",
+     "kind": "main_idea",
+     "question": "Quel est le sujet de cette lettre ?",
+     "reference_answer": "Des changements dans le tri des déchets.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "La construction d'une nouvelle déchetterie à côté de la mairie annexe.",
+       "why_wrong_en": "No construction is announced (p1–p5).",
+       "why_wrong_zh": "文中没有宣布任何建设（p1–p5）。"
+      },
+      {
+       "answer": "L'ouverture d'un jardin public.",
+       "why_wrong_en": "Public gardens are mentioned only for the compost (p3).",
+       "why_wrong_zh": "提到公共花园只是关于堆肥（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "tous les emballages en plastique iront dans la poubelle jaune"
+      }
+     ],
+     "explanation_en": "New sorting rules.",
+     "explanation_zh": "新的分类规则。"
+    },
+    {
+     "id": "rd-wb1-u08:q2",
+     "kind": "detail",
+     "question": "Où mettre un pot de yaourt vide à partir de mars ?",
+     "reference_answer": "Dans la poubelle jaune.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Dans un conteneur vert.",
+       "why_wrong_en": "Green containers are for glass (p2).",
+       "why_wrong_zh": "绿色容器是放玻璃的（p2）。"
+      },
+      {
+       "answer": "Dans le bac marron avec les déchets alimentaires.",
+       "why_wrong_en": "Plastic packaging goes in the yellow bin (p1).",
+       "why_wrong_zh": "塑料包装放进黄色垃圾桶（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "tous les emballages en plastique iront dans la poubelle jaune"
+      },
+      {
+       "segment": "p1",
+       "excerpt": "pots de yaourt"
+      }
+     ],
+     "explanation_en": "Yellow bin: all plastic packaging.",
+     "explanation_zh": "黄色垃圾桶：所有塑料包装。"
+    },
+    {
+     "id": "rd-wb1-u08:q3",
+     "kind": "detail",
+     "question": "Faut-il laver les emballages ?",
+     "reference_answer": "Non, il suffit de bien les vider.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Oui, à l'eau chaude.",
+       "why_wrong_en": "Washing is no longer needed (p1).",
+       "why_wrong_zh": "不再需要清洗（p1）。"
+      },
+      {
+       "answer": "Seulement les bouteilles en plastique qui ont contenu du lait.",
+       "why_wrong_en": "No exception is made (p1).",
+       "why_wrong_zh": "没有例外（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "Il n'est plus nécessaire de les laver, il suffit de bien les vider"
+      }
+     ],
+     "explanation_en": "Just empty them well.",
+     "explanation_zh": "倒干净即可。"
+    },
+    {
+     "id": "rd-wb1-u08:q4",
+     "kind": "inference",
+     "question": "Que faire d'une assiette cassée ?",
+     "reference_answer": "L'apporter à la déchetterie.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "La mettre dans le conteneur vert avec les bouteilles.",
+       "why_wrong_en": "Broken crockery is not recyclable glass (p2).",
+       "why_wrong_zh": "打碎的餐具不属于可回收玻璃（p2）。"
+      },
+      {
+       "answer": "La jeter dans la poubelle jaune.",
+       "why_wrong_en": "The yellow bin is for plastic packaging (p1).",
+       "why_wrong_zh": "黄色垃圾桶是放塑料包装的（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "la vaisselle cassée et les ampoules ne sont pas du verre recyclable"
+      }
+     ],
+     "explanation_en": "Broken crockery goes to the waste centre.",
+     "explanation_zh": "打碎的餐具要送到垃圾处理站。"
+    },
+    {
+     "id": "rd-wb1-u08:q5",
+     "kind": "detail",
+     "question": "Que fera la ville avec les déchets alimentaires ?",
+     "reference_answer": "Du compost pour les jardins publics.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "De l'électricité pour les bâtiments municipaux.",
+       "why_wrong_en": "The text says compost (p3).",
+       "why_wrong_zh": "文中说的是堆肥（p3）。"
+      },
+      {
+       "answer": "Rien, ils seront jetés.",
+       "why_wrong_en": "They will become compost (p3).",
+       "why_wrong_zh": "它们会被做成堆肥（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "la ville produira du compost pour les jardins publics"
+      }
+     ],
+     "explanation_en": "Compost for public gardens.",
+     "explanation_zh": "给公共花园用的堆肥。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u09",
+   "format": "email",
+   "style_level": "B1",
+   "title": "Confirmation de réservation – Hôtel des Remparts",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "Madame Rossi, nous avons le plaisir de confirmer votre réservation du vendredi 12 au dimanche 14 avril : une chambre double avec vue sur le jardin, petit-déjeuner compris."
+    },
+    {
+     "id": "p2",
+     "text": "La chambre est disponible à partir de 15 heures le jour de votre arrivée et doit être libérée avant 11 heures le jour du départ. La réception est ouverte 24 heures sur 24."
+    },
+    {
+     "id": "p3",
+     "text": "Le parking de l'hôtel est complet ces jours-là. Nous vous conseillons le parking public de la gare, à 300 mètres, qui coûte 12 euros par jour."
+    },
+    {
+     "id": "p4",
+     "text": "Vous pouvez annuler gratuitement jusqu'à 48 heures avant votre arrivée. Après ce délai, la première nuit sera facturée."
+    },
+    {
+     "id": "p5",
+     "text": "Le petit-déjeuner est servi de 7 h à 10 h dans la véranda. Si vous avez une allergie alimentaire, merci de nous l'indiquer à l'avance. Nous vous souhaitons un agréable séjour."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u09:q1",
+     "kind": "main_idea",
+     "question": "Pourquoi l'hôtel écrit-il à Mme Rossi ?",
+     "reference_answer": "Pour confirmer sa réservation.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Pour lui proposer une offre spéciale de fin de saison.",
+       "why_wrong_en": "It confirms her booking (p1).",
+       "why_wrong_zh": "邮件是在确认她的预订（p1）。"
+      },
+      {
+       "answer": "Pour annuler sa chambre.",
+       "why_wrong_en": "Nothing is cancelled (p1).",
+       "why_wrong_zh": "没有取消任何东西（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "nous avons le plaisir de confirmer votre réservation"
+      }
+     ],
+     "explanation_en": "To confirm the booking.",
+     "explanation_zh": "确认预订。"
+    },
+    {
+     "id": "rd-wb1-u09:q2",
+     "kind": "detail",
+     "question": "Qu'est-ce qui est compris dans le prix ?",
+     "reference_answer": "Le petit-déjeuner.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Le dîner du vendredi soir dans la véranda.",
+       "why_wrong_en": "Only breakfast is included (p1).",
+       "why_wrong_zh": "只含早餐（p1）。"
+      },
+      {
+       "answer": "Le parking de l'hôtel.",
+       "why_wrong_en": "The hotel car park is full (p3).",
+       "why_wrong_zh": "酒店停车场已满（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "petit-déjeuner compris"
+      }
+     ],
+     "explanation_en": "Breakfast.",
+     "explanation_zh": "早餐。"
+    },
+    {
+     "id": "rd-wb1-u09:q3",
+     "kind": "detail",
+     "question": "À partir de quelle heure peut-on entrer dans la chambre ?",
+     "reference_answer": "15 heures.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Dès 7 heures, à l'heure du petit-déjeuner.",
+       "why_wrong_en": "7:00 is when breakfast starts (p5).",
+       "why_wrong_zh": "7点是早餐开始的时间（p5）。"
+      },
+      {
+       "answer": "11 heures.",
+       "why_wrong_en": "11:00 is the check-out time (p2).",
+       "why_wrong_zh": "11点是退房时间（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "disponible à partir de 15 heures"
+      }
+     ],
+     "explanation_en": "From 15:00.",
+     "explanation_zh": "15点起。"
+    },
+    {
+     "id": "rd-wb1-u09:q4",
+     "kind": "inference",
+     "question": "Mme Rossi arrive à 23 heures. Est-ce un problème ?",
+     "reference_answer": "Non, la réception est ouverte jour et nuit.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Oui, la chambre sera donnée à quelqu'un d'autre après 22 heures.",
+       "why_wrong_en": "No such rule exists (p2).",
+       "why_wrong_zh": "没有这样的规定（p2）。"
+      },
+      {
+       "answer": "Oui, elle doit arriver avant 15 heures.",
+       "why_wrong_en": "15:00 is the earliest time, not the latest (p2).",
+       "why_wrong_zh": "15点是最早入住时间，不是最晚（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "La réception est ouverte 24 heures sur 24"
+      }
+     ],
+     "explanation_en": "Reception is open 24 hours.",
+     "explanation_zh": "前台24小时开放。"
+    },
+    {
+     "id": "rd-wb1-u09:q5",
+     "kind": "detail",
+     "question": "Où l'hôtel conseille-t-il de se garer ?",
+     "reference_answer": "Au parking public de la gare.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Dans le jardin de l'hôtel.",
+       "why_wrong_en": "The hotel suggests the station car park (p3).",
+       "why_wrong_zh": "酒店建议去火车站停车场（p3）。"
+      },
+      {
+       "answer": "Dans la rue, devant l'hôtel, gratuitement.",
+       "why_wrong_en": "No street parking is mentioned (p3).",
+       "why_wrong_zh": "没有提到路边停车（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "le parking public de la gare"
+      }
+     ],
+     "explanation_en": "The public car park at the station.",
+     "explanation_zh": "火车站的公共停车场。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u10",
+   "format": "notice",
+   "style_level": "B1",
+   "title": "Renouveler sa carte d'identité : mode d'emploi",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "Votre carte d'identité expire bientôt ? À Villeneuve-sur-Claire, le renouvellement se fait uniquement sur rendez-vous, au service des titres d'identité de la mairie. Les rendez-vous se prennent en ligne ou par téléphone, du lundi au vendredi."
+    },
+    {
+     "id": "p2",
+     "text": "Avant le rendez-vous, remplissez la pré-demande en ligne et notez le numéro qu'on vous donne à la fin. Sans ce numéro, l'agent ne pourra pas traiter votre dossier."
+    },
+    {
+     "id": "p3",
+     "text": "Le jour du rendez-vous, apportez votre ancienne carte, une photo d'identité de moins de six mois et un justificatif de domicile récent, par exemple une facture d'électricité. Les photos faites à la maison ne sont pas acceptées."
+    },
+    {
+     "id": "p4",
+     "text": "Le renouvellement est gratuit si vous rendez l'ancienne carte. En cas de perte ou de vol, il faut payer un timbre fiscal de 25 euros et présenter une déclaration de perte ou de vol."
+    },
+    {
+     "id": "p5",
+     "text": "Le délai actuel est d'environ trois semaines. Vous recevrez un SMS quand la carte sera prête ; vous devrez alors venir la chercher en personne, dans les trois mois."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u10:q1",
+     "kind": "main_idea",
+     "question": "À quoi sert ce texte ?",
+     "reference_answer": "À expliquer comment renouveler sa carte d'identité.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "À annoncer que la mairie ferme son service des titres d'identité.",
+       "why_wrong_en": "The service is open by appointment (p1).",
+       "why_wrong_zh": "该服务需预约办理，并没有关闭（p1）。"
+      },
+      {
+       "answer": "À présenter les horaires de la mairie.",
+       "why_wrong_en": "Opening hours are not listed (p1–p5).",
+       "why_wrong_zh": "文中没有列出开放时间（p1–p5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "le renouvellement se fait uniquement sur rendez-vous"
+      }
+     ],
+     "explanation_en": "It explains the renewal procedure.",
+     "explanation_zh": "说明如何更新身份证。"
+    },
+    {
+     "id": "rd-wb1-u10:q2",
+     "kind": "detail",
+     "question": "Comment obtenir un rendez-vous ?",
+     "reference_answer": "En ligne ou par téléphone.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "En se présentant au guichet sans prévenir.",
+       "why_wrong_en": "Renewal is by appointment only (p1).",
+       "why_wrong_zh": "只能预约办理（p1）。"
+      },
+      {
+       "answer": "Par courrier, en écrivant au maire.",
+       "why_wrong_en": "Letters are not mentioned (p1).",
+       "why_wrong_zh": "没有提到写信（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "Les rendez-vous se prennent en ligne ou par téléphone"
+      }
+     ],
+     "explanation_en": "Online or by phone.",
+     "explanation_zh": "网上或电话预约。"
+    },
+    {
+     "id": "rd-wb1-u10:q3",
+     "kind": "inference",
+     "question": "Que se passe-t-il si on n'a pas ce numéro le jour du rendez-vous ?",
+     "reference_answer": "L'agent ne peut pas traiter le dossier.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "On doit payer 25 euros.",
+       "why_wrong_en": "25 euros is for a lost or stolen card (p4).",
+       "why_wrong_zh": "25欧元是证件遗失或被盗时的费用（p4）。"
+      },
+      {
+       "answer": "Le rendez-vous est déplacé au lendemain, à la même heure.",
+       "why_wrong_en": "No new appointment is mentioned (p2).",
+       "why_wrong_zh": "文中没有提到改约（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "l'agent ne pourra pas traiter votre dossier"
+      }
+     ],
+     "explanation_en": "Without the number, the file cannot be processed.",
+     "explanation_zh": "没有编号就无法办理。"
+    },
+    {
+     "id": "rd-wb1-u10:q4",
+     "kind": "detail",
+     "question": "Quelle photo est acceptée ?",
+     "reference_answer": "Une photo d'identité de moins de six mois.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Une photo récente prise à la maison sur un fond blanc.",
+       "why_wrong_en": "Photos taken at home are refused (p3).",
+       "why_wrong_zh": "在家拍的照片不被接受（p3）。"
+      },
+      {
+       "answer": "N'importe quelle photo de moins d'un an.",
+       "why_wrong_en": "It must be an ID photo under six months old (p3).",
+       "why_wrong_zh": "必须是六个月内的证件照（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "une photo d'identité de moins de six mois"
+      }
+     ],
+     "explanation_en": "An ID photo under six months old.",
+     "explanation_zh": "六个月内的证件照。"
+    },
+    {
+     "id": "rd-wb1-u10:q5",
+     "kind": "detail",
+     "question": "Combien coûte le renouvellement si on rend l'ancienne carte ?",
+     "reference_answer": "Rien, c'est gratuit.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Le prix dépend du délai choisi.",
+       "why_wrong_en": "No price depends on the delay (p4, p5).",
+       "why_wrong_zh": "价格与办理时间无关（p4、p5）。"
+      },
+      {
+       "answer": "25 euros, payés avec un timbre fiscal.",
+       "why_wrong_en": "That is only for loss or theft (p4).",
+       "why_wrong_zh": "那只适用于遗失或被盗（p4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p4",
+       "excerpt": "Le renouvellement est gratuit si vous rendez l'ancienne carte"
+      }
+     ],
+     "explanation_en": "Free when the old card is returned.",
+     "explanation_zh": "交回旧证则免费。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u11",
+   "format": "notice",
+   "style_level": "A2",
+   "title": "Café des Halles – Menu du jour",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "Menu du jour : 16,50 euros (entrée + plat + dessert) ou 13 euros (entrée + plat ou plat + dessert). Servi du lundi au vendredi, de midi à 14 heures."
+    },
+    {
+     "id": "p2",
+     "text": "Entrées : soupe de potiron (sans gluten) ; salade de chèvre chaud aux noix (contient : lait, fruits à coque, gluten)."
+    },
+    {
+     "id": "p3",
+     "text": "Plats : poulet rôti et pommes de terre au four (sans gluten, sans lait) ; lasagnes aux légumes (contient : gluten, lait, œuf). Plat végétarien : les lasagnes."
+    },
+    {
+     "id": "p4",
+     "text": "Desserts : tarte aux pommes (contient : gluten, lait, œuf) ; salade de fruits frais (sans allergène majeur)."
+    },
+    {
+     "id": "p5",
+     "text": "Les allergènes sont indiqués pour chaque plat. Si vous avez une allergie, dites-le au serveur avant de commander : la cuisine peut parfois adapter un plat, mais ne peut pas garantir l'absence de traces."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u11:q1",
+     "kind": "main_idea",
+     "question": "Quel est ce document ?",
+     "reference_answer": "Le menu du jour d'un café.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Une recette de lasagnes aux légumes.",
+       "why_wrong_en": "No preparation steps are given (p3).",
+       "why_wrong_zh": "文中没有做法步骤（p3）。"
+      },
+      {
+       "answer": "Une publicité pour un marché de producteurs.",
+       "why_wrong_en": "It lists dishes and prices at a café (p1).",
+       "why_wrong_zh": "列出的是咖啡馆的菜品和价格（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "Menu du jour"
+      }
+     ],
+     "explanation_en": "A café's daily menu.",
+     "explanation_zh": "咖啡馆的每日套餐。"
+    },
+    {
+     "id": "rd-wb1-u11:q2",
+     "kind": "detail",
+     "question": "Quand le menu du jour est-il servi ?",
+     "reference_answer": "En semaine, de midi à 14 heures.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Le samedi et le dimanche, à midi.",
+       "why_wrong_en": "Monday to Friday only (p1).",
+       "why_wrong_zh": "只在周一到周五（p1）。"
+      },
+      {
+       "answer": "Tous les jours, le midi et le soir.",
+       "why_wrong_en": "Only weekdays at lunchtime (p1).",
+       "why_wrong_zh": "只在工作日午餐时间（p1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p1",
+       "excerpt": "Servi du lundi au vendredi, de midi à 14 heures"
+      }
+     ],
+     "explanation_en": "Weekdays, 12:00–14:00.",
+     "explanation_zh": "工作日12点到14点。"
+    },
+    {
+     "id": "rd-wb1-u11:q3",
+     "kind": "detail",
+     "question": "Quelle entrée convient à une personne qui ne mange pas de gluten ?",
+     "reference_answer": "La soupe de potiron.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "La salade de chèvre chaud.",
+       "why_wrong_en": "It contains gluten (p2).",
+       "why_wrong_zh": "它含有麸质（p2）。"
+      },
+      {
+       "answer": "Aucune des deux entrées.",
+       "why_wrong_en": "The soup is gluten-free (p2).",
+       "why_wrong_zh": "南瓜汤不含麸质（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "soupe de potiron (sans gluten)"
+      }
+     ],
+     "explanation_en": "The pumpkin soup.",
+     "explanation_zh": "南瓜汤。"
+    },
+    {
+     "id": "rd-wb1-u11:q4",
+     "kind": "inference",
+     "question": "Léa est allergique aux noix. Quelle entrée doit-elle éviter ?",
+     "reference_answer": "La salade de chèvre chaud.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Les deux entrées, par précaution.",
+       "why_wrong_en": "Only the salad lists tree nuts (p2).",
+       "why_wrong_zh": "只有沙拉标注了坚果（p2）。"
+      },
+      {
+       "answer": "La soupe de potiron.",
+       "why_wrong_en": "The soup lists no nuts (p2).",
+       "why_wrong_zh": "南瓜汤没有标注坚果（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "salade de chèvre chaud aux noix"
+      }
+     ],
+     "explanation_en": "The salad contains walnuts (tree nuts).",
+     "explanation_zh": "沙拉含核桃（坚果）。"
+    },
+    {
+     "id": "rd-wb1-u11:q5",
+     "kind": "detail",
+     "question": "Quel est le plat végétarien ?",
+     "reference_answer": "Les lasagnes aux légumes.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Le poulet rôti.",
+       "why_wrong_en": "Chicken is meat (p3).",
+       "why_wrong_zh": "鸡肉是肉类（p3）。"
+      },
+      {
+       "answer": "La soupe de potiron, servie comme plat.",
+       "why_wrong_en": "The soup is a starter; the vegetarian main is the lasagne (p2, p3).",
+       "why_wrong_zh": "汤是前菜；素食主菜是千层面（p2、p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "Plat végétarien : les lasagnes"
+      }
+     ],
+     "explanation_en": "The vegetable lasagne.",
+     "explanation_zh": "蔬菜千层面。"
+    }
+   ]
+  },
+  {
+   "id": "rd-wb1-u12",
+   "format": "notice",
+   "style_level": "B1",
+   "title": "Attention aux faux messages de livraison",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "link": null,
+    "notice": "Synthetic practice material from the FLH reading/listening workbook v1 (unreviewed). Not an official exam item; no certified CEFR level."
+   },
+   "segments": [
+    {
+     "id": "p1",
+     "text": "Depuis quelques semaines, de nombreux habitants reçoivent un SMS qui annonce un colis bloqué. Le message demande de payer 1,99 euro de « frais de livraison » en cliquant sur un lien."
+    },
+    {
+     "id": "p2",
+     "text": "Ce message est faux. Son but est de voler vos coordonnées bancaires. Les vrais transporteurs ne demandent jamais de payer par un lien envoyé par SMS."
+    },
+    {
+     "id": "p3",
+     "text": "Quelques signes doivent vous alerter : une adresse de site bizarre, des fautes d'orthographe, et surtout un ton urgent, par exemple « dernier avertissement avant retour du colis »."
+    },
+    {
+     "id": "p4",
+     "text": "Si vous recevez ce message, ne cliquez pas et supprimez-le. Vous pouvez aussi le transférer gratuitement au 33700, le numéro qui sert à signaler les SMS frauduleux."
+    },
+    {
+     "id": "p5",
+     "text": "Si vous avez déjà donné votre numéro de carte, appelez tout de suite votre banque pour faire opposition. Le point numérique de la médiathèque propose un atelier gratuit sur ces arnaques le mercredi 15 à 10 heures."
+    }
+   ],
+   "questions": [
+    {
+     "id": "rd-wb1-u12:q1",
+     "kind": "main_idea",
+     "question": "Quel est le but de ce texte ?",
+     "reference_answer": "Prévenir les habitants d'une arnaque par SMS.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Présenter un service de livraison.",
+       "why_wrong_en": "It warns against a scam (p2).",
+       "why_wrong_zh": "它是在提醒防范诈骗（p2）。"
+      },
+      {
+       "answer": "Annoncer un retard dans la livraison des colis de la ville.",
+       "why_wrong_en": "The parcel message itself is fake (p2).",
+       "why_wrong_zh": "关于包裹的短信本身就是假的（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "Ce message est faux"
+      }
+     ],
+     "explanation_en": "To warn about an SMS scam.",
+     "explanation_zh": "提醒大家防范短信诈骗。"
+    },
+    {
+     "id": "rd-wb1-u12:q2",
+     "kind": "detail",
+     "question": "Que cherchent les auteurs du message ?",
+     "reference_answer": "Voler des coordonnées bancaires.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Connaître l'adresse des habitants pour les livrer.",
+       "why_wrong_en": "No delivery is real (p2).",
+       "why_wrong_zh": "根本没有真正的派送（p2）。"
+      },
+      {
+       "answer": "Vendre des colis à bas prix.",
+       "why_wrong_en": "Their aim is bank details (p2).",
+       "why_wrong_zh": "他们的目的是银行信息（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "Son but est de voler vos coordonnées bancaires"
+      }
+     ],
+     "explanation_en": "To steal bank details.",
+     "explanation_zh": "窃取银行信息。"
+    },
+    {
+     "id": "rd-wb1-u12:q3",
+     "kind": "detail",
+     "question": "D'après le texte, que ne font jamais les vrais transporteurs ?",
+     "reference_answer": "Demander un paiement par un lien envoyé par SMS.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Envoyer un SMS pour annoncer une livraison.",
+       "why_wrong_en": "The text only rules out payment links (p2).",
+       "why_wrong_zh": "文中只排除了付款链接（p2）。"
+      },
+      {
+       "answer": "Retourner un colis à l'expéditeur.",
+       "why_wrong_en": "This is not discussed (p2).",
+       "why_wrong_zh": "文中没有讨论这一点（p2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p2",
+       "excerpt": "ne demandent jamais de payer par un lien envoyé par SMS"
+      }
+     ],
+     "explanation_en": "They never ask for payment through an SMS link.",
+     "explanation_zh": "他们从不通过短信链接要求付款。"
+    },
+    {
+     "id": "rd-wb1-u12:q4",
+     "kind": "inference",
+     "question": "Lequel de ces messages ressemble le plus à une arnaque ?",
+     "reference_answer": "« Dernier avertissement : payez 2 € ou votre colis repart. »",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "« Votre colis vous attend au point relais de la gare. »",
+       "why_wrong_en": "No payment and no urgent tone (p3).",
+       "why_wrong_zh": "没有要求付款，语气也不紧迫（p3）。"
+      },
+      {
+       "answer": "« Votre colis sera livré demain entre 9 h et 12 h. »",
+       "why_wrong_en": "No payment and no urgent tone (p3).",
+       "why_wrong_zh": "没有要求付款，语气也不紧迫（p3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p3",
+       "excerpt": "surtout un ton urgent"
+      }
+     ],
+     "explanation_en": "Urgency plus a payment request is the main warning sign.",
+     "explanation_zh": "催促加付款要求是主要的警示信号。"
+    },
+    {
+     "id": "rd-wb1-u12:q5",
+     "kind": "detail",
+     "question": "Que faut-il faire si on reçoit ce SMS ?",
+     "reference_answer": "Ne pas cliquer et le supprimer.",
+     "accepted_alternatives": [],
+     "wrong_answers": [
+      {
+       "answer": "Répondre « STOP » à l'expéditeur.",
+       "why_wrong_en": "Replying is not advised (p4).",
+       "why_wrong_zh": "文中没有建议回复（p4）。"
+      },
+      {
+       "answer": "Cliquer pour vérifier si le colis existe.",
+       "why_wrong_en": "The text says do not click (p4).",
+       "why_wrong_zh": "文中说不要点击（p4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": "p4",
+       "excerpt": "ne cliquez pas et supprimez-le"
+      }
+     ],
+     "explanation_en": "Do not click; delete it.",
+     "explanation_zh": "不要点击，删除短信。"
+    }
+   ]
+  }
+ ]
+}

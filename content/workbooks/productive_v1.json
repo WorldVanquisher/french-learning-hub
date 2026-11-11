@@ -1,0 +1,2756 @@
+{
+ "schema_version": "flh_workbook_productive_v1",
+ "workbook_id": "flh-workbook-productive-v1",
+ "title": {
+  "fr": "S'exprimer : cahier d'écriture et d'oral (12 unités)",
+  "en": "Expression workbook: writing and speaking (12 units)",
+  "zh": "表达练习册：写作与口语（12个单元）"
+ },
+ "status": {
+  "synthetic": true,
+  "human_reviewed": false,
+  "review_state": "unreviewed",
+  "machine_review": "structural quality gates and a machine critique pass by the authoring model (self-review); not independent expert validation",
+  "levels": "A1–B1 bands are authoring targets, not certified CEFR levels",
+  "official_exam": false,
+  "samples": "each sample is one possible answer, not the only correct answer",
+  "scoring": "no score, no level and no certified judgment; the rubric is for self-assessment"
+ },
+ "provenance": {
+  "authoring": "hand-written in local Python authoring modules (content/workbooks/authoring) by Claude Code (model claude-opus-5-5) on 2026-11-10; no provider or API generation call",
+  "generated_by_provider": false,
+  "source_material": "original texts; places, people and organisations are fictional unless a notice says otherwise",
+  "build": {
+   "tool": "tools/workbooks (python3 -m flh_workbooks build)"
+  }
+ },
+ "notices": {
+  "fictional": "People, the town hall, shops and hotels are fictional. Procedures illustrate language and are not official guidance.",
+  "telephone": "Telephone numbers use ranges reserved for fiction.",
+  "real_reference": "Unit 12 cites 33700, the real French short number for forwarding fraudulent SMS.",
+  "speaking": "Speaking tasks have no audio. Feedback on a transcript cannot judge pronunciation."
+ },
+ "rubric": {
+  "levels": [
+   {
+    "id": "not_yet",
+    "fr": "Pas encore",
+    "en": "Not yet",
+    "zh": "尚未达到"
+   },
+   {
+    "id": "developing",
+    "fr": "En progrès",
+    "en": "Developing",
+    "zh": "进步中"
+   },
+   {
+    "id": "secure",
+    "fr": "Acquis",
+    "en": "Secure",
+    "zh": "已掌握"
+   }
+  ],
+  "criteria": [
+   {
+    "id": "task",
+    "fr": "Réalisation de la tâche",
+    "en": "Task completion",
+    "zh": "任务完成度",
+    "applies_to": [
+     "writing",
+     "speaking"
+    ],
+    "descriptors": {
+     "not_yet": {
+      "en": "Two or more content points are missing or unclear.",
+      "zh": "有两个或以上的内容要点缺失或不清楚。"
+     },
+     "developing": {
+      "en": "Every point is attempted; one is thin or hard to find.",
+      "zh": "每个要点都有涉及，但有一个内容单薄或不易找到。"
+     },
+     "secure": {
+      "en": "Every point is covered clearly, within the length asked.",
+      "zh": "所有要点都清楚地完成，长度符合要求。"
+     }
+    }
+   },
+   {
+    "id": "organisation",
+    "fr": "Organisation et cohérence",
+    "en": "Organisation and coherence",
+    "zh": "结构与连贯",
+    "applies_to": [
+     "writing",
+     "speaking"
+    ],
+    "descriptors": {
+     "not_yet": {
+      "en": "Ideas are listed without links; the reader has to guess the order.",
+      "zh": "想法罗列在一起，缺少衔接，读者需要猜测顺序。"
+     },
+     "developing": {
+      "en": "A clear opening and closing; some links (et, mais, parce que) are repeated.",
+      "zh": "开头和结尾清楚；有一些连接词，但重复较多。"
+     },
+     "secure": {
+      "en": "A logical order with varied links (d'abord, ensuite, donc, par contre).",
+      "zh": "顺序合理，连接词丰富多样。"
+     }
+    }
+   },
+   {
+    "id": "vocabulary",
+    "fr": "Lexique",
+    "en": "Vocabulary",
+    "zh": "词汇",
+    "applies_to": [
+     "writing",
+     "speaking"
+    ],
+    "descriptors": {
+     "not_yet": {
+      "en": "Frequent gaps or words from another language block the meaning.",
+      "zh": "常有词汇空缺或夹杂外语词，影响理解。"
+     },
+     "developing": {
+      "en": "Everyday words are right; some repetition or approximate choices.",
+      "zh": "日常词汇使用正确，但有重复或用词不够准确。"
+     },
+     "secure": {
+      "en": "Words fit the topic; the useful expressions of the unit are used correctly.",
+      "zh": "用词贴合话题，能正确使用本单元的常用表达。"
+     }
+    }
+   },
+   {
+    "id": "grammar",
+    "fr": "Correction grammaticale",
+    "en": "Grammatical accuracy",
+    "zh": "语法准确性",
+    "applies_to": [
+     "writing",
+     "speaking"
+    ],
+    "descriptors": {
+     "not_yet": {
+      "en": "Errors in basic forms (agreement, auxiliaries, articles) often change the meaning.",
+      "zh": "基础形式（配合、助动词、冠词）错误频繁，常影响意思。"
+     },
+     "developing": {
+      "en": "Basic forms are mostly right; errors appear in longer sentences.",
+      "zh": "基础形式大多正确，长句中会出现错误。"
+     },
+     "secure": {
+      "en": "Errors are rare and do not disturb the reader or listener.",
+      "zh": "错误很少，不影响读者或听者理解。"
+     }
+    }
+   },
+   {
+    "id": "register",
+    "fr": "Adéquation à la situation",
+    "en": "Register and politeness",
+    "zh": "语域与礼貌",
+    "applies_to": [
+     "writing",
+     "speaking"
+    ],
+    "descriptors": {
+     "not_yet": {
+      "en": "tu/vous, greeting or closing do not fit the person addressed.",
+      "zh": "tu/vous、称呼或结尾与对象不符。"
+     },
+     "developing": {
+      "en": "Register is right overall but slips once (for example tu then vous).",
+      "zh": "整体语域正确，但有一次不一致（如先用 tu 后用 vous）。"
+     },
+     "secure": {
+      "en": "Greeting, register and closing fit the situation throughout.",
+      "zh": "称呼、语域和结尾始终符合情境。"
+     }
+    }
+   },
+   {
+    "id": "delivery",
+    "fr": "Aisance (transcription)",
+    "en": "Flow, as seen in a transcript",
+    "zh": "流畅度（基于文字稿）",
+    "applies_to": [
+     "speaking"
+    ],
+    "descriptors": {
+     "not_yet": {
+      "en": "Long breaks or restarts make the message hard to follow.",
+      "zh": "长时间停顿或反复重来，使信息难以理解。"
+     },
+     "developing": {
+      "en": "Some hesitation (euh…) but the message continues.",
+      "zh": "有一些犹豫（euh…），但信息能继续传达。"
+     },
+     "secure": {
+      "en": "The message flows; self-corrections are quick.",
+      "zh": "表达流畅，自我纠正迅速。"
+     }
+    }
+   }
+  ],
+  "notice": {
+   "en": "The rubric supports self-assessment and conversation with a teacher. It gives no score and no level. A transcript cannot show pronunciation, so the speaking criteria judge only what was said.",
+   "zh": "本评价表用于自我评估和与教师讨论，不给出分数或等级。文字稿无法体现发音，因此口语标准只评价说话内容。"
+  }
+ },
+ "workflow": [
+  {
+   "step": "write",
+   "en": "Write your answer in the Writing view (create the task with the provided body, then save a draft).",
+   "zh": "在写作页面作答（用提供的内容创建任务，然后保存草稿）。"
+  },
+  {
+   "step": "feedback",
+   "en": "Ask for feedback only if you choose to, with one click; with the provider disabled there is none, and nothing is scored.",
+   "zh": "只有在你主动点击时才请求反馈；若未启用服务则没有反馈，也不会打分。"
+  },
+  {
+   "step": "revise",
+   "en": "Save a new version after revising; each version is kept.",
+   "zh": "修改后保存新版本，每个版本都会保留。"
+  },
+  {
+   "step": "capture",
+   "en": "If a mistake is worth keeping, record it yourself as a capture (source manual). Nothing is recorded automatically.",
+   "zh": "如果某个错误值得记录，请自己把它保存为一条记录（source: manual）。系统不会自动记录。"
+  },
+  {
+   "step": "extract",
+   "en": "Extraction of knowledge units runs only when you start it, and only if it is enabled.",
+   "zh": "知识点提取只有在你启动且已启用时才会运行。"
+  },
+  {
+   "step": "notebook",
+   "en": "Add an item to the Mistake Notebook only by your own action. A recorded mistake is not a sign of mastery or of acceptance.",
+   "zh": "只有你自己操作才会加入错题本。被记录的错误既不代表已掌握，也不代表已被认可。"
+  }
+ ],
+ "units": [
+  {
+   "id": "u01",
+   "theme": "Se loger",
+   "band": "A2",
+   "goal": {
+    "fr": "Se présenter par écrit pour une colocation et laisser un message pour une visite.",
+    "en": "Introduce yourself in writing for a flat-share and leave a message about a viewing.",
+    "zh": "为合租写自我介绍，并为看房留下语音留言。"
+   },
+   "writing": {
+    "title": "Répondre à une annonce de colocation",
+    "format": "courriel",
+    "prompt": "Vous avez lu une annonce : trois étudiants cherchent une quatrième personne pour une chambre à Villeurbanne. Écrivez-leur un courriel pour vous présenter et demander une visite.",
+    "requirements": [
+     "Présentez-vous (âge, études ou travail).",
+     "Expliquez pourquoi la chambre vous intéresse.",
+     "Dites une chose sur vos habitudes à la maison.",
+     "Proposez un moment pour visiter."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   },
+   "writing_sample": {
+    "text": "Bonjour,\n\nJe m'appelle Lina, j'ai 23 ans et je suis étudiante en biologie à Lyon. J'ai lu votre annonce et la chambre m'intéresse beaucoup, parce qu'elle est près du métro et de mon université. Je suis calme et organisée, je ne fume pas et j'aime bien cuisiner pour les autres. Est-ce que je peux visiter la chambre le samedi 23 août, vers 11 heures ? Je suis aussi disponible le dimanche.\n\nMerci d'avance et à bientôt,\nLina",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "j'ai 23 ans et je suis étudiante en biologie"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "parce qu'elle est près du métro et de mon université"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "je ne fume pas et j'aime bien cuisiner pour les autres"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Est-ce que je peux visiter la chambre le samedi 23 août"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "la chambre m'intéresse beaucoup",
+      "en": "« intéresser quelqu'un »: me, te, le, la… + verb.",
+      "zh": "« intéresser qqn »：me、te、le、la… + 动词。"
+     },
+     {
+      "excerpt": "Merci d'avance",
+      "en": "Polite closing when you ask for something.",
+      "zh": "请求别人时常用的礼貌结尾。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Laisser un message pour la visite",
+    "format": "message vocal",
+    "situation": "Vous appelez Hugo, de la colocation, pour la visite de samedi à 10 heures. Il ne répond pas. Laissez-lui un message.",
+    "requirements": [
+     "Dites qui vous êtes.",
+     "Dites que vous ne pouvez pas venir à 10 heures et expliquez pourquoi.",
+     "Proposez une autre heure.",
+     "Laissez un moyen de vous rappeler."
+    ],
+    "seconds_min": 30,
+    "seconds_max": 60
+   },
+   "speaking_sample": {
+    "text": "Bonjour Hugo, c'est Lina, je vous appelle pour la chambre de Villeurbanne. Samedi, je ne peux pas venir à dix heures, parce que je travaille jusqu'à onze heures. Est-ce que je peux passer vers onze heures et demie ? Vous pouvez me rappeler au 06 39 98 12 34, ou m'envoyer un message. Merci beaucoup, bonne journée !",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "c'est Lina"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "parce que je travaille jusqu'à onze heures"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "Est-ce que je peux passer vers onze heures et demie ?"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Vous pouvez me rappeler au 06 39 98 12 34"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "je vous appelle pour",
+      "en": "Opens a phone message with its reason.",
+      "zh": "电话留言开头，说明来电原因。"
+     },
+     {
+      "excerpt": "passer",
+      "en": "« passer » = to drop by; very common in speech.",
+      "zh": "« passer » 表示过来一趟，口语中很常用。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u01-g01",
+     "kind": "fill",
+     "prompt": "La chambre ___ (faire) 12 m².",
+     "answer": "fait",
+     "accepted": [],
+     "explanation_en": "Present of « faire »: elle fait.",
+     "explanation_zh": "« faire » 的现在时：elle fait。"
+    },
+    {
+     "id": "u01-g02",
+     "kind": "fill",
+     "prompt": "Le loyer est de 420 euros, charges ___.",
+     "answer": "comprises",
+     "accepted": [],
+     "explanation_en": "« charges comprises »: agrees with « charges » (feminine plural).",
+     "explanation_zh": "« charges comprises » 与 charges（阴性复数）配合。"
+    },
+    {
+     "id": "u01-g03",
+     "kind": "transform",
+     "prompt": "Remplacez le nom par un pronom : « L'annonce intéresse Lina. »",
+     "answer": "L'annonce l'intéresse.",
+     "accepted": [],
+     "explanation_en": "« intéresser » takes a direct object: Lina → l'.",
+     "explanation_zh": "« intéresser » 带直接宾语：Lina → l'。"
+    },
+    {
+     "id": "u01-g04",
+     "kind": "fill",
+     "prompt": "L'immeuble est ___ face de la boulangerie.",
+     "answer": "en",
+     "accepted": [],
+     "explanation_en": "« en face de » = opposite.",
+     "explanation_zh": "« en face de » 表示在……对面。"
+    },
+    {
+     "id": "u01-g05",
+     "kind": "fill",
+     "prompt": "Pour la visite, ___ apporter une pièce d'identité.",
+     "answer": "il faut",
+     "accepted": [],
+     "explanation_en": "« il faut » + infinitive for an obligation.",
+     "explanation_zh": "« il faut » + 不定式表示必须。"
+    },
+    {
+     "id": "u01-g06",
+     "kind": "choose",
+     "prompt": "Je cherche une chambre ___ Lyon. (à / en / au)",
+     "answer": "à",
+     "accepted": [],
+     "explanation_en": "« à » before a city.",
+     "explanation_zh": "城市名前用 « à »。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "Je suis 23 ans.",
+     "right": "J'ai 23 ans.",
+     "why_en": "Age uses « avoir ».",
+     "why_zh": "表达年龄用 « avoir »。"
+    },
+    {
+     "wrong": "Je cherche pour une chambre.",
+     "right": "Je cherche une chambre.",
+     "why_en": "« chercher » takes a direct object, without « pour ».",
+     "why_zh": "« chercher » 直接接宾语，不加 « pour »。"
+    },
+    {
+     "wrong": "La chambre est libre depuis le 1er septembre.",
+     "right": "La chambre est libre à partir du 1er septembre.",
+     "why_en": "A future starting point takes « à partir de »; « depuis » looks back from now.",
+     "why_zh": "将来的起点用 « à partir de »；« depuis » 表示从过去到现在。"
+    }
+   ],
+   "retry": {
+    "draft": "Bonjour, je suis Marco, je suis 25 ans et je travaille dans une banque. Votre chambre m'intéresse parce que elle est grande. Je ne fume pas et je n'ai pas des animaux. Je peux visiter samedi à le matin ? Merci, Marco",
+    "corrections": [
+     {
+      "quote": "je suis 25 ans",
+      "correction": "j'ai 25 ans",
+      "why_en": "Age uses « avoir ».",
+      "why_zh": "表达年龄用 « avoir »。"
+     },
+     {
+      "quote": "parce que elle",
+      "correction": "parce qu'elle",
+      "why_en": "« que » elides before a vowel.",
+      "why_zh": "« que » 在元音前省音。"
+     },
+     {
+      "quote": "pas des animaux",
+      "correction": "pas d'animaux",
+      "why_en": "After a negation, « des » becomes « de/d' ».",
+      "why_zh": "否定句中 « des » 变为 « de/d' »。"
+     },
+     {
+      "quote": "samedi à le matin",
+      "correction": "samedi matin",
+      "why_en": "« samedi matin » needs no preposition; « à le » always contracts to « au ».",
+      "why_zh": "« samedi matin » 不需要介词；« à le » 必须缩合为 « au »。"
+     }
+    ],
+    "corrected": "Bonjour, je suis Marco, j'ai 25 ans et je travaille dans une banque. Votre chambre m'intéresse parce qu'elle est grande. Je ne fume pas et je n'ai pas d'animaux. Je peux visiter samedi matin ? Merci, Marco"
+   }
+  },
+  {
+   "id": "u02",
+   "theme": "Transports",
+   "band": "A2",
+   "goal": {
+    "fr": "Prévenir d'un retard par écrit et demander une solution au guichet.",
+    "en": "Warn someone about a delay in writing and ask for a solution at a ticket office.",
+    "zh": "书面通知迟到，并在售票窗口询问解决办法。"
+   },
+   "writing": {
+    "title": "Prévenir d'un retard",
+    "format": "courriel",
+    "prompt": "À cause d'une grève, votre train de demain matin est annulé. Écrivez à Mme Petit, votre responsable de stage, pour la prévenir.",
+    "requirements": [
+     "Expliquez le problème de transport.",
+     "Dites à quelle heure vous pensez arriver.",
+     "Proposez une solution (autre horaire, réunion en ligne…).",
+     "Excusez-vous poliment."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   },
+   "writing_sample": {
+    "text": "Bonjour Madame Petit,\n\nJe vous écris parce que mon train de demain matin est annulé à cause de la grève. Je vais prendre le premier car, à 7 heures, mais le trajet est plus long : je pense arriver vers 8 h 45 au lieu de 8 h 30. Si vous préférez, nous pouvons aussi commencer la réunion en ligne à 8 h 30. Je suis vraiment désolé pour ce changement.\n\nBien cordialement,\nThomas Leroy",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "mon train de demain matin est annulé à cause de la grève"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "je pense arriver vers 8 h 45"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "nous pouvons aussi commencer la réunion en ligne"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Je suis vraiment désolé pour ce changement"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "à cause de",
+      "en": "Cause with a noun: « à cause de la grève ».",
+      "zh": "« à cause de » + 名词表示原因。"
+     },
+     {
+      "excerpt": "Bien cordialement",
+      "en": "Neutral, polite email closing.",
+      "zh": "中性、礼貌的邮件结尾。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Au guichet : un train supprimé",
+    "format": "jeu de rôle (vos répliques seulement)",
+    "situation": "Vous êtes au guichet de la gare. Votre train de 9 h 40 pour Angers est supprimé et vous avez un examen à midi. Parlez à l'agent ; ses réponses sont indiquées par « … ».",
+    "requirements": [
+     "Expliquez votre situation.",
+     "Demandez une autre solution pour arriver avant midi.",
+     "Demandez si votre billet est valable.",
+     "Remerciez et confirmez votre choix."
+    ],
+    "seconds_min": 45,
+    "seconds_max": 90
+   },
+   "speaking_sample": {
+    "text": "Bonjour madame. J'avais un billet pour le train de 9 h 40 pour Angers, mais il est supprimé. Je dois être à Angers avant midi pour un examen. Est-ce qu'il y a un autre train ou un car ? … Ah, un car à 10 heures, d'accord. Et avec mon billet, je peux monter dans le car sans payer ? … Parfait. Alors je prends le car de 10 heures. Merci beaucoup pour votre aide !",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "mais il est supprimé"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "Est-ce qu'il y a un autre train ou un car ?"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "je peux monter dans le car sans payer ?"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Alors je prends le car de 10 heures"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "J'avais un billet",
+      "en": "Imperfect for a past situation that has now changed.",
+      "zh": "用未完成过去时表示已经改变的过去情况。"
+     },
+     {
+      "excerpt": "Est-ce qu'il y a",
+      "en": "Neutral question form that works everywhere.",
+      "zh": "中性的提问方式，任何场合都适用。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u02-g01",
+     "kind": "choose",
+     "prompt": "Je vais à Nantes ___ train. (en / à / par)",
+     "answer": "en",
+     "accepted": [],
+     "explanation_en": "Transport you sit inside: « en » (en train, en car).",
+     "explanation_zh": "乘坐的交通工具用 « en »（en train、en car）。"
+    },
+    {
+     "id": "u02-g02",
+     "kind": "choose",
+     "prompt": "Elle vient ___ pied. (en / à / par)",
+     "answer": "à",
+     "accepted": [],
+     "explanation_en": "« à pied », « à vélo ».",
+     "explanation_zh": "步行用 « à pied »，骑车用 « à vélo »。"
+    },
+    {
+     "id": "u02-g03",
+     "kind": "transform",
+     "prompt": "Mettez au futur proche : « Je prends le car. »",
+     "answer": "Je vais prendre le car.",
+     "accepted": [],
+     "explanation_en": "« aller » + infinitive.",
+     "explanation_zh": "« aller » + 不定式。"
+    },
+    {
+     "id": "u02-g04",
+     "kind": "fill",
+     "prompt": "Le train est annulé ___ cause de la grève.",
+     "answer": "à",
+     "accepted": [],
+     "explanation_en": "« à cause de » + noun.",
+     "explanation_zh": "« à cause de » + 名词。"
+    },
+    {
+     "id": "u02-g05",
+     "kind": "transform",
+     "prompt": "Posez la question avec « est-ce que » : « Le billet est valable. »",
+     "answer": "Est-ce que le billet est valable ?",
+     "accepted": [],
+     "explanation_en": "« Est-ce que » + statement word order.",
+     "explanation_zh": "« Est-ce que » + 陈述句语序。"
+    },
+    {
+     "id": "u02-g06",
+     "kind": "fill",
+     "prompt": "Le car met une heure ___ lieu de cinquante minutes.",
+     "answer": "au",
+     "accepted": [],
+     "explanation_en": "« au lieu de » = instead of.",
+     "explanation_zh": "« au lieu de » 表示代替、而不是。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "Je vais à Angers par le train.",
+     "right": "Je vais à Angers en train.",
+     "why_en": "Means of transport: « en train », not « par le train ».",
+     "why_zh": "交通方式用 « en train »，不用 « par le train »。"
+    },
+    {
+     "wrong": "Le train est en retard de la grève.",
+     "right": "Le train est en retard à cause de la grève.",
+     "why_en": "The cause needs « à cause de ».",
+     "why_zh": "原因要用 « à cause de »。"
+    },
+    {
+     "wrong": "Je suis arrivé à la gare dans dix minutes.",
+     "right": "Je suis arrivé à la gare en dix minutes.",
+     "why_en": "« en » = time taken; « dans » = time from now.",
+     "why_zh": "« en » 表示花费的时间；« dans » 表示从现在起多久之后。"
+    }
+   ],
+   "retry": {
+    "draft": "Bonjour Madame, je vous écris car mon train est annulé à cause la grève. Je vais venir par le car et je vais arrivé à 9 heures. Je suis désolé pour le retard. Cordialement, Thomas",
+    "corrections": [
+     {
+      "quote": "à cause la grève",
+      "correction": "à cause de la grève",
+      "why_en": "« à cause de » keeps « de ».",
+      "why_zh": "« à cause de » 中的 « de » 不能省略。"
+     },
+     {
+      "quote": "venir par le car",
+      "correction": "venir en car",
+      "why_en": "Means of transport: « en car ».",
+      "why_zh": "交通方式用 « en car »。"
+     },
+     {
+      "quote": "je vais arrivé",
+      "correction": "je vais arriver",
+      "why_en": "After « aller », use the infinitive.",
+      "why_zh": "« aller » 后接不定式。"
+     }
+    ],
+    "corrected": "Bonjour Madame, je vous écris car mon train est annulé à cause de la grève. Je vais venir en car et je vais arriver à 9 heures. Je suis désolé pour le retard. Cordialement, Thomas"
+   }
+  },
+  {
+   "id": "u03",
+   "theme": "Santé",
+   "band": "A2",
+   "goal": {
+    "fr": "Annuler un rendez-vous médical par écrit et décrire ses symptômes à l'oral.",
+    "en": "Cancel a medical appointment in writing and describe symptoms aloud.",
+    "zh": "书面取消就诊预约，并口头描述症状。"
+   },
+   "writing": {
+    "title": "Annuler un rendez-vous chez le dentiste",
+    "format": "message (site du cabinet)",
+    "prompt": "Vous avez rendez-vous chez le dentiste jeudi à 17 heures, mais vous êtes malade. Écrivez un message au cabinet.",
+    "requirements": [
+     "Donnez votre nom et la date du rendez-vous.",
+     "Expliquez pourquoi vous ne pouvez pas venir.",
+     "Demandez un nouveau rendez-vous et donnez vos disponibilités.",
+     "Terminez poliment."
+    ],
+    "word_min": 50,
+    "word_max": 80
+   },
+   "writing_sample": {
+    "text": "Bonjour,\n\nJe m'appelle Karim Benali et j'ai rendez-vous avec le docteur Lemaire jeudi 14 mars à 17 heures. Malheureusement, je ne peux pas venir : j'ai de la fièvre depuis hier et je dois rester à la maison. Est-ce que je pourrais avoir un nouveau rendez-vous la semaine prochaine ? Je suis libre le lundi et le mardi après 16 heures.\n\nMerci et bonne journée,\nKarim Benali",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "jeudi 14 mars à 17 heures"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "j'ai de la fièvre depuis hier"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "Je suis libre le lundi et le mardi après 16 heures"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Merci et bonne journée"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Malheureusement",
+      "en": "Softens bad news.",
+      "zh": "缓和坏消息的语气。"
+     },
+     {
+      "excerpt": "je pourrais",
+      "en": "Conditional of « pouvoir » for a polite request.",
+      "zh": "« pouvoir » 的条件式，用于礼貌请求。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Chez le médecin : expliquer ce qui ne va pas",
+    "format": "monologue",
+    "situation": "Vous êtes chez le médecin. Il vous demande : « Qu'est-ce qui ne va pas ? » Répondez.",
+    "requirements": [
+     "Dites depuis quand vous êtes malade.",
+     "Décrivez deux ou trois symptômes.",
+     "Dites ce que vous avez déjà fait ou pris.",
+     "Posez une question au médecin."
+    ],
+    "seconds_min": 30,
+    "seconds_max": 75
+   },
+   "speaking_sample": {
+    "text": "Bonjour docteur. Je suis malade depuis trois jours. J'ai mal à la gorge, j'ai de la fièvre, à peu près 38,5, et je tousse beaucoup la nuit. J'ai pris du paracétamol et j'ai bu beaucoup de thé, mais ça ne va pas mieux. Est-ce que je peux aller travailler demain ?",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "Je suis malade depuis trois jours"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "J'ai mal à la gorge"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "J'ai pris du paracétamol"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Est-ce que je peux aller travailler demain ?"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "J'ai mal à la gorge",
+      "en": "« avoir mal à » + body part: à la gorge, à la tête, au dos.",
+      "zh": "« avoir mal à » + 身体部位：喉咙、头、背。"
+     },
+     {
+      "excerpt": "ça ne va pas mieux",
+      "en": "Fixed phrase: it is not getting better.",
+      "zh": "固定表达：没有好转。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u03-g01",
+     "kind": "fill",
+     "prompt": "J'ai mal ___ tête.",
+     "answer": "à la",
+     "accepted": [],
+     "explanation_en": "« avoir mal à » + la tête.",
+     "explanation_zh": "« avoir mal à » + la tête：头痛。"
+    },
+    {
+     "id": "u03-g02",
+     "kind": "fill",
+     "prompt": "J'ai mal ___ dos.",
+     "answer": "au",
+     "accepted": [],
+     "explanation_en": "« à » + « le » contracts to « au ».",
+     "explanation_zh": "« à » + « le » 缩合为 « au »。"
+    },
+    {
+     "id": "u03-g03",
+     "kind": "fill",
+     "prompt": "Je tousse ___ deux jours.",
+     "answer": "depuis",
+     "accepted": [],
+     "explanation_en": "« depuis » for something that started in the past and continues.",
+     "explanation_zh": "« depuis » 表示从过去开始一直持续。"
+    },
+    {
+     "id": "u03-g04",
+     "kind": "transform",
+     "prompt": "Mettez à l'impératif (vous) : « Vous buvez beaucoup d'eau. »",
+     "answer": "Buvez beaucoup d'eau.",
+     "accepted": [],
+     "explanation_en": "Imperative: drop the subject « vous ».",
+     "explanation_zh": "命令式：去掉主语 « vous »。"
+    },
+    {
+     "id": "u03-g05",
+     "kind": "transform",
+     "prompt": "Rendez la demande plus polie : « Je veux un rendez-vous. »",
+     "answer": "Je voudrais un rendez-vous.",
+     "accepted": [
+      "Est-ce que je pourrais avoir un rendez-vous ?"
+     ],
+     "explanation_en": "Conditional « je voudrais » is the polite form.",
+     "explanation_zh": "条件式 « je voudrais » 更礼貌。"
+    },
+    {
+     "id": "u03-g06",
+     "kind": "choose",
+     "prompt": "Les antibiotiques ne sont délivrés que ___ ordonnance. (sur / avec / par)",
+     "answer": "sur",
+     "accepted": [],
+     "explanation_en": "Fixed phrase: « sur ordonnance ».",
+     "explanation_zh": "固定表达：« sur ordonnance »（凭处方）。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "J'ai mal dans la gorge.",
+     "right": "J'ai mal à la gorge.",
+     "why_en": "« avoir mal à », never « dans ».",
+     "why_zh": "要用 « avoir mal à »，不用 « dans »。"
+    },
+    {
+     "wrong": "Je suis malade pour trois jours.",
+     "right": "Je suis malade depuis trois jours.",
+     "why_en": "« pour » is a planned duration; « depuis » is ongoing since.",
+     "why_zh": "« pour » 表示计划的时长；« depuis » 表示一直持续。"
+    },
+    {
+     "wrong": "Je suis fièvre.",
+     "right": "J'ai de la fièvre.",
+     "why_en": "« avoir de la fièvre ».",
+     "why_zh": "要说 « avoir de la fièvre »。"
+    }
+   ],
+   "retry": {
+    "draft": "Bonjour docteur, je suis malade pour trois jours. J'ai mal dans la tête et je suis fièvre. J'ai pris des médicaments mais ça va pas mieux. Je peux avoir un certificat pour mon travail ?",
+    "corrections": [
+     {
+      "quote": "pour trois jours",
+      "correction": "depuis trois jours",
+      "why_en": "An ongoing situation takes « depuis ».",
+      "why_zh": "持续的状态用 « depuis »。"
+     },
+     {
+      "quote": "mal dans la tête",
+      "correction": "mal à la tête",
+      "why_en": "« avoir mal à ».",
+      "why_zh": "要说 « avoir mal à »。"
+     },
+     {
+      "quote": "je suis fièvre",
+      "correction": "j'ai de la fièvre",
+      "why_en": "« avoir de la fièvre ».",
+      "why_zh": "要说 « avoir de la fièvre »。"
+     },
+     {
+      "quote": "ça va pas mieux",
+      "correction": "ça ne va pas mieux",
+      "why_en": "Written French keeps « ne ».",
+      "why_zh": "书面法语要保留 « ne »。"
+     }
+    ],
+    "corrected": "Bonjour docteur, je suis malade depuis trois jours. J'ai mal à la tête et j'ai de la fièvre. J'ai pris des médicaments mais ça ne va pas mieux. Je peux avoir un certificat pour mon travail ?"
+   }
+  },
+  {
+   "id": "u04",
+   "theme": "Travail",
+   "band": "B1",
+   "goal": {
+    "fr": "Écrire un courriel de candidature et se présenter en entretien.",
+    "en": "Write an application email and introduce yourself in an interview.",
+    "zh": "写求职邮件，并在面试中做自我介绍。"
+   },
+   "writing": {
+    "title": "Postuler pour un emploi d'été",
+    "format": "courriel de candidature",
+    "prompt": "Le restaurant « La Terrasse du Port » cherche des serveurs et serveuses pour l'été. Écrivez un courriel de candidature.",
+    "requirements": [
+     "Dites quel poste vous intéresse et où vous avez vu l'offre.",
+     "Présentez une expérience utile.",
+     "Montrez deux qualités en lien avec le poste.",
+     "Donnez vos disponibilités.",
+     "Proposez un entretien."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   },
+   "writing_sample": {
+    "text": "Madame, Monsieur,\n\nJ'ai vu sur le site de l'office du tourisme que vous recrutez des serveurs pour la saison d'été, et je souhaite vous proposer ma candidature.\n\nL'année dernière, j'ai travaillé dans une boulangerie le week-end : je servais les clients et je tenais la caisse. Cette expérience m'a appris à rester calme quand il y a beaucoup de monde. Je suis aussi à l'aise en anglais, puisque j'ai vécu six mois à Dublin.\n\nJe suis disponible du 15 juin au 10 septembre, car mes cours reprennent le 12. Je serais heureux de vous rencontrer pour un entretien, par téléphone ou sur place.\n\nJe vous prie d'agréer, Madame, Monsieur, mes salutations distinguées.\n\nTom Girard",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "vous recrutez des serveurs pour la saison d'été"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "je servais les clients et je tenais la caisse"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "m'a appris à rester calme"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Je suis disponible du 15 juin au 10 septembre"
+     },
+     {
+      "requirement": 5,
+      "excerpt": "Je serais heureux de vous rencontrer pour un entretien"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "je souhaite vous proposer ma candidature",
+      "en": "Standard opening of an application.",
+      "zh": "求职信的标准开头。"
+     },
+     {
+      "excerpt": "puisque",
+      "en": "Gives a reason the reader can accept as known.",
+      "zh": "给出对方可以接受的已知理由。"
+     },
+     {
+      "excerpt": "Je vous prie d'agréer",
+      "en": "Formal closing formula; keep it whole.",
+      "zh": "正式信函结尾套语，要完整使用。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Se présenter en entretien",
+    "format": "monologue (entretien téléphonique)",
+    "situation": "Au début d'un entretien téléphonique, la responsable vous dit : « Présentez-vous en une minute. »",
+    "requirements": [
+     "Dites qui vous êtes et ce que vous faites.",
+     "Parlez d'une expérience utile pour le poste.",
+     "Expliquez pourquoi ce poste vous intéresse.",
+     "Mentionnez une limite (dates, horaires) et proposez une solution."
+    ],
+    "seconds_min": 45,
+    "seconds_max": 90
+   },
+   "speaking_sample": {
+    "text": "Bien sûr. Je m'appelle Tom, j'ai 21 ans et je suis étudiant en tourisme à Nantes. Pendant mes études, j'ai travaillé le week-end dans une boulangerie, donc j'ai l'habitude de servir des clients et de gérer la caisse. Ce poste m'intéresse parce que j'aime le contact avec les gens et que je voudrais pratiquer mon anglais avec les touristes. Par contre, je dois partir le 10 septembre, parce que mes cours reprennent. Mais je peux travailler tous les week-ends de juin, si vous voulez.",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "je suis étudiant en tourisme à Nantes"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "j'ai l'habitude de servir des clients"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "Ce poste m'intéresse parce que j'aime le contact avec les gens"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "je dois partir le 10 septembre"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "j'ai l'habitude de",
+      "en": "« avoir l'habitude de » + infinitive: to be used to.",
+      "zh": "« avoir l'habitude de » + 不定式：习惯于……"
+     },
+     {
+      "excerpt": "Par contre",
+      "en": "Introduces a contrast; common in speech.",
+      "zh": "引出对比，口语中常用。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u04-g01",
+     "kind": "choose",
+     "prompt": "J'ai travaillé ___ un an dans une boulangerie. (pendant / depuis / il y a)",
+     "answer": "pendant",
+     "accepted": [],
+     "explanation_en": "A finished period: « pendant ».",
+     "explanation_zh": "已结束的一段时间用 « pendant »。"
+    },
+    {
+     "id": "u04-g02",
+     "kind": "choose",
+     "prompt": "Je cherche un emploi ___ deux mois. (depuis / pendant / dans)",
+     "answer": "depuis",
+     "accepted": [],
+     "explanation_en": "Still going on: « depuis ».",
+     "explanation_zh": "仍在持续用 « depuis »。"
+    },
+    {
+     "id": "u04-g03",
+     "kind": "transform",
+     "prompt": "Mettez à l'imparfait (habitude passée) : « Je sers les clients. »",
+     "answer": "Je servais les clients.",
+     "accepted": [],
+     "explanation_en": "Imperfect for a repeated past action.",
+     "explanation_zh": "未完成过去时表示过去的习惯动作。"
+    },
+    {
+     "id": "u04-g04",
+     "kind": "fill",
+     "prompt": "Je ___ (être, conditionnel) heureux de vous rencontrer.",
+     "answer": "serais",
+     "accepted": [],
+     "explanation_en": "Conditional of « être »: je serais.",
+     "explanation_zh": "« être » 的条件式：je serais。"
+    },
+    {
+     "id": "u04-g05",
+     "kind": "fill",
+     "prompt": "J'ai fini mes études ___ deux ans.",
+     "answer": "il y a",
+     "accepted": [],
+     "explanation_en": "« il y a » + duration = ago.",
+     "explanation_zh": "« il y a » + 时长表示……之前。"
+    },
+    {
+     "id": "u04-g06",
+     "kind": "fill",
+     "prompt": "Je suis disponible ___ 15 juin ___ 10 septembre.",
+     "answer": "du … au",
+     "accepted": [
+      "du, au",
+      "du ... au"
+     ],
+     "explanation_en": "« du … au … » for a date range.",
+     "explanation_zh": "日期范围用 « du … au … »。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "J'ai travaillé dans une boulangerie depuis un an.",
+     "right": "J'ai travaillé dans une boulangerie pendant un an.",
+     "why_en": "The job is over: « pendant »; « depuis » means it still continues.",
+     "why_zh": "工作已结束用 « pendant »；« depuis » 表示仍在继续。"
+    },
+    {
+     "wrong": "J'applique pour le poste.",
+     "right": "Je pose ma candidature pour le poste.",
+     "why_en": "« appliquer » is a false friend; say « postuler » or « poser sa candidature ».",
+     "why_zh": "« appliquer » 是假朋友词，应说 « postuler » 或 « poser sa candidature »。"
+    },
+    {
+     "wrong": "Je suis excité de travailler avec vous.",
+     "right": "J'ai hâte de travailler avec vous.",
+     "why_en": "« excité » has an unwanted meaning here; use « avoir hâte de ».",
+     "why_zh": "« excité » 在这里有不当含义，应用 « avoir hâte de »。"
+    }
+   ],
+   "retry": {
+    "draft": "Madame, Monsieur, j'applique pour le poste de serveur. J'ai travaillé dans une boulangerie depuis un an, je servais les clients. Je suis excité de travailler dans votre restaurant. Je suis disponible du 15 juin au 10 septembre. Cordialement, Tom",
+    "corrections": [
+     {
+      "quote": "j'applique pour le poste",
+      "correction": "je pose ma candidature pour le poste",
+      "why_en": "« appliquer » is a false friend.",
+      "why_zh": "« appliquer » 是假朋友词。"
+     },
+     {
+      "quote": "depuis un an",
+      "correction": "pendant un an",
+      "why_en": "The job is finished: « pendant ».",
+      "why_zh": "工作已结束，用 « pendant »。"
+     },
+     {
+      "quote": "Je suis excité de",
+      "correction": "J'ai hâte de",
+      "why_en": "Use « avoir hâte de ».",
+      "why_zh": "应用 « avoir hâte de »。"
+     }
+    ],
+    "corrected": "Madame, Monsieur, je pose ma candidature pour le poste de serveur. J'ai travaillé dans une boulangerie pendant un an, je servais les clients. J'ai hâte de travailler dans votre restaurant. Je suis disponible du 15 juin au 10 septembre. Cordialement, Tom"
+   }
+  },
+  {
+   "id": "u05",
+   "theme": "Études",
+   "band": "A2",
+   "goal": {
+    "fr": "Prévenir un professeur d'une absence et parler de son apprentissage du français.",
+    "en": "Tell a teacher about an absence and talk about learning French.",
+    "zh": "向老师说明缺课，并谈谈自己学法语的情况。"
+   },
+   "writing": {
+    "title": "Prévenir le professeur d'une absence",
+    "format": "courriel",
+    "prompt": "Vous suivez un cours du soir de français. Vous serez absent(e) deux semaines. Écrivez à votre professeur, M. Lambert.",
+    "requirements": [
+     "Dites pourquoi vous serez absent(e) et combien de temps.",
+     "Demandez ce que vous devez faire pour ne pas prendre de retard.",
+     "Proposez une solution (exercices en ligne, rattrapage…).",
+     "Remerciez et terminez poliment."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   },
+   "writing_sample": {
+    "text": "Bonjour Monsieur Lambert,\n\nJe vous écris pour vous prévenir que je serai absente du 4 au 15 novembre, parce que je dois partir en Chine pour le mariage de ma sœur. Pouvez-vous me dire quelles leçons et quels exercices je dois faire pendant mon absence ? Si c'est possible, je peux faire les exercices en ligne et vous les envoyer par courriel. Merci beaucoup pour votre aide.\n\nBonne soirée,\nMei Chen",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "je serai absente du 4 au 15 novembre"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "quelles leçons et quels exercices je dois faire"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "je peux faire les exercices en ligne"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Merci beaucoup pour votre aide"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Je vous écris pour vous prévenir que",
+      "en": "States the purpose of the email.",
+      "zh": "说明写邮件的目的。"
+     },
+     {
+      "excerpt": "quelles leçons et quels exercices",
+      "en": "« quel » agrees with its noun.",
+      "zh": "« quel » 要与名词配合。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Se présenter au cours de français",
+    "format": "monologue (présentation en classe)",
+    "situation": "Le premier jour du cours, le professeur demande à chacun de se présenter et de parler de son apprentissage du français.",
+    "requirements": [
+     "Dites depuis quand vous apprenez le français.",
+     "Expliquez pourquoi vous l'apprenez.",
+     "Dites ce qui est facile et ce qui est difficile pour vous.",
+     "Donnez un objectif pour cette année."
+    ],
+    "seconds_min": 45,
+    "seconds_max": 90
+   },
+   "speaking_sample": {
+    "text": "Bonsoir à tous. Je m'appelle Mei, je viens de Chengdu et j'apprends le français depuis un an et demi. Je l'apprends pour mon travail, parce que mon laboratoire travaille avec une équipe à Lyon. Pour moi, la lecture est assez facile, mais comprendre les gens au téléphone, c'est très difficile : ils parlent vite ! Cette année, je voudrais passer le DELF B1 et être plus à l'aise à l'oral.",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "j'apprends le français depuis un an et demi"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "parce que mon laboratoire travaille avec une équipe à Lyon"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "la lecture est assez facile"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "je voudrais passer le DELF B1"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "depuis un an et demi",
+      "en": "A duration still going on: « depuis ».",
+      "zh": "持续到现在的时长用 « depuis »。"
+     },
+     {
+      "excerpt": "être plus à l'aise",
+      "en": "« être à l'aise » = to feel comfortable.",
+      "zh": "« être à l'aise » 表示自如、放松。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u05-g01",
+     "kind": "fill",
+     "prompt": "Je ___ (être, futur) absente la semaine prochaine.",
+     "answer": "serai",
+     "accepted": [],
+     "explanation_en": "Future of « être »: je serai.",
+     "explanation_zh": "« être » 的简单将来时：je serai。"
+    },
+    {
+     "id": "u05-g02",
+     "kind": "fill",
+     "prompt": "Nous ___ (avoir, futur) un examen en juin.",
+     "answer": "aurons",
+     "accepted": [],
+     "explanation_en": "Future of « avoir »: nous aurons.",
+     "explanation_zh": "« avoir » 的简单将来时：nous aurons。"
+    },
+    {
+     "id": "u05-g03",
+     "kind": "choose",
+     "prompt": "___ exercices dois-je faire ? (Quel / Quels / Quelles)",
+     "answer": "Quels",
+     "accepted": [],
+     "explanation_en": "« exercices » is masculine plural.",
+     "explanation_zh": "« exercices » 是阳性复数。"
+    },
+    {
+     "id": "u05-g04",
+     "kind": "choose",
+     "prompt": "___ leçon commence lundi ? (Quel / Quelle / Quels)",
+     "answer": "Quelle",
+     "accepted": [],
+     "explanation_en": "« leçon » is feminine singular.",
+     "explanation_zh": "« leçon » 是阴性单数。"
+    },
+    {
+     "id": "u05-g05",
+     "kind": "transform",
+     "prompt": "Remplacez par un pronom : « J'apprends le français pour mon travail. »",
+     "answer": "Je l'apprends pour mon travail.",
+     "accepted": [],
+     "explanation_en": "« le français » → « l' » before a vowel.",
+     "explanation_zh": "« le français » 在元音前变成 « l' »。"
+    },
+    {
+     "id": "u05-g06",
+     "kind": "fill",
+     "prompt": "Je ___ (s'inscrire, passé composé) au cours la semaine dernière.",
+     "answer": "me suis inscrite",
+     "accepted": [
+      "me suis inscrit"
+     ],
+     "explanation_en": "Pronominal verbs take « être »; agree with the subject.",
+     "explanation_zh": "代词式动词用 « être » 作助动词，并与主语配合。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "Je suis absente le prochain lundi.",
+     "right": "Je serai absente lundi prochain.",
+     "why_en": "« lundi prochain » (adjective after); future for a planned absence.",
+     "why_zh": "« lundi prochain »（形容词后置）；计划中的缺席用将来时。"
+    },
+    {
+     "wrong": "Le professeur m'a parlé de mon prononciation.",
+     "right": "Le professeur m'a parlé de ma prononciation.",
+     "why_en": "« prononciation » is feminine.",
+     "why_zh": "« prononciation » 是阴性名词。"
+    },
+    {
+     "wrong": "Je connais parler français.",
+     "right": "Je sais parler français.",
+     "why_en": "A skill: « savoir » + infinitive; « connaître » + noun.",
+     "why_zh": "表示技能用 « savoir » + 不定式；« connaître » 接名词。"
+    }
+   ],
+   "retry": {
+    "draft": "Bonjour Monsieur, je suis absente le prochain lundi parce que je dois aller à l'hôpital. Quel exercices je dois faire ? Je connais faire les exercices en ligne. Merci, Mei",
+    "corrections": [
+     {
+      "quote": "je suis absente le prochain lundi",
+      "correction": "je serai absente lundi prochain",
+      "why_en": "Future for a planned absence; « lundi prochain ».",
+      "why_zh": "计划中的缺席用将来时；说 « lundi prochain »。"
+     },
+     {
+      "quote": "Quel exercices je dois faire ?",
+      "correction": "Quels exercices est-ce que je dois faire ?",
+      "why_en": "« quel » agrees with « exercices »; in writing, use « est-ce que » or inversion.",
+      "why_zh": "« quel » 与 « exercices » 配合；书面语用 « est-ce que » 或倒装。"
+     },
+     {
+      "quote": "Je connais faire",
+      "correction": "Je sais faire",
+      "why_en": "A skill: « savoir » + infinitive.",
+      "why_zh": "表示技能用 « savoir » + 不定式。"
+     }
+    ],
+    "corrected": "Bonjour Monsieur, je serai absente lundi prochain parce que je dois aller à l'hôpital. Quels exercices est-ce que je dois faire ? Je sais faire les exercices en ligne. Merci, Mei"
+   }
+  },
+  {
+   "id": "u06",
+   "theme": "Consommation",
+   "band": "B1",
+   "goal": {
+    "fr": "Écrire une réclamation polie mais ferme et rapporter un article en magasin.",
+    "en": "Write a polite but firm complaint and return an item in a shop.",
+    "zh": "写一封礼貌而坚定的投诉信，并在商店办理退换货。"
+   },
+   "writing": {
+    "title": "Réclamation : un colis abîmé",
+    "format": "courriel de réclamation",
+    "prompt": "Vous avez commandé une lampe sur un site en ligne. Elle est arrivée cassée et le service client ne répond pas depuis une semaine. Écrivez une réclamation.",
+    "requirements": [
+     "Donnez les références de la commande (date, numéro).",
+     "Décrivez le problème précisément.",
+     "Rappelez ce que vous avez déjà fait.",
+     "Dites clairement ce que vous demandez et dans quel délai.",
+     "Restez poli(e) mais ferme."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   },
+   "writing_sample": {
+    "text": "Madame, Monsieur,\n\nLe 3 mars, j'ai commandé sur votre site une lampe de bureau (commande n° 48 213). Le colis est arrivé le 6 mars : le carton était déchiré et le pied de la lampe était cassé.\n\nLe jour même, j'ai contacté votre service client par courriel, avec deux photos du produit et du carton, comme l'indiquent vos conditions de vente. Je n'ai reçu aucune réponse depuis une semaine.\n\nJe vous demande donc de m'envoyer une nouvelle lampe ou de me rembourser, au plus tard le 20 mars. Sans réponse de votre part à cette date, je m'adresserai à une association de consommateurs.\n\nJe vous remercie par avance de votre réponse rapide.\n\nSalutations distinguées,\nPaul Dufour",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "commande n° 48 213"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "le pied de la lampe était cassé"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "j'ai contacté votre service client par courriel"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "au plus tard le 20 mars"
+     },
+     {
+      "requirement": 5,
+      "excerpt": "Je vous remercie par avance de votre réponse rapide"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Je n'ai reçu aucune réponse",
+      "en": "« ne… aucun(e) » = not a single one.",
+      "zh": "« ne… aucun(e) » 表示一个也没有。"
+     },
+     {
+      "excerpt": "je m'adresserai à",
+      "en": "Future tense to state a firm next step.",
+      "zh": "用将来时表明下一步行动。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Rapporter un pull en magasin",
+    "format": "jeu de rôle (vos répliques seulement)",
+    "situation": "Vous rapportez un pull acheté il y a dix jours : il a un trou. Vous avez le ticket. Parlez au vendeur ; ses réponses sont indiquées par « … ».",
+    "requirements": [
+     "Expliquez quand vous avez acheté l'article et le problème.",
+     "Dites ce que vous voulez (échange ou remboursement).",
+     "Réagissez à la proposition du vendeur.",
+     "Concluez poliment."
+    ],
+    "seconds_min": 45,
+    "seconds_max": 90
+   },
+   "speaking_sample": {
+    "text": "Bonjour monsieur. J'ai acheté ce pull ici il y a dix jours, et hier j'ai vu qu'il y avait un petit trou sous le bras. Je ne l'ai porté qu'une fois. Voici le ticket. Je voudrais être remboursée, s'il vous plaît. … Un avoir ? Je préfère un remboursement, parce que je ne viens pas souvent dans ce magasin. … Ah, un échange contre le même modèle, d'accord, c'est une bonne solution. Merci beaucoup, bonne journée.",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "J'ai acheté ce pull ici il y a dix jours"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "Je voudrais être remboursée"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "Je préfère un remboursement"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Merci beaucoup, bonne journée"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Je ne l'ai porté qu'une fois",
+      "en": "« ne… que » = only.",
+      "zh": "« ne… que » 表示只、仅仅。"
+     },
+     {
+      "excerpt": "Un avoir",
+      "en": "A store credit note.",
+      "zh": "购物抵用凭证。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u06-g01",
+     "kind": "transform",
+     "prompt": "Avec « ne… que » : « J'ai porté ce pull une seule fois. »",
+     "answer": "Je n'ai porté ce pull qu'une fois.",
+     "accepted": [],
+     "explanation_en": "« ne » before the verb, « que » before what is limited.",
+     "explanation_zh": "« ne » 放在动词前，« que » 放在被限定的部分前。"
+    },
+    {
+     "id": "u06-g02",
+     "kind": "fill",
+     "prompt": "Je n'ai reçu ___ réponse.",
+     "answer": "aucune",
+     "accepted": [],
+     "explanation_en": "« ne… aucune » agrees with « réponse ».",
+     "explanation_zh": "« ne… aucune » 与 « réponse » 配合。"
+    },
+    {
+     "id": "u06-g03",
+     "kind": "fill",
+     "prompt": "La lampe ? Je l'ai ___ (recevoir) cassée.",
+     "answer": "reçue",
+     "accepted": [],
+     "explanation_en": "The participle agrees with a direct object placed before it (l' = la lampe).",
+     "explanation_zh": "直接宾语前置时，过去分词要与之配合（l' = la lampe）。"
+    },
+    {
+     "id": "u06-g04",
+     "kind": "transform",
+     "prompt": "Plus poli : « Remboursez-moi. »",
+     "answer": "Pourriez-vous me rembourser, s'il vous plaît ?",
+     "accepted": [
+      "Je voudrais être remboursé(e), s'il vous plaît."
+     ],
+     "explanation_en": "Conditional question for a polite request.",
+     "explanation_zh": "用条件式提问表示礼貌请求。"
+    },
+    {
+     "id": "u06-g05",
+     "kind": "choose",
+     "prompt": "Je vous écris ___ une commande passée le 3 mars. (au sujet d' / à cause d' / grâce à)",
+     "answer": "au sujet d'",
+     "accepted": [],
+     "explanation_en": "« au sujet de » = about, regarding.",
+     "explanation_zh": "« au sujet de » 表示关于。"
+    },
+    {
+     "id": "u06-g06",
+     "kind": "fill",
+     "prompt": "Merci de me rembourser au plus ___ le 20 mars.",
+     "answer": "tard",
+     "accepted": [],
+     "explanation_en": "« au plus tard » = at the latest.",
+     "explanation_zh": "« au plus tard » 表示最迟。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "Je veux un remboursement tout de suite !",
+     "right": "Je vous demande de me rembourser rapidement.",
+     "why_en": "Too abrupt for a complaint; firm and polite works better.",
+     "why_zh": "投诉时语气太生硬；坚定而礼貌效果更好。"
+    },
+    {
+     "wrong": "Le produit est arrivé cassé depuis le 6 mars.",
+     "right": "Le produit est arrivé cassé le 6 mars.",
+     "why_en": "A single past event takes a date, not « depuis ».",
+     "why_zh": "过去的一次性事件用日期，不用 « depuis »。"
+    },
+    {
+     "wrong": "Je n'ai reçu pas de réponse.",
+     "right": "Je n'ai pas reçu de réponse.",
+     "why_en": "In compound tenses « pas » goes before the participle.",
+     "why_zh": "复合时态中 « pas » 放在过去分词前。"
+    }
+   ],
+   "retry": {
+    "draft": "Madame, Monsieur, j'ai commandé une lampe le 3 mars. Elle est arrivé cassée depuis le 6 mars. J'ai envoyé des photos mais je n'ai reçu pas de réponse. Je veux un remboursement tout de suite ! Paul Dufour",
+    "corrections": [
+     {
+      "quote": "Elle est arrivé",
+      "correction": "Elle est arrivée",
+      "why_en": "With « être », the participle agrees with the subject.",
+      "why_zh": "用 « être » 作助动词时，过去分词与主语配合。"
+     },
+     {
+      "quote": "depuis le 6 mars",
+      "correction": "le 6 mars",
+      "why_en": "A single past event: just the date.",
+      "why_zh": "过去的一次性事件只需日期。"
+     },
+     {
+      "quote": "je n'ai reçu pas de réponse",
+      "correction": "je n'ai pas reçu de réponse",
+      "why_en": "« pas » before the participle.",
+      "why_zh": "« pas » 放在过去分词前。"
+     },
+     {
+      "quote": "Je veux un remboursement tout de suite !",
+      "correction": "Je vous demande de me rembourser rapidement.",
+      "why_en": "Firm but polite.",
+      "why_zh": "坚定而礼貌。"
+     }
+    ],
+    "corrected": "Madame, Monsieur, j'ai commandé une lampe le 3 mars. Elle est arrivée cassée le 6 mars. J'ai envoyé des photos mais je n'ai pas reçu de réponse. Je vous demande de me rembourser rapidement. Paul Dufour"
+   }
+  },
+  {
+   "id": "u07",
+   "theme": "Loisirs",
+   "band": "A2",
+   "goal": {
+    "fr": "Proposer une sortie par écrit et raconter une soirée à l'oral.",
+    "en": "Suggest an outing in writing and tell someone about an evening out.",
+    "zh": "书面提议一次外出活动，并口头讲述一个晚上的经历。"
+   },
+   "writing": {
+    "title": "Proposer une sortie à des amis",
+    "format": "message (groupe d'amis)",
+    "prompt": "Samedi, il y a une fête de quartier près de chez vous. Écrivez un message à un groupe d'amis pour proposer d'y aller ensemble.",
+    "requirements": [
+     "Présentez la sortie (quoi, où, quand).",
+     "Proposez un programme (heure, lieu de rendez-vous).",
+     "Donnez une information pratique (transport, prix, météo).",
+     "Demandez une réponse avant une date."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   },
+   "writing_sample": {
+    "text": "Salut tout le monde !\n\nSamedi 7 juin, c'est la fête du quartier Saint-Michel, sur la place du Marché. Il y a un vide-grenier le matin et un concert gratuit le soir. Je vous propose de nous retrouver devant la fontaine à 19 h 30 pour manger aux stands, puis d'aller au concert à 21 heures. Venez à pied ou en tram : on ne peut pas se garer sur la place. Dites-moi avant jeudi si vous venez !\n\nBises,\nChloé",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "c'est la fête du quartier Saint-Michel, sur la place du Marché"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "de nous retrouver devant la fontaine à 19 h 30"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "on ne peut pas se garer sur la place"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Dites-moi avant jeudi si vous venez"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Je vous propose de",
+      "en": "Makes a suggestion to several people.",
+      "zh": "向多人提出建议。"
+     },
+     {
+      "excerpt": "Bises",
+      "en": "Friendly closing between friends.",
+      "zh": "朋友之间亲切的结尾。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Raconter sa soirée",
+    "format": "message vocal",
+    "situation": "Votre ami Malik n'a pas pu venir à la fête du quartier. Laissez-lui un message vocal pour raconter votre soirée.",
+    "requirements": [
+     "Dites où vous êtes allé(e) et avec qui.",
+     "Racontez deux moments de la soirée.",
+     "Donnez votre avis.",
+     "Proposez de faire quelque chose ensemble bientôt."
+    ],
+    "seconds_min": 30,
+    "seconds_max": 75
+   },
+   "speaking_sample": {
+    "text": "Salut Malik, c'est Sofia ! Dommage que tu n'aies pas pu venir hier soir. Je suis allée à la fête du quartier avec Inès et Hugo. On a mangé des plats vietnamiens aux stands, c'était délicieux, et après on a dansé au bal jusqu'à minuit. Le concert était super, il y avait beaucoup de monde. On se voit la semaine prochaine pour un café ? Bisous !",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "Je suis allée à la fête du quartier avec Inès et Hugo"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "on a dansé au bal jusqu'à minuit"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "Le concert était super"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "On se voit la semaine prochaine pour un café ?"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Je suis allée",
+      "en": "« aller » takes « être »; a woman speaking adds -e.",
+      "zh": "« aller » 用 « être » 作助动词；女性说话者加 -e。"
+     },
+     {
+      "excerpt": "c'était délicieux",
+      "en": "Imperfect for a description in the past.",
+      "zh": "过去的描述用未完成过去时。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u07-g01",
+     "kind": "fill",
+     "prompt": "Hier, nous ___ (aller) au concert.",
+     "answer": "sommes allés",
+     "accepted": [
+      "sommes allées",
+      "sommes allé(e)s"
+     ],
+     "explanation_en": "« aller » takes « être »; agree with the subject.",
+     "explanation_zh": "« aller » 用 « être » 作助动词，并与主语配合。"
+    },
+    {
+     "id": "u07-g02",
+     "kind": "fill",
+     "prompt": "Ils ___ (danser) jusqu'à minuit.",
+     "answer": "ont dansé",
+     "accepted": [],
+     "explanation_en": "« danser » takes « avoir ».",
+     "explanation_zh": "« danser » 用 « avoir » 作助动词。"
+    },
+    {
+     "id": "u07-g03",
+     "kind": "fill",
+     "prompt": "Le concert ___ (être, imparfait) génial.",
+     "answer": "était",
+     "accepted": [],
+     "explanation_en": "Imperfect for a description.",
+     "explanation_zh": "描述用未完成过去时。"
+    },
+    {
+     "id": "u07-g04",
+     "kind": "transform",
+     "prompt": "Remplacez « nous » par « on » : « Nous nous retrouvons à 19 h 30. »",
+     "answer": "On se retrouve à 19 h 30.",
+     "accepted": [],
+     "explanation_en": "« on » takes the third person singular.",
+     "explanation_zh": "« on » 用第三人称单数变位。"
+    },
+    {
+     "id": "u07-g05",
+     "kind": "fill",
+     "prompt": "Je vous propose ___ venir avec moi.",
+     "answer": "de",
+     "accepted": [],
+     "explanation_en": "« proposer de » + infinitive.",
+     "explanation_zh": "« proposer de » + 不定式。"
+    },
+    {
+     "id": "u07-g06",
+     "kind": "choose",
+     "prompt": "Venez ___ tram. (en / à / par)",
+     "answer": "en",
+     "accepted": [],
+     "explanation_en": "« en tram », « en bus ».",
+     "explanation_zh": "乘坐电车、公交车用 « en »。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "J'ai allé à la fête.",
+     "right": "Je suis allé(e) à la fête.",
+     "why_en": "« aller » takes « être ».",
+     "why_zh": "« aller » 用 « être » 作助动词。"
+    },
+    {
+     "wrong": "On a passé un bon temps.",
+     "right": "On a passé un bon moment.",
+     "why_en": "Calque of English « a good time ».",
+     "why_zh": "照搬英语 « a good time » 的说法。"
+    },
+    {
+     "wrong": "Tu viens au cinéma ce soir ? — Oui, je veux.",
+     "right": "Tu viens au cinéma ce soir ? — Oui, je veux bien.",
+     "why_en": "« je veux bien » is the natural way to accept.",
+     "why_zh": "接受邀请时自然的说法是 « je veux bien »。"
+    }
+   ],
+   "retry": {
+    "draft": "Salut ! Hier, j'ai allé à la fête avec ma sœur. Il y avait beaucoup des gens. Nous avons mangé aux stands et le concert a été génial. On a passé un bon temps. Tu veux venir la prochaine fois ? Bises",
+    "corrections": [
+     {
+      "quote": "j'ai allé",
+      "correction": "je suis allée",
+      "why_en": "« aller » takes « être ».",
+      "why_zh": "« aller » 用 « être » 作助动词。"
+     },
+     {
+      "quote": "beaucoup des gens",
+      "correction": "beaucoup de gens",
+      "why_en": "After « beaucoup », use « de ».",
+      "why_zh": "« beaucoup » 后用 « de »。"
+     },
+     {
+      "quote": "un bon temps",
+      "correction": "un bon moment",
+      "why_en": "Say « passer un bon moment ».",
+      "why_zh": "要说 « passer un bon moment »。"
+     }
+    ],
+    "corrected": "Salut ! Hier, je suis allée à la fête avec ma sœur. Il y avait beaucoup de gens. Nous avons mangé aux stands et le concert a été génial. On a passé un bon moment. Tu veux venir la prochaine fois ? Bises"
+   }
+  },
+  {
+   "id": "u08",
+   "theme": "Quartier et environnement",
+   "band": "B1",
+   "goal": {
+    "fr": "Écrire à la mairie pour proposer une amélioration et donner son avis en réunion.",
+    "en": "Write to the town hall to suggest an improvement and give an opinion in a meeting.",
+    "zh": "写信给市政厅提出改进建议，并在会议上发表意见。"
+   },
+   "writing": {
+    "title": "Écrire à la mairie : un problème de tri",
+    "format": "courriel à la mairie",
+    "prompt": "Dans votre rue, il n'y a plus de conteneur pour le verre et les gens laissent leurs bouteilles sur le trottoir. Écrivez à la mairie pour décrire le problème et proposer une solution.",
+    "requirements": [
+     "Présentez-vous et situez le problème.",
+     "Décrivez les conséquences pour les habitants.",
+     "Proposez une ou deux solutions concrètes.",
+     "Proposez votre aide ou celle des voisins.",
+     "Terminez de façon formelle."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   },
+   "writing_sample": {
+    "text": "Madame, Monsieur,\n\nJ'habite au 12, rue des Tanneurs, depuis trois ans. Je vous écris au sujet du verre : depuis les nouvelles règles de tri, il n'y a plus de conteneur vert dans notre rue, et le plus proche se trouve à 800 mètres.\n\nRésultat : beaucoup d'habitants laissent leurs bouteilles sur le trottoir. C'est dangereux pour les enfants et les personnes âgées, et la rue est sale.\n\nJe propose d'installer un conteneur à l'angle de la rue des Tanneurs et de la place du Marché, où il y a de la place. On pourrait aussi ajouter un panneau qui indique le conteneur le plus proche. Avec mes voisins, nous sommes prêts à informer les habitants de l'immeuble.\n\nJe vous prie d'agréer mes salutations distinguées.\n\nAmina Diallo",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "J'habite au 12, rue des Tanneurs, depuis trois ans"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "C'est dangereux pour les enfants et les personnes âgées"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "Je propose d'installer un conteneur"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "nous sommes prêts à informer les habitants de l'immeuble"
+     },
+     {
+      "requirement": 5,
+      "excerpt": "Je vous prie d'agréer mes salutations distinguées"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Résultat :",
+      "en": "Introduces a consequence; slightly informal but common.",
+      "zh": "引出结果，略口语但常用。"
+     },
+     {
+      "excerpt": "On pourrait aussi",
+      "en": "Conditional to soften a suggestion.",
+      "zh": "用条件式让建议更委婉。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Donner son avis en réunion de quartier",
+    "format": "intervention en réunion",
+    "situation": "À une réunion de quartier, on discute d'un projet : transformer le parking de la place du Marché en jardin partagé. Donnez votre avis.",
+    "requirements": [
+     "Présentez-vous brièvement.",
+     "Donnez votre opinion sur le projet.",
+     "Justifiez avec deux arguments.",
+     "Exprimez une inquiétude ou une condition.",
+     "Faites une proposition."
+    ],
+    "seconds_min": 60,
+    "seconds_max": 120
+   },
+   "speaking_sample": {
+    "text": "Bonsoir, je m'appelle Amina, j'habite rue des Tanneurs. Personnellement, je suis plutôt pour ce projet. D'abord, il n'y a presque pas d'espaces verts dans le quartier, et les enfants n'ont nulle part où jouer. Ensuite, un jardin partagé, ça permet aux voisins de se rencontrer. Par contre, j'ai une inquiétude : les personnes âgées qui viennent au marché en voiture, où est-ce qu'elles vont se garer ? Je propose de garder quelques places pour les personnes à mobilité réduite, à côté du jardin.",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "je m'appelle Amina, j'habite rue des Tanneurs"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "je suis plutôt pour ce projet"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "il n'y a presque pas d'espaces verts dans le quartier"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "j'ai une inquiétude"
+     },
+     {
+      "requirement": 5,
+      "excerpt": "Je propose de garder quelques places"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Personnellement",
+      "en": "Signals a personal opinion.",
+      "zh": "表明个人观点。"
+     },
+     {
+      "excerpt": "nulle part",
+      "en": "« ne… nulle part » = nowhere.",
+      "zh": "« ne… nulle part » 表示哪儿都不。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u08-g01",
+     "kind": "fill",
+     "prompt": "Il ___ (falloir, conditionnel) installer un conteneur.",
+     "answer": "faudrait",
+     "accepted": [],
+     "explanation_en": "Conditional of « il faut »: il faudrait (softer).",
+     "explanation_zh": "« il faut » 的条件式：il faudrait（更委婉）。"
+    },
+    {
+     "id": "u08-g02",
+     "kind": "choose",
+     "prompt": "C'est un quartier ___ il n'y a pas de parc. (où / qui / que)",
+     "answer": "où",
+     "accepted": [],
+     "explanation_en": "« où » for a place.",
+     "explanation_zh": "表示地点用 « où »。"
+    },
+    {
+     "id": "u08-g03",
+     "kind": "choose",
+     "prompt": "Les habitants ___ trient bien recevront un bac gratuit. (qui / que / où)",
+     "answer": "qui",
+     "accepted": [],
+     "explanation_en": "« qui » is the subject of « trient ».",
+     "explanation_zh": "« qui » 作 « trient » 的主语。"
+    },
+    {
+     "id": "u08-g04",
+     "kind": "fill",
+     "prompt": "Je suis ___ ce projet : je trouve que c'est une bonne idée.",
+     "answer": "pour",
+     "accepted": [],
+     "explanation_en": "« être pour / contre » + noun.",
+     "explanation_zh": "« être pour / contre » + 名词表示赞成或反对。"
+    },
+    {
+     "id": "u08-g05",
+     "kind": "transform",
+     "prompt": "Reliez avec « donc » : « Il n'y a pas de conteneur. Les gens laissent les bouteilles dehors. »",
+     "answer": "Il n'y a pas de conteneur, donc les gens laissent les bouteilles dehors.",
+     "accepted": [],
+     "explanation_en": "« donc » introduces the consequence.",
+     "explanation_zh": "« donc » 引出结果。"
+    },
+    {
+     "id": "u08-g06",
+     "kind": "transform",
+     "prompt": "Plus nuancé : « Je suis d'accord. »",
+     "answer": "Je suis plutôt d'accord.",
+     "accepted": [
+      "Je suis en partie d'accord."
+     ],
+     "explanation_en": "« plutôt » softens an opinion.",
+     "explanation_zh": "« plutôt » 让观点更委婉。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "À mon avis, je pense que c'est une bonne idée.",
+     "right": "À mon avis, c'est une bonne idée.",
+     "why_en": "Redundant: use one opinion marker.",
+     "why_zh": "重复：只用一个表达观点的词。"
+    },
+    {
+     "wrong": "Je suis contre de ce projet.",
+     "right": "Je suis contre ce projet.",
+     "why_en": "« être contre » takes a noun directly.",
+     "why_zh": "« être contre » 直接接名词。"
+    },
+    {
+     "wrong": "J'habite dans le 12, rue des Tanneurs.",
+     "right": "J'habite au 12, rue des Tanneurs.",
+     "why_en": "A street number takes « au ».",
+     "why_zh": "门牌号前用 « au »。"
+    }
+   ],
+   "retry": {
+    "draft": "Madame, Monsieur, j'habite dans le 12, rue des Tanneurs. À mon avis, je pense que il faut un conteneur pour le verre dans notre rue. Les bouteilles sur le trottoir est dangereux pour les enfants. Je propose installer un conteneur à l'angle de la rue. Cordialement, Amina",
+    "corrections": [
+     {
+      "quote": "dans le 12",
+      "correction": "au 12",
+      "why_en": "A street number takes « au ».",
+      "why_zh": "门牌号前用 « au »。"
+     },
+     {
+      "quote": "À mon avis, je pense que il faut",
+      "correction": "À mon avis, il faut",
+      "why_en": "One opinion marker is enough.",
+      "why_zh": "一个表达观点的词就够了。"
+     },
+     {
+      "quote": "Les bouteilles sur le trottoir est dangereux",
+      "correction": "Les bouteilles sur le trottoir sont dangereuses",
+      "why_en": "The verb and adjective agree with « les bouteilles ».",
+      "why_zh": "动词和形容词要与 « les bouteilles » 配合。"
+     },
+     {
+      "quote": "Je propose installer",
+      "correction": "Je propose d'installer",
+      "why_en": "« proposer de » + infinitive.",
+      "why_zh": "« proposer de » + 不定式。"
+     }
+    ],
+    "corrected": "Madame, Monsieur, j'habite au 12, rue des Tanneurs. À mon avis, il faut un conteneur pour le verre dans notre rue. Les bouteilles sur le trottoir sont dangereuses pour les enfants. Je propose d'installer un conteneur à l'angle de la rue. Cordialement, Amina"
+   }
+  },
+  {
+   "id": "u09",
+   "theme": "Voyages",
+   "band": "B1",
+   "goal": {
+    "fr": "Écrire un avis nuancé sur un hôtel et régler un problème de réservation à l'oral.",
+    "en": "Write a balanced hotel review and solve a booking problem aloud.",
+    "zh": "写一篇客观的酒店评价，并口头解决预订问题。"
+   },
+   "writing": {
+    "title": "Laisser un avis sur un hôtel",
+    "format": "avis en ligne",
+    "prompt": "Vous avez passé deux nuits à l'Hôtel des Remparts. Il y a eu un problème de chambre, mais le personnel a trouvé une solution. Écrivez un avis sur un site de voyage.",
+    "requirements": [
+     "Situez votre séjour (quand, avec qui, pourquoi).",
+     "Décrivez le problème et la réaction du personnel.",
+     "Donnez deux points positifs et un point négatif.",
+     "Faites une recommandation aux futurs clients."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   },
+   "writing_sample": {
+    "text": "Séjour du 12 au 14 avril, en couple, pour un week-end de repos.\n\nÀ notre arrivée, on nous a donné une chambre côté rue, très bruyante, alors que nous avions réservé côté jardin, et le chauffage ne marchait pas. Le réceptionniste s'est excusé tout de suite et nous a installés dans une chambre plus grande, côté cour, au même prix. Le lendemain, le petit-déjeuner nous a été offert.\n\nPoints positifs : le personnel est très professionnel et le petit-déjeuner, servi dans la véranda, est excellent. Point négatif : l'hôtel n'a pas de parking disponible, il faut se garer à la gare.\n\nJe recommande cet hôtel, mais je conseille de venir en train ou de prévoir le parking de la gare.",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "Séjour du 12 au 14 avril, en couple"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "Le réceptionniste s'est excusé tout de suite"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "le personnel est très professionnel"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Je recommande cet hôtel"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "alors que",
+      "en": "Contrasts two facts.",
+      "zh": "表示两个事实之间的对比。"
+     },
+     {
+      "excerpt": "nous a été offert",
+      "en": "Passive voice in the passé composé.",
+      "zh": "复合过去时的被动语态。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "À la réception : une réservation introuvable",
+    "format": "jeu de rôle (vos répliques seulement)",
+    "situation": "Vous arrivez à l'hôtel à 22 heures. Le réceptionniste ne trouve pas votre réservation. Ses réponses sont indiquées par « … ».",
+    "requirements": [
+     "Présentez-vous et dites ce que vous avez réservé.",
+     "Proposez une preuve de votre réservation.",
+     "Demandez une solution pour la nuit.",
+     "Acceptez ou refusez la proposition en expliquant pourquoi."
+    ],
+    "seconds_min": 45,
+    "seconds_max": 120
+   },
+   "speaking_sample": {
+    "text": "Bonsoir. J'ai réservé une chambre double pour deux nuits, au nom de Rossi, Laura Rossi. … Ah bon, vous ne trouvez pas ma réservation ? C'est bizarre. Attendez, j'ai la confirmation sur mon téléphone, la voilà. … D'accord. Mais il est tard : est-ce que vous avez une autre chambre libre pour ce soir ? … Une chambre simple seulement ? Bon, pour ce soir, ça ira, nous sommes très fatigués. Mais demain, nous voulons la chambre double prévue, au prix de la réservation.",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "J'ai réservé une chambre double pour deux nuits"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "j'ai la confirmation sur mon téléphone"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "est-ce que vous avez une autre chambre libre pour ce soir ?"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "pour ce soir, ça ira, nous sommes très fatigués"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "au nom de",
+      "en": "« au nom de » + name: under the name of.",
+      "zh": "« au nom de » + 姓名：以……的名义。"
+     },
+     {
+      "excerpt": "ça ira",
+      "en": "Future of « aller »: that will do.",
+      "zh": "« aller » 的将来时：这样也行。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u09-g01",
+     "kind": "fill",
+     "prompt": "Nous ___ (réserver, plus-que-parfait) une chambre côté jardin.",
+     "answer": "avions réservé",
+     "accepted": [],
+     "explanation_en": "Plus-que-parfait: an action before another past action.",
+     "explanation_zh": "愈过去时：表示发生在另一过去动作之前的动作。"
+    },
+    {
+     "id": "u09-g02",
+     "kind": "fill",
+     "prompt": "Le petit-déjeuner nous ___ (offrir, passif au passé composé).",
+     "answer": "a été offert",
+     "accepted": [],
+     "explanation_en": "Passive: « être » in the passé composé + participle.",
+     "explanation_zh": "被动语态：« être » 的复合过去时 + 过去分词。"
+    },
+    {
+     "id": "u09-g03",
+     "kind": "choose",
+     "prompt": "La chambre était bruyante, ___ nous avions demandé une chambre calme. (alors que / parce que / donc)",
+     "answer": "alors que",
+     "accepted": [],
+     "explanation_en": "« alors que » marks a contrast.",
+     "explanation_zh": "« alors que » 表示对比。"
+    },
+    {
+     "id": "u09-g04",
+     "kind": "transform",
+     "prompt": "Mettez au passé composé : « Le réceptionniste s'excuse. »",
+     "answer": "Le réceptionniste s'est excusé.",
+     "accepted": [],
+     "explanation_en": "Pronominal verbs take « être ».",
+     "explanation_zh": "代词式动词用 « être » 作助动词。"
+    },
+    {
+     "id": "u09-g05",
+     "kind": "fill",
+     "prompt": "S'il y ___ (avoir, imparfait) un parking, l'hôtel serait parfait.",
+     "answer": "avait",
+     "accepted": [],
+     "explanation_en": "« si » + imperfect, then conditional.",
+     "explanation_zh": "« si » + 未完成过去时，主句用条件式。"
+    },
+    {
+     "id": "u09-g06",
+     "kind": "fill",
+     "prompt": "Je vous conseille ___ réserver à l'avance.",
+     "answer": "de",
+     "accepted": [],
+     "explanation_en": "« conseiller à quelqu'un de » + infinitive.",
+     "explanation_zh": "« conseiller à qqn de » + 不定式。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "Nous avons resté deux nuits.",
+     "right": "Nous sommes restés deux nuits.",
+     "why_en": "« rester » takes « être ».",
+     "why_zh": "« rester » 用 « être » 作助动词。"
+    },
+    {
+     "wrong": "La chambre était très bruit.",
+     "right": "La chambre était très bruyante.",
+     "why_en": "Use the adjective « bruyant(e) », not the noun « bruit ».",
+     "why_zh": "要用形容词 « bruyant(e) »，不能用名词 « bruit »。"
+    },
+    {
+     "wrong": "Je recommande de cet hôtel.",
+     "right": "Je recommande cet hôtel.",
+     "why_en": "« recommander » takes a direct object.",
+     "why_zh": "« recommander » 直接接宾语。"
+    }
+   ],
+   "retry": {
+    "draft": "Nous avons resté deux nuits à l'hôtel en avril. La chambre était très bruit et le chauffage ne marchait pas. Le réceptionniste a excusé et il nous a donné une autre chambre. Je recommande de cet hôtel.",
+    "corrections": [
+     {
+      "quote": "Nous avons resté",
+      "correction": "Nous sommes restés",
+      "why_en": "« rester » takes « être ».",
+      "why_zh": "« rester » 用 « être » 作助动词。"
+     },
+     {
+      "quote": "très bruit",
+      "correction": "très bruyante",
+      "why_en": "Adjective, agreeing with « la chambre ».",
+      "why_zh": "用形容词，并与 « la chambre » 配合。"
+     },
+     {
+      "quote": "a excusé",
+      "correction": "s'est excusé",
+      "why_en": "« s'excuser » is pronominal.",
+      "why_zh": "« s'excuser » 是代词式动词。"
+     },
+     {
+      "quote": "Je recommande de cet hôtel",
+      "correction": "Je recommande cet hôtel",
+      "why_en": "Direct object, no « de ».",
+      "why_zh": "直接宾语，不加 « de »。"
+     }
+    ],
+    "corrected": "Nous sommes restés deux nuits à l'hôtel en avril. La chambre était très bruyante et le chauffage ne marchait pas. Le réceptionniste s'est excusé et il nous a donné une autre chambre. Je recommande cet hôtel."
+   }
+  },
+  {
+   "id": "u10",
+   "theme": "Administration",
+   "band": "B1",
+   "goal": {
+    "fr": "Écrire une lettre formelle à un service administratif et vérifier une information au téléphone.",
+    "en": "Write a formal letter to an office and check information on the phone.",
+    "zh": "给行政部门写正式信函，并在电话中核实信息。"
+   },
+   "writing": {
+    "title": "Écrire au service des titres d'identité (fictif)",
+    "format": "courriel formel",
+    "prompt": "Votre carte d'identité a été volée. Écrivez au service des titres d'identité de la mairie (fictive) de Villeneuve-sur-Claire.",
+    "requirements": [
+     "Expliquez votre situation (date, circonstances).",
+     "Dites ce que vous avez déjà fait.",
+     "Posez deux questions précises sur la démarche.",
+     "Demandez un rendez-vous et donnez vos disponibilités.",
+     "Utilisez les formules d'une lettre formelle."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   },
+   "writing_sample": {
+    "text": "Madame, Monsieur,\n\nLe 2 octobre, mon portefeuille a été volé dans le bus, avec ma carte d'identité. J'ai fait une déclaration de vol au commissariat le jour même, et j'ai rempli la pré-demande en ligne.\n\nJ'aimerais savoir si je dois acheter le timbre fiscal avant le rendez-vous ou si je peux le payer sur place. Par ailleurs, j'ai une photo d'identité faite il y a huit mois : est-elle encore acceptée ?\n\nJe souhaiterais obtenir un rendez-vous le plus tôt possible. Je suis disponible le mardi et le jeudi après-midi.\n\nDans l'attente de votre réponse, je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées.\n\nPaul Martin",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "mon portefeuille a été volé dans le bus"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "J'ai fait une déclaration de vol au commissariat"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "J'aimerais savoir si je dois acheter le timbre fiscal"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Je suis disponible le mardi et le jeudi après-midi"
+     },
+     {
+      "requirement": 5,
+      "excerpt": "Dans l'attente de votre réponse"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "J'aimerais savoir si",
+      "en": "Indirect question: polite and formal.",
+      "zh": "间接疑问句，礼貌而正式。"
+     },
+     {
+      "excerpt": "Par ailleurs",
+      "en": "Adds a second point in formal writing.",
+      "zh": "正式书面语中引出第二点。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Vérifier une information au téléphone",
+    "format": "appel téléphonique (vos répliques seulement)",
+    "situation": "Vous recevez un SMS : votre nouvelle carte d'identité est prête. Mais vous partez demain pour cinq semaines. Vous appelez l'accueil de la mairie ; les réponses de l'agent sont indiquées par « … ».",
+    "requirements": [
+     "Présentez-vous et dites pourquoi vous appelez.",
+     "Expliquez le problème.",
+     "Demandez s'il existe une solution.",
+     "Reformulez la réponse pour vérifier que vous avez compris."
+    ],
+    "seconds_min": 45,
+    "seconds_max": 120
+   },
+   "speaking_sample": {
+    "text": "Bonjour, je m'appelle Paul Martin, je vous appelle au sujet de ma nouvelle carte d'identité. J'ai reçu un SMS hier : elle est prête. Le problème, c'est que je pars demain en déplacement pour cinq semaines. Est-ce que quelqu'un peut venir la chercher à ma place ? … D'accord. Donc, si je comprends bien, personne d'autre ne peut la retirer, mais j'ai trois mois pour venir, alors je peux passer à mon retour. C'est bien ça ? … Parfait, merci beaucoup.",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "je vous appelle au sujet de ma nouvelle carte d'identité"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "je pars demain en déplacement pour cinq semaines"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "Est-ce que quelqu'un peut venir la chercher à ma place ?"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "si je comprends bien"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Le problème, c'est que",
+      "en": "Spoken way to introduce a problem.",
+      "zh": "口语中引出问题的说法。"
+     },
+     {
+      "excerpt": "C'est bien ça ?",
+      "en": "Asks for confirmation.",
+      "zh": "请求对方确认。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u10-g01",
+     "kind": "transform",
+     "prompt": "Mettez au passif : « Quelqu'un a volé mon portefeuille. »",
+     "answer": "Mon portefeuille a été volé.",
+     "accepted": [],
+     "explanation_en": "Passive without an agent when the doer is unknown.",
+     "explanation_zh": "施动者未知时用不带施动者的被动语态。"
+    },
+    {
+     "id": "u10-g02",
+     "kind": "transform",
+     "prompt": "Question indirecte : « Est-ce que je dois payer ? » → J'aimerais savoir…",
+     "answer": "J'aimerais savoir si je dois payer.",
+     "accepted": [],
+     "explanation_en": "Indirect yes/no question: « si ».",
+     "explanation_zh": "间接的一般疑问句用 « si »。"
+    },
+    {
+     "id": "u10-g03",
+     "kind": "transform",
+     "prompt": "Question indirecte : « Quand la carte sera-t-elle prête ? » → Pouvez-vous me dire…",
+     "answer": "Pouvez-vous me dire quand la carte sera prête ?",
+     "accepted": [],
+     "explanation_en": "No inversion in an indirect question.",
+     "explanation_zh": "间接疑问句不倒装。"
+    },
+    {
+     "id": "u10-g04",
+     "kind": "fill",
+     "prompt": "Je ___ (souhaiter, conditionnel) obtenir un rendez-vous.",
+     "answer": "souhaiterais",
+     "accepted": [],
+     "explanation_en": "Conditional for a formal request.",
+     "explanation_zh": "正式请求用条件式。"
+    },
+    {
+     "id": "u10-g05",
+     "kind": "choose",
+     "prompt": "Je vous écris ___ ma demande de carte d'identité. (concernant / pendant / malgré)",
+     "answer": "concernant",
+     "accepted": [],
+     "explanation_en": "« concernant » = regarding.",
+     "explanation_zh": "« concernant » 表示关于。"
+    },
+    {
+     "id": "u10-g06",
+     "kind": "fill",
+     "prompt": "Dans l'attente de votre réponse, je vous ___ d'agréer mes salutations distinguées.",
+     "answer": "prie",
+     "accepted": [],
+     "explanation_en": "Fixed formula: « je vous prie d'agréer ».",
+     "explanation_zh": "固定套语：« je vous prie d'agréer »。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "J'aimerais savoir est-ce que je dois payer.",
+     "right": "J'aimerais savoir si je dois payer.",
+     "why_en": "Indirect yes/no question: « si », without « est-ce que ».",
+     "why_zh": "间接的一般疑问句用 « si »，不用 « est-ce que »。"
+    },
+    {
+     "wrong": "Mon portefeuille a été volé par le bus.",
+     "right": "Mon portefeuille a été volé dans le bus.",
+     "why_en": "« par » introduces who did it; a place takes « dans ».",
+     "why_zh": "« par » 引出施动者；地点用 « dans »。"
+    },
+    {
+     "wrong": "Je vous prie d'agréer mes salutations distinguées. Bisous !",
+     "right": "Je vous prie d'agréer mes salutations distinguées.",
+     "why_en": "Do not mix formal and informal closings.",
+     "why_zh": "不要把正式和非正式的结尾混用。"
+    }
+   ],
+   "retry": {
+    "draft": "Madame, Monsieur, ma carte d'identité a été volé le 2 octobre. J'ai fait la déclaration au commissariat. J'aimerais savoir est-ce que je dois payer le timbre avant le rendez-vous. Je voudrais un rendez-vous rapide. Cordialement, bises, Paul Martin",
+    "corrections": [
+     {
+      "quote": "a été volé le 2 octobre",
+      "correction": "a été volée le 2 octobre",
+      "why_en": "The participle agrees with « ma carte ».",
+      "why_zh": "过去分词与 « ma carte » 配合。"
+     },
+     {
+      "quote": "savoir est-ce que je dois",
+      "correction": "savoir si je dois",
+      "why_en": "Indirect question: « si ».",
+      "why_zh": "间接疑问句用 « si »。"
+     },
+     {
+      "quote": "Je voudrais un rendez-vous rapide.",
+      "correction": "Je souhaiterais obtenir un rendez-vous le plus tôt possible.",
+      "why_en": "More precise and formal.",
+      "why_zh": "更准确、更正式。"
+     },
+     {
+      "quote": "Cordialement, bises,",
+      "correction": "Cordialement,",
+      "why_en": "No informal closing in a formal letter.",
+      "why_zh": "正式信函中不用非正式结尾。"
+     }
+    ],
+    "corrected": "Madame, Monsieur, ma carte d'identité a été volée le 2 octobre. J'ai fait la déclaration au commissariat. J'aimerais savoir si je dois payer le timbre avant le rendez-vous. Je souhaiterais obtenir un rendez-vous le plus tôt possible. Cordialement, Paul Martin"
+   }
+  },
+  {
+   "id": "u11",
+   "theme": "Alimentation",
+   "band": "A2",
+   "goal": {
+    "fr": "Inviter quelqu'un à dîner en demandant ses restrictions et commander au restaurant avec une allergie.",
+    "en": "Invite someone to dinner, ask about their dietary needs, and order in a restaurant with an allergy.",
+    "zh": "邀请别人吃饭并询问饮食禁忌，在餐厅点餐时说明过敏情况。"
+   },
+   "writing": {
+    "title": "Inviter des voisins à dîner",
+    "format": "message",
+    "prompt": "Vous invitez votre voisine Nadia et son mari à dîner chez vous samedi. Écrivez-leur un message.",
+    "requirements": [
+     "Invitez-les (jour, heure).",
+     "Dites ce que vous pensez préparer.",
+     "Demandez s'ils ont des allergies ou s'ils ne mangent pas certains aliments.",
+     "Dites s'ils doivent apporter quelque chose."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   },
+   "writing_sample": {
+    "text": "Bonjour Nadia,\n\nAvec Marc, nous aimerions vous inviter à dîner chez nous, samedi soir, vers 19 h 30. Je pense préparer un couscous aux légumes et, en dessert, une tarte aux pommes. Est-ce que vous avez des allergies, ou est-ce qu'il y a des aliments que vous ne mangez pas ? Dites-le-moi, je peux changer le menu sans problème. Vous n'avez rien à apporter, venez simplement avec votre bonne humeur !\n\nÀ samedi, j'espère,\nJulie",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "samedi soir, vers 19 h 30"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "Je pense préparer un couscous aux légumes"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "Est-ce que vous avez des allergies"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Vous n'avez rien à apporter"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "nous aimerions vous inviter",
+      "en": "The conditional makes an invitation warmer and politer.",
+      "zh": "条件式让邀请更礼貌、更亲切。"
+     },
+     {
+      "excerpt": "Dites-le-moi",
+      "en": "Imperative with two pronouns: « le » before « moi ».",
+      "zh": "带两个代词的命令式：« le » 在 « moi » 前。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Commander avec une allergie",
+    "format": "jeu de rôle (vos répliques seulement)",
+    "situation": "Au restaurant, vous ne mangez pas de viande et vous êtes allergique aux arachides. Commandez ; les réponses du serveur sont indiquées par « … ».",
+    "requirements": [
+     "Signalez votre allergie et ce que vous ne mangez pas.",
+     "Posez une question sur un plat.",
+     "Commandez.",
+     "Demandez quelque chose en plus (eau, pain, addition)."
+    ],
+    "seconds_min": 30,
+    "seconds_max": 90
+   },
+   "speaking_sample": {
+    "text": "Bonsoir. Avant de commander, je dois vous dire que je suis allergique aux arachides, aux cacahuètes, et que je ne mange pas de viande. … Merci. Est-ce que la soupe de légumes est faite avec un bouillon de viande ? … Ah, parfait. Alors je prends la soupe, et ensuite les lasagnes aux légumes. … Non, pas de dessert, merci. Est-ce qu'on pourrait avoir une carafe d'eau, s'il vous plaît ?",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "je suis allergique aux arachides"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "Est-ce que la soupe de légumes est faite avec un bouillon de viande ?"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "Alors je prends la soupe"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "Est-ce qu'on pourrait avoir une carafe d'eau"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "Avant de commander",
+      "en": "« avant de » + infinitive.",
+      "zh": "« avant de » + 不定式。"
+     },
+     {
+      "excerpt": "je ne mange pas de viande",
+      "en": "After a negation, « de » replaces « de la » or « du ».",
+      "zh": "否定句中用 « de » 代替部分冠词。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u11-g01",
+     "kind": "fill",
+     "prompt": "Je voudrais ___ eau, s'il vous plaît. (de l' / du / des)",
+     "answer": "de l'",
+     "accepted": [],
+     "explanation_en": "Partitive before a vowel: « de l' ».",
+     "explanation_zh": "元音前的部分冠词用 « de l' »。"
+    },
+    {
+     "id": "u11-g02",
+     "kind": "fill",
+     "prompt": "Je ne mange pas ___ viande.",
+     "answer": "de",
+     "accepted": [],
+     "explanation_en": "After a negation, « de ».",
+     "explanation_zh": "否定句中用 « de »。"
+    },
+    {
+     "id": "u11-g03",
+     "kind": "fill",
+     "prompt": "Tu veux ___ pain ? (du / de la / des)",
+     "answer": "du",
+     "accepted": [],
+     "explanation_en": "« pain » is masculine: « du ».",
+     "explanation_zh": "« pain » 是阳性名词：用 « du »。"
+    },
+    {
+     "id": "u11-g04",
+     "kind": "choose",
+     "prompt": "Je suis allergique ___ œufs. (aux / des / les)",
+     "answer": "aux",
+     "accepted": [],
+     "explanation_en": "« allergique à » + « les » contracts to « aux ».",
+     "explanation_zh": "« allergique à » + « les » 缩合为 « aux »。"
+    },
+    {
+     "id": "u11-g05",
+     "kind": "transform",
+     "prompt": "Remplacez « votre allergie » par un pronom : « Dites-moi votre allergie. »",
+     "answer": "Dites-la-moi.",
+     "accepted": [],
+     "explanation_en": "Affirmative imperative: « la » before « moi ».",
+     "explanation_zh": "肯定命令式：« la » 放在 « moi » 前。"
+    },
+    {
+     "id": "u11-g06",
+     "kind": "fill",
+     "prompt": "Ce plat contient ___ fromage. (du / de / des)",
+     "answer": "du",
+     "accepted": [],
+     "explanation_en": "« fromage » is masculine, uncountable here.",
+     "explanation_zh": "« fromage » 是阳性，这里不可数。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "Je suis allergique de les noix.",
+     "right": "Je suis allergique aux noix.",
+     "why_en": "« allergique à »; « à les » contracts to « aux ».",
+     "why_zh": "要说 « allergique à »；« à les » 缩合为 « aux »。"
+    },
+    {
+     "wrong": "Je ne mange pas la viande.",
+     "right": "Je ne mange pas de viande.",
+     "why_en": "For a general habit after a negation: « de ».",
+     "why_zh": "表示一般习惯的否定句用 « de »。"
+    },
+    {
+     "wrong": "Je veux une eau.",
+     "right": "Je voudrais une carafe d'eau.",
+     "why_en": "Tap water: « une carafe d'eau »; « je voudrais » is politer.",
+     "why_zh": "要自来水说 « une carafe d'eau »；« je voudrais » 更礼貌。"
+    }
+   ],
+   "retry": {
+    "draft": "Bonjour Nadia, nous voulons vous inviter samedi. Je vais préparer un poulet avec des légumes. Est-ce que vous êtes allergique de quelque chose ? Vous ne mangez pas la viande ? Vous n'avez pas besoin d'apporter des choses. Julie",
+    "corrections": [
+     {
+      "quote": "nous voulons vous inviter",
+      "correction": "nous aimerions vous inviter",
+      "why_en": "The conditional is warmer for an invitation.",
+      "why_zh": "邀请时用条件式更亲切。"
+     },
+     {
+      "quote": "allergique de quelque chose",
+      "correction": "allergique à quelque chose",
+      "why_en": "« allergique à ».",
+      "why_zh": "要说 « allergique à »。"
+     },
+     {
+      "quote": "Vous ne mangez pas la viande ?",
+      "correction": "Vous ne mangez pas de viande ?",
+      "why_en": "General habit after a negation: « de ».",
+      "why_zh": "一般习惯的否定用 « de »。"
+     },
+     {
+      "quote": "Vous n'avez pas besoin d'apporter des choses.",
+      "correction": "Vous n'avez rien à apporter.",
+      "why_en": "Natural phrase: « vous n'avez rien à apporter ».",
+      "why_zh": "自然的说法：« vous n'avez rien à apporter »。"
+     }
+    ],
+    "corrected": "Bonjour Nadia, nous aimerions vous inviter samedi. Je vais préparer un poulet avec des légumes. Est-ce que vous êtes allergique à quelque chose ? Vous ne mangez pas de viande ? Vous n'avez rien à apporter. Julie"
+   }
+  },
+  {
+   "id": "u12",
+   "theme": "Vie numérique",
+   "band": "B1",
+   "goal": {
+    "fr": "Donner des conseils de sécurité par écrit et expliquer une démarche numérique étape par étape.",
+    "en": "Give online-safety advice in writing and explain a digital procedure step by step.",
+    "zh": "书面给出网络安全建议，并一步步讲解一项数字操作。"
+   },
+   "writing": {
+    "title": "Répondre sur un forum : un SMS suspect",
+    "format": "message de forum",
+    "prompt": "Sur un forum de quartier, une personne âgée écrit : « J'ai reçu un SMS pour payer un colis. Je ne sais pas quoi faire. » Répondez-lui.",
+    "requirements": [
+     "Rassurez la personne.",
+     "Expliquez pourquoi ce message est probablement une arnaque.",
+     "Donnez trois conseils concrets.",
+     "Proposez une aide ou une ressource."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   },
+   "writing_sample": {
+    "text": "Bonjour Madame,\n\nNe vous inquiétez pas, vous avez eu raison de demander avant de cliquer ! Ce message ressemble beaucoup à une arnaque : les vrais transporteurs ne demandent jamais de payer avec un lien envoyé par SMS, et le ton urgent est souvent un signe de fraude.\n\nVoici mes conseils. D'abord, ne cliquez pas sur le lien et ne donnez jamais votre numéro de carte. Ensuite, vous pouvez transférer le SMS gratuitement au 33700 pour le signaler. Enfin, si vous attendez vraiment un colis, vérifiez directement sur le site du transporteur, sans passer par le lien.\n\nSi vous voulez, la médiathèque organise un atelier gratuit sur ces arnaques mercredi matin. Je peux vous y accompagner.\n\nBonne journée,\nKarim",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "Ne vous inquiétez pas"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "les vrais transporteurs ne demandent jamais de payer avec un lien envoyé par SMS"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "ne cliquez pas sur le lien"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "la médiathèque organise un atelier gratuit"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "vous avez eu raison de",
+      "en": "« avoir raison de » + infinitive: to be right to.",
+      "zh": "« avoir raison de » + 不定式：做得对。"
+     },
+     {
+      "excerpt": "Je peux vous y accompagner",
+      "en": "« y » replaces the place (the workshop).",
+      "zh": "« y » 代替地点（工作坊）。"
+     }
+    ]
+   },
+   "speaking": {
+    "title": "Expliquer la double authentification",
+    "format": "monologue (explication)",
+    "situation": "Votre voisin veut activer la double authentification sur sa messagerie. Expliquez-lui, étape par étape, comment faire et pourquoi c'est utile.",
+    "requirements": [
+     "Dites pourquoi c'est utile.",
+     "Expliquez les étapes dans l'ordre.",
+     "Donnez un conseil pour ne pas perdre l'accès.",
+     "Vérifiez qu'il a compris."
+    ],
+    "seconds_min": 60,
+    "seconds_max": 120
+   },
+   "speaking_sample": {
+    "text": "Alors, la double authentification, c'est très utile : même si quelqu'un vole votre mot de passe, il ne pourra pas entrer dans votre messagerie sans le code. D'abord, vous ouvrez les paramètres de votre compte, puis vous cliquez sur « Sécurité ». Ensuite, vous choisissez « Double authentification » et vous entrez votre numéro de téléphone. Vous allez recevoir un code par SMS : vous le tapez, et c'est fini. Un conseil : notez les codes de secours sur un papier et gardez-le chez vous, au cas où vous perdriez votre téléphone. Ça va, c'est clair pour vous ?",
+    "covers": [
+     {
+      "requirement": 1,
+      "excerpt": "même si quelqu'un vole votre mot de passe"
+     },
+     {
+      "requirement": 2,
+      "excerpt": "D'abord, vous ouvrez les paramètres de votre compte"
+     },
+     {
+      "requirement": 3,
+      "excerpt": "notez les codes de secours sur un papier"
+     },
+     {
+      "requirement": 4,
+      "excerpt": "c'est clair pour vous ?"
+     }
+    ],
+    "notes": [
+     {
+      "excerpt": "même si",
+      "en": "« même si » + indicative: even if.",
+      "zh": "« même si » + 直陈式：即使。"
+     },
+     {
+      "excerpt": "au cas où vous perdriez",
+      "en": "« au cas où » + conditional.",
+      "zh": "« au cas où » + 条件式。"
+     }
+    ]
+   },
+   "practice": [
+    {
+     "id": "u12-g01",
+     "kind": "transform",
+     "prompt": "Mettez à l'impératif négatif : « Vous cliquez sur le lien. »",
+     "answer": "Ne cliquez pas sur le lien.",
+     "accepted": [],
+     "explanation_en": "« ne » + verb + « pas ».",
+     "explanation_zh": "« ne » + 动词 + « pas »。"
+    },
+    {
+     "id": "u12-g02",
+     "kind": "choose",
+     "prompt": "___ quelqu'un connaît votre mot de passe, il lui faut aussi le code. (Même si / Au cas où / Parce que)",
+     "answer": "Même si",
+     "accepted": [],
+     "explanation_en": "« même si » = even if.",
+     "explanation_zh": "« même si » 表示即使。"
+    },
+    {
+     "id": "u12-g03",
+     "kind": "fill",
+     "prompt": "Gardez les codes au cas où vous ___ (perdre, conditionnel) votre téléphone.",
+     "answer": "perdriez",
+     "accepted": [],
+     "explanation_en": "« au cas où » + conditional.",
+     "explanation_zh": "« au cas où » + 条件式。"
+    },
+    {
+     "id": "u12-g04",
+     "kind": "transform",
+     "prompt": "Remplacez « à l'atelier » par un pronom : « Je vais à l'atelier mercredi. »",
+     "answer": "J'y vais mercredi.",
+     "accepted": [],
+     "explanation_en": "« y » replaces a place introduced by « à ».",
+     "explanation_zh": "« y » 代替由 « à » 引出的地点。"
+    },
+    {
+     "id": "u12-g05",
+     "kind": "transform",
+     "prompt": "Remplacez « de mots de passe » par un pronom : « J'ai trop de mots de passe. »",
+     "answer": "J'en ai trop.",
+     "accepted": [],
+     "explanation_en": "« en » replaces a quantity of something.",
+     "explanation_zh": "« en » 代替表示数量的名词。"
+    },
+    {
+     "id": "u12-g06",
+     "kind": "fill",
+     "prompt": "D'abord, ouvrez les paramètres ; ___, choisissez « Sécurité » ; enfin, entrez le code.",
+     "answer": "ensuite",
+     "accepted": [
+      "puis"
+     ],
+     "explanation_en": "Sequence: d'abord, ensuite, enfin.",
+     "explanation_zh": "顺序词：d'abord、ensuite、enfin。"
+    }
+   ],
+   "mistakes": [
+    {
+     "wrong": "Au cas où vous perdez votre téléphone…",
+     "right": "Au cas où vous perdriez votre téléphone…",
+     "why_en": "« au cas où » takes the conditional.",
+     "why_zh": "« au cas où » 后接条件式。"
+    },
+    {
+     "wrong": "Ne cliquez sur le lien pas.",
+     "right": "Ne cliquez pas sur le lien.",
+     "why_en": "« pas » comes right after the verb.",
+     "why_zh": "« pas » 紧跟在动词后面。"
+    },
+    {
+     "wrong": "Mon compte a été hacké.",
+     "right": "Mon compte a été piraté.",
+     "why_en": "« pirater » is the usual French verb.",
+     "why_zh": "法语常用动词是 « pirater »。"
+    }
+   ],
+   "retry": {
+    "draft": "Bonjour, ce SMS est sûrement une arnaque. Ne cliquez sur le lien pas et ne donnez pas votre carte. Vous pouvez transférer le message au 33700. Au cas où vous avez déjà payé, appelez votre banque. Mon compte a été hacké l'année dernière, alors je fais attention. Karim",
+    "corrections": [
+     {
+      "quote": "Ne cliquez sur le lien pas",
+      "correction": "Ne cliquez pas sur le lien",
+      "why_en": "« pas » right after the verb.",
+      "why_zh": "« pas » 紧跟动词。"
+     },
+     {
+      "quote": "votre carte",
+      "correction": "votre numéro de carte",
+      "why_en": "What must not be given is the card number.",
+      "why_zh": "不能透露的是银行卡号。"
+     },
+     {
+      "quote": "Au cas où vous avez déjà payé",
+      "correction": "Si vous avez déjà payé",
+      "why_en": "For something that may have happened, use « si » + passé composé; « au cas où » needs the conditional.",
+      "why_zh": "对可能已经发生的事用 « si » + 复合过去时；« au cas où » 要接条件式。"
+     },
+     {
+      "quote": "a été hacké",
+      "correction": "a été piraté",
+      "why_en": "Use « pirater ».",
+      "why_zh": "应用 « pirater »。"
+     }
+    ],
+    "corrected": "Bonjour, ce SMS est sûrement une arnaque. Ne cliquez pas sur le lien et ne donnez pas votre numéro de carte. Vous pouvez transférer le message au 33700. Si vous avez déjà payé, appelez votre banque. Mon compte a été piraté l'année dernière, alors je fais attention. Karim"
+   }
+  }
+ ]
+}

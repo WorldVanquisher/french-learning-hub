@@ -1,0 +1,191 @@
+{
+ "schema_version": "flh_workbook_writing_tasks_v1",
+ "route": "POST /writing/tasks",
+ "note": "Each body creates a learner writing task. No draft, feedback, score or review is attached; feedback exists only if the learner asks for it and the provider is enabled.",
+ "bodies": [
+  {
+   "workbook_unit": "u01",
+   "body": {
+    "title": "Répondre à une annonce de colocation",
+    "prompt": "Vous avez lu une annonce : trois étudiants cherchent une quatrième personne pour une chambre à Villeurbanne. Écrivez-leur un courriel pour vous présenter et demander une visite.",
+    "requirements": [
+     "Présentez-vous (âge, études ou travail).",
+     "Expliquez pourquoi la chambre vous intéresse.",
+     "Dites une chose sur vos habitudes à la maison.",
+     "Proposez un moment pour visiter."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   }
+  },
+  {
+   "workbook_unit": "u02",
+   "body": {
+    "title": "Prévenir d'un retard",
+    "prompt": "À cause d'une grève, votre train de demain matin est annulé. Écrivez à Mme Petit, votre responsable de stage, pour la prévenir.",
+    "requirements": [
+     "Expliquez le problème de transport.",
+     "Dites à quelle heure vous pensez arriver.",
+     "Proposez une solution (autre horaire, réunion en ligne…).",
+     "Excusez-vous poliment."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   }
+  },
+  {
+   "workbook_unit": "u03",
+   "body": {
+    "title": "Annuler un rendez-vous chez le dentiste",
+    "prompt": "Vous avez rendez-vous chez le dentiste jeudi à 17 heures, mais vous êtes malade. Écrivez un message au cabinet.",
+    "requirements": [
+     "Donnez votre nom et la date du rendez-vous.",
+     "Expliquez pourquoi vous ne pouvez pas venir.",
+     "Demandez un nouveau rendez-vous et donnez vos disponibilités.",
+     "Terminez poliment."
+    ],
+    "word_min": 50,
+    "word_max": 80
+   }
+  },
+  {
+   "workbook_unit": "u04",
+   "body": {
+    "title": "Postuler pour un emploi d'été",
+    "prompt": "Le restaurant « La Terrasse du Port » cherche des serveurs et serveuses pour l'été. Écrivez un courriel de candidature.",
+    "requirements": [
+     "Dites quel poste vous intéresse et où vous avez vu l'offre.",
+     "Présentez une expérience utile.",
+     "Montrez deux qualités en lien avec le poste.",
+     "Donnez vos disponibilités.",
+     "Proposez un entretien."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   }
+  },
+  {
+   "workbook_unit": "u05",
+   "body": {
+    "title": "Prévenir le professeur d'une absence",
+    "prompt": "Vous suivez un cours du soir de français. Vous serez absent(e) deux semaines. Écrivez à votre professeur, M. Lambert.",
+    "requirements": [
+     "Dites pourquoi vous serez absent(e) et combien de temps.",
+     "Demandez ce que vous devez faire pour ne pas prendre de retard.",
+     "Proposez une solution (exercices en ligne, rattrapage…).",
+     "Remerciez et terminez poliment."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   }
+  },
+  {
+   "workbook_unit": "u06",
+   "body": {
+    "title": "Réclamation : un colis abîmé",
+    "prompt": "Vous avez commandé une lampe sur un site en ligne. Elle est arrivée cassée et le service client ne répond pas depuis une semaine. Écrivez une réclamation.",
+    "requirements": [
+     "Donnez les références de la commande (date, numéro).",
+     "Décrivez le problème précisément.",
+     "Rappelez ce que vous avez déjà fait.",
+     "Dites clairement ce que vous demandez et dans quel délai.",
+     "Restez poli(e) mais ferme."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   }
+  },
+  {
+   "workbook_unit": "u07",
+   "body": {
+    "title": "Proposer une sortie à des amis",
+    "prompt": "Samedi, il y a une fête de quartier près de chez vous. Écrivez un message à un groupe d'amis pour proposer d'y aller ensemble.",
+    "requirements": [
+     "Présentez la sortie (quoi, où, quand).",
+     "Proposez un programme (heure, lieu de rendez-vous).",
+     "Donnez une information pratique (transport, prix, météo).",
+     "Demandez une réponse avant une date."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   }
+  },
+  {
+   "workbook_unit": "u08",
+   "body": {
+    "title": "Écrire à la mairie : un problème de tri",
+    "prompt": "Dans votre rue, il n'y a plus de conteneur pour le verre et les gens laissent leurs bouteilles sur le trottoir. Écrivez à la mairie pour décrire le problème et proposer une solution.",
+    "requirements": [
+     "Présentez-vous et situez le problème.",
+     "Décrivez les conséquences pour les habitants.",
+     "Proposez une ou deux solutions concrètes.",
+     "Proposez votre aide ou celle des voisins.",
+     "Terminez de façon formelle."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   }
+  },
+  {
+   "workbook_unit": "u09",
+   "body": {
+    "title": "Laisser un avis sur un hôtel",
+    "prompt": "Vous avez passé deux nuits à l'Hôtel des Remparts. Il y a eu un problème de chambre, mais le personnel a trouvé une solution. Écrivez un avis sur un site de voyage.",
+    "requirements": [
+     "Situez votre séjour (quand, avec qui, pourquoi).",
+     "Décrivez le problème et la réaction du personnel.",
+     "Donnez deux points positifs et un point négatif.",
+     "Faites une recommandation aux futurs clients."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   }
+  },
+  {
+   "workbook_unit": "u10",
+   "body": {
+    "title": "Écrire au service des titres d'identité (fictif)",
+    "prompt": "Votre carte d'identité a été volée. Écrivez au service des titres d'identité de la mairie (fictive) de Villeneuve-sur-Claire.",
+    "requirements": [
+     "Expliquez votre situation (date, circonstances).",
+     "Dites ce que vous avez déjà fait.",
+     "Posez deux questions précises sur la démarche.",
+     "Demandez un rendez-vous et donnez vos disponibilités.",
+     "Utilisez les formules d'une lettre formelle."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   }
+  },
+  {
+   "workbook_unit": "u11",
+   "body": {
+    "title": "Inviter des voisins à dîner",
+    "prompt": "Vous invitez votre voisine Nadia et son mari à dîner chez vous samedi. Écrivez-leur un message.",
+    "requirements": [
+     "Invitez-les (jour, heure).",
+     "Dites ce que vous pensez préparer.",
+     "Demandez s'ils ont des allergies ou s'ils ne mangent pas certains aliments.",
+     "Dites s'ils doivent apporter quelque chose."
+    ],
+    "word_min": 60,
+    "word_max": 90
+   }
+  },
+  {
+   "workbook_unit": "u12",
+   "body": {
+    "title": "Répondre sur un forum : un SMS suspect",
+    "prompt": "Sur un forum de quartier, une personne âgée écrit : « J'ai reçu un SMS pour payer un colis. Je ne sais pas quoi faire. » Répondez-lui.",
+    "requirements": [
+     "Rassurez la personne.",
+     "Expliquez pourquoi ce message est probablement une arnaque.",
+     "Donnez trois conseils concrets.",
+     "Proposez une aide ou une ressource."
+    ],
+    "word_min": 100,
+    "word_max": 150
+   }
+  }
+ ]
+}

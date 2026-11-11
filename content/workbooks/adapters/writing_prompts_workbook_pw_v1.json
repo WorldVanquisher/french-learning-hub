@@ -1,0 +1,202 @@
+{
+ "schema_version": "flh_writing_prompts_v1",
+ "notice": "Synthetic practice tasks from the FLH productive workbook v1 (unreviewed). Not official exam items; no score and no certified CEFR level. Names and places are invented. Each example draft is the unit's retry draft and contains deliberate mistakes.",
+ "prompts": [
+  {
+   "id": "wr-wb1-u01-colocation",
+   "format": "courriel",
+   "style_level": "A2",
+   "title": "Répondre à une annonce de colocation",
+   "prompt": "Vous avez lu une annonce : trois étudiants cherchent une quatrième personne pour une chambre à Villeurbanne. Écrivez-leur un courriel pour vous présenter et demander une visite.",
+   "requirements": [
+    "Présentez-vous (âge, études ou travail).",
+    "Expliquez pourquoi la chambre vous intéresse.",
+    "Dites une chose sur vos habitudes à la maison.",
+    "Proposez un moment pour visiter."
+   ],
+   "word_min": 60,
+   "word_max": 90,
+   "example_draft": "Bonjour, je suis Marco, je suis 25 ans et je travaille dans une banque. Votre chambre m'intéresse parce que elle est grande. Je ne fume pas et je n'ai pas des animaux. Je peux visiter samedi à le matin ? Merci, Marco"
+  },
+  {
+   "id": "wr-wb1-u02-retard-train",
+   "format": "courriel",
+   "style_level": "A2",
+   "title": "Prévenir d'un retard",
+   "prompt": "À cause d'une grève, votre train de demain matin est annulé. Écrivez à Mme Petit, votre responsable de stage, pour la prévenir.",
+   "requirements": [
+    "Expliquez le problème de transport.",
+    "Dites à quelle heure vous pensez arriver.",
+    "Proposez une solution (autre horaire, réunion en ligne…).",
+    "Excusez-vous poliment."
+   ],
+   "word_min": 60,
+   "word_max": 90,
+   "example_draft": "Bonjour Madame, je vous écris car mon train est annulé à cause la grève. Je vais venir par le car et je vais arrivé à 9 heures. Je suis désolé pour le retard. Cordialement, Thomas"
+  },
+  {
+   "id": "wr-wb1-u03-annuler-dentiste",
+   "format": "message (site du cabinet)",
+   "style_level": "A2",
+   "title": "Annuler un rendez-vous chez le dentiste",
+   "prompt": "Vous avez rendez-vous chez le dentiste jeudi à 17 heures, mais vous êtes malade. Écrivez un message au cabinet.",
+   "requirements": [
+    "Donnez votre nom et la date du rendez-vous.",
+    "Expliquez pourquoi vous ne pouvez pas venir.",
+    "Demandez un nouveau rendez-vous et donnez vos disponibilités.",
+    "Terminez poliment."
+   ],
+   "word_min": 50,
+   "word_max": 80,
+   "example_draft": "Bonjour docteur, je suis malade pour trois jours. J'ai mal dans la tête et je suis fièvre. J'ai pris des médicaments mais ça va pas mieux. Je peux avoir un certificat pour mon travail ?"
+  },
+  {
+   "id": "wr-wb1-u04-candidature-ete",
+   "format": "courriel de candidature",
+   "style_level": "B1",
+   "title": "Postuler pour un emploi d'été",
+   "prompt": "Le restaurant « La Terrasse du Port » cherche des serveurs et serveuses pour l'été. Écrivez un courriel de candidature.",
+   "requirements": [
+    "Dites quel poste vous intéresse et où vous avez vu l'offre.",
+    "Présentez une expérience utile.",
+    "Montrez deux qualités en lien avec le poste.",
+    "Donnez vos disponibilités.",
+    "Proposez un entretien."
+   ],
+   "word_min": 100,
+   "word_max": 150,
+   "example_draft": "Madame, Monsieur, j'applique pour le poste de serveur. J'ai travaillé dans une boulangerie depuis un an, je servais les clients. Je suis excité de travailler dans votre restaurant. Je suis disponible du 15 juin au 10 septembre. Cordialement, Tom"
+  },
+  {
+   "id": "wr-wb1-u05-absence-cours",
+   "format": "courriel",
+   "style_level": "A2",
+   "title": "Prévenir le professeur d'une absence",
+   "prompt": "Vous suivez un cours du soir de français. Vous serez absent(e) deux semaines. Écrivez à votre professeur, M. Lambert.",
+   "requirements": [
+    "Dites pourquoi vous serez absent(e) et combien de temps.",
+    "Demandez ce que vous devez faire pour ne pas prendre de retard.",
+    "Proposez une solution (exercices en ligne, rattrapage…).",
+    "Remerciez et terminez poliment."
+   ],
+   "word_min": 60,
+   "word_max": 90,
+   "example_draft": "Bonjour Monsieur, je suis absente le prochain lundi parce que je dois aller à l'hôpital. Quel exercices je dois faire ? Je connais faire les exercices en ligne. Merci, Mei"
+  },
+  {
+   "id": "wr-wb1-u06-reclamation-colis",
+   "format": "courriel de réclamation",
+   "style_level": "B1",
+   "title": "Réclamation : un colis abîmé",
+   "prompt": "Vous avez commandé une lampe sur un site en ligne. Elle est arrivée cassée et le service client ne répond pas depuis une semaine. Écrivez une réclamation.",
+   "requirements": [
+    "Donnez les références de la commande (date, numéro).",
+    "Décrivez le problème précisément.",
+    "Rappelez ce que vous avez déjà fait.",
+    "Dites clairement ce que vous demandez et dans quel délai.",
+    "Restez poli(e) mais ferme."
+   ],
+   "word_min": 100,
+   "word_max": 150,
+   "example_draft": "Madame, Monsieur, j'ai commandé une lampe le 3 mars. Elle est arrivé cassée depuis le 6 mars. J'ai envoyé des photos mais je n'ai reçu pas de réponse. Je veux un remboursement tout de suite ! Paul Dufour"
+  },
+  {
+   "id": "wr-wb1-u07-sortie-quartier",
+   "format": "message (groupe d'amis)",
+   "style_level": "A2",
+   "title": "Proposer une sortie à des amis",
+   "prompt": "Samedi, il y a une fête de quartier près de chez vous. Écrivez un message à un groupe d'amis pour proposer d'y aller ensemble.",
+   "requirements": [
+    "Présentez la sortie (quoi, où, quand).",
+    "Proposez un programme (heure, lieu de rendez-vous).",
+    "Donnez une information pratique (transport, prix, météo).",
+    "Demandez une réponse avant une date."
+   ],
+   "word_min": 60,
+   "word_max": 90,
+   "example_draft": "Salut ! Hier, j'ai allé à la fête avec ma sœur. Il y avait beaucoup des gens. Nous avons mangé aux stands et le concert a été génial. On a passé un bon temps. Tu veux venir la prochaine fois ? Bises"
+  },
+  {
+   "id": "wr-wb1-u08-mairie-tri",
+   "format": "courriel à la mairie",
+   "style_level": "B1",
+   "title": "Écrire à la mairie : un problème de tri",
+   "prompt": "Dans votre rue, il n'y a plus de conteneur pour le verre et les gens laissent leurs bouteilles sur le trottoir. Écrivez à la mairie pour décrire le problème et proposer une solution.",
+   "requirements": [
+    "Présentez-vous et situez le problème.",
+    "Décrivez les conséquences pour les habitants.",
+    "Proposez une ou deux solutions concrètes.",
+    "Proposez votre aide ou celle des voisins.",
+    "Terminez de façon formelle."
+   ],
+   "word_min": 100,
+   "word_max": 150,
+   "example_draft": "Madame, Monsieur, j'habite dans le 12, rue des Tanneurs. À mon avis, je pense que il faut un conteneur pour le verre dans notre rue. Les bouteilles sur le trottoir est dangereux pour les enfants. Je propose installer un conteneur à l'angle de la rue. Cordialement, Amina"
+  },
+  {
+   "id": "wr-wb1-u09-avis-hotel",
+   "format": "avis en ligne",
+   "style_level": "B1",
+   "title": "Laisser un avis sur un hôtel",
+   "prompt": "Vous avez passé deux nuits à l'Hôtel des Remparts. Il y a eu un problème de chambre, mais le personnel a trouvé une solution. Écrivez un avis sur un site de voyage.",
+   "requirements": [
+    "Situez votre séjour (quand, avec qui, pourquoi).",
+    "Décrivez le problème et la réaction du personnel.",
+    "Donnez deux points positifs et un point négatif.",
+    "Faites une recommandation aux futurs clients."
+   ],
+   "word_min": 100,
+   "word_max": 150,
+   "example_draft": "Nous avons resté deux nuits à l'hôtel en avril. La chambre était très bruit et le chauffage ne marchait pas. Le réceptionniste a excusé et il nous a donné une autre chambre. Je recommande de cet hôtel."
+  },
+  {
+   "id": "wr-wb1-u10-carte-volee",
+   "format": "courriel formel",
+   "style_level": "B1",
+   "title": "Écrire au service des titres d'identité (fictif)",
+   "prompt": "Votre carte d'identité a été volée. Écrivez au service des titres d'identité de la mairie (fictive) de Villeneuve-sur-Claire.",
+   "requirements": [
+    "Expliquez votre situation (date, circonstances).",
+    "Dites ce que vous avez déjà fait.",
+    "Posez deux questions précises sur la démarche.",
+    "Demandez un rendez-vous et donnez vos disponibilités.",
+    "Utilisez les formules d'une lettre formelle."
+   ],
+   "word_min": 100,
+   "word_max": 150,
+   "example_draft": "Madame, Monsieur, ma carte d'identité a été volé le 2 octobre. J'ai fait la déclaration au commissariat. J'aimerais savoir est-ce que je dois payer le timbre avant le rendez-vous. Je voudrais un rendez-vous rapide. Cordialement, bises, Paul Martin"
+  },
+  {
+   "id": "wr-wb1-u11-invitation-diner",
+   "format": "message",
+   "style_level": "A2",
+   "title": "Inviter des voisins à dîner",
+   "prompt": "Vous invitez votre voisine Nadia et son mari à dîner chez vous samedi. Écrivez-leur un message.",
+   "requirements": [
+    "Invitez-les (jour, heure).",
+    "Dites ce que vous pensez préparer.",
+    "Demandez s'ils ont des allergies ou s'ils ne mangent pas certains aliments.",
+    "Dites s'ils doivent apporter quelque chose."
+   ],
+   "word_min": 60,
+   "word_max": 90,
+   "example_draft": "Bonjour Nadia, nous voulons vous inviter samedi. Je vais préparer un poulet avec des légumes. Est-ce que vous êtes allergique de quelque chose ? Vous ne mangez pas la viande ? Vous n'avez pas besoin d'apporter des choses. Julie"
+  },
+  {
+   "id": "wr-wb1-u12-forum-arnaque",
+   "format": "message de forum",
+   "style_level": "B1",
+   "title": "Répondre sur un forum : un SMS suspect",
+   "prompt": "Sur un forum de quartier, une personne âgée écrit : « J'ai reçu un SMS pour payer un colis. Je ne sais pas quoi faire. » Répondez-lui.",
+   "requirements": [
+    "Rassurez la personne.",
+    "Expliquez pourquoi ce message est probablement une arnaque.",
+    "Donnez trois conseils concrets.",
+    "Proposez une aide ou une ressource."
+   ],
+   "word_min": 100,
+   "word_max": 150,
+   "example_draft": "Bonjour, ce SMS est sûrement une arnaque. Ne cliquez sur le lien pas et ne donnez pas votre carte. Vous pouvez transférer le message au 33700. Au cas où vous avez déjà payé, appelez votre banque. Mon compte a été hacké l'année dernière, alors je fais attention. Karim"
+  }
+ ]
+}

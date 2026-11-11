@@ -1,0 +1,199 @@
+{
+ "schema_version": "flh_speaking_prompts_v1",
+ "notice": "Synthetic practice prompts from the FLH productive workbook v1 (unreviewed). Not official exam items; no score and no certified CEFR level. Names and places are invented; phone numbers use ranges reserved for fiction. Each example transcript is the unit's model answer, not a mistake demo. Feedback reads a transcript only and cannot judge pronunciation.",
+ "prompts": [
+  {
+   "id": "sp-wb1-u01-message-visite",
+   "format": "message vocal",
+   "style_level": "A2",
+   "title": "Laisser un message pour la visite",
+   "situation": "Vous appelez Hugo, de la colocation, pour la visite de samedi à 10 heures. Il ne répond pas. Laissez-lui un message.",
+   "requirements": [
+    "Dites qui vous êtes.",
+    "Dites que vous ne pouvez pas venir à 10 heures et expliquez pourquoi.",
+    "Proposez une autre heure.",
+    "Laissez un moyen de vous rappeler."
+   ],
+   "seconds_min": 30,
+   "seconds_max": 60,
+   "example_transcript": "Bonjour Hugo, c'est Lina, je vous appelle pour la chambre de Villeurbanne. Samedi, je ne peux pas venir à dix heures, parce que je travaille jusqu'à onze heures. Est-ce que je peux passer vers onze heures et demie ? Vous pouvez me rappeler au 06 39 98 12 34, ou m'envoyer un message. Merci beaucoup, bonne journée !"
+  },
+  {
+   "id": "sp-wb1-u02-guichet-train",
+   "format": "jeu de rôle (vos répliques seulement)",
+   "style_level": "A2",
+   "title": "Au guichet : un train supprimé",
+   "situation": "Vous êtes au guichet de la gare. Votre train de 9 h 40 pour Angers est supprimé et vous avez un examen à midi. Parlez à l'agent ; ses réponses sont indiquées par « … ».",
+   "requirements": [
+    "Expliquez votre situation.",
+    "Demandez une autre solution pour arriver avant midi.",
+    "Demandez si votre billet est valable.",
+    "Remerciez et confirmez votre choix."
+   ],
+   "seconds_min": 45,
+   "seconds_max": 90,
+   "example_transcript": "Bonjour madame. J'avais un billet pour le train de 9 h 40 pour Angers, mais il est supprimé. Je dois être à Angers avant midi pour un examen. Est-ce qu'il y a un autre train ou un car ? … Ah, un car à 10 heures, d'accord. Et avec mon billet, je peux monter dans le car sans payer ? … Parfait. Alors je prends le car de 10 heures. Merci beaucoup pour votre aide !"
+  },
+  {
+   "id": "sp-wb1-u03-chez-le-medecin",
+   "format": "monologue",
+   "style_level": "A2",
+   "title": "Chez le médecin : expliquer ce qui ne va pas",
+   "situation": "Vous êtes chez le médecin. Il vous demande : « Qu'est-ce qui ne va pas ? » Répondez.",
+   "requirements": [
+    "Dites depuis quand vous êtes malade.",
+    "Décrivez deux ou trois symptômes.",
+    "Dites ce que vous avez déjà fait ou pris.",
+    "Posez une question au médecin."
+   ],
+   "seconds_min": 30,
+   "seconds_max": 75,
+   "example_transcript": "Bonjour docteur. Je suis malade depuis trois jours. J'ai mal à la gorge, j'ai de la fièvre, à peu près 38,5, et je tousse beaucoup la nuit. J'ai pris du paracétamol et j'ai bu beaucoup de thé, mais ça ne va pas mieux. Est-ce que je peux aller travailler demain ?"
+  },
+  {
+   "id": "sp-wb1-u04-entretien",
+   "format": "monologue (entretien téléphonique)",
+   "style_level": "B1",
+   "title": "Se présenter en entretien",
+   "situation": "Au début d'un entretien téléphonique, la responsable vous dit : « Présentez-vous en une minute. »",
+   "requirements": [
+    "Dites qui vous êtes et ce que vous faites.",
+    "Parlez d'une expérience utile pour le poste.",
+    "Expliquez pourquoi ce poste vous intéresse.",
+    "Mentionnez une limite (dates, horaires) et proposez une solution."
+   ],
+   "seconds_min": 45,
+   "seconds_max": 90,
+   "example_transcript": "Bien sûr. Je m'appelle Tom, j'ai 21 ans et je suis étudiant en tourisme à Nantes. Pendant mes études, j'ai travaillé le week-end dans une boulangerie, donc j'ai l'habitude de servir des clients et de gérer la caisse. Ce poste m'intéresse parce que j'aime le contact avec les gens et que je voudrais pratiquer mon anglais avec les touristes. Par contre, je dois partir le 10 septembre, parce que mes cours reprennent. Mais je peux travailler tous les week-ends de juin, si vous voulez."
+  },
+  {
+   "id": "sp-wb1-u05-presentation-cours",
+   "format": "monologue (présentation en classe)",
+   "style_level": "A2",
+   "title": "Se présenter au cours de français",
+   "situation": "Le premier jour du cours, le professeur demande à chacun de se présenter et de parler de son apprentissage du français.",
+   "requirements": [
+    "Dites depuis quand vous apprenez le français.",
+    "Expliquez pourquoi vous l'apprenez.",
+    "Dites ce qui est facile et ce qui est difficile pour vous.",
+    "Donnez un objectif pour cette année."
+   ],
+   "seconds_min": 45,
+   "seconds_max": 90,
+   "example_transcript": "Bonsoir à tous. Je m'appelle Mei, je viens de Chengdu et j'apprends le français depuis un an et demi. Je l'apprends pour mon travail, parce que mon laboratoire travaille avec une équipe à Lyon. Pour moi, la lecture est assez facile, mais comprendre les gens au téléphone, c'est très difficile : ils parlent vite ! Cette année, je voudrais passer le DELF B1 et être plus à l'aise à l'oral."
+  },
+  {
+   "id": "sp-wb1-u06-retour-magasin",
+   "format": "jeu de rôle (vos répliques seulement)",
+   "style_level": "B1",
+   "title": "Rapporter un pull en magasin",
+   "situation": "Vous rapportez un pull acheté il y a dix jours : il a un trou. Vous avez le ticket. Parlez au vendeur ; ses réponses sont indiquées par « … ».",
+   "requirements": [
+    "Expliquez quand vous avez acheté l'article et le problème.",
+    "Dites ce que vous voulez (échange ou remboursement).",
+    "Réagissez à la proposition du vendeur.",
+    "Concluez poliment."
+   ],
+   "seconds_min": 45,
+   "seconds_max": 90,
+   "example_transcript": "Bonjour monsieur. J'ai acheté ce pull ici il y a dix jours, et hier j'ai vu qu'il y avait un petit trou sous le bras. Je ne l'ai porté qu'une fois. Voici le ticket. Je voudrais être remboursée, s'il vous plaît. … Un avoir ? Je préfère un remboursement, parce que je ne viens pas souvent dans ce magasin. … Ah, un échange contre le même modèle, d'accord, c'est une bonne solution. Merci beaucoup, bonne journée."
+  },
+  {
+   "id": "sp-wb1-u07-raconter-soiree",
+   "format": "message vocal",
+   "style_level": "A2",
+   "title": "Raconter sa soirée",
+   "situation": "Votre ami Malik n'a pas pu venir à la fête du quartier. Laissez-lui un message vocal pour raconter votre soirée.",
+   "requirements": [
+    "Dites où vous êtes allé(e) et avec qui.",
+    "Racontez deux moments de la soirée.",
+    "Donnez votre avis.",
+    "Proposez de faire quelque chose ensemble bientôt."
+   ],
+   "seconds_min": 30,
+   "seconds_max": 75,
+   "example_transcript": "Salut Malik, c'est Sofia ! Dommage que tu n'aies pas pu venir hier soir. Je suis allée à la fête du quartier avec Inès et Hugo. On a mangé des plats vietnamiens aux stands, c'était délicieux, et après on a dansé au bal jusqu'à minuit. Le concert était super, il y avait beaucoup de monde. On se voit la semaine prochaine pour un café ? Bisous !"
+  },
+  {
+   "id": "sp-wb1-u08-reunion-quartier",
+   "format": "intervention en réunion",
+   "style_level": "B1",
+   "title": "Donner son avis en réunion de quartier",
+   "situation": "À une réunion de quartier, on discute d'un projet : transformer le parking de la place du Marché en jardin partagé. Donnez votre avis.",
+   "requirements": [
+    "Présentez-vous brièvement.",
+    "Donnez votre opinion sur le projet.",
+    "Justifiez avec deux arguments.",
+    "Exprimez une inquiétude ou une condition.",
+    "Faites une proposition."
+   ],
+   "seconds_min": 60,
+   "seconds_max": 120,
+   "example_transcript": "Bonsoir, je m'appelle Amina, j'habite rue des Tanneurs. Personnellement, je suis plutôt pour ce projet. D'abord, il n'y a presque pas d'espaces verts dans le quartier, et les enfants n'ont nulle part où jouer. Ensuite, un jardin partagé, ça permet aux voisins de se rencontrer. Par contre, j'ai une inquiétude : les personnes âgées qui viennent au marché en voiture, où est-ce qu'elles vont se garer ? Je propose de garder quelques places pour les personnes à mobilité réduite, à côté du jardin."
+  },
+  {
+   "id": "sp-wb1-u09-reception-hotel",
+   "format": "jeu de rôle (vos répliques seulement)",
+   "style_level": "B1",
+   "title": "À la réception : une réservation introuvable",
+   "situation": "Vous arrivez à l'hôtel à 22 heures. Le réceptionniste ne trouve pas votre réservation. Ses réponses sont indiquées par « … ».",
+   "requirements": [
+    "Présentez-vous et dites ce que vous avez réservé.",
+    "Proposez une preuve de votre réservation.",
+    "Demandez une solution pour la nuit.",
+    "Acceptez ou refusez la proposition en expliquant pourquoi."
+   ],
+   "seconds_min": 45,
+   "seconds_max": 120,
+   "example_transcript": "Bonsoir. J'ai réservé une chambre double pour deux nuits, au nom de Rossi, Laura Rossi. … Ah bon, vous ne trouvez pas ma réservation ? C'est bizarre. Attendez, j'ai la confirmation sur mon téléphone, la voilà. … D'accord. Mais il est tard : est-ce que vous avez une autre chambre libre pour ce soir ? … Une chambre simple seulement ? Bon, pour ce soir, ça ira, nous sommes très fatigués. Mais demain, nous voulons la chambre double prévue, au prix de la réservation."
+  },
+  {
+   "id": "sp-wb1-u10-verifier-telephone",
+   "format": "appel téléphonique (vos répliques seulement)",
+   "style_level": "B1",
+   "title": "Vérifier une information au téléphone",
+   "situation": "Vous recevez un SMS : votre nouvelle carte d'identité est prête. Mais vous partez demain pour cinq semaines. Vous appelez l'accueil de la mairie ; les réponses de l'agent sont indiquées par « … ».",
+   "requirements": [
+    "Présentez-vous et dites pourquoi vous appelez.",
+    "Expliquez le problème.",
+    "Demandez s'il existe une solution.",
+    "Reformulez la réponse pour vérifier que vous avez compris."
+   ],
+   "seconds_min": 45,
+   "seconds_max": 120,
+   "example_transcript": "Bonjour, je m'appelle Paul Martin, je vous appelle au sujet de ma nouvelle carte d'identité. J'ai reçu un SMS hier : elle est prête. Le problème, c'est que je pars demain en déplacement pour cinq semaines. Est-ce que quelqu'un peut venir la chercher à ma place ? … D'accord. Donc, si je comprends bien, personne d'autre ne peut la retirer, mais j'ai trois mois pour venir, alors je peux passer à mon retour. C'est bien ça ? … Parfait, merci beaucoup."
+  },
+  {
+   "id": "sp-wb1-u11-commander-allergie",
+   "format": "jeu de rôle (vos répliques seulement)",
+   "style_level": "A2",
+   "title": "Commander avec une allergie",
+   "situation": "Au restaurant, vous ne mangez pas de viande et vous êtes allergique aux arachides. Commandez ; les réponses du serveur sont indiquées par « … ».",
+   "requirements": [
+    "Signalez votre allergie et ce que vous ne mangez pas.",
+    "Posez une question sur un plat.",
+    "Commandez.",
+    "Demandez quelque chose en plus (eau, pain, addition)."
+   ],
+   "seconds_min": 30,
+   "seconds_max": 90,
+   "example_transcript": "Bonsoir. Avant de commander, je dois vous dire que je suis allergique aux arachides, aux cacahuètes, et que je ne mange pas de viande. … Merci. Est-ce que la soupe de légumes est faite avec un bouillon de viande ? … Ah, parfait. Alors je prends la soupe, et ensuite les lasagnes aux légumes. … Non, pas de dessert, merci. Est-ce qu'on pourrait avoir une carafe d'eau, s'il vous plaît ?"
+  },
+  {
+   "id": "sp-wb1-u12-double-authentification",
+   "format": "monologue (explication)",
+   "style_level": "B1",
+   "title": "Expliquer la double authentification",
+   "situation": "Votre voisin veut activer la double authentification sur sa messagerie. Expliquez-lui, étape par étape, comment faire et pourquoi c'est utile.",
+   "requirements": [
+    "Dites pourquoi c'est utile.",
+    "Expliquez les étapes dans l'ordre.",
+    "Donnez un conseil pour ne pas perdre l'accès.",
+    "Vérifiez qu'il a compris."
+   ],
+   "seconds_min": 60,
+   "seconds_max": 120,
+   "example_transcript": "Alors, la double authentification, c'est très utile : même si quelqu'un vole votre mot de passe, il ne pourra pas entrer dans votre messagerie sans le code. D'abord, vous ouvrez les paramètres de votre compte, puis vous cliquez sur « Sécurité ». Ensuite, vous choisissez « Double authentification » et vous entrez votre numéro de téléphone. Vous allez recevoir un code par SMS : vous le tapez, et c'est fini. Un conseil : notez les codes de secours sur un papier et gardez-le chez vous, au cas où vous perdriez votre téléphone. Ça va, c'est clair pour vous ?"
+  }
+ ]
+}
