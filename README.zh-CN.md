@@ -218,6 +218,9 @@ scripts/demo/flh034/       合成数据的 Knowledge Library 演示
 scripts/validation/        各验证报告使用的隔离验证脚本
 deploy/aws/                在 EC2 上运行只读演示的 Terraform 与主机工具
                            （见 docs/AWS_DEMO.md）
+content/workbooks/         合成、未审核的法语练习册（阅读/听力、写作/口语），
+                           以规范 JSON 保存，并附适配文件
+tools/workbooks/           练习册构建、质量检查、排版渲染与答案泄露扫描
 docs/                      上面列出的文档
 ```
 

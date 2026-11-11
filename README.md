@@ -283,6 +283,9 @@ scripts/demo/flh034/       synthetic Knowledge Library demo
 scripts/validation/        isolated validation harnesses used by the reports
 deploy/aws/                Terraform and host tooling for the read-only demo on EC2
                            (see docs/AWS_DEMO.md)
+content/workbooks/         synthetic, unreviewed French workbooks (reading/listening and
+                           writing/speaking) as canonical JSON, with adapters
+tools/workbooks/           workbook build, quality gates, rendering and key-exposure scan
 docs/                      documentation listed above
 ```
 

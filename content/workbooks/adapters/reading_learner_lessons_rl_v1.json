@@ -1,0 +1,103 @@
+{
+ "schema_version": "flh_workbook_learner_lessons_v1",
+ "route": "POST /reading/lessons",
+ "note": "Each body creates a learner reading lesson (passage only). Paragraphs are separated by a blank line, so they become p1..pN as in the workbook. No exercise, answer or review is attached.",
+ "bodies": [
+  {
+   "workbook_unit": "u01",
+   "body": {
+    "title": "Annonce : chambre en colocation à Villeurbanne",
+    "text": "Nous sommes trois étudiants et nous cherchons une quatrième personne pour partager notre appartement, à dix minutes à pied du métro Charpennes. La chambre est libre à partir du 1er septembre.\n\nLa chambre fait 12 m² et elle est meublée : un lit, un bureau et une grande armoire. Elle donne sur une cour calme. La cuisine, le salon et la salle de bains sont partagés.\n\nLe loyer est de 420 euros par mois, charges comprises (eau, chauffage et internet). Il faut ajouter une caution d'un mois de loyer, que nous rendons au départ si la chambre est en bon état.\n\nChez nous, chacun fait ses courses, mais nous dînons souvent ensemble le dimanche soir. Nous ne fumons pas et nous préférons une personne non-fumeuse. Les animaux ne sont pas acceptés, car le propriétaire ne les autorise pas.\n\nSi vous êtes intéressé, envoyez-nous un court message de présentation avant le 20 août. Nous organiserons des visites le week-end des 23 et 24 août.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u02",
+   "body": {
+    "title": "Info trafic : grève sur le réseau régional",
+    "text": "En raison d'un mouvement social, la circulation des trains régionaux sera fortement perturbée le jeudi 14 novembre, de 5 heures à 22 heures.\n\nSur la ligne Nantes–Angers, un train sur trois circulera. Sur la ligne Nantes–Saint-Nazaire, aucun train ne circulera avant 9 heures ; des cars de remplacement partiront de la gare routière toutes les heures.\n\nLes abonnés peuvent utiliser leur carte dans les cars de remplacement. Les voyageurs avec un billet à date fixe peuvent l'échanger gratuitement ou se faire rembourser jusqu'au 21 novembre.\n\nNous vous conseillons de vérifier votre trajet la veille au soir sur l'application ou au numéro gratuit affiché en gare. Les informations sont mises à jour à 17 heures.\n\nLes trains de nuit et les lignes nationales ne sont pas concernés. Nous vous remercions de votre compréhension.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u03",
+   "body": {
+    "title": "Pharmacie du Marché : informations utiles",
+    "text": "La pharmacie est ouverte du lundi au samedi, de 8 h 30 à 19 h 30, sans interruption. Le dimanche et les jours fériés, une pharmacie de garde est ouverte dans le quartier : son adresse est affichée sur la porte.\n\nCampagne de vaccination contre la grippe : nos pharmaciens peuvent vous vacciner sans rendez-vous le mardi et le jeudi après-midi. Apportez votre carte Vitale et, si vous l'avez, votre bon de vaccination.\n\nVous avez de la fièvre, mal à la gorge ou le nez qui coule ? Reposez-vous, buvez beaucoup d'eau et lavez-vous souvent les mains. Si la fièvre dure plus de trois jours, consultez un médecin.\n\nPour les ordonnances renouvelables, vous pouvez envoyer une photo de votre ordonnance par notre site. Vos médicaments seront prêts deux heures plus tard.\n\nAttention : les antibiotiques ne sont délivrés que sur ordonnance. Ils ne sont pas efficaces contre les virus comme celui de la grippe.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u04",
+   "body": {
+    "title": "Offre d'emploi : serveur / serveuse pour la saison d'été",
+    "text": "Le restaurant « La Terrasse du Port », à La Rochelle, recrute deux serveurs ou serveuses pour la saison, du 15 juin au 15 septembre. Le contrat est un CDD de 35 heures par semaine.\n\nVos missions : accueillir les clients, prendre les commandes, servir en salle et en terrasse, et participer au rangement à la fermeture. Vous travaillerez cinq jours sur sept, avec deux jours de repos consécutifs.\n\nProfil recherché : une première expérience en restauration est souhaitée, mais pas obligatoire. Nous cherchons surtout des personnes souriantes, organisées et capables de travailler en équipe. Un bon niveau d'anglais est un plus, car beaucoup de nos clients sont étrangers.\n\nLe salaire est de 1 850 euros brut par mois, et les pourboires sont partagés entre toute l'équipe. Le repas du midi est offert. Nous ne proposons pas de logement, mais nous pouvons vous donner des adresses de studios à louer.\n\nPour postuler, envoyez votre CV et quelques lignes sur vos disponibilités avant le 30 avril. Les entretiens auront lieu par téléphone la première semaine de mai.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u05",
+   "body": {
+    "title": "Maison des langues : cours du soir de français",
+    "text": "La Maison des langues propose des cours de français pour adultes, du lundi au jeudi, de 18 h 30 à 20 h. Les groupes ont douze personnes au maximum.\n\nAvant l'inscription, chaque personne passe un petit test de niveau gratuit, à l'écrit et à l'oral. Il dure environ quarante minutes et permet de choisir le bon groupe.\n\nLe trimestre coûte 180 euros pour deux soirs par semaine. Les étudiants et les demandeurs d'emploi paient 120 euros, sur présentation d'un justificatif. Le livre n'est pas compris : il coûte 25 euros.\n\nLes cours commencent le 6 octobre. Les inscriptions sont ouvertes à l'accueil du 15 au 30 septembre, le mardi et le jeudi de 14 h à 19 h. Il n'est pas possible de s'inscrire en ligne.\n\nUne absence de plus de trois semaines sans prévenir peut entraîner la perte de la place. En cas de maladie, prévenez l'accueil par téléphone ou par courriel.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u06",
+   "body": {
+    "title": "Retours et remboursements – boutique en ligne Maison Lumière",
+    "text": "Vous avez changé d'avis ? Vous disposez de 30 jours après la réception de votre commande pour nous retourner un article, sans avoir à donner de raison.\n\nL'article doit être dans son emballage d'origine, non utilisé et complet. Les articles personnalisés, par exemple une lampe gravée à votre nom, ne peuvent pas être retournés.\n\nPour faire un retour, connectez-vous à votre compte et imprimez l'étiquette de retour. Déposez ensuite le colis dans un point relais. Le retour est gratuit, sauf pour les meubles de plus de 30 kilos.\n\nNous vous remboursons dans un délai de 14 jours après la réception du colis dans notre entrepôt, avec le même moyen de paiement que pour l'achat.\n\nSi votre article est arrivé abîmé, ne le renvoyez pas tout de suite : contactez d'abord notre service client dans les 48 heures, avec une photo du produit et du carton.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u07",
+   "body": {
+    "title": "Fête du quartier Saint-Michel : le programme",
+    "text": "La fête du quartier Saint-Michel aura lieu le samedi 7 juin, de 10 heures à minuit, sur la place du Marché et dans les rues voisines. L'entrée est libre pour toutes les activités.\n\nLe matin, un vide-grenier occupe la rue des Tanneurs : les habitants vendent des objets d'occasion. Pour avoir un stand, il faut s'inscrire à la mairie avant le 31 mai ; le stand coûte 5 euros.\n\nL'après-midi, les enfants peuvent participer à un atelier de peinture à 14 heures, puis voir un spectacle de marionnettes à 16 heures, devant l'école Jules-Ferry.\n\nÀ partir de 19 heures, des stands proposent des plats du monde entier préparés par les associations du quartier. Le concert commence à 21 heures, avec deux groupes locaux, et se termine par un bal.\n\nEn cas de pluie, le concert et le bal auront lieu dans la salle des fêtes, mais le vide-grenier sera annulé. Le stationnement sera interdit sur la place du Marché toute la journée.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u08",
+   "body": {
+    "title": "Nouvelles règles de tri à partir du 1er mars",
+    "text": "À partir du 1er mars, tous les emballages en plastique iront dans la poubelle jaune : bouteilles, mais aussi pots de yaourt, sacs et barquettes. Il n'est plus nécessaire de les laver, il suffit de bien les vider.\n\nLe verre continue d'aller dans les conteneurs verts installés dans les rues. Attention : la vaisselle cassée et les ampoules ne sont pas du verre recyclable ; elles vont à la déchetterie.\n\nLes déchets alimentaires seront collectés dans un bac marron, distribué gratuitement aux habitants en février. Avec ces déchets, la ville produira du compost pour les jardins publics.\n\nLa collecte des ordures ménagères passera d'une fois à deux fois par semaine dans le centre-ville, le mardi et le vendredi. Dans les autres quartiers, elle reste le lundi.\n\nUne réunion d'information aura lieu le 20 février à 18 h 30 à la mairie annexe. Les habitants pourront y poser leurs questions et récupérer leur bac marron s'ils ne l'ont pas encore reçu.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u09",
+   "body": {
+    "title": "Confirmation de réservation – Hôtel des Remparts",
+    "text": "Madame Rossi, nous avons le plaisir de confirmer votre réservation du vendredi 12 au dimanche 14 avril : une chambre double avec vue sur le jardin, petit-déjeuner compris.\n\nLa chambre est disponible à partir de 15 heures le jour de votre arrivée et doit être libérée avant 11 heures le jour du départ. La réception est ouverte 24 heures sur 24.\n\nLe parking de l'hôtel est complet ces jours-là. Nous vous conseillons le parking public de la gare, à 300 mètres, qui coûte 12 euros par jour.\n\nVous pouvez annuler gratuitement jusqu'à 48 heures avant votre arrivée. Après ce délai, la première nuit sera facturée.\n\nLe petit-déjeuner est servi de 7 h à 10 h dans la véranda. Si vous avez une allergie alimentaire, merci de nous l'indiquer à l'avance. Nous vous souhaitons un agréable séjour.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u10",
+   "body": {
+    "title": "Renouveler sa carte d'identité : mode d'emploi",
+    "text": "Votre carte d'identité expire bientôt ? À Villeneuve-sur-Claire, le renouvellement se fait uniquement sur rendez-vous, au service des titres d'identité de la mairie. Les rendez-vous se prennent en ligne ou par téléphone, du lundi au vendredi.\n\nAvant le rendez-vous, remplissez la pré-demande en ligne et notez le numéro qu'on vous donne à la fin. Sans ce numéro, l'agent ne pourra pas traiter votre dossier.\n\nLe jour du rendez-vous, apportez votre ancienne carte, une photo d'identité de moins de six mois et un justificatif de domicile récent, par exemple une facture d'électricité. Les photos faites à la maison ne sont pas acceptées.\n\nLe renouvellement est gratuit si vous rendez l'ancienne carte. En cas de perte ou de vol, il faut payer un timbre fiscal de 25 euros et présenter une déclaration de perte ou de vol.\n\nLe délai actuel est d'environ trois semaines. Vous recevrez un SMS quand la carte sera prête ; vous devrez alors venir la chercher en personne, dans les trois mois.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u11",
+   "body": {
+    "title": "Café des Halles – Menu du jour",
+    "text": "Menu du jour : 16,50 euros (entrée + plat + dessert) ou 13 euros (entrée + plat ou plat + dessert). Servi du lundi au vendredi, de midi à 14 heures.\n\nEntrées : soupe de potiron (sans gluten) ; salade de chèvre chaud aux noix (contient : lait, fruits à coque, gluten).\n\nPlats : poulet rôti et pommes de terre au four (sans gluten, sans lait) ; lasagnes aux légumes (contient : gluten, lait, œuf). Plat végétarien : les lasagnes.\n\nDesserts : tarte aux pommes (contient : gluten, lait, œuf) ; salade de fruits frais (sans allergène majeur).\n\nLes allergènes sont indiqués pour chaque plat. Si vous avez une allergie, dites-le au serveur avant de commander : la cuisine peut parfois adapter un plat, mais ne peut pas garantir l'absence de traces.",
+    "source_url": ""
+   }
+  },
+  {
+   "workbook_unit": "u12",
+   "body": {
+    "title": "Attention aux faux messages de livraison",
+    "text": "Depuis quelques semaines, de nombreux habitants reçoivent un SMS qui annonce un colis bloqué. Le message demande de payer 1,99 euro de « frais de livraison » en cliquant sur un lien.\n\nCe message est faux. Son but est de voler vos coordonnées bancaires. Les vrais transporteurs ne demandent jamais de payer par un lien envoyé par SMS.\n\nQuelques signes doivent vous alerter : une adresse de site bizarre, des fautes d'orthographe, et surtout un ton urgent, par exemple « dernier avertissement avant retour du colis ».\n\nSi vous recevez ce message, ne cliquez pas et supprimez-le. Vous pouvez aussi le transférer gratuitement au 33700, le numéro qui sert à signaler les SMS frauduleux.\n\nSi vous avez déjà donné votre numéro de carte, appelez tout de suite votre banque pour faire opposition. Le point numérique de la médiathèque propose un atelier gratuit sur ces arnaques le mercredi 15 à 10 heures.",
+    "source_url": ""
+   }
+  }
+ ]
+}
