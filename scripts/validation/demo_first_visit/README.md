@@ -3,9 +3,11 @@
 `accept_guided.mjs` walks the public demo's guided examples in English and
 简体中文 at desktop (1280×900) and phone (390×844) widths:
 
-- the starting screen: one-sentence lead, three example entry points, the
-  *Read-only* / *Synthetic data* labels, the mechanical-build warning (or its
-  absence for a model build) and direct search;
+- the starting screen: one-sentence lead, three example entry points (the
+  first one fully on the first screen at both widths), the *Read-only* /
+  *Synthetic data* labels, the synthetic notice and artifact identity, the
+  mechanical-build warning (or its absence for a model build) and direct
+  search;
 - each example: its French question unchanged and marked `lang="fr"`, the
   number of extracted units and Concepts, then example → Concept → evidence →
   back to the Concept → back to the example → back to the start with focus on

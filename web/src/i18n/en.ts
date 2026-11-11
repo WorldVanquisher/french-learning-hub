@@ -995,6 +995,7 @@ export const en = {
   "demo.title": "Knowledge Library",
   "demo.subtitle": "A read-only public demo of a personal French-learning knowledge service.",
   "demo.about": "About this demo",
+  "demo.start": "Start here",
   "demo.term.concept": "concept",
   "demo.term.keyword": "keyword",
   "demo.term.semantic": "semantic",

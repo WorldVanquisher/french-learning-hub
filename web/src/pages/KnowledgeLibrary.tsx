@@ -127,6 +127,7 @@ const searchFailedKey: Record<LibrarySearchMode, MessageKey> = {
 export function KnowledgeLibrary({
   demo,
   intro,
+  about,
   guided = false,
   openRequest = null,
   onOpenRecord,
@@ -135,6 +136,8 @@ export function KnowledgeLibrary({
   // Public demo only: text shown above the search on the starting screen, and
   // the guided examples (`guided`). The workbench passes neither.
   intro?: ReactNode;
+  // Public demo only: shown after the guided examples, before the search.
+  about?: ReactNode;
   guided?: boolean;
   // A Concept another workbench view asked to open (a record's filed unit, a
   // confirmed suggestion). The nonce makes a repeated request open it again.
@@ -258,6 +261,7 @@ export function KnowledgeLibrary({
       <div hidden={screen.kind !== "results"}>
         {intro}
         {guided ? <ExamplePicker onOpen={openExample} /> : null}
+        {about}
         {guided ? (
           <h2 className="demo-section-heading" id="demo-search-heading">
             {t("demo.search.heading")}

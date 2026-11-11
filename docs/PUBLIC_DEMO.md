@@ -490,8 +490,9 @@ below them for returning visitors.
   screen; a mechanical build adds *Development build* and a plain warning that
   semantic and hybrid results in that build are not meaningful. The
   synthetic/read-only/no-AI notice and the artifact identity line stay visible
-  on the starting screen; only the longer explanation of Concepts and search
-  modes is folded under "How this demo works".
+  on the starting screen, just below the examples (so the first example fits
+  on a phone's first screen); only the longer explanation of Concepts and
+  search modes is folded under "How this demo works".
 - **Check:** `scripts/validation/demo_first_visit/accept_guided.mjs` (README
   beside it) walks every example in both languages at both widths, plus the
   loading, failed-read and no-match states.

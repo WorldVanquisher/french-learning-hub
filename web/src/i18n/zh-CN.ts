@@ -920,6 +920,7 @@ export const zhCN: Record<MessageKey, string> = {
   "demo.title": "知识库",
   "demo.subtitle": "一个个人法语学习知识服务的只读公开演示。",
   "demo.about": "关于此演示",
+  "demo.start": "从这里开始",
   "demo.term.concept": "概念",
   "demo.term.keyword": "关键词",
   "demo.term.semantic": "语义",

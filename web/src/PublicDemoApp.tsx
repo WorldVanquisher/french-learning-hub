@@ -53,19 +53,25 @@ function PublicDemo() {
   const strong = (text: string) => <strong>{text}</strong>;
   const mechanical = info.status === "ready" && !info.data.artifact.real_model;
 
-  // The starting screen: one sentence on what to do, the warning a mechanical
-  // build needs, the longer explanation folded away, and the synthetic-data
-  // notice and artifact identity always in view. The labels in the header stay
-  // visible on every screen.
+  // The starting screen: one sentence on what to do and the warning a
+  // mechanical build needs, then the examples, then the synthetic-data notice
+  // and artifact identity (always in view) with the longer explanation folded
+  // away. On a phone the first example is then on the first screen. The labels
+  // in the header stay visible on every screen.
   const intro =
     info.status === "ready" ? (
-      <section className="panel demo-intro" aria-label={t("demo.about")}>
+      <section className="panel demo-intro" aria-label={t("demo.start")}>
         <p className="demo-lead">{t("demo.lead")}</p>
         {mechanical ? (
           <div className="banner info" role="status">
             {tn("demo.mechanical.short", { strong: strong(t("demo.mechanical.strong")) })}
           </div>
         ) : null}
+      </section>
+    ) : null;
+  const about =
+    info.status === "ready" ? (
+      <section className="panel demo-about" aria-label={t("demo.about")}>
         <details className="demo-details">
           <summary>{t("demo.details")}</summary>
           <p>{tn("demo.about.concepts", { concept: strong(t("demo.term.concept")) })}</p>
@@ -119,7 +125,7 @@ function PublicDemo() {
           </button>
         </div>
       ) : (
-        <KnowledgeLibrary demo={info.data} intro={intro} guided />
+        <KnowledgeLibrary demo={info.data} intro={intro} about={about} guided />
       )}
     </div>
   );

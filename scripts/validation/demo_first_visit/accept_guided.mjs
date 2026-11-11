@@ -61,6 +61,9 @@ for (const locale of ["en", "zh-CN"]) {
       check(`${tag}: no mechanical warning for a model build`, (await page.locator(".demo-label.warn").count()) === 0);
     }
     check(`${tag}: direct search kept`, await page.locator("#library-query").isVisible());
+    const firstCard = await page.locator("#demo-example-y-en").boundingBox();
+    check(`${tag}: first example fully on the first screen`, firstCard && firstCard.y >= 0 && firstCard.y + firstCard.height <= h, JSON.stringify(firstCard));
+    check(`${tag}: synthetic notice and artifact identity visible`, await page.locator('section[aria-label] .hint', { hasText: /synthetic|合成|Artifact|工件/ }).first().isVisible());
     await noSideScroll("landing");
     await shot("01-landing");
 
