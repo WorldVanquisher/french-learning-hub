@@ -50,6 +50,14 @@ export interface NotebookItem {
   link: SourceLink;
   record: { original_input: string; original_context: string };
   retry: { marked: boolean; since: string | null };
+  // FLH sections v1. A source that can no longer be read is "missing" or
+  // "unusable": the item then carries only its stored reference, nothing guessed.
+  source_status: "resolved" | "missing" | "unusable";
+  // Who wrote the reference: an authored pack, or a model nobody reviewed.
+  reference_origin: "authored" | "generated" | "";
+  generator: string;
+  // The source's newer version, when the item came from an older one.
+  latest_version: number | null;
 }
 
 export interface NotebookList {
@@ -86,18 +94,23 @@ export interface KindConcepts {
 
 // SourceOpen asks a skill view to open the exact item a notebook record names.
 export type SourceOpen =
-  | { skill: "listening"; materialId: number }
-  | { skill: "reading"; lessonId: number }
+  | { skill: "listening"; materialId: number; exerciseId: number; item: number; version: number }
+  | { skill: "reading"; lessonId: number; exerciseId: number; item: number; version: number }
   | { skill: "writing"; taskId: number; draftVersion: number }
   | { skill: "speaking"; exerciseId: number; takeId: number; transcriptVersion: number };
 
 export function sourceOpen(item: NotebookItem): SourceOpen | null {
   const l = item.link;
+  if (item.source_status !== "resolved") return null;
   switch (item.skill) {
     case "listening":
-      return l.listening_material_id ? { skill: "listening", materialId: l.listening_material_id } : null;
+      return l.listening_material_id && l.listening_exercise_id
+        ? { skill: "listening", materialId: l.listening_material_id, exerciseId: l.listening_exercise_id, item: item.source.item, version: l.listening_transcript_version ?? 0 }
+        : null;
     case "reading":
-      return l.reading_lesson_id ? { skill: "reading", lessonId: l.reading_lesson_id } : null;
+      return l.reading_lesson_id && l.reading_exercise_id
+        ? { skill: "reading", lessonId: l.reading_lesson_id, exerciseId: l.reading_exercise_id, item: item.source.item, version: l.reading_passage_version ?? 0 }
+        : null;
     case "writing":
       return l.writing_task_id && l.writing_draft_version ? { skill: "writing", taskId: l.writing_task_id, draftVersion: l.writing_draft_version } : null;
     case "speaking":

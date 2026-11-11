@@ -18,7 +18,8 @@ import { sourceOpen, type KindConcepts, type KindView, type NotebookItem, type S
 // - Grammar / Vocabulary list Concepts by the kinds of their current
 //   supporting units (concept_kind_view_v1); anything else stays unclassified.
 
-type Mode = "mistakes" | "retry" | KindView;
+export type NotebookMode = "mistakes" | "retry" | KindView;
+type Mode = NotebookMode;
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
 
 const describe = (e: unknown) => (e instanceof ApiError ? `(${e.status}) ${e.message}` : e instanceof Error ? e.message : String(e));
@@ -53,13 +54,19 @@ export function MistakeNotebook({
   onOpenSource,
   onOpenRecord,
   onOpenConcept,
+  modeRequest = null,
 }: {
   onOpenSource?: (open: SourceOpen) => void;
   onOpenRecord?: (entryId: number) => void;
   onOpenConcept?: (conceptId: number) => void;
+  // The learning home opens Grammar or Vocabulary directly.
+  modeRequest?: { mode: NotebookMode; nonce: number } | null;
 } = {}) {
   const { t } = useI18n();
-  const [mode, setMode] = useState<Mode>("mistakes");
+  const [mode, setMode] = useState<Mode>(modeRequest?.mode ?? "mistakes");
+  useEffect(() => {
+    if (modeRequest) setMode(modeRequest.mode);
+  }, [modeRequest]);
   const modes: [Mode, MessageKey][] = [
     ["mistakes", "notebook.mode.mistakes"],
     ["retry", "notebook.mode.retry"],
@@ -136,6 +143,11 @@ function Reference({ item }: { item: NotebookItem }) {
   const { t } = useI18n();
   return (
     <div className="notebook-reference" role="group" aria-label={t("notebook.item.referenceRegion")}>
+      <p className="notebook-side">
+        {item.reference_origin === "authored"
+          ? t("sections.side.authored")
+          : t("sections.side.generated", { generator: item.generator || t("sections.side.unknownGenerator") })}
+      </p>
       <p>
         <span className="label">{t(item.quote ? "notebook.item.suggestion" : "notebook.item.reference")}</span>{" "}
         <span lang="fr" className="french">
@@ -239,6 +251,33 @@ function NotebookEntry({
   const { t } = useI18n();
   const [shown, setShown] = useState(false);
   const open = sourceOpen(item);
+  if (item.source_status !== "resolved")
+    return (
+      <li className="listening-item notebook-item" role="group" aria-label={t("notebook.item.region", { id: item.entry_id })}>
+        <p>
+          <span className="tag">{t(skillKey[item.skill])}</span>{" "}
+          {item.retry.marked ? <span className="tag">{t("notebook.retry.tag")}</span> : null}
+        </p>
+        <div className="banner error" role="status">
+          {t(item.source_status === "missing" ? "sections.source.missing" : "sections.source.unusable", {
+            type: item.source.type,
+            record: item.source.record_id,
+            n: item.source.item,
+          })}
+        </div>
+        <p>
+          <span className="label">{t("notebook.item.record")}</span> <span lang="fr">{item.record.original_input}</span>
+        </p>
+        <div className="actions">
+          {onOpenRecord ? (
+            <button type="button" className="ghost" onClick={() => onOpenRecord(item.entry_id)}>
+              {t("notebook.item.openRecord", { id: item.entry_id })}
+            </button>
+          ) : null}
+          <RetryToggle item={item} onChanged={onChanged} />
+        </div>
+      </li>
+    );
   return (
     <li className="listening-item notebook-item" role="group" aria-label={t("notebook.item.region", { id: item.entry_id })}>
       <p>
@@ -251,12 +290,16 @@ function NotebookEntry({
           {item.prompt}
         </span>
       </p>
-      <Attempt item={item} />
-      <p>
-        <span className="label">{t("notebook.item.record")}</span> <span lang="fr">{item.record.original_input}</span>
-      </p>
+      <div className="notebook-mine" role="group" aria-label={t("sections.side.mine")}>
+        <p className="notebook-side">{t("sections.side.mine")}</p>
+        <Attempt item={item} />
+        <p>
+          <span className="label">{t("notebook.item.record")}</span> <span lang="fr">{item.record.original_input}</span>
+        </p>
+      </div>
       {shown ? <Reference item={item} /> : null}
       <SourceLine item={item} />
+      {item.latest_version ? <p className="hint">{t("sections.source.newer", { version: item.latest_version })}</p> : null}
       <div className="actions">
         {!shown ? (
           <button type="button" onClick={() => setShown(true)}>
@@ -287,7 +330,12 @@ type SelfCheck = "got" | "notyet";
 function RetrySession({ onOpenSource }: { onOpenSource?: (o: SourceOpen) => void }) {
   const { t, tp } = useI18n();
   const [epoch, setEpoch] = useState(0);
-  const [items, replace] = useNotebook({ marked: true }, epoch);
+  const [allItems, replace] = useNotebook({ marked: true }, epoch);
+  // An item whose source can no longer be read has nothing to practise; it is
+  // left out and counted, never shown with a guessed prompt.
+  const items: Load<NotebookItem[]> =
+    allItems.status === "ready" ? { status: "ready", data: allItems.data.filter((it) => it.source_status === "resolved") } : allItems;
+  const leftOut = allItems.status === "ready" ? allItems.data.length - (items.status === "ready" ? items.data.length : 0) : 0;
   const [started, setStarted] = useState<NotebookItem[] | null>(null);
   const [pos, setPos] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -309,6 +357,7 @@ function RetrySession({ onOpenSource }: { onOpenSource?: (o: SourceOpen) => void
       <section className="panel" aria-label={t("notebook.retry.region")}>
         <h2>{t("notebook.retry.heading")}</h2>
         <p className="hint">{t("notebook.retry.hint")}</p>
+        {leftOut > 0 ? <p className="hint">{tp("sections.retry.leftOut", leftOut)}</p> : null}
         {items.data.length === 0 ? (
           <p className="empty">{t("notebook.retry.none")}</p>
         ) : (

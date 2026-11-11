@@ -1271,6 +1271,33 @@ Reading, Writing and Speaking. A notebook item is an ordinary learning record
 - **Not in the public demo:** the routes are not allowlisted, and both tables
   must be empty in demo artifacts.
 
+**Sections v1 (learning home and source honesty).** No schema change.
+- **Learning home** (workbench tab **Home**): one page naming the seven
+  sections (Listening, Reading, Writing, Speaking, Grammar, Vocabulary,
+  Mistake Notebook). It reads and writes nothing. Grammar and Vocabulary open
+  the notebook's kind views; a Concept opens in the Knowledge Library, which
+  shows its source records and starts Recall Practice. The default view is
+  still Concept Review.
+- **Mine versus suggested:** an item keeps the learner's side ("What I got
+  wrong": their quoted words or included answer, and their record) apart from
+  the reference, which is labelled by `reference_origin`: `authored` (provenance
+  `authored:<pack>`, written and reviewed by a person) or `generated` (any
+  model provenance; nobody reviewed it), with the stored `generator`. Nothing
+  generated becomes a record, a confirmed mistake or a Concept membership
+  except through the learner's explicit save.
+- **Exact versions:** an item is always read from the version it came from.
+  `latest_version` is set when the source now has a newer reading passage or
+  listening transcript version. Opening a listening or reading item passes the
+  exercise, item and version; the lesson marks that question, or says the
+  lesson now shows another version or exercise instead of pointing at a
+  different question. Writing and Speaking open the exact draft or transcript
+  version, as before.
+- **Unreadable source:** if a stored reference no longer resolves (a missing
+  row: `missing`; a row that no longer yields the item: `unusable`), that item
+  is listed with its stored reference only and nothing guessed; the rest of the
+  notebook still loads, its retry mark still works, and a retry session leaves
+  it out and says how many were left out.
+
 ## 5. Knowledge extraction and admission
 
 Knowledge extraction (milestone 10) turns one interaction into durable,
@@ -3899,7 +3926,7 @@ A request has `id`, `operation_id`, `take_id` (transcription) or
 | Endpoint (also under `/api`) | Behaviour |
 | --- | --- |
 | `POST /captures` with `source_ref` | See A.7. `422` for a reference that does not name a stored, completed item; `409 {"code": "source_already_saved", "entry_id"}` when that item is already a record |
-| `GET /mistake-notebook/items` | Optional `skill` (`listening`, `reading`, `writing`, `speaking`) and `marked=true`. `items` (newest first: `entry_id`, `capture_id`, `saved_at`, `skill`, `source` {`type`, `record_id`, `item`, `attempt`}, `title`, `prompt`, `category`, `quote`, `reference`, `explanation_en`/`_zh`, `hint_en`/`_zh`, `link`, `record` {`original_input`, `original_context`}, `retry` {`marked`, `since`}) and `unlinked_notice`. Read-only |
+| `GET /mistake-notebook/items` | Optional `skill` (`listening`, `reading`, `writing`, `speaking`) and `marked=true`. `items` (newest first: `entry_id`, `capture_id`, `saved_at`, `skill`, `source` {`type`, `record_id`, `item`, `attempt`}, `title`, `prompt`, `category`, `quote`, `reference`, `explanation_en`/`_zh`, `hint_en`/`_zh`, `link`, `record` {`original_input`, `original_context`}, `retry` {`marked`, `since`}, `source_status` (`resolved`, `missing`, `unusable`; only `resolved` items carry resolved fields), `reference_origin` (`authored` or `generated`), `generator`, `latest_version` (a newer reading passage or listening transcript version, else null)) and `unlinked_notice`. Read-only |
 | `PUT /mistake-notebook/items/{entry_id}/retry` | Body `{"marked": true\|false}`. `200` `{item, changed}` (a row is appended only on a change); `404` not a notebook record; `422` missing `marked` |
 | `GET /mistake-notebook/concepts` | `kind` = `grammar`, `vocabulary` or `unclassified`, optional `q` (library search syntax). `rule` (`concept_kind_view_v1`), `classified`, `truncated`, `concepts` (`concept_id`, `target`, `pedagogical_intent`, `scope`, `state`, `class`, `reason`, `kinds`, `supporting_unit_count`, `match_tier`). `400` for an unknown kind or an unsearchable query. Read-only |
 | `GET /entries/{id}/source` | `{entry_id, linked: true, item}` or `{entry_id, linked: false, notice}`; `404` unknown record. Read-only |

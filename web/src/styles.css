@@ -956,3 +956,15 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .notebook-reference { border-left: 3px solid var(--border-strong); padding-left: 8px; margin: 6px 0; }
 .notebook .listening-item .label { font-weight: 600; }
 .notebook textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; }
+
+/* FLH sections v1: learning home, the learner's side of a notebook item, and
+   an item opened from the notebook. */
+.home-sections { list-style: none; padding: 0; margin: 12px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.home-card { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.home-card h3 { margin: 0; font-size: 16px; }
+.home-card p { margin: 0; flex: 1; font-size: 14px; }
+.home-card button { align-self: flex-start; }
+.notebook-side { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin: 6px 0 2px; }
+.notebook-mine { border-left: 3px solid var(--accent); padding-left: 8px; margin: 6px 0; }
+.notebook-origin { background: #eff4ff; border: 1px solid var(--accent); color: var(--text); margin: 8px 0; }
+.listening-item.notebook-target { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }

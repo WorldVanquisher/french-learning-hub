@@ -788,6 +788,20 @@ A private **Mistake Notebook** view (never in the public demo). Contract:
   `onOpenSource`) shows "Saved from …" with **Open source**, or the honest
   "no structured source link" notice.
 
+
+### Learning home and source honesty (sections v1)
+
+- `LearningHome.tsx` (tab **Home**) lists the seven sections; Grammar and
+  Vocabulary open `MistakeNotebook` with `modeRequest`. It makes no request.
+- Notebook items: **What I got wrong** groups the learner's words or included
+  answer and record; the reference heading comes from `reference_origin`
+  (authored / generated with `generator`). `latest_version` adds a note;
+  `source_status` other than `resolved` shows the stored reference only, and
+  the retry session leaves such items out.
+- `NotebookOrigin.tsx`: Listening and Reading `openRequest` carry `target`
+  {`exerciseId`, `item`, `version`}; the lesson marks that question
+  (`notebook-target`) or says it now shows another version or exercise.
+
 ## Correcting a reviewed unit from the inspection (FLH-082)
 
 The unit inspection opened from a record offers corrections for a unit of the

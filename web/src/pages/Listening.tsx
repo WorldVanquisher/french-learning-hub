@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import * as api from "../api/client";
 import { ApiError, NetworkError } from "../api/client";
 import { StoredText } from "../components/ExplanationText";
+import { NotebookOrigin, notebookItemDomId, type NotebookTarget } from "../components/NotebookOrigin";
 import { useI18n, type MessageKey } from "../i18n";
 import type {
   ListeningDaily,
@@ -100,7 +101,7 @@ function VideoLink({ material, seconds = null, label }: { material: ListeningMat
 export function Listening({
   onOpenRecord,
   openRequest,
-}: { onOpenRecord?: (entryId: number) => void; openRequest?: { materialId: number; nonce: number } | null } = {}) {
+}: { onOpenRecord?: (entryId: number) => void; openRequest?: { materialId: number; nonce: number; target?: NotebookTarget } | null } = {}) {
   const [screen, setScreen] = useState<{ kind: "list" } | { kind: "lesson"; id: number }>({ kind: "list" });
   // A Mistake Notebook link opens the lesson its item came from.
   useEffect(() => {
@@ -124,6 +125,7 @@ export function Listening({
             setScreen({ kind: "list" });
           }}
           onOpenRecord={onOpenRecord}
+          target={openRequest && openRequest.materialId === screen.id ? openRequest.target ?? null : null}
         />
       )}
     </main>
@@ -226,7 +228,17 @@ function AddMaterialForm({ onSaved }: { onSaved: (id: number) => void }) {
   );
 }
 
-function LessonScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => void; onOpenRecord?: (entryId: number) => void }) {
+function LessonScreen({
+  id,
+  onBack,
+  onOpenRecord,
+  target = null,
+}: {
+  id: number;
+  onBack: () => void;
+  onOpenRecord?: (entryId: number) => void;
+  target?: NotebookTarget | null;
+}) {
   const { t } = useI18n();
   const [epoch, setEpoch] = useState(0);
   const lesson = useLoad<ListeningLesson>(String(id), () => api.getListening(id), epoch);
@@ -284,6 +296,9 @@ function LessonScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => 
         </p>
       </section>
 
+      {target ? (
+        <NotebookOrigin skill="listening" target={target} shownExerciseId={current?.id ?? null} currentVersion={transcript?.version ?? null} />
+      ) : null}
       {!transcript ? (
         <AddTranscriptForm id={id} onSaved={() => setEpoch((n) => n + 1)} />
       ) : (
@@ -294,7 +309,14 @@ function LessonScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => 
             </div>
           ) : null}
           {current ? (
-            <ExerciseView key={current.id} material={material} transcript={transcript} exercise={current} onOpenRecord={onOpenRecord} />
+            <ExerciseView
+              key={current.id}
+              material={material}
+              transcript={transcript}
+              exercise={current}
+              onOpenRecord={onOpenRecord}
+              targetItem={target && target.exerciseId === current.id ? target.item : null}
+            />
           ) : (
             <PrepareSection
               id={id}
@@ -462,11 +484,13 @@ function ExerciseView({
   transcript,
   exercise,
   onOpenRecord,
+  targetItem = null,
 }: {
   material: ListeningMaterial;
   transcript: ListeningTranscript;
   exercise: ListeningExercise;
   onOpenRecord?: (entryId: number) => void;
+  targetItem?: number | null;
 }) {
   const { t, tn } = useI18n();
   const content = exercise.content!;
@@ -481,7 +505,11 @@ function ExerciseView({
       <p className="hint">{t(revealed ? "listening.exercise.revealedHint" : "listening.exercise.hint")}</p>
       <ol className="listening-items">
         {content.items.map((item, i) => (
-          <li key={i} className="listening-item">
+          <li
+            key={i}
+            id={notebookItemDomId("listening", exercise.id, i + 1)}
+            className={targetItem === i + 1 ? "listening-item notebook-target" : "listening-item"}
+          >
             <p className="label">{t(kindKey[item.kind])}</p>
             <p lang="fr" className="french">
               {item.question}

@@ -41,23 +41,29 @@ type captureSourceRefRequest struct {
 }
 
 type notebookItemJSON struct {
-	EntryID       int64             `json:"entry_id"`
-	CaptureID     string            `json:"capture_id"`
-	SavedAt       string            `json:"saved_at"`
-	Skill         string            `json:"skill"`
-	Source        map[string]any    `json:"source"`
-	Title         string            `json:"title"`
-	Prompt        string            `json:"prompt"`
-	Category      string            `json:"category"`
-	Quote         *string           `json:"quote"`
-	Reference     string            `json:"reference"`
-	ExplanationEN string            `json:"explanation_en"`
-	ExplanationZH string            `json:"explanation_zh"`
-	HintEN        *string           `json:"hint_en"`
-	HintZH        *string           `json:"hint_zh"`
-	Link          domain.SourceLink `json:"link"`
-	Record        map[string]string `json:"record"`
-	Retry         map[string]any    `json:"retry"`
+	EntryID   int64          `json:"entry_id"`
+	CaptureID string         `json:"capture_id"`
+	SavedAt   string         `json:"saved_at"`
+	Skill     string         `json:"skill"`
+	Source    map[string]any `json:"source"`
+	Title     string         `json:"title"`
+	Prompt    string         `json:"prompt"`
+	Category  string         `json:"category"`
+	Quote     *string        `json:"quote"`
+	Reference string         `json:"reference"`
+	// FLH sections v1: the item's source state, who wrote the reference, and
+	// a newer source version when one exists.
+	SourceStatus    string            `json:"source_status"`
+	ReferenceOrigin string            `json:"reference_origin"`
+	Generator       string            `json:"generator"`
+	LatestVersion   *int              `json:"latest_version"`
+	ExplanationEN   string            `json:"explanation_en"`
+	ExplanationZH   string            `json:"explanation_zh"`
+	HintEN          *string           `json:"hint_en"`
+	HintZH          *string           `json:"hint_zh"`
+	Link            domain.SourceLink `json:"link"`
+	Record          map[string]string `json:"record"`
+	Retry           map[string]any    `json:"retry"`
 }
 
 func toNotebookItem(it application.NotebookItem) notebookItemJSON {
@@ -73,10 +79,18 @@ func toNotebookItem(it application.NotebookItem) notebookItemJSON {
 		Source: map[string]any{"type": ref.Type, "record_id": ref.RecordID, "item": ref.Item, "attempt": optString(ref.Attempt)},
 		Title:  r.Title, Prompt: r.Prompt, Category: r.Category, Quote: optString(r.Quote), Reference: r.Reference,
 		ExplanationEN: r.ExplanationEN, ExplanationZH: r.ExplanationZH, HintEN: optString(r.HintEN), HintZH: optString(r.HintZH),
-		Link:   r.Link,
-		Record: map[string]string{"original_input": it.Entry.OriginalInput, "original_context": it.Entry.OriginalContext},
-		Retry:  retry,
+		Link:         r.Link,
+		Record:       map[string]string{"original_input": it.Entry.OriginalInput, "original_context": it.Entry.OriginalContext},
+		Retry:        retry,
+		SourceStatus: it.SourceState, ReferenceOrigin: r.Origin, Generator: r.Generator, LatestVersion: optInt(r.LatestVersion),
 	}
+}
+
+func optInt(n int) *int {
+	if n == 0 {
+		return nil
+	}
+	return &n
 }
 
 func (h *Handler) notebookUnavailable(w http.ResponseWriter) bool {

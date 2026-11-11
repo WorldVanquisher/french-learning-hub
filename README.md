@@ -113,7 +113,8 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   version or transcript version it came from. You can filter by skill, mark
   items for retry and practise them in a Recall-style session (nothing is
   scored). Grammar and Vocabulary views list Concepts by the kinds of their
-  supporting units.
+  supporting units. A **Home** tab names the seven learning sections and opens
+  each one.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation

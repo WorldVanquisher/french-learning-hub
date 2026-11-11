@@ -20,7 +20,8 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-const base = { capture_id: "c", saved_at: "2026-11-09T10:00:00Z", explanation_zh: "原因", hint_en: null, hint_zh: null, retry: { marked: false, since: null } };
+const base = { capture_id: "c", saved_at: "2026-11-09T10:00:00Z", explanation_zh: "原因", hint_en: null, hint_zh: null, retry: { marked: false, since: null },
+  source_status: "resolved" as const, reference_origin: "generated" as const, generator: "openai:fake-model:feedback_v1", latest_version: null };
 const ITEMS: NotebookItem[] = [
   {
     ...base,
@@ -59,6 +60,8 @@ const ITEMS: NotebookItem[] = [
     entry_id: 39,
     skill: "reading",
     source: { type: "reading_item", record_id: 5, item: 2, attempt: "Le lundi." },
+    reference_origin: "authored",
+    generator: "authored:reading_pack_v1",
     title: "Piscine municipale : horaires d'été",
     prompt: "Quel jour la piscine est-elle fermée ?",
     category: "detail",
@@ -194,8 +197,9 @@ describe("Mistake Notebook helpers", () => {
   it("opens each skill's exact source item from the stored link", () => {
     expect(sourceOpen(ITEMS[0])).toEqual({ skill: "speaking", exerciseId: 2, takeId: 3, transcriptVersion: 1 });
     expect(sourceOpen(ITEMS[1])).toEqual({ skill: "writing", taskId: 1, draftVersion: 1 });
-    expect(sourceOpen(ITEMS[2])).toEqual({ skill: "reading", lessonId: 4 });
-    expect(sourceOpen(ITEMS[3])).toEqual({ skill: "listening", materialId: 7 });
+    expect(sourceOpen(ITEMS[2])).toEqual({ skill: "reading", lessonId: 4, exerciseId: 5, item: 2, version: 1 });
+    expect(sourceOpen(ITEMS[3])).toEqual({ skill: "listening", materialId: 7, exerciseId: 100, item: 2, version: 1 });
+    expect(sourceOpen({ ...ITEMS[3], source_status: "missing" })).toBeNull();
     expect(sourceOpen({ ...ITEMS[1], link: {} })).toBeNull();
   });
 });
@@ -327,5 +331,96 @@ describe("Mistake Notebook (private workbench)", () => {
     await screen.findByText(/synthetic/i);
     expect(screen.queryByRole("button", { name: "Mistake Notebook" })).toBeNull();
     expect(calls.some((c) => c.path.startsWith("/api/mistake-notebook") || c.path.endsWith("/source"))).toBe(false);
+  });
+});
+
+describe("Mistake Notebook: the seven sections (FLH sections v1)", () => {
+  it("keeps what the learner got wrong apart from the reference, and says who wrote the reference", async () => {
+    serve(ITEMS);
+    const list = await openNotebook();
+    const reading = within(list).getByRole("group", { name: "Mistake, record #39" });
+    const mine = within(reading).getByRole("group", { name: "What I got wrong" });
+    expect(mine.textContent).toContain("Le lundi.");
+    expect(mine.textContent).not.toContain("Le mardi.");
+    fireEvent.click(within(reading).getByRole("button", { name: "Show reference" }));
+    const ref = within(reading).getByRole("group", { name: "Reference" });
+    expect(ref.textContent).toContain("Authored reference (written and reviewed by a person)");
+    expect(ref.textContent).toContain("Le mardi.");
+    const writing = within(list).getByRole("group", { name: "Mistake, record #40" });
+    expect(within(writing).getByRole("group", { name: "What I got wrong" }).textContent).toContain("Je suis arrivé vers 20 heures");
+    fireEvent.click(within(writing).getByRole("button", { name: "Show reference" }));
+    expect(within(writing).getByRole("group", { name: "Reference" }).textContent).toContain(
+      "System suggestion from openai:fake-model:feedback_v1 (no person reviewed it)",
+    );
+  });
+
+  it("shows an unreadable source honestly, offers no guessed reference, and leaves it out of a retry session", async () => {
+    const broken: NotebookItem = { ...ITEMS[3], source_status: "missing", title: "", prompt: "", reference: "", explanation_en: "", link: {}, retry: { marked: true, since: "t" } };
+    const marked: NotebookItem = { ...ITEMS[1], retry: { marked: true, since: "t" } };
+    const s = serve([ITEMS[0], marked, ITEMS[2], broken]);
+    const list = await openNotebook();
+    const item = within(list).getByRole("group", { name: "Mistake, record #38" });
+    expect(item.textContent).toContain("can no longer be read (listening_item #100, item 2)");
+    expect(within(item).queryByRole("button", { name: "Show reference" })).toBeNull();
+    expect(within(item).queryByRole("button", { name: "Open source" })).toBeNull();
+    expect(within(item).getByRole("button", { name: "Open record #38" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry session" }));
+    const region = await screen.findByRole("region", { name: "Retry session" });
+    expect(region.textContent).toContain("1 marked item is left out: its source can no longer be read.");
+    expect(region.textContent).toContain("1 item is marked for retry.");
+    expect(s.calls.filter((c) => c.method !== "GET")).toEqual([]);
+  });
+
+  it("says when the source has a newer version and keeps the item as it was saved", async () => {
+    serve([{ ...ITEMS[2], latest_version: 3 }]);
+    const list = await openNotebook();
+    const item = within(list).getByRole("group", { name: "Mistake, record #39" });
+    expect(item.textContent).toContain("The source now has version 3. This item is shown as it was saved.");
+    expect(item.textContent).toContain("Quel jour la piscine est-elle fermée ?");
+  });
+
+  it("opens the seven sections from the learning home, with Grammar and Vocabulary one click away", async () => {
+    const s = serve(ITEMS);
+    render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    const home = await screen.findByRole("region", { name: "What would you like to practise?" });
+    const actions = within(home)
+      .getAllByRole("button")
+      .map((b) => b.textContent);
+    expect(actions).toEqual([
+      "Open Listening",
+      "Open Reading",
+      "Open Writing",
+      "Open Speaking",
+      "Open Grammar",
+      "Open Vocabulary",
+      "Open the Mistake Notebook",
+    ]);
+    fireEvent.click(within(home).getByRole("button", { name: "Open Grammar" }));
+    expect(await screen.findByText("accord du participe passé")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Grammar" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    fireEvent.click(within(await screen.findByRole("region", { name: "What would you like to practise?" })).getByRole("button", { name: "Open Vocabulary" }));
+    expect(await screen.findByText("apporter")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Vocabulary" }).getAttribute("aria-pressed")).toBe("true");
+    expect(s.calls.filter((c) => c.method !== "GET")).toEqual([]);
+  });
+
+  it("offers the learning home in Simplified Chinese", async () => {
+    serve(ITEMS);
+    window.localStorage.setItem("flh.ui-locale.v1", "zh-CN");
+    render(
+      <LocaleProvider>
+        <App />
+      </LocaleProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "主页" }));
+    const home = await screen.findByRole("region", { name: "你想练习什么？" });
+    expect(within(home).getByRole("button", { name: "打开语法" })).toBeTruthy();
+    expect(within(home).getByRole("button", { name: "打开词汇" })).toBeTruthy();
   });
 });

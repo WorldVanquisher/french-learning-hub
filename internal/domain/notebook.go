@@ -152,7 +152,40 @@ type ResolvedSource struct {
 	HintEN        string // writing and speaking only
 	HintZH        string
 	Link          SourceLink
+	// Origin says who wrote Reference (ReferenceAuthored or ReferenceGenerated),
+	// from the stored Generator provenance: the learner sees which answers a
+	// person reviewed and which are model suggestions nobody reviewed.
+	Origin    string
+	Generator string
+	// LatestVersion is the source's newest version when it is newer than the
+	// version the item came from (reading passages, listening transcripts),
+	// else 0. The item itself is always read from its own version.
+	LatestVersion int
 }
+
+// Who wrote an item's reference.
+const (
+	ReferenceAuthored  = "authored"  // an authored, reviewed pack (provenance "authored:<pack>")
+	ReferenceGenerated = "generated" // model output that no person reviewed
+)
+
+// ReferenceOrigin classifies a stored generator provenance.
+func ReferenceOrigin(generator string) string {
+	if strings.HasPrefix(generator, "authored:") {
+		return ReferenceAuthored
+	}
+	return ReferenceGenerated
+}
+
+// The state of a notebook item's stored source when it is read back.
+const (
+	SourceResolved = "resolved"
+	// SourceMissing: a record the reference names can no longer be read (for
+	// example after restoring a partial backup). The learner's record is intact.
+	SourceMissing = "missing"
+	// SourceUnusable: the record exists but no longer yields that item.
+	SourceUnusable = "unusable"
+)
 
 // SourceResolver reads a source reference's item from the stored records. It
 // returns ErrNotFound when the record is missing, and ErrValidation when it is

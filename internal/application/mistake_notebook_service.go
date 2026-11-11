@@ -22,6 +22,7 @@ type notebookListeningReader interface {
 	GetExercise(ctx context.Context, id int64) (domain.ListeningExercise, error)
 	GetMaterial(ctx context.Context, id int64) (domain.ListeningMaterial, error)
 	GetTranscript(ctx context.Context, id int64) (domain.ListeningTranscript, error)
+	LatestTranscript(ctx context.Context, materialID int64) (*domain.ListeningTranscript, error)
 }
 
 type notebookReadingReader interface {
@@ -97,6 +98,12 @@ func (r *MistakeSourceResolver) ResolveSource(ctx context.Context, ref domain.Ca
 		out.Title, out.Prompt, out.Category, out.Reference = m.Title, it.Question, it.Kind, it.ExpectedAnswer
 		out.ExplanationEN, out.ExplanationZH = it.RationaleEN, it.RationaleZH
 		out.Link = domain.SourceLink{ListeningMaterialID: m.ID, ListeningExerciseID: e.ID, ListeningTranscriptVersion: tr.Version}
+		out.Origin, out.Generator = domain.ReferenceOrigin(e.Generator), e.Generator
+		if latest, err := r.listening.LatestTranscript(ctx, m.ID); err != nil {
+			return out, err
+		} else if latest != nil && latest.Version > tr.Version {
+			out.LatestVersion = latest.Version
+		}
 	case domain.SourceReadingItem:
 		e, err := r.reading.GetExercise(ctx, ref.RecordID)
 		if err != nil {
@@ -116,16 +123,21 @@ func (r *MistakeSourceResolver) ResolveSource(ctx context.Context, ref domain.Ca
 		if err != nil {
 			return out, err
 		}
-		version := 0
+		version, newest := 0, 0
 		for _, p := range passages {
 			if p.ID == e.PassageID {
 				version = p.Version
 			}
+			newest = max(newest, p.Version)
 		}
 		it := e.Content.Items[ref.Item-1]
 		out.Title, out.Prompt, out.Category, out.Reference = l.Title, it.Question, it.Kind, it.ReferenceAnswer
 		out.ExplanationEN, out.ExplanationZH = it.ExplanationEN, it.ExplanationZH
 		out.Link = domain.SourceLink{ReadingLessonID: l.ID, ReadingPassageVersion: version, ReadingExerciseID: e.ID}
+		out.Origin, out.Generator = domain.ReferenceOrigin(e.Generator), e.Generator
+		if newest > version {
+			out.LatestVersion = newest
+		}
 	case domain.SourceWritingCorrection:
 		f, err := r.writing.GetFeedback(ctx, ref.RecordID)
 		if err != nil {
@@ -152,6 +164,7 @@ func (r *MistakeSourceResolver) ResolveSource(ctx context.Context, ref domain.Ca
 		out.Title, out.Prompt, out.Category, out.Quote, out.Reference = t.Title, t.Prompt, k.Category, k.Quote, k.Suggestion
 		out.ExplanationEN, out.ExplanationZH, out.HintEN, out.HintZH = k.ReasonEN, k.ReasonZH, k.HintEN, k.HintZH
 		out.Link = domain.SourceLink{WritingTaskID: t.ID, WritingDraftID: d.ID, WritingDraftVersion: d.Version, WritingFeedbackID: f.ID}
+		out.Origin, out.Generator = domain.ReferenceOrigin(f.Generator), f.Generator
 	case domain.SourceSpeakingImprovement:
 		f, err := r.speaking.GetFeedback(ctx, ref.RecordID)
 		if err != nil {
@@ -183,6 +196,7 @@ func (r *MistakeSourceResolver) ResolveSource(ctx context.Context, ref domain.Ca
 		out.ExplanationEN, out.ExplanationZH, out.HintEN, out.HintZH = k.ReasonEN, k.ReasonZH, k.HintEN, k.HintZH
 		out.Link = domain.SourceLink{SpeakingExerciseID: ex.ID, SpeakingTakeID: take.ID, SpeakingTakeNumber: take.Number,
 			SpeakingTranscriptID: tr.ID, SpeakingTranscriptVersion: tr.Version, SpeakingFeedbackID: f.ID}
+		out.Origin, out.Generator = domain.ReferenceOrigin(f.Generator), f.Generator
 	default:
 		return out, fmt.Errorf("%w: unknown source type", domain.ErrValidation)
 	}
@@ -220,18 +234,29 @@ type NotebookItem struct {
 	Resolved domain.ResolvedSource
 	Entry    domain.Entry
 	Mark     *domain.RetryMark // nil: never marked
+	// SourceState is domain.SourceResolved, or SourceMissing / SourceUnusable
+	// when the stored reference no longer resolves; Resolved then carries only
+	// the skill. One unreadable source never hides the rest of the notebook.
+	SourceState string
 }
 
 func (s *MistakeNotebookService) item(ctx context.Context, src domain.LearningCaptureSource, marks map[int64]domain.RetryMark) (NotebookItem, error) {
+	state := domain.SourceResolved
 	res, err := s.sources.ResolveSource(ctx, src.Ref)
-	if err != nil {
+	switch {
+	case err == nil:
+	case errors.Is(err, domain.ErrNotFound):
+		state, res = domain.SourceMissing, domain.ResolvedSource{Skill: domain.SourceSkill(src.Ref.Type)}
+	case errors.Is(err, domain.ErrValidation):
+		state, res = domain.SourceUnusable, domain.ResolvedSource{Skill: domain.SourceSkill(src.Ref.Type)}
+	default:
 		return NotebookItem{}, fmt.Errorf("resolve source of record %d: %w", src.EntryID, err)
 	}
 	e, err := s.entries.GetByID(ctx, src.EntryID)
 	if err != nil {
 		return NotebookItem{}, err
 	}
-	it := NotebookItem{Source: src, Resolved: res, Entry: *e}
+	it := NotebookItem{Source: src, Resolved: res, Entry: *e, SourceState: state}
 	if m, ok := marks[src.EntryID]; ok {
 		it.Mark = &m
 	}

@@ -5,6 +5,8 @@ import { StrictMode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
+import { LocaleProvider } from "../i18n";
+import { Reading } from "./Reading";
 import PublicDemoApp from "../PublicDemoApp";
 import { authoredExercise, generatedItems, items, lessonView, passageText, segments } from "../test/readingFixture";
 import type { ReadingExercise, ReadingLessonView, ReadingPreparation } from "../types/reading";
@@ -307,5 +309,31 @@ describe("Reading (private workbench)", () => {
     expect(screen.queryByRole("button", { name: "Reading" })).toBeNull();
     await waitFor(() => expect(server.calls.length).toBeGreaterThan(0));
     expect(server.calls.filter((c) => c.path.startsWith("/api/reading"))).toEqual([]);
+  });
+});
+
+describe("Reading opened from the Mistake Notebook (FLH sections v1)", () => {
+  it("marks the saved question when the lesson still shows its exercise", async () => {
+    serve(newServer([lessonView()]));
+    render(
+      <LocaleProvider>
+        <Reading openRequest={{ lessonId: 1, nonce: 1, target: { exerciseId: 1, item: 2, version: 1 } }} />
+      </LocaleProvider>,
+    );
+    expect(await screen.findByText(/Opened from the Mistake Notebook for question 2 of exercise #1 \(passage version 1\)\. Question 2 is marked below\./)).toBeTruthy();
+    expect(document.getElementById("reading-item-1-2")?.className).toContain("notebook-target");
+    expect(document.getElementById("reading-item-1-1")?.className).not.toContain("notebook-target");
+  });
+
+  it("says so, instead of pointing at another question, when the lesson now shows a newer version", async () => {
+    const newer = lessonView({ passage: { id: 2, version: 2, segments, created_at: "2026-11-10T09:00:00Z" }, versions: 2, exercises: [authoredExercise(7, 2), authoredExercise(1, 1)] });
+    serve(newServer([newer]));
+    render(
+      <LocaleProvider>
+        <Reading openRequest={{ lessonId: 1, nonce: 1, target: { exerciseId: 1, item: 2, version: 1 } }} />
+      </LocaleProvider>,
+    );
+    expect(await screen.findByText(/This lesson now shows version 2, so that question is not shown here/)).toBeTruthy();
+    expect(document.querySelector(".notebook-target")).toBeNull();
   });
 });

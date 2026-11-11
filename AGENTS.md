@@ -646,6 +646,11 @@ Mistake Notebook v1 (private workbench):
   vocabulary); everything else stays unclassified. Reuse the Knowledge
   Library search and Concept IDs; no second catalog. Contract:
   `docs/ARCHITECTURE.md` §4.8, A.20. Never in the public demo.
+- Sections v1: the **Home** tab (`LearningHome.tsx`) only opens the seven
+  sections. Items label the reference `authored` or `generated` (from stored
+  provenance) and keep the learner's side apart; items stay on their source
+  version (`latest_version` flags a newer one); an unresolvable source degrades
+  that item only (`source_status`), never the list, and is never guessed.
 
 Daily Listening (pull, prepare, notify):
 

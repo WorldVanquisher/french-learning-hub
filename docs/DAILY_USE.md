@@ -627,7 +627,19 @@ Speaking), each linked to the exact item it came from.
    can take the items you had off the retry list.
 4. **Grammar** and **Vocabulary** list Concepts whose supporting units are all
    grammar or all vocabulary. **Unclassified** lists the rest, with the reason.
-   A Concept opens in the Knowledge Library.
+   A Concept opens in the Knowledge Library, where its source records are
+   listed and **Recall practice** starts.
+5. The **Home** tab names all seven sections and opens each one; **Open
+   Grammar** and **Open Vocabulary** go straight to those views.
+
+Reading an item: **What I got wrong** is your side (your words or included
+answer, and your record). The reference says who wrote it: an **authored
+reference** was written and reviewed by a person; a **system suggestion**
+names the model and nobody reviewed it. If the lesson or transcript has a
+newer version, the item says so and stays as it was saved; **Open source**
+marks the question when the lesson still shows it, and says so when it does
+not. If an item's stored source can no longer be read, it shows only its
+stored reference; your record and retry mark are unchanged.
 
 **Limitations:**
 - Records saved before this feature, or without a source link, are not in the

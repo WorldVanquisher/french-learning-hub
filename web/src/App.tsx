@@ -6,7 +6,8 @@ import { Listening } from "./pages/Listening";
 import { Reading } from "./pages/Reading";
 import { Writing } from "./pages/Writing";
 import { Speaking } from "./pages/Speaking";
-import { MistakeNotebook } from "./pages/MistakeNotebook";
+import { MistakeNotebook, type NotebookMode } from "./pages/MistakeNotebook";
+import { LearningHome, type HomeTarget } from "./pages/LearningHome";
 import type { SourceOpen } from "./types/notebook";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue, type ReviewResume } from "./pages/ReviewQueue";
@@ -16,7 +17,7 @@ import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n";
 import { ExplanationLanguageProvider, ExplanationLanguageSelect } from "./explanationLanguage";
 
-type View = "records" | "library" | "listening" | "reading" | "writing" | "speaking" | "notebook" | "review" | "inspector" | "experiments";
+type View = "home" | "records" | "library" | "listening" | "reading" | "writing" | "speaking" | "notebook" | "review" | "inspector" | "experiments";
 
 // Where a cross-view link came from, for the "Back to …" banner.
 type Origin =
@@ -31,6 +32,7 @@ type Origin =
   | { kind: "records" };
 
 const viewCopy: Record<View, { title: MessageKey; subtitle: MessageKey; tab: MessageKey }> = {
+  home: { title: "app.home.title", subtitle: "app.home.subtitle", tab: "nav.home" },
   records: { title: "app.records.title", subtitle: "app.records.subtitle", tab: "nav.records" },
   library: { title: "app.library.title", subtitle: "app.library.subtitle", tab: "nav.library" },
   listening: { title: "app.listening.title", subtitle: "app.listening.subtitle", tab: "nav.listening" },
@@ -42,7 +44,7 @@ const viewCopy: Record<View, { title: MessageKey; subtitle: MessageKey; tab: Mes
   inspector: { title: "app.inspector.title", subtitle: "app.inspector.subtitle", tab: "nav.inspector" },
   experiments: { title: "app.experiments.title", subtitle: "app.experiments.subtitle", tab: "nav.experiments" },
 };
-const VIEWS: View[] = ["records", "library", "listening", "reading", "writing", "speaking", "notebook", "review", "inspector", "experiments"];
+const VIEWS: View[] = ["home", "records", "library", "listening", "reading", "writing", "speaking", "notebook", "review", "inspector", "experiments"];
 
 // App keeps the internal workbench views behind a local tab switch. Learning
 // Records writes only through explicit capture import, analysis, feedback, and
@@ -100,8 +102,10 @@ function Workbench() {
   // retry session and its self-checks survive opening a source and coming back.
   const [notebookMounted, setNotebookMounted] = useState(false);
   // Requests to open the exact source item of a notebook record in its skill view.
-  const [listeningOpen, setListeningOpen] = useState<{ materialId: number; nonce: number } | null>(null);
-  const [readingOpen, setReadingOpen] = useState<{ lessonId: number; nonce: number } | null>(null);
+  const [listeningOpen, setListeningOpen] = useState<{ materialId: number; nonce: number; target?: { exerciseId: number; item: number; version: number } } | null>(null);
+  const [readingOpen, setReadingOpen] = useState<{ lessonId: number; nonce: number; target?: { exerciseId: number; item: number; version: number } } | null>(null);
+  // The learning home opens the notebook directly at Grammar or Vocabulary.
+  const [notebookMode, setNotebookMode] = useState<{ mode: NotebookMode; nonce: number } | null>(null);
   const [writingOpen, setWritingOpen] = useState<{ taskId: number; draftVersion: number; nonce: number } | null>(null);
   const [speakingOpen, setSpeakingOpen] = useState<{ exerciseId: number; takeId: number; transcriptVersion: number; nonce: number } | null>(null);
   // The unit opened from a record, or null for the ordinary tab views.
@@ -183,10 +187,10 @@ function Workbench() {
     const n = ++nonce.current;
     if (open.skill === "listening") {
       setListeningMounted(true);
-      setListeningOpen({ materialId: open.materialId, nonce: n });
+      setListeningOpen({ materialId: open.materialId, nonce: n, target: { exerciseId: open.exerciseId, item: open.item, version: open.version } });
     } else if (open.skill === "reading") {
       setReadingMounted(true);
-      setReadingOpen({ lessonId: open.lessonId, nonce: n });
+      setReadingOpen({ lessonId: open.lessonId, nonce: n, target: { exerciseId: open.exerciseId, item: open.item, version: open.version } });
     } else if (open.skill === "writing") {
       setWritingMounted(true);
       setWritingOpen({ taskId: open.taskId, draftVersion: open.draftVersion, nonce: n });
@@ -196,6 +200,14 @@ function Workbench() {
     }
     setOrigin({ from, on: open.skill });
     setView(open.skill);
+  };
+  const openHome = (target: HomeTarget) => {
+    if (target === "grammar" || target === "vocabulary") {
+      setNotebookMode({ mode: target, nonce: ++nonce.current });
+      show("notebook");
+    } else {
+      show(target);
+    }
   };
   const goBack = (from: Origin) => {
     setOrigin(null);
@@ -307,12 +319,14 @@ function Workbench() {
           <Speaking onOpenRecord={(entryId) => openRecord(entryId, { kind: "speaking" })} openRequest={speakingOpen} />
         </div>
       ) : null}
+      {view === "home" ? <LearningHome onOpen={openHome} /> : null}
       {notebookMounted ? (
         <div hidden={view !== "notebook"}>
           <MistakeNotebook
             onOpenSource={(open) => openSource(open, { kind: "notebook" })}
             onOpenRecord={(entryId) => openRecord(entryId, { kind: "notebook" })}
             onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "notebook" })}
+            modeRequest={notebookMode}
           />
         </div>
       ) : null}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import * as api from "../api/client";
 import { ApiError, NetworkError } from "../api/client";
 import { StoredText } from "../components/ExplanationText";
+import { NotebookOrigin, notebookItemDomId, type NotebookTarget } from "../components/NotebookOrigin";
 import { useI18n, type MessageKey } from "../i18n";
 import type {
   ReadingEvidence,
@@ -77,7 +78,7 @@ const failureKey: Record<ReadingFailureCode, MessageKey> = {
 export function Reading({
   onOpenRecord,
   openRequest,
-}: { onOpenRecord?: (entryId: number) => void; openRequest?: { lessonId: number; nonce: number } | null } = {}) {
+}: { onOpenRecord?: (entryId: number) => void; openRequest?: { lessonId: number; nonce: number; target?: NotebookTarget } | null } = {}) {
   const [screen, setScreen] = useState<{ kind: "list" } | { kind: "lesson"; id: number }>({ kind: "list" });
   // A Mistake Notebook link opens the lesson its item came from.
   useEffect(() => {
@@ -97,6 +98,7 @@ export function Reading({
             setScreen({ kind: "list" });
           }}
           onOpenRecord={onOpenRecord}
+          target={openRequest && openRequest.lessonId === screen.id ? openRequest.target ?? null : null}
         />
       )}
     </main>
@@ -242,7 +244,17 @@ function AddPassageForm({ onSaved }: { onSaved: (id: number) => void }) {
 
 type Highlight = { segment: string; excerpt: string } | null;
 
-function LessonScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => void; onOpenRecord?: (entryId: number) => void }) {
+function LessonScreen({
+  id,
+  onBack,
+  onOpenRecord,
+  target = null,
+}: {
+  id: number;
+  onBack: () => void;
+  onOpenRecord?: (entryId: number) => void;
+  target?: NotebookTarget | null;
+}) {
   const { t } = useI18n();
   const [epoch, setEpoch] = useState(0);
   const lesson = useLoad<ReadingLessonView>(String(id), () => api.getReading(id), epoch);
@@ -304,6 +316,7 @@ function LessonScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => 
         </p>
         <p className="hint">{t("reading.practiceNotice")}</p>
       </section>
+      {target ? <NotebookOrigin skill="reading" target={target} shownExerciseId={current?.id ?? null} currentVersion={v.passage.version} /> : null}
       <div className="reading-layout">
         <PassageView lessonId={v.lesson.id} passage={v.passage} highlight={highlight} />
         <div>
@@ -320,6 +333,7 @@ function LessonScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => 
               onShow={showIn}
               onHide={() => setHighlight(null)}
               onOpenRecord={onOpenRecord}
+              targetItem={target && target.exerciseId === current.id ? target.item : null}
             />
           ) : (
             <PrepareSection
@@ -474,12 +488,14 @@ function ExerciseView({
   onShow,
   onHide,
   onOpenRecord,
+  targetItem = null,
 }: {
   view: ReadingLessonView;
   exercise: ReadingExercise;
   onShow: (e: ReadingEvidence) => void;
   onHide: () => void;
   onOpenRecord?: (entryId: number) => void;
+  targetItem?: number | null;
 }) {
   const { t, tn } = useI18n();
   const content = exercise.content!;
@@ -492,7 +508,11 @@ function ExerciseView({
       <p className="hint">{t(revealed ? "reading.exercise.revealedHint" : "reading.exercise.hint")}</p>
       <ol className="listening-items">
         {content.items.map((item, i) => (
-          <li key={i} className="listening-item">
+          <li
+            key={i}
+            id={notebookItemDomId("reading", exercise.id, i + 1)}
+            className={targetItem === i + 1 ? "listening-item notebook-target" : "listening-item"}
+          >
             <p className="label">{t(kindKey[item.kind])}</p>
             <p lang="fr" className="french">
               {item.question}
