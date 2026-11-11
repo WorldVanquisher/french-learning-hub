@@ -467,6 +467,35 @@ artifact needs a new real-vector run in a **new** work directory (23 positions,
 3 POSTs). `scripts/validation/demo_refresh/accept_paths.mjs` walks these paths in
 English and 简体中文 at desktop and phone widths against a running package.
 
+## First visit: guided examples (demo first-visit task)
+
+The starting screen says in one sentence what a visitor can do, then offers the
+three authored questions above as **guided examples**, with direct search kept
+below them for returning visitors.
+
+- **Example screen:** the learner's question (marked French, unchanged in every
+  interface language) → the units extracted from it → the Concepts they are
+  filed under, with how much evidence comes from this question and how much
+  from others. Each unit links to its source; each Concept opens with its
+  evidence. Back actions return to the example, and from there to the starting
+  screen with focus on that example's card. The search query and results are
+  kept throughout.
+- **No new API:** an example is resolved in the browser from the existing reads
+  (one keyword search, the matched Concepts, one unit source) using a fixed
+  query and a word from one unit's stored wording (`web/src/demo/examples.ts`).
+  If a build lacks an example, the page says so and offers that search instead
+  of guessing; `GuidedExample.test.tsx` keeps the definitions in step with
+  `scripts/demo/flh073/fixtures/catalog.json`.
+- **Labels:** *Read-only* and *Synthetic data* stay in the header on every
+  screen; a mechanical build adds *Development build* and a plain warning that
+  semantic and hybrid results in that build are not meaningful. The
+  synthetic/read-only/no-AI notice and the artifact identity line stay visible
+  on the starting screen; only the longer explanation of Concepts and search
+  modes is folded under "How this demo works".
+- **Check:** `scripts/validation/demo_first_visit/accept_guided.mjs` (README
+  beside it) walks every example in both languages at both widths, plus the
+  loading, failed-read and no-match states.
+
 ## Limits
 
 - **Synthetic data:** 11 questions (3 written in French), 16 units and 14

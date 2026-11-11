@@ -16,6 +16,8 @@ import type {
 } from "../types/library";
 import { useI18n, type I18n, type MessageKey } from "../i18n";
 import { RecallPractice } from "./RecallPractice";
+import { DEMO_EXAMPLES } from "../demo/examples";
+import { ExamplePicker, ExampleScreen, focusExampleCard } from "../demo/ExampleScreen";
 
 // One search outcome per submitted query. Semantic and hybrid modes need a
 // query; with an empty one nothing is requested (browsing is keyword search's job).
@@ -31,11 +33,15 @@ type Load<T> = { status: "loading" } | { status: "error"; message: string } | { 
 // this component's state, so returning shows the same search and results.
 // Recall practice (private workbench only) is opened from a Concept; a source
 // opened from practice keeps that practice session (`practice`) mounted.
+// The public demo's guided examples (`example`) are a second starting point: a
+// Concept or source opened from one keeps its key (`from`), so their back
+// actions return to that example instead of the search results.
 type Screen =
   | { kind: "results" }
-  | { kind: "concept"; conceptId: number }
+  | { kind: "example"; example: string }
+  | { kind: "concept"; conceptId: number; from?: string }
   | { kind: "practice"; conceptId: number; session: number }
-  | { kind: "source"; conceptId: number; unitId: number; practice?: number };
+  | { kind: "source"; conceptId: number; unitId: number; practice?: number; from?: string };
 
 const resultButtonId = (conceptId: number) => `library-result-${conceptId}`;
 
@@ -119,10 +125,16 @@ const searchFailedKey: Record<LibrarySearchMode, MessageKey> = {
 // semantic and hybrid search run only the demo's preset queries.
 export function KnowledgeLibrary({
   demo,
+  intro,
+  guided = false,
   openRequest = null,
   onOpenRecord,
 }: {
   demo?: PublicDemoInfo;
+  // Public demo only: text shown above the search on the starting screen, and
+  // the guided examples (`guided`). The workbench passes neither.
+  intro?: ReactNode;
+  guided?: boolean;
   // A Concept another workbench view asked to open (a record's filed unit, a
   // confirmed suggestion). The nonce makes a repeated request open it again.
   openRequest?: { conceptId: number; nonce: number } | null;
@@ -139,6 +151,7 @@ export function KnowledgeLibrary({
   const [screen, setScreen] = useState<Screen>({ kind: "results" });
   const [retry, setRetry] = useState(0);
   const returnTo = useRef<number | null>(null);
+  const returnToExample = useRef<string | null>(null);
   // Each start of recall practice is a new, empty session.
   const practiceSession = useRef(0);
 
@@ -159,7 +172,12 @@ export function KnowledgeLibrary({
 
   // On return, focus the result the reader opened. Detail screens focus their own heading.
   useEffect(() => {
-    if (screen.kind === "results" && returnTo.current !== null && search.status === "ready") {
+    if (screen.kind !== "results") return;
+    if (returnToExample.current !== null) {
+      focusExampleCard(returnToExample.current);
+      returnToExample.current = null;
+      returnTo.current = null;
+    } else if (returnTo.current !== null && search.status === "ready") {
       document.getElementById(resultButtonId(returnTo.current))?.focus();
       returnTo.current = null;
     }
@@ -175,7 +193,21 @@ export function KnowledgeLibrary({
     returnTo.current = conceptId;
     setScreen({ kind: "results" });
   };
-  const openConcept = (conceptId: number) => setScreen({ kind: "concept", conceptId });
+  const openConcept = (conceptId: number, from?: string) => setScreen({ kind: "concept", conceptId, from });
+  const openExample = (key: string) => setScreen({ kind: "example", example: key });
+  const backFromExample = (key: string) => {
+    returnToExample.current = key;
+    setScreen({ kind: "results" });
+  };
+  // The guided example a Concept or source was opened from, if any.
+  const fromExample = (key: string | undefined) => (key ? DEMO_EXAMPLES.find((e) => e.key === key) : undefined);
+  const searchFor = (q: string) => {
+    setDraft({ q, state: "all" });
+    setQuery({ q, state: "all" });
+    setDraftMode("keyword");
+    setMode("keyword");
+    setScreen({ kind: "results" });
+  };
   const requestedNonce = openRequest?.nonce ?? null;
   const requestedConcept = openRequest?.conceptId ?? null;
   useEffect(() => {
@@ -194,6 +226,13 @@ export function KnowledgeLibrary({
   return (
     <main className="library">
       <div hidden={screen.kind !== "results"}>
+        {intro}
+        {guided ? <ExamplePicker onOpen={openExample} /> : null}
+        {guided ? (
+          <h2 className="demo-section-heading" id="demo-search-heading">
+            {t("demo.search.heading")}
+          </h2>
+        ) : null}
         <form className="panel library-search" role="search" onSubmit={submit}>
           {demo && draftMode !== "keyword" ? (
             <label htmlFor="library-preset">{t("library.exampleQuery")}</label>
@@ -315,14 +354,29 @@ export function KnowledgeLibrary({
           </div>
         )}
       </div>
+      {screen.kind === "example" && guided && fromExample(screen.example) ? (
+        <ExampleScreen
+          key={`example-${screen.example}`}
+          example={fromExample(screen.example)!}
+          onBack={() => backFromExample(screen.example)}
+          onSearch={searchFor}
+          onOpenExample={openExample}
+          onOpenConcept={(conceptId) => openConcept(conceptId, screen.example)}
+          onOpenSource={(conceptId, unitId) => setScreen({ kind: "source", conceptId, unitId, from: screen.example })}
+        />
+      ) : null}
       {screen.kind === "concept" ? (
         <ConceptScreen
           key={`concept-${screen.conceptId}`}
           conceptId={screen.conceptId}
-          backLabel={t("library.backTo", { label: resultsLabel })}
-          onBack={() => backToResults(screen.conceptId)}
-          onOpenConcept={openConcept}
-          onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId })}
+          backLabel={
+            fromExample(screen.from)
+              ? t("demo.example.backTo", { title: t(fromExample(screen.from)!.title) })
+              : t("library.backTo", { label: resultsLabel })
+          }
+          onBack={() => (screen.from ? openExample(screen.from) : backToResults(screen.conceptId))}
+          onOpenConcept={(conceptId) => openConcept(conceptId, screen.from)}
+          onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId, from: screen.from })}
           // The public demo has no recall practice.
           onPractice={
             demo
@@ -349,15 +403,19 @@ export function KnowledgeLibrary({
           key={`source-${screen.unitId}`}
           unitId={screen.unitId}
           conceptId={screen.conceptId}
-          resultsLabel={resultsLabel}
-          onBackToConcept={() => openConcept(screen.conceptId)}
-          onBackToResults={() => backToResults(screen.conceptId)}
+          backText={
+            fromExample(screen.from)
+              ? t("demo.example.backTo", { title: t(fromExample(screen.from)!.title) })
+              : t("library.backTo", { label: resultsLabel })
+          }
+          onBackToConcept={() => openConcept(screen.conceptId, screen.from)}
+          onBackToResults={() => (screen.from ? openExample(screen.from) : backToResults(screen.conceptId))}
           onBackToPractice={
             screen.practice !== undefined
               ? () => setScreen({ kind: "practice", conceptId: screen.conceptId, session: screen.practice! })
               : undefined
           }
-          onOpenConcept={openConcept}
+          onOpenConcept={(conceptId) => openConcept(conceptId, screen.from)}
           onOpenRecord={onOpenRecord}
         />
       ) : null}
@@ -863,7 +921,7 @@ const resolutionText: Record<string, MessageKey> = {
 function SourceScreen({
   unitId,
   conceptId,
-  resultsLabel,
+  backText,
   onBackToConcept,
   onBackToResults,
   onBackToPractice,
@@ -872,7 +930,9 @@ function SourceScreen({
 }: {
   unitId: number;
   conceptId: number;
-  resultsLabel: string;
+  // The second back action's full text: to the search results, or to the
+  // guided example the source was opened from.
+  backText: string;
   onBackToConcept: () => void;
   onBackToResults: () => void;
   // Set when the source was opened from recall practice: the only way back is
@@ -898,7 +958,7 @@ function SourceScreen({
         {t("library.source.backToConcept", { id: conceptId })}
       </button>
       <button type="button" className="ghost" onClick={onBackToResults}>
-        {t("library.backTo", { label: resultsLabel })}
+        {backText}
       </button>
     </div>
   );

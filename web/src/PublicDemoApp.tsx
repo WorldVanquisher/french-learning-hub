@@ -39,6 +39,44 @@ function PublicDemo() {
     };
   }, []);
   const strong = (text: string) => <strong>{text}</strong>;
+  const mechanical = info.status === "ready" && !info.data.artifact.real_model;
+
+  // The starting screen: one sentence on what to do, the warning a mechanical
+  // build needs, the longer explanation folded away, and the synthetic-data
+  // notice and artifact identity always in view. The labels in the header stay
+  // visible on every screen.
+  const intro =
+    info.status === "ready" ? (
+      <section className="panel demo-intro" aria-label={t("demo.about")}>
+        <p className="demo-lead">{t("demo.lead")}</p>
+        {mechanical ? (
+          <div className="banner info" role="status">
+            {tn("demo.mechanical.short", { strong: strong(t("demo.mechanical.strong")) })}
+          </div>
+        ) : null}
+        <details className="demo-details">
+          <summary>{t("demo.details")}</summary>
+          <p>{tn("demo.about.concepts", { concept: strong(t("demo.term.concept")) })}</p>
+          <p>
+            {tn("demo.about.modes", {
+              keyword: strong(t("demo.term.keyword")),
+              semantic: strong(t("demo.term.semantic")),
+              hybrid: strong(t("demo.term.hybrid")),
+            })}
+          </p>
+          {mechanical ? <p className="hint">{t("demo.mechanical", { generator: info.data.artifact.vector_generator })}</p> : null}
+        </details>
+        <p className="hint">{t("demo.about.synthetic")}</p>
+        <p className="hint">
+          {t("demo.artifact", {
+            version: info.data.artifact.version,
+            source: info.data.artifact.vector_source,
+            model: info.data.artifact.model_id,
+            dimensions: info.data.artifact.dimensions,
+          })}
+        </p>
+      </section>
+    ) : null;
 
   return (
     <div className="app">
@@ -46,35 +84,19 @@ function PublicDemo() {
         <div>
           <h1>{t("demo.title")}</h1>
           <p className="subtitle">{t("demo.subtitle")}</p>
+          <p className="demo-labels">
+            <span className="tag demo-label">{t("demo.label.readOnly")}</span>{" "}
+            <span className="tag demo-label">{t("demo.label.synthetic")}</span>
+            {mechanical ? (
+              <>
+                {" "}
+                <span className="tag demo-label warn">{t("demo.label.mechanical")}</span>
+              </>
+            ) : null}
+          </p>
         </div>
         <LanguageSelect />
       </header>
-      <section className="panel" aria-label={t("demo.about")}>
-        <p>{tn("demo.about.concepts", { concept: strong(t("demo.term.concept")) })}</p>
-        <p>
-          {tn("demo.about.modes", {
-            keyword: strong(t("demo.term.keyword")),
-            semantic: strong(t("demo.term.semantic")),
-            hybrid: strong(t("demo.term.hybrid")),
-          })}
-        </p>
-        <p className="hint">{t("demo.about.synthetic")}</p>
-        {info.status === "ready" && !info.data.artifact.real_model ? (
-          <div className="banner info" role="status">
-            {t("demo.mechanical", { generator: info.data.artifact.vector_generator })}
-          </div>
-        ) : null}
-        {info.status === "ready" ? (
-          <p className="hint">
-            {t("demo.artifact", {
-              version: info.data.artifact.version,
-              source: info.data.artifact.vector_source,
-              model: info.data.artifact.model_id,
-              dimensions: info.data.artifact.dimensions,
-            })}
-          </p>
-        ) : null}
-      </section>
       {info.status === "loading" ? (
         <p className="empty" role="status">{t("demo.loading")}</p>
       ) : info.status === "error" ? (
@@ -82,7 +104,7 @@ function PublicDemo() {
           {t("demo.unavailable", { message: info.message })}
         </div>
       ) : (
-        <KnowledgeLibrary demo={info.data} />
+        <KnowledgeLibrary demo={info.data} intro={intro} guided />
       )}
     </div>
   );

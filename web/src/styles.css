@@ -889,3 +889,42 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .writing-report .label { font-weight: 600; }
 .writing .banner .ghost { margin-left: 6px; }
 .writing .listening-save input[type="text"] { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; }
+
+/* Public demo first visit: persistent labels, a one-sentence lead, guided
+   examples and their three steps (question → units → Concepts). Standard
+   theme tokens only; nothing here applies to the private workbench. */
+.demo-labels { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+.tag.demo-label { color: var(--muted); border-color: var(--border-strong); }
+.tag.demo-label.warn { color: #93370d; border-color: var(--warn-border); background: var(--warn-bg); }
+.demo-lead { font-size: 17px; margin: 0 0 12px; }
+.demo-details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+.demo-details summary:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+.demo-details[open] summary { margin-bottom: 8px; }
+.demo-section-heading { font-size: 16px; margin: 20px 0 8px; }
+.demo-example-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.demo-example-card {
+  display: flex; flex-direction: column; gap: 6px; width: 100%; height: 100%;
+  padding: 12px 14px; text-align: left; font: inherit; color: var(--text);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+}
+.demo-example-card:hover { border-color: var(--accent); }
+.demo-example-card:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+.demo-example-title { font-weight: 600; }
+.demo-example-summary { color: var(--muted); font-size: 14px; }
+.demo-example-open { margin-top: auto; color: var(--accent); font-size: 14px; }
+.demo-eyebrow { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.demo-step h3 { display: flex; align-items: center; gap: 8px; }
+.demo-step-n {
+  display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--same); color: #fff; font-size: 12px;
+}
+.demo-question {
+  margin: 8px 0; padding: 10px 14px; font-size: 18px; line-height: 1.45;
+  border-left: 4px solid var(--same); background: var(--bg); overflow-wrap: anywhere;
+}
+.demo-units { list-style: none; padding: 0; margin: 0; }
+.demo-unit { border-top: 1px solid var(--border); padding: 10px 0; overflow-wrap: anywhere; }
+.demo-unit:first-child { border-top: 0; }
+.demo-unit p { margin: 4px 0; }
+.demo-unit-canonical, .demo-concept-title { font-weight: 600; }
+.demo-unit .link-button { display: inline; text-align: left; white-space: normal; }
