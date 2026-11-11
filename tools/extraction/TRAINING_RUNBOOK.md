@@ -1,19 +1,30 @@
 # Knowledge-extractor training: experiment proposal and runbook
 
-**Status (2026-11-10): data and pipeline prepared; no model has been trained
-or evaluated.** The only training runs were CPU smoke runs of a tiny,
-randomly initialized fixture model that prove the pipeline mechanics. No
-AWS command, upload or job has been run, and no paid provider has been called.
+**Status (2026-11-11): data and pipeline prepared; no model has been trained
+or evaluated.** The default candidate is now **Qwen/Qwen3.5-4B** (§1a); the
+pending Qwen3-1.7B baseline is **superseded and was never run**.
+
+What actually ran:
+- the CPU smoke runs of 2026-11-10 used a tiny, randomly initialized
+  Qwen2-architecture fixture (`tests/build_tiny_model.py`, transformers 4.57.6),
+  not Qwen3 or Qwen3.5;
+- on 2026-11-11, a tiny randomly initialized **Qwen3.5-architecture** model
+  (4 layers, 16 M parameters, the real Qwen3.5 tokenizer) was used only to
+  prove loading, LoRA, save/reload and prediction under transformers 5.21.1.
+
+Neither is a model. No real Qwen3.5-4B weights were downloaded and no
+inference with them was run. No AWS command, upload or job has been run, and
+no paid provider has been called.
 
 ## 1. The experiment (one, bounded)
 
 | Item | Choice |
 |---|---|
 | Task | the production `knowledge_extraction_v2` contract: the same developer instruction and user payload (`extraction-render render`), the same JSON output |
-| Base model | `Qwen/Qwen3-1.7B`, Apache-2.0, revision `70d244cc86ccca08cf5af4e1e306ecf908b1ad5e` (Hugging Face API, 2026-11-10) |
-| Why this model | small enough for one 24 GB GPU with LoRA; French and Chinese capable (both statements are required); a chat template with a non-thinking mode (`enable_thinking: false`), checked on all 1,200 records: the prompt is an exact token prefix and every record fits 1,024 tokens (max 988, median 628) |
-| Alternative to check first | the Qwen3.5 small models (0.8B/2B, published 2026-02) are tagged image-text-to-text on Hugging Face; confirm text-only fine-tuning support before comparing |
-| Method | LoRA r=16 on attention and MLP projections, bf16, 3 epochs, lr 2e-4, batch 4 × accumulation 4 (`configs/sft-qwen3-1.7b-lora.json`); loss on the answer tokens only |
+| Base model | `Qwen/Qwen3.5-4B`, Apache-2.0, revision `851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a` (Hugging Face API, 2026-11-11); profile `qwen3.5-4b` in `flh_extraction/models.py` |
+| Superseded | `Qwen/Qwen3-1.7B` revision `70d244cc…` (profile `qwen3-1.7b`, `configs/sft-qwen3-1.7b-lora.json`): never run, kept for reproducibility |
+| Why this model | French and Chinese capable (both statements are required); Apache-2.0; a chat template with a non-thinking mode; fits one 24 GB GPU with LoRA in bf16 (§1a). Text-only fine-tuning was verified to load and train through the standard causal-LM path (§1a) |
+| Method | LoRA r=16 on the text stack's attention, linear-attention and MLP projections (profile targets), bf16, 3 epochs, lr 2e-4, batch 1 × accumulation 16, max_length 1280 (`configs/sft-qwen3.5-4b-lora.json`); loss on the answer tokens only |
 | Data | 1,076 train + 124 dev synthetic, machine-authored, **unreviewed** candidates; split by learning point and family |
 | Comparison | the current extractor and the fine-tuned model on the **same frozen 200 evaluation candidates**, both through the production validator (`extraction-render validate`) and the harness (`python3 -m flh_extraction evaluate`), with human match judgments |
 
@@ -36,11 +47,46 @@ numbers from human judgments only):
    provider request per item: owner decision).
 4. A passing SageMaker smoke job (step 6).
 
+## 1a. Qwen3.5-4B: wiring and what was verified (2026-11-11)
+
+The model-specific parts live in one profile (`flh_extraction/models.py`):
+loader, chat-template options, LoRA targets and verified library versions.
+Datasets, prompts, splits and the evaluator do not know which model is used.
+
+Verified, in a disposable container (torch 2.15.0 CPU, transformers 5.21.1,
+tokenizers 0.23.3, peft 0.21.2, huggingface_hub 2.4.0; network off for the checks):
+
+| Check | Result |
+|---|---|
+| Library support | transformers 4.57.6 (the earlier pin) has **no `qwen3_5`**; 5.21.1 has it |
+| Checkpoint | `Qwen3_5ForConditionalGeneration` (image-text-to-text): 24 Gated DeltaNet layers (`linear_attn.*`) and 8 full-attention layers (`self_attn.*`), vocabulary 248,320, tied embeddings, a 24-layer vision tower, 15 MTP tensors |
+| Loader | `AutoModelForCausalLM` → `Qwen3_5ForCausalLM` loads `model.language_model.*` from a multimodal checkpoint with no missing or unexpected keys; logits equal the multimodal model's on a text prompt (tiny random model). The vision tower is not loaded; no processor, Pillow or torchvision is needed |
+| Tokenizer / template | `Qwen3_5Tokenizer`, template from `chat_template.jinja`. **The template's default opens a thinking block** (`<think>\n`); the profile sets `enable_thinking: false`, so prompts end with an empty `<think></think>` block and labels contain no `<think>` |
+| Masking | 1,076 train + 124 dev SFT records: 0 prefix errors. Fixed in `train.encode`: the template closes the turn itself (`<|im_end|>\n`), so the target now ends at that first `<|im_end|>` instead of `…<|im_end|>\n<|im_end|>` (this also affected the 1.7B template) |
+| Lengths (Qwen3.5 tokenizer, after the masking fix) | train median 632 / p95 820 / max 980 tokens; dev max 965; answers max 386; eval prompts max 584. `max_length` 1280 truncates nothing; `max_new_tokens` 512 covers every answer |
+| LoRA | profile regex targets `in_proj_qkv`, `in_proj_z`, `out_proj`, `q/k/v/o_proj` and the MLPs of the text stack only (25 modules in the 4-layer tiny model; vision and MTP never match) |
+| Save / reload / predict | tiny Qwen3.5 model: 3 LoRA steps, adapter saved, base + adapter reloaded, prediction through `predict.py --profile qwen3.5-4b`; `scripts/untuned_baseline.sh` ran end to end (outputs unparseable, as expected from random weights) |
+| Kernels | without `causal-conv1d` and `flash-linear-attention`, transformers uses a correct but much slower PyTorch fallback for the linear-attention layers. Not installed or tested here |
+
+Estimates (not measured with real weights):
+- **Disk:** 9,319,737,856 bytes of weights (BF16, two shards) plus about
+  23 MB of tokenizer files: keep ≥ 20 GB free on the target volume, never `/tmp`.
+- **Memory, inference:** about 9–10 GB of GPU memory in bf16 (text stack about
+  8.5 GB, full-attention KV for 1.1 k tokens about 40 MB). On CPU, about 10–12 GB
+  of RAM and the slow fallback kernels: not practical on the NAS (15 GB RAM, no GPU).
+- **Memory, LoRA training on a 24 GB A10G:** weights about 8.5 GB plus activations
+  for one 1,280-token sequence without gradient checkpointing; batch 1 is set for
+  this reason. Confirm with the smoke job before the experiment.
+- **Time:** unknown. The fallback kernels may make the 3 h experiment bound
+  (§10) too short; the smoke job's duration decides.
+
 ## 2. Local checks (no network after installation)
 
 ```sh
 cd tools/extraction
-python3 -B -m unittest discover -s tests -t tests                      # standard-library tests
+python3 -B -m unittest discover -s tests -t tests                      # standard-library tests (23, 5 skipped)
+TINY_SFT=OUT/sft-sample.jsonl python3 -B -m unittest discover -s tests -t tests   # + backend tests (needs requirements-train.txt)
+python3 -B scripts/check_tokenizer.py qwen3.5-4b-851bf6e8 OUT/sft-train.jsonl --profile qwen3.5-4b --max-length 1280
 go build -o /tmp/extraction-render ../../cmd/extraction-render
 # Rebuild every dataset deterministically from the hand-written banks:
 python3 -I -B authoring/build_boundary.py OUT/boundary
@@ -73,8 +119,8 @@ aws ecr get-login-password --region $REGION | docker login --username AWS --pass
 docker tag flh-extractor-sft:gpu $REG/flh-extractor-sft:gpu && docker push $REG/flh-extractor-sft:gpu
 aws ecr describe-images --region $REGION --repository-name flh-extractor-sft --image-ids imageTag=gpu --query 'imageDetails[0].imageDigest'
 # 4. Pinned base weights (network isolation: the job cannot download them)
-python3 -c "from huggingface_hub import snapshot_download as s; s('Qwen/Qwen3-1.7B', revision='70d244cc86ccca08cf5af4e1e306ecf908b1ad5e', local_dir='qwen3-1.7b')"
-aws s3 cp --recursive qwen3-1.7b s3://$BUCKET/extractor/models/qwen3-1.7b-70d244cc/
+hf download Qwen/Qwen3.5-4B --revision 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a --local-dir qwen3.5-4b-851bf6e8   # ~9.3 GB
+aws s3 cp --recursive qwen3.5-4b-851bf6e8 s3://$BUCKET/extractor/models/qwen3.5-4b-851bf6e8/
 # 5. Synthetic SFT data (train and dev only; never the evaluation references)
 TRAIN_SHA=$(sha256sum OUT/sft-train.jsonl | cut -d' ' -f1)
 aws s3 cp OUT/sft-train.jsonl s3://$BUCKET/extractor/datasets/$TRAIN_SHA/train/sft-train.jsonl
@@ -93,7 +139,7 @@ python3 deploy/aws/sagemaker-extractor/render_job.py deploy/aws/sagemaker-extrac
 ```
 
 `values.json` holds `REGISTRY`, `IMAGE_DIGEST` (`sha256:…`), `EXEC_ROLE_ARN`,
-`BUCKET`, `BASE_MODEL_KEY` (`qwen3-1.7b-70d244cc`), `TRAIN_SHA256`,
+`BUCKET`, `BASE_MODEL_KEY` (`qwen3.5-4b-851bf6e8`), `TRAIN_SHA256`,
 `DEV_SHA256`, `CONFIG_JSON` (the config as a JSON string) and, for
 prediction, `PROMPTS_SHA256` and `ADAPTER_KEY`. The renderer refuses another
 instance type, a longer runtime than the run's bound, network access, an
@@ -111,8 +157,31 @@ python3 -B -m flh_extraction attach-inputs --predictions predictions.jsonl --can
 EXTRACTOR_PROVIDER=openai OPENAI_MODEL=<model> OPENAI_API_KEY=… \
   /tmp/extraction-render run -in OUT/eval/eval_candidates.jsonl -out results-current.jsonl -max-requests 200 -confirm-paid-calls
 python3 -B -m flh_extraction evaluate --refs OUT/eval/eval_candidates.jsonl --results results-current.jsonl --judgments judgments.jsonl --title "Current extractor" --out report-current
-python3 -B -m flh_extraction evaluate --refs OUT/eval/eval_candidates.jsonl --results results-sft.jsonl --judgments judgments.jsonl --title "Qwen3-1.7B LoRA" --out report-sft
+python3 -B -m flh_extraction evaluate --refs OUT/eval/eval_candidates.jsonl --results results-sft.jsonl --judgments judgments.jsonl --title "Qwen3.5-4B LoRA" --out report-sft
 ```
+
+## 9a. First untuned Qwen3.5-4B run (50 frozen examples, local GPU)
+
+One command, no training, no network (weights at the pinned revision must
+already be on disk). It selects a fixed 50-item subset of the frozen evaluation
+set (all 20 zero-unit references, the fragmentation/duplicate/mixed cases, 10
+two-unit references, 15 evenly spaced singles), predicts with thinking off,
+validates with the production validator, runs the harness and reports
+**schema validity, unsupported claims, abstention and splitting separately**
+(`categories.md`). The evaluation file is only read.
+
+```sh
+cd tools/extraction
+EVAL=OUT/eval/eval_candidates.jsonl PROMPTS=OUT/eval-prompts-inputs-only.jsonl RENDER=/tmp/extraction-render \
+  bash scripts/untuned_baseline.sh /path/to/qwen3.5-4b-851bf6e8 OUT/untuned-qwen3.5-4b qwen3.5-4b
+```
+
+Expected subset: candidates SHA-256 `6969427c508148c88a0ef116131f8ef09f802e7347934e8ff554d4502f68ef3a`,
+prompts `656a24d50858ff063ef54d37db190c91c010f3d641c7bd879a22fd7df3231118`
+(from eval `99602feb…` and prompts `68a2c499…`). Semantic numbers are
+PROVISIONAL (automatic matcher); FALSE_CLAIM needs human claim judgments.
+The SageMaker prediction template always mounts an `adapter` channel, so an
+untuned prediction job there needs a template variant (owner decision).
 
 ## 10. Cost bound
 
@@ -120,7 +189,9 @@ python3 -B -m flh_extraction evaluate --refs OUT/eval/eval_candidates.jsonl --re
 ap-northeast-1), from the official AmazonSageMaker Price List extract kept
 with the A6 handoff (publication 2026-11-07). Bounds by `MaxRuntimeInSeconds`:
 smoke ≤ 0.5 h = **$0.70**; experiment ≤ 3 h = **$4.22**; prediction ≤ 1 h =
-**$1.41**; storage of ~3.5 GB of weights is cents per month. The current
+**$1.41**; storage of ~9.3 GB of weights is cents per month. With Qwen3.5-4B
+these bounds are untested: the smoke job (≤ 0.5 h) must show the step time
+before the experiment is submitted. The current
 extractor's baseline is 200 provider requests at the owner's model price.
 
 ## 11. Never

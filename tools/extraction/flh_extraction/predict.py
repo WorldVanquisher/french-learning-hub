@@ -1,7 +1,11 @@
 """Generate outputs for inputs-only evaluation prompts (optional backend).
 
-  python3 -m flh_extraction.predict --model DIR [--adapter DIR] --prompts P.jsonl --out O.jsonl
+  python3 -m flh_extraction.predict --model DIR --profile NAME [--adapter DIR] --prompts P.jsonl --out O.jsonl
          [--candidates C.jsonl] [--max-new-tokens N] [--template-kwargs JSON] [--limit N]
+
+--profile (flh_extraction/models.py) supplies the loader and the chat-template
+options; --template-kwargs overrides the latter. For Qwen3.5 the profile turns
+thinking off, which the template would otherwise open by default.
 
 Greedy decoding. Each output line is {"id", "output_text"} plus the
 candidate's model-visible "input" when --candidates is given, ready for
@@ -13,6 +17,7 @@ import json
 import sys
 from pathlib import Path
 
+from . import models
 from .train import render_chat
 
 
@@ -24,18 +29,19 @@ def main(argv):
     ap.add_argument("--out", required=True)
     ap.add_argument("--candidates")
     ap.add_argument("--max-new-tokens", type=int, default=512)
-    ap.add_argument("--template-kwargs", default="{}")
+    ap.add_argument("--profile", default="auto", choices=sorted(models.PROFILES))
+    ap.add_argument("--template-kwargs")
     ap.add_argument("--limit", type=int)
     a = ap.parse_args(argv)
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    tok = AutoTokenizer.from_pretrained(a.model, local_files_only=True)
-    model = AutoModelForCausalLM.from_pretrained(a.model, local_files_only=True)
+    cfg = {"model_name_or_path": a.model, "model_profile": a.profile, "local_files_only": True}
+    tok = models.load_tokenizer(cfg)
+    model = models.load_model(cfg)
     if a.adapter:
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, a.adapter)
     model.eval()
-    kw = json.loads(a.template_kwargs)
+    kw = json.loads(a.template_kwargs) if a.template_kwargs is not None else models.template_kwargs(cfg)
     inputs = {}
     if a.candidates:
         for line in Path(a.candidates).read_text(encoding="utf-8").splitlines():
@@ -58,7 +64,7 @@ def main(argv):
             if p["id"] in inputs:
                 row["input"] = inputs[p["id"]]
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
-    print(json.dumps({"predicted": len(prompts)}))
+    print(json.dumps({"predicted": len(prompts), "profile": a.profile, "chat_template_kwargs": kw}))
     return 0
 
 

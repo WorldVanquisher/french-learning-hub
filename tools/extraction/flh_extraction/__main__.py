@@ -7,6 +7,8 @@
   sft       --candidates C.jsonl --rendered P.jsonl --out SFT.jsonl
   eval-prompts --candidates E.jsonl --rendered P.jsonl --out PROMPTS.jsonl
   attach-inputs --predictions P.jsonl --candidates E.jsonl --out O.jsonl   (for extraction-render validate)
+  categories --refs R.jsonl --results V.jsonl --report REPORT.json --title T --out PREFIX
+            (schema validity, unsupported claims, abstention and splitting, reported separately)
 """
 
 import argparse
@@ -14,7 +16,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import evaluate, manifest, records, sft, splits
+from . import categories, evaluate, manifest, records, sft, splits
 
 
 def dump(path, obj):
@@ -39,6 +41,8 @@ def main(argv):
     s = sub.add_parser("sft"); s.add_argument("--candidates"); s.add_argument("--rendered"); s.add_argument("--out")
     p = sub.add_parser("eval-prompts"); p.add_argument("--candidates"); p.add_argument("--rendered"); p.add_argument("--out")
     j = sub.add_parser("attach-inputs"); j.add_argument("--predictions"); j.add_argument("--candidates"); j.add_argument("--out")
+    k = sub.add_parser("categories"); k.add_argument("--refs"); k.add_argument("--results"); k.add_argument("--report")
+    k.add_argument("--title", default="Failure categories"); k.add_argument("--out")
     a = ap.parse_args(argv)
     if a.cmd == "check":
         train, evals = records.load_jsonl(a.train), records.load_jsonl(a.eval)
@@ -120,6 +124,13 @@ def main(argv):
             raise SystemExit(f"predictions for unknown ids: {missing[:5]}")
         write_jsonl(a.out, [{"id": p["id"], "input": inputs[p["id"]], "output_text": p["output_text"]} for p in preds])
         print(json.dumps({"attached": len(preds)}))
+        return 0
+    if a.cmd == "categories":
+        s = categories.summarize(records.load_jsonl(a.refs), records.load_jsonl(a.results),
+                                 json.loads(Path(a.report).read_text(encoding="utf-8")))
+        dump(a.out + ".json", s)
+        Path(a.out + ".md").write_text(categories.markdown(s, a.title), encoding="utf-8")
+        print(json.dumps({k: s[k] for k in ("schema_validity", "unsupported", "abstention", "splitting")}, ensure_ascii=False))
         return 0
     return 2
 

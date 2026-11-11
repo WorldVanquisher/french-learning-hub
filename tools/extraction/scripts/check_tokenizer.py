@@ -2,7 +2,10 @@
 prefix of the full conversation (so masking is exact), and report sequence
 lengths against max_length.
 
-  python3 check_tokenizer.py TOKENIZER_DIR SFT.jsonl [--template-kwargs JSON] [--max-length N]
+  python3 check_tokenizer.py TOKENIZER_DIR SFT.jsonl [--profile NAME] [--template-kwargs JSON] [--max-length N]
+
+--profile takes the chat-template options from flh_extraction/models.py;
+--template-kwargs overrides them.
 """
 
 import json
@@ -11,6 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from flh_extraction import models  # noqa: E402
 from flh_extraction.train import IGNORE, encode  # noqa: E402
 from transformers import AutoTokenizer  # noqa: E402
 
@@ -37,6 +41,7 @@ def main(tok_dir, sft, template_kwargs, max_length):
 
 if __name__ == "__main__":
     a = sys.argv[1:]
-    kw = json.loads(a[a.index("--template-kwargs") + 1]) if "--template-kwargs" in a else {}
+    profile = a[a.index("--profile") + 1] if "--profile" in a else "auto"
+    kw = json.loads(a[a.index("--template-kwargs") + 1]) if "--template-kwargs" in a else dict(models.get(profile)["chat_template_kwargs"])
     ml = int(a[a.index("--max-length") + 1]) if "--max-length" in a else 1024
     main(a[0], a[1], kw, ml)
