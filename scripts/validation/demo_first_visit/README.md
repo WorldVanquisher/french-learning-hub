@@ -32,3 +32,28 @@ CHROME=/usr/bin/chromium node accept_guided.mjs http://127.0.0.1:18990/ /abs/out
 ```
 
 Evidence: `OUT/results.json` and one screenshot per step.
+
+## Resilience: `accept_resilience.mjs`
+
+Delays, fails or lengthens responses **in the browser** (Playwright routing; the
+server and its data are untouched) and checks one failure case per check:
+
+- long text (a long French question with an unbroken word, long Concept,
+  unit and identifier text) in both languages at 1280 and 390 px: no
+  horizontal scroll, the whole question shown, return actions in view;
+- a failed demo description (stated with its status, recovered by *Try
+  again* without a reload), a failed search and a failed source read, each
+  recovered by retry with the query and back actions kept;
+- out-of-order reads: a slower, older search or Concept answer never replaces
+  a newer one;
+- an empty status filter, a double click on an example (one Back returns),
+  rapid example switching;
+- browser Back from evidence and Concept to the results, with the query,
+  results, focus and scroll position kept.
+
+```sh
+CHROME=/usr/bin/chromium node accept_resilience.mjs http://127.0.0.1:18990/ /abs/out/resilience
+```
+
+The same failure cases run without a browser in
+`web/src/demo/Resilience.test.tsx`.

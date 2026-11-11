@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "./api/client";
+import { ApiError } from "./api/client";
 import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import type { PublicDemoInfo } from "./types/library";
 import { LanguageSelect, LocaleProvider, useI18n } from "./i18n";
@@ -23,6 +24,9 @@ function PublicDemo() {
   const [info, setInfo] = useState<{ status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: PublicDemoInfo }>({
     status: "loading",
   });
+  // A failed read of the demo description is retried in place: a visitor who
+  // arrives during a restart should not have to know to reload the page.
+  const [attempt, setAttempt] = useState(0);
   // The shared index.html names the workbench; the demo names itself. The
   // provider sets the document language.
   useEffect(() => {
@@ -30,14 +34,22 @@ function PublicDemo() {
   }, [t]);
   useEffect(() => {
     let active = true;
+    setInfo({ status: "loading" });
     api
       .getPublicDemo()
       .then((data) => active && setInfo({ status: "ready", data }))
-      .catch((e: unknown) => active && setInfo({ status: "error", message: e instanceof Error ? e.message : String(e) }));
+      .catch(
+        (e: unknown) =>
+          active &&
+          setInfo({
+            status: "error",
+            message: e instanceof ApiError ? `(${e.status}) ${e.message}` : e instanceof Error ? e.message : String(e),
+          }),
+      );
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
   const strong = (text: string) => <strong>{text}</strong>;
   const mechanical = info.status === "ready" && !info.data.artifact.real_model;
 
@@ -101,7 +113,10 @@ function PublicDemo() {
         <p className="empty" role="status">{t("demo.loading")}</p>
       ) : info.status === "error" ? (
         <div className="banner error" role="alert">
-          {t("demo.unavailable", { message: info.message })}
+          {t("demo.unavailable", { message: info.message })}{" "}
+          <button type="button" className="ghost" onClick={() => setAttempt((n) => n + 1)}>
+            {t("common.tryAgain")}
+          </button>
         </div>
       ) : (
         <KnowledgeLibrary demo={info.data} intro={intro} guided />

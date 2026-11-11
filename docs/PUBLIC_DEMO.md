@@ -514,6 +514,12 @@ Navigation and evidence (second change of the same task):
   not evidence of relevance; a model build shows none.
 - The private workbench's Knowledge Library is unchanged by all of this.
 
+Resilience: a failed read of the demo description is shown with its status and
+a *Try again* that recovers in place (before, the page stopped at "The demo is
+unavailable" until reloaded). Slow, failed, out-of-order and empty reads are
+exercised by `scripts/validation/demo_first_visit/accept_resilience.mjs` and
+`web/src/demo/Resilience.test.tsx`.
+
 ## Limits
 
 - **Synthetic data:** 11 questions (3 written in French), 16 units and 14
