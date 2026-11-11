@@ -1,0 +1,15 @@
+{
+  "$comment": "CPU smoke configuration for the tiny, randomly initialized fixture model (tests/build_tiny_model.py). Proves the pipeline only.",
+  "model_name_or_path": "TINY_MODEL_DIR",
+  "max_length": 2048,
+  "learning_rate": 0.003,
+  "max_steps": 30,
+  "batch_size": 2,
+  "grad_accum": 2,
+  "seed": 1,
+  "dtype": "float32",
+  "eval_every": 10,
+  "lora": null,
+  "smoke": true,
+  "local_files_only": true
+}

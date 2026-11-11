@@ -1,0 +1,5 @@
+*
+!Dockerfile
+!requirements-train.txt
+!flh_extraction/
+!flh_extraction/*.py

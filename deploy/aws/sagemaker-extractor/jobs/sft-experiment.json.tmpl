@@ -1,0 +1,95 @@
+{
+  "TrainingJobName": "${JOB_NAME}",
+  "AlgorithmSpecification": {
+    "TrainingImage": "${IMAGE_URI_BY_DIGEST}",
+    "TrainingInputMode": "File",
+    "ContainerEntrypoint": [
+      "python3",
+      "-B",
+      "-m",
+      "flh_extraction.sagemaker_entry"
+    ],
+    "ContainerArguments": [
+      "train"
+    ]
+  },
+  "RoleArn": "${EXEC_ROLE_ARN}",
+  "HyperParameters": {
+    "config_json": "${CONFIG_JSON}",
+    "train_sha256": "${TRAIN_SHA256}",
+    "dev_sha256": "${DEV_SHA256}"
+  },
+  "InputDataConfig": [
+    {
+      "ChannelName": "train",
+      "InputMode": "File",
+      "ContentType": "application/jsonl",
+      "DataSource": {
+        "S3DataSource": {
+          "S3DataType": "S3Prefix",
+          "S3Uri": "s3://${BUCKET}/extractor/datasets/${TRAIN_SHA256}/train/",
+          "S3DataDistributionType": "FullyReplicated"
+        }
+      }
+    },
+    {
+      "ChannelName": "dev",
+      "InputMode": "File",
+      "ContentType": "application/jsonl",
+      "DataSource": {
+        "S3DataSource": {
+          "S3DataType": "S3Prefix",
+          "S3Uri": "s3://${BUCKET}/extractor/datasets/${TRAIN_SHA256}/dev/",
+          "S3DataDistributionType": "FullyReplicated"
+        }
+      }
+    },
+    {
+      "ChannelName": "model",
+      "InputMode": "File",
+      "ContentType": "application/octet-stream",
+      "DataSource": {
+        "S3DataSource": {
+          "S3DataType": "S3Prefix",
+          "S3Uri": "s3://${BUCKET}/extractor/models/${BASE_MODEL_KEY}/",
+          "S3DataDistributionType": "FullyReplicated"
+        }
+      }
+    }
+  ],
+  "OutputDataConfig": {
+    "S3OutputPath": "s3://${BUCKET}/extractor/output/"
+  },
+  "ResourceConfig": {
+    "InstanceType": "ml.g5.xlarge",
+    "InstanceCount": 1,
+    "VolumeSizeInGB": 50
+  },
+  "StoppingCondition": {
+    "MaxRuntimeInSeconds": 10800
+  },
+  "EnableNetworkIsolation": true,
+  "EnableManagedSpotTraining": false,
+  "Tags": [
+    {
+      "Key": "Project",
+      "Value": "flh"
+    },
+    {
+      "Key": "Component",
+      "Value": "extractor-sft"
+    },
+    {
+      "Key": "Run",
+      "Value": "experiment"
+    },
+    {
+      "Key": "DatasetSha256",
+      "Value": "${TRAIN_SHA256}"
+    },
+    {
+      "Key": "ImageDigest",
+      "Value": "${IMAGE_DIGEST}"
+    }
+  ]
+}

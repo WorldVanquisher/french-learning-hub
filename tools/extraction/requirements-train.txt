@@ -1,0 +1,7 @@
+# Training backend, pinned to the versions the CPU smoke run used (2026-11-10).
+# The GPU image installs the same versions; torch from PyPI bundles its CUDA runtime.
+torch==2.15.0
+transformers==4.57.6
+peft==0.21.2
+tokenizers==0.22.2
+safetensors
