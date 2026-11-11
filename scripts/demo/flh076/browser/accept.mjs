@@ -98,7 +98,7 @@ try {
   check("free-text box hidden for semantic", (await page.getByLabel("Search learned material").count()) === 0);
   const preset = page.getByLabel("Example query");
   const options = await preset.locator("option").allInnerTexts();
-  check("8 presets shown with exact text", options.length === 8 && options.every((o) => /: “.+”$/.test(o)), options.join(" | "));
+  check("9 presets shown with exact text", options.length === 9 && options.every((o) => /: “.+”$/.test(o)), options.join(" | "));
   check("preset restriction note", /limited to a fixed list of example queries/.test(await page.getByRole("note").innerText()));
   check("demo semantic description (no embedding service claim)", (await page.getByText(/It needs that index and an embedding service/).count()) === 0 &&
     (await page.getByText(/using vectors stored with this demo/).count()) === 1);

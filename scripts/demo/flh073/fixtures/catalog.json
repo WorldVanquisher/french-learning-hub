@@ -59,10 +59,34 @@
       "original_context": "Synthetic example: a learner talking about habits.",
       "analysis": {"category": "grammar", "explanation": "« Ne … plus » means no longer.", "confidence": 0.8},
       "units": [{"key": "u-ne-plus", "kind": "grammar", "canonical": "ne plus", "statement": "« Ne … plus » means no longer: an action that has stopped.", "example": "Je ne fume plus."}]
+    },
+    {
+      "key": "e-y-en", "original_input": "Dans « j'y vais » et « j'en veux », qu'est-ce que « y » et « en » remplacent ?",
+      "original_context": "Synthetic example written in French for the public demo: a learner's question, not a real record.",
+      "analysis": {"category": "grammar", "explanation": "« Y » replaces a place or thing introduced by « à »; « en » replaces a noun introduced by « de », often a quantity.", "confidence": 0.8},
+      "units": [
+        {"key": "u-y-lieu", "kind": "grammar", "canonical": "y remplace à + lieu", "statement": "« Y » replaces a place or an idea introduced by « à »: je vais à Lyon → j'y vais.", "example": "Tu vas au marché ? Oui, j'y vais."},
+        {"key": "u-en-quantite", "kind": "grammar", "canonical": "en remplace de + nom", "statement": "« En » replaces a noun introduced by « de », or a quantity: je veux du pain → j'en veux.", "example": "Tu as des frères ? Oui, j'en ai deux."}
+      ]
+    },
+    {
+      "key": "e-il-faut-venir", "original_input": "Dans mon exercice : « Il faut que tu viennes demain ». Pourquoi « viennes » et pas « viens » ?",
+      "original_context": "Synthetic example written in French for the public demo: a learner's question, not a real record.",
+      "analysis": {"category": "grammar", "explanation": "After « il faut que », « venir » takes the subjunctive: que tu viennes.", "confidence": 0.8},
+      "units": [{"key": "u-il-faut-venir", "kind": "grammar", "canonical": "il faut que + subjonctif de venir", "statement": "« Il faut que » takes the subjunctive; for « venir » that is « que tu viennes ».", "example": "Il faut que tu viennes demain."}]
+    },
+    {
+      "key": "e-en-train-de", "original_input": "Pour dire « I'm cooking right now », est-ce que « je suis cuisinant » existe ?",
+      "original_context": "Synthetic example written in French for the public demo: a learner's question, not a real record.",
+      "analysis": {"category": "grammar", "explanation": "French has no « je suis cuisinant »: use the present, or « être en train de » + infinitive to stress that it is happening now.", "confidence": 0.85},
+      "units": [
+        {"key": "u-present-en-cours", "kind": "grammar", "canonical": "présent pour une action en cours", "statement": "The French present also describes an action happening now: je cuisine = I'm cooking.", "example": "Je ne peux pas répondre, je cuisine."},
+        {"key": "u-en-train-de", "kind": "grammar", "canonical": "être en train de + infinitif", "statement": "« Être en train de » + infinitive stresses that an action is in progress.", "example": "Je suis en train de cuisiner."}
+      ]
     }
   ],
   "concepts": [
-    {"key": "c-il-faut", "target": "subjunctive after « il faut que »", "pedagogical_intent": "grammar", "scope": "", "identity_features": {"mood": "subjonctif", "trigger": "il faut que"}, "members": ["u-il-faut"], "preferred": "u-il-faut"},
+    {"key": "c-il-faut", "target": "subjunctive after « il faut que »", "pedagogical_intent": "grammar", "scope": "", "identity_features": {"mood": "subjonctif", "trigger": "il faut que"}, "members": ["u-il-faut", "u-il-faut-venir"], "preferred": "u-il-faut"},
     {"key": "c-bien-que", "target": "subjunctive after « bien que »", "pedagogical_intent": "grammar", "scope": "", "identity_features": {"mood": "subjonctif", "trigger": "bien que"}, "members": ["u-bien-que-subj"], "preferred": ""},
     {"key": "c-bien-que-sens", "target": "« bien que » means although", "pedagogical_intent": "vocabulary", "scope": "", "identity_features": {}, "members": ["u-bien-que-sens"], "preferred": ""},
     {"key": "c-manquer", "target": "tu me manques: saying you miss someone", "pedagogical_intent": "expression", "scope": "", "identity_features": {"verb": "manquer"}, "members": ["u-manquer", "u-manquer-registre"], "preferred": "u-manquer"},
@@ -73,7 +97,9 @@
     {"key": "c-pendant", "target": "pendant for a finished duration", "pedagogical_intent": "grammar", "scope": "time expressions", "identity_features": {"marker": "pendant"}, "members": ["u-pendant"], "preferred": ""},
     {"key": "c-ne-plus", "target": "ne … plus: no longer", "pedagogical_intent": "grammar", "scope": "negation", "identity_features": {"negation": "ne plus"}, "members": ["u-ne-plus"], "preferred": ""},
     {"key": "c-ne-pas-encore", "target": "ne … pas encore: not yet", "pedagogical_intent": "grammar", "scope": "negation", "identity_features": {"negation": "ne pas encore"}, "members": [], "preferred": ""},
-    {"key": "c-y-en", "target": "the pronouns y and en", "pedagogical_intent": "grammar", "scope": "pronouns", "identity_features": {}, "members": [], "preferred": ""}
+    {"key": "c-y-en", "target": "the pronouns y and en", "pedagogical_intent": "grammar", "scope": "pronouns", "identity_features": {}, "members": ["u-y-lieu", "u-en-quantite"], "preferred": "u-y-lieu"},
+    {"key": "c-present-en-cours", "target": "the present tense for an action happening now", "pedagogical_intent": "grammar", "scope": "", "identity_features": {"tense": "présent", "use": "action en cours"}, "members": ["u-present-en-cours"], "preferred": ""},
+    {"key": "c-en-train-de", "target": "« être en train de » + infinitive: in the middle of doing", "pedagogical_intent": "grammar", "scope": "", "identity_features": {"construction": "être en train de", "use": "action en cours"}, "members": ["u-en-train-de"], "preferred": "u-en-train-de"}
   ],
   "presets": [
     {"id": "miss-someone", "label": "Telling a friend you miss them", "text": "how to tell a friend I miss them"},
@@ -83,6 +109,7 @@
     {"id": "subjunctive", "label": "The subjunctive", "text": "subjunctive"},
     {"id": "il-faut-que", "label": "« il faut que »", "text": "il faut que"},
     {"id": "passe-compose", "label": "Passé composé", "text": "passé composé"},
-    {"id": "although", "label": "Saying although", "text": "although"}
+    {"id": "although", "label": "Saying although", "text": "although"},
+    {"id": "right-now", "label": "Something happening right now", "text": "doing something right now"}
   ]
 }

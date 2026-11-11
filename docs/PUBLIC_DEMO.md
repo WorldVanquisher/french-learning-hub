@@ -197,12 +197,12 @@ or deployed release is unaffected. Only a new package needs a matching rebuild.
 `prepare` embeds the exact production texts through the existing E5 HTTP
 service and imports them into a model artifact.
 
-| Position (20 for the catalog) | Text sent | Representation | E5 role |
+| Position (23 for the catalog) | Text sent | Representation | E5 role |
 | --- | --- | --- | --- |
-| `concept:<id>` (12) | `BuildSemanticIndexDocument(c).Text` | `concept_embedding_text_v1`, `type: concept` | `passage` |
-| `preset:<id>` (8) | `ConceptSearchQueryEmbeddingText(text)` | `concept_search_query_v2`, `type: query` | `query` |
+| `concept:<id>` (14) | `BuildSemanticIndexDocument(c).Text` | `concept_embedding_text_v1`, `type: concept` | `passage` |
+| `preset:<id>` (9) | `ConceptSearchQueryEmbeddingText(text)` | `concept_search_query_v2`, `type: query` | `query` |
 
-**`prepare plan`** prints the plan hash and counts: 20 positions, so 3 POSTs at
+**`prepare plan`** prints the plan hash and counts: 23 positions, so 3 POSTs at
 batch 8.
 
 **`prepare embed -work DIR -base-url URL -deployment ID -dimensions N
@@ -244,8 +244,8 @@ refused, with or without copied provenance.
 - the release packager therefore also requires the model id to be a pinned E5
   deployment equal to `--expected-deployment`.
 
-**Continuation (completed in FLH-078).** This command produced the current
-artifact: 20 positions in 3 POSTs. Its work directory has now used both of its
+**Continuation (completed in FLH-078).** This command produced the FLH-078
+artifact from the catalog of that time: 20 positions in 3 POSTs. Its work directory has now used both of its
 readiness probes, so running `embed` again there is refused. A new artifact,
 for example for another deployment id, needs a new work directory and its own
 budget decision. Run it from the repository root:
@@ -449,10 +449,29 @@ were done in FLH-078 for `flh-public-demo-flh078-rc1`:
 6. Check `/readyz` and `/knowledge-library/demo` through the proxy.
 7. Decide on publication and DNS. These are not authorized by FLH-076.
 
+## Authored French examples (demo refresh, 2026-11-10)
+
+Three questions are written in French, so a visitor can follow the whole path,
+question → units → Concept → evidence, on French input:
+
+| Question | Units | Concept(s) |
+|---|---|---|
+| « Dans « j'y vais » et « j'en veux », qu'est-ce que « y » et « en » remplacent ? » | `y remplace à + lieu`, `en remplace de + nom` | the pronouns y and en (two units, one question) |
+| « Il faut que tu viennes demain » … pourquoi « viennes » ? | `il faut que + subjonctif de venir` | subjunctive after « il faut que » (now supported by two questions) |
+| « je suis cuisinant » existe ? | `présent pour une action en cours`, `être en train de + infinitif` | two new Concepts |
+
+A new preset, « doing something right now », exercises the new Concepts.
+Changing the catalog changes the domain fingerprint, so every older artifact
+(including the FLH-078/FLH-087 real-model artifact) must be rebuilt. A releasable
+artifact needs a new real-vector run in a **new** work directory (23 positions,
+3 POSTs). `scripts/validation/demo_refresh/accept_paths.mjs` walks these paths in
+English and 简体中文 at desktop and phone widths against a running package.
+
 ## Limits
 
-- **Synthetic data:** 8 questions, 11 units and 12 Concepts.
-- **Presets:** 8 example queries.
+- **Synthetic data:** 11 questions (3 written in French), 16 units and 14
+  Concepts, one of them deliberately orphaned.
+- **Presets:** 9 example queries.
 - **Keyword search:** prefix matching with AND semantics. Many natural-language
   example queries therefore match nothing by keyword, which the hybrid
   evidence shows.
