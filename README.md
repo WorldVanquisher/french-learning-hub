@@ -132,6 +132,9 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   Only interface text is translated: learner content, stored and AI-generated
   text, Concept identities, IDs, decision names and raw server errors are shown
   as written.
+- Try the opt-in **Endfield preview** theme in the private workbench (Theme →
+  Endfield preview). The standard look stays the default; the choice is
+  remembered in the browser and never changes the public demo.
 
 ## What it is not
 

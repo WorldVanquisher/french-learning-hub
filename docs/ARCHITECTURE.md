@@ -2929,6 +2929,19 @@ vocabulary and raw server errors are rendered unchanged. The choice is a
 browser-local preference; it never reaches the server and changes no API,
 schema or stored data.
 
+The private workbench also offers an opt-in **Endfield preview** theme
+(`web/src/theme.tsx`, `web/src/theme-endfield.css`); the standard theme stays
+the default. It is presentation only: one stylesheet whose every rule is
+scoped to `:root[data-theme="endfield"]`, set only by the workbench's theme
+selector and remembered per browser (`flh.ui-theme.v1`; unavailable storage
+or another value means standard). The public demo never sets it. The style is
+original CSS after the public design notes of `hhikr/endfield-ui-skill`
+(revision `96702a36317b4c76538d1a20ed6beaae4e6067e2`): no game art, logo,
+font or image is used. Reading surfaces stay calm (ink on paper, 1.85
+leading, a 68-character measure, highlights as a highlighter stroke); cut
+corners are gradient corners, never `clip-path`, so focus rings are never
+clipped; `prefers-reduced-motion: reduce` turns every transition off.
+
 ## 11. Persistence, migrations and recovery
 
 SQLite is embedded through the pure-Go `modernc.org/sqlite` driver; no SQLite

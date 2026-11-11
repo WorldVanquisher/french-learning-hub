@@ -475,6 +475,16 @@ FLH-083 UI localization:
   (no markup in strings, no sentences assembled from fragments), and outcome or
   notice text stored as message references so a language switch re-renders it.
 
+Workbench theme (Endfield preview, opt-in):
+
+- `web/src/theme.tsx` sets `data-theme="endfield"` on `<html>` only from the
+  private workbench's Theme selector (`flh.ui-theme.v1`; anything else or
+  unavailable storage = standard, the default). The public demo never sets it.
+- `web/src/theme-endfield.css`: every selector starts with
+  `:root[data-theme="endfield"]`; no `clip-path` (focus rings stay whole), no
+  fonts, images or `url()`; reduced motion turns transitions off. Original CSS
+  after hhikr/endfield-ui-skill's notes; never copy game art, logos or fonts.
+
 FLH-095 bilingual explanations:
 
 - Only an analysis explanation and a unit statement have English/Chinese

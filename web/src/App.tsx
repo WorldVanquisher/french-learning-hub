@@ -17,6 +17,7 @@ import { UnitInspection } from "./pages/UnitInspection";
 import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n";
 import { ExplanationLanguageProvider, ExplanationLanguageSelect } from "./explanationLanguage";
+import { ThemeSelect } from "./theme";
 
 type View = "home" | "records" | "library" | "listening" | "reading" | "writing" | "speaking" | "notebook" | "exam" | "review" | "inspector" | "experiments";
 
@@ -290,6 +291,7 @@ function Workbench() {
         </div>
         <LanguageSelect />
         <ExplanationLanguageSelect />
+        <ThemeSelect />
       </header>
       <nav className="view-tabs" aria-label={t("nav.label")}>
         {VIEWS.map((v) => (

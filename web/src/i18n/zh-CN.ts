@@ -2000,4 +2000,8 @@ export const zhCN: Record<MessageKey, string> = {
   "exam.save.noExercise": "找不到这篇文章的编写练习。",
   "exam.retry.start": "练习一道相关题目",
   "exam.retry.failed": "无法开始相关题目：{message}",
+  "theme.label": "主题",
+  "theme.standard": "标准",
+  "theme.endfield": "Endfield 预览",
+  "theme.notSaved": "无法在这台设备上保存主题选择；在刷新页面之前有效。",
 };

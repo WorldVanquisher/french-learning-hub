@@ -961,6 +961,18 @@ selector.
   translation service, model call or network request is involved;
   `i18n.test.tsx` checks key and placeholder parity.
 
+## Theme (Endfield preview)
+
+`theme.tsx` adds a **Theme** selector to the workbench header (Standard, the
+default, or Endfield preview), stored as `flh.ui-theme.v1` with the same
+fallbacks as the language choice. `theme-endfield.css` holds every rule under
+`:root[data-theme="endfield"]`: a dark command bar with the current view as a
+yellow block, square panels with an ink tab, cut-corner actions (gradient
+corners, so focus outlines are never clipped), wide upper-case labels, calm
+reading surfaces and highlighter-style marks, and no transitions under
+reduced motion. `theme.test.tsx` checks the default, persistence, fallbacks,
+the public demo and the stylesheet's scoping.
+
 ## Layout
 
 ```

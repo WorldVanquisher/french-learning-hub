@@ -1,0 +1,307 @@
+/* "Endfield preview" theme (opt-in; the standard theme stays the default).
+   Original CSS inspired by the public design notes of hhikr/endfield-ui-skill
+   (revision 96702a36317b4c76538d1a20ed6beaae4e6067e2): paper and ink, one
+   yellow signal used only as a fill (current place, tags, highlighter), square
+   corners with a small cut corner on actions, hairline rules, a dark command
+   bar and a thin three-colour strip. No game art, logos, fonts or images are
+   used: every face is a system font, and every shape is CSS.
+   Everything is scoped to :root[data-theme="endfield"], which only the
+   private workbench sets. Reading surfaces (passages, transcripts, drafts,
+   source evidence) stay quiet: ink on paper, no yellow blocks. Cut corners
+   are drawn with a transparent gradient corner, never clip-path, so the
+   keyboard focus ring is never clipped. */
+
+:root[data-theme="endfield"] {
+  --bg: #f4f4f2;
+  --panel: #ffffff;
+  --border: #d9d9d6;
+  --border-strong: #8f8f8a;
+  --text: #161616;
+  --muted: #5c5c5c;
+  --accent: #161616; /* lines and text that mean "here" are ink on light */
+  --signal: #fffa00; /* fill only, always with ink text */
+  --chip: #e4e4e0;
+  --history: #3d3d3d;
+  --warn-bg: #fffde0;
+  --warn-border: #161616;
+  --code-bg: #f4f4f2;
+  --cut: 8px;
+  --ef-ui: "Bahnschrift", "DIN Alternate", "Segoe UI", system-ui, -apple-system, "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --ef-text: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--ef-text);
+  color-scheme: light;
+}
+
+:root[data-theme="endfield"] body { background: var(--bg); color: var(--text); }
+
+/* The three-colour strip: a thin line at the very top, nothing else. */
+:root[data-theme="endfield"] .app { position: relative; padding-top: 22px; }
+:root[data-theme="endfield"] .app::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff00f0 0 33.33%, #fffa00 33.33% 66.66%, #00ffa2 66.66% 100%);
+}
+
+:root[data-theme="endfield"] .app-header { border-bottom: 1px solid var(--text); font-family: var(--ef-ui); }
+:root[data-theme="endfield"] .app-header h1 { font-size: 22px; font-weight: 800; letter-spacing: 0.01em; }
+:root[data-theme="endfield"] .app-header h1::before { content: "// "; color: var(--muted); font-weight: 600; }
+
+/* Workbench navigation: a dark command bar; the current view is a yellow
+   block with ink text and a cut corner. */
+:root[data-theme="endfield"] nav.view-tabs {
+  background: #161616;
+  padding: 6px;
+  gap: 4px;
+}
+:root[data-theme="endfield"] nav.view-tabs button {
+  background: transparent;
+  color: #ededed;
+  border: 0;
+  font-family: var(--ef-ui);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+:root[data-theme="endfield"] nav.view-tabs button:hover:not(:disabled) { background: #2e2e2e; color: #ffffff; }
+:root[data-theme="endfield"] nav.view-tabs button[aria-pressed="true"],
+:root[data-theme="endfield"] nav.view-tabs button[aria-pressed="true"]:hover:not(:disabled) {
+  background: linear-gradient(-45deg, transparent var(--cut), var(--signal) 0);
+  color: #161616;
+}
+:root[data-theme="endfield"] nav.view-tabs button:focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
+
+/* Mode switches inside a view: a quiet row with an ink underline for "here". */
+:root[data-theme="endfield"] .view-tabs:not(nav) { gap: 0; border-bottom: 1px solid var(--border); }
+:root[data-theme="endfield"] .view-tabs:not(nav) button {
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  font-family: var(--ef-ui);
+  font-weight: 600;
+}
+:root[data-theme="endfield"] .view-tabs:not(nav) button[aria-pressed="true"],
+:root[data-theme="endfield"] .view-tabs:not(nav) button[aria-pressed="true"]:hover:not(:disabled) {
+  background: transparent;
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
+
+/* Panels: square, hairline, with a short ink tab on top. */
+:root[data-theme="endfield"] .panel {
+  border-radius: 0;
+  border-color: var(--border);
+  position: relative;
+  padding: 18px 20px;
+}
+:root[data-theme="endfield"] .panel::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 64px;
+  height: 4px;
+  background: var(--text);
+}
+:root[data-theme="endfield"] .panel h2 {
+  font-family: var(--ef-ui);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+:root[data-theme="endfield"] .panel h2.library-title,
+:root[data-theme="endfield"] .exam-header h2 { font-size: 22px; letter-spacing: 0; text-transform: none; }
+
+/* Actions: chips with a cut corner; the main action is ink. */
+:root[data-theme="endfield"] button {
+  border-radius: 0;
+  border: 0;
+  background: linear-gradient(-45deg, transparent var(--cut), var(--chip) 0);
+  color: var(--text);
+  font-family: var(--ef-ui);
+  font-weight: 700;
+  padding: 9px 18px 9px 14px;
+  transition: background-color 100ms linear, color 100ms linear;
+}
+:root[data-theme="endfield"] button:hover:not(:disabled) { background: linear-gradient(-45deg, transparent var(--cut), #d6d6d1 0); }
+:root[data-theme="endfield"] button.primary { background: linear-gradient(-45deg, transparent var(--cut), #161616 0); color: #ffffff; }
+:root[data-theme="endfield"] button.primary:hover:not(:disabled) { background: linear-gradient(-45deg, transparent var(--cut), #3a3a3a 0); color: #ffffff; }
+/* SAME and INVALID keep their distinct colours in Concept Review: only the shape changes. */
+:root[data-theme="endfield"] button.same { background: linear-gradient(-45deg, transparent var(--cut), var(--same) 0); color: #ffffff; }
+:root[data-theme="endfield"] button.same:hover:not(:disabled) { background: linear-gradient(-45deg, transparent var(--cut), #05603a 0); }
+:root[data-theme="endfield"] button.invalid { background: linear-gradient(-45deg, transparent var(--cut), var(--invalid) 0); color: #ffffff; }
+:root[data-theme="endfield"] button.invalid:hover:not(:disabled) { background: linear-gradient(-45deg, transparent var(--cut), #912018 0); }
+:root[data-theme="endfield"] button.ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--border-strong); }
+:root[data-theme="endfield"] button.ghost:hover:not(:disabled) { background: var(--chip); }
+:root[data-theme="endfield"] button.link-button { background: none; box-shadow: none; padding: 0; color: var(--text); text-decoration: underline; text-decoration-thickness: 2px; }
+:root[data-theme="endfield"] button:disabled,
+:root[data-theme="endfield"] button.primary:disabled,
+:root[data-theme="endfield"] button.same:disabled,
+:root[data-theme="endfield"] button.invalid:disabled {
+  background: repeating-linear-gradient(-45deg, #ecece8 0 4px, #e0e0dc 4px 6px);
+  border: 1px dashed var(--border-strong);
+  color: #4a4a4a;
+  cursor: not-allowed;
+}
+:root[data-theme="endfield"] button:focus-visible,
+:root[data-theme="endfield"] a:focus-visible,
+:root[data-theme="endfield"] input:focus-visible,
+:root[data-theme="endfield"] select:focus-visible,
+:root[data-theme="endfield"] textarea:focus-visible {
+  outline: 3px solid #161616;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--signal);
+}
+
+/* Fields: square, ink-edged. */
+:root[data-theme="endfield"] input[type="text"],
+:root[data-theme="endfield"] input[type="search"],
+:root[data-theme="endfield"] input:not([type]),
+:root[data-theme="endfield"] select,
+:root[data-theme="endfield"] textarea {
+  border-radius: 0;
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  color: var(--text);
+}
+:root[data-theme="endfield"] input[type="radio"],
+:root[data-theme="endfield"] input[type="checkbox"] { accent-color: #161616; }
+
+/* Tags: ink chips with a small cut corner; the signal marks "look here". */
+:root[data-theme="endfield"] .tag {
+  border-radius: 0;
+  border: 0;
+  background: linear-gradient(-45deg, transparent 5px, #161616 0);
+  color: #ffffff;
+  font-family: var(--ef-ui);
+  font-weight: 600;
+  padding: 1px 10px 1px 7px;
+}
+:root[data-theme="endfield"] .tag.active { background: linear-gradient(-45deg, transparent 5px, var(--same) 0); color: #ffffff; }
+:root[data-theme="endfield"] .tag.orphaned,
+:root[data-theme="endfield"] .tag.stage-tag-pending { background: linear-gradient(-45deg, transparent 5px, var(--signal) 0); color: #161616; }
+:root[data-theme="endfield"] .tag.retired,
+:root[data-theme="endfield"] .tag.stage-tag-unknown { background: var(--chip); color: var(--text); }
+
+/* Labels: wide, upper-case, small. */
+:root[data-theme="endfield"] .label,
+:root[data-theme="endfield"] .notebook-side,
+:root[data-theme="endfield"] .exam-question legend {
+  font-family: var(--ef-ui);
+  letter-spacing: 0.06em;
+}
+:root[data-theme="endfield"] .notebook-side { color: var(--text); }
+:root[data-theme="endfield"] .hint { color: var(--muted); font-size: 12.5px; }
+
+/* Messages: no red alarm and no yellow banner. A thick ink edge says
+   "attention"; errors add a small yellow marker. The words still say it. */
+:root[data-theme="endfield"] .banner {
+  border-radius: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 5px solid #161616;
+  color: var(--text);
+}
+:root[data-theme="endfield"] .banner.error::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  background: var(--signal);
+  box-shadow: inset 0 0 0 1px #161616;
+  vertical-align: baseline;
+}
+:root[data-theme="endfield"] .banner.success { border-left-color: var(--same); }
+:root[data-theme="endfield"] .banner.trail { background: #161616; color: #ededed; border-color: #161616; }
+:root[data-theme="endfield"] .banner.trail button { background: linear-gradient(-45deg, transparent var(--cut), var(--signal) 0); color: #161616; }
+
+/* Reading surfaces stay calm: ink on paper, generous leading, a readable
+   measure, and highlights as a highlighter stroke, not a block. */
+:root[data-theme="endfield"] .reading-passage,
+:root[data-theme="endfield"] .exam-passage,
+:root[data-theme="endfield"] .listening-transcript,
+:root[data-theme="endfield"] .transcript-view,
+:root[data-theme="endfield"] .writing-draft,
+:root[data-theme="endfield"] .listening-context,
+:root[data-theme="endfield"] .source-view,
+:root[data-theme="endfield"] .notebook-reference {
+  font-family: var(--ef-text);
+  line-height: 1.85;
+  max-width: 68ch;
+}
+:root[data-theme="endfield"] .exam-passage,
+:root[data-theme="endfield"] .reading-passage { font-size: 17px; }
+:root[data-theme="endfield"] .writing-draft,
+:root[data-theme="endfield"] .listening-context { background: var(--bg); border: 0; border-left: 2px solid var(--border-strong); border-radius: 0; }
+:root[data-theme="endfield"] .source-view,
+:root[data-theme="endfield"] .notebook-reference { border-left: 2px solid var(--text); }
+:root[data-theme="endfield"] .notebook-mine { border-left: 2px solid var(--border-strong); }
+:root[data-theme="endfield"] mark,
+:root[data-theme="endfield"] .exam-passage mark,
+:root[data-theme="endfield"] .writing-draft mark {
+  background: linear-gradient(transparent 58%, rgba(255, 250, 0, 0.75) 0);
+  outline: 0;
+  color: inherit;
+  padding: 0;
+}
+:root[data-theme="endfield"] .exam-passage .segment-id { font-family: var(--ef-ui); }
+
+/* Learning home: plain record rows with a cut-corner action, not a card wall. */
+:root[data-theme="endfield"] .home-sections { grid-template-columns: 1fr; gap: 0; border-top: 1px solid var(--text); }
+:root[data-theme="endfield"] .home-card {
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 12px 4px;
+}
+:root[data-theme="endfield"] .home-card h3 { font-family: var(--ef-ui); font-size: 17px; min-width: 10em; }
+:root[data-theme="endfield"] .home-card p { flex: 1 1 18em; color: var(--muted); }
+
+/* Mock Exam: the timer is the one bold figure; questions are plain fields. */
+:root[data-theme="endfield"] .exam-timer {
+  display: inline-block;
+  font-family: var(--ef-ui);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 800;
+  padding: 2px 14px 2px 10px;
+  background: linear-gradient(-45deg, transparent var(--cut), var(--signal) 0);
+  color: #161616;
+}
+:root[data-theme="endfield"] .exam-form,
+:root[data-theme="endfield"] .exam-question { border-radius: 0; }
+:root[data-theme="endfield"] .exam-score { font-family: var(--ef-ui); font-size: 22px; font-weight: 800; }
+:root[data-theme="endfield"] .exam-result.missed { border-left: 3px solid #161616; }
+:root[data-theme="endfield"] .exam-result.correct { border-left: 3px solid var(--border-strong); }
+:root[data-theme="endfield"] .listening-item.notebook-target { outline: 2px solid #161616; outline-offset: 4px; border-radius: 0; box-shadow: -6px 0 0 var(--signal); }
+:root[data-theme="endfield"] .notebook-origin { border-left-color: #161616; }
+
+/* Tables and code: hairlines and square corners. */
+:root[data-theme="endfield"] table { border-collapse: collapse; }
+:root[data-theme="endfield"] th { font-family: var(--ef-ui); letter-spacing: 0.04em; }
+:root[data-theme="endfield"] code,
+:root[data-theme="endfield"] pre { border-radius: 0; }
+
+/* Narrow screens: the command bar wraps; nothing gets wider than the screen. */
+@media (max-width: 560px) {
+  :root[data-theme="endfield"] .app { padding-left: 12px; padding-right: 12px; }
+  /* The standard theme stacks the tabs in a column here; the command bar wraps
+     compact tabs instead, so the current view stays near the top. */
+  :root[data-theme="endfield"] .view-tabs { flex-direction: row; flex-wrap: wrap; }
+  :root[data-theme="endfield"] nav.view-tabs button { padding: 6px 12px 6px 8px; font-size: 14px; }
+  :root[data-theme="endfield"] .panel { padding: 14px 12px; }
+}
+
+/* Reduced motion: no transitions at all. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="endfield"] *,
+  :root[data-theme="endfield"] *::before,
+  :root[data-theme="endfield"] *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}

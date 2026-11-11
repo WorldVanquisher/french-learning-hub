@@ -2086,6 +2086,10 @@ export const en = {
   "exam.save.noExercise": "The authored exercise for this passage was not found.",
   "exam.retry.start": "Practise a related question",
   "exam.retry.failed": "No related question could be started: {message}",
+  "theme.label": "Theme",
+  "theme.standard": "Standard",
+  "theme.endfield": "Endfield preview",
+  "theme.notSaved": "The theme choice could not be saved on this device; it applies until you reload.",
 } satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
