@@ -1298,6 +1298,51 @@ Reading, Writing and Speaking. A notebook item is an ordinary learning record
   notebook still loads, its retry mark still works, and a retry session leaves
   it out and says how many were left out.
 
+### 4.9 Mock Exam v1
+
+A private, timed reading-comprehension exam built only from authored material
+(migration `020`). No provider is involved; nothing is an official score.
+- **Forms** (`internal/exam/forms/mock_exam_forms_v1.json`, schema
+  `flh_mock_exam_forms_v1`, validated against the reading pack at startup):
+  `ce-examen-blanc-1` (3 documents, 9 questions, 20 min) and
+  `ce-entrainement-express` (1 document, 3 questions, 90 s). Every question
+  is a reading-pack question; its choices are the authored reference answer
+  and the authored wrong answers (each with its English and Chinese reason),
+  in an order fixed by a hash of the question id and the choice text.
+- **Assembly is immutable:** a start (`Idempotency-Key`) freezes a copy of each
+  question, its choices, key, explanations and evidence in
+  `exam_session_items` with a content hash, plus the forms and pack hashes on
+  `exam_sessions`. A later pack change never alters a running or past exam.
+  The same key replays the session; another form under it is `409`.
+- **Server-owned deadline:** `deadline_at` = start + duration, on the server's
+  clock. Answers are append-only events (`exam_answers`) accepted only up to
+  the deadline, re-checked inside the write transaction. A reload or a
+  reconnect reads the session back (answers and remaining time) from the
+  server; the browser stores nothing.
+- **State is derived:** a submission (`exam_submissions`, at most one per
+  session) closes it; otherwise the deadline does (`expired`), and its result
+  is the answers saved in time. Reading never writes.
+- **Safe repeat submission:** a submit merges the body's answers over the saved
+  ones. Repeating it with the same final answers replays the stored result;
+  other answers after a submission are `409 already_submitted`; after the
+  deadline `409 exam_expired` with the expired result, and nothing is written.
+- **Keys stay out until closed:** an in-progress view has questions and
+  choices only. Once closed, `result` adds per question the choice, the key,
+  the explanation (en/zh), the authored reason for a wrong choice, the
+  evidence excerpts and the source (pack, passage, question, `pack_item`,
+  content hash).
+- **Save a missed point:** the workbench imports the authored passage into
+  Reading (an existing call, no provider) and saves a capture whose
+  `source_ref` is that same authored `reading_item`; it appears in the
+  Mistake Notebook with an authored reference. A duplicate is the existing
+  `409 source_already_saved`.
+- **Retry a related question:** `POST /exam/sessions/{id}/retries` (closed
+  sessions only, `Idempotency-Key`) starts a one-question session of another
+  authored question of the same kind from another passage (then the same
+  passage), never one already asked in that exam or its retries.
+- **Not in the public demo:** the routes are not allowlisted, and the four
+  tables must be empty in demo artifacts.
+
 ## 5. Knowledge extraction and admission
 
 Knowledge extraction (milestone 10) turns one interaction into durable,
@@ -2912,6 +2957,7 @@ forward-only; there are no down migrations.
 | `017_writing_tasks` | `writing_tasks`, `writing_drafts`, `writing_feedback`, `writing_feedback_requests` (Writing v1; see [§4.6](#46-exam-writing-v1)) |
 | `018_speaking_exercises` | `speaking_exercises`, `speaking_takes` (audio metadata only), `speaking_transcriptions`, `speaking_transcription_requests`, `speaking_transcripts`, `speaking_feedback`, `speaking_feedback_requests` (Speaking v1; see [§4.7](#47-speaking-v1)) |
 | `019_mistake_notebook` | `learning_capture_sources` (one structured source per capture, written with it), `mistake_retry_marks` (append-only) (Mistake Notebook v1; see [§4.8](#48-mistake-notebook-v1)) |
+| `020_mock_exams` | `exam_sessions`, `exam_session_items` (frozen authored questions with content hashes), `exam_answers` (append-only), `exam_submissions` (at most one per session) (Mock Exam v1; see [§4.9](#49-mock-exam-v1)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -3930,5 +3976,19 @@ A request has `id`, `operation_id`, `take_id` (transcription) or
 | `PUT /mistake-notebook/items/{entry_id}/retry` | Body `{"marked": true\|false}`. `200` `{item, changed}` (a row is appended only on a change); `404` not a notebook record; `422` missing `marked` |
 | `GET /mistake-notebook/concepts` | `kind` = `grammar`, `vocabulary` or `unclassified`, optional `q` (library search syntax). `rule` (`concept_kind_view_v1`), `classified`, `truncated`, `concepts` (`concept_id`, `target`, `pedagogical_intent`, `scope`, `state`, `class`, `reason`, `kinds`, `supporting_unit_count`, `match_tier`). `400` for an unknown kind or an unsearchable query. Read-only |
 | `GET /entries/{id}/source` | `{entry_id, linked: true, item}` or `{entry_id, linked: false, notice}`; `404` unknown record. Read-only |
+
+The public demo boundary does not expose these routes.
+
+### A.21 Mock Exam (Mock Exam v1)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `GET /exam/forms` | `schema_version`, `notice`, `pack`, `forms` (`id`, `title`, `section`, `duration_seconds`, `description`, `question_count`). Read-only |
+| `GET /exam/sessions` | `server_now`, `sessions` newest first (`id`, `kind` `exam`/`retry`, `form_id`, `title`, `retry_of`, `state`, `started_at`, `deadline_at`, `question_count`, `result` {`correct`, `total`} once closed). Read-only |
+| `POST /exam/sessions` | Body `{"form_id"}`, one UUID `Idempotency-Key` (`400` without). `201` new, `200` replay of that key, `409` another form under that key, `422` unknown form. Returns the view below |
+| `GET /exam/sessions/{id}` | The view: `session` {`id`, `kind`, `form_id`, `title`, `retry_of`, `duration_seconds`, `started_at`, `deadline_at`, `forms_sha256`, `pack_sha256`}, `state` (`in_progress`, `submitted`, `expired`), `server_now`, `remaining_seconds`, `notice`, `passages`, `questions` (`position`, `passage_id`, `kind`, `question`, `choices`), `answers` (`position`, `choice`, `saved_at`), `result` (null while in progress; else `closed`, `closed_at`, `correct`, `total`, `items` with `choice`, `key`, `correct`, `explanation_en`/`_zh`, `why_wrong`, `evidence`, `source`). Read-only |
+| `PUT /exam/sessions/{id}/answers/{position}` | Body `{"choice": n\|null}`. `200` {`position`, `choice`, `saved_at`, `server_now`, `remaining_seconds`}; an unchanged answer appends nothing. `409` {`code`: `exam_submitted`\|`exam_expired`, `exam`} when closed; `422` out of range |
+| `POST /exam/sessions/{id}/submit` | Body `{"answers": {"1": n\|null, …}}`. `200` the closed view with `replayed` (true when the same final answers were already submitted); `409` {`code`: `already_submitted`\|`exam_expired`, `exam`} |
+| `POST /exam/sessions/{id}/retries` | Body `{"position"}`, UUID `Idempotency-Key`. `201`/`200` replay: a one-question related session (`retry_seconds` = 120); `409` while the exam is in progress or when no related authored question is left |
 
 The public demo boundary does not expose these routes.

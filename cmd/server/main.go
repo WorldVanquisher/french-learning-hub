@@ -17,6 +17,7 @@ import (
 	"french-learning-app/internal/application"
 	"french-learning-app/internal/config"
 	"french-learning-app/internal/embedding"
+	"french-learning-app/internal/exam"
 	"french-learning-app/internal/extractor"
 	"french-learning-app/internal/listening"
 	"french-learning-app/internal/reading"
@@ -166,6 +167,13 @@ func run() error {
 			sqlite.NewConceptSuggestionRepository(db), selectedSuggester)),
 	}
 	options = append(options, transporthttp.WithListening(listeningLessons), transporthttp.WithListeningDaily(listeningDaily))
+	// Mock Exam v1: authored forms over the embedded reading pack, validated
+	// here (a bad pair stops startup); no provider is involved.
+	examSvc, err := application.NewExamService(sqlite.NewExamRepository(db), exam.Forms(), reading.ExamplePack())
+	if err != nil {
+		log.Fatalf("mock exam: %v", err)
+	}
+	options = append(options, transporthttp.WithExam(examSvc))
 	// Exam Reading v1: the generator is opt-in (READING_PROVIDER); the authored
 	// examples are embedded and validated here, so a bad pack stops startup.
 	selectedReading, err := reading.New(cfg.Reading)

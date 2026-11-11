@@ -1,0 +1,38 @@
+{
+  "schema_version": "flh_mock_exam_forms_v1",
+  "notice": "Authored practice exam built only from the FLH reading pack v1 (original passages, reviewed questions and authored wrong answers). It is not an official exam: there is no certified level, no official score and no score conversion.",
+  "pack": "flh_reading_pack_v1",
+  "retry_seconds": 120,
+  "forms": [
+    {
+      "id": "ce-examen-blanc-1",
+      "title": "Compréhension écrite — examen blanc 1",
+      "section": "reading",
+      "duration_seconds": 1200,
+      "description": "Three authored documents (a notice, an email and an article), nine questions, twenty minutes.",
+      "questions": [
+        { "passage": "rd-notice-piscine", "question": "rd-notice-piscine:q1" },
+        { "passage": "rd-notice-piscine", "question": "rd-notice-piscine:q2" },
+        { "passage": "rd-notice-piscine", "question": "rd-notice-piscine:q3" },
+        { "passage": "rd-email-chaudiere", "question": "rd-email-chaudiere:q1" },
+        { "passage": "rd-email-chaudiere", "question": "rd-email-chaudiere:q2" },
+        { "passage": "rd-email-chaudiere", "question": "rd-email-chaudiere:q3" },
+        { "passage": "rd-article-jardins", "question": "rd-article-jardins:q1" },
+        { "passage": "rd-article-jardins", "question": "rd-article-jardins:q2" },
+        { "passage": "rd-article-jardins", "question": "rd-article-jardins:q3" }
+      ]
+    },
+    {
+      "id": "ce-entrainement-express",
+      "title": "Compréhension écrite — entraînement express",
+      "section": "reading",
+      "duration_seconds": 90,
+      "description": "One authored announcement, three questions, ninety seconds.",
+      "questions": [
+        { "passage": "rd-annonce-ligne-b", "question": "rd-annonce-ligne-b:q1" },
+        { "passage": "rd-annonce-ligne-b", "question": "rd-annonce-ligne-b:q2" },
+        { "passage": "rd-annonce-ligne-b", "question": "rd-annonce-ligne-b:q3" }
+      ]
+    }
+  ]
+}

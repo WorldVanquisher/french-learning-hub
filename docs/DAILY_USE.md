@@ -646,6 +646,29 @@ stored reference; your record and retry mark are unchanged.
   notebook. They are never linked by guessing, and their record says so.
 - A self-check is not a score, a mastery level or a schedule.
 
+## 15. Mock Exam
+
+1. Open **Mock Exam** (or **Home → Open the Mock Exam**). Start **examen
+   blanc 1** (9 questions, 20 minutes) or **entraînement express** (3
+   questions, 90 seconds). The timer is the server's.
+2. Read each document and choose an answer; each choice is saved as you make
+   it ("Saved."). If a save fails, **Save again**. A reload or a lost
+   connection loses nothing: open **Mock Exam** and **Resume exam #N**.
+3. **Submit my answers** asks for confirmation. If the page cannot confirm the
+   submission, **Check status**, or **Submit the same answers again**: a
+   repeat returns the same result. At zero the page submits by itself; only
+   answers saved before the deadline count.
+4. The result shows each question with your answer, the authored answer, why
+   your choice was wrong, the explanation, **Show evidence** in the document
+   and the frozen source. It is authored practice, not an official score.
+5. For a miss: **Save this missed point…** (explicit; it appears in the
+   Mistake Notebook linked to the same authored question in Reading) and
+   **Practise a related question** (one question, two minutes).
+
+**Limitations:** reading comprehension only (no listening, writing or speaking
+section yet); questions are multiple choice from the authored pack, so the
+number of different exams is small.
+
 ## Troubleshooting
 
 | Symptom | Cause / action |

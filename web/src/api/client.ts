@@ -3,6 +3,7 @@
 // in one file. All calls go through the "/api" prefix, which Vite proxies to the Go
 // backend in development (see vite.config.ts).
 
+import type { ExamForms, ExamSessionRow, ExamView } from "../types/exam";
 import type {
   ListeningDaily,
   ListeningLesson,
@@ -955,4 +956,42 @@ export function getKindConcepts(kind: KindView, query = "", fetchImpl: typeof fe
 // getEntrySource reads a record's structured source, or linked:false.
 export function getEntrySource(entryId: number, fetchImpl: typeof fetch = fetch): Promise<EntrySource> {
   return request<EntrySource>("GET", `/entries/${entryId}/source`, undefined, fetchImpl);
+}
+
+// ---- Mock Exam v1 (private workbench) ----
+
+export function listExamForms(fetchImpl: typeof fetch = fetch): Promise<ExamForms> {
+  return request<ExamForms>("GET", "/exam/forms", undefined, fetchImpl);
+}
+
+export function listExamSessions(fetchImpl: typeof fetch = fetch): Promise<{ server_now: string; sessions: ExamSessionRow[] }> {
+  return request("GET", "/exam/sessions", undefined, fetchImpl);
+}
+
+// startExam starts a session under an Idempotency-Key: resending the same key
+// after a lost response returns the same session.
+export function startExam(formId: string, operationId: string, fetchImpl: typeof fetch = fetch): Promise<ExamView> {
+  return request<ExamView>("POST", "/exam/sessions", { form_id: formId }, fetchImpl, operationId);
+}
+
+export function getExam(id: number, fetchImpl: typeof fetch = fetch): Promise<ExamView> {
+  return request<ExamView>("GET", `/exam/sessions/${id}`, undefined, fetchImpl);
+}
+
+export function saveExamAnswer(
+  id: number,
+  position: number,
+  choice: number | null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ position: number; choice: number | null; saved_at: string; server_now: string; remaining_seconds: number }> {
+  return request("PUT", `/exam/sessions/${id}/answers/${position}`, { choice }, fetchImpl);
+}
+
+// submitExam closes a session; repeating it with the same answers replays the result.
+export function submitExam(id: number, answers: Record<string, number | null>, fetchImpl: typeof fetch = fetch): Promise<ExamView> {
+  return request<ExamView>("POST", `/exam/sessions/${id}/submit`, { answers }, fetchImpl);
+}
+
+export function startExamRetry(id: number, position: number, operationId: string, fetchImpl: typeof fetch = fetch): Promise<ExamView> {
+  return request<ExamView>("POST", `/exam/sessions/${id}/retries`, { position }, fetchImpl, operationId);
 }

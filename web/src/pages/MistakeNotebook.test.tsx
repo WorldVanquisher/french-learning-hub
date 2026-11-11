@@ -399,6 +399,7 @@ describe("Mistake Notebook: the seven sections (FLH sections v1)", () => {
       "Open Grammar",
       "Open Vocabulary",
       "Open the Mistake Notebook",
+      "Open the Mock Exam",
     ]);
     fireEvent.click(within(home).getByRole("button", { name: "Open Grammar" }));
     expect(await screen.findByText("accord du participe passé")).toBeTruthy();

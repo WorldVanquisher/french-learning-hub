@@ -120,8 +120,9 @@ var orderedTables = []string{"analysis_feedback", "knowledge_admission_recommend
 // suggestions and records no confirmations. Listening lessons (migration 014)
 // Daily Listening receipts (migration 015), Reading lessons (migration 016),
 // Writing tasks (migration 017), Speaking exercises (migration 018) and the
-// Mistake Notebook's capture sources and retry marks (migration 019) are
-// private workbench features: the demo holds none and serves no route.
+// Mistake Notebook's capture sources and retry marks (migration 019) and Mock
+// Exam sessions (migration 020) are private workbench features: the demo
+// holds none and serves no route.
 var emptyTables = []string{"annotation_operations", "semantic_embedding_cache", "semantic_index_collections",
 	"semantic_index_manifest", "semantic_index_physical_collections", "semantic_index_points", "semantic_index_spaces",
 	"concept_suggestion_runs", "concept_suggestion_items", "concept_suggestion_confirmations",
@@ -131,7 +132,8 @@ var emptyTables = []string{"annotation_operations", "semantic_embedding_cache", 
 	"writing_tasks", "writing_drafts", "writing_feedback", "writing_feedback_requests",
 	"speaking_exercises", "speaking_takes", "speaking_transcriptions", "speaking_transcription_requests",
 	"speaking_transcripts", "speaking_feedback", "speaking_feedback_requests",
-	"learning_capture_sources", "mistake_retry_marks"}
+	"learning_capture_sources", "mistake_retry_marks",
+	"exam_sessions", "exam_session_items", "exam_answers", "exam_submissions"}
 
 // unfingerprintedTables are bookkeeping, checked elsewhere or not data.
 var unfingerprintedTables = map[string]string{

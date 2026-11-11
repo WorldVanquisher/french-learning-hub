@@ -7,7 +7,8 @@ import { Reading } from "./pages/Reading";
 import { Writing } from "./pages/Writing";
 import { Speaking } from "./pages/Speaking";
 import { MistakeNotebook, type NotebookMode } from "./pages/MistakeNotebook";
-import { LearningHome, type HomeTarget } from "./pages/LearningHome";
+import { HOME_SECTIONS, LearningHome, type HomeSection, type HomeTarget } from "./pages/LearningHome";
+import { MockExam } from "./pages/MockExam";
 import type { SourceOpen } from "./types/notebook";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue, type ReviewResume } from "./pages/ReviewQueue";
@@ -17,7 +18,13 @@ import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 import { LanguageSelect, LocaleProvider, useI18n, type MessageKey } from "./i18n";
 import { ExplanationLanguageProvider, ExplanationLanguageSelect } from "./explanationLanguage";
 
-type View = "home" | "records" | "library" | "listening" | "reading" | "writing" | "speaking" | "notebook" | "review" | "inspector" | "experiments";
+type View = "home" | "records" | "library" | "listening" | "reading" | "writing" | "speaking" | "notebook" | "exam" | "review" | "inspector" | "experiments";
+
+// The learning home lists the seven sections, then the Mock Exam.
+const HOME_WITH_EXAM: { target: HomeTarget | "exam"; title: HomeSection["title"]; body: HomeSection["body"]; action: HomeSection["action"] }[] = [
+  ...HOME_SECTIONS,
+  { target: "exam", title: "home.exam.title", body: "home.exam.body", action: "home.exam.action" },
+];
 
 // Where a cross-view link came from, for the "Back to …" banner.
 type Origin =
@@ -29,6 +36,7 @@ type Origin =
   | { kind: "writing" }
   | { kind: "speaking" }
   | { kind: "notebook" }
+  | { kind: "exam" }
   | { kind: "records" };
 
 const viewCopy: Record<View, { title: MessageKey; subtitle: MessageKey; tab: MessageKey }> = {
@@ -40,11 +48,12 @@ const viewCopy: Record<View, { title: MessageKey; subtitle: MessageKey; tab: Mes
   writing: { title: "app.writing.title", subtitle: "app.writing.subtitle", tab: "nav.writing" },
   speaking: { title: "app.speaking.title", subtitle: "app.speaking.subtitle", tab: "nav.speaking" },
   notebook: { title: "app.notebook.title", subtitle: "app.notebook.subtitle", tab: "nav.notebook" },
+  exam: { title: "app.exam.title", subtitle: "app.exam.subtitle", tab: "nav.exam" },
   review: { title: "app.review.title", subtitle: "app.review.subtitle", tab: "nav.review" },
   inspector: { title: "app.inspector.title", subtitle: "app.inspector.subtitle", tab: "nav.inspector" },
   experiments: { title: "app.experiments.title", subtitle: "app.experiments.subtitle", tab: "nav.experiments" },
 };
-const VIEWS: View[] = ["home", "records", "library", "listening", "reading", "writing", "speaking", "notebook", "review", "inspector", "experiments"];
+const VIEWS: View[] = ["home", "records", "library", "listening", "reading", "writing", "speaking", "notebook", "exam", "review", "inspector", "experiments"];
 
 // App keeps the internal workbench views behind a local tab switch. Learning
 // Records writes only through explicit capture import, analysis, feedback, and
@@ -101,6 +110,9 @@ function Workbench() {
   // The Mistake Notebook stays mounted once opened, so its filter, an open
   // retry session and its self-checks survive opening a source and coming back.
   const [notebookMounted, setNotebookMounted] = useState(false);
+  // Mock Exam stays mounted once opened, so a running exam (its unsaved
+  // choices and countdown) survives a visit to another view.
+  const [examMounted, setExamMounted] = useState(false);
   // Requests to open the exact source item of a notebook record in its skill view.
   const [listeningOpen, setListeningOpen] = useState<{ materialId: number; nonce: number; target?: { exerciseId: number; item: number; version: number } } | null>(null);
   const [readingOpen, setReadingOpen] = useState<{ lessonId: number; nonce: number; target?: { exerciseId: number; item: number; version: number } } | null>(null);
@@ -151,6 +163,7 @@ function Workbench() {
     if (next === "writing") setWritingMounted(true);
     if (next === "speaking") setSpeakingMounted(true);
     if (next === "notebook") setNotebookMounted(true);
+    if (next === "exam") setExamMounted(true);
   };
 
   const suggestionsVisible = view === "review" && !focus && reviewMode === "suggestions";
@@ -201,7 +214,7 @@ function Workbench() {
     setOrigin({ from, on: open.skill });
     setView(open.skill);
   };
-  const openHome = (target: HomeTarget) => {
+  const openHome = (target: HomeTarget | "exam") => {
     if (target === "grammar" || target === "vocabulary") {
       setNotebookMode({ mode: target, nonce: ++nonce.current });
       show("notebook");
@@ -235,6 +248,9 @@ function Workbench() {
     } else if (from.kind === "notebook") {
       setFocus(null);
       setView("notebook");
+    } else if (from.kind === "exam") {
+      setFocus(null);
+      setView("exam");
     } else if (from.kind === "records") {
       setFocus(null);
       setView("records");
@@ -319,7 +335,12 @@ function Workbench() {
           <Speaking onOpenRecord={(entryId) => openRecord(entryId, { kind: "speaking" })} openRequest={speakingOpen} />
         </div>
       ) : null}
-      {view === "home" ? <LearningHome onOpen={openHome} /> : null}
+      {view === "home" ? <LearningHome<HomeTarget | "exam"> sections={HOME_WITH_EXAM} onOpen={openHome} /> : null}
+      {examMounted ? (
+        <div hidden={view !== "exam"}>
+          <MockExam onOpenRecord={(entryId) => openRecord(entryId, { kind: "exam" })} />
+        </div>
+      ) : null}
       {notebookMounted ? (
         <div hidden={view !== "notebook"}>
           <MistakeNotebook
@@ -400,6 +421,8 @@ function BackBanner({ origin, onBack }: { origin: Origin; onBack: () => void }) 
                 ? t("trail.backToSpeaking")
                 : origin.kind === "notebook"
                   ? t("trail.backToNotebook")
+                  : origin.kind === "exam"
+                    ? t("trail.backToExam")
                   : origin.kind === "records"
                     ? t("trail.backToRecords")
                     : t("trail.backToLibrary");
@@ -418,6 +441,8 @@ function BackBanner({ origin, onBack }: { origin: Origin; onBack: () => void }) 
                 ? t("trail.fromSpeaking")
                 : origin.kind === "notebook"
                   ? t("trail.fromNotebook")
+                  : origin.kind === "exam"
+                    ? t("trail.fromExam")
                   : origin.kind === "records"
                     ? t("trail.fromRecordSource")
                     : t("trail.fromLibrary");

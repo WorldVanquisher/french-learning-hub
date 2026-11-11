@@ -652,6 +652,22 @@ Mistake Notebook v1 (private workbench):
   version (`latest_version` flags a newer one); an unresolvable source degrades
   that item only (`source_status`), never the list, and is never guessed.
 
+Mock Exam v1 (private workbench):
+
+- Migration 020: `exam_sessions` (start under a UUID `Idempotency-Key`, server
+  `deadline_at`, forms/pack hashes), `exam_session_items` (frozen authored
+  questions with content hashes), `exam_answers` (append-only, accepted only up
+  to the deadline inside the write transaction), `exam_submissions` (one per
+  session). State is derived (submitted, else expired after the deadline);
+  reads never write. Contract: `docs/ARCHITECTURE.md` §4.9, A.21.
+- Forms (`internal/exam/forms/`) reference reading-pack questions only and are
+  validated at startup; choices are the authored answer and authored wrong
+  answers. No provider, no official score or level.
+- Keys, explanations, reasons and evidence only in `result` (closed sessions).
+  Repeat submit with the same final answers replays; other answers `409`.
+  A missed point is an explicit capture of the same authored `reading_item`.
+  Never in the public demo: not allowlisted, tables empty in demo artifacts.
+
 Daily Listening (pull, prepare, notify):
 
 - One pull, `ListeningDailyService.Pull`, shared by "Pull now"

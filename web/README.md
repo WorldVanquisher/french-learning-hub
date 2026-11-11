@@ -841,6 +841,26 @@ INVALID judgment. It uses only existing endpoints and adds no semantics:
 - While a correction is in flight, other corrections and **Back to record #N**
   wait. Returning moves focus to the unit and re-reads its review status.
 
+## Mock Exam (Mock Exam v1)
+
+A private **Mock Exam** view (`pages/MockExam.tsx`, never in the public demo).
+Contract: [ARCHITECTURE.md §4.9](../docs/ARCHITECTURE.md#49-mock-exam-v1).
+
+- **Home:** `GET /exam/forms` and `GET /exam/sessions`; **Start** sends
+  `POST /exam/sessions` with a fresh `randomOperationId()` key, resent unchanged
+  after a lost response; in-progress sessions offer **Resume**.
+- **Session:** the countdown follows `deadline_at` with the server clock
+  offset from `server_now`; each choice is a `PUT …/answers/{position}` with a
+  per-question saved / failed state. Submit asks for confirmation; a
+  `NetworkError` offers **Check status** (re-read) or **Submit the same answers
+  again** (replayed by the server). At zero the page submits once. A `409` with
+  an `exam` body shows that closed view.
+- **Results:** score, per-question explanation (Explanation-language
+  preference), authored reason, **Show evidence** (highlight in the document),
+  and the frozen source line. **Save this missed point…** imports the authored
+  passage (`importReadingExample`) and posts a capture with a `reading_item`
+  `source_ref`; **Practise a related question** posts `…/retries`.
+
 ## Human feedback (FLH-018)
 
 A record's detail records explicit feedback through `POST /analyses/{id}/feedback`
