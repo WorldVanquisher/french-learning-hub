@@ -27,5 +27,12 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    // Test-only. Node 26 enables an experimental built-in localStorage that,
+    // without --localstorage-file, is undefined and hides jsdom's, so every test
+    // touching storage fails. The test workers turn it off; Node versions without
+    // the flag are left alone, and the built app never runs under Node.
+    ...(process.allowedNodeEnvironmentFlags.has("--no-experimental-webstorage")
+      ? { poolOptions: { forks: { execArgv: ["--no-experimental-webstorage"] } } }
+      : {}),
   },
 });
