@@ -282,7 +282,9 @@ describe("Writing (private workbench)", () => {
     const captures = writes(server).slice(before);
     expect(captures.map((c) => c.path)).toEqual(["/api/captures"]);
     const doc = JSON.parse(captures[0].body) as Record<string, string>;
-    expect(Object.keys(doc).sort()).toEqual(["capture_id", "original_context", "original_input", "schema_version", "source"]);
+    expect(Object.keys(doc).sort()).toEqual(["capture_id", "original_context", "original_input", "schema_version", "source", "source_ref"]);
+    // Mistake Notebook v1: the exact stored item, never the typed answer unless the learner includes it.
+    expect((doc as unknown as { source_ref: unknown }).source_ref).toEqual({ type: "writing_correction", record_id: 500, item: 1 });
     expect(doc.source).toBe("manual");
     expect(doc.capture_id).toMatch(/^writing-1-101-500-1-[0-9a-f-]{36}$/);
     expect(doc.original_input).toBe(

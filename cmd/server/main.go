@@ -111,7 +111,11 @@ func run() error {
 	feedbackSvc := application.NewFeedbackService(feedbackRepo)
 	effectiveSvc := application.NewEffectiveAnalysisService(analysisRepo, feedbackRepo)
 	inventorySvc := application.NewInventoryService(inventoryRepo)
-	captureSvc := application.NewCaptureService(captureRepo)
+	// Mistake Notebook v1: a capture's optional source_ref must name a stored
+	// listening/reading item, writing correction or speaking improvement.
+	sourceResolver := application.NewMistakeSourceResolver(sqlite.NewListeningRepository(db), sqlite.NewReadingRepository(db),
+		sqlite.NewWritingRepository(db), sqlite.NewSpeakingRepository(db))
+	captureSvc := application.NewCaptureService(captureRepo, application.WithSourceResolver(sourceResolver))
 	knowledgeSvc := application.NewKnowledgeService(entryRepo, analysisRepo, feedbackRepo, knowledgeRepo, admissionRepo, selectedExtractor)
 	conceptSvc := application.NewConceptService(knowledgeRepo, conceptRepo, conceptRepo)
 	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
@@ -154,6 +158,9 @@ func run() error {
 		transporthttp.WithRetrievalEvaluation(retrievalEvaluationSvc),
 		transporthttp.WithRetrievalComparison(retrievalComparisonSvc),
 		transporthttp.WithKnowledgeLibrary(libraryService),
+		// Mistake Notebook v1: read-only views plus explicit retry marks; its
+		// Grammar/Vocabulary views reuse the library search and support rules.
+		transporthttp.WithMistakeNotebook(application.NewMistakeNotebookService(sqlite.NewNotebookRepository(db), sourceResolver, entryRepo, libraryService)),
 		transporthttp.WithReadiness(db.PingContext),
 		transporthttp.WithConceptSuggestions(application.NewConceptSuggestionService(
 			sqlite.NewConceptSuggestionRepository(db), selectedSuggester)),

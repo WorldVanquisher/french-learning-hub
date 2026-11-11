@@ -126,6 +126,10 @@ type NewLearningCaptureInput struct {
 	OriginalContext   string
 	Analysis          *ImportedAnalysisInput
 	DiscussionSummary string
+	// SourceRef is the optional structured source (Mistake Notebook v1): the
+	// exact stored exercise item, writing correction or speaking improvement a
+	// record was saved from. Absent for every other capture.
+	SourceRef *CaptureSourceRef
 }
 
 // Validate normalizes the capture in place and checks every field, returning a
@@ -172,6 +176,14 @@ func (in *NewLearningCaptureInput) Validate() error {
 	in.DiscussionSummary = strings.TrimSpace(in.DiscussionSummary)
 	if len(in.DiscussionSummary) > maxDiscussionSummaryLen {
 		return errWrap("discussion_summary exceeds maximum length")
+	}
+
+	// Optional structured source: shape only here; existence is checked by the
+	// application's SourceResolver before anything is stored.
+	if in.SourceRef != nil {
+		if err := in.SourceRef.Validate(); err != nil {
+			return err
+		}
 	}
 
 	// Optional analysis: reuse AnalysisResult.Validate (taxonomy, bounds, [0,1]).
@@ -224,6 +236,10 @@ type PreparedLearningCapture struct {
 	// is the server-constructed value; the repository stores it verbatim.
 	Analysis           *AnalysisResult
 	AnalyzerProvenance string
+
+	// SourceRef is the validated, resolved structured source, or nil. The
+	// repository stores it in the same transaction as the receipt.
+	SourceRef *CaptureSourceRef
 }
 
 // LearningCapture is the stored import receipt. It references the entry and

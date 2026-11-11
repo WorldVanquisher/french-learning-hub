@@ -14,6 +14,7 @@ import type {
   SpeakingTranscript,
 } from "../types/speaking";
 import { randomOperationId } from "./annotationOperation";
+import { alreadySaved, sourceRef } from "./notebookLink";
 import { countWords, diffWords } from "./Writing";
 import {
   base64Of,
@@ -102,8 +103,19 @@ const originKey: Record<SpeakingTranscript["origin"], MessageKey> = {
   typed: "speaking.origin.typed",
 };
 
-export function Speaking({ onOpenRecord }: { onOpenRecord?: (entryId: number) => void } = {}) {
-  const [screen, setScreen] = useState<{ kind: "list" } | { kind: "exercise"; id: number }>({ kind: "list" });
+export function Speaking({
+  onOpenRecord,
+  openRequest,
+}: {
+  onOpenRecord?: (entryId: number) => void;
+  openRequest?: { exerciseId: number; takeId: number; transcriptVersion: number; nonce: number } | null;
+} = {}) {
+  const [screen, setScreen] = useState<{ kind: "list" } | { kind: "exercise"; id: number; takeId?: number; version?: number; nonce?: number }>({ kind: "list" });
+  // A Mistake Notebook link opens the exercise at the take and transcript version its improvement is about.
+  useEffect(() => {
+    if (openRequest)
+      setScreen({ kind: "exercise", id: openRequest.exerciseId, takeId: openRequest.takeId, version: openRequest.transcriptVersion, nonce: openRequest.nonce });
+  }, [openRequest]);
   const [epoch, setEpoch] = useState(0);
   // Takes' audio lives here, in memory, while Speaking is mounted. It is never
   // written to the server or to browser storage.
@@ -115,8 +127,10 @@ export function Speaking({ onOpenRecord }: { onOpenRecord?: (entryId: number) =>
         <ExerciseList epoch={epoch} onOpen={(id) => setScreen({ kind: "exercise", id })} />
       ) : (
         <ExerciseScreen
-          key={screen.id}
+          key={`${screen.id}-${screen.nonce ?? 0}`}
           id={screen.id}
+          initialTake={screen.takeId}
+          initialVersion={screen.version}
           audio={audio}
           keep={keep}
           onBack={() => {
@@ -217,12 +231,16 @@ function ExerciseList({ epoch, onOpen }: { epoch: number; onOpen: (id: number) =
 
 function ExerciseScreen({
   id,
+  initialTake,
+  initialVersion,
   audio,
   keep,
   onBack,
   onOpenRecord,
 }: {
   id: number;
+  initialTake?: number;
+  initialVersion?: number;
   audio: Map<number, LocalAudio>;
   keep: (takeId: number, a: LocalAudio) => void;
   onBack: () => void;
@@ -231,7 +249,7 @@ function ExerciseScreen({
   const { t } = useI18n();
   const [epoch, setEpoch] = useState(0);
   const view = useLoad<SpeakingExerciseView>(String(id), () => api.getSpeakingExercise(id), epoch);
-  const [selectedTake, setSelectedTake] = useState<number | null>(null);
+  const [selectedTake, setSelectedTake] = useState<number | null>(initialTake ?? null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => headingRef.current?.focus(), [view.status]);
   const back = (
@@ -292,7 +310,15 @@ function ExerciseScreen({
       {take ? (
         <>
           <TakesPanel view={v} take={take} onSelect={setSelectedTake} />
-          <TakeDetail key={take.id} view={v} take={take} local={audio.get(take.id) ?? null} onChanged={reload} onOpenRecord={onOpenRecord} />
+          <TakeDetail
+            key={take.id}
+            view={v}
+            take={take}
+            initialVersion={take.id === initialTake ? initialVersion : undefined}
+            local={audio.get(take.id) ?? null}
+            onChanged={reload}
+            onOpenRecord={onOpenRecord}
+          />
           <ComparePanel view={v} />
         </>
       ) : null}
@@ -475,12 +501,14 @@ type RequestState =
 function TakeDetail({
   view,
   take,
+  initialVersion,
   local,
   onChanged,
   onOpenRecord,
 }: {
   view: SpeakingExerciseView;
   take: SpeakingTake;
+  initialVersion?: number;
   local: LocalAudio | null;
   onChanged: () => void;
   onOpenRecord?: (entryId: number) => void;
@@ -488,7 +516,7 @@ function TakeDetail({
   const { t } = useI18n();
   const versions = view.transcripts.filter((s) => s.take_id === take.id);
   const latest = versions[versions.length - 1] ?? null;
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | null>(initialVersion ?? null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const shown = versions.find((s) => s.version === selected) ?? latest;
   const machine = view.transcriptions.find((x) => x.take_id === take.id && x.status === "completed") ?? null;
@@ -990,7 +1018,7 @@ export function mistakeInput(k: SpeakingImprovement, better: string): string {
   return [`« ${k.quote} » → « ${better.trim()} »`, k.reason_en, k.reason_zh].join("\n");
 }
 
-type CaptureState = { status: "editing" | "saving" } | { status: "saved"; entryId: number; created: boolean } | { status: "unknown" } | { status: "error"; message: string };
+type CaptureState = { status: "editing" | "saving" } | { status: "saved"; entryId: number; created: boolean; duplicate?: boolean } | { status: "unknown" } | { status: "error"; message: string };
 
 function CaptureMistake({
   view,
@@ -1023,17 +1051,19 @@ function CaptureMistake({
     setState({ status: "saving" });
     try {
       const r = await api.importCapture(
-        JSON.stringify({ schema_version: "learning_capture_v1", capture_id: captureId, source: "manual", original_input: input, original_context: context }),
+        JSON.stringify({ schema_version: "learning_capture_v1", capture_id: captureId, source: "manual", original_input: input, original_context: context, source_ref: sourceRef("speaking_improvement", report.id, index) }),
       );
       setState({ status: "saved", entryId: r.entry_id, created: r.created });
     } catch (e) {
-      setState(e instanceof NetworkError ? { status: "unknown" } : { status: "error", message: describe(e) });
+      const dup = alreadySaved(e);
+      if (dup !== null) setState({ status: "saved", entryId: dup, created: false, duplicate: true });
+      else setState(e instanceof NetworkError ? { status: "unknown" } : { status: "error", message: describe(e) });
     }
   };
   if (state.status === "saved")
     return (
       <div className="banner success" role="status">
-        {t(state.created ? "speaking.capture.saved" : "speaking.capture.replayed", { id: state.entryId })}{" "}
+        {t(state.duplicate ? "notebook.save.duplicate" : state.created ? "speaking.capture.saved" : "speaking.capture.replayed", { id: state.entryId })}{" "}
         {onOpenRecord ? (
           <button type="button" className="ghost" onClick={() => onOpenRecord(state.entryId)}>
             {t("speaking.capture.openRecord", { id: state.entryId })}
@@ -1057,6 +1087,7 @@ function CaptureMistake({
         {context}
       </pre>
       <p className="hint">{t("speaking.capture.hint")}</p>
+      <p className="hint">{t("notebook.save.linked")}</p>
       {state.status === "unknown" ? (
         <div className="banner info" role="alert">
           {t("speaking.capture.unknown")}

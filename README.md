@@ -108,6 +108,12 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   version you confirmed (`SPEAKING_PROVIDER`), based on the text only and never
   on pronunciation. Takes can be compared, and a mistake can be saved as a
   normal learning record.
+- Revisit saved misses from all four skills in one **Mistake Notebook**. Each
+  item is a normal learning record linked to the exact exercise item, draft
+  version or transcript version it came from. You can filter by skill, mark
+  items for retry and practise them in a Recall-style session (nothing is
+  scored). Grammar and Vocabulary views list Concepts by the kinds of their
+  supporting units.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation

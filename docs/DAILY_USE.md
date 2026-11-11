@@ -156,6 +156,7 @@ Then open `http://127.0.0.1:8080/`.
 | 15. **Speaking**: record, play back, upload a file, type or correct a transcript, compare | **No** | The audio stays in your browser and is never stored; a take keeps only its type, size, digest and duration ([§13](#13-speaking-practice)) |
 | 16. **Speaking → Send audio for transcription** | **Yes**, once, `SPEAKING_TRANSCRIPTION_PROVIDER` (optional, default `disabled`) | That take's audio is sent once and not stored; you check and confirm the transcript ([§13](#13-speaking-practice)) |
 | 17. **Speaking → Request feedback on version N** | **Yes**, once, `SPEAKING_PROVIDER` (optional, default `disabled`) | One report about that confirmed transcript only; nothing about pronunciation ([§13](#13-speaking-practice)) |
+| 18. **Mistake Notebook**: browse, filter, mark for retry, retry session, Grammar / Vocabulary | **No** | Reads saved records and their stored sources; marking is your explicit choice; retry answers and self-checks are not saved ([§14](#14-mistake-notebook)) |
 
 Suggestion requests use more tokens than one analysis (up to 10 units and 5
 candidates each), so allow `OPENAI_TIMEOUT` headroom as for extraction.
@@ -604,6 +605,34 @@ provider, each once per click.
   and that the audio sent is the take you recorded.
 - It is practice: the task rating is not a score, and there is no mark, level
   or official exam claim.
+
+## 14. Mistake Notebook
+
+**Nothing here calls a model.** The notebook collects the records you saved
+from an exercise (**Save learning record** in Listening, Reading, Writing or
+Speaking), each linked to the exact item it came from.
+
+1. **[Mac]** In any skill, save a miss as before. In Listening and Reading you
+   can tick **Include my answer in the record**; it is off by default. Saving
+   the same item again from a new form says "already saved as learning record
+   #N" and saves nothing new.
+2. Open **Mistake Notebook**. Filter by skill or by **Only items marked for
+   retry**. **Show reference** reveals the reference answer or suggested
+   wording. **Open source** opens the lesson, the writing task at that draft
+   version, or the speaking take at that transcript version, with **← Back to
+   Mistake Notebook**.
+3. **Mark for retry** on the items you want to practise again, then open
+   **Retry session**. For each item, read the prompt, try again, **Reveal
+   reference**, and check yourself. The session saves nothing. At the end you
+   can take the items you had off the retry list.
+4. **Grammar** and **Vocabulary** list Concepts whose supporting units are all
+   grammar or all vocabulary. **Unclassified** lists the rest, with the reason.
+   A Concept opens in the Knowledge Library.
+
+**Limitations:**
+- Records saved before this feature, or without a source link, are not in the
+  notebook. They are never linked by guessing, and their record says so.
+- A self-check is not a score, a mastery level or a schedule.
 
 ## Troubleshooting
 

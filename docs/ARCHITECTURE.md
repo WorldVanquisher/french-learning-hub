@@ -619,6 +619,12 @@ the server. Strict decoding (`DisallowUnknownFields` plus a trailing-token check
 rejects unknown fields at the top level and inside `analysis`, and rejects a
 second JSON object after the first.
 
+Mistake Notebook v1 adds one optional field, `source_ref`: the exact stored
+item a record is saved from ([§4.8](#48-mistake-notebook-v1)). It is checked
+against stored data, stored in the same transaction as the receipt, and is
+part of the fingerprint only when present. Captures without it, including
+every earlier one, behave and fingerprint exactly as before.
+
 `schema_version` must be exactly `learning_capture_v1` (a single domain constant,
 not scattered string literals); any other value is a validation error. `source`
 is a typed vocabulary (`chatgpt-web`, `manual`); an unknown source is rejected,
@@ -1195,6 +1201,75 @@ through §4.1. Migration `018`.
     **← Back to Speaking**. No Concept, score or mastery.
 - **Not in the public demo:** the routes are not allowlisted, and the seven
   tables must be empty in demo artifacts.
+
+### 4.8 Mistake Notebook v1
+
+One private place to revisit the misses a learner saved from Listening,
+Reading, Writing and Speaking. A notebook item is an ordinary learning record
+(§4.1), saved with a structured **source reference**. Migration `019`.
+
+- **Source reference:** the optional `source_ref` of `learning_capture_v1`:
+  `{"type", "record_id", "item", "attempt"?}`.
+  - `type` is `listening_item`, `reading_item` (an exercise and its 1-based
+    question), `writing_correction` or `speaking_improvement` (a feedback
+    report and its 1-based correction or improvement).
+  - `attempt` is the learner's own answer. It is allowed only for listening
+    and reading, and only when the learner ticks **Include my answer**.
+    Writing and speaking quote the learner's own words from that exact
+    version instead.
+- **Checks:** the server checks the referenced item exists. It must be
+  completed content, the item must be in range, and a writing or speaking
+  quote must have been found in its version. A reference that fails any check
+  is `422` and nothing is stored.
+- **Storage:** the reference goes in `learning_capture_sources`, in the same
+  transaction as the entry and receipt. The capture fingerprint covers it only
+  when it is present, so every other capture keeps its fingerprint.
+- **Duplicates:** `UNIQUE(type, record_id, item)` means one record per source
+  item. A second save of the same item under another `capture_id` is `409
+  {"code": "source_already_saved", "entry_id"}`, naming the record. The same
+  `capture_id` replays as before.
+- **No inference:** old records are never linked by parsing their prose or
+  `capture_id`, and are never rewritten. `GET /entries/{id}/source` answers
+  `linked: false` with a notice, and the record view says so.
+- **Items:** `GET /mistake-notebook/items` (filter by `skill` and
+  `marked=true`, newest first). Each item is resolved from its stored source:
+  - the prompt (question, task prompt or situation) and category;
+  - the learner's quoted words or included answer;
+  - the reference answer or suggested wording, with the explanation in
+    English and Chinese, and writing and speaking hints;
+  - an exact `link` (listening material, exercise and transcript version;
+    reading lesson, passage version and exercise; writing task, draft and
+    version, and feedback; speaking exercise, take, transcript and version,
+    and feedback);
+  - the record's own text.
+- **Retry marks** (`mistake_retry_marks`): append-only; the latest row per
+  record is current. `PUT /mistake-notebook/items/{id}/retry {"marked"}` adds a
+  row only when the state changes, and only for notebook records. A mark is
+  not a Concept judgment, a score or a schedule.
+- **Workbench (Mistake Notebook view):**
+  - **Mistakes:** skill filter, "marked for retry" filter, **Show reference**,
+    **Open source** (opens the skill view at that lesson, the writing task at
+    that draft version, or the speaking take at that transcript version),
+    **Open record**, and **Mark for retry**.
+  - **Retry session:** Recall Practice over marked items from any skill. The
+    reference stays hidden until **Reveal reference**. Typed answers and the
+    self-check stay in the page: never sent, scored or scheduled. Taking an
+    item off the list is a separate, explicit action.
+  - The four save forms send the `source_ref`, and show "already saved as
+    record #N" for a duplicate.
+- **Grammar / Vocabulary / Unclassified**
+  (`GET /mistake-notebook/concepts?kind=&q=`, rule `concept_kind_view_v1`):
+  - The Knowledge Library search (§9) runs over **active** Concepts, with its
+    tokens, ordering and support rules.
+  - Each Concept is classified by the `fr_l2_knowledge_v1` kinds of its current
+    supporting units: all `grammar` gives Grammar; all `vocabulary` gives
+    Vocabulary.
+  - Mixed kinds, another kind (`morphology`, `orthography`, `pronunciation`,
+    `usage`, `expression`) or no supporting unit stays unclassified, with the
+    reason. There is no separate catalog and nothing is guessed.
+  - Rows open the Concept in the Knowledge Library by its ID.
+- **Not in the public demo:** the routes are not allowlisted, and both tables
+  must be empty in demo artifacts.
 
 ## 5. Knowledge extraction and admission
 
@@ -2809,6 +2884,7 @@ forward-only; there are no down migrations.
 | `015_listening_daily` | `listening_pull_runs`, `listening_playlist_items`, `listening_preparations`, `listening_notifications`: receipts inserted before each outside call and finished once (Daily Listening; see [§4.4](#44-daily-listening-pull-prepare-notify)) |
 | `017_writing_tasks` | `writing_tasks`, `writing_drafts`, `writing_feedback`, `writing_feedback_requests` (Writing v1; see [§4.6](#46-exam-writing-v1)) |
 | `018_speaking_exercises` | `speaking_exercises`, `speaking_takes` (audio metadata only), `speaking_transcriptions`, `speaking_transcription_requests`, `speaking_transcripts`, `speaking_feedback`, `speaking_feedback_requests` (Speaking v1; see [§4.7](#47-speaking-v1)) |
+| `019_mistake_notebook` | `learning_capture_sources` (one structured source per capture, written with it), `mistake_retry_marks` (append-only) (Mistake Notebook v1; see [§4.8](#48-mistake-notebook-v1)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -3202,6 +3278,7 @@ Request fields:
 | `original_context`   | yes      | Surrounding context. Validated like a normal entry.                   |
 | `analysis`           | no       | Optional imported classification (see below).                         |
 | `discussion_summary` | no       | Optional short summary of the discussion. Trimmed, bounded.           |
+| `source_ref`         | no       | Mistake Notebook v1 ([§4.8](#48-mistake-notebook-v1)): `{"type", "record_id", "item", "attempt"?}` naming the exact stored exercise item, writing correction or speaking improvement. It is checked against stored data (`422` if absent) and stored in the same transaction. A second record for the same item is `409 {"code": "source_already_saved", "entry_id"}`. Without it, nothing changes |
 
 The optional `analysis` object uses the shared `fr_l2_taxonomy_v1` taxonomy and
 reuses the same validation as any other analysis: `category` (in the taxonomy),
@@ -3317,6 +3394,8 @@ through the existing entry, analysis, and inventory endpoints. A malformed
 | Unsupported `schema_version`                | `422`  |
 | Invalid content (source, entry data, analysis) | `422` |
 | Same `capture_id` with changed content      | `409`  |
+| `source_ref` names an item already saved under another `capture_id` | `409` `{"code": "source_already_saved", "entry_id"}` |
+| `source_ref` does not name a stored, completed item | `422` |
 | Lookup of a missing capture                 | `404`  |
 | Malformed `capture_id` on lookup            | `400`  |
 | Unexpected storage failure                  | `500`  |
@@ -3814,3 +3893,15 @@ A request has `id`, `operation_id`, `take_id` (transcription) or
 `transcript_id` (feedback), `after_unknown`, `started_at`, `deadline_at`,
 `finished_at`, `state` (`in_progress`, `completed`, `failed`, `unknown`) and
 `result_id`. The public demo boundary does not expose these routes.
+
+### A.20 Mistake Notebook (Mistake Notebook v1)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `POST /captures` with `source_ref` | See A.7. `422` for a reference that does not name a stored, completed item; `409 {"code": "source_already_saved", "entry_id"}` when that item is already a record |
+| `GET /mistake-notebook/items` | Optional `skill` (`listening`, `reading`, `writing`, `speaking`) and `marked=true`. `items` (newest first: `entry_id`, `capture_id`, `saved_at`, `skill`, `source` {`type`, `record_id`, `item`, `attempt`}, `title`, `prompt`, `category`, `quote`, `reference`, `explanation_en`/`_zh`, `hint_en`/`_zh`, `link`, `record` {`original_input`, `original_context`}, `retry` {`marked`, `since`}) and `unlinked_notice`. Read-only |
+| `PUT /mistake-notebook/items/{entry_id}/retry` | Body `{"marked": true\|false}`. `200` `{item, changed}` (a row is appended only on a change); `404` not a notebook record; `422` missing `marked` |
+| `GET /mistake-notebook/concepts` | `kind` = `grammar`, `vocabulary` or `unclassified`, optional `q` (library search syntax). `rule` (`concept_kind_view_v1`), `classified`, `truncated`, `concepts` (`concept_id`, `target`, `pedagogical_intent`, `scope`, `state`, `class`, `reason`, `kinds`, `supporting_unit_count`, `match_tier`). `400` for an unknown kind or an unsearchable query. Read-only |
+| `GET /entries/{id}/source` | `{entry_id, linked: true, item}` or `{entry_id, linked: false, notice}`; `404` unknown record. Read-only |
+
+The public demo boundary does not expose these routes.

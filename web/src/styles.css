@@ -77,6 +77,7 @@ body {
 
 .view-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -948,3 +949,10 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .speaking-transcribe { margin: 8px 0; }
 .speaking-transcribe .banner p { margin: 4px 0; }
 .speaking-local { margin: 6px 0; }
+
+/* Mistake Notebook v1. */
+.notebook-filter, .notebook-attempt { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 6px 0; }
+.notebook-item { border-top: 1px solid var(--border); padding-top: 8px; }
+.notebook-reference { border-left: 3px solid var(--border-strong); padding-left: 8px; margin: 6px 0; }
+.notebook .listening-item .label { font-weight: 600; }
+.notebook textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 6px; }

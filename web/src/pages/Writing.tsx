@@ -13,6 +13,7 @@ import type {
   WritingTaskView,
 } from "../types/writing";
 import { randomOperationId } from "./annotationOperation";
+import { alreadySaved, sourceRef } from "./notebookLink";
 
 // Exam Writing v1 (private workbench only; never in the public demo).
 //
@@ -110,8 +111,15 @@ const failureKey: Record<"provider_timeout" | "provider_unavailable" | "invalid_
   invalid_output: "writing.failure.invalid_output",
 };
 
-export function Writing({ onOpenRecord }: { onOpenRecord?: (entryId: number) => void } = {}) {
-  const [screen, setScreen] = useState<{ kind: "list" } | { kind: "task"; id: number }>({ kind: "list" });
+export function Writing({
+  onOpenRecord,
+  openRequest,
+}: { onOpenRecord?: (entryId: number) => void; openRequest?: { taskId: number; draftVersion: number; nonce: number } | null } = {}) {
+  const [screen, setScreen] = useState<{ kind: "list" } | { kind: "task"; id: number; version?: number; nonce?: number }>({ kind: "list" });
+  // A Mistake Notebook link opens the task at the draft version its correction is about.
+  useEffect(() => {
+    if (openRequest) setScreen({ kind: "task", id: openRequest.taskId, version: openRequest.draftVersion, nonce: openRequest.nonce });
+  }, [openRequest]);
   const [epoch, setEpoch] = useState(0);
   return (
     <main className="writing">
@@ -119,8 +127,9 @@ export function Writing({ onOpenRecord }: { onOpenRecord?: (entryId: number) => 
         <TaskList epoch={epoch} onOpen={(id) => setScreen({ kind: "task", id })} />
       ) : (
         <TaskScreen
-          key={screen.id}
+          key={`${screen.id}-${screen.nonce ?? 0}`}
           id={screen.id}
+          initialVersion={screen.version}
           onBack={() => {
             setEpoch((n) => n + 1);
             setScreen({ kind: "list" });
@@ -254,11 +263,21 @@ function OwnTaskForm({ onSaved }: { onSaved: (id: number) => void }) {
   );
 }
 
-function TaskScreen({ id, onBack, onOpenRecord }: { id: number; onBack: () => void; onOpenRecord?: (entryId: number) => void }) {
+function TaskScreen({
+  id,
+  initialVersion,
+  onBack,
+  onOpenRecord,
+}: {
+  id: number;
+  initialVersion?: number;
+  onBack: () => void;
+  onOpenRecord?: (entryId: number) => void;
+}) {
   const { t } = useI18n();
   const [epoch, setEpoch] = useState(0);
   const view = useLoad<WritingTaskView>(String(id), () => api.getWritingTask(id), epoch);
-  const [selected, setSelected] = useState<number | null>(null); // version number; null = latest
+  const [selected, setSelected] = useState<number | null>(initialVersion ?? null); // version number; null = latest
   const [highlight, setHighlight] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => headingRef.current?.focus(), [view.status]);
@@ -724,7 +743,7 @@ export function mistakeInput(k: WritingCorrection, revised: string): string {
   return [`« ${k.quote} » → « ${revised.trim()} »`, k.reason_en, k.reason_zh].join("\n");
 }
 
-type CaptureState = { status: "editing" | "saving" } | { status: "saved"; entryId: number; created: boolean } | { status: "unknown" } | { status: "error"; message: string };
+type CaptureState = { status: "editing" | "saving" } | { status: "saved"; entryId: number; created: boolean; duplicate?: boolean } | { status: "unknown" } | { status: "error"; message: string };
 
 function CaptureMistake({
   view,
@@ -755,17 +774,19 @@ function CaptureMistake({
     setState({ status: "saving" });
     try {
       const r = await api.importCapture(
-        JSON.stringify({ schema_version: "learning_capture_v1", capture_id: captureId, source: "manual", original_input: input, original_context: context }),
+        JSON.stringify({ schema_version: "learning_capture_v1", capture_id: captureId, source: "manual", original_input: input, original_context: context, source_ref: sourceRef("writing_correction", report.id, index) }),
       );
       setState({ status: "saved", entryId: r.entry_id, created: r.created });
     } catch (e) {
-      setState(e instanceof NetworkError ? { status: "unknown" } : { status: "error", message: describe(e) });
+      const dup = alreadySaved(e);
+      if (dup !== null) setState({ status: "saved", entryId: dup, created: false, duplicate: true });
+      else setState(e instanceof NetworkError ? { status: "unknown" } : { status: "error", message: describe(e) });
     }
   };
   if (state.status === "saved")
     return (
       <div className="banner success" role="status">
-        {t(state.created ? "writing.capture.saved" : "writing.capture.replayed", { id: state.entryId })}{" "}
+        {t(state.duplicate ? "notebook.save.duplicate" : state.created ? "writing.capture.saved" : "writing.capture.replayed", { id: state.entryId })}{" "}
         {onOpenRecord ? (
           <button type="button" className="ghost" onClick={() => onOpenRecord(state.entryId)}>
             {t("writing.capture.openRecord", { id: state.entryId })}
@@ -789,6 +810,7 @@ function CaptureMistake({
         {context}
       </pre>
       <p className="hint">{t("writing.capture.hint")}</p>
+      <p className="hint">{t("notebook.save.linked")}</p>
       {state.status === "unknown" ? (
         <div className="banner info" role="alert">
           {t("writing.capture.unknown")}

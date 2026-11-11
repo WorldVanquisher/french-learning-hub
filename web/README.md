@@ -755,6 +755,39 @@ A private **Speaking** view (never in the public demo). Contract:
   learning record**. The context names the exercise, take, transcript version
   and feedback. **Open record #N** comes back with **← Back to Speaking**.
 
+## Mistake Notebook (Mistake Notebook v1)
+
+A private **Mistake Notebook** view (never in the public demo). Contract:
+[ARCHITECTURE.md §4.8](../docs/ARCHITECTURE.md#48-mistake-notebook-v1).
+
+- **Save paths:** `notebookLink.ts`'s `sourceRef(type, recordId, index,
+  attempt)` adds `source_ref` to the four existing capture saves:
+  - Listening and Reading send the exercise and question. The typed answer is
+    included only behind an unticked **Include my answer** box.
+  - Writing and Speaking send the report and correction or improvement.
+
+  `alreadySaved(e)` turns `409 source_already_saved` into "already saved as
+  learning record #N".
+- **Mistakes:** `GET /mistake-notebook/items` with skill and marked filters.
+  Each item shows the prompt, your words or answer, your record, and the
+  source line from its `link`.
+  - **Show reference** reveals the reference.
+  - **Open source** uses `sourceOpen(item)` and the skill view's
+    `openRequest` prop: the listening or reading lesson, the writing task with
+    `initialVersion`, or the speaking exercise with `initialTake` and
+    `initialVersion`.
+  - **Mark for retry** sends an explicit `PUT …/retry`.
+- **Retry session:** marked items from any skill. The reference stays hidden
+  until **Reveal reference**; the self-check uses `aria-pressed`. Typed
+  answers and checks stay in component state. The only write is an explicit
+  removal from the retry list.
+- **Grammar / Vocabulary / Unclassified:** `GET /mistake-notebook/concepts`,
+  shown with their kinds and reasons. A row opens the Concept in the
+  Knowledge Library.
+- **Record view:** `RecordSource` (in `RecordDetail`, when the App passes
+  `onOpenSource`) shows "Saved from …" with **Open source**, or the honest
+  "no structured source link" notice.
+
 ## Correcting a reviewed unit from the inspection (FLH-082)
 
 The unit inspection opened from a record offers corrections for a unit of the

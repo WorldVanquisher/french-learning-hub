@@ -46,6 +46,7 @@ import type {
 import type { SuggestionConfirmResult, SuggestionOverview, SuggestionRun } from "../types/suggestion";
 import type { ReadingExamples, ReadingList, ReadingLessonView, ReadingPreparationResult } from "../types/reading";
 import type { WritingFeedbackResult, WritingPrompts, WritingTaskSummary, WritingTaskView } from "../types/writing";
+import type { EntrySource, KindConcepts, KindView, NotebookItem, NotebookList, Skill } from "../types/notebook";
 import type {
   NewSpeakingTake,
   SpeakingExerciseSummary,
@@ -926,4 +927,32 @@ export function requestSpeakingFeedback(
 // getSpeakingFeedbackRequest looks a feedback request up by its key.
 export function getSpeakingFeedbackRequest(operationId: string, fetchImpl: typeof fetch = fetch): Promise<SpeakingFeedbackResult> {
   return request<SpeakingFeedbackResult>("GET", `/speaking/feedback-requests/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// ---- Mistake Notebook v1 (private workbench) ----
+
+// listNotebookItems lists records saved with a source link (newest first).
+export function listNotebookItems(filter: { skill?: Skill; marked?: boolean } = {}, fetchImpl: typeof fetch = fetch): Promise<NotebookList> {
+  const q = new URLSearchParams();
+  if (filter.skill) q.set("skill", filter.skill);
+  if (filter.marked) q.set("marked", "true");
+  const qs = q.toString();
+  return request<NotebookList>("GET", `/mistake-notebook/items${qs ? `?${qs}` : ""}`, undefined, fetchImpl);
+}
+
+// setNotebookRetry records one explicit "mark for retry" / "remove" decision.
+export function setNotebookRetry(entryId: number, marked: boolean, fetchImpl: typeof fetch = fetch): Promise<{ item: NotebookItem; changed: boolean }> {
+  return request<{ item: NotebookItem; changed: boolean }>("PUT", `/mistake-notebook/items/${entryId}/retry`, { marked }, fetchImpl);
+}
+
+// getKindConcepts reads one Grammar / Vocabulary / Unclassified view.
+export function getKindConcepts(kind: KindView, query = "", fetchImpl: typeof fetch = fetch): Promise<KindConcepts> {
+  const q = new URLSearchParams({ kind });
+  if (query.trim()) q.set("q", query.trim());
+  return request<KindConcepts>("GET", `/mistake-notebook/concepts?${q.toString()}`, undefined, fetchImpl);
+}
+
+// getEntrySource reads a record's structured source, or linked:false.
+export function getEntrySource(entryId: number, fetchImpl: typeof fetch = fetch): Promise<EntrySource> {
+  return request<EntrySource>("GET", `/entries/${entryId}/source`, undefined, fetchImpl);
 }

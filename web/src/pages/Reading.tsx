@@ -17,6 +17,7 @@ import type {
   ReadingPreparation,
 } from "../types/reading";
 import { randomOperationId } from "./annotationOperation";
+import { alreadySaved, sourceRef } from "./notebookLink";
 
 // Exam Reading v1 (private workbench only; never in the public demo).
 //
@@ -73,8 +74,15 @@ const failureKey: Record<ReadingFailureCode, MessageKey> = {
   invalid_output: "reading.failure.invalid_output",
 };
 
-export function Reading({ onOpenRecord }: { onOpenRecord?: (entryId: number) => void } = {}) {
+export function Reading({
+  onOpenRecord,
+  openRequest,
+}: { onOpenRecord?: (entryId: number) => void; openRequest?: { lessonId: number; nonce: number } | null } = {}) {
   const [screen, setScreen] = useState<{ kind: "list" } | { kind: "lesson"; id: number }>({ kind: "list" });
+  // A Mistake Notebook link opens the lesson its item came from.
+  useEffect(() => {
+    if (openRequest) setScreen({ kind: "lesson", id: openRequest.lessonId });
+  }, [openRequest]);
   const [epoch, setEpoch] = useState(0);
   return (
     <main className="reading">
@@ -503,6 +511,7 @@ function ExerciseView({
                 exercise={exercise}
                 item={item}
                 index={i}
+                answer={answers[i]}
                 check={checks[i]}
                 onCheck={(c) => setChecks((prev) => ({ ...prev, [i]: c }))}
                 onShow={onShow}
@@ -544,6 +553,7 @@ function Revealed({
   exercise,
   item,
   index,
+  answer,
   check,
   onCheck,
   onShow,
@@ -553,6 +563,7 @@ function Revealed({
   exercise: ReadingExercise;
   item: ReadingItem;
   index: number;
+  answer: string;
   check: SelfCheck | undefined;
   onCheck: (c: SelfCheck) => void;
   onShow: (e: ReadingEvidence) => void;
@@ -623,7 +634,7 @@ function Revealed({
         ) : null}
       </div>
       {saving ? (
-        <SaveMissedPoint view={view} exercise={exercise} item={item} index={index} onCancel={() => setSaving(false)} onOpenRecord={onOpenRecord} />
+        <SaveMissedPoint view={view} exercise={exercise} item={item} index={index} answer={answer} onCancel={() => setSaving(false)} onOpenRecord={onOpenRecord} />
       ) : null}
     </div>
   );
@@ -648,7 +659,7 @@ export function missedPointContext(view: ReadingLessonView, exercise: ReadingExe
 type SaveState =
   | { status: "editing" }
   | { status: "saving" }
-  | { status: "saved"; entryId: number; created: boolean }
+  | { status: "saved"; entryId: number; created: boolean; duplicate?: boolean }
   | { status: "unknown" }
   | { status: "error"; message: string };
 
@@ -657,6 +668,7 @@ function SaveMissedPoint({
   exercise,
   item,
   index,
+  answer,
   onCancel,
   onOpenRecord,
 }: {
@@ -664,6 +676,7 @@ function SaveMissedPoint({
   exercise: ReadingExercise;
   item: ReadingItem;
   index: number;
+  answer: string;
   onCancel: () => void;
   onOpenRecord?: (entryId: number) => void;
 }) {
@@ -672,6 +685,7 @@ function SaveMissedPoint({
   // One capture ID per form: resending after a lost response replays it.
   const [captureId] = useState(() => `reading-${view.lesson.id}-${exercise.id}-${index + 1}-${randomOperationId()}`);
   const [state, setState] = useState<SaveState>({ status: "editing" });
+  const [includeAnswer, setIncludeAnswer] = useState(false);
   const context = missedPointContext(view, exercise, item);
   const send = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -679,18 +693,27 @@ function SaveMissedPoint({
     setState({ status: "saving" });
     try {
       const result = await api.importCapture(
-        JSON.stringify({ schema_version: "learning_capture_v1", capture_id: captureId, source: "manual", original_input: text, original_context: context }),
+        JSON.stringify({
+          schema_version: "learning_capture_v1",
+          capture_id: captureId,
+          source: "manual",
+          original_input: text,
+          original_context: context,
+          source_ref: sourceRef("reading_item", exercise.id, index, includeAnswer ? answer : ""),
+        }),
       );
       setState({ status: "saved", entryId: result.entry_id, created: result.created });
     } catch (e) {
-      setState(e instanceof NetworkError ? { status: "unknown" } : { status: "error", message: describe(e) });
+      const dup = alreadySaved(e);
+      if (dup !== null) setState({ status: "saved", entryId: dup, created: false, duplicate: true });
+      else setState(e instanceof NetworkError ? { status: "unknown" } : { status: "error", message: describe(e) });
     }
   };
   const fieldId = `reading-missed-${exercise.id}-${index}`;
   if (state.status === "saved")
     return (
       <div className="banner success" role="status">
-        {t(state.created ? "reading.save.saved" : "reading.save.replayed", { id: state.entryId })}{" "}
+        {t(state.duplicate ? "notebook.save.duplicate" : state.created ? "reading.save.saved" : "reading.save.replayed", { id: state.entryId })}{" "}
         {onOpenRecord ? (
           <button type="button" className="ghost" onClick={() => onOpenRecord(state.entryId)}>
             {t("reading.save.openRecord", { id: state.entryId })}
@@ -702,11 +725,18 @@ function SaveMissedPoint({
     <form className="listening-save" aria-label={t("reading.save.region", { n: index + 1 })} onSubmit={send}>
       <label htmlFor={fieldId}>{t("reading.save.label")}</label>
       <textarea id={fieldId} rows={3} value={text} required onChange={(e) => setText(e.target.value)} disabled={state.status === "saving"} />
+      {answer.trim() ? (
+        <label className="notebook-attempt">
+          <input type="checkbox" checked={includeAnswer} onChange={(e) => setIncludeAnswer(e.target.checked)} disabled={state.status === "saving"} />{" "}
+          {t("notebook.save.includeAnswer", { answer: answer.trim() })}
+        </label>
+      ) : null}
       <p className="label">{t("reading.save.attached")}</p>
       <pre className="listening-context" lang="fr">
         {context}
       </pre>
       <p className="hint">{t("reading.save.hint")}</p>
+      <p className="hint">{t("notebook.save.linked")}</p>
       {state.status === "unknown" ? (
         <div className="banner info" role="alert">
           {t("reading.save.unknown")}

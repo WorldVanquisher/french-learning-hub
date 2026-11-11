@@ -627,6 +627,26 @@ Speaking v1 (private workbench):
   A mistake is a capture (`source: manual`) on explicit confirmation only.
   Never in the public demo.
 
+Mistake Notebook v1 (private workbench):
+
+- Optional `source_ref` on `learning_capture_v1` (`listening_item`,
+  `reading_item`, `writing_correction`, `speaking_improvement` + record id +
+  1-based item; `attempt` only for listening/reading when the learner ticks
+  it). Validated against stored items by `MistakeSourceResolver` (422
+  otherwise) and stored in `learning_capture_sources` (migration 019) in the
+  capture's transaction. The fingerprint includes it only when present.
+- `UNIQUE(type, record_id, item)`: a second record for the same item is
+  `409 source_already_saved` with the existing `entry_id`. Never link old
+  records by parsing prose or capture IDs; never backfill or rewrite them.
+- `mistake_retry_marks` is append-only and learner-explicit; a mark is not a
+  Concept judgment, score or schedule. Retry sessions keep answers and
+  self-checks in the page only.
+- Grammar/Vocabulary views (`concept_kind_view_v1`) classify active Concepts
+  only by the kinds of current supporting units (all grammar / all
+  vocabulary); everything else stays unclassified. Reuse the Knowledge
+  Library search and Concept IDs; no second catalog. Contract:
+  `docs/ARCHITECTURE.md` §4.8, A.20. Never in the public demo.
+
 Daily Listening (pull, prepare, notify):
 
 - One pull, `ListeningDailyService.Pull`, shared by "Pull now"

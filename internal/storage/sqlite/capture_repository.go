@@ -60,14 +60,29 @@ func (r *CaptureRepository) Create(ctx context.Context, in domain.PreparedLearni
 	if existing != nil {
 		return resolveRepeat(ctx, tx, in.CaptureID, in.ContentFingerprint)
 	}
+	// A source item is saved at most once (Mistake Notebook v1): a new
+	// capture_id for an already saved item names the existing record instead.
+	if in.SourceRef != nil {
+		if entryID, err := sourceEntryTx(ctx, tx, *in.SourceRef); err != nil {
+			return domain.LearningCaptureResult{}, err
+		} else if entryID != 0 {
+			return domain.LearningCaptureResult{}, &domain.SourceAlreadySavedError{EntryID: entryID}
+		}
+	}
 
 	result, err := r.insertCapture(ctx, tx, in)
 	if err != nil {
-		// A uniqueness race: someone inserted this capture_id after our check.
-		// Roll back our partial work and resolve against the committed row.
+		// A uniqueness race: someone inserted this capture_id (or saved this
+		// source item) after our checks. Roll back our partial work and
+		// resolve against the committed rows.
 		if isUniqueViolation(err) {
 			_ = tx.Rollback()
-			return r.resolveRepeatFresh(ctx, in.CaptureID, in.ContentFingerprint)
+			if _, getErr := r.GetByCaptureID(ctx, in.CaptureID); getErr == nil || in.SourceRef == nil {
+				return r.resolveRepeatFresh(ctx, in.CaptureID, in.ContentFingerprint)
+			}
+			if entryID, err := sourceEntryTx(ctx, r.db, *in.SourceRef); err == nil && entryID != 0 {
+				return domain.LearningCaptureResult{}, &domain.SourceAlreadySavedError{EntryID: entryID}
+			}
 		}
 		return domain.LearningCaptureResult{}, err
 	}
@@ -119,7 +134,7 @@ func (r *CaptureRepository) insertCapture(ctx context.Context, tx *sql.Tx, in do
 
 	// 3. Capture receipt (references entry + optional analysis; never duplicates
 	//    their content). The capture_id UNIQUE constraint enforces idempotency.
-	_, err = tx.ExecContext(ctx,
+	receipt, err := tx.ExecContext(ctx,
 		`INSERT INTO learning_captures
 		   (capture_id, entry_id, analysis_id, source, schema_version, discussion_summary, content_fingerprint, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -128,6 +143,26 @@ func (r *CaptureRepository) insertCapture(ctx context.Context, tx *sql.Tx, in do
 	)
 	if err != nil {
 		return domain.LearningCaptureResult{}, fmt.Errorf("insert capture: %w", err)
+	}
+
+	// 4. Optional structured source (Mistake Notebook v1), in the same
+	//    transaction: a record and its source are stored together or not at all.
+	if in.SourceRef != nil {
+		receiptID, err := receipt.LastInsertId()
+		if err != nil {
+			return domain.LearningCaptureResult{}, fmt.Errorf("capture last insert id: %w", err)
+		}
+		var attempt any
+		if in.SourceRef.Attempt != "" {
+			attempt = in.SourceRef.Attempt
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO learning_capture_sources (capture_row_id, entry_id, source_type, record_id, item, attempt, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			receiptID, entryID, in.SourceRef.Type, in.SourceRef.RecordID, in.SourceRef.Item, attempt, ts,
+		); err != nil {
+			return domain.LearningCaptureResult{}, fmt.Errorf("insert capture source: %w", err)
+		}
 	}
 
 	return domain.LearningCaptureResult{
@@ -293,4 +328,18 @@ func nullInt64(p *int64) any {
 // matching it keeps the driver-specific detail inside the storage package.
 func isUniqueViolation(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
+}
+
+// sourceEntryTx returns the record a source item was already saved as, or 0.
+func sourceEntryTx(ctx context.Context, q queryer, ref domain.CaptureSourceRef) (int64, error) {
+	var entryID int64
+	err := q.QueryRowContext(ctx, `SELECT entry_id FROM learning_capture_sources WHERE source_type = ? AND record_id = ? AND item = ?`,
+		ref.Type, ref.RecordID, ref.Item).Scan(&entryID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("read capture source: %w", err)
+	}
+	return entryID, nil
 }

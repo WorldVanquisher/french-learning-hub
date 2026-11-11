@@ -87,6 +87,7 @@ type Handler struct {
 	reading             ReadingService
 	writing             WritingService
 	speaking            SpeakingService
+	notebook            MistakeNotebookService
 	// demo is set only in the FLH-073 public demo mode.
 	demo *publicDemo
 	// readiness reports whether the backing store can serve requests. It is
@@ -217,6 +218,7 @@ func (h *Handler) Routes() http.Handler {
 	h.registerReadingRoutes(mux)
 	h.registerWritingRoutes(mux)
 	h.registerSpeakingRoutes(mux)
+	h.registerNotebookRoutes(mux)
 	h.registerPublicDemoRoutes(mux)
 	return mux
 }
@@ -468,6 +470,9 @@ type createCaptureRequest struct {
 	OriginalContext   string                  `json:"original_context"`
 	Analysis          *captureAnalysisRequest `json:"analysis"`
 	DiscussionSummary string                  `json:"discussion_summary"`
+	// SourceRef is optional (Mistake Notebook v1): the exact stored item a
+	// record is saved from. The server checks that it exists.
+	SourceRef *captureSourceRefRequest `json:"source_ref"`
 }
 
 // captureResultResponse is the POST /captures response. analysis_id is an
@@ -782,8 +787,18 @@ func (h *Handler) handleCreateCapture(w http.ResponseWriter, r *http.Request) {
 			Uncertainty: req.Analysis.Uncertainty,
 		}
 	}
+	if req.SourceRef != nil {
+		in.SourceRef = &domain.CaptureSourceRef{Type: req.SourceRef.Type, RecordID: req.SourceRef.RecordID, Item: req.SourceRef.Item, Attempt: req.SourceRef.Attempt}
+	}
 
 	result, err := h.capture.ImportCapture(r.Context(), in)
+	var already *domain.SourceAlreadySavedError
+	if errors.As(err, &already) {
+		// The same source item was saved before under another capture_id: name
+		// that record instead of creating a duplicate.
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "source_already_saved", "entry_id": already.EntryID})
+		return
+	}
 	if errors.Is(err, domain.ErrValidation) {
 		// Unsupported schema version and invalid content both surface as 422.
 		writeError(w, http.StatusUnprocessableEntity, err.Error())

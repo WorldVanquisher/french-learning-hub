@@ -24,13 +24,15 @@ type Mode = "ok" | "fail" | "disabled";
 type Call = { method: string; path: string; body: string; key: string | null };
 type Server = {
   exercises: SpeakingExerciseView[];
+  // Source items already saved as records (Mistake Notebook): type:record:item → entry.
+  savedSources: Map<string, number>;
   transcription: Mode;
   feedback: Mode;
   calls: Call[];
   ids: number;
 };
 
-const newServer = (over: Partial<Server> = {}): Server => ({ exercises: [], transcription: "ok", feedback: "ok", calls: [], ids: 1000, ...over });
+const newServer = (over: Partial<Server> = {}): Server => ({ exercises: [], savedSources: new Map(), transcription: "ok", feedback: "ok", calls: [], ids: 1000, ...over });
 const invitation = prompts[0];
 const limits = {
   max_audio_bytes: 8 << 20,
@@ -184,7 +186,11 @@ function serve(server: Server) {
       return r ? json(200, r) : json(404, { error: "nothing recorded" });
     }
     if (p === "/api/captures" && method === "POST") {
-      const doc = JSON.parse(body) as { capture_id: string };
+      const doc = JSON.parse(body) as { capture_id: string; source_ref?: { type: string; record_id: number; item: number } };
+      const key = doc.source_ref ? `${doc.source_ref.type}:${doc.source_ref.record_id}:${doc.source_ref.item}` : "";
+      const existing = key ? server.savedSources.get(key) : undefined;
+      if (existing !== undefined) return json(409, { error: "already saved", code: "source_already_saved", entry_id: existing });
+      if (key) server.savedSources.set(key, 77);
       return json(201, { capture_id: doc.capture_id, entry_id: 77, analysis_id: null, created: true });
     }
     if (p === "/api/knowledge-library/demo")
@@ -441,10 +447,30 @@ describe("Speaking (private workbench)", () => {
     expect(doc.original_context).toContain(`Speaking exercise #1: ${invitation.title} (authored prompt ${invitation.id})`);
     expect(doc.original_context).toContain("Take 1, transcript version 1 (typed)");
     expect(doc.original_context).toContain("not a pronunciation judgment");
+    // Mistake Notebook v1: the exact stored improvement, by report and position.
+    const reportId = Number(/^speaking-1-21-(\d+)-1-/.exec(doc.capture_id)![1]);
+    expect(doc.source_ref).toEqual({ type: "speaking_improvement", record_id: reportId, item: 1 });
     // The record opens in Learning Records, with a way back to Speaking.
     fireEvent.click(within(item).getByRole("button", { name: "Open record #77 in Learning Records" }));
     fireEvent.click(await screen.findByRole("button", { name: "← Back to Speaking" }));
     expect(await screen.findByRole("region", { name: "Take 1" })).toBeInTheDocument();
+  });
+
+  it("names the existing record when the same improvement was already saved, and saves nothing new", async () => {
+    installMedia("grant");
+    const v = withTypedTake(1, [transcriptV1]);
+    v.feedback.push({ id: 900, transcript_id: 21, status: "completed", failure_code: null, generator: GENERATOR, created_at: "t", content: feedbackV1 });
+    const server = newServer({ exercises: [v], savedSources: new Map([["speaking_improvement:900:1", 55]]) });
+    serve(server);
+    await openExercise(server);
+    const item = within(screen.getByRole("group", { name: "Feedback report for take 1, version 1" })).getByRole("group", { name: "Improvement 1" });
+    fireEvent.click(within(item).getByRole("button", { name: "Save this mistake…" }));
+    const form = within(item).getByRole("form", { name: "Save improvement 1 as a learning record" });
+    expect(form).toHaveTextContent("It is saved with a link to this exact item");
+    fireEvent.change(within(form).getByLabelText("How you would say it now"), { target: { value: "j'arriverai" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save learning record" }));
+    expect(await within(item).findByText("This item is already saved as learning record #55 (in your Mistake Notebook). Nothing new was saved.")).toBeInTheDocument();
+    expect(within(item).getByRole("button", { name: "Open record #55 in Learning Records" })).toBeInTheDocument();
   });
 
   it("compares confirmed transcripts of two takes, from the earlier to the later", async () => {

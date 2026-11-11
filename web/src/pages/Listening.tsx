@@ -18,6 +18,7 @@ import type {
   TranscriptSegment,
 } from "../types/listening";
 import { randomOperationId } from "./annotationOperation";
+import { alreadySaved, sourceRef } from "./notebookLink";
 import { DailyPanel, NotificationsSection } from "./ListeningDaily";
 
 // Exam Listening Lesson v1 (private workbench only; never in the public demo).
@@ -96,8 +97,15 @@ function VideoLink({ material, seconds = null, label }: { material: ListeningMat
   );
 }
 
-export function Listening({ onOpenRecord }: { onOpenRecord?: (entryId: number) => void } = {}) {
+export function Listening({
+  onOpenRecord,
+  openRequest,
+}: { onOpenRecord?: (entryId: number) => void; openRequest?: { materialId: number; nonce: number } | null } = {}) {
   const [screen, setScreen] = useState<{ kind: "list" } | { kind: "lesson"; id: number }>({ kind: "list" });
+  // A Mistake Notebook link opens the lesson its item came from.
+  useEffect(() => {
+    if (openRequest) setScreen({ kind: "lesson", id: openRequest.materialId });
+  }, [openRequest]);
   const [epoch, setEpoch] = useState(0);
   return (
     <main className="listening">
@@ -492,6 +500,7 @@ function ExerciseView({
                 exercise={exercise}
                 item={item}
                 index={i}
+                answer={answers[i]}
                 segments={item.segments.map(segment).filter((s): s is TranscriptSegment => !!s)}
                 check={checks[i]}
                 onCheck={(c) => setChecks((prev) => ({ ...prev, [i]: c }))}
@@ -575,6 +584,7 @@ function Revealed({
   exercise,
   item,
   index,
+  answer,
   segments,
   check,
   onCheck,
@@ -584,6 +594,7 @@ function Revealed({
   exercise: ListeningExercise;
   item: ListeningItem;
   index: number;
+  answer: string;
   segments: TranscriptSegment[];
   check: SelfCheck | undefined;
   onCheck: (c: SelfCheck) => void;
@@ -626,6 +637,7 @@ function Revealed({
           exercise={exercise}
           item={item}
           index={index}
+          answer={answer}
           segments={segments}
           onCancel={() => setSaving(false)}
           onOpenRecord={onOpenRecord}
@@ -650,7 +662,7 @@ export function missedPointContext(material: ListeningMaterial, item: ListeningI
 type SaveState =
   | { status: "editing" }
   | { status: "saving" }
-  | { status: "saved"; entryId: number; created: boolean }
+  | { status: "saved"; entryId: number; created: boolean; duplicate?: boolean }
   | { status: "unknown" }
   | { status: "error"; message: string };
 
@@ -659,6 +671,7 @@ function SaveMissedPoint({
   exercise,
   item,
   index,
+  answer,
   segments,
   onCancel,
   onOpenRecord,
@@ -667,6 +680,7 @@ function SaveMissedPoint({
   exercise: ListeningExercise;
   item: ListeningItem;
   index: number;
+  answer: string;
   segments: TranscriptSegment[];
   onCancel: () => void;
   onOpenRecord?: (entryId: number) => void;
@@ -677,6 +691,7 @@ function SaveMissedPoint({
   // capture on the server instead of creating a second record.
   const [captureId] = useState(() => `listening-${material.id}-${exercise.id}-${index + 1}-${randomOperationId()}`);
   const [state, setState] = useState<SaveState>({ status: "editing" });
+  const [includeAnswer, setIncludeAnswer] = useState(false);
   const context = missedPointContext(material, item, segments);
   const send = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -690,18 +705,21 @@ function SaveMissedPoint({
           source: "manual",
           original_input: text,
           original_context: context,
+          source_ref: sourceRef("listening_item", exercise.id, index, includeAnswer ? answer : ""),
         }),
       );
       setState({ status: "saved", entryId: result.entry_id, created: result.created });
     } catch (e) {
-      setState(e instanceof NetworkError ? { status: "unknown" } : { status: "error", message: describe(e) });
+      const dup = alreadySaved(e);
+      if (dup !== null) setState({ status: "saved", entryId: dup, created: false, duplicate: true });
+      else setState(e instanceof NetworkError ? { status: "unknown" } : { status: "error", message: describe(e) });
     }
   };
   const fieldId = `listening-missed-${exercise.id}-${index}`;
   if (state.status === "saved")
     return (
       <div className="banner success" role="status">
-        {t(state.created ? "listening.save.saved" : "listening.save.replayed", { id: state.entryId })}{" "}
+        {t(state.duplicate ? "notebook.save.duplicate" : state.created ? "listening.save.saved" : "listening.save.replayed", { id: state.entryId })}{" "}
         {onOpenRecord ? (
           <button type="button" className="ghost" onClick={() => onOpenRecord(state.entryId)}>
             {t("listening.save.openRecord", { id: state.entryId })}
@@ -713,11 +731,18 @@ function SaveMissedPoint({
     <form className="listening-save" aria-label={t("listening.save.region", { n: index + 1 })} onSubmit={send}>
       <label htmlFor={fieldId}>{t("listening.save.label")}</label>
       <textarea id={fieldId} rows={3} value={text} required onChange={(e) => setText(e.target.value)} disabled={state.status === "saving"} />
+      {answer.trim() ? (
+        <label className="notebook-attempt">
+          <input type="checkbox" checked={includeAnswer} onChange={(e) => setIncludeAnswer(e.target.checked)} disabled={state.status === "saving"} />{" "}
+          {t("notebook.save.includeAnswer", { answer: answer.trim() })}
+        </label>
+      ) : null}
       <p className="label">{t("listening.save.attached")}</p>
       <pre className="listening-context" lang="fr">
         {context}
       </pre>
       <p className="hint">{t("listening.save.hint")}</p>
+      <p className="hint">{t("notebook.save.linked")}</p>
       {state.status === "unknown" ? (
         <div className="banner info" role="alert">
           {t("listening.save.unknown")}
