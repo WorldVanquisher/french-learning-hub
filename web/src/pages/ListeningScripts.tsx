@@ -68,6 +68,13 @@ export function ScriptsPanel({ epoch, onOpen }: { epoch: number; onOpen: (materi
       ) : load.data.scripts.length === 0 ? (
         <p className="empty">{t("listening.scripts.empty")}</p>
       ) : (
+        <>
+        <p className="hint">
+          {t("listening.scripts.importedCount", {
+            imported: load.data.scripts.filter((s) => s.imported_material_id !== null).length,
+            total: load.data.scripts.length,
+          })}
+        </p>
         <ul className="listening-list">
           {load.data.scripts.map((s) => (
             <li key={s.id}>
@@ -75,6 +82,12 @@ export function ScriptsPanel({ epoch, onOpen }: { epoch: number; onOpen: (materi
                 {s.title}
               </span>{" "}
               <span className="tag">{t("listening.source.scriptOnly")}</span>
+              {s.imported_material_id !== null ? (
+                <>
+                  {" "}
+                  <span className="tag">{t("listening.scripts.imported")}</span>
+                </>
+              ) : null}
               <div className="hint">
                 {t("listening.scripts.meta", { genre: s.genre, level: s.style_level, lines: s.lines, questions: s.questions })}
               </div>
@@ -90,6 +103,7 @@ export function ScriptsPanel({ epoch, onOpen }: { epoch: number; onOpen: (materi
             </li>
           ))}
         </ul>
+        </>
       )}
       {importing.status === "unknown" ? (
         <div className="banner info" role="alert">

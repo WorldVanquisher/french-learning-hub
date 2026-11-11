@@ -907,10 +907,22 @@ the learning workflow only through §4.1.
   may not carry the authored-only fields. Importing again replays (`200`) and
   writes nothing; different content for an imported script is `409
   script_conflict` and writes nothing. A script takes no learner transcript
-  (`409 authored_script`); explicit preparation over it remains possible but
-  is never offered by the workbench while the authored exercise is current. A
-  script is never a playlist item, so pulls neither match, prepare nor announce
-  it. The workbench labels it "Script only · no audio", shows no video link,
+  (`409 authored_script`). A script is never a playlist item, so pulls neither
+  match, prepare nor announce it.
+- **Model preparation on a script (current contract, unchanged):**
+  `POST /listening/materials/{id}/exercises` treats a script-only lesson like
+  any lesson with a transcript. With `LISTENING_PROVIDER=disabled` it is `503`
+  and stores nothing. When enabled, it makes the one explicit, possibly billed
+  call through the shared attempt-first path. The OpenAI request carries the
+  title and the numbered line texts (`number`, `text`): no speaker, no
+  timestamp. The output is validated by the generated rules, and the result is
+  a new exercise row (`openai:<model>:listening_exercise_v1`) on the same
+  transcript, newest first. The authored exercise stays stored and import still
+  replays (`200`). The workbench shows the newest completed exercise for the
+  current transcript, so after such a call it shows the generated questions
+  instead of the authored ones. It never offers the Prepare button on a script,
+  because the authored exercise already counts as prepared. Pinned by
+  `TestListeningScripts_ModelPreparationOnAScriptUsesTheExistingExplicitPath`. The workbench labels it "Script only · no audio", shows no video link,
   offers the choices, and can show the script to the person reading it aloud;
   answers, evidence and notes stay hidden until reveal.
 - **Migration `021`** rebuilds `listening_materials` (SQLite cannot relax

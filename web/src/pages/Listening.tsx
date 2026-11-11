@@ -159,7 +159,6 @@ function MaterialList({ epoch, onOpen, onSaved }: { epoch: number; onOpen: (id: 
         </p>
       ) : null}
       <AddMaterialForm onSaved={onSaved} />
-      <ScriptsPanel epoch={epoch} onOpen={onOpen} />
       <section className="panel" aria-label={t("listening.list.region")}>
         <h2>{t("listening.list.heading")}</h2>
         {list.status === "loading" ? (
@@ -198,6 +197,7 @@ function MaterialList({ epoch, onOpen, onSaved }: { epoch: number; onOpen: (id: 
           </ul>
         )}
       </section>
+      <ScriptsPanel epoch={epoch} onOpen={onOpen} />
     </>
   );
 }
@@ -525,6 +525,7 @@ function ExerciseView({
   const [checks, setChecks] = useState<Record<number, SelfCheck>>({});
   const [showTranscript, setShowTranscript] = useState(false);
   const [showForReader, setShowForReader] = useState(false);
+  const readerToggle = useRef<HTMLButtonElement>(null);
   const segment = (n: number) => transcript.segments.find((s) => s.index === n);
   const script = isScript(material);
   const authored = exercise.generator.startsWith("authored:");
@@ -535,7 +536,13 @@ function ExerciseView({
       {script && !revealed ? (
         <>
           <div className="actions">
-            <button type="button" className="ghost" aria-expanded={showForReader} onClick={() => setShowForReader((v) => !v)}>
+            <button
+              ref={readerToggle}
+              type="button"
+              className="ghost"
+              aria-expanded={showForReader}
+              onClick={() => setShowForReader((v) => !v)}
+            >
               {t(showForReader ? "listening.script.hideForReader" : "listening.script.showForReader")}
             </button>
           </div>
@@ -545,6 +552,18 @@ function ExerciseView({
               {transcript.segments.map((s) => (
                 <SegmentLine key={s.index} material={material} s={s} />
               ))}
+              <div className="actions">
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    setShowForReader(false);
+                    readerToggle.current?.focus(); // back to the start of the exercise
+                  }}
+                >
+                  {t("listening.script.hideAtEnd")}
+                </button>
+              </div>
             </section>
           ) : null}
         </>

@@ -724,6 +724,9 @@ Authored listening scripts (workbook):
   `accepted_alternatives`, `evidence`) are refused in generated content. A
   script is never a playlist item, so pulls never select or announce it. Not in
   the public demo (routes not allowlisted).
+- Model preparation on a script uses the existing explicit route unchanged (a
+  newer generated exercise is then the one shown; ARCHITECTURE.md §4.3, pinned
+  by a test). Do not change that contract as part of UI work.
 
 ## Design Priorities
 

@@ -240,6 +240,13 @@ describe("Workbook listening scripts (private workbench)", () => {
     expect(screen.queryByText("Reference answer:")).toBeNull();
     fireEvent.click(within(exercise).getByRole("button", { name: "Hide the script" }));
     expect(within(exercise).queryByRole("region", { name: "Script to read aloud" })).toBeNull();
+    // A reader who reached the end hides it there; focus returns to the toggle.
+    const toggle = within(exercise).getByRole("button", { name: "Show the script to the person reading it aloud" });
+    fireEvent.click(toggle);
+    fireEvent.click(within(within(exercise).getByRole("region", { name: "Script to read aloud" })).getByRole("button", { name: "End of the script: hide it" }));
+    expect(within(exercise).queryByRole("region", { name: "Script to read aloud" })).toBeNull();
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
 
     fireEvent.click(within(choices).getByRole("radio", { name: content.items[0].choices![0] }));
     fireEvent.change(within(exercise).getByLabelText("Your answer to question 2"), { target: { value: "mardi-secret" } });
@@ -304,6 +311,30 @@ describe("Workbook listening scripts (private workbench)", () => {
     const { source_ref: ref, ...rest } = JSON.parse(posts[0].body) as Record<string, unknown>;
     expect(Object.keys(rest).sort()).toEqual(["capture_id", "original_context", "original_input", "schema_version", "source"]);
     if (ref !== undefined) expect(ref).toEqual({ type: "listening_item", record_id: 900, item: 2 });
+  });
+
+  it("back on the list, your own lessons come first and the imported script is marked", async () => {
+    const server: Server = { imported: null, calls: [], imports: 0 };
+    serve(server);
+    const panel = await openScripts();
+    expect(within(panel).getByText(/^0 of 1 scripts imported\./)).toBeInTheDocument();
+    expect(within(panel).queryByText("Imported")).toBeNull();
+    const saved = screen.getByRole("region", { name: "Saved listening material" });
+    // Your own material precedes the catalogue of workbook scripts.
+    expect(saved.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(saved).getByText("No listening material yet. Add a YouTube link above, or import a workbook script below.")).toBeInTheDocument();
+
+    fireEvent.click(within(panel).getByRole("button", { name: `Import ${TITLE}` }));
+    await screen.findByRole("heading", { name: TITLE });
+    fireEvent.click(screen.getByRole("button", { name: "← All listening material" }));
+    const again = await screen.findByRole("region", { name: "Workbook listening scripts" });
+    expect(await within(again).findByText(/^1 of 1 scripts imported\./)).toBeInTheDocument();
+    const row = within(again).getByRole("button", { name: `Open ${TITLE}` }).closest("li")!;
+    expect(within(row).getByText("Imported")).toBeInTheDocument();
+    expect(within(again).queryByRole("button", { name: `Import ${TITLE}` })).toBeNull();
+    const savedAgain = screen.getByRole("region", { name: "Saved listening material" });
+    expect(within(savedAgain).getByRole("button", { name: TITLE })).toBeInTheDocument();
+    expect(savedAgain.compareDocumentPosition(again) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("labels the scripts in Simplified Chinese without translating the French", async () => {

@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -254,5 +255,78 @@ func TestListeningScripts_UnavailableInThePublicDemo(t *testing.T) {
 		if status, _ := doJSON(t, http.MethodPost, demo.URL+prefix+"/listening/scripts/ls-wb1-u01", ""); status != http.StatusMethodNotAllowed {
 			t.Errorf("POST %s/listening/scripts/ls-wb1-u01 in the demo: %d", prefix, status)
 		}
+	}
+}
+
+// echoGenerator is a local stand-in for the opt-in generator: it builds a
+// valid generated exercise from the segments it receives and records them.
+type echoGenerator struct {
+	requests []domain.ListeningGenerationRequest
+}
+
+func (g *echoGenerator) Name() string { return "openai:local-echo:listening_exercise_v1" }
+
+func (g *echoGenerator) Generate(_ context.Context, req domain.ListeningGenerationRequest) (domain.ListeningExerciseContent, error) {
+	g.requests = append(g.requests, req)
+	first, last := req.Segments[0], req.Segments[len(req.Segments)-1]
+	return domain.ListeningExerciseContent{
+		Items: []domain.ListeningItem{
+			{Kind: domain.ListeningMainIdea, Question: "Q1", ExpectedAnswer: "A1", RationaleEN: "r", RationaleZH: "r", Segments: []int{first.Index}},
+			{Kind: domain.ListeningDetail, Question: "Q2", ExpectedAnswer: "A2", RationaleEN: "r", RationaleZH: "r", Segments: []int{last.Index}},
+		},
+		Annotations: []domain.ListeningAnnotation{{Kind: "vocabulary", Segment: first.Index, Excerpt: strings.Fields(first.Text)[0], NoteEN: "n", NoteZH: "n"}},
+	}, nil
+}
+
+// Pins the CURRENT contract for model preparation on a script-only lesson; it
+// is documented in docs/ARCHITECTURE.md §4.3 and was not changed by the UI work.
+// The explicit route accepts it like any lesson with a transcript: one call
+// with the title and the untimed script lines, a stored generated exercise
+// newest first beside the authored one (which stays stored), and import still
+// replays. With the provider disabled it is 503 and nothing is stored.
+func TestListeningScripts_ModelPreparationOnAScriptUsesTheExistingExplicitPath(t *testing.T) {
+	pack := embeddedScripts(t)
+	gen := &echoGenerator{}
+	srv, db, _ := buildListeningServer(t, filepath.Join(t.TempDir(), "scripts.db"), gen, application.WithListeningScripts(pack))
+	sc := pack.Scripts[0]
+	_, lesson, _ := postScript(t, srv, sc.ID)
+	id := itoa(int64(path(lesson, "material", "id").(float64)))
+
+	status, body := doJSON(t, http.MethodPost, srv.URL+"/listening/materials/"+id+"/exercises", "")
+	if status != http.StatusCreated || path(body, "exercise", "generator") != gen.Name() {
+		t.Fatalf("prepare on a script: %d %v", status, body)
+	}
+	if len(gen.requests) != 1 || gen.requests[0].Title != sc.Title || len(gen.requests[0].Segments) != len(sc.Lines) {
+		t.Fatalf("generator requests = %+v", gen.requests)
+	}
+	for _, s := range gen.requests[0].Segments {
+		if s.StartSeconds != nil {
+			t.Fatalf("a script segment reached the generator with a time: %+v", s)
+		}
+	}
+	_, after := doJSON(t, http.MethodGet, srv.URL+"/listening/materials/"+id, "")
+	var gens []string
+	for _, e := range after["exercises"].([]any) {
+		gens = append(gens, e.(map[string]any)["generator"].(string))
+	}
+	if strings.Join(gens, ",") != gen.Name()+","+domain.ListeningAuthoredGenerator || after["state"] != "prepared" {
+		t.Fatalf("exercises newest first = %v, state %v", gens, after["state"])
+	}
+	before := listeningCounts(t, db)
+	if status, _, replayed := postScript(t, srv, sc.ID); status != http.StatusOK || replayed != "true" {
+		t.Fatalf("import after a model preparation: %d %q", status, replayed)
+	}
+	if now := listeningCounts(t, db); now != before {
+		t.Fatalf("replay wrote rows: %s -> %s", before, now)
+	}
+
+	off, offDB, _ := buildListeningServer(t, filepath.Join(t.TempDir(), "off.db"), nil, application.WithListeningScripts(pack))
+	_, offLesson, _ := postScript(t, off, sc.ID)
+	offID := itoa(int64(path(offLesson, "material", "id").(float64)))
+	if status, _ := doJSON(t, http.MethodPost, off.URL+"/listening/materials/"+offID+"/exercises", ""); status != http.StatusServiceUnavailable {
+		t.Fatalf("prepare with the provider disabled: %d", status)
+	}
+	if n := countRows(t, offDB, "listening_exercises"); n != 1 {
+		t.Fatalf("a disabled preparation stored rows: %d exercises", n)
 	}
 }
