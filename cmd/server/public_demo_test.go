@@ -151,7 +151,7 @@ func TestPublicDemo_AllowedRoutesAtRootAndAPI(t *testing.T) {
 	art := info["artifact"].(map[string]any)
 	if info["schema_version"] != "knowledge_library_public_demo_v1" || info["read_only"] != true || info["data"] != "synthetic" ||
 		art["vector_source"] != "mechanical-test" || art["real_model"] != false || art["release_status"] != "blocked_mechanical_vectors" ||
-		!strings.Contains(art["notice"].(string), "say nothing about semantic relevance") || len(info["presets"].([]any)) != 8 {
+		!strings.Contains(art["notice"].(string), "say nothing about semantic relevance") || len(info["presets"].([]any)) != 9 {
 		t.Fatalf("info = %v", info)
 	}
 	concepts := f.json(t, "/knowledge-library/concepts")

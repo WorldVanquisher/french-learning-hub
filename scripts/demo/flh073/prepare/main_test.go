@@ -59,7 +59,7 @@ func TestCLI_EmbedImportValidateRelease(t *testing.T) {
 	}
 	work2 := filepath.Join(t.TempDir(), "work2")
 	args[4] = work2
-	if code, out, errs := cli(append(args, "-allow-live")...); code != 0 || *posts != 3 || !strings.Contains(out, `"completed": 20`) {
+	if code, out, errs := cli(append(args, "-allow-live")...); code != 0 || *posts != 3 || !strings.Contains(out, `"completed": 23`) {
 		t.Fatalf("embed: %d %s %s", code, out, errs)
 	}
 	if code, out, _ := cli("status", "-fixtures", fixtures, "-work", work2); code != 0 || !strings.Contains(out, `"pending": 0`) {

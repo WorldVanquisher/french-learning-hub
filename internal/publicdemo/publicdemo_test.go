@@ -98,11 +98,11 @@ func TestBuild_ArtifactValidatesAndIsLabelledMechanical(t *testing.T) {
 		!strings.Contains(m.Notice, "say nothing about semantic relevance") {
 		t.Fatalf("manifest must label mechanical vectors: %+v", m)
 	}
-	if m.Vectors.QueryRepresentation != application.ConceptSearchQueryRepresentationV2 || m.Vectors.Dimensions != 64 || len(a.Presets) != 8 {
+	if m.Vectors.QueryRepresentation != application.ConceptSearchQueryRepresentationV2 || m.Vectors.Dimensions != 64 || len(a.Presets) != 9 {
 		t.Fatalf("identity/presets: %+v %d", m.Vectors, len(a.Presets))
 	}
-	if m.DomainFingerprint.Counts["knowledge_concepts"] != 12 || m.DomainFingerprint.Counts["learning_entries"] != 8 ||
-		m.DomainFingerprint.Counts["unit_concept_memberships"] != 11 {
+	if m.DomainFingerprint.Counts["knowledge_concepts"] != 14 || m.DomainFingerprint.Counts["learning_entries"] != 11 ||
+		m.DomainFingerprint.Counts["unit_concept_memberships"] != 16 {
 		t.Fatalf("counts = %v", m.DomainFingerprint.Counts)
 	}
 	for _, suffix := range []string{"-wal", "-shm"} {
@@ -518,7 +518,7 @@ func TestFingerprint_CoversEveryTableInTheSchema(t *testing.T) {
 			t.Errorf("table %s is not covered by the domain fingerprint", name)
 		}
 	}
-	if a.Manifest.DomainFingerprint.Version != publicdemo.FingerprintVersion || a.Manifest.DomainFingerprint.Counts["knowledge_admission_recommendations"] != 11 {
+	if a.Manifest.DomainFingerprint.Version != publicdemo.FingerprintVersion || a.Manifest.DomainFingerprint.Counts["knowledge_admission_recommendations"] != 16 {
 		t.Fatalf("manifest fingerprint = %+v", a.Manifest.DomainFingerprint)
 	}
 }

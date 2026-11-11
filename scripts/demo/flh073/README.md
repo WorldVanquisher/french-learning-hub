@@ -4,7 +4,7 @@ Operator guide: [docs/PUBLIC_DEMO.md](../../../docs/PUBLIC_DEMO.md).
 
 | Path | Purpose |
 | --- | --- |
-| `fixtures/catalog.json` | Synthetic catalog: 8 learner questions with analyses and units, 12 Concepts, 8 preset queries. No real data. Preset texts are demonstration inputs, not labels or expected answers |
+| `fixtures/catalog.json` | Synthetic catalog: 11 learner questions (3 written in French) with analyses and units, 14 Concepts, 9 preset queries. No real data. Preset texts are demonstration inputs, not labels or expected answers |
 | `prepare/` | `go run ./scripts/demo/flh073/prepare build -out DIR` and `validate -artifact DIR [-release]` |
 | `smoke.sh` | Local loopback smoke of the whole demo (`bash smoke.sh /abs/new/dir [port]`) |
 

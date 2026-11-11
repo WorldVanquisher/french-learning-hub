@@ -123,7 +123,7 @@ func TestPlan_ExactProductionTextsAndRoles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plan.Positions) != 20 {
+	if len(plan.Positions) != 23 {
 		t.Fatalf("positions = %d", len(plan.Positions))
 	}
 	docs, presets := 0, 0
@@ -150,7 +150,7 @@ func TestPlan_ExactProductionTextsAndRoles(t *testing.T) {
 			}
 		}
 	}
-	if docs != 12 || presets != 8 {
+	if docs != 14 || presets != 9 {
 		t.Fatalf("docs %d presets %d", docs, presets)
 	}
 	again, _ := publicdemo.PlanFromFixtures(context.Background(), fixturePath)
@@ -168,8 +168,8 @@ func TestEmbedImport_FullPipelineProducesAValidModelArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	posts, readyz, positions := fake.counts()
-	if r.Completed != 20 || r.Pending != 0 || r.SentPosts != 3 || posts != 3 || readyz != 1 || positions != 20 ||
-		r.Accounting.UsedPosts != 3 || r.Accounting.UsedPositions != 20 || r.Accounting.UsedProbes != 1 {
+	if r.Completed != 23 || r.Pending != 0 || r.SentPosts != 3 || posts != 3 || readyz != 1 || positions != 23 ||
+		r.Accounting.UsedPosts != 3 || r.Accounting.UsedPositions != 23 || r.Accounting.UsedProbes != 1 {
 		t.Fatalf("report %+v; fake posts %d readyz %d positions %d", r, posts, readyz, positions)
 	}
 	// A repeat sends nothing and does not even probe.
@@ -238,7 +238,7 @@ func TestEmbed_FailureStopsAndResumeNeverResendsCompletedPositions(t *testing.T)
 	firstBatch := plan.Positions[:8]
 	fake.failPost = 0
 	r, err = publicdemo.Embed(context.Background(), fixturePath, work, embedOpts(base))
-	if err != nil || r.Completed != 20 || r.SentPositions != 12 || r.SentPosts != 2 {
+	if err != nil || r.Completed != 23 || r.SentPositions != 15 || r.SentPosts != 2 {
 		t.Fatalf("resume: %+v %v", r, err)
 	}
 	for _, p := range firstBatch {
@@ -246,12 +246,12 @@ func TestEmbed_FailureStopsAndResumeNeverResendsCompletedPositions(t *testing.T)
 			t.Fatalf("%s was sent %d times; completed receipts must not be resent", p.Key, fake.inputs[p.Text])
 		}
 	}
-	// Accounting: 4 POSTs charged (1 ok, 1 failed, 2 ok), 28 positions, 2 probes.
+	// Accounting: 4 POSTs charged (1 ok, 1 failed, 2 ok), 31 positions, 2 probes.
 	status, st, err := publicdemo.WorkStatus(context.Background(), fixturePath, work)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status.Accounting.UsedPosts != 4 || status.Accounting.UsedPositions != 28 || status.Accounting.UsedProbes != 2 {
+	if status.Accounting.UsedPosts != 4 || status.Accounting.UsedPositions != 31 || status.Accounting.UsedProbes != 2 {
 		t.Fatalf("accounting = %+v", status.Accounting)
 	}
 	if st.Posts[1].Outcome != "failed" || !strings.Contains(st.Posts[1].Error, "HTTP 500") {
@@ -265,7 +265,7 @@ func TestEmbed_FailureStopsAndResumeNeverResendsCompletedPositions(t *testing.T)
 
 func TestEmbed_BudgetAndProbeRefusalsSendNothing(t *testing.T) {
 	ctx := context.Background()
-	// 20 positions at batch 8 need 3 POSTs: a 2-POST limit is refused up front.
+	// 23 positions at batch 8 need 3 POSTs: a 2-POST limit is refused up front.
 	fake := newFakeE5(32)
 	base := startFake(t, fake)
 	opts := embedOpts(base)
