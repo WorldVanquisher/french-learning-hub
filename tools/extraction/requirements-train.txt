@@ -1,7 +1,10 @@
-# Training backend, pinned to the versions the CPU smoke run used (2026-11-10).
+# Training backend. 2026-11-11: transformers 5.21.1 / tokenizers 0.23.3 for Qwen3.5 (model_type qwen3_5,
+# absent from 4.57.6); torch, peft unchanged. Verified in a container: profile load, tokenizer, template,
+# tiny Qwen3.5 save/reload, LoRA, prediction. The earlier CPU smoke run (tiny random model) used 4.57.6.
 # The GPU image installs the same versions; torch from PyPI bundles its CUDA runtime.
 torch==2.15.0
-transformers==4.57.6
+transformers==5.21.1
 peft==0.21.2
-tokenizers==0.22.2
+tokenizers==0.23.3
+huggingface_hub==2.4.0
 safetensors

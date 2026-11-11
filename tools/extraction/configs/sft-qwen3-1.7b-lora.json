@@ -1,5 +1,6 @@
 {
-  "$comment": "Pinned candidate configuration (not yet run). Qwen/Qwen3-1.7B, Apache-2.0, revision verified on the Hugging Face API 2026-11-10. Weights are supplied as a SageMaker input channel (network isolation); local_files_only stays true.",
+  "$comment": "SUPERSEDED on 2026-11-11 by sft-qwen3.5-4b-lora.json; never run, kept for reproducibility. Was: pinned candidate configuration (not yet run). Qwen/Qwen3-1.7B, Apache-2.0, revision verified on the Hugging Face API 2026-11-10. Weights are supplied as a SageMaker input channel (network isolation); local_files_only stays true.",
+  "model_profile": "qwen3-1.7b",
   "model_name_or_path": "/opt/ml/input/data/model",
   "revision": null,
   "tokenizer_name_or_path": "/opt/ml/input/data/model",

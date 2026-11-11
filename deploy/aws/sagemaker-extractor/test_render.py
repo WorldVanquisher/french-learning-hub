@@ -9,7 +9,7 @@ HERE = Path(__file__).resolve().parent
 CFG = json.dumps({"model_name_or_path": "/opt/ml/input/data/model", "smoke": False})
 VALUES = {"REGISTRY": "123456789012.dkr.ecr.us-east-1.amazonaws.com", "IMAGE_DIGEST": "sha256:" + "a" * 64,
           "EXEC_ROLE_ARN": "arn:aws:iam::123456789012:role/flh-extractor-exec", "BUCKET": "example-bucket",
-          "BASE_MODEL_KEY": "qwen3-1.7b-70d244cc", "TRAIN_SHA256": "b" * 64, "DEV_SHA256": "c" * 64, "CONFIG_JSON": CFG,
+          "BASE_MODEL_KEY": "qwen3.5-4b-851bf6e8", "TRAIN_SHA256": "b" * 64, "DEV_SHA256": "c" * 64, "CONFIG_JSON": CFG,
           "PROMPTS_SHA256": "d" * 64, "ADAPTER_KEY": "run-1"}
 
 

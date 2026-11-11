@@ -12,7 +12,9 @@ extractor, its prompt, schema and routing are untouched.
 | Evaluation candidates | `authoring/bank_eval.py`, `generate_eval.py` | 200 held-out candidates from a separate bank and separate scenario formats |
 | Production render/validate | `cmd/extraction-render` (Go) | the exact production request; production parsing and validation of any output; a capped, confirmed baseline `run` of the configured extractor |
 | Checks and evaluation | `flh_extraction/` | records, duplicates, splits and leakage, manifests, provisional automatic matching with human-judgment override, SFT records, prediction, training |
-| Training | `flh_extraction/train.py`, `sagemaker_entry.py`, `Dockerfile`, `requirements-train.txt`, `configs/` | model-configurable SFT with answer-only loss; SageMaker train and predict modes |
+| Model profiles | `flh_extraction/models.py` | the only model-specific wiring: base model, pinned revision, loader, chat-template options, LoRA targets. Default candidate `Qwen/Qwen3.5-4B` (Qwen3-1.7B superseded, never run) |
+| Training | `flh_extraction/train.py`, `sagemaker_entry.py`, `Dockerfile`, `requirements-train.txt`, `configs/` | SFT with answer-only loss through a model profile; SageMaker train and predict modes |
+| Untuned baseline | `scripts/untuned_baseline.sh`, `scripts/select_eval_subset.py`, `flh_extraction/categories.py` | one command: fixed 50-item frozen-eval subset → predict → production validator → harness → schema validity, unsupported claims, abstention and splitting reported separately |
 | AWS interface | `deploy/aws/sagemaker-extractor/` | bounded job templates, renderer, IAM templates (prepared, never launched) |
 | Runbook | `TRAINING_RUNBOOK.md` | the experiment, its gates, owner commands and cost bound |
 
@@ -22,7 +24,7 @@ reviewer accepts it (`authoring/build_review_queue.py`). Confidence values
 follow an authoring convention and are not calibrated.
 
 ```sh
-python3 -B -m unittest discover -s tests -t tests     # 11 standard-library tests (+5 backend tests with TINY_SFT and torch)
+python3 -B -m unittest discover -s tests -t tests     # 18 standard-library tests (+5 backend tests with TINY_SFT and torch)
 ```
 
 ## Generated data (not committed)

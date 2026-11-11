@@ -1,0 +1,18 @@
+{
+  "$comment": "Default candidate (2026-11-11), not yet run. Qwen/Qwen3.5-4B, Apache-2.0, revision 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a (Hugging Face API). Loaded text-only as Qwen3_5ForCausalLM through model_profile qwen3.5-4b, which also supplies chat_template_kwargs (enable_thinking false) and the LoRA target modules. Weights arrive as a SageMaker input channel (network isolation); local_files_only stays true. max_length 1280: the longest of the 1,200 SFT records is 980 tokens with this tokenizer.",
+  "model_profile": "qwen3.5-4b",
+  "model_name_or_path": "/opt/ml/input/data/model",
+  "revision": null,
+  "tokenizer_name_or_path": "/opt/ml/input/data/model",
+  "max_length": 1280,
+  "learning_rate": 0.0002,
+  "epochs": 3,
+  "batch_size": 1,
+  "grad_accum": 16,
+  "seed": 1,
+  "dtype": "bfloat16",
+  "eval_every": 25,
+  "lora": {"r": 16, "lora_alpha": 32, "lora_dropout": 0.05},
+  "smoke": false,
+  "local_files_only": true
+}

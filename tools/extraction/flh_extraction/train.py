@@ -2,7 +2,9 @@
 
   python3 -m flh_extraction.train --config CONFIG.json --train SFT.jsonl [--dev DEV.jsonl] --out DIR
 
-The model is configurable (`model_name_or_path` + pinned `revision`). Only the
+The model is configurable (`model_name_or_path` + pinned `revision`); its
+model-specific wiring (loader, chat-template options, LoRA targets) comes from
+`model_profile` in flh_extraction/models.py. Only the
 assistant tokens (the knowledge_extraction_v2 JSON) carry loss: system and user
 tokens are masked with -100. A run writes the model, the tokenizer, the config,
 per-step losses and a run manifest with input hashes. A model trained here is
@@ -25,7 +27,7 @@ IGNORE = -100
 DEFAULTS = {"model_name_or_path": None, "revision": None, "tokenizer_name_or_path": None, "trust_remote_code": False,
             "max_length": 1024, "learning_rate": 2e-4, "weight_decay": 0.0, "epochs": 1, "max_steps": None,
             "batch_size": 1, "grad_accum": 8, "seed": 1, "lora": None, "dtype": "float32", "eval_every": 50,
-            "smoke": False, "local_files_only": True, "chat_template_kwargs": {}}
+            "smoke": False, "local_files_only": True, "chat_template_kwargs": {}, "model_profile": "auto"}
 
 
 def load_config(path):
@@ -37,6 +39,8 @@ def load_config(path):
     cfg.update({k: v for k, v in user.items() if k != "$comment"})
     if not cfg["model_name_or_path"]:
         raise ValueError("model_name_or_path is required")
+    from . import models
+    models.get(cfg["model_profile"])
     return cfg
 
 
@@ -65,8 +69,14 @@ def encode(tokenizer, record, max_length, template_kwargs=None):
     f_ids = tokenizer(full, add_special_tokens=False)["input_ids"]
     if f_ids[:len(p_ids)] != p_ids:
         raise ValueError(f"{record['id']}: prompt tokens are not a prefix of the full tokens")
-    if tokenizer.eos_token_id is not None and (not f_ids or f_ids[-1] != tokenizer.eos_token_id):
-        f_ids = f_ids + [tokenizer.eos_token_id]
+    eos = tokenizer.eos_token_id
+    if eos is not None:
+        # A template that closes the assistant turn itself (Qwen: "<|im_end|>\n")
+        # ends the target at its first end-of-turn token; anything the template
+        # adds after it is not something the model should learn to generate.
+        # Otherwise the end-of-turn token is appended once.
+        answer = f_ids[len(p_ids):]
+        f_ids = f_ids[:len(p_ids) + answer.index(eos) + 1] if eos in answer else f_ids + [eos]
     if len(f_ids) > max_length:
         return None
     labels = [IGNORE] * len(p_ids) + f_ids[len(p_ids):]
@@ -116,7 +126,7 @@ def evaluate_loss(model, data, pad_id, batch_size):
 
 def run(cfg, train_path, dev_path, out_dir, refuse_eval=True):
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from . import models
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -126,15 +136,12 @@ def run(cfg, train_path, dev_path, out_dir, refuse_eval=True):
     dev_recs = read_jsonl(dev_path) if dev_path else []
     if refuse_eval and any(r.get("split") not in ("train", "dev") for r in train_recs + dev_recs):
         raise ValueError("training data may contain only train and dev records (evaluation records are refused)")
-    common = {"revision": cfg["revision"], "trust_remote_code": cfg["trust_remote_code"], "local_files_only": cfg["local_files_only"]}
-    tok = AutoTokenizer.from_pretrained(cfg["tokenizer_name_or_path"] or cfg["model_name_or_path"], **common)
-    if tok.pad_token_id is None:
-        tok.pad_token = tok.eos_token
-    model = AutoModelForCausalLM.from_pretrained(cfg["model_name_or_path"], dtype=getattr(torch, cfg["dtype"]), **common)
+    tok = models.load_tokenizer(cfg)
+    model = models.load_model(cfg, dtype=getattr(torch, cfg["dtype"]))
     if cfg["lora"]:
         from peft import LoraConfig, get_peft_model
-        model = get_peft_model(model, LoraConfig(task_type="CAUSAL_LM", **cfg["lora"]))
-    kw = cfg["chat_template_kwargs"]
+        model = get_peft_model(model, LoraConfig(task_type="CAUSAL_LM", **models.lora_config(cfg)))
+    kw = models.template_kwargs(cfg)
     train = [e for e in (encode(tok, r, cfg["max_length"], kw) for r in train_recs) if e]
     dev = [e for e in (encode(tok, r, cfg["max_length"], kw) for r in dev_recs) if e]
     skipped = len(train_recs) + len(dev_recs) - len(train) - len(dev)
@@ -172,6 +179,7 @@ def run(cfg, train_path, dev_path, out_dir, refuse_eval=True):
                 "dev_sha256": sha256_file(dev_path) if dev_path else None, "train_examples": len(train),
                 "dev_examples": len(dev), "skipped_too_long": skipped, "steps": step,
                 "model_name_or_path": cfg["model_name_or_path"], "revision": cfg["revision"], "lora": cfg["lora"],
+                "model_profile": cfg["model_profile"], "chat_template_kwargs": kw, "libraries": models.library_versions(),
                 "seconds": round(time.time() - t0, 1), "smoke": cfg["smoke"],
                 "suitable_for_production": False,
                 "notice": "Pipeline artefact. No extraction-quality claim; evaluate on the frozen eval set with human-reviewed judgments."}

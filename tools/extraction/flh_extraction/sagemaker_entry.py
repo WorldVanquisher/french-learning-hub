@@ -77,7 +77,8 @@ def predict(root, failure):
         if not hp.get("prompts_sha256") or sha(prompts) != hp["prompts_sha256"]:
             raise ValueError("prompts_sha256 is missing or does not match the prompts channel")
         args = ["--model", str(data / "model"), "--prompts", str(prompts), "--out", str(root / "model" / "predictions.jsonl"),
-                "--max-new-tokens", hp.get("max_new_tokens", "512"), "--template-kwargs", hp.get("template_kwargs", "{}")]
+                "--max-new-tokens", hp.get("max_new_tokens", "512"), "--template-kwargs", hp.get("template_kwargs", "{}"),
+                "--profile", hp.get("model_profile", "auto")]
         if (data / "adapter").is_dir():
             args += ["--adapter", str(data / "adapter")]
         (root / "model").mkdir(parents=True, exist_ok=True)
