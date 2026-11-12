@@ -1,0 +1,215 @@
+{
+ "schema_version": "flh_study_pack_v1",
+ "unit": "u02",
+ "section": "listening",
+ "title": "Dix minutes d'écoute : Au guichet de la gare",
+ "goal": {
+  "fr": "Saisir les heures et les durées, et calculer avec elles.",
+  "en": "Catch times and durations, and calculate with them.",
+  "zh": "听清时间和时长，并据此推算。"
+ },
+ "focus": [
+  "u02-l01",
+  "u02-l05",
+  "u02-l06",
+  "u02-l07",
+  "u02-l08"
+ ],
+ "provenance": {
+  "synthetic": true,
+  "human_reviewed": false,
+  "authoring": "Goal, plan and transfer exercise written by Claude Code (claude-opus-5-5) on 2026-11-11 from workbook unit u02; no provider or API generated them. Not reviewed by a teacher or a native speaker.",
+  "audio": "none: a person reads the script aloud from the reader sheet"
+ },
+ "plan": [
+  {
+   "minutes": 1,
+   "fr": "Lisez les questions ★ : elles demandent une heure ou une durée. Préparez une ligne « heures entendues : … ». Ne lisez pas le script.",
+   "en": "Read the ★ questions: they ask for a time or a duration. Prepare a line “times heard: …”. Do not read the script.",
+   "zh": "先读带★的题：它们问的是时间或时长。准备一行“听到的时间：……”。不要看脚本。"
+  },
+  {
+   "minutes": 3,
+   "fr": "Première écoute : une autre personne lit le script. Notez en chiffres chaque heure et chaque durée entendues, sans répondre encore.",
+   "en": "First listening: someone else reads the script. Write down in figures every time and duration you hear; do not answer yet.",
+   "zh": "第一遍听：请他人朗读脚本。用数字记下听到的每个时间和时长，先不答题。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Deuxième écoute : répondez aux dix questions avec vos notes. Pour la question 7, faites le calcul par écrit.",
+   "en": "Second listening: answer the ten questions from your notes. For question 7, write the calculation down.",
+   "zh": "第二遍听：根据笔记回答十道题。第7题请把推算过程写下来。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Vérifiez : dans l'application, « Reveal answers and evidence », ou avec la fiche de l'enseignant. Notez ce que vous avez manqué.",
+   "en": "Check: in the app, “Reveal answers and evidence”, or with the teacher debrief. Note what you missed.",
+   "zh": "核对：在应用中点击“Reveal answers and evidence”，或用教师讲评页。记下没听懂的地方。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Transfert : une nouvelle petite écoute (trois questions), puis une phrase à vous.",
+   "en": "Transfer: a new short listening (three questions), then one sentence of your own.",
+   "zh": "迁移练习：一段新的简短听力（三道题），再说或写一句自己的话。"
+  }
+ ],
+ "optional": {
+  "fr": "Option : enregistrez un point manqué comme question (Écoute → « Save as a learning question… »).",
+  "en": "Optional: save one missed point as a learning question (Listening → “Save as a learning question…”).",
+  "zh": "可选：把一个没听懂的点保存为学习问题（听力 → “Save as a learning question…”）。"
+ },
+ "transfer": {
+  "title": "À la piscine : changer de cours",
+  "speakers": [
+   {
+    "id": "A",
+    "label": "Agent de la piscine",
+    "voice": "voix calme, rythme normal"
+   },
+   {
+    "id": "B",
+    "label": "Nadia",
+    "voice": "voix différente de l'agent"
+   }
+  ],
+  "lines": [
+   {
+    "id": "t1",
+    "speaker": "B",
+    "text": "Bonjour, le cours d'aquagym de 18 h 15 a lieu ce soir ?"
+   },
+   {
+    "id": "t2",
+    "speaker": "A",
+    "text": "Non, désolé, il est annulé. Il y a un autre cours à 19 h 45, mais il dure seulement trois quarts d'heure."
+   },
+   {
+    "id": "t3",
+    "speaker": "B",
+    "text": "Trois quarts d'heure… Alors il finit à 20 h 30. C'est trop tard pour moi."
+   },
+   {
+    "id": "t4",
+    "speaker": "A",
+    "text": "Sinon, il y a un cours demain matin à 7 h 30, pendant une heure."
+   },
+   {
+    "id": "t5",
+    "speaker": "B",
+    "text": "Demain, je commence le travail à 9 heures. J'ai le temps. Je prends celui-là."
+   },
+   {
+    "id": "t6",
+    "speaker": "A",
+    "text": "Très bien. Arrivez dix minutes avant : le vestiaire ouvre à 7 h 20."
+   }
+  ],
+  "questions": [
+   {
+    "id": "u02-x01",
+    "type": "single_choice",
+    "kind": "inference",
+    "stem": "Pourquoi Nadia ne prend-elle pas le cours de 19 h 45 ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "Il est complet.",
+      "correct": false,
+      "why_wrong_en": "The class is not said to be full; Nadia finds that it ends too late (t3).",
+      "why_wrong_zh": "没有说课已满；Nadia觉得结束得太晚（t3）。"
+     },
+     {
+      "key": "B",
+      "text": "Il dure deux heures.",
+      "correct": false,
+      "why_wrong_en": "It lasts only three quarters of an hour (t2).",
+      "why_wrong_zh": "它只持续三刻钟（t2）。"
+     },
+     {
+      "key": "C",
+      "text": "Il finit trop tard pour elle.",
+      "correct": true
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t2",
+      "excerpt": "il dure seulement trois quarts d'heure"
+     },
+     {
+      "ref": "t3",
+      "excerpt": "C'est trop tard pour moi"
+     }
+    ],
+    "explanation_en": "It starts at 19:45 and lasts three quarters of an hour, so it ends at 20:30 (t2, t3): too late for her.",
+    "explanation_zh": "这节课19点45分开始，持续三刻钟，20点30分才结束（t2、t3），对她来说太晚了。"
+   },
+   {
+    "id": "u02-x02",
+    "type": "single_choice",
+    "kind": "detail",
+    "stem": "Combien de temps dure le cours de demain matin ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "Une heure.",
+      "correct": true
+     },
+     {
+      "key": "B",
+      "text": "Trois quarts d'heure.",
+      "correct": false,
+      "why_wrong_en": "That is the length of the evening class (t2).",
+      "why_wrong_zh": "那是晚上那节课的时长（t2）。"
+     },
+     {
+      "key": "C",
+      "text": "Une heure et demie.",
+      "correct": false,
+      "why_wrong_en": "The morning class lasts one hour (t4).",
+      "why_wrong_zh": "早上的课持续一小时（t4）。"
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t4",
+      "excerpt": "pendant une heure"
+     }
+    ],
+    "explanation_en": "One hour, from 7:30 (t4).",
+    "explanation_zh": "一小时，从7点30分开始（t4）。"
+   },
+   {
+    "id": "u02-x03",
+    "type": "short_answer",
+    "kind": "detail",
+    "stem": "À quelle heure ouvre le vestiaire ?",
+    "reference_answer": "à 7 h 20",
+    "accepted_alternatives": [
+     "7 h 20",
+     "sept heures vingt"
+    ],
+    "evidence": [
+     {
+      "ref": "t6",
+      "excerpt": "le vestiaire ouvre à 7 h 20"
+     }
+    ],
+    "explanation_en": "At 7:20, ten minutes before the class (t6).",
+    "explanation_zh": "7点20分，比上课早十分钟（t6）。"
+   }
+  ],
+  "productive": {
+   "fr": "À vous (une minute) : dites ou écrivez une phrase avec une heure et une durée : « … commence à … et dure … ».",
+   "en": "Your turn (one minute): say or write one sentence with a time and a duration: “… commence à … et dure …”.",
+   "zh": "轮到你（一分钟）：说或写一句包含时间和时长的话：« … commence à … et dure … »。",
+   "model": "Mon cours de danse commence à 19 heures et dure une heure et quart.",
+   "model_note_en": "One possible answer, not the only one.",
+   "model_note_zh": "这只是一个可能的答案，不是唯一答案。"
+  }
+ },
+ "debrief": [
+  "Demandez d'abord : « Quelles heures avez-vous entendues ? » et écrivez-les en chiffres au tableau.",
+  "Pour la question 7, refaites le calcul à voix haute : le car part à 7 heures et roule une heure et quart."
+ ]
+}

@@ -909,29 +909,43 @@ the learning workflow only through §4.1.
   script_conflict` and writes nothing. A script takes no learner transcript
   (`409 authored_script`). A script is never a playlist item, so pulls neither
   match, prepare nor announce it.
-- **Model preparation on a script (current contract, unchanged):**
-  `POST /listening/materials/{id}/exercises` treats a script-only lesson like
-  any lesson with a transcript. With `LISTENING_PROVIDER=disabled` it is `503`
-  and stores nothing. When enabled, it makes the one explicit, possibly billed
-  call through the shared attempt-first path. The OpenAI request carries the
-  title and the numbered line texts (`number`, `text`): no speaker, no
-  timestamp. The output is validated by the generated rules, and the result is
-  a new exercise row (`openai:<model>:listening_exercise_v1`) on the same
-  transcript, newest first. The authored exercise stays stored and import still
-  replays (`200`). The workbench shows the newest completed exercise for the
-  current transcript, so after such a call it shows the generated questions
-  instead of the authored ones. It never offers the Prepare button on a script,
-  because the authored exercise already counts as prepared. Pinned by
-  `TestListeningScripts_ModelPreparationOnAScriptUsesTheExistingExplicitPath`.
+- **A script's exercise is fixed content.** `POST
+  /listening/materials/{id}/exercises` on an authored script is `409
+  {code: "authored_script"}` before any attempt is recorded: no provider call,
+  nothing stored, whether or not a generator is configured and with or without
+  an `Idempotency-Key` (pulls never reach a script: it is never a playlist
+  item). The lesson read names the exercise to show as `current_exercise_id`
+  (`domain.CurrentListeningExercise`): the newest completed exercise on the
+  latest transcript, and for a script only its authored exercise. A generated
+  row stored on a script by the earlier contract (which accepted the call) stays
+  stored, append-only, but is never current; import still replays. YouTube
+  lessons are unchanged: the newest completed exercise is current. Pinned by
+  `TestListeningScripts_ModelPreparationNeverDisplacesTheAuthoredExercise`.
+- **Pack corrections and earlier imports:** an imported script is immutable.
+  When a later pack corrects a script (same IDs, lines and answer positions;
+  for example the 2026-11-11 evidence audit), a lesson imported before keeps
+  its stored wording, stays listed as imported and keeps opening; importing it
+  again is `409 script_conflict` and writes nothing; a Mistake Notebook item
+  saved from it resolves to the words it was saved from. A script imported
+  afterwards gets the corrected wording. There is no upgrade path for an
+  earlier import. Pinned by
+  `TestListeningScripts_EarlierImportKeepsItsContentAfterAPackCorrection`.
 - **Workbench:** the script catalogue lists **Imported (N)** and **Available to
   import (N)** separately, after the learner's own material. A script lesson is
   tagged "Script only · no audio" with a no-audio note and no video link. It
   offers the choices and can show the script, never the key, to the person
   reading it aloud. Answers, evidence and notes stay hidden until "Reveal
   answers and evidence". The page counts answered (then self-checked)
-  questions on the page only. It ends with navigation back to the list and to
-  the next workbook script in pack order, which imports it on that explicit
-  click.
+  questions on the page only. After reveal, an answer overview at the top of
+  the exercise (focused) lists every question with the learner's answer beside
+  the reference: a chosen option reads "Same as the reference" or "Different
+  from the reference" (exact comparison with the authored answer); a typed
+  short answer is left for the learner to compare; nothing is totalled, sent
+  or stored. Each row links to its question, and each revealed question links
+  back. Opening a saved item from the Mistake Notebook brings that question to
+  the top of the screen, including after a reload. It ends with navigation
+  back to the list and to the next workbook script in pack order, which imports
+  it on that explicit click.
 - **Migration `021`** rebuilds `listening_materials` (SQLite cannot relax
   `NOT NULL`) inside its transaction with foreign keys on: the parent rows are
   re-inserted after the rebuilt table takes the old name, which settles the
@@ -3947,9 +3961,9 @@ does not expose these routes.
 | --- | --- |
 | `GET /listening/materials` | `materials` (newest first: `material`, `transcript_version` or null, `segment_count`, `latest_exercise` without `content`, or null) and `generation` (`enabled`, `generator` or null). No provider call |
 | `POST /listening/materials` | Body `{"source_url", "title", "transcript"?}` (unknown fields refused, 32 KiB). `201` lesson; `400` invalid JSON; `413` too large; `422` invalid link, title or transcript (messages name the field or line, never the text) |
-| `GET /listening/materials/{id}` | Lesson: `material`, `transcript` (`id`, `version`, `has_timestamps`, `segments` [`index`, `start_seconds` or null, `text`]) or null, `exercises` (newest first, with `content`), `generation`. `404` unknown. No provider call |
+| `GET /listening/materials/{id}` | Lesson: `material`, `transcript` (`id`, `version`, `has_timestamps`, `segments` [`index`, `start_seconds` or null, `text`]) or null, `exercises` (newest first, with `content`), `current_exercise_id` (the exercise to show, or null; for an authored script always its authored exercise), `generation`. `404` unknown. No provider call |
 | `POST /listening/materials/{id}/transcripts` | Body `{"transcript"}`. `201` lesson with the next transcript version; `404`; `409` `{code: "authored_script"}` for an authored script (nothing stored); `422` |
-| `POST /listening/materials/{id}/exercises` | Optional UUID `Idempotency-Key`; optional body `{"confirm_unknown_retry": true}`. One provider call through the shared preparation path. `201` `{preparation, exercise}`; `200` same-key replay (`Idempotency-Replayed: true`) in any state, no call; `502`/`504` `{error, preparation, exercise}` with the stored attempt and failed exercise (`preparation.state` is `failed` or `unknown`); `409` `{code}`: `no_transcript` (no call), `preparation_in_progress` or `outcome_unknown` (no call; the blocking `preparation` is returned), `key_conflict`; `503` disabled (nothing stored); `404`; `400` invalid key or body |
+| `POST /listening/materials/{id}/exercises` | Optional UUID `Idempotency-Key`; optional body `{"confirm_unknown_retry": true}`. One provider call through the shared preparation path. `201` `{preparation, exercise}`; `200` same-key replay (`Idempotency-Replayed: true`) in any state, no call; `502`/`504` `{error, preparation, exercise}` with the stored attempt and failed exercise (`preparation.state` is `failed` or `unknown`); `409` `{code}`: `authored_script` (an authored script keeps its authored exercise; checked first, no attempt, no call, nothing stored), `no_transcript` (no call), `preparation_in_progress` or `outcome_unknown` (no call; the blocking `preparation` is returned), `key_conflict`; `503` disabled (nothing stored); `404`; `400` invalid key or body |
 | `GET /listening/preparations/{key}` | `{preparation, exercise}` for an attempt (`exercise` without `content`, null while unfinished). `404` nothing recorded under the key (never proof it was not sent) |
 | `GET /listening/scripts` | `pack` (`flh_listening_script_pack_v1`) and `scripts`: `id`, `title`, `genre`, `style_level`, `source_pack`, `notice`, `lines`, `questions`, `imported_material_id` or null. No line, choice or key. No provider call |
 | `POST /listening/scripts/{id}` | No body. Imports the authored script with its exercise in one transaction, no provider call. `201` lesson; `200` already imported (`Idempotency-Replayed: true`, nothing written); `404` unknown script; `409` `{code: "script_conflict"}` imported before with other content (nothing written) |

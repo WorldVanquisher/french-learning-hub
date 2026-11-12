@@ -12,9 +12,9 @@ notice says otherwise.
 | `reading_listening_v1.json` | 12 units: one reading text and one listening **script** each, 20 questions per unit (240), vocabulary, follow-up |
 | `productive_v1.json` | 12 units: a writing task and a speaking task, annotated samples, 6 grammar/vocabulary items, 3 common mistakes and a retry draft per unit; shared rubric (no score) |
 | `adapters/` | The same content in formats the application already validates (see below) |
-| `study_packs/u05_v1.json` | A ten-minute listening study pack for unit u05: plan, a context line quoted from the unit's reading text (p1), and a short authored transfer dialogue with three questions. Rendered and verified by `python3 -m flh_workbooks studypack`. |
+| `study_packs/*_v1.json` | Ten-minute listening study packs, each with its own goal: u02 (times and durations), u05 (an enrolment: days, price, payment; with a context line quoted from p1), u08 (following several speakers), u11 (reasons and what is not said directly). Each has focus questions, a plan, debrief prompts and a short authored transfer dialogue with three questions. Rendered and verified by `python3 -m flh_workbooks studypack --all`. |
 | `authoring/` | Source of truth: hand-written Python modules (`rl_units_*.py`, `pw_units_*.py`, `pw_rubric.py`, `wb.py`) |
-| `review/` | Machine-critique notes: a self-review, not independent validation |
+| `review/` | Machine-critique notes and the listening evidence audit (`listening-evidence-audit-v1.md`): self-reviews, not independent validation |
 
 The JSON files and adapters are generated from `authoring/`. To change content,
 edit the authoring module, then run `python3 -m flh_workbooks build` in
@@ -32,12 +32,13 @@ listening lesson** through Listening → Workbook listening scripts or
 `POST /listening/scripts/{id}`. These lessons have no video, audio, or playback
 timestamps. Each transcript segment preserves its speaker.
 
-Known content note (found by the study-pack verifier, 2026-11-11): the
-explanation of `u05-l04` ("Work ends before the 18:30 class") relies on the
-class time, which only the unit's reading brochure gives (`p1`), not the
-listening script. In the printed unit both are present. The script-only lesson
-in the workbench shows the explanation without that context. The u05 study pack
-adds a context line quoted from `p1`. The canonical workbook is unchanged.
+Every listening question rests on its own script (what the listener hears):
+`python3 -m flh_workbooks check` runs the evidence audit (`audit --out DIR`
+writes the per-question table). The 2026-11-11 audit corrected 17 questions in
+10 units without changing any ID, script line or answer position, including
+`u05-l04`, whose explanation had relied on the class time in the reading
+brochure (`p1`); see `review/listening-evidence-audit-v1.md`. A script imported
+into the workbench before a correction keeps its earlier wording.
 
 ## Adapters and what the application accepts today
 

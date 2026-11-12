@@ -284,6 +284,7 @@ The development history, organized by theme and linked to that evidence, is in
 | [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | AWS runbook for the read-only public demo: one EC2 instance, private preview over Session Manager; optional public HTTPS entry point prepared, not applied (FLH-088) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the system works, with the HTTP API reference in Appendix A |
 | [web/README.md](web/README.md) | Workbench views and annotation behaviour |
+| [docs/LISTENING_WORKBOOK.md](docs/LISTENING_WORKBOOK.md) | Studying with the 12 workbook listening scripts (written scripts, no audio): one lesson end to end, the answer overview, the Mistake Notebook and the printable ten-minute study packs |
 | [docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md) | Reusable local learning loop (Simplified Chinese), with the [capture prompt](docs/CAPTURE_PROMPT.zh-CN.md) |
 | [docs/history/](docs/history/README.md) | How the design evolved, with dates and evidence |
 | [docs/blog/](docs/blog/README.md) | Retrospective article drafts |

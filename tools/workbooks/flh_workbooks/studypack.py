@@ -1,10 +1,12 @@
-"""Ten-minute study pack for one listening unit: a student checklist, a reader
-sheet and a teacher debrief, plus a verification report.
+"""Ten-minute study packs for listening units: per pack, a student checklist,
+a reader sheet and a teacher debrief, plus a verification report.
 
 Inputs are the canonical workbook (content/workbooks/reading_listening_v1.json)
-and a hand-written pack file (content/workbooks/study_packs/<unit>_v1.json)
-with the plan and a short transfer exercise. Nothing here calls a provider or
-the server, and nothing makes audio: a person reads the script aloud.
+and hand-written pack files (content/workbooks/study_packs/<unit>_v1.json),
+each with its own practice goal, the questions it focuses on, a ten-minute
+plan, the debrief prompts and a short authored transfer exercise. Nothing here
+calls a provider or the server, and nothing makes audio: a person reads the
+script aloud. Output is deterministic: the same inputs give the same bytes.
 
 verify() checks, for the unit and the transfer exercise, that:
   * every evidence excerpt occurs exactly once in its cited line;
@@ -13,10 +15,16 @@ verify() checks, for the unit and the transfer exercise, that:
   * numbers and clock times in explanations and reasons occur in the script.
     A time or number found only elsewhere (e.g. the unit's reading brochure)
     is FLAGGED with where it was found: the debrief shows the flag, and the
-    teacher decides. The canonical workbook is never rewritten here.
+    teacher decides. A fact found only in the unit's reading text is an
+    ERROR: the pack would rely on something the listener never hears (a
+    context line read aloud before the dialogue counts as heard). A fact
+    found nowhere (e.g. 8:15 computed from 7:00 plus an hour and a quarter)
+    stays a flag. The canonical workbook is never rewritten here.
 The student checklist and reader sheet must hold no key: build() runs the
 workbook's key-exposure scanner on them and the teacher debrief must fail it
-(positive control). The checklist must not contain the script either.
+(positive control). The checklist must not contain the script, an evidence
+excerpt (unless the stem or an option already shows those words), a
+reference answer, a reason or the transfer key either.
 """
 
 import html
@@ -29,7 +37,13 @@ E = html.escape
 PACKS = model.CONTENT / "study_packs"
 REF = re.compile(r"(?<![A-Za-z0-9])([st])(\d+)(?!\d)")
 TIME = re.compile(r"(?<!\d)(\d{1,2})\s?(?::|h|点)\s?(\d{2})(?:分)?(?!\d)")
+HOURS = re.compile(r"(?<![\d:])(\d{1,2})\s?heures?(?!\s?\d)")  # « 9 heures » is 9:00
 NUMBER = re.compile(r"(?<![A-Za-z0-9])\d+(?!\d)")
+
+
+def pack_units():
+    """The units that have a study pack, in file-name order."""
+    return sorted(p.name[: -len("_v1.json")] for p in PACKS.glob("*_v1.json"))
 
 
 def load_pack(unit_id):
@@ -39,6 +53,8 @@ def load_pack(unit_id):
         raise ValueError(f"{p.name}: expected flh_study_pack_v1 for listening unit {unit_id}")
     if sum(step["minutes"] for step in pack["plan"]) != 10:
         raise ValueError(f"{p.name}: the plan must add up to ten minutes")
+    if not all(pack.get("goal", {}).get(k) for k in ("fr", "en", "zh")) or not pack.get("focus") or not pack.get("debrief"):
+        raise ValueError(f"{p.name}: a pack needs a goal (fr, en, zh), focus questions and debrief prompts")
     return pack
 
 
@@ -50,7 +66,7 @@ def find_unit(doc, unit_id):
 
 
 def _times(s):
-    return {f"{int(h)} h {m}" for h, m in TIME.findall(s)}
+    return {f"{int(h)} h {m}" for h, m in TIME.findall(s)} | {f"{int(h)} h 00" for h in HOURS.findall(s)}
 
 
 def _numbers(s):
@@ -113,7 +129,10 @@ def verify(doc, pack):
             context_errors.append(f"context: « {ctx['excerpt']} » must occur once in {ctx['source']} and in the context line")
         lines = {"context": ctx["fr"], **lines}
     e1, f1, r1 = _check_block(u["id"], "s", lines, L["questions"], reading)
-    e1 = context_errors + e1
+    unit_ids = [q["id"] for q in L["questions"]]
+    e1 = context_errors + e1 + [f"focus: {q} is not a question of {u['id']}" for q in pack["focus"] if q not in unit_ids]
+    e1 += [f"{f['id']} {f['field']}: « {f['fact']} » is not heard; it is only in the reading text ({', '.join(f['found_in'])})"
+           for f in f1 if f["found_in"]]
     tr = pack["transfer"]
     tlines = {t["id"]: t["text"] for t in tr["lines"]}
     e2, f2, r2 = _check_block("transfer", "t", tlines, tr["questions"], {})
@@ -130,11 +149,12 @@ def _lines_html(lines, speakers):
                    for t in lines)
 
 
-def _student_question(n, q):
+def _student_question(n, q, focus=()):
+    star = "★ " if q["id"] in focus else ""
     if q["type"] == "single_choice":
         opts = "".join(f'<li>☐ {E(o["key"])}. {E(o["text"])}</li>' for o in q["options"])
-        return f'<li class="q"><p>{n}. {E(q["stem"])}</p><ul class="opts">{opts}</ul></li>'
-    return f'<li class="q"><p>{n}. {E(q["stem"])}</p><p>Réponse : ______________________</p></li>'
+        return f'<li class="q"><p>{star}{n}. {E(q["stem"])}</p><ul class="opts">{opts}</ul></li>'
+    return f'<li class="q"><p>{star}{n}. {E(q["stem"])}</p><p>Réponse : ______________________</p></li>'
 
 
 def _tri(d):
@@ -145,13 +165,16 @@ def student_html(doc, pack):
     u = find_unit(doc, pack["unit"])
     L, tr = u["listening"], pack["transfer"]
     steps = "".join(f'<li><p><strong>☐ {s["minutes"]} min</strong></p>{_tri(s)}</li>' for s in pack["plan"])
-    qs = "".join(_student_question(i + 1, q) for i, q in enumerate(L["questions"]))
+    qs = "".join(_student_question(i + 1, q, pack["focus"]) for i, q in enumerate(L["questions"]))
     tq = "".join(_student_question(i + 1, q) for i, q in enumerate(tr["questions"]))
     body = (f'<h1>{E(pack["title"])} — fiche de l\'élève</h1>{render._banner()}'
             f'<div class="banner">{_tri(render.NO_AUDIO)}</div>'
             f'<p lang="fr">Niveau visé (indicatif) : {E(u["band"])}. Objectif de l\'unité : {E(u["goal"]["fr"])}</p>'
+            f'<h2>Objectif de ces dix minutes</h2>{_tri(pack["goal"])}'
             f'<h2>Les dix minutes</h2><ol class="plan">{steps}</ol><div class="note">{_tri(pack["optional"])}</div>'
-            f'<h2>Écoute : {E(L["title"])}</h2><ol class="qs">{qs}</ol>'
+            f'<h2>Écoute : {E(L["title"])}</h2>'
+            '<p lang="fr">★ : les questions qui travaillent l\'objectif de ces dix minutes.</p>'
+            f'<ol class="qs">{qs}</ol>'
             f'<h2>Transfert : {E(tr["title"])}</h2><p>Écoutez la personne qui lit (deux fois), puis répondez.</p><ol class="qs">{tq}</ol>'
             f'<div class="note">{_tri(tr["productive"])}</div>')
     return render._page(f'{pack["title"]} — élève', body)
@@ -202,20 +225,23 @@ def teacher_html(doc, pack, flags):
     keys = "".join(_key_row(q, flags) for q in L["questions"])
     tkeys = "".join(_key_row(q, flags) for q in tr["questions"])
     vocab = "".join(f'<li>« {E(v["fr"])} » ({E(v["ref"])}) — {E(v["en"])} {render._zh(v["zh"])}</li>' for v in u["vocabulary"] if v["ref"].startswith("s"))
-    card = "".join(f'<li>{E(it["prompt"])} {E(it["answer"])}</li>' for it in u["follow_up"]["items"])
+    fu = u["follow_up"]
+    card = "".join(f'<li>{E(it["prompt"])} {E(it["answer"])}</li>' for it in fu["items"])
+    focus = ", ".join(pack["focus"])
+    debrief = "".join(f'<li lang="fr">{E(line)}</li>' for line in pack["debrief"])
     p = tr["productive"]
     body = (f'<h1>{E(pack["title"])} — fiche de l\'enseignant</h1>{render._banner()}'
             f'<p>{E(pack["provenance"]["authoring"])}</p>'
+            f'<h2>Objectif de ces dix minutes</h2>{_tri(pack["goal"])}<p>Questions ★ : {E(focus)}</p>'
             f'<h2>Corrigé : {E(L["title"])}</h2><p>Chaque mauvaise réponse est expliquée ; les numéros de ligne renvoient au script de la feuille du lecteur.</p>'
             f'<ol class="key">{keys}</ol>'
             f'<h2>Vocabulaire du script</h2><ul>{vocab}</ul>'
-            f'<h2>Fiche d\'inscription de Mei (prolongement)</h2><ul>{card}</ul>'
+            f'<h2>Prolongement : {E(fu["instructions_en"])}</h2><p>{render._zh(fu["instructions_zh"])}</p><ul>{card}</ul>'
             f'<h2>Transfert : {E(tr["title"])}</h2><ol class="key">{tkeys}</ol>'
             f'<p>Production : {E(p["fr"])}</p><p>Exemple : « {E(p["model"])} » — {E(p["model_note_en"])} {render._zh(p["model_note_zh"])}</p>'
-            '<h2>Débriefing (deux minutes)</h2><ul>'
-            '<li>Demandez d\'abord : « Qu\'est-ce que Mei vient faire ? » puis « Quels jours sont complets ? ».</li>'
-            '<li>Pour chaque erreur, relisez seulement la ligne citée, puis faites réécouter cette réplique.</li>'
-            '<li>Ne donnez pas de note : l\'élève coche lui-même ce qu\'il a compris ou manqué.</li></ul>')
+            f'<h2>Débriefing (deux minutes)</h2><ul>{debrief}'
+            '<li lang="fr">Pour chaque erreur, relisez seulement la ligne citée, puis faites réécouter cette réplique.</li>'
+            '<li lang="fr">Ne donnez pas de note : l\'élève coche lui-même ce qu\'il a compris ou manqué.</li></ul>')
     return render._page(f'{pack["title"]} — enseignant', body)
 
 
@@ -231,12 +257,12 @@ def _md_from(markup):
     return re.sub(r"\n{3,}", "\n\n", "\n".join(line.strip() for line in t.splitlines())).strip() + "\n"
 
 
-def _transfer_secrets(pack):
+def _transfer_secrets(pack, with_short_answers=True):
     out = []
     for q in pack["transfer"]["questions"]:
         out += [q["explanation_en"], q["explanation_zh"]]
         out += [o[f"why_wrong_{l}"] for o in q.get("options", []) if not o["correct"] for l in ("en", "zh")]
-        if q["type"] == "short_answer":
+        if q["type"] == "short_answer" and with_short_answers:
             out += [q["reference_answer"]]
     out.append(pack["transfer"]["productive"]["model"])
     return out
@@ -278,28 +304,46 @@ def build(doc, unit_id, out):
         # the reader sheet carries the script, which contains the short answers by design
         findings = _scan_sheet(sheets[name], doc, name, shorts if name == "student-checklist" else ())
         visible = scan._visible_text(sheets[name])
-        findings += [f"{name}: transfer key present: {s[:40]}" for s in _transfer_secrets(pack) if scan.norm(s) in visible]
+        # the reader sheet carries the transfer script, which holds its short answers by design
+        findings += [f"{name}: transfer key present: {s[:40]}" for s in _transfer_secrets(pack, name != "reader-sheet") if scan.norm(s) in visible]
         scans[name] = findings
-    script_in_checklist = [t["id"] for t in u["listening"]["turns"] + pack["transfer"]["lines"]
-                           if scan.norm(t["text"]) in scan._visible_text(sheets["student-checklist"])]
+    checklist = scan._visible_text(sheets["student-checklist"])
+    script_in_checklist = [t["id"] for t in u["listening"]["turns"] + pack["transfer"]["lines"] if scan.norm(t["text"]) in checklist]
+    # Answer separation beyond the scanner: no evidence excerpt (unless the stem
+    # or an option already shows those words) and no reference answer.
+    shown = " ".join(scan.norm(x) for q in u["listening"]["questions"] + pack["transfer"]["questions"]
+                     for x in [q["stem"]] + [o["text"] for o in q.get("options", [])])
+    leaked = [f"{q['id']} evidence « {e['excerpt']} »" for q in u["listening"]["questions"] + pack["transfer"]["questions"]
+              for e in q["evidence"] if scan.norm(e["excerpt"]) not in shown and scan.norm(e["excerpt"]) in checklist]
+    leaked += [f"{q['id']} reference « {q['reference_answer']} »" for q in u["listening"]["questions"] + pack["transfer"]["questions"]
+               if q["type"] == "short_answer" and len(q["reference_answer"]) >= 3 and scan.norm(q["reference_answer"]) in checklist]
     if scans["student-checklist"] or scans["reader-sheet"]:
         errors.append("a student or reader sheet exposes the key: " + "; ".join(scans["student-checklist"] + scans["reader-sheet"]))
     if not scans["teacher-debrief"]:
         errors.append("positive control failed: the teacher debrief should contain the key")
     if script_in_checklist:
         errors.append(f"the student checklist contains script lines {script_in_checklist}")
+    if leaked:
+        errors.append("the student checklist shows " + "; ".join(leaked))
     out.mkdir(parents=True, exist_ok=True)
     for name, markup in sheets.items():
         (out / f"{unit_id}-{name}.html").write_text(markup, encoding="utf-8")
         (out / f"{unit_id}-{name}.md").write_text(_md_from(markup), encoding="utf-8")
-    (out / f"{unit_id}-verification.md").write_text(report_md(unit_id, errors, flags, rows, scans), encoding="utf-8")
+    (out / f"{unit_id}-verification.md").write_text(report_md(unit_id, pack, errors, flags, rows, scans), encoding="utf-8")
     return {"errors": errors, "flags": flags, "questions": len(rows), "scan_findings": {k: len(v) for k, v in scans.items()}}
 
 
-def report_md(unit_id, errors, flags, rows, scans):
+def build_all(doc, out):
+    """Every pack in study_packs/, each into OUT with its unit prefix."""
+    return {unit_id: build(doc, unit_id, out) for unit_id in pack_units()}
+
+
+def report_md(unit_id, pack, errors, flags, rows, scans):
     out = [f"# Study pack {unit_id}: verification", "",
+           f"Goal: {pack['goal']['en']}", "",
            "Automatic checks against the script (`python3 -m flh_workbooks studypack`). A flag is not an error:",
-           "it names a fact the script does not contain, for the teacher to judge.", "",
+           "it names a fact the script does not contain (for example a time computed from two heard times), for",
+           "the teacher to judge. A fact found only in the unit's reading text is an error.", "",
            "| Question | Evidence (line, occurrences) | Wrong-option reasons cite existing lines | Facts not in the script |",
            "|---|---|---|---|"]
     for r in rows:
@@ -307,8 +351,8 @@ def report_md(unit_id, errors, flags, rows, scans):
         rs = "n/a" if not r["reasons"] else ("yes" if all(ok for *_, ok in r["reasons"]) else "NO")
         fx = "; ".join(f"{f['fact']} in {f['field']}" + (f" (found in {', '.join(f['found_in'])})" if f["found_in"] else "") for f in r["facts"]) or "none"
         out.append(f"| {r['id']} | {ev} | {rs} | {fx} |")
-    out += ["", "A context line read before the dialogue (quoted from the unit's reading text) counts as heard; it",
-            "is how u05-l04's 18 h 30 is covered in this pack. The in-app script-only lesson has no such line.",
+    out += ["", "A context line, when the pack has one, is quoted from the unit's reading text and read aloud",
+            "before the dialogue, so it counts as heard. The in-app script-only lesson has no such line.",
             "", f"Errors: {len(errors)}"] + [f"- {e}" for e in errors]
     out += ["", f"Flags: {len(flags)}", "", "Key-exposure scan (student and reader must be 0; the teacher debrief is the positive control):"]
     out += [f"- {k}: {len(v)} findings" for k, v in scans.items()]

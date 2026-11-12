@@ -619,6 +619,13 @@ practice. Contract: [ARCHITECTURE.md §4.3](../docs/ARCHITECTURE.md#43-listening
   timestamps, the vocabulary and grammar notes, and **Show the full
   transcript**. **I got it** / **I missed it** are session-only; answers and
   self-checks are never sent, logged or stored, and there is no score or level.
+  Revealing moves focus to **Your answers and the reference** at the top of the
+  exercise: one row per question with your answer beside the reference, a
+  chosen option tagged **Same as the reference** or **Different from the
+  reference**, a typed answer tagged **Short answer: compare it yourself**, and
+  **Go to question N** (each revealed question has **Back to the answer
+  overview**). Nothing is totalled or sent. The exercise shown is the lesson's
+  `current_exercise_id`, chosen by the server.
 - **Save as a learning question…** opens a form showing the context that will
   be attached (title, video link at the cited time, question, cited lines).
   Nothing is sent until **Save learning record**, which posts one
@@ -642,9 +649,11 @@ practice. Contract: [ARCHITECTURE.md §4.3](../docs/ARCHITECTURE.md#43-listening
   it again and returns focus to that button. After reveal, each question also shows the
   accepted alternatives, **Why not « … »** for every wrong choice and the exact
   words in the cited line. A saved missed point names `Source: authored script,
-  no audio or video (<pack id>)` instead of a video link. If the API is asked to
-  prepare a model exercise for a script (never offered here; ARCHITECTURE.md
-  §4.3), the newest exercise is the one shown.
+  no audio or video (<pack id>)` instead of a video link. A script's exercise is
+  fixed: the server refuses model preparation on it (`409 authored_script`) and
+  always names its authored exercise as current (ARCHITECTURE.md §4.3).
+- **Reopening from the Mistake Notebook** (**Open source**) brings the saved
+  question to the top of the screen and marks it, also after a reload.
 - **Every lesson:** "Answered N of M" (then "Self-checked N of M") counts on the
   page only. **Lesson navigation** at the end offers **Back to all listening
   material** and, for a script, **Next workbook script: …** (secondary, so

@@ -89,7 +89,11 @@ type listeningLessonResponse struct {
 	Material   listeningMaterialResponse    `json:"material"`
 	Transcript *listeningTranscriptResponse `json:"transcript"`
 	Exercises  []listeningExerciseResponse  `json:"exercises"`
-	Generation listeningGenerationResponse  `json:"generation"`
+	// CurrentExerciseID is the exercise the lesson shows (null when none): the
+	// newest completed one on the latest transcript, or for an authored script
+	// its authored exercise, never a generated one.
+	CurrentExerciseID *int64                      `json:"current_exercise_id"`
+	Generation        listeningGenerationResponse `json:"generation"`
 	// Daily Listening: derived state, playlist membership and every attempt.
 	State         string                          `json:"state"`
 	InPlaylist    bool                            `json:"in_playlist"`
@@ -163,6 +167,10 @@ func (h *Handler) toListeningLesson(l *application.ListeningLesson) listeningLes
 	for _, e := range l.Exercises {
 		out.Exercises = append(out.Exercises, toListeningExercise(e, true))
 	}
+	if l.Current != nil {
+		id := l.Current.ID
+		out.CurrentExerciseID = &id
+	}
 	return out
 }
 
@@ -206,7 +214,7 @@ func writeListeningError(w http.ResponseWriter, err error, action string) {
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, domain.ErrListeningScriptConflict):
 		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "script_conflict"})
-	case errors.Is(err, domain.ErrListeningScriptFixed):
+	case errors.Is(err, domain.ErrListeningScriptFixed), errors.Is(err, domain.ErrListeningScriptExerciseFixed):
 		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "authored_script"})
 	default:
 		writeError(w, http.StatusInternalServerError, "could not "+action)
