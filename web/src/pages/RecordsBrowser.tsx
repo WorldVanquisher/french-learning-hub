@@ -3,6 +3,7 @@ import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import { QuestionIntake } from "../components/QuestionIntake";
 import { RecordDetail } from "../components/RecordDetail";
+import { UnsavedDraftContext } from "../components/unsavedDraft";
 import type { UnitTarget } from "../navigation";
 import {
   FR_L2_TAXONOMY_V1,
@@ -195,10 +196,31 @@ export function RecordsBrowser({
       });
   }, []);
 
-  const openRecord = useCallback((entryId: number) => {
-    setReturnFocusEntryId(entryId);
+  // Unsaved input in the open record (reported by its FeedbackPanel) is never
+  // discarded silently: opening another record (from another view or after a
+  // save) or closing this one asks first. Refs keep openRecord stable for the
+  // open-request effect below.
+  const hasDraft = useRef(false);
+  const openId = useRef<number | null>(null);
+  openId.current = openEntryId;
+  const reportDraft = useCallback((draft: boolean) => {
+    hasDraft.current = draft;
+  }, []);
+  const [leave, setLeave] = useState<{ from: number; to: number | null } | null>(null);
+  const show = useCallback((entryId: number | null) => {
+    setLeave(null);
+    if (entryId !== null) setReturnFocusEntryId(entryId);
     setOpenEntryId(entryId);
   }, []);
+  const go = useCallback(
+    (entryId: number | null) => {
+      const from = openId.current;
+      if (from !== null && from !== entryId && hasDraft.current) setLeave({ from, to: entryId });
+      else show(entryId);
+    },
+    [show],
+  );
+  const openRecord = useCallback((entryId: number) => go(entryId), [go]);
 
   // Opening a record from another view uses the same path as the list's Open
   // button, so the list, filters and search stay as they were.
@@ -216,13 +238,26 @@ export function RecordsBrowser({
   }, [openEntryId, returnFocusEntryId]);
 
   return (
-    <>
+    <UnsavedDraftContext.Provider value={reportDraft}>
+      {leave ? (
+        <div className="banner info" role="alert">
+          {leave.to === null
+            ? t("records.unsaved.close", { id: leave.from })
+            : t("records.unsaved.open", { id: leave.from, next: leave.to })}{" "}
+          <button type="button" onClick={() => show(leave.to)}>
+            {leave.to === null ? t("records.unsaved.discardClose") : t("records.unsaved.discardOpen", { next: leave.to })}
+          </button>{" "}
+          <button type="button" className="ghost" onClick={() => setLeave(null)}>
+            {t("records.unsaved.stay", { id: leave.from })}
+          </button>
+        </div>
+      ) : null}
       {openEntryId !== null ? (
         // Keyed by entry so every record starts from a fresh detail state.
         <RecordDetail
           key={openEntryId}
           entryId={openEntryId}
-          onBack={() => setOpenEntryId(null)}
+          onBack={() => go(null)}
           onRecordChanged={refreshRecord}
           returnEpoch={returnEpoch}
           onNavigateToUnit={onNavigateToUnit}
@@ -404,7 +439,7 @@ export function RecordsBrowser({
           </>
         )}
       </main>
-    </>
+    </UnsavedDraftContext.Provider>
   );
 }
 

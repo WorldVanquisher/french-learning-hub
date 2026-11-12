@@ -212,6 +212,11 @@ export const en = {
 
   // Record detail
   "record.back": "← Back to records",
+  "records.unsaved.open": "Record #{id} has unsaved feedback. Opening record #{next} now would discard it.",
+  "records.unsaved.close": "Record #{id} has unsaved feedback. Going back to the list now would discard it.",
+  "records.unsaved.discardOpen": "Discard it and open record #{next}",
+  "records.unsaved.discardClose": "Discard it and go back",
+  "records.unsaved.stay": "Keep editing record #{id}",
   "record.heading": "Record #{id}",
   "record.original": "Original input and context",
   "record.originalLoading": "Loading the original record…",
