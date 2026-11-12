@@ -100,7 +100,8 @@ class Evaluation(unittest.TestCase):
         merged = unit("aller avec être et accord en nombre du nom et de l'adjectif",
                       "« Aller » takes « être », and the noun and its adjective take the plural mark.", "合并的陈述。")
         errs = self.judge([AUX, AGR], [merged])
-        self.assertTrue(errs["MISSED"] >= 1)
+        # The matched merged unit also covers the second reference: MERGED, not MISSED.
+        self.assertEqual((errs["MERGED"], errs["MISSED"]), (1, 0))
         self.assertEqual(self.judge([], [AUX])["ABSTENTION_FAIL"], 1)
         self.assertEqual(dict(self.judge([], [])), {})
 

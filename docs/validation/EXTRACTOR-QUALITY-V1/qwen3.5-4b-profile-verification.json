@@ -1,0 +1,118 @@
+{
+ "decoding": {
+  "consequence": "a generated <think>…</think> block survives decoding and the production parser refuses the text (quality.parse_diagnostic reports think_block); with thinking off, the prompt already ends with the empty block, so a well-trained answer starts with « { »",
+  "im_end_removed_by_skip_special_tokens": true,
+  "think_markers_kept_by_skip_special_tokens": true
+ },
+ "hf_id": "Qwen/Qwen3.5-4B",
+ "libraries": {
+  "transformers": "4.57.6"
+ },
+ "lora": {
+  "by_module": {
+   "linear_attn.in_proj_qkv": 24,
+   "linear_attn.in_proj_z": 24,
+   "linear_attn.out_proj": 24,
+   "mlp.down_proj": 32,
+   "mlp.gate_proj": 32,
+   "mlp.up_proj": 32,
+   "self_attn.k_proj": 8,
+   "self_attn.o_proj": 8,
+   "self_attn.q_proj": 8,
+   "self_attn.v_proj": 8
+  },
+  "candidate_modules": 590,
+  "layers_covered": 32,
+  "outside_text_stack": [],
+  "regex": "model\\.layers\\.\\d+\\.(self_attn\\.(q|k|v|o)_proj|linear_attn\\.(in_proj_qkv|in_proj_z|out_proj)|mlp\\.(gate|up|down)_proj)",
+  "targeted": 200,
+  "vision_or_mtp_present_in_checkpoint": 164,
+  "weight_tensors": 738
+ },
+ "metadata": {
+  "architectures": [
+   "Qwen3_5ForConditionalGeneration"
+  ],
+  "eos_token": "<|im_end|>",
+  "files": {
+   "chat_template.jinja": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+   "config.json": "ddc63e1c717afa86c865bb5e01313d89d72bb53b97ad4a8a03ba8510c0621670",
+   "hf-api-model.json": "18ae2a1a1522c6591946d9ce6210f0e65c5704a5cdac824e11e5869ee81bfbf8",
+   "model.safetensors.index.json": "cf3f798ee02ba45f9622aa8892a47369ab667d0afbf154ee7c2212de42e6302d",
+   "pinned-small-files.sha256": "717d63c6020de3026ed7a947fd9f8df572a9d47a2c52be4d431d0acdd22c316e",
+   "tokenizer_config.json": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+  },
+  "hash_check": {
+   "chat_template.jinja": "ok",
+   "config.json": "ok",
+   "hf-api-model.json": "unpinned",
+   "model.safetensors.index.json": "ok",
+   "pinned-small-files.sha256": "unpinned",
+   "tokenizer_config.json": "ok"
+  },
+  "layer_types": {
+   "full_attention": 8,
+   "linear_attention": 24
+  },
+  "model_type": "qwen3_5",
+  "num_hidden_layers": 32,
+  "pad_token": "<|endoftext|>",
+  "pinned_but_absent": [
+   "merges.txt",
+   "preprocessor_config.json",
+   "tokenizer.json",
+   "video_preprocessor_config.json",
+   "vocab.json"
+  ],
+  "special": {
+   "</think>": false,
+   "<think>": false,
+   "<|endoftext|>": true,
+   "<|im_end|>": true,
+   "<|im_start|>": true
+  },
+  "text_model_type": "qwen3_5_text",
+  "tie_word_embeddings": true,
+  "tokenizer_class": "Qwen2Tokenizer",
+  "vocab_size": 248320
+ },
+ "profile": "qwen3.5-4b",
+ "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+ "schema": "flh_extraction_profile_verification_v1",
+ "sft_files": {
+  "sft-v2-dev.jsonl": "31285fe884c8990f7f04bf13f6fb1aab1505bf9df2110bd8d5d8515c9de736fc",
+  "sft-v2-train.jsonl": "4dab4e7bd8e2d14f174328ea221f43dc452f8954ec49ec348c6fa091d45eb1dd"
+ },
+ "template": {
+  "answer_chars": {
+   "max": 1249,
+   "median": 369.0,
+   "min": 12,
+   "p95": 840.85
+  },
+  "continuation_not_target_plus_im_end": 0,
+  "default_prompt_tail": "|im_end|>\n<|im_start|>assistant\n<think>\n",
+  "profile_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "prompt_chars": {
+   "max": 2846,
+   "median": 2462.5,
+   "min": 2338,
+   "p95": 2613.85
+  },
+  "prompt_not_prefix": [],
+  "prompt_not_prefix_count": 0,
+  "records": 1382,
+  "target_not_contract_format": 0,
+  "template_kwargs": {
+   "enable_thinking": false
+  },
+  "think_markers_in_target": 0
+ },
+ "tokens": "PENDING: tokenizer.json, vocab.json and merges.txt at the pinned revision are not available here; rerun with --tokenizer DIR",
+ "verified_with_profile": {
+  "peft": "0.21.2",
+  "tokenizers": "0.23.3",
+  "torch": "2.15.0",
+  "transformers": "5.21.1"
+ }
+}

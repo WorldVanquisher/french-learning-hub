@@ -1,0 +1,18 @@
+{
+  "$comment": "SageMaker smoke for the default candidate (2026-11-12): the experiment's settings (sft-qwen3.5-4b-lora.json) with 12 optimizer steps and a dev evaluation every 6, to measure memory, seconds per step and dev-loss time before any experiment. A smoke checkpoint is never a model (smoke: true).",
+  "model_profile": "qwen3.5-4b",
+  "model_name_or_path": "/opt/ml/input/data/model",
+  "revision": null,
+  "tokenizer_name_or_path": "/opt/ml/input/data/model",
+  "max_length": 1280,
+  "learning_rate": 0.0002,
+  "max_steps": 12,
+  "batch_size": 1,
+  "grad_accum": 16,
+  "seed": 1,
+  "dtype": "bfloat16",
+  "eval_every": 6,
+  "lora": {"r": 16, "lora_alpha": 32, "lora_dropout": 0.05},
+  "smoke": true,
+  "local_files_only": true
+}

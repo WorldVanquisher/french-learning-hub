@@ -118,6 +118,18 @@ class TrainBackend(unittest.TestCase):
             self.assertEqual(m["steps"], 2)
             self.assertTrue((Path(d) / "run" / "model" / "adapter_config.json").exists())
 
+    def test_prediction_records_its_stop_reason(self):
+        from flh_extraction import predict
+        with tempfile.TemporaryDirectory() as d:
+            prompts = Path(d) / "p.jsonl"
+            prompts.write_text(json.dumps({"id": "x", "messages": self.recs[0]["messages"][:2]}, ensure_ascii=False) + "\n")
+            out = Path(d) / "o.jsonl"
+            self.assertEqual(predict.main(["--model", str(self.model_dir), "--prompts", str(prompts), "--out", str(out),
+                                           "--max-new-tokens", "3"]), 0)
+            row = json.loads(out.read_text(encoding="utf-8"))
+            self.assertEqual(row["generated_tokens"], 3)
+            self.assertEqual(row["stopped"], "max_new_tokens")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,11 @@
 //	    production code path; output_text is a raw model answer (the JSON text)
 //	extraction-render expected -in candidates.jsonl -out results.jsonl
 //	    the candidates' own expected outputs, validated the same way
+//	extraction-render analyze  -in candidates.jsonl -out analyses.jsonl
+//	    the DEFAULT production analyzer (local rule-based, no provider) on each
+//	    input's original_input and original_context: the effective_category
+//	    and effective_explanation production would show the extractor for an
+//	    unreviewed analysis
 //	extraction-render run -in candidates.jsonl -out results.jsonl -max-requests N -confirm-paid-calls
 //	    the CONFIGURED production extractor (EXTRACTOR_PROVIDER, OPENAI_*):
 //	    one request per input, sequential, no retry; a provider error is a
@@ -34,6 +39,7 @@ import (
 	"os"
 	"sync"
 
+	"french-learning-app/internal/analyzer"
 	"french-learning-app/internal/config"
 	"french-learning-app/internal/domain"
 	"french-learning-app/internal/extractor"
@@ -179,6 +185,29 @@ func (t *tool) validate(id string, in Input, outputText string) Result {
 	return out
 }
 
+// Analysis is the default production analyzer's verdict on one input.
+type Analysis struct {
+	ID          string  `json:"id"`
+	Analyzer    string  `json:"analyzer"`
+	Category    string  `json:"effective_category"`
+	Explanation string  `json:"effective_explanation"`
+	Confidence  float64 `json:"confidence"`
+}
+
+// analyze runs the local rule-based analyzer (the production default; it
+// makes no I/O) and the production validation of its result.
+func analyze(id string, in Input) (Analysis, error) {
+	rb := analyzer.NewRuleBased()
+	res, err := rb.Analyze(context.Background(), &domain.Entry{OriginalInput: in.OriginalInput, OriginalContext: in.OriginalContext})
+	if err == nil {
+		err = res.Validate()
+	}
+	if err != nil {
+		return Analysis{}, fmt.Errorf("analyze %s: %w", id, err)
+	}
+	return Analysis{ID: id, Analyzer: rb.Name(), Category: res.Category, Explanation: res.Explanation, Confidence: res.Confidence}, nil
+}
+
 type line struct {
 	ID         string          `json:"id"`
 	Input      *Input          `json:"input"`
@@ -261,6 +290,12 @@ func runWith(mode, inPath, outPath string, configured domain.Extractor, maxReque
 				return fmt.Errorf("more than -max-requests %d inputs; nothing beyond line %d was sent", maxRequests, n-1)
 			}
 			v = runConfigured(configured, l.ID, *l.Input)
+		case "analyze":
+			a, err := analyze(l.ID, *l.Input)
+			if err != nil {
+				return err
+			}
+			v = a
 		case "expected":
 			if len(l.Expected) == 0 {
 				return fmt.Errorf("%s line %d: expected is missing", inPath, n)
@@ -280,7 +315,7 @@ func runWith(mode, inPath, outPath string, configured domain.Extractor, maxReque
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: extraction-render render|validate|expected -in FILE -out FILE")
+		fmt.Fprintln(os.Stderr, "usage: extraction-render render|validate|expected|analyze|run -in FILE -out FILE")
 		os.Exit(2)
 	}
 	mode := os.Args[1]
@@ -290,8 +325,8 @@ func main() {
 	maxRequests := fs.Int("max-requests", 0, "run: refuse more inputs than this")
 	confirm := fs.Bool("confirm-paid-calls", false, "run: acknowledge that each input is one provider request")
 	_ = fs.Parse(os.Args[2:])
-	if (mode != "render" && mode != "validate" && mode != "expected" && mode != "run") || *inPath == "" || *outPath == "" {
-		fmt.Fprintln(os.Stderr, "usage: extraction-render render|validate|expected|run -in FILE -out FILE")
+	if (mode != "render" && mode != "validate" && mode != "expected" && mode != "analyze" && mode != "run") || *inPath == "" || *outPath == "" {
+		fmt.Fprintln(os.Stderr, "usage: extraction-render render|validate|expected|analyze|run -in FILE -out FILE")
 		os.Exit(2)
 	}
 	var configured domain.Extractor
