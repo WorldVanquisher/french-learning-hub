@@ -28,8 +28,13 @@
 #   * the daily containers are fingerprinted (read-only `docker inspect`) before
 #     and after; any change fails the smoke.
 #
+# Disk: before anything is built, scripts/release/disk_preflight.sh checks room
+# in WORK_DIR (FLH_SMOKE_MIN_WORK_MB, default 1024), TMPDIR (FLH_SMOKE_MIN_TMP_MB,
+# default 512, with a probe write) and Docker's root directory when readable
+# (FLH_SMOKE_MIN_DOCKER_MB, default 4096). It cleans nothing.
+#
 # Exit: 0 PASS; 1 FAIL (a check or the teardown); 2 refused (usage, unsafe
-# environment); 3 BLOCKED (no reachable Docker daemon, so nothing ran).
+# environment); 3 BLOCKED (no reachable Docker daemon or no disk room, so nothing ran).
 set -uo pipefail
 
 REPO=$(cd "$(dirname "$0")/../.." && pwd -P)
@@ -80,6 +85,17 @@ if ! docker info > /dev/null 2>&1; then
   stage preflight BLOCKED "no reachable Docker daemon"
   exit 3
 fi
+DOCKER_ROOT=$(docker info -f '{{.DockerRootDir}}' 2> /dev/null || true)
+DISK=(work="$WORK":"${FLH_SMOKE_MIN_WORK_MB:-1024}" tmp="${TMPDIR:-/tmp}":"${FLH_SMOKE_MIN_TMP_MB:-512}")
+if [ -n "$DOCKER_ROOT" ] && df -P "$DOCKER_ROOT" > /dev/null 2>&1; then
+  DISK+=(docker="$DOCKER_ROOT":"${FLH_SMOKE_MIN_DOCKER_MB:-4096}":noprobe)
+fi
+if ! bash "$REPO/scripts/release/disk_preflight.sh" "${DISK[@]}" > "$WORK/logs/disk-preflight.txt" 2>&1; then
+  cat "$WORK/logs/disk-preflight.txt" >&2
+  stage disk-preflight BLOCKED "nothing was started; see logs/disk-preflight.txt"
+  exit 3
+fi
+stage disk-preflight PASS "$(grep -c ' OK: ' "$WORK/logs/disk-preflight.txt") locations have room (logs/disk-preflight.txt)"
 
 ID="$(date -u +%Y%m%dt%H%M%S)-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
 PROJECT="flh-smoke-$ID"

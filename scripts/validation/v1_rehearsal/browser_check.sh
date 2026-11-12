@@ -22,8 +22,8 @@
 # The browser profile is always a fresh temporary one.
 #
 # Exit: 0 PASS; 1 FAIL (harness, ownership, smoke or teardown); 2 refused
-# (usage); 3 BLOCKED: no browser, so the smoke did not run. A missing
-# browser is never a pass.
+# (usage); 3 BLOCKED: no browser or no disk room (scripts/release/
+# disk_preflight.sh), so the smoke did not run. A missing browser is never a pass.
 set -uo pipefail
 REPO=$(cd "$(dirname "$0")/../../.." && pwd -P)
 H="$REPO/scripts/validation/v1_rehearsal"
@@ -57,6 +57,21 @@ mkdir -p "$WORK/tools" "$WORK/browser" "$WORK/diagnostics"
 INST="$WORK/instance"
 SUM="$WORK/summary.txt"
 stage() { printf '%s\t%s\t%s\n' "$1" "$2" "${3:-}" | tee -a "$SUM"; }
+
+# ---------------------------------------------------------------- disk first
+# Room in WORK_DIR, TMPDIR and Docker's root before anything is built; the
+# preflight writes and deletes only its own probe file.
+DOCKER_ROOT=$(docker info -f '{{.DockerRootDir}}' 2> /dev/null || true)
+DISK=(work="$WORK":"${FLH_BROWSER_MIN_WORK_MB:-1024}" tmp="${TMPDIR:-/tmp}":"${FLH_BROWSER_MIN_TMP_MB:-512}")
+if [ -n "$DOCKER_ROOT" ] && df -P "$DOCKER_ROOT" > /dev/null 2>&1; then
+  DISK+=(docker="$DOCKER_ROOT":"${FLH_BROWSER_MIN_DOCKER_MB:-4096}":noprobe)
+fi
+if ! bash "$REPO/scripts/release/disk_preflight.sh" "${DISK[@]}" > "$WORK/diagnostics/disk-preflight.txt" 2>&1; then
+  cat "$WORK/diagnostics/disk-preflight.txt" >&2
+  stage BLOCKED disk "no room; see diagnostics/disk-preflight.txt"
+  exit 3
+fi
+stage PASS disk "$(grep -c ' OK: ' "$WORK/diagnostics/disk-preflight.txt") locations have room"
 
 # ---------------------------------------------------------------- browser first
 # Decided before anything is built or started: a missing browser is BLOCKED.

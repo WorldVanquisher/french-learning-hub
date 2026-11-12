@@ -21,7 +21,7 @@ ok() { if [ "$2" = "$3" ]; then echo "PASS	probe: $1"; else echo "FAIL	probe: $1
 bash "$REPO/scripts/validation/v1_rehearsal/browser_check.sh" "$WORK" --inject-failure "$PHASE" "$@" > "$WORK.log" 2>&1
 RC=$?
 tail -n 8 "$WORK.log"
-[ "$RC" = 3 ] && { echo "BLOCKED	probe: no browser, the probe did not run"; exit 3; }
+[ "$RC" = 3 ] && { echo "BLOCKED	probe: no browser or no disk room, the probe did not run"; exit 3; }
 ok "browser_check exits 1 on the injected failure" "$RC" 1
 D="$WORK/diagnostics"
 ok "results.json retained in diagnostics" "$([ -f "$D/results.json" ] && echo yes)" yes
