@@ -2,10 +2,12 @@
 // the packaged release binary):
 // - the whole guided path with the keyboard only (Tab, Shift+Tab, Enter), with
 //   visible focus at every stop and the focused heading never under the sticky
-//   return bar; key presses are counted;
+//   return bar; opening a screen focuses its heading, coming back focuses the
+//   control that left it (demo/history.ts); key presses are counted;
 // - reduced motion: nothing animates or transitions;
 // - direct links (URL fragments): each opens its screen, survives a reload,
-//   and never reaches the server; malformed links open the start;
+//   and never reaches the server; malformed links open the start with a
+//   notice; a link to a Concept the build lacks says so and offers an example;
 // - every button has an accessible name.
 //
 //   node accept_a11y.mjs URL OUT_DIR
@@ -84,6 +86,14 @@ for (const [locale, width] of [["en", 1280], ["zh-CN", 390]]) {
     keys += 1;
     await page.waitForSelector(waitFor);
   };
+  const controlFocused = async (name, selector, id) => {
+    await page.waitForFunction((i) => document.activeElement?.id === i, id, { timeout: 5000 }).catch(() => {});
+    check(`${tag}: keyboard: ${name}: focus on the control used`,
+      Boolean(id) && (await page.evaluate(([sel, i]) => document.activeElement?.id === i && document.activeElement.matches(sel), [selector, id])), id);
+    check(`${tag}: keyboard: ${name}: focus visible`, await focusVisible(page));
+    check(`${tag}: keyboard: ${name}: focused control not under the return bar`, await notUnderBar(page));
+  };
+  const focusedId = () => page.evaluate(() => document.activeElement?.id ?? "");
   const headingFocused = async (name) => {
     await page.waitForFunction(() => document.activeElement?.tagName === "H2", null, { timeout: 5000 }).catch(() => {});
     check(`${tag}: keyboard: ${name}: heading focused`, await page.evaluate(() => document.activeElement?.tagName === "H2"));
@@ -94,19 +104,21 @@ for (const [locale, width] of [["en", 1280], ["zh-CN", 390]]) {
   await enter(".demo-question");
   await headingFocused("example opened");
   await step("reach “Open the Concept”", await keyTo(page, () => document.activeElement?.matches("#demo-step-concepts ~ ul button.primary") ?? false));
+  const openConcept = await focusedId();
   await enter(".library-concept h2");
   await headingFocused("Concept opened");
   await step("reach a source link", await keyTo(page, () => document.activeElement?.matches(".library-section.current .library-unit .link-button") ?? false));
+  const sourceLink = await focusedId();
   await enter("#src-entry");
   await headingFocused("evidence opened");
   await page.screenshot({ path: join(out, `${tag}-keyboard-evidence.png`), fullPage: false });
   await step("reach “Back to concept” (Shift+Tab)", await keyTo(page, () => /#\d+/.test(document.activeElement?.textContent ?? "") && document.activeElement?.closest(".demo-return") !== null, { back: true }));
   await enter(".library-concept h2");
-  await headingFocused("back on the Concept");
+  await controlFocused("back on the Concept", ".library-unit .link-button", sourceLink);
   await step("reach “Back to the example” (Shift+Tab)", await keyTo(page, () => document.activeElement?.closest(".demo-return") !== null, { back: true }));
   await enter(".demo-question");
-  await headingFocused("back on the example");
-  await step("reach “Back to examples and search”", await keyTo(page, () => document.activeElement?.matches(".demo-example > .panel button.ghost") ?? false));
+  await controlFocused("back on the example", "#demo-step-concepts ~ ul button.primary", openConcept);
+  await step("reach “Back to examples and search” (Shift+Tab)", await keyTo(page, () => document.activeElement?.matches(".demo-example > .panel:first-child button.ghost") ?? false, { back: true }));
   await page.keyboard.press("Enter");
   keys += 1;
   await page.waitForSelector(".demo-example-card");
@@ -181,9 +193,12 @@ for (const locale of ["en", "zh-CN"]) {
   for (const bad of ["#concept=abc", "#example=nope", "#concept=0", "#unit=5", "#concept=12&unit=-1"]) {
     await go(bad, ".demo-example-card");
     check(`${locale}: malformed link ${bad} opens the start`, (await page.locator(".demo-lead").count()) === 1);
+    check(`${locale}: …with a notice that the link matched nothing`, (await page.locator(".demo-bad-link[role=status]").count()) === 1);
   }
-  await go("#concept=999999", ".banner.error");
-  check(`${locale}: a link to a Concept that does not exist states the failed read`, (await page.locator(".banner.error").count()) === 1);
+  await go("#concept=999999", ".demo-not-found");
+  check(`${locale}: a link to a Concept that does not exist says it is not in this demo`, (await page.locator(".demo-not-found[role=status]").count()) === 1);
+  check(`${locale}: …offers no retry that cannot help`, (await page.locator(".demo-not-found button", { hasText: /Try again|再试一次/ }).count()) === 0);
+  check(`${locale}: …offers a working example`, (await page.locator("#demo-not-found-example").count()) === 1);
   check(`${locale}: …and still offers the way back`, (await page.locator(".demo-return button").count()) === 1);
   check(`${locale}: fragments never reach the server`, requests.every((u) => !u.includes("#") && !/[?&](example|concept|unit)=/.test(u)), requests.filter((u) => u.includes("#")).join(" "));
   await ctx.close();

@@ -76,11 +76,14 @@ describe("Public demo direct links", () => {
     expect(urls.every((u) => !u.includes("#") && !/[?&](concept|unit|example)=/.test(u))).toBe(true);
   });
 
-  it("keeps the return bar when a linked Concept cannot be read", async () => {
+  it("says a linked Concept is not in this demo, keeps the return bar and offers no retry", async () => {
     server();
     window.history.replaceState(null, "", "/#concept=404");
     render(<StrictMode><PublicDemoApp /></StrictMode>);
-    expect(await screen.findByRole("alert")).toHaveTextContent("(404)");
+    expect(await screen.findByText(/This link names Concept #404, which this demo build does not have/)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
     expect(within(screen.getByRole("navigation", { name: "Return" })).getByRole("button")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open the example “One question, two pronouns”" })).toBeInTheDocument();
   });
 });

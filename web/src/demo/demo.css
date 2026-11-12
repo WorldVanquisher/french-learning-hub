@@ -12,6 +12,12 @@
 .demo-app .demo-no-match-help h3 { font-size: 14px; margin: 0 0 6px; }
 .demo-app .demo-no-match-help .actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
+/* Shared links that name nothing in this build: the start screen's notice, and
+   the "not in this demo" state with its way on to a working example. */
+.demo-app .demo-bad-link { margin-bottom: 10px; }
+.demo-app .demo-not-found p { margin: 0 0 8px; }
+.demo-app .demo-not-found .actions { margin: 0; }
+
 /* Long learner text, Concept titles, unit wording, identifiers and
    timestamps wrap inside the device width on every demo screen, 320 px phones
    included, in both interface languages. Buttons wrap their labels instead of
@@ -37,4 +43,5 @@
   .demo-app .app-header .subtitle { margin: 4px 0; }
   .demo-app .demo-lead { font-size: 15px; margin-bottom: 8px; }
   .demo-app .demo-intro .banner { margin: 0; padding: 8px 10px; font-size: 13px; }
+  .demo-app .demo-bad-link { padding: 8px 10px; font-size: 13px; }
 }

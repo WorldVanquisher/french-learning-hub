@@ -1078,6 +1078,13 @@ export const en = {
     "Keyword search matches the beginning of words. Concept titles are in English; identity details and the wording of units are in French.",
   "demo.noMatch.try": "Search “{q}”",
   "demo.noMatch.showAll": "Show all Concepts",
+  // Public demo: shared links that name nothing in this build (demo-candidate lane).
+  "demo.link.malformed": "That link does not match anything in this demo. Start with an example below or search the library.",
+  "demo.missing.concept":
+    "This link names Concept #{id}, which this demo build does not have. The link may be mistyped, cut short or from another build.",
+  "demo.missing.source":
+    "This link names unit #{id}, which this demo build does not have. The link may be mistyped, cut short or from another build.",
+  "demo.missing.openExample": "Open the example “{title}”",
   // Concept content and membership comparison (FLH-093). Read-only views; the
   // decision vocabulary stays untranslated.
   "content.show": "Show what concept #{id} contains",

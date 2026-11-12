@@ -21,9 +21,10 @@ import { DEMO_EXAMPLES } from "./examples";
 // which the artifact's domain fingerprint fixes for a given catalog.
 //
 // Anything else, including an unknown example key or preset, a malformed ID or
-// an over-long query, opens the starting screen. A link names IDs only; every
-// screen still reads its data from the server, so a stale link shows that
-// read's own error.
+// an over-long query, opens the starting screen, and `malformed` says so: the
+// page then tells the visitor that the link matched nothing. A link names IDs
+// only; every screen still reads its data from the server, so a well-formed
+// link to an ID this build lacks opens that screen's "not in this demo" state.
 export type LinkScreen =
   | { kind: "results" }
   | { kind: "example"; example: string }
@@ -82,12 +83,15 @@ function screenFromParams(params: URLSearchParams): LinkScreen | "malformed" {
 
 // linkFromHash reads a whole fragment. `presets` (the demo's preset ids, when
 // known) makes an unknown preset a malformed link like any other.
-export function linkFromHash(hash: string, presets?: readonly string[]): { screen: LinkScreen; search: LinkSearch } {
+export function linkFromHash(
+  hash: string,
+  presets?: readonly string[],
+): { screen: LinkScreen; search: LinkSearch; malformed: boolean } {
   const params = new URLSearchParams(hash.replace(/^#/, ""));
   const screen = screenFromParams(params);
   const search = searchFromParams(params, presets);
-  if (screen === "malformed" || search === "malformed") return { screen: { kind: "results" }, search: NO_SEARCH };
-  return { screen, search };
+  if (screen === "malformed" || search === "malformed") return { screen: { kind: "results" }, search: NO_SEARCH, malformed: true };
+  return { screen, search, malformed: false };
 }
 
 export function screenFromHash(hash: string): LinkScreen {

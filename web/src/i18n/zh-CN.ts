@@ -1000,6 +1000,11 @@ export const zhCN: Record<MessageKey, string> = {
   "demo.noMatch.how": "关键词搜索按词首匹配。概念标题是英文的；身份详情和单元的措辞是法语的。",
   "demo.noMatch.try": "搜索“{q}”",
   "demo.noMatch.showAll": "显示全部概念",
+  // Public demo: shared links that name nothing in this build (demo-candidate lane).
+  "demo.link.malformed": "这个链接与本演示中的任何内容都不对应。请从下面的示例开始，或搜索知识库。",
+  "demo.missing.concept": "这个链接指向概念 #{id}，但此演示构建中没有它。链接可能输错了、被截断了，或来自另一个构建。",
+  "demo.missing.source": "这个链接指向单元 #{id}，但此演示构建中没有它。链接可能输错了、被截断了，或来自另一个构建。",
+  "demo.missing.openExample": "打开示例“{title}”",
   // Concept content and membership comparison (FLH-093)
   "content.show": "查看概念 #{id} 的内容",
   "content.hide": "收起概念 #{id} 的内容",

@@ -5,11 +5,20 @@
 // release binary). Read-only: every request must be a same-origin GET on the
 // demo allowlist; long text is injected in the browser, never on the server.
 //
-// Overflow is measured against the DEVICE width. Under phone emulation the
-// layout viewport (innerWidth) grows to fit wide content, so the old check
+// Overflow is measured against the DEVICE width, twice and separately: the
+// document (root scrollWidth: the page scrolls sideways) and every element
+// (its right edge past the device edge, even where an ancestor clips it, so
+// text is cut off without any scrolling). Under phone emulation the layout
+// viewport (innerWidth) grows to fit wide content, so the old check
 // `scrollWidth <= innerWidth` could not fail (421 px passed on a 390 px phone).
-// A built-in self-test injects the old evidence-row layout and requires this
-// check to catch it; if it does not, the run fails.
+// Built-in self-tests inject the old evidence-row layout, plain and clipped
+// with `overflow-x: hidden`, and require each check to catch what it should;
+// otherwise the run fails.
+//
+// Shared links (demo-candidate lane): a malformed link opens the start with a
+// notice; a link to an ID the build lacks says so and opens a working example
+// without a reload; coming back focuses the control that left a screen; a
+// language change keeps the screen and the history.
 //
 //   node accept_matrix.mjs URL OUT_DIR [mechanical|model]
 //
@@ -52,6 +61,9 @@ const ALLOWED = /^\/(api\/)?(knowledge-library\/(concepts(\/\d+)?|units\/\d+\/so
 const OLD_LAYOUT = `
   .unit-evidence div { grid-template-columns: 110px 1fr !important; }
   .unit-evidence dd, .library .hint, .demo-app .library dd { overflow-wrap: normal !important; }`;
+// A "fix" that hides the overflow instead: the page no longer scrolls sideways,
+// so only the element check can still see the cut-off text.
+const CLIPPED = "html, body { overflow-x: hidden !important; }";
 const LONG_ID = "fixture:flh073:fr_l2_taxonomy_v1:" + "segment_without_breaks_".repeat(6);
 const LONG_FR =
   "Dans un très long message, une apprenante écrit : « Quand j'y vais avec mes collègues et qu'on en parle pendant des heures, " +
@@ -78,26 +90,40 @@ async function open(sz, locale, extra = {}) {
   return { ctx, page, requests, errors };
 }
 
-// Root width against the device width, with the leaf-most elements that stick out.
+// The document viewport and the elements, measured separately against the
+// device width: the root's scrollWidth (and the viewports, for the record), and
+// the leaf-most rendered elements whose right edge lies past the device edge.
+// Content inside a horizontal scroll container is that container's business;
+// the container itself is still measured.
 const measure = (page, device) =>
   page.evaluate((dw) => {
+    const inScroller = (el) => {
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        if (/(auto|scroll)/.test(getComputedStyle(p).overflowX)) return true;
+      }
+      return false;
+    };
     const all = [...document.querySelectorAll("body *")].filter((el) => {
       const b = el.getBoundingClientRect();
-      return (b.width > 0 || b.height > 0) && b.right + window.scrollX > dw + 0.5;
+      return (b.width > 0 || b.height > 0) && b.right + window.scrollX > dw + 0.5 && !inScroller(el);
     });
     const leaf = all.filter((el) => !all.some((o) => o !== el && el.contains(o)));
     return {
       scrollWidth: document.documentElement.scrollWidth,
       innerWidth: window.innerWidth,
       clientWidth: document.documentElement.clientWidth,
+      visualWidth: Math.round(window.visualViewport?.width ?? window.innerWidth),
+      widestRight: Math.round(Math.max(0, ...leaf.map((el) => el.getBoundingClientRect().right + window.scrollX))),
       wide: leaf.slice(0, 3).map((el) => `${el.tagName.toLowerCase()}${el.className ? "." + String(el.className).trim().split(/\s+/).join(".") : ""} “${(el.textContent || "").trim().slice(0, 40)}”`),
+      wideCount: leaf.length,
     };
   }, device);
 const fits = async (page, sz, tag, where) => {
   const device = sz.mobile ? sz.width : (await page.evaluate(() => document.documentElement.clientWidth));
   const m = await measure(page, device);
   overflowTable.push({ tag, where, device, ...m });
-  check(`${tag}: ${where}: no horizontal scroll (device ${device})`, m.scrollWidth <= device, `${m.scrollWidth}px ${m.wide.join(", ")}`);
+  check(`${tag}: ${where}: document fits the device (scrollWidth ${m.scrollWidth} <= ${device})`, m.scrollWidth <= device, `${m.scrollWidth}px ${m.wide.join(", ")}`);
+  check(`${tag}: ${where}: no element past the device edge`, m.wideCount === 0, `${m.wideCount} element(s) to ${m.widestRight}px: ${m.wide.join(", ")}`);
   return m;
 };
 const focusVisible = (page) =>
@@ -258,12 +284,84 @@ for (const sz of SIZES) {
     await shot("keyboard-evidence", false);
     await stop("“Back to the example” (Shift+Tab)", await keyTo(page, () => document.activeElement?.closest(".demo-return") !== null && !/#\d/.test(document.activeElement?.textContent ?? ""), { back: true }));
     await enter(".demo-question");
-    await stop("“Back to examples and search”", await keyTo(page, () => document.activeElement?.matches(".demo-example > .panel button.ghost") ?? false));
+    await page.waitForFunction(() => document.activeElement?.matches("#demo-step-concepts ~ ul button.primary"), null, { timeout: 3000 }).catch(() => {});
+    check(`${tag}: keyboard: back on the example, focus on “Open the Concept”, the control used`,
+      await page.evaluate(() => document.activeElement?.matches("#demo-step-concepts ~ ul button.primary") ?? false));
+    await stop("“Back to examples and search” (Shift+Tab)", await keyTo(page, () => document.activeElement?.matches(".demo-example > .panel:first-child button.ghost") ?? false, { back: true }));
     await page.keyboard.press("Enter");
     keys += 1;
     await page.waitForFunction(() => document.activeElement?.id === "demo-example-y-en", null, { timeout: 3000 }).catch(() => {});
     check(`${tag}: keyboard: focus restored to the first card`, await page.evaluate(() => document.activeElement?.id === "demo-example-y-en"));
     metrics[`${tag}: key presses, start → evidence → start`] = keys;
+
+    // 4b. Shared links: matched nothing, an ID the build lacks, the way back, a language change.
+    // Each link is opened as a new document, as a pasted link is. The 404 a
+    // link to a missing ID answers is expected here and nowhere else.
+    {
+      const fresh = async (hash) => { await page.goto("about:blank"); await page.goto(`${base}${hash}`); };
+      const errorsBefore = errors.length;
+      await fresh("#concept=abc");
+      await settle(page, ".demo-example-card");
+      check(`${tag}: links: a malformed link opens the start with a notice`,
+        (await page.locator(".demo-bad-link[role=status]").count()) === 1 && new URL(page.url()).hash === "", page.url());
+      await fits(page, sz, tag, "malformed-link notice");
+      await shot("link-malformed", false);
+      for (const [hash, kind] of [["#concept=999", "Concept"], ["#concept=12&unit=999", "unit"]]) {
+        await fresh(hash);
+        await settle(page, ".demo-not-found");
+        check(`${tag}: links: ${hash} says the ${kind} is not in this demo, with no retry`,
+          (await page.locator(".demo-not-found").count()) === 1 && (await page.locator(".demo-not-found button", { hasText: /Try again|再试一次/ }).count()) === 0);
+        await fits(page, sz, tag, `not-in-demo ${kind}`);
+        await shot(`link-missing-${kind}`, false);
+        await page.evaluate(() => { window.__flhSameDocument = 1; });
+        const before = await page.evaluate(() => history.length);
+        await page.locator("#demo-not-found-example").click({ timeout: 5000 }).catch(() => {});
+        await settle(page, ".demo-question");
+        check(`${tag}: links: ${hash}: its button opens a working example without a reload`,
+          (await screenKind(page)) === "example" && (await page.evaluate(() => window.__flhSameDocument === 1)) &&
+          (await page.evaluate(() => history.length)) === before + 1);
+        await page.goBack();
+        await settle(page, ".demo-not-found");
+        check(`${tag}: links: ${hash}: Back returns to the link's screen`, (await page.locator(".demo-not-found").count()) === 1);
+      }
+      const linkErrors = errors.splice(errorsBefore);
+      const unexpected = linkErrors.filter((e) => !/status of 404/.test(e));
+      errors.push(...unexpected);
+      check(`${tag}: links: the only console errors are the missing IDs' 404s`, unexpected.length === 0 && linkErrors.length > 0, linkErrors.length);
+      // Coming back focuses the control that left the screen (keyboard).
+      await fresh("#example=y-en");
+      await settle(page, ".demo-question");
+      await keyTo(page, () => document.activeElement?.matches("#demo-step-concepts ~ ul button.primary") ?? false);
+      const opener = await page.evaluate(() => document.activeElement?.id);
+      await page.keyboard.press("Enter");
+      await settle(page, ".library-concept h2");
+      await keyTo(page, () => document.activeElement?.matches(".library-section.current .library-unit .link-button") ?? false);
+      await keyTo(page, () => document.activeElement?.matches(".library-section.current .library-unit .link-button") ?? false); // the second one
+      const used = await page.evaluate(() => document.activeElement?.id);
+      await page.keyboard.press("Enter");
+      await settle(page, "#src-entry");
+      await keyTo(page, () => document.activeElement?.closest(".demo-return") !== null && /#\d/.test(document.activeElement?.textContent ?? ""), { back: true });
+      await page.keyboard.press("Enter");
+      await settle(page, ".library-concept h2");
+      await page.waitForFunction((id) => document.activeElement?.id === id, used, { timeout: 3000 }).catch(() => {});
+      check(`${tag}: links: in-page back from the evidence focuses the source button used`, Boolean(used) && (await page.evaluate(() => document.activeElement?.id)) === used, used);
+      check(`${tag}: links: …visible and clear of the return bar`, (await focusVisible(page)) && (await notUnderBar(page)));
+      await page.goBack();
+      await settle(page, ".demo-question");
+      await page.waitForFunction((id) => document.activeElement?.id === id, opener, { timeout: 3000 }).catch(() => {});
+      check(`${tag}: links: browser Back to the example focuses its “Open the Concept” button`, Boolean(opener) && (await page.evaluate(() => document.activeElement?.id)) === opener, opener);
+      // A language change keeps the screen, its address and the history.
+      await fresh("#q=il+faut&concept=1");
+      await settle(page, ".library-concept h2");
+      const [hashBefore, lenBefore] = await page.evaluate(() => [location.hash, history.length]);
+      const other = locale === "en" ? "zh-CN" : "en";
+      await page.selectOption("header select", other);
+      await page.waitForFunction((l) => document.documentElement.lang === l, other, { timeout: 3000 }).catch(() => {});
+      const [hashAfter, lenAfter, lang] = await page.evaluate(() => [location.hash, history.length, document.documentElement.lang]);
+      check(`${tag}: links: a language change keeps the screen, address and history`,
+        lang === other && hashAfter === hashBefore && lenAfter === lenBefore && (await screenKind(page)) === "concept", `${lang} ${hashAfter} ${lenBefore}->${lenAfter}`);
+      await page.selectOption("header select", locale);
+    }
 
     // 5. Every Concept and every supporting unit's evidence, by direct link.
     const concepts = await page.evaluate(async () => (await (await fetch("/knowledge-library/concepts?state=all")).json()).results.map((r) => r.concept.id));
@@ -396,7 +494,8 @@ for (const sz of SIZES) {
   }
 }
 
-// 9. Self-test: the overflow check must catch the old evidence-row layout.
+// 9. Self-test: the document check must catch the old evidence-row layout, and
+// the element check must catch it when the overflow is hidden.
 for (const locale of LOCALES) {
   for (const sz of SIZES.filter((s) => s.mobile)) {
     const tag = `regression ${sz.size}-${locale}`;
@@ -409,9 +508,18 @@ for (const locale of LOCALES) {
     await page.waitForTimeout(100);
     const old = await measure(page, sz.width);
     const caught = old.scrollWidth > sz.width && old.wide.some((w) => w.startsWith("dd"));
-    check(`${tag}: the overflow check catches the old layout`, caught, `${old.scrollWidth}px ${old.wide.join(", ")}`);
+    check(`${tag}: the document check catches the old layout`, caught, `${old.scrollWidth}px ${old.wide.join(", ")}`);
     metrics[`${tag}: old layout width / innerWidth / old check would pass`] = `${old.scrollWidth} / ${old.innerWidth} / ${old.scrollWidth <= old.innerWidth + 1}`;
     await page.screenshot({ path: join(out, `regression-${sz.size}-${locale}-old-layout.png`) });
+    // The same layout with the overflow hidden: no sideways scroll, text cut off.
+    await page.addStyleTag({ content: CLIPPED });
+    await page.waitForTimeout(100);
+    const clipped = await measure(page, sz.width);
+    check(`${tag}: clipped old layout: the document alone fits (scrollWidth ${clipped.scrollWidth})`, clipped.scrollWidth <= sz.width, `${clipped.scrollWidth}px`);
+    check(`${tag}: clipped old layout: the element check still names the dd`, clipped.wideCount > 0 && clipped.wide.some((w) => w.startsWith("dd")),
+      `${clipped.wideCount} element(s) to ${clipped.widestRight}px: ${clipped.wide.join(", ")}`);
+    metrics[`${tag}: clipped old layout document / widest element (px)`] = `${clipped.scrollWidth} / ${clipped.widestRight}`;
+    await page.screenshot({ path: join(out, `regression-${sz.size}-${locale}-clipped.png`) });
     await ctx.close();
   }
 }

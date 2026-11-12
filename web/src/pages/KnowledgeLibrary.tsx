@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type MutableRefObject, type ReactNode } from "react";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import type {
@@ -19,7 +19,7 @@ import { RecallPractice } from "./RecallPractice";
 import { DEMO_EXAMPLES } from "../demo/examples";
 import { ExamplePicker, ExampleScreen, focusExampleCard } from "../demo/ExampleScreen";
 import { linkFromHash, queryToSearch, sameSearch, searchToQuery, type LinkSearch } from "../demo/deepLink";
-import { adoptEntry, entryKey, pushEntry, readEntry, replaceEntry, stepsBack } from "../demo/history";
+import { adoptEntry, entryKey, focusControl, pushEntry, readEntry, replaceEntry, stepsBack } from "../demo/history";
 import { NoMatchHelp, RecordedTime } from "../demo/DemoStates";
 
 // One search outcome per submitted query. Semantic and hybrid modes need a
@@ -30,7 +30,8 @@ type SearchOutcome =
   | { kind: "hybrid"; data: HybridSearch }
   | { kind: "needs-query" };
 
-type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
+// `code` is the HTTP status of a failed read, when the server answered.
+type Load<T> = { status: "loading" } | { status: "error"; message: string; code?: number } | { status: "ready"; data: T };
 
 // The library's own navigation: results → concept → source. The query stays in
 // this component's state, so returning shows the same search and results.
@@ -63,7 +64,15 @@ function useLoad<T>(key: string, load: () => Promise<T>, retry: number): Load<T>
     setState({ key, retry, load: { status: "loading" } });
     load()
       .then((data) => active && setState({ key, retry, load: { status: "ready", data } }))
-      .catch((error: unknown) => active && setState({ key, retry, load: { status: "error", message: describeError(error) } }));
+      .catch(
+        (error: unknown) =>
+          active &&
+          setState({
+            key,
+            retry,
+            load: { status: "error", message: describeError(error), code: error instanceof ApiError ? error.status : undefined },
+          }),
+      );
     return () => {
       active = false;
     };
@@ -73,10 +82,21 @@ function useLoad<T>(key: string, load: () => Promise<T>, retry: number): Load<T>
 }
 
 // useFocusedHeading moves keyboard focus to a screen's heading when it opens and
-// again when its content replaces the loading state.
-function useFocusedHeading(status: string) {
+// again when its content replaces the loading state. Public demo: when the
+// visitor came back to this screen (`returnFocus`, demo/history.ts), the
+// control they left it by is focused instead once the content is there.
+function useFocusedHeading(status: string, returnFocus?: MutableRefObject<string | null>) {
   const ref = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
+    const id = returnFocus?.current;
+    if (id && status !== "loading") {
+      returnFocus.current = null;
+      const el = document.getElementById(id);
+      if (el && ref.current?.closest("main")?.contains(el)) {
+        focusControl(el);
+        return;
+      }
+    }
     ref.current?.focus();
   }, [status]);
   return ref;
@@ -170,8 +190,17 @@ export function KnowledgeLibrary({
   const searchRef = useRef<LinkSearch>(queryToSearch(query, mode));
   searchRef.current = queryToSearch(query, mode);
   const trailRef = useRef<string[]>([]);
+  // Public demo: the control to focus on the screen the visitor came back to
+  // (the one that left it; demo/history.ts), and whether the link that opened
+  // the page matched nothing (shown on the start screen until the next move).
+  const focusReturn = useRef<string | null>(null);
+  const [badLink, setBadLink] = useState(() => Boolean(link?.malformed));
   const setScreen = (next: Screen, search: LinkSearch = searchRef.current) => {
-    if (demo) trailRef.current = pushEntry(next, search, trailRef.current);
+    if (demo) {
+      trailRef.current = pushEntry(next, search, trailRef.current);
+      focusReturn.current = null;
+      setBadLink(false);
+    }
     setScreenState(next);
   };
   // An in-page back action: the browser's Back when the screen it names is
@@ -184,6 +213,8 @@ export function KnowledgeLibrary({
         return;
       }
       trailRef.current = replaceEntry(target, searchRef.current, trailRef.current);
+      focusReturn.current = null;
+      setBadLink(false);
     }
     setScreenState(target);
   };
@@ -196,6 +227,8 @@ export function KnowledgeLibrary({
     if (demo && !sameSearch(next, searchRef.current)) {
       searchRef.current = next;
       trailRef.current = pushEntry({ kind: "results" }, next, trailRef.current);
+      focusReturn.current = null;
+      setBadLink(false);
     }
   };
   // Shows the search a history entry or a link names, in the form and the results.
@@ -248,12 +281,16 @@ export function KnowledgeLibrary({
         next = entry.flhLibrary;
         search = entry.flhSearch;
         trailRef.current = entry.flhTrail;
+        focusReturn.current = entry.flhFocus ?? null;
+        setBadLink(false);
       } else {
         // A fragment typed or pasted into the address bar has no saved state.
         const linked = linkFromHash(window.location.hash, presetIds);
         next = linked.screen;
         search = linked.search;
         trailRef.current = adoptEntry(next, search, trailRef.current);
+        focusReturn.current = null;
+        setBadLink(linked.malformed);
       }
       const left = screenRef.current;
       if (next.kind === "results") {
@@ -270,8 +307,19 @@ export function KnowledgeLibrary({
   }, [demo]);
 
   // On return, focus the result the reader opened. Detail screens focus their own heading.
+  // Public demo: the control that left this entry comes first (demo/history.ts),
+  // once the results it may be among are shown.
   useEffect(() => {
     if (screen.kind !== "results") return;
+    const back = focusReturn.current ? document.getElementById(focusReturn.current) : null;
+    if (back && !back.closest("[hidden]")) {
+      focusReturn.current = null;
+      returnToExample.current = null;
+      returnTo.current = null;
+      focusControl(back);
+      return;
+    }
+    if (focusReturn.current && search.status !== "loading") focusReturn.current = null;
     if (returnToExample.current !== null) {
       focusExampleCard(returnToExample.current);
       returnToExample.current = null;
@@ -333,6 +381,11 @@ export function KnowledgeLibrary({
   return (
     <main className="library">
       <div hidden={screen.kind !== "results"}>
+        {demo && badLink ? (
+          <div className="banner info demo-bad-link" role="status">
+            {t("demo.link.malformed")}
+          </div>
+        ) : null}
         {intro}
         {guided ? <ExamplePicker onOpen={openExample} /> : null}
         {about}
@@ -375,7 +428,9 @@ export function KnowledgeLibrary({
               <option value="orphaned">{t("library.state.orphaned")}</option>
               <option value="retired">{t("library.state.retired")}</option>
             </select>
-            <button type="submit" className="primary">{t("library.search")}</button>
+            <button type="submit" className="primary" id={demo ? "library-search-submit" : undefined}>
+              {t("library.search")}
+            </button>
             <button
               type="button"
               className="ghost"
@@ -481,6 +536,7 @@ export function KnowledgeLibrary({
           onOpenExample={openExample}
           onOpenConcept={(conceptId) => openConcept(conceptId, screen.example)}
           onOpenSource={(conceptId, unitId) => setScreen({ kind: "source", conceptId, unitId, from: screen.example })}
+          returnFocus={focusReturn}
         />
       ) : null}
       {screen.kind === "concept" ? (
@@ -497,6 +553,9 @@ export function KnowledgeLibrary({
           onOpenConcept={(conceptId) => openConcept(conceptId, screen.from)}
           onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId, from: screen.from })}
           demo={Boolean(demo)}
+          returnFocus={demo ? focusReturn : undefined}
+          onOpenExample={guided ? () => openExample(screen.from ?? DEMO_EXAMPLES[0].key) : undefined}
+          exampleTitle={guided ? t(fromExample(screen.from ?? DEMO_EXAMPLES[0].key)!.title) : undefined}
           // The public demo has no recall practice.
           onPractice={
             demo
@@ -539,6 +598,9 @@ export function KnowledgeLibrary({
           onOpenConcept={(conceptId) => openConcept(conceptId, screen.from)}
           onOpenRecord={onOpenRecord}
           demo={Boolean(demo)}
+          returnFocus={demo ? focusReturn : undefined}
+          onOpenExample={guided ? () => openExample(screen.from ?? DEMO_EXAMPLES[0].key) : undefined}
+          exampleTitle={guided ? t(fromExample(screen.from ?? DEMO_EXAMPLES[0].key)!.title) : undefined}
         />
       ) : null}
     </main>
@@ -822,6 +884,34 @@ const supportText: Record<string, MessageKey> = {
   retired: "library.support.retired",
 };
 
+// Public demo props of the Concept and source screens: the control to focus on
+// the way back, and the guided example a "not in this demo" screen offers.
+type DemoReturn = {
+  returnFocus?: MutableRefObject<string | null>;
+  onOpenExample?: () => void;
+  exampleTitle?: string;
+};
+
+// NotInDemo is the public demo's answer to a link naming a Concept or unit this
+// build does not have (the server's 404): what happened, and a working example
+// to continue with. Retrying cannot help, so it is not offered; the return bar
+// above still leads back.
+function NotInDemo({ message, onOpenExample, exampleTitle }: { message: string } & DemoReturn) {
+  const { t } = useI18n();
+  return (
+    <div className="banner info demo-not-found" role="status">
+      <p>{message}</p>
+      {onOpenExample && exampleTitle ? (
+        <div className="actions">
+          <button type="button" className="primary" id="demo-not-found-example" onClick={onOpenExample}>
+            {t("demo.missing.openExample", { title: exampleTitle })}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ConceptScreen({
   conceptId,
   backLabel,
@@ -831,6 +921,9 @@ function ConceptScreen({
   onPractice,
   demo = false,
   walkthrough = false,
+  returnFocus,
+  onOpenExample,
+  exampleTitle,
 }: {
   conceptId: number;
   backLabel: string;
@@ -845,12 +938,12 @@ function ConceptScreen({
   demo?: boolean;
   // Public demo, opened from a guided example: this is step 3 of its walk.
   walkthrough?: boolean;
-}) {
+} & DemoReturn) {
   const i18n = useI18n();
   const { t, tp, tn, status } = i18n;
   const [retry, setRetry] = useState(0);
   const load = useLoad<LibraryConcept>(String(conceptId), () => api.getLibraryConcept(conceptId), retry);
-  const headingRef = useFocusedHeading(load.status);
+  const headingRef = useFocusedHeading(load.status, returnFocus);
   const back = (
     <button type="button" className="ghost" onClick={onBack}>
       {backLabel}
@@ -867,6 +960,8 @@ function ConceptScreen({
         {demo ? null : back}
         {load.status === "loading" ? (
           <p className="hint" role="status">{t("library.concept.loading", { id: conceptId })}</p>
+        ) : demo && load.code === 404 ? (
+          <NotInDemo message={t("demo.missing.concept", { id: conceptId })} onOpenExample={onOpenExample} exampleTitle={exampleTitle} />
         ) : (
           <div className="banner error" role="alert">
             {t("library.concept.failed", { id: conceptId, message: load.message })}{" "}
@@ -899,11 +994,14 @@ function ConceptScreen({
   );
   // Within a section a unit appears once, except relations: one unit may hold
   // several distinct relations to this concept, so those rows key by link ID.
-  const unit = (u: LibraryUnit, note?: ReactNode, key: string | number = u.unit_id) => (
+  // `section` names the list a card is in: the public demo gives each source
+  // button an id from it, so coming back from the source focuses that button.
+  const unit = (u: LibraryUnit, note: ReactNode, section: string, key: string | number = u.unit_id) => (
     <UnitCard
       key={key}
       unit={u}
       note={note}
+      sourceId={demo ? `library-source-${section}-${key}` : undefined}
       onOpenSource={() => onOpenSource(u.unit_id)}
       // Two units from one record would otherwise share one button name.
       sourceLabel={demo ? t("demo.concept.viewSourceFor", { record: u.entry_id, unit: u.unit_id }) : undefined}
@@ -952,7 +1050,7 @@ function ConceptScreen({
       <section className="panel library-section current" aria-labelledby="lib-preferred">
         <h3 id="lib-preferred">{t("library.preferred")}</h3>
         {d.preferred_unit ? (
-          unit(d.preferred_unit, preferredNote(i18n, d.preferred_unit, d))
+          unit(d.preferred_unit, preferredNote(i18n, d.preferred_unit, d), "preferred")
         ) : (
           <p className="hint">{t("library.preferred.none")}</p>
         )}
@@ -961,7 +1059,7 @@ function ConceptScreen({
       <section className="panel library-section current" aria-labelledby="lib-support">
         <h3 id="lib-support">{t("library.supporting", { count: d.supporting_units.length })}</h3>
         {d.supporting_units.length ? (
-          d.supporting_units.map((u) => unit(u, demo ? t("demo.concept.whyEvidence", { record: u.entry_id }) : undefined))
+          d.supporting_units.map((u) => unit(u, demo ? t("demo.concept.whyEvidence", { record: u.entry_id }) : undefined, "supporting"))
         ) : (
           <p className="hint">{t("library.supporting.none")}</p>
         )}
@@ -971,7 +1069,7 @@ function ConceptScreen({
         <section className="panel library-section" aria-labelledby="lib-members">
           <h3 id="lib-members">{t("library.members", { count: d.non_supporting_members.length })}</h3>
           <p className="hint">{t("library.members.hint")}</p>
-          {d.non_supporting_members.map((u) => unit(u, <span>{notSupportingReasons(i18n, u).join(" ")}</span>))}
+          {d.non_supporting_members.map((u) => unit(u, <span>{notSupportingReasons(i18n, u).join(" ")}</span>, "member"))}
         </section>
       ) : null}
 
@@ -991,7 +1089,8 @@ function ConceptScreen({
                   source: r.decision_source,
                 })}
               </span>,
-              `relation-${r.link_id}`,
+              "relation",
+              r.link_id,
             ),
           )
         ) : (
@@ -1005,7 +1104,7 @@ function ConceptScreen({
         <h3 id="lib-history">{t("library.history", { count: d.historical_units.length })}</h3>
         <p className="hint">{tp("library.history.hint", d.history_event_count)}</p>
         {d.historical_units.length
-          ? d.historical_units.map((h) => unit(h.unit, <HistoricalNote h={h} onOpenConcept={onOpenConcept} />))
+          ? d.historical_units.map((h) => unit(h.unit, <HistoricalNote h={h} onOpenConcept={onOpenConcept} />, "history"))
           : <p className="hint">{t("library.history.none")}</p>}
       </section>
       )}
@@ -1061,12 +1160,15 @@ function UnitCard({
   note,
   onOpenSource,
   sourceLabel,
+  sourceId,
 }: {
   unit: LibraryUnit;
   note?: ReactNode;
   onOpenSource: () => void;
   // Public demo: an accessible name for the source button that also names the unit.
   sourceLabel?: string;
+  // Public demo: the source button's id, to focus it again on the way back.
+  sourceId?: string;
 }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -1089,7 +1191,7 @@ function UnitCard({
           version: unit.extraction_version,
           admission: spaced(i18n, unit.admission),
         })}{" "}
-        <button type="button" className="link-button" onClick={onOpenSource} aria-label={sourceLabel}>
+        <button type="button" className="link-button" onClick={onOpenSource} aria-label={sourceLabel} id={sourceId}>
           {t("library.unit.viewSource", { id: unit.entry_id })}
         </button>
       </div>
@@ -1137,6 +1239,9 @@ function SourceScreen({
   onOpenRecord,
   demo = false,
   walkthrough = false,
+  returnFocus,
+  onOpenExample,
+  exampleTitle,
 }: {
   unitId: number;
   conceptId: number;
@@ -1156,12 +1261,12 @@ function SourceScreen({
   // shown, and the back actions kept in view; the extraction and interpretation
   // (the provenance trail) stay visible after the unit.
   demo?: boolean;
-}) {
+} & DemoReturn) {
   const i18n = useI18n();
   const { t, tn, status } = i18n;
   const [retry, setRetry] = useState(0);
   const load = useLoad<LibrarySource>(String(unitId), () => api.getLibraryUnitSource(unitId), retry);
-  const headingRef = useFocusedHeading(load.status);
+  const headingRef = useFocusedHeading(load.status, returnFocus);
   const nav = onBackToPractice ? (
     <div className="actions">
       <button type="button" className="ghost" onClick={onBackToPractice}>
@@ -1189,6 +1294,8 @@ function SourceScreen({
         {demo ? null : nav}
         {load.status === "loading" ? (
           <p className="hint" role="status">{t("library.source.loading", { id: unitId })}</p>
+        ) : demo && load.code === 404 ? (
+          <NotInDemo message={t("demo.missing.source", { id: unitId })} onOpenExample={onOpenExample} exampleTitle={exampleTitle} />
         ) : (
           <div className="banner error" role="alert">
             {t("library.source.failed", { id: unitId, message: load.message })}{" "}
@@ -1278,7 +1385,12 @@ function SourceScreen({
           <p className="demo-why">
             {tn("demo.source.why", {
               concept: (
-                <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
+                <button
+                  type="button"
+                  className="link-button"
+                  id="demo-source-concept"
+                  onClick={() => onOpenConcept(s.annotation.current_concept_id!)}
+                >
                   {t("library.conceptLink", { id: s.annotation.current_concept_id })}
                 </button>
               ),
