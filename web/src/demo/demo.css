@@ -1,0 +1,40 @@
+/* Public demo only (demo-ux lane). Every selector starts with `.demo-app`, the
+   public demo's root element (PublicDemoApp.tsx), so nothing here can reach the
+   private workbench, and the shared styles.css is left alone. Standard theme
+   tokens only; no fonts, images, url(), animations or transitions.
+   demoStyles.test.ts keeps both promises. */
+
+/* Walkthrough: the "next" hint under a Concept's title. */
+.demo-app .demo-walk-next { margin: 4px 0 0; }
+
+/* A search that found nothing: how matching works and searches that do. */
+.demo-app .demo-no-match-help { margin-top: 10px; }
+.demo-app .demo-no-match-help h3 { font-size: 14px; margin: 0 0 6px; }
+.demo-app .demo-no-match-help .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Long learner text, Concept titles, unit wording, identifiers and
+   timestamps wrap inside the device width on every demo screen, 320 px phones
+   included, in both interface languages. Buttons wrap their labels instead of
+   widening the page. */
+.demo-app .library h2,
+.demo-app .library h3,
+.demo-app .library p,
+.demo-app .library li,
+.demo-app .library dd,
+.demo-app .library blockquote,
+.demo-app .library summary,
+.demo-app .library-unit-head { overflow-wrap: anywhere; }
+.demo-app .library button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.demo-app .library-search select { min-width: 0; max-width: 100%; }
+
+/* Narrow phones (up to 400 px): tighter page and panel padding and a smaller
+   lead, so the guided examples begin on the first screen. demo.css loads before
+   styles.css, so each rule carries one more class than the rule it adjusts. */
+@media (max-width: 400px) {
+  .demo-app.app { padding-left: 12px; padding-right: 12px; }
+  .demo-app .panel { padding: 10px 12px; }
+  .demo-app .app-header { margin-bottom: 10px; padding-bottom: 8px; }
+  .demo-app .app-header .subtitle { margin: 4px 0; }
+  .demo-app .demo-lead { font-size: 15px; margin-bottom: 8px; }
+  .demo-app .demo-intro .banner { margin: 0; padding: 8px 10px; font-size: 13px; }
+}

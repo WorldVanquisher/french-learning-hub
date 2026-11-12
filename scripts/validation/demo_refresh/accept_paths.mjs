@@ -55,10 +55,25 @@ for (const [locale, form] of [["en", "desktop"], ["en", "mobile"], ["zh-CN", "de
   page.on("request", (r) => requests.push({ method: r.method(), url: r.url() }));
   let n = 0;
   const shot = (name) => page.screenshot({ path: join(out, `${tag}-${String(++n).padStart(2, "0")}-${name}.png`), fullPage: true });
+  // Under phone emulation the layout viewport (innerWidth) grows to fit wide
+  // content, so comparing scrollWidth with innerWidth can never fail (it
+  // passed at 421 px on a 390 px phone). Compare with the device width and
+  // name the element that sticks out.
   const noOverflow = async (where) => {
     if (form !== "mobile") return;
-    const w = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
-    check(`${tag}: no horizontal scroll (${where})`, w[0] <= w[1] + 1, w.join(" vs "));
+    const device = 390;
+    const r = await page.evaluate((dw) => {
+      const all = [...document.querySelectorAll("body *")].filter((el) => {
+        const b = el.getBoundingClientRect();
+        return (b.width > 0 || b.height > 0) && b.right + window.scrollX > dw + 0.5;
+      });
+      const leaf = all.filter((el) => !all.some((o) => o !== el && el.contains(o)));
+      return {
+        scrollWidth: document.documentElement.scrollWidth,
+        wide: leaf.slice(0, 2).map((el) => `${el.tagName.toLowerCase()} “${(el.textContent || "").trim().slice(0, 40)}”`).join(", "),
+      };
+    }, device);
+    check(`${tag}: no horizontal scroll (${where})`, r.scrollWidth <= device, `${r.scrollWidth} vs device ${device}${r.wide ? `: ${r.wide}` : ""}`);
   };
   try {
     await page.goto(url, { waitUntil: "networkidle" });

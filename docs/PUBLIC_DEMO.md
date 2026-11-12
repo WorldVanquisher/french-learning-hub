@@ -544,6 +544,74 @@ Direct links and accessibility:
   `prefers-reduced-motion` needs no special case.
 - **Check:** `scripts/validation/demo_first_visit/accept_a11y.mjs`.
 
+## Navigation contract, walkthrough and phone layout (demo-ux lane)
+
+**Navigation** (`web/src/demo/history.ts`; the workbench keeps no history):
+- **Screens are entries.** The start (or a search's results), an example, a
+  Concept and an evidence screen are each one browser-history entry.
+  Opening a screen adds an entry. So does submitting a search that changes
+  the results, or clearing one; repeating the same search adds nothing.
+- **In-page back is the browser's Back.** An in-page "← Back …" action goes
+  back in history when the screen it names is earlier in this visit, and
+  keeps Forward. When that screen is not in the visit (the visitor arrived by
+  a direct link), it replaces the current entry instead.
+- **What this fixes.** Before, every in-page back added an entry. The next
+  browser Back then returned to the screen just left, and Back and Forward
+  looped between the two.
+- **Reload and shared links keep the search.** The fragment may start with
+  the submitted search: `#q=il+faut`, `#q=il+faut&state=active`,
+  `#mode=semantic&preset=right-now`. It can be followed by any screen, as in
+  `#q=il+faut&concept=1`. A reload therefore keeps both the screen and the
+  way back to those results. An unknown preset, a query over 200 characters
+  or any other malformed value opens the start, and the address is rewritten
+  to `/`.
+- **Stable identifiers.** Links use example keys, preset ids and Concept/unit
+  IDs only. Rebuilding the artifact from the same catalog gives the same IDs,
+  and the artifact's domain fingerprint fixes them.
+- **Focus.** Each screen focuses its heading. Returning to the start focuses
+  the example card you left from. Returning to search results focuses the
+  Concept you opened.
+
+**Walkthrough:**
+- **Example screen:** it now shows all four steps. The fourth names the
+  learning record, the extraction and the interpretation its units came
+  from, and opens the evidence.
+- **Step labels:** a Concept or evidence screen opened from an example says
+  "Step 3 of 4 · Concept" or "Step 4 of 4 · Source evidence". The Concept
+  screen also says what to do next.
+- **Failed search:** a search that finds nothing explains how keyword
+  matching works. It offers the examples' own queries and "Show all
+  Concepts".
+- **Empty catalog:** described as the demo build's. It no longer mentions
+  Concept Review.
+- **Evidence screen:** the recorded time is a UTC date and time in the
+  interface language, and the exact stored value is in the element's
+  `dateTime`. Two units from one record have distinct accessible names for
+  their "View source record" buttons.
+- **Languages:** all new text is in English and 简体中文.
+
+**Phone layout** (`web/src/demo/demo.css`):
+- **Scope:** every selector starts with `.demo-app`, the demo's root
+  element. The shared `styles.css` is unchanged.
+- **Wrapping:** demo text, identifiers and button labels wrap.
+- **Preset list:** it stays within the screen. Before, it widened the page
+  to 594 px on a 390 px phone.
+- **Narrow phones:** at 400 px and below, page and panel spacing is tighter,
+  so the first example starts on the first screen of a 320 px phone.
+
+**Overflow checks:**
+- **Device width:** overflow is measured against the device width. Under
+  phone emulation `innerWidth` grows with the content, so the D1 check
+  `scrollWidth <= innerWidth` passed a 421 px evidence page on a 390 px
+  phone. `demo_refresh/accept_paths.mjs` now uses the device width and names
+  the overflowing element.
+- **Matrix:** `scripts/validation/demo_ux/accept_matrix.mjs` covers
+  320/390/1280 px in both languages: walkthrough, navigation, keyboard, long
+  bilingual text, every Concept and evidence screen, the states and private
+  routes. A built-in self-test injects the old evidence-row layout and fails
+  the run if the check does not catch it.
+- **Static guards:** `web/src/demo/demoStyles.test.ts` runs in CI.
+
 ## Limits
 
 - **Synthetic data:** 11 questions (3 written in French), 16 units and 14

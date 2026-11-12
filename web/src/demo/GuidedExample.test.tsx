@@ -9,6 +9,8 @@ import { DEMO_EXAMPLES, resolveExample } from "./examples";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  // Each test starts on the demo's start: the address carries the last screen and search.
+  window.history.replaceState(null, "", "/");
 });
 
 // The synthetic catalog the public demo artifact is built from (D1); vitest runs in web/.
@@ -150,14 +152,18 @@ describe("Public demo guided path", () => {
     const question = await screen.findByText(QUESTION);
     expect(question).toHaveAttribute("lang", "fr");
     expect(screen.getByRole("heading", { name: /What was extracted: 2 units/ })).toBeInTheDocument();
-    expect(screen.getByText("y remplace à + lieu")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: /What was extracted/ })).getByText("y remplace à + lieu")).toBeInTheDocument();
     expect(screen.getByText("2 supporting units, all from this question.")).toBeInTheDocument();
+    // Step 4 names the record and the extraction and interpretation its units came from.
+    expect(screen.getByRole("heading", { name: /The source evidence/ })).toBeInTheDocument();
+    expect(screen.getByText(/This question is learning record #9\. Its units come from extraction v1, which used interpretation v1/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "See the evidence for “y remplace à + lieu”" })).toBeInTheDocument();
     // The labels stay visible away from the starting screen.
     expect(screen.getByText("Read-only")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Open the Concept and its evidence" }));
     const back = await screen.findByRole("button", { name: "← Back to the example “One question, two pronouns”" });
-    fireEvent.click(screen.getAllByRole("button", { name: "View source record #9" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "View source record #9 for unit #12" })[0]);
     expect(await screen.findByRole("heading", { name: "Original learning record #9" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "← Back to concept #12" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "← Back to the example “One question, two pronouns”" }));
@@ -245,7 +251,7 @@ describe("Public demo interactions", () => {
     expect(screen.queryByRole("heading", { name: /Linked units/ })).toBeNull();
     expect(screen.queryByRole("heading", { name: /History: no longer current/ })).toBeNull();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "View source record #9" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "View source record #9 for unit #12" })[0]);
     const entry = await screen.findByRole("heading", { level: 3, name: "Original learning record #9" });
     const question = screen.getByText(QUESTION);
     // The learner's question comes before the unit taken from it.

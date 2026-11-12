@@ -4,6 +4,7 @@ import { ApiError } from "./api/client";
 import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import type { PublicDemoInfo } from "./types/library";
 import { LanguageSelect, LocaleProvider, useI18n } from "./i18n";
+import "./demo/demo.css";
 
 // PublicDemoApp is the FLH-073 read-only public demo: a short introduction and
 // the Knowledge Library only. There are no records, review, inspector or
@@ -97,7 +98,7 @@ function PublicDemo() {
     ) : null;
 
   return (
-    <div className="app">
+    <div className="app demo-app">
       <header className="app-header">
         <div>
           <h1>{t("demo.title")}</h1>

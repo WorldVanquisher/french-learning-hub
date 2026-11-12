@@ -5,7 +5,9 @@ question → units → Concept → evidence. It runs in English and 简体中文
 (1280×900) and phone (390×844) widths. It also checks that:
 - every request is a same-origin GET on the demo allowlist;
 - the console shows no errors;
-- there is no horizontal scroll on phones;
+- there is no horizontal scroll on phones, measured against the device width
+  (390 px) with the overflowing element named, because under phone emulation
+  `innerWidth` grows with the content and cannot reveal an overflow;
 - private routes stay closed (unknown paths 404, non-GET methods 405).
 
 Run it against a demo that is already running, normally the packaged release

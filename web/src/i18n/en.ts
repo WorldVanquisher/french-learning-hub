@@ -1063,6 +1063,21 @@ export const en = {
   "demo.concept.details": "Concept details: status, type and identity",
   "demo.concept.whyEvidence": "Evidence: taken from learning record #{record} and filed under this Concept.",
   "demo.source.why": "Why this record is shown: unit #{unit} was taken from it and is filed under {concept}.",
+  // Public demo walkthrough, empty states and evidence names (demo-ux lane).
+  "demo.walk.step3": "Step 3 of 4 · Concept",
+  "demo.walk.next3": "Next, open “View source record” on any unit to see the question it was taken from.",
+  "demo.walk.step4": "Step 4 of 4 · Source evidence",
+  "demo.example.step.evidence": "The source evidence",
+  "demo.example.step.evidence.hint":
+    "This question is learning record #{record}. Its units come from extraction v{extraction}, which used interpretation v{analysis}, and each one links back to the question as it was written.",
+  "demo.example.openEvidence": "See the evidence for “{unit}”",
+  "demo.concept.viewSourceFor": "View source record #{record} for unit #{unit}",
+  "demo.library.empty": "This demo build has no Concepts to show.",
+  "demo.noMatch.heading": "Nothing found? Try one of these",
+  "demo.noMatch.how":
+    "Keyword search matches the beginning of words. Concept titles are in English; identity details and the wording of units are in French.",
+  "demo.noMatch.try": "Search “{q}”",
+  "demo.noMatch.showAll": "Show all Concepts",
   // Concept content and membership comparison (FLH-093). Read-only views; the
   // decision vocabulary stays untranslated.
   "content.show": "Show what concept #{id} contains",
