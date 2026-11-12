@@ -422,7 +422,7 @@ Two checks need the owner:
 the daily instance:
 
 ```bash
-bash scripts/release/smoke.sh /abs/new/empty/dir        # exit 0 PASS, 1 FAIL, 2 refused, 3 no Docker
+bash scripts/release/smoke.sh /abs/new/empty/dir        # exit 0 PASS, 1 FAIL, 2 refused, 3 BLOCKED
 ```
 
 It builds the image as `flh-smoke:<id>` (never `french-learning-hub:local`)
@@ -447,6 +447,42 @@ fingerprinted with `docker inspect` before and after; a change fails the run.
 tears down. The demo stage uses the private workbench bundle only to exercise
 the static and `/api` paths; the real demo bundle is checked by
 [PUBLIC_DEMO.md](PUBLIC_DEMO.md).
+
+### Disk preflight
+
+Before anything is built, the smoke and the packaged browser check
+(`scripts/validation/v1_rehearsal/browser_check.sh`) run
+`scripts/release/disk_preflight.sh`. It checks the free space of the work
+directory (1024 MiB), `TMPDIR` (512 MiB) and Docker's root directory when it is
+readable (4096 MiB), and writes and deletes one 32 MiB probe file in each
+writable location. The probe catches a per-user quota on a shared tmpfs, which
+`df` does not show. If a location fails, the job stops with exit 3 (BLOCKED)
+before starting anything and prints the directory, the space available and
+needed, and the effective `TMPDIR`. It never cleans anything; free space
+yourself or point `TMPDIR` and the work directory at a disk with room. The
+thresholds can be raised or lowered with `FLH_SMOKE_MIN_{WORK,TMP,DOCKER}_MB` and
+`FLH_BROWSER_MIN_{WORK,TMP,DOCKER}_MB`. Run it alone with, for example:
+
+```bash
+bash scripts/release/disk_preflight.sh work=/abs/work:1024 tmp="${TMPDIR:-/tmp}":512
+```
+
+### Publishing metadata check
+
+`scripts/release/publish_metadata_check.py` checks commit messages and PR
+bodies before they are published. It rejects a `Co-authored-by:` trailer or an
+author/committer identity naming Claude or Anthropic, a `Claude-Session:`
+trailer, and private `claude.ai` session, chat, project or share links. It keeps
+prose about using AI and co-author trailers for people. Findings are printed
+with private links redacted (`--redact` filters any text the same way). Check a
+merged commit with:
+
+```bash
+git log -1 --format='Author: %an <%ae>%nCommitter: %cn <%ce>%n%n%B' origin/main |
+  python3 -I scripts/release/publish_metadata_check.py --kind commit --label main -
+```
+
+The helper scripts' tests: `python3 -B -m unittest discover -s scripts/release -p 'test_*.py'`.
 
 ## Troubleshooting
 

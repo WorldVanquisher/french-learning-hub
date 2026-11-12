@@ -343,6 +343,12 @@ v1.0 personal-use release packaging:
   `french-learning-hub:local`, and it always tears down.
 - `python3 -I scripts/release/upgrade_021/rehearse.py WORK_DIR` rehearses
   020 → 021 and its rollback on disposable copies only (RELEASE.md).
+- `scripts/release/disk_preflight.sh` runs before the smoke and the packaged
+  browser check: exit 3 (BLOCKED) when the work directory, `TMPDIR` or Docker's
+  root lacks room. It writes only its own probe file and never cleans others'.
+- Publishable metadata (commit messages, PR bodies, squash messages) carries no
+  Claude/Anthropic co-author trailer or identity and no private `claude.ai` link;
+  check it with `scripts/release/publish_metadata_check.py`.
 
 FLH-023 extraction selection mode:
 
