@@ -336,6 +336,13 @@ v1.0 personal-use release packaging:
   listed provider variables with existing defaults, and mounts `FLH_DATA_DIR`
   (default `data/release`). `docs/RELEASE.md` owns start/stop, backup/restore,
   and migration-rollback limits.
+- `bash scripts/release/smoke.sh WORK_DIR` is the local release smoke. It uses
+  image `flh-smoke:<id>`, project `flh-smoke-<id>`, free loopback ports and its
+  own data directory. Inherited Compose variables are removed and providers are
+  disabled. It never builds, starts or removes the daily project or
+  `french-learning-hub:local`, and it always tears down.
+- `python3 -I scripts/release/upgrade_021/rehearse.py WORK_DIR` rehearses
+  020 → 021 and its rollback on disposable copies only (RELEASE.md).
 
 FLH-023 extraction selection mode:
 

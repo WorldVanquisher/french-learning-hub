@@ -1,0 +1,404 @@
+#!/usr/bin/env bash
+# Local release smoke: build the release image under a throwaway tag, run it in
+# a throwaway Compose project on free loopback ports with its own data
+# directory, prove readiness, persistence and the browser-request boundary, run
+# the SAME image in read-only public-demo mode and prove its private-route
+# boundary, then tear everything down and prove it is gone.
+#
+#   bash scripts/release/smoke.sh WORK_DIR [--keep-image] [--inject-failure STAGE]
+#
+# --inject-failure readiness|persistence|demo records a deliberate FAIL when that
+# stage starts and stops there (proof that a failed run still tears down).
+#
+# WORK_DIR: absolute, outside the repository, new or empty. It receives the
+# Compose override and settings, the data directory, the demo artifact, bounded
+# logs and summary.txt (one line per stage: STAGE<TAB>PASS|FAIL|BLOCKED<TAB>detail).
+#
+# Isolation (the daily instance is never in the test path):
+#   * project flh-smoke-<id> and image flh-smoke:<id>; the daily project
+#     (french-learning-hub) and its image tag are refused and never built,
+#     started, stopped or removed;
+#   * every variable compose.yaml interpolates, and Compose's own selectors
+#     (COMPOSE_PROJECT_NAME, COMPOSE_FILE, ...), are removed from the inherited
+#     environment and --env-file names a generated settings file, so neither a
+#     repository .env nor exported provider keys reach the containers;
+#   * every provider is disabled; nothing contacts a model or the network
+#     beyond what `docker compose build` needs for base images and packages;
+#   * ports are free loopback ports chosen at run time; data lives in WORK_DIR;
+#   * the daily containers are fingerprinted (read-only `docker inspect`) before
+#     and after; any change fails the smoke.
+#
+# Exit: 0 PASS; 1 FAIL (a check or the teardown); 2 refused (usage, unsafe
+# environment); 3 BLOCKED (no reachable Docker daemon, so nothing ran).
+set -uo pipefail
+
+REPO=$(cd "$(dirname "$0")/../.." && pwd -P)
+DAILY_PROJECT=french-learning-hub
+KEEP_IMAGE=0
+INJECT=""
+WORK=${1:-}
+[ -n "$WORK" ] || { sed -n '8p' "$0" >&2; exit 2; }
+case "$WORK" in --*) sed -n '8p' "$0" >&2; exit 2 ;; esac
+shift
+while [ $# -gt 0 ]; do
+  case $1 in
+    --keep-image) KEEP_IMAGE=1; shift ;;
+    --inject-failure)
+      INJECT=${2:-}
+      case $INJECT in readiness|persistence|demo) ;; *) echo "refused: --inject-failure readiness|persistence|demo" >&2; exit 2 ;; esac
+      shift 2 ;;
+    *) echo "refused: unknown option $1" >&2; exit 2 ;;
+  esac
+done
+case "$WORK" in /*) ;; *) echo "refused: WORK_DIR must be absolute" >&2; exit 2 ;; esac
+WORK=$(realpath -m "$WORK")
+case "$WORK/" in "$REPO"/*) echo "refused: WORK_DIR must be outside the repository" >&2; exit 2 ;; esac
+mkdir -p "$WORK"
+[ -z "$(ls -A "$WORK")" ] || { echo "refused: WORK_DIR must be new or empty" >&2; exit 2; }
+for tool in docker curl python3 go timeout; do
+  command -v "$tool" > /dev/null || { echo "refused: $tool is required" >&2; exit 2; }
+done
+umask 077
+chmod 700 "$WORK"
+mkdir -p "$WORK/logs" "$WORK/http" "$WORK/data" "$WORK/artifact-build"
+SUM="$WORK/summary.txt"
+: > "$SUM"
+FAILED=0
+inject() {
+  if [ "$INJECT" = "$1" ]; then
+    stage "$1" FAIL "injected failure (--inject-failure $1)"
+    exit 1
+  fi
+}
+stage() {
+  printf '%s\t%s\t%s\n' "$1" "$2" "${3:-}" | tee -a "$SUM"
+  [ "$2" = FAIL ] && FAILED=1
+  return 0
+}
+
+if ! docker info > /dev/null 2>&1; then
+  stage preflight BLOCKED "no reachable Docker daemon"
+  exit 3
+fi
+
+ID="$(date -u +%Y%m%dt%H%M%S)-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
+PROJECT="flh-smoke-$ID"
+IMAGE="flh-smoke:$ID"
+free_port() { python3 -I -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
+PORT=$(free_port)
+DEMO_PORT=$(free_port)
+while [ "$DEMO_PORT" = "$PORT" ]; do DEMO_PORT=$(free_port); done
+BASE="http://127.0.0.1:$PORT"
+DEMO="http://127.0.0.1:$DEMO_PORT"
+[ "$PROJECT" != "$DAILY_PROJECT" ] || { echo "refused: project collides with the daily project" >&2; exit 2; }
+if [ -n "$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT")" ]; then
+  echo "refused: containers already exist for $PROJECT" >&2; exit 2
+fi
+for p in "$PORT" "$DEMO_PORT"; do
+  if (exec 3<>"/dev/tcp/127.0.0.1/$p") 2> /dev/null; then echo "refused: port $p is in use" >&2; exit 2; fi
+done
+
+# Read-only fingerprint of the daily project's containers and image.
+daily_fingerprint() {
+  {
+    docker ps -aq --filter "label=com.docker.compose.project=$DAILY_PROJECT" | sort |
+      while read -r c; do docker inspect -f '{{.Id}} {{.Image}} {{.State.Status}} {{.State.StartedAt}} {{.RestartCount}}' "$c"; done
+    docker image inspect -f '{{.Id}}' "$DAILY_PROJECT:local" 2> /dev/null || echo "no $DAILY_PROJECT:local image"
+  } | sha256sum | cut -c1-16
+}
+DAILY_BEFORE=$(daily_fingerprint)
+
+OVR="$WORK/compose.smoke.yaml"
+ENVF="$WORK/smoke.env"
+cat > "$OVR" <<EOF
+# Generated by scripts/release/smoke.sh for project $PROJECT only.
+services:
+  app:
+    image: $IMAGE
+    restart: "no"
+  demo:
+    profiles: ["smoke-demo"]
+    image: $IMAGE
+    user: "$(id -u):$(id -g)"
+    # -web-dir exercises the static and /api paths of the boundary. The bundle
+    # is the private workbench build; the real demo ships its own
+    # VITE_FLH_PUBLIC_DEMO build (scripts/demo/flh073), which is not tested here.
+    entrypoint: ["/app/server", "-public-demo-artifact", "/artifact", "-public-demo-allow-mechanical", "-web-dir", "/app/web"]
+    environment:
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:$DEMO_PORT:8080"
+    volumes:
+      - type: bind
+        source: $WORK/artifact
+        target: /artifact
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: "no"
+EOF
+cat > "$ENVF" <<EOF
+FLH_DATA_DIR=$WORK/data
+FLH_HOST_PORT=$PORT
+FLH_UID=$(id -u)
+FLH_GID=$(id -g)
+HTTP_ALLOWED_HOSTS=
+HTTP_TRUSTED_ORIGINS=$BASE
+AI_PROVIDER=rule-based
+EXTRACTOR_PROVIDER=disabled
+SUGGESTION_PROVIDER=disabled
+LISTENING_PROVIDER=disabled
+READING_PROVIDER=disabled
+WRITING_PROVIDER=disabled
+SPEAKING_PROVIDER=disabled
+SPEAKING_TRANSCRIPTION_PROVIDER=disabled
+EMBEDDING_PROVIDER=disabled
+SEMANTIC_SEARCH=disabled
+LISTENING_PLAYLIST_SOURCE=disabled
+LISTENING_AUTO_PREPARE=disabled
+LISTENING_NOTIFY=disabled
+EOF
+mapfile -t COMPOSE_VARS < <(grep -ohE '\$\{[A-Za-z_][A-Za-z0-9_]*' "$REPO/compose.yaml" | cut -c3- | sort -u)
+UNSET=()
+for v in "${COMPOSE_VARS[@]}" COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_ENV_FILES COMPOSE_PROFILES COMPOSE_PATH_SEPARATOR; do
+  UNSET+=(-u "$v")
+done
+compose() { (cd "$REPO" && env "${UNSET[@]}" docker compose -p "$PROJECT" -f "$REPO/compose.yaml" -f "$OVR" --env-file "$ENVF" "$@"); }
+
+TORN_DOWN=0
+teardown() {
+  [ "$TORN_DOWN" = 1 ] && return 0
+  TORN_DOWN=1
+  compose --profile smoke-demo logs --no-color --tail 200 > "$WORK/logs/containers.log" 2>&1 || true
+  compose --profile smoke-demo down --remove-orphans --volumes --timeout 15 > "$WORK/logs/down.log" 2>&1
+  local rc=$?
+  # Only containers and networks carrying this run's project label.
+  local left
+  left=$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT")
+  [ -z "$left" ] || docker rm -f $left > /dev/null 2>&1
+  left=$(docker network ls -q --filter "label=com.docker.compose.project=$PROJECT")
+  [ -z "$left" ] || docker network rm $left > /dev/null 2>&1
+  if [ "$KEEP_IMAGE" = 0 ]; then docker image rm "$IMAGE" > /dev/null 2>&1 || true; fi
+  local problems=()
+  [ "$rc" = 0 ] || problems+=("compose down exited $rc")
+  [ -z "$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT")" ] || problems+=("containers remain")
+  [ -z "$(docker network ls -q --filter "label=com.docker.compose.project=$PROJECT")" ] || problems+=("networks remain")
+  if [ "$KEEP_IMAGE" = 0 ] && docker image inspect "$IMAGE" > /dev/null 2>&1; then problems+=("image $IMAGE remains"); fi
+  for p in "$PORT" "$DEMO_PORT"; do
+    if (exec 3<>"/dev/tcp/127.0.0.1/$p") 2> /dev/null; then problems+=("port $p still answers"); fi
+  done
+  if [ ${#problems[@]} -eq 0 ]; then
+    local kept="removed"
+    [ "$KEEP_IMAGE" = 1 ] && kept="kept ($IMAGE)"
+    stage teardown PASS "project $PROJECT down; no container, network or listener left; image $kept; data kept in WORK_DIR/data"
+  else
+    stage teardown FAIL "${problems[*]}"
+  fi
+  local after
+  after=$(daily_fingerprint)
+  if [ "$after" = "$DAILY_BEFORE" ]; then
+    stage daily-untouched PASS "daily project fingerprint $DAILY_BEFORE unchanged"
+  else
+    stage daily-untouched FAIL "daily project fingerprint changed $DAILY_BEFORE -> $after"
+  fi
+}
+finish() {
+  teardown
+  if [ "$FAILED" = 0 ]; then echo "SMOKE PASS ($PROJECT)"; exit 0; fi
+  echo "SMOKE FAIL ($PROJECT): see $SUM and $WORK/logs" >&2
+  exit 1
+}
+trap finish EXIT
+trap 'exit 1' INT TERM
+
+# status METHOD URL [curl args...] -> HTTP status; body in $WORK/http/last.body
+status() {
+  local method=$1 url=$2
+  shift 2
+  curl -s -o "$WORK/http/last.body" -D "$WORK/http/last.headers" -w '%{http_code}' --max-time 10 -X "$method" "$@" "$url"
+}
+wait_ready() {
+  local url=$1 i
+  for i in $(seq 1 90); do
+    [ "$(status GET "$url/readyz")" = 200 ] && return 0
+    sleep 1
+  done
+  return 1
+}
+expect_status() { # LABEL WANT METHOD URL [curl args...]
+  local label=$1 want=$2 got
+  shift 2
+  got=$(status "$@")
+  if [ "$got" != "$want" ]; then
+    ERRORS+=("$label: HTTP $got, want $want")
+  fi
+}
+
+# --- config: what Compose will actually run (read through a pipe, never printed)
+stage_config() {
+  local out
+  out=$(compose --profile smoke-demo config --format json 2> "$WORK/logs/config.err" | python3 -I -c '
+import json, sys
+project, image, port, demo_port, data = sys.argv[1:6]
+cfg = json.load(sys.stdin)
+p = []
+if cfg.get("name") != project: p.append("project name")
+app, demo = cfg["services"]["app"], cfg["services"].get("demo", {})
+for name, svc in (("app", app), ("demo", demo)):
+    if svc.get("image") != image: p.append(name + " image is not the smoke tag")
+    for port_spec in svc.get("ports", []):
+        if port_spec.get("host_ip") != "127.0.0.1": p.append(name + " publishes beyond loopback")
+pub = sorted(str(x.get("published")) for x in app.get("ports", []))
+if pub != [port]: p.append("app port")
+if sorted(str(x.get("published")) for x in demo.get("ports", [])) != [demo_port]: p.append("demo port")
+vols = [v.get("source") for v in app.get("volumes", [])]
+if vols != [data]: p.append("app data directory")
+env = app.get("environment") or {}
+for k, v in env.items():
+    if k.endswith("_PROVIDER") and v not in ("disabled", "rule-based"): p.append(k + " not disabled")
+    if k in ("OPENAI_API_KEY", "EMBEDDING_API_KEY", "YOUTUBE_API_KEY", "TELEGRAM_BOT_TOKEN", "QDRANT_API_KEY") and v: p.append(k + " is set")
+for k in ("SEMANTIC_SEARCH", "LISTENING_PLAYLIST_SOURCE", "LISTENING_AUTO_PREPARE", "LISTENING_NOTIFY"):
+    if env.get(k) != "disabled": p.append(k + " not disabled")
+print("ok" if not p else "; ".join(p))
+' "$PROJECT" "$IMAGE" "$PORT" "$DEMO_PORT" "$WORK/data")
+  if [ "$out" = ok ]; then
+    stage config PASS "project $PROJECT, image $IMAGE, ports 127.0.0.1:$PORT and :$DEMO_PORT, data in WORK_DIR, no provider or key"
+  else
+    stage config FAIL "${out:-compose config failed (logs/config.err)}"
+    exit 1
+  fi
+}
+
+stage_build() {
+  if compose build app > "$WORK/logs/build.log" 2>&1 && docker image inspect "$IMAGE" > /dev/null 2>&1; then
+    stage build PASS "$IMAGE $(docker image inspect -f '{{.Id}}' "$IMAGE" | cut -c1-19)"
+  else
+    tail -n 30 "$WORK/logs/build.log" > "$WORK/logs/build.tail"
+    stage build FAIL "see logs/build.tail"
+    exit 1
+  fi
+  if (cd "$REPO" && go run ./scripts/demo/flh073/prepare build -out "$WORK/artifact" \
+      -fixtures scripts/demo/flh073/fixtures/catalog.json) > "$WORK/logs/artifact.json" 2> "$WORK/logs/artifact.err"; then
+    stage artifact PASS "mechanical demo artifact (mechanics only, not relevance)"
+  else
+    stage artifact FAIL "see logs/artifact.err"
+    exit 1
+  fi
+}
+
+stage_private() {
+  inject readiness
+  ERRORS=()
+  if ! compose up -d --no-build app > "$WORK/logs/up.log" 2>&1 || ! wait_ready "$BASE"; then
+    stage readiness FAIL "not ready on $BASE (logs/up.log, logs/containers.log)"
+    exit 1
+  fi
+  local health="" i
+  for i in $(seq 1 40); do
+    health=$(docker inspect -f '{{.State.Health.Status}}' "$(compose ps -q app)" 2> /dev/null)
+    [ "$health" = healthy ] && break
+    sleep 1
+  done
+  local mapped
+  mapped=$(compose port app 8080 2> /dev/null)
+  [ "$mapped" = "127.0.0.1:$PORT" ] || ERRORS+=("port mapping $mapped")
+  [ "$health" = healthy ] || ERRORS+=("container health $health")
+  expect_status healthz 200 GET "$BASE/healthz"
+  expect_status workbench 200 GET "$BASE/"
+  grep -qi '<html' "$WORK/http/last.body" || ERRORS+=("GET / is not the workbench page")
+  expect_status api-prefix 200 GET "$BASE/api/learning-records/summary"
+  if [ ${#ERRORS[@]} -eq 0 ]; then
+    stage readiness PASS "/readyz 200, container healthy, /healthz, / and /api/... 200 on 127.0.0.1:$PORT"
+  else
+    stage readiness FAIL "${ERRORS[*]}"
+  fi
+
+  ERRORS=()
+  expect_status rebinding-host 403 GET "$BASE/readyz" -H 'Host: rebind.example'
+  expect_status cross-origin-write 403 POST "$BASE/api/captures" -H 'Origin: http://evil.example' \
+    -H 'Content-Type: application/json' --data-binary @"$REPO/examples/captures/manual-example.json"
+  expect_status text-plain-write 415 POST "$BASE/api/captures" -H "Origin: $BASE" \
+    -H 'Content-Type: text/plain' --data-binary @"$REPO/examples/captures/manual-example.json"
+  if [ ${#ERRORS[@]} -eq 0 ]; then
+    stage boundary PASS "foreign Host 403; cross-origin write 403; text/plain browser write 415"
+  else
+    stage boundary FAIL "${ERRORS[*]}"
+  fi
+
+  inject persistence
+  ERRORS=()
+  expect_status capture 201 POST "$BASE/captures" -H 'Content-Type: application/json' \
+    --data-binary @"$REPO/examples/captures/manual-example.json"
+  expect_status capture-replay 200 POST "$BASE/captures" -H 'Content-Type: application/json' \
+    --data-binary @"$REPO/examples/captures/manual-example.json"
+  [ -f "$WORK/data/app.db" ] || ERRORS+=("no app.db in WORK_DIR/data")
+  if ! compose restart app > "$WORK/logs/restart.log" 2>&1 || ! wait_ready "$BASE"; then
+    ERRORS+=("not ready after restart")
+  fi
+  expect_status persisted 200 GET "$BASE/captures/manual-example-001"
+  if [ ${#ERRORS[@]} -eq 0 ]; then
+    stage persistence PASS "capture 201, replay 200, still there after restart; database in WORK_DIR/data"
+  else
+    stage persistence FAIL "${ERRORS[*]}"
+  fi
+}
+
+stage_demo() {
+  inject demo
+  ERRORS=()
+  if ! compose --profile smoke-demo up -d --no-build demo > "$WORK/logs/demo-up.log" 2>&1 || ! wait_ready "$DEMO"; then
+    stage demo-start FAIL "demo not ready on $DEMO (logs/demo-up.log, logs/containers.log)"
+    return
+  fi
+  stage demo-start PASS "same image, -public-demo-artifact (mechanical), read-only mount, 127.0.0.1:$DEMO_PORT"
+  local p
+  for p in /healthz /readyz /knowledge-library/demo /api/knowledge-library/demo /knowledge-library/concepts \
+      "/knowledge-library/concepts?q=subjunctive" /api/knowledge-library/concepts /; do
+    expect_status "allowed $p" 200 GET "$DEMO$p"
+  done
+  local asset
+  asset=$(grep -oE '/assets/[A-Za-z0-9._-]+\.js' "$WORK/http/last.body" | head -n 1)
+  if [ -n "$asset" ]; then expect_status "allowed $asset" 200 GET "$DEMO$asset"; else ERRORS+=("no /assets/ script on the demo page"); fi
+  expect_status "HEAD /readyz" 200 HEAD "$DEMO/readyz"
+  for p in /entries /entries/1 /captures /captures/x /learning-records /learning-records/summary /concepts \
+      /reviewable-units /annotation-dataset/v1/quality /retrieval-evaluation/v1 /retrieval-comparison/v1 \
+      /listening/materials /listening/scripts /listening/daily /reading/lessons /reading/examples \
+      /writing/prompts /writing/tasks /speaking/exercises /mistake-notebook/items /exam/forms /exam/sessions \
+      /concept-suggestion-runs /knowledge-library/semantic-search /annotation-operations/x /assets/ /index.html \
+      /api/entries /api/listening/materials /api/mistake-notebook/items /api/exam/forms; do
+    expect_status "private $p" 404 GET "$DEMO$p"
+  done
+  expect_status "dot-dot" 404 GET "$DEMO/knowledge-library/concepts/../../entries" --path-as-is
+  expect_status "api dot-dot" 404 GET "$DEMO/api/../entries" --path-as-is
+  expect_status "encoded slash" 404 GET "$DEMO/knowledge-library%2Fconcepts"
+  local m
+  for m in "POST /captures" "POST /api/captures" "PUT /knowledge-library/concepts/1" "DELETE /entries/1" \
+      "POST /listening/scripts/x" "PATCH /healthz" "POST /knowledge-library/demo" "OPTIONS /knowledge-library/concepts"; do
+    expect_status "$m" 405 ${m% *} "$DEMO${m#* }" -H 'Content-Type: application/json' --data '{}'
+  done
+  if [ ${#ERRORS[@]} -eq 0 ]; then
+    stage demo-boundary PASS "allowlisted reads and static assets 200; 31 private routes (root and /api) 404; path tricks 404; 8 writes 405"
+  else
+    stage demo-boundary FAIL "$(printf '%s; ' "${ERRORS[@]}")"
+  fi
+
+  # The demo refuses to start with any provider enabled (placeholder value, no call).
+  local out rc
+  out=$(timeout 60 env "${UNSET[@]}" bash -c 'cd "$1" && shift && docker compose "$@"' _ "$REPO" \
+    -p "$PROJECT" -f "$REPO/compose.yaml" -f "$OVR" --env-file "$ENVF" --profile smoke-demo \
+    run --rm --no-deps -e EXTRACTOR_PROVIDER=openai -e OPENAI_API_KEY=placeholder-not-a-credential \
+    -e OPENAI_MODEL=placeholder-model demo 2>&1)
+  rc=$?
+  printf '%s\n' "$out" | tail -n 20 > "$WORK/logs/demo-refusal.log"
+  if [ "$rc" != 0 ] && [ "$rc" != 124 ] && grep -q 'public demo refuses live providers' "$WORK/logs/demo-refusal.log" &&
+    ! grep -q placeholder-not-a-credential "$WORK/logs/demo-refusal.log"; then
+    stage demo-refusal PASS "EXTRACTOR_PROVIDER=openai with a complete placeholder config: 'public demo refuses live providers' (exit $rc); key not echoed"
+  else
+    stage demo-refusal FAIL "exit $rc (124 = still running after 60 s); see logs/demo-refusal.log"
+  fi
+}
+
+stage_config
+stage_build
+stage_private
+stage_demo

@@ -389,6 +389,65 @@ migrations.
   The daily wrapper's order is in
   [DAILY_USE.md](DAILY_USE.md#roll-back-a-failed-upgrade-nas).
 
+### Rehearse the 020 → 021 upgrade before applying it
+
+Migration `021` rebuilds `listening_materials` (authored listening scripts). To
+see what it does to a populated database before upgrading the real one, run
+the rehearsal. It needs Go, `sqlite3`, `sha256sum` and Python 3, starts no
+container and touches nothing outside `WORK_DIR`:
+
+```bash
+python3 -I scripts/release/upgrade_021/rehearse.py /abs/new/empty/dir
+```
+
+Without options it builds a 020 database through the real API (YouTube lessons,
+exercises from a local fake provider, Notebook records, a retry mark, reading,
+writing and a submitted mock exam), converts it to the exact 020 schema
+(checked against a pristine 001–020 database), then runs the **Backup** block
+above, starts the current server (which applies 021), checks every table, the
+Notebook and script import/replay/conflict, runs the **Restore** block, and
+upgrades the restored copy again. `WORK_DIR/summary.txt` has one line per stage.
+
+Two checks need the owner:
+
+- `--fixture-db PATH`: rehearse on a **copy** of your own validated 020 backup
+  (the source file is only copied, never opened).
+- `--old-server BINARY`: the server built from the commit before 021. The
+  rollback stage then also starts that binary on the restored copy and fails
+  if it records a migration. Without it that stage is `NOT RUN`.
+
+## Release smoke
+
+`scripts/release/smoke.sh` checks a release build end to end without going near
+the daily instance:
+
+```bash
+bash scripts/release/smoke.sh /abs/new/empty/dir        # exit 0 PASS, 1 FAIL, 2 refused, 3 no Docker
+```
+
+It builds the image as `flh-smoke:<id>` (never `french-learning-hub:local`)
+and runs it as Compose project `flh-smoke-<id>` on free `127.0.0.1` ports with
+its own data directory. Every variable `compose.yaml` interpolates is removed
+from the environment and a generated `--env-file` is used, so neither a `.env`
+next to `compose.yaml` nor exported keys reach it, and every provider is
+disabled. It checks:
+
+- readiness (`/readyz`, container `healthy`, `/healthz`, `/`, `/api/...`);
+- the browser boundary (foreign Host `403`, cross-origin write `403`,
+  `text/plain` browser write `415`);
+- persistence of a capture across a container restart;
+- the same image in public-demo mode with a mechanical artifact: allowlisted
+  reads `200`, private routes under `/` and `/api` `404`, path tricks `404`,
+  writes `405`, and startup refused when a provider is enabled.
+
+The project, its network and the image are always removed at the end
+(`--keep-image` keeps the image), and the daily project's containers are
+fingerprinted with `docker inspect` before and after; a change fails the run.
+`--inject-failure readiness|persistence|demo` proves that a failed run still
+tears down. The demo stage uses the private workbench bundle only to exercise
+the static and `/api` paths; the real demo bundle is checked by
+[PUBLIC_DEMO.md](PUBLIC_DEMO.md).
+
 ## Troubleshooting
 
 - `bind source path does not exist`: create `FLH_DATA_DIR` first.
