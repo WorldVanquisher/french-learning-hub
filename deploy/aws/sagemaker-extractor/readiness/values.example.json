@@ -1,0 +1,9 @@
+{
+  "$comment": "Placeholders only: syntactically valid, they point nowhere. The owner keeps the real values outside the repository and passes them to build_readiness.py or render_job.py. IMAGE_DIGEST comes from `aws ecr describe-images` after the push.",
+  "REGISTRY": "000000000000.dkr.ecr.us-east-1.amazonaws.com",
+  "IMAGE_DIGEST": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "EXEC_ROLE_ARN": "arn:aws:iam::000000000000:role/flh-extractor-exec",
+  "BUCKET": "example-flh-extractor-private",
+  "BASE_MODEL_KEY": "qwen3.5-4b-851bf6e8",
+  "ADAPTER_KEY": "flh-extractor-experiment-YYYYMMDD-HHMMSS"
+}

@@ -117,3 +117,29 @@ func TestRunModeUsesTheConfiguredExtractorAndCapsRequests(t *testing.T) {
 		t.Fatalf("the cap must stop before the third request: err=%v calls=%d", err, calls)
 	}
 }
+
+func TestAnalyzeIsTheDefaultRuleBasedAnalyzer(t *testing.T) {
+	a, err := analyze("a1", Input{OriginalInput: "Merci, je vais relire ça ce soir.", EffectiveCategory: "other", EffectiveExplanation: "ignored"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Analyzer != "rule-based:v2:fr_l2_taxonomy_v1" || a.Category != "grammar" ||
+		!strings.HasPrefix(a.Explanation, `Local classification selected "grammar" because rule "multi_token_fallback"`) {
+		t.Fatalf("analysis = %+v", a)
+	}
+	b, err := analyze("a2", Input{OriginalInput: "How do you say « bonjour » in French?"})
+	if err != nil || b.Category != "translation" || !strings.Contains(b.Explanation, `"explicit_translation_request"`) {
+		t.Fatalf("analysis = %+v err=%v", b, err)
+	}
+	dir := t.TempDir()
+	in := filepath.Join(dir, "c.jsonl")
+	raw, _ := json.Marshal(map[string]any{"id": "c1", "input": sample()})
+	_ = os.WriteFile(in, append(raw, '\n'), 0o600)
+	out := filepath.Join(dir, "a.jsonl")
+	if err := run("analyze", in, out); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(out); !strings.Contains(string(b), `"effective_category"`) || strings.Contains(string(b), sample().EffectiveExplanation) {
+		t.Fatalf("analyze output %s", b)
+	}
+}

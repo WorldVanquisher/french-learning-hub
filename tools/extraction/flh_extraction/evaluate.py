@@ -123,7 +123,10 @@ def judge_example(ref_units, pred_units, human=None):
         if r in mr:
             continue
         partial = [p for p in range(len(pred_units)) if p not in mp and sim[p][r] >= PART]
-        errs["OVER_SPLIT" if len(partial) >= 2 else "MISSED"] += 1
+        # An unmatched reference that an already-matched prediction also
+        # covers was merged into it; otherwise it was split or missed.
+        covered = [p for p in mp if sim[p][r] >= PART]
+        errs["OVER_SPLIT" if len(partial) >= 2 else "MERGED" if covered and not partial else "MISSED"] += 1
     seen = []
     for p in range(len(pred_units)):
         if p in mp:

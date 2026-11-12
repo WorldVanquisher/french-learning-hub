@@ -1,0 +1,2 @@
+qwen3.5-4b targets on Qwen3.5 text stack: 200 linear_attn: 72 layers with attention adapted: 32 | outside text stack (not loaded): 0
+qwen3-1.7b targets on Qwen3.5 text stack: 128 linear_attn: 0 layers with attention adapted: 8 | outside text stack (not loaded): 7

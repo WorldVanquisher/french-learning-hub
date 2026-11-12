@@ -2,6 +2,7 @@
 first untuned run. The evaluation file itself is never modified.
 
   python3 -B select_eval_subset.py EVAL_CANDIDATES.jsonl EVAL_PROMPTS.jsonl OUT_DIR
+  python3 -B select_eval_subset.py --like IDS.txt SUFFIX PROBE.jsonl PROBE_PROMPTS.jsonl OUT_DIR
 
 The subset makes each reported category measurable:
   - every zero-unit reference (abstention), 20 in eval v1;
@@ -64,5 +65,25 @@ def main(eval_path, prompts_path, out):
     print(json.dumps(info))
 
 
+def like(ids_path, suffix, cands_path, prompts_path, out):
+    """The same subset in a derived file (a probe): ids from ids.txt plus a suffix."""
+    out = Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    want = [line.strip() + suffix for line in Path(ids_path).read_text(encoding="utf-8").splitlines() if line.strip()]
+    cands = {r["id"]: r for r in load(cands_path)}
+    prompts = {p["id"]: p for p in load(prompts_path)}
+    missing = [i for i in want if i not in cands or i not in prompts]
+    if missing:
+        raise SystemExit(f"missing {missing[:5]}")
+    for name, rows in (("candidates.jsonl", [cands[i] for i in want]), ("prompts.jsonl", [prompts[i] for i in want])):
+        with open(out / name, "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n")
+    print(json.dumps({"size": len(want), "suffix": suffix}))
+
+
 if __name__ == "__main__":
-    main(*sys.argv[1:4])
+    if sys.argv[1:2] == ["--like"]:
+        like(*sys.argv[2:7])
+    else:
+        main(*sys.argv[1:4])

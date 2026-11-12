@@ -1,0 +1,90 @@
+{
+ "canonical_overlap_eval": [],
+ "combined_split_check": {
+  "canonical_overlap_train_eval": [],
+  "counts": {
+   "boundary": 80,
+   "dev": 137,
+   "eval": 200,
+   "train": 1245
+  },
+  "families_in_two_splits": [],
+  "pass": true,
+  "points_in_train_and_dev": [],
+  "points_in_train_and_eval": []
+ },
+ "composition": {
+  "by_mode": {
+   "counter_shortcut": 29,
+   "duplicate_question": 4,
+   "explanation_extra": 6,
+   "fragmentation": 14,
+   "misconception": 54,
+   "several_edits_one_objective": 6,
+   "two_errors": 14,
+   "wrong_explanation": 15,
+   "zero_production_cues": 40
+  },
+  "by_split_group": {
+   "dev": 13,
+   "train": 169
+  },
+  "resolution": {
+   "accepted": 49,
+   "unreviewed": 133
+  },
+  "unit_records_with_category_other": 6,
+  "units_hist": {
+   "0": 40,
+   "1": 128,
+   "2": 14
+  },
+  "zero_unit_categories": {
+   "grammar": 25,
+   "morphology": 4,
+   "orthography": 2,
+   "pragmatics": 1,
+   "pronunciation": 2,
+   "translation": 2,
+   "vocabulary": 4
+  }
+ },
+ "counts": {
+  "base": 1200,
+  "increment": 182
+ },
+ "duplicate_ids": [],
+ "exact_duplicates_with_eval": [],
+ "families_shared_with_base": [],
+ "headword_overlap_eval": [],
+ "near_duplicates_of_base": {
+  "examples": [],
+  "jaccard_ge_0.8": 0
+ },
+ "near_pairs_boundary": {
+  "examples": [],
+  "jaccard_ge_0.5": 0
+ },
+ "near_pairs_eval": {
+  "examples": [],
+  "jaccard_ge_0.5": 0,
+  "jaccard_ge_0.8": 0
+ },
+ "new_points": [],
+ "not_unreviewed": [],
+ "pass": true,
+ "points_in_eval": [],
+ "points_in_other_split": [],
+ "production_validation": {
+  "invalid_ids": [],
+  "of": 182,
+  "units_changed_by_validation": [],
+  "valid": 182
+ },
+ "schema": "flh_extraction_increment_check_v1",
+ "structural_errors": {},
+ "within_increment": {
+  "exact_duplicate_groups": [],
+  "near_pairs_ge_0.8": []
+ }
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "flh_extractor_output_manifest_v1",
+  "$comment": "What each job must leave behind and how the owner verifies it before the next step. Hashes of outputs are unknown until a job runs; every check is local and offline after `aws s3 cp`.",
+  "jobs": {
+    "sft-smoke": {
+      "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
+      "contains": ["model/adapter_config.json", "model/adapter_model.safetensors", "model/tokenizer files", "losses.jsonl", "config.json", "run_manifest.json"],
+      "checks": [
+        "describe-training-job: TrainingJobStatus Completed, BillableTimeInSeconds <= 1800",
+        "run_manifest.json: train_sha256 and dev_sha256 equal input-manifest.json; steps == 12; smoke true; suitable_for_production false; model_profile qwen3.5-4b; chat_template_kwargs {enable_thinking: false}; skipped_too_long == 0",
+        "run_manifest.json files: every listed sha256 matches the extracted file",
+        "losses.jsonl: 12 finite train_loss values; dev_loss at steps 6 and 12",
+        "timing: seconds / 12 = seconds per step; projected experiment = 234 steps x seconds per step + 10 dev evaluations; must be <= 9000 s (the 10800 s bound with margin)"
+      ]
+    },
+    "predict-base": {
+      "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
+      "contains": ["predictions.jsonl"],
+      "checks": [
+        "100 rows, ids = the 50-item frozen subset then the same 50 with suffix #rb, in prompt order",
+        "every row has output_text, generated_tokens and stopped; count stopped == max_new_tokens (truncation)",
+        "scored locally: attach-inputs, extraction-render validate, quality (frozen and probe halves), quality-compare"
+      ]
+    },
+    "sft-experiment": {
+      "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
+      "contains": ["model/adapter_config.json", "model/adapter_model.safetensors", "losses.jsonl", "config.json", "run_manifest.json"],
+      "checks": [
+        "TrainingJobStatus Completed, BillableTimeInSeconds <= 10800",
+        "run_manifest.json: hashes equal input-manifest.json; smoke false; suitable_for_production false; skipped_too_long == 0; steps == 234",
+        "losses.jsonl: dev loss does not rise at two consecutive evaluations (promotion-check reads it)",
+        "the adapter is extracted and copied to s3://<BUCKET>/extractor/adapters/<job>/ for predict-eval"
+      ]
+    },
+    "predict-eval": {
+      "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
+      "contains": ["predictions.jsonl"],
+      "checks": [
+        "400 rows: the 200 frozen evaluation prompts, then the 200 rb-probe prompts",
+        "scored locally as for predict-base, on all 200 + 200; then promotion-check against the baseline reports"
+      ]
+    }
+  }
+}

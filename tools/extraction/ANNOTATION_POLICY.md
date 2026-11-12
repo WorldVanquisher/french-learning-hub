@@ -29,6 +29,13 @@ statement and example) are refused. An empty list is valid.
 Model-invisible metadata (ids, family, topic, band, origin, review status,
 rationale) never enters the input fields.
 
+Under the production default (2026-11-12, `internal/analyzer`), the analysis
+is the local rule-based one and stays `unreviewed` until a human accepts it:
+`effective_category` is `other` only for input without letters, and
+`effective_explanation` reads `Local classification selected "<category>"
+because rule "<rule>" …`. Training and evaluation inputs must not let the
+category or the explanation decide the label (see rule 6).
+
 ## 2. The boundary: grounded selection, general-knowledge statements
 
 The production instruction allows two different things, and this policy keeps
@@ -64,7 +71,10 @@ explanation's error; an example unrelated to the objective.
 6. **Explanations.** The effective explanation is evidence, not authority.
    Use it to understand what was discussed; never copy a claim that is
    wrong. A `corrected` resolution means the visible explanation is the human
-   correction. `rejected` never reaches the extractor.
+   correction. `rejected` never reaches the extractor. The category is a cue,
+   not a label: a thanks classified as `morphology` is still zero units, and a
+   real question classified as `other` still yields its objective. A rule
+   that only the explanation mentions is not an objective of the interaction.
 7. **Mixed topics.** Extract each French-learning objective separately; ignore
    non-French or non-learning content (another language's grammar, travel
    plans, app questions).
