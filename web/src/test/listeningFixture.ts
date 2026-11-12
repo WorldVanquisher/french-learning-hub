@@ -81,11 +81,26 @@ export const content: NonNullable<ListeningExercise["content"]> = {
   ],
 };
 
+// currentExerciseId mirrors the server's rule (domain.CurrentListeningExercise):
+// the newest completed exercise on the latest transcript; for an authored
+// script, only its authored exercise.
+export function currentExerciseId(l: Pick<ListeningLesson, "material" | "transcript" | "exercises">): number | null {
+  if (!l.transcript) return null;
+  const e = l.exercises.find(
+    (x) =>
+      x.transcript_id === l.transcript!.id &&
+      x.status === "completed" &&
+      (l.material.source_kind !== "authored_script" || x.generator.startsWith("authored:")),
+  );
+  return e ? e.id : null;
+}
+
 export function lesson(overrides: Partial<ListeningLesson> = {}): ListeningLesson {
-  return {
+  const l: ListeningLesson = {
     material,
     transcript: { id: 10, version: 1, has_timestamps: true, segments, created_at: "2026-11-08T09:00:00Z" },
     exercises: [],
+    current_exercise_id: null,
     generation: { enabled: true, generator: "openai:fake-model:listening_exercise_v1" },
     state: "ready_to_prepare",
     in_playlist: false,
@@ -94,6 +109,7 @@ export function lesson(overrides: Partial<ListeningLesson> = {}): ListeningLesso
     notification: { enabled: false, channel: null },
     ...overrides,
   };
+  return "current_exercise_id" in overrides ? l : { ...l, current_exercise_id: currentExerciseId(l) };
 }
 
 export const preparation = (overrides: Partial<ListeningPreparation> = {}): ListeningPreparation => ({

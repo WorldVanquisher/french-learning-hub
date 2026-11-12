@@ -73,6 +73,9 @@ type ListeningLesson struct {
 	Material   domain.ListeningMaterial
 	Transcript *domain.ListeningTranscript
 	Exercises  []domain.ListeningExercise
+	// Current is the exercise the lesson shows (domain.CurrentListeningExercise):
+	// for an authored script, always its authored exercise.
+	Current *domain.ListeningExercise
 	// Status is derived: state, playlist membership, attempts and notifications.
 	Status domain.ListeningMaterialStatus
 	Now    time.Time
@@ -175,7 +178,7 @@ func (s *ListeningService) GetLesson(ctx context.Context, materialID int64) (*Li
 	if err != nil {
 		return nil, err
 	}
-	return &ListeningLesson{Material: m, Transcript: tr, Exercises: ex, Status: st, Now: now}, nil
+	return &ListeningLesson{Material: m, Transcript: tr, Exercises: ex, Current: domain.CurrentListeningExercise(m, tr, ex), Status: st, Now: now}, nil
 }
 
 // ListMaterials lists every material, newest first. It never calls the generator.
@@ -291,6 +294,9 @@ type ListeningPreparationResult struct {
 // PrepareExercise is the explicit Prepare button. It goes through the same
 // preparation path as a pull (see prepare). The returned bool is true for a
 // same-key replay. Errors:
+//   - domain.ErrListeningScriptExerciseFixed: an authored script keeps its
+//     authored exercise; refused before any attempt, no call, nothing stored
+//     (whether or not a generator is configured);
 //   - domain.ErrListeningDisabled: no generator, nothing stored;
 //   - domain.ErrNotFound: unknown material;
 //   - domain.ErrListeningNoTranscript: no call, nothing stored;
@@ -299,6 +305,14 @@ type ListeningPreparationResult struct {
 //   - *ListeningGenerationError: the call failed or its outcome is unknown; the
 //     attempt and the failed exercise are stored and returned.
 func (s *ListeningService) PrepareExercise(ctx context.Context, req ListeningPrepareRequest) (*ListeningPreparationResult, bool, error) {
+	// An authored script's exercise is fixed content. A script never enters a
+	// playlist, so pulls never reach it; the explicit route is the only way in.
+	switch m, err := s.repo.GetMaterial(ctx, req.MaterialID); {
+	case err == nil && m.IsAuthoredScript():
+		return nil, false, domain.ErrListeningScriptExerciseFixed
+	case err != nil && !errors.Is(err, domain.ErrNotFound):
+		return nil, false, err
+	}
 	op := req.OperationID
 	if op == "" {
 		var err error

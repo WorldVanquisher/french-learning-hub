@@ -97,6 +97,7 @@ const lessonOf = (material: ListeningMaterial, exercise: ListeningExercise): Lis
   material,
   transcript: { id: 500, version: 1, has_timestamps: false, segments: lines, created_at: "2026-11-11T08:00:00Z" },
   exercises: [exercise],
+  current_exercise_id: exercise.id,
   generation: { enabled: false, generator: null },
   state: "prepared",
   in_playlist: false,
@@ -145,6 +146,7 @@ function serve(server: Server) {
           material: scriptMaterial(7),
           transcript: { id: 500, version: 1, has_timestamps: false, segments: lines, created_at: "2026-11-11T08:00:00Z" },
           exercises: [authoredExercise(900)],
+          current_exercise_id: 900,
           generation: { enabled: false, generator: null },
           state: "prepared",
           in_playlist: false,
@@ -453,6 +455,80 @@ describe("Workbook listening scripts (private workbench)", () => {
     expect(posts).toHaveLength(2);
     expect(posts[0].body).toBe(posts[1].body);
     expect(server.captures!.size).toBe(1);
+  });
+
+  it("after reveal, an overview puts each answer beside the reference and links to each question; nothing is sent", async () => {
+    const server: Server = { imported: null, calls: [], imports: 0 };
+    serve(server);
+    const panel = await openScripts();
+    fireEvent.click(within(panel).getByRole("button", { name: `Import ${TITLE}` }));
+    await screen.findByRole("heading", { name: TITLE });
+    expect(screen.queryByRole("heading", { name: "Your answers and the reference" })).toBeNull(); // no key before reveal
+
+    fireEvent.click(within(screen.getByRole("group", { name: "Your choice for question 1" })).getByLabelText("Elle demande un remboursement."));
+    fireEvent.change(screen.getByLabelText("Your answer to question 2"), { target: { value: "lundi, mercredi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Reveal answers and evidence" }));
+
+    const heading = screen.getByRole("heading", { name: "Your answers and the reference" });
+    expect(heading).toHaveFocus();
+    const overview = heading.closest("section")!;
+    expect(overview).toHaveTextContent("A comparison on this page only: it is not a score, and nothing is sent.");
+    const rows = within(overview).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Different from the reference");
+    expect(rows[0]).toHaveTextContent("Your answer: Elle demande un remboursement.");
+    expect(rows[0]).toHaveTextContent("Reference: Elle s'inscrit au cours du soir de français.");
+    expect(rows[1]).toHaveTextContent("Short answer: compare it yourself");
+    expect(rows[1]).toHaveTextContent("Your answer: lundi, mercredi");
+    expect(rows[1]).toHaveTextContent("Reference: le lundi et le mercredi");
+    expect(within(overview).queryByText(/of 2|score:/i)).toBeNull(); // no total
+
+    fireEvent.click(within(rows[0]).getByRole("button", { name: "Go to question 1" }));
+    const reveal1 = screen.getByRole("group", { name: "Reference for question 1" });
+    expect(reveal1).toHaveFocus();
+    fireEvent.click(within(reveal1).getByRole("button", { name: "Back to the answer overview" }));
+    expect(heading).toHaveFocus();
+
+    // Choosing the reference reads "Same"; an unanswered question says so.
+    fireEvent.click(within(screen.getByRole("group", { name: "Your choice for question 1" })).getByLabelText("Elle s'inscrit au cours du soir de français."));
+    fireEvent.change(screen.getByLabelText("Your answer to question 2"), { target: { value: "  " } });
+    expect(rows[0]).toHaveTextContent("Same as the reference");
+    expect(rows[1]).toHaveTextContent("Not answered");
+    expect(rows[1]).not.toHaveTextContent("Your answer:");
+    expect(writes(server).map((c) => c.path)).toEqual(["/api/listening/scripts/ls-wb1-u05"]);
+  });
+
+  it("a script shows its authored exercise even when an older generated exercise is stored newer", async () => {
+    const generated: ListeningExercise = {
+      id: 950,
+      transcript_id: 500,
+      status: "completed",
+      failure_code: null,
+      generator: "openai:fake-model:listening_exercise_v1",
+      created_at: "2026-11-11T09:00:00Z",
+      content: {
+        items: [
+          { kind: "main_idea", question: "Question générée ?", expected_answer: "Réponse générée.", rationale_en: "g", rationale_zh: "g", segments: [1] },
+          { kind: "detail", question: "Autre question générée ?", expected_answer: "Autre.", rationale_en: "g", rationale_zh: "g", segments: [2] },
+        ],
+        annotations: [],
+      },
+    };
+    const server: Server = { imported: null, calls: [], imports: 0 };
+    serve(server);
+    const panel = await openScripts();
+    fireEvent.click(within(panel).getByRole("button", { name: `Import ${TITLE}` }));
+    await screen.findByRole("heading", { name: TITLE });
+    // The earlier contract could store a generated row on a script; the server
+    // still names the authored exercise as current.
+    server.imported = { ...server.imported!, exercises: [generated, authoredExercise(900)], current_exercise_id: 900 };
+    fireEvent.click(screen.getByRole("button", { name: "← All listening material" }));
+    const again = await screen.findByRole("region", { name: "Workbook listening scripts" });
+    fireEvent.click(await within(again).findByRole("button", { name: `Open ${TITLE}` }));
+    await screen.findByRole("heading", { name: TITLE });
+    expect(screen.getByText("Que fait Mei à l'accueil ?")).toBeInTheDocument();
+    expect(screen.queryByText("Question générée ?")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Prepare exercise" })).toBeNull();
   });
 
   it("labels the scripts in Simplified Chinese without translating the French", async () => {

@@ -9,17 +9,19 @@
   python3 -m flh_workbooks report --out DIR   inventory JSON/Markdown and machine-critique flags
   python3 -m flh_workbooks capture --question ID --text "learner's own question"
                                               print a learning_capture_v1 document (no analysis)
-  python3 -m flh_workbooks studypack --unit u05 --out DIR
-                                              ten-minute listening study pack: student checklist,
+  python3 -m flh_workbooks studypack (--unit u05 | --all) --out DIR
+                                              ten-minute listening study packs: student checklist,
                                               reader sheet, teacher debrief and verification report
+  python3 -m flh_workbooks audit --out DIR    evidence audit of the 120 listening questions
 """
 
 import argparse
 import json
 import sys
+import tempfile
 from pathlib import Path
 
-from . import adapters, model, quality, render, report, scan, studypack
+from . import adapters, audit, model, quality, render, report, scan, studypack
 
 ADAPTER_DIR = model.CONTENT / "adapters"
 # The listening script pack is embedded by the server, so it lives in its package.
@@ -54,7 +56,15 @@ def gates():
         errs.append(f"answer letter repeats {pos['max_run']} times in a row")
     if max(pos["counts"].values()) - min(pos["counts"].values()) > 2:
         errs.append(f"answer positions unbalanced: {pos['counts']}")
-    return errs, notes, dict(stats, positions=pos)
+    # Listening questions must be answerable from the script (what is heard).
+    rows, aerrs = audit.listening_audit(rl)
+    errs += [f"listening evidence: {e}" for e in aerrs]
+    # Every study pack must build with its key kept out of the student and reader sheets.
+    with tempfile.TemporaryDirectory() as d:
+        packs = studypack.build_all(rl, Path(d))
+    errs += [f"study pack {u}: {e}" for u, summary in packs.items() for e in summary["errors"]]
+    return errs, notes, dict(stats, positions=pos, listening_basis={b: sum(r["basis"] == b for r in rows) for b in sorted({r["basis"] for r in rows})},
+                             study_packs=sorted(packs))
 
 
 def main(argv=None):
@@ -66,7 +76,8 @@ def main(argv=None):
     s = sub.add_parser("scan"); s.add_argument("--workbook", choices=("rl", "pw"), default="rl"); s.add_argument("--html", required=True); s.add_argument("--pdf-text"); s.add_argument("--pdf-info")
     p = sub.add_parser("report"); p.add_argument("--out", required=True)
     c = sub.add_parser("capture"); c.add_argument("--question", required=True); c.add_argument("--text", required=True)
-    sp = sub.add_parser("studypack"); sp.add_argument("--unit", required=True); sp.add_argument("--out", required=True)
+    sp = sub.add_parser("studypack"); g = sp.add_mutually_exclusive_group(required=True); g.add_argument("--unit"); g.add_argument("--all", action="store_true"); sp.add_argument("--out", required=True)
+    au = sub.add_parser("audit"); au.add_argument("--out", required=True)
     a = ap.parse_args(argv)
 
     if a.cmd in ("build", "check"):
@@ -140,11 +151,24 @@ def main(argv=None):
         print(adapters.dumps(adapters.capture(rl, a.question, a.text)), end="")
         return 0
     if a.cmd == "studypack":
-        summary = studypack.build(rl, a.unit, Path(a.out))
-        print(json.dumps(summary, ensure_ascii=False))
-        for e in summary["errors"]:
+        summaries = studypack.build_all(rl, Path(a.out)) if a.all else {a.unit: studypack.build(rl, a.unit, Path(a.out))}
+        failed = False
+        for unit_id, summary in summaries.items():
+            print(json.dumps(dict(summary, unit=unit_id), ensure_ascii=False))
+            for e in summary["errors"]:
+                print(f"ERROR: {unit_id}: {e}", file=sys.stderr)
+            failed = failed or bool(summary["errors"])
+        return 1 if failed else 0
+    if a.cmd == "audit":
+        rows, errors = audit.listening_audit(rl)
+        out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+        (out / "listening-evidence-audit.md").write_text(audit.report_md(rows, errors), encoding="utf-8")
+        (out / "listening-evidence-audit.json").write_text(audit.dumps(rows), encoding="utf-8")
+        print(json.dumps({"questions": len(rows), "errors": len(errors),
+                          "basis": {b: sum(r["basis"] == b for r in rows) for b in sorted({r["basis"] for r in rows})}}, ensure_ascii=False))
+        for e in errors:
             print("ERROR:", e, file=sys.stderr)
-        return 1 if summary["errors"] else 0
+        return 1 if errors else 0
     return 2
 
 

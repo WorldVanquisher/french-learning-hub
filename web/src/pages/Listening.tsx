@@ -43,6 +43,10 @@ import { NextScript, ScriptsPanel } from "./ListeningScripts";
 //   no link, video, audio or timestamp exists, so none is shown or attached.
 //   Their authored questions may offer choices; the script can be shown to the
 //   person reading it aloud, while answers and notes stay hidden until reveal.
+//   Their exercise is fixed: the server never prepares a generated one.
+// - After reveal, an answer overview puts each answer beside the reference
+//   (a chosen option is compared exactly; a short answer is left to the
+//   learner) with a link to the question. It is not a score and sends nothing.
 
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
 
@@ -264,7 +268,17 @@ function LessonScreen({
   const [epoch, setEpoch] = useState(0);
   const lesson = useLoad<ListeningLesson>(String(id), () => api.getListening(id), epoch);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => headingRef.current?.focus(), [lesson.status]);
+  // Focus the lesson heading when it loads. When the Mistake Notebook asked for
+  // a question that this lesson shows, focus must not scroll the page back to
+  // the heading: the question is brought to the top of the screen instead (this
+  // runs after NotebookOrigin's own scroll, so it also keeps the stem visible on
+  // a phone, where a long revealed question is taller than the screen).
+  useEffect(() => {
+    const item =
+      lesson.status === "ready" && target ? document.getElementById(notebookItemDomId("listening", target.exerciseId, target.item)) : null;
+    headingRef.current?.focus({ preventScroll: item !== null });
+    item?.scrollIntoView?.({ block: "start" });
+  }, [lesson.status, target]);
   const back = (
     <button type="button" className="ghost" onClick={onBack}>
       {t("listening.back")}
@@ -290,7 +304,9 @@ function LessonScreen({
       </section>
     );
   const { material, transcript, exercises, generation, preparations, notifications, notification } = lesson.data;
-  const current = transcript ? exercises.find((e) => e.transcript_id === transcript.id && e.status === "completed") ?? null : null;
+  // The server names the exercise to show: the newest completed one on the
+  // latest transcript, or for an authored script always its authored exercise.
+  const current = exercises.find((e) => e.id === lesson.data.current_exercise_id && e.status === "completed") ?? null;
   const latest = exercises[0] ?? null;
   const latestPrep = preparations[0] ?? null;
   const settled = !latestPrep || (latestPrep.state !== "unknown" && latestPrep.state !== "in_progress");
@@ -543,6 +559,22 @@ function ExerciseView({
   const segment = (n: number) => transcript.segments.find((s) => s.index === n);
   const script = isScript(material);
   const authored = exercise.generator.startsWith("authored:");
+  const overviewRef = useRef<HTMLHeadingElement>(null);
+  // Revealing moves to the overview at the top of the exercise; reopening an
+  // already revealed exercise (e.g. from the Mistake Notebook) does not.
+  useEffect(() => {
+    if (!revealed) return;
+    overviewRef.current?.scrollIntoView?.({ block: "start" });
+    overviewRef.current?.focus({ preventScroll: true });
+  }, [revealed]);
+  const toQuestion = (i: number) => {
+    document.getElementById(notebookItemDomId("listening", exercise.id, i + 1))?.scrollIntoView?.({ block: "start" });
+    document.getElementById(revealDomId(exercise.id, i))?.focus({ preventScroll: true });
+  };
+  const toOverview = () => {
+    overviewRef.current?.scrollIntoView?.({ block: "start" });
+    overviewRef.current?.focus({ preventScroll: true });
+  };
   return (
     <section className="panel listening-exercise" aria-label={t("listening.exercise.region")}>
       <h3>{t("listening.exercise.heading")}</h3>
@@ -581,6 +613,19 @@ function ExerciseView({
             </section>
           ) : null}
         </>
+      ) : null}
+      {revealed ? (
+        <section className="library-section listening-overview" aria-labelledby={`listening-overview-${exercise.id}`}>
+          <h4 id={`listening-overview-${exercise.id}`} ref={overviewRef} tabIndex={-1}>
+            {t("listening.overview.heading")}
+          </h4>
+          <p className="hint">{t("listening.overview.hint")}</p>
+          <ol className="listening-overview-list">
+            {content.items.map((item, i) => (
+              <OverviewRow key={i} item={item} index={i} answer={answers[i]} onOpen={() => toQuestion(i)} />
+            ))}
+          </ol>
+        </section>
       ) : null}
       <ol className="listening-items">
         {content.items.map((item, i) => (
@@ -634,6 +679,7 @@ function ExerciseView({
                 check={checks[i]}
                 onCheck={(c) => setChecks((prev) => ({ ...prev, [i]: c }))}
                 onOpenRecord={onOpenRecord}
+                onOverview={toOverview}
               />
             ) : null}
           </li>
@@ -686,6 +732,55 @@ function ExerciseView({
   );
 }
 
+const revealDomId = (exerciseId: number, index: number) => `listening-reveal-${exerciseId}-${index + 1}`;
+
+type Comparison = "same" | "different" | "compare" | "unanswered";
+
+// compareAnswer puts the learner's answer beside the reference without
+// judging free text: a chosen option is either the authored answer or not; a
+// typed short answer is left for the learner to compare.
+export function compareAnswer(item: ListeningItem, answer: string): Comparison {
+  if (answer.trim() === "") return "unanswered";
+  if (item.choices && item.choices.length > 0) return answer === item.expected_answer ? "same" : "different";
+  return "compare";
+}
+
+const comparisonKey: Record<Comparison, MessageKey> = {
+  same: "listening.overview.same",
+  different: "listening.overview.different",
+  compare: "listening.overview.compare",
+  unanswered: "listening.overview.unanswered",
+};
+
+function OverviewRow({ item, index, answer, onOpen }: { item: ListeningItem; index: number; answer: string; onOpen: () => void }) {
+  const { t } = useI18n();
+  const c = compareAnswer(item, answer);
+  return (
+    <li className="listening-overview-row">
+      <p>
+        <button type="button" className="link-button" onClick={onOpen}>
+          {t("listening.overview.open", { n: index + 1 })}
+        </button>{" "}
+        <span className={`tag listening-${c}`}>{t(comparisonKey[c])}</span>
+      </p>
+      {c !== "unanswered" ? (
+        <p>
+          <span className="label">{t("listening.overview.yours")}</span>{" "}
+          <span lang="fr" className="french">
+            {answer.trim()}
+          </span>
+        </p>
+      ) : null}
+      <p>
+        <span className="label">{t("listening.overview.reference")}</span>{" "}
+        <span lang="fr" className="french">
+          {item.expected_answer}
+        </span>
+      </p>
+    </li>
+  );
+}
+
 function SegmentLine({ material, s }: { material: ListeningMaterial; s: TranscriptSegment }) {
   const { t } = useI18n();
   return (
@@ -732,6 +827,7 @@ function Revealed({
   check,
   onCheck,
   onOpenRecord,
+  onOverview,
 }: {
   material: ListeningMaterial;
   exercise: ListeningExercise;
@@ -742,11 +838,18 @@ function Revealed({
   check: SelfCheck | undefined;
   onCheck: (c: SelfCheck) => void;
   onOpenRecord?: (entryId: number) => void;
+  onOverview?: () => void;
 }) {
   const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   return (
-    <div className="listening-reveal" role="group" aria-label={t("listening.reveal.region", { n: index + 1 })}>
+    <div
+      className="listening-reveal"
+      id={revealDomId(exercise.id, index)}
+      tabIndex={-1}
+      role="group"
+      aria-label={t("listening.reveal.region", { n: index + 1 })}
+    >
       <p>
         <span className="label">{t("listening.reveal.expected")}</span>{" "}
         <span lang="fr" className="french">
@@ -801,6 +904,11 @@ function Revealed({
         {!saving ? (
           <button type="button" className="ghost" onClick={() => setSaving(true)}>
             {t("listening.save.open")}
+          </button>
+        ) : null}
+        {onOverview ? (
+          <button type="button" className="link-button" onClick={onOverview}>
+            {t("listening.overview.back")}
           </button>
         ) : null}
       </div>

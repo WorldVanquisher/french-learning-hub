@@ -35,7 +35,34 @@ var (
 	// ErrListeningScriptFixed: an authored script is fixed text, so it takes no
 	// learner transcript version. Nothing is stored.
 	ErrListeningScriptFixed = errors.New("an authored script is fixed text; it takes no learner transcript")
+	// ErrListeningScriptExerciseFixed: an authored script keeps its authored
+	// exercise, so no generated exercise is prepared for it. Refused before
+	// any attempt is recorded: no provider call, nothing stored.
+	ErrListeningScriptExerciseFixed = errors.New("an authored script keeps its authored exercise; no generated exercise is prepared for it")
 )
+
+// CurrentListeningExercise is the exercise a lesson shows, from its exercises
+// newest first: the newest completed one on the latest transcript. For an
+// authored script only the authored exercise counts, so its fixed questions
+// are never displaced; a generated row stored on a script before preparation
+// was refused stays stored (append-only) but is not the current exercise.
+// Nil when there is no transcript or no such exercise.
+func CurrentListeningExercise(m ListeningMaterial, tr *ListeningTranscript, exercises []ListeningExercise) *ListeningExercise {
+	if tr == nil {
+		return nil
+	}
+	for i := range exercises {
+		e := &exercises[i]
+		if e.TranscriptID != tr.ID || e.Status != ListeningExerciseCompleted {
+			continue
+		}
+		if m.IsAuthoredScript() && e.Generator != ListeningAuthoredGenerator {
+			continue
+		}
+		return e
+	}
+	return nil
+}
 
 const (
 	maxAuthoredListeningItems = 12

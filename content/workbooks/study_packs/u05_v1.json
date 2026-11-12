@@ -3,6 +3,16 @@
  "unit": "u05",
  "section": "listening",
  "title": "Dix minutes d'écoute : À l'accueil de la Maison des langues",
+ "goal": {
+  "fr": "Comprendre une inscription : jours, prix et paiement.",
+  "en": "Understand an enrolment: days, price and payment.",
+  "zh": "听懂报名信息：上课日期、价格和付款方式。"
+ },
+ "focus": [
+  "u05-l03",
+  "u05-l05",
+  "u05-l06"
+ ],
  "provenance": {
   "synthetic": true,
   "human_reviewed": false,
@@ -13,7 +23,7 @@
   "fr": "Contexte : à la Maison des langues, les cours du soir ont lieu du lundi au jeudi, de 18 h 30 à 20 h.",
   "source": "p1",
   "excerpt": "du lundi au jeudi, de 18 h 30 à 20 h",
-  "why_en": "Read before the dialogue: question u05-l04's explanation relies on the class time, which only the unit's reading brochure (p1) gives."
+  "why_en": "Read before the dialogue to set the scene (evening classes, Monday to Thursday). No question needs it: since the 2026-11-11 evidence audit every answer and explanation of u05 rests on the dialogue."
  },
  "plan": [
   {
@@ -205,5 +215,9 @@
    "model_note_en": "One possible answer, not the only one.",
    "model_note_zh": "这只是一个可能的答案，不是唯一答案。"
   }
- }
+ },
+ "debrief": [
+  "Demandez d'abord : « Qu'est-ce que Mei vient faire ? » puis « Quels jours sont complets ? ».",
+  "Faites redire le prix et les deux paiements, puis réécoutez la ligne s8."
+ ]
 }

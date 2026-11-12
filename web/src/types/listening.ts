@@ -155,6 +155,10 @@ export interface ListeningLesson {
   transcript: ListeningTranscript | null;
   // Newest first; failed attempts are kept.
   exercises: ListeningExercise[];
+  // The exercise the lesson shows (the server decides): the newest completed
+  // one on the latest transcript; for an authored script, always its authored
+  // exercise. null when there is none.
+  current_exercise_id: number | null;
   generation: ListeningGeneration;
   state: ListeningMaterialState;
   // The video is in the configured playlist (a pull created or matched it).

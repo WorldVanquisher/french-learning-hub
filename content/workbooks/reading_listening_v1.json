@@ -556,8 +556,8 @@
         "key": "C",
         "text": "Un mois de loyer.",
         "correct": false,
-        "why_wrong_en": "Money is not mentioned in the call.",
-        "why_wrong_zh": "通话中没有提到钱。"
+        "why_wrong_en": "Hugo only asks for an identity document (s5); money is not mentioned.",
+        "why_wrong_zh": "Hugo只要求带身份证件（s5），没有提到钱。"
        }
       ],
       "answer": "B",
@@ -635,8 +635,8 @@
         "key": "A",
         "text": "Derrière le supermarché.",
         "correct": false,
-        "why_wrong_en": "No supermarket is mentioned.",
-        "why_wrong_zh": "没有提到超市。"
+        "why_wrong_en": "The building is opposite the bakery (s7); no supermarket is mentioned.",
+        "why_wrong_zh": "楼在面包店对面（s7），没有提到超市。"
        },
        {
         "key": "B",
@@ -698,8 +698,8 @@
         "key": "B",
         "text": "Dans la cour.",
         "correct": false,
-        "why_wrong_en": "The courtyard is in the advert, not in the call, and is not a bike place.",
-        "why_wrong_zh": "庭院出现在广告里，不是放车的地方，通话中也没提到。"
+        "why_wrong_en": "Hugo names a bike room in the basement (s9); no courtyard is mentioned in the call.",
+        "why_wrong_zh": "Hugo说的是地下室的自行车间（s9），通话中没有提到庭院。"
        },
        {
         "key": "C",
@@ -1436,8 +1436,8 @@
         "excerpt": "comptez une heure et quart au lieu de cinquante minutes"
        }
       ],
-      "explanation_en": "75 minutes instead of 50.",
-      "explanation_zh": "七十五分钟，而不是五十分钟。"
+      "explanation_en": "An hour and a quarter instead of fifty minutes (s6).",
+      "explanation_zh": "一小时十五分钟，而不是五十分钟（s6）。"
      },
      {
       "id": "u02-l06",
@@ -1469,15 +1469,15 @@
         "key": "A",
         "text": "Il ne part pas de la gare routière mais de la porte sud de la gare.",
         "correct": false,
-        "why_wrong_en": "All replacement coaches leave from there (s2).",
-        "why_wrong_zh": "替代大巴都从那里出发（s2）。"
+        "why_wrong_en": "The 7:00 coach leaves from the bus station (s2), and the only door named is the north door (s4).",
+        "why_wrong_zh": "7点的大巴从长途汽车站出发（s2），唯一提到的门是北门（s4）。"
        },
        {
         "key": "B",
         "text": "Il est complet.",
         "correct": false,
-        "why_wrong_en": "Nothing is said about seats.",
-        "why_wrong_zh": "没有提到座位情况。"
+        "why_wrong_en": "The problem is the travel time (s6, s7); nothing is said about seats.",
+        "why_wrong_zh": "问题在于路上的时间（s6、s7），没有提到座位情况。"
        },
        {
         "key": "C",
@@ -1496,8 +1496,8 @@
         "excerpt": "J'ai un rendez-vous à 8 h 30"
        }
       ],
-      "explanation_en": "7:00 plus 1 h 15 is 8:15 at the earliest, too tight for 8:30.",
-      "explanation_zh": "7点加一小时十五分最早8点15分到，赶8点半太紧。"
+      "explanation_en": "The 7 o'clock coach (s2) takes an hour and a quarter (s6), so it arrives at 8:15 at the earliest: too tight for the 8:30 appointment (s7).",
+      "explanation_zh": "7点的大巴（s2）要开一小时十五分钟（s6），最早8点15分到达，离8点30分的约会太紧（s7）。"
      },
      {
       "id": "u02-l08",
@@ -1563,7 +1563,7 @@
       "options": [
        {
         "key": "A",
-        "text": "Prendre le car de 6 heures.",
+        "text": "Prendre le premier car du matin.",
         "correct": true
        },
        {
@@ -1584,12 +1584,16 @@
       "answer": "A",
       "evidence": [
        {
+        "ref": "s8",
+        "excerpt": "Le premier part à 6 heures"
+       },
+       {
         "ref": "s9",
         "excerpt": "je vais prendre le car de 6 heures"
        }
       ],
-      "explanation_en": "He takes the 6:00 coach.",
-      "explanation_zh": "他坐六点的大巴。"
+      "explanation_en": "The first coach leaves at 6:00 (s8), and he takes it (s9).",
+      "explanation_zh": "第一班大巴6点出发（s8），他决定坐这班（s9）。"
      }
     ]
    },
@@ -2383,10 +2387,10 @@
        },
        {
         "key": "C",
-        "text": "Il n'a pas de carte Vitale et ne peut pas payer.",
+        "text": "Il n'a pas de mutuelle et ne peut pas payer.",
         "correct": false,
-        "why_wrong_en": "She simply reminds him to bring it; payment is not discussed (s9).",
-        "why_wrong_zh": "她只是提醒他带上医保卡，没有谈到付款（s9）。"
+        "why_wrong_en": "She only tells him what to bring and what to do if he is late; payment is not discussed (s9).",
+        "why_wrong_zh": "她只是告诉他要带什么、迟到怎么办，没有谈到付款（s9）。"
        }
       ],
       "answer": "A",
@@ -3064,12 +3068,16 @@
       ],
       "evidence": [
        {
+        "ref": "s7",
+        "excerpt": "jusqu'au 15 septembre"
+       },
+       {
         "ref": "s8",
         "excerpt": "jusqu'au 10 seulement"
        }
       ],
-      "explanation_en": "Until 10 September.",
-      "explanation_zh": "到9月10日。"
+      "explanation_en": "Until 10 September: asked about « jusqu'au 15 septembre » (s7), he answers « jusqu'au 10 seulement » (s8).",
+      "explanation_zh": "到9月10日：对方问到“jusqu'au 15 septembre”（s7），他回答“jusqu'au 10 seulement”（s8）。"
      },
      {
       "id": "u04-l06",
@@ -3875,12 +3883,16 @@
       "answer": "B",
       "evidence": [
        {
+        "ref": "s1",
+        "excerpt": "cours du soir"
+       },
+       {
         "ref": "s5",
         "excerpt": "Je finis le travail à 17 h 30"
        }
       ],
-      "explanation_en": "Work ends before the 18:30 class.",
-      "explanation_zh": "她在18点30分上课前就下班了。"
+      "explanation_en": "She finishes work at 17:30 (s5) and is enrolling in an evening course (s1), so the class comes after work. The dialogue gives no class time.",
+      "explanation_zh": "她17点30分下班（s5），报名的是晚间课程（s1），所以上课在下班之后。对话中没有给出上课时间。"
      },
      {
       "id": "u05-l05",
@@ -4782,7 +4794,7 @@
        },
        {
         "key": "B",
-        "text": "Un livreur la reprendra jeudi.",
+        "text": "Un livreur la reprendra en même temps.",
         "correct": true
        },
        {
@@ -4870,10 +4882,14 @@
        {
         "ref": "s3",
         "excerpt": "Je suis désolée, monsieur"
+       },
+       {
+        "ref": "s9",
+        "excerpt": "je la mets en livraison express, sans frais"
        }
       ],
-      "explanation_en": "She apologises and offers a free express replacement.",
-      "explanation_zh": "她道歉并提供免费加急换货。"
+      "explanation_en": "She apologises (s3) and offers a free express replacement (s9).",
+      "explanation_zh": "她道歉（s3），并提供免费加急换货（s9）。"
      }
     ]
    },
@@ -5512,8 +5528,8 @@
         "key": "A",
         "text": "Chloé lui a acheté des billets.",
         "correct": false,
-        "why_wrong_en": "Entry is free; no tickets are mentioned (s6).",
-        "why_wrong_zh": "入场免费，没有提到票（s6）。"
+        "why_wrong_en": "No tickets are mentioned; he gives his cousin as the reason (s6).",
+        "why_wrong_zh": "没有提到票，他给出的理由是表哥（s6）。"
        },
        {
         "key": "B",
@@ -6542,8 +6558,8 @@
         "key": "C",
         "text": "Laisser chaque quartier décider de ses règles.",
         "correct": false,
-        "why_wrong_en": "The rules are the same for the city (s11).",
-        "why_wrong_zh": "全市规则相同（s11）。"
+        "why_wrong_en": "He presents the new sorting rules and wants to explain them first (s1, s11); no choice by neighbourhood is mentioned.",
+        "why_wrong_zh": "他介绍新的分类规则，并想先解释（s1、s11），没有提到由各街区自行决定。"
        }
       ],
       "answer": "A",
@@ -8103,7 +8119,7 @@
        },
        {
         "key": "C",
-        "text": "Le bureau 3 est fermé ce jour-là.",
+        "text": "Le bureau est fermé ce jour-là.",
         "correct": false,
         "why_wrong_en": "No closure is mentioned (s7, s8).",
         "why_wrong_zh": "没有提到关门（s7、s8）。"
@@ -8765,8 +8781,8 @@
         "excerpt": "Vous avez choisi ?"
        }
       ],
-      "explanation_en": "In a café, ordering.",
-      "explanation_zh": "在咖啡馆点餐。"
+      "explanation_en": "A waiter takes their order (s1); of the three places offered, only a café fits. The dialogue does not name the place.",
+      "explanation_zh": "服务员在为他们点餐（s1）；三个选项中只有咖啡馆符合。对话没有说出地点的名字。"
      },
      {
       "id": "u11-l02",
@@ -8817,10 +8833,10 @@
        },
        {
         "key": "B",
-        "text": "Elle coûte plus cher que la soupe.",
+        "text": "Elle coûte plus cher que les autres entrées.",
         "correct": false,
-        "why_wrong_en": "Price is not the reason (s3).",
-        "why_wrong_zh": "原因不是价格（s3）。"
+        "why_wrong_en": "Price is not the reason; it has walnuts (s3).",
+        "why_wrong_zh": "原因不是价格，而是里面有核桃（s3）。"
        },
        {
         "key": "C",
@@ -9042,7 +9058,7 @@
      {
       "id": "u11-l10",
       "type": "short_answer",
-      "kind": "detail",
+      "kind": "inference",
       "stem": "Combien coûte le menu d'Inès ?",
       "reference_answer": "13 euros",
       "accepted_alternatives": [
@@ -9051,12 +9067,20 @@
       ],
       "evidence": [
        {
+        "ref": "s6",
+        "excerpt": "pas de dessert pour moi"
+       },
+       {
+        "ref": "s7",
+        "excerpt": "je prends le menu complet"
+       },
+       {
         "ref": "s10",
         "excerpt": "un menu à 13 euros"
        }
       ],
-      "explanation_en": "13 euros (starter and main).",
-      "explanation_zh": "13欧元（前菜和主菜）。"
+      "explanation_en": "Hugo takes the full menu (s7) and Inès no dessert (s6). Of the two menus the waiter names (s10), the full menu is the dearer one, so hers is 13 euros.",
+      "explanation_zh": "Hugo点了全套菜单（s7），Inès不要甜点（s6）。服务员说的两份套餐中（s10），全套较贵，所以她的是13欧元。"
      }
     ]
    },

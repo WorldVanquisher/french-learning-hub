@@ -10,7 +10,9 @@ import copy
 import tempfile
 from pathlib import Path
 
-from flh_workbooks import adapters, model, quality, render, scan, studypack
+import html
+
+from flh_workbooks import adapters, audit, model, quality, render, scan, studypack
 from flh_workbooks.__main__ import gates, outputs
 
 
@@ -230,12 +232,20 @@ class StudyPack(unittest.TestCase):
             reader = (Path(d) / "u05-reader-sheet.html").read_text(encoding="utf-8")
             self.assertIn("18 h 30", reader)  # the context line is read before the dialogue
 
-    def test_without_the_context_line_the_class_time_is_flagged_with_its_source(self):
+    def test_a_fact_only_in_the_reading_text_is_an_error_unless_read_aloud_as_context(self):
+        # Since the evidence audit, u05-l04 rests on the dialogue: no flag even without the context line.
         pack = copy.deepcopy(self.pack)
         del pack["context"]
-        errors, flags, _ = studypack.verify(self.doc, pack)
-        self.assertEqual(errors, [])
+        self.assertEqual(studypack.verify(self.doc, pack)[:2], ([], []))
+        # The earlier wording relied on the brochure's class time (p1): an error, with its source.
+        doc = copy.deepcopy(self.doc)
+        q = next(q for q in studypack.find_unit(doc, "u05")["listening"]["questions"] if q["id"] == "u05-l04")
+        q["explanation_en"] = "Work ends before the 18:30 class."
+        errors, flags, _ = studypack.verify(doc, pack)
         self.assertEqual({(f["id"], f["fact"], tuple(f["found_in"])) for f in flags}, {("u05-l04", "18 h 30", ("p1",))})
+        self.assertTrue(any("18 h 30" in e and "only in the reading text (p1)" in e for e in errors), errors)
+        # Read aloud before the dialogue, the context line counts as heard.
+        self.assertEqual(studypack.verify(doc, self.pack)[:2], ([], []))
 
     def test_broken_evidence_reasons_or_plan_are_refused(self):
         pack = copy.deepcopy(self.pack)
@@ -248,6 +258,77 @@ class StudyPack(unittest.TestCase):
         pack["context"]["excerpt"] = "de 18 h à 20 h"
         self.assertTrue(any(e.startswith("context:") for e in studypack.verify(self.doc, pack)[0]))
         self.assertEqual(sum(s["minutes"] for s in self.pack["plan"]), 10)
+
+
+class StudyPacks(unittest.TestCase):
+    """Every pack: distinct goals, clean build, key only in the teacher sheet, same bytes twice."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = json.loads(model.RL_PATH.read_text(encoding="utf-8"))
+        cls.units = studypack.pack_units()
+
+    def test_at_least_four_packs_with_distinct_goals_and_focus(self):
+        self.assertGreaterEqual(len(self.units), 4)
+        packs = [studypack.load_pack(u) for u in self.units]
+        self.assertEqual(len({p["goal"]["en"] for p in packs}), len(packs))
+        for p in packs:
+            ids = {q["id"] for q in studypack.find_unit(self.doc, p["unit"])["listening"]["questions"]}
+            self.assertTrue(set(p["focus"]) <= ids, p["unit"])
+            self.assertEqual(len(p["transfer"]["questions"]), 3)
+
+    def test_every_pack_separates_the_key_and_builds_the_same_bytes_twice(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            first, second = studypack.build_all(self.doc, Path(a)), studypack.build_all(self.doc, Path(b))
+            self.assertEqual(sorted(first), self.units)
+            for unit_id, summary in first.items():
+                self.assertEqual(summary["errors"], [], unit_id)
+                self.assertEqual([f for f in summary["flags"] if f["found_in"]], [], unit_id)
+                self.assertEqual(summary["scan_findings"]["student-checklist"], 0, unit_id)
+                self.assertEqual(summary["scan_findings"]["reader-sheet"], 0, unit_id)
+                self.assertGreater(summary["scan_findings"]["teacher-debrief"], 0, unit_id)
+                pack = studypack.load_pack(unit_id)
+                checklist = (Path(a) / f"{unit_id}-student-checklist.html").read_text(encoding="utf-8")
+                teacher = (Path(a) / f"{unit_id}-teacher-debrief.html").read_text(encoding="utf-8")
+                for q in studypack.find_unit(self.doc, unit_id)["listening"]["questions"] + pack["transfer"]["questions"]:
+                    self.assertNotIn(html.escape(q["explanation_en"]), checklist, q["id"])
+                    self.assertIn(html.escape(q["explanation_en"]), teacher, q["id"])
+                    if q["type"] == "short_answer":
+                        self.assertNotIn(html.escape(q["reference_answer"]), checklist, q["id"])
+                self.assertNotIn(html.escape(pack["transfer"]["productive"]["model"]), checklist)
+                self.assertIn(html.escape(pack["goal"]["fr"]), checklist)
+            names = sorted(p.name for p in Path(a).iterdir())
+            self.assertEqual(names, sorted(p.name for p in Path(b).iterdir()))
+            for name in names:
+                self.assertEqual((Path(a) / name).read_bytes(), (Path(b) / name).read_bytes(), name)
+
+
+class ListeningAudit(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = json.loads(model.RL_PATH.read_text(encoding="utf-8"))
+
+    def test_every_listening_question_rests_on_its_script(self):
+        rows, errors = audit.listening_audit(self.doc)
+        self.assertEqual(len(rows), 120)
+        self.assertEqual(errors, [])
+        self.assertEqual({r["basis"] for r in rows}, {"script", "script, restated or computed value"})
+
+    def test_reading_reliance_clues_and_uncited_reasons_are_errors(self):
+        doc = copy.deepcopy(self.doc)
+        u = studypack.find_unit(doc, "u01")["listening"]["questions"]
+        wrong = next(o for o in next(q for q in u if q["id"] == "u01-l08")["options"] if not o["correct"])
+        wrong["why_wrong_en"] = "The courtyard is only in the advert (p2), not in the call (s9)."
+        next(q for q in u if q["id"] == "u01-l01")["stem"] = "Hugo donne le numéro 14 : pourquoi appelle-t-il Lina ?"
+        u3 = studypack.find_unit(doc, "u03")["listening"]["questions"]
+        wrong3 = next(o for o in next(q for q in u3 if q["id"] == "u03-l01")["options"] if not o["correct"])
+        wrong3["why_wrong_en"] = wrong3["why_wrong_zh"] = "No prescription is requested."
+        rows, errors = audit.listening_audit(doc)
+        text = " | ".join(errors)
+        self.assertIn("u01-l08: relies on the reading text cites p2", text)
+        self.assertIn("u01-l10: « le numéro 14 » is shown in u01-l01 stem, before reveal", text)
+        self.assertIn("u03-l01 option", text)
+        self.assertEqual({r["id"]: r["basis"] for r in rows}["u01-l08"], "reading")
 
 
 def find_turns(doc, unit_id):

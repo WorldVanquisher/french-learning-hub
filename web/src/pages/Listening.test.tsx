@@ -9,6 +9,7 @@ import PublicDemoApp from "../PublicDemoApp";
 import {
   completed,
   content,
+  currentExerciseId,
   lesson,
   material,
   notificationAttempt,
@@ -104,7 +105,7 @@ function serve(server: Server) {
     const p = url.pathname;
     const generation = server.prepare === "disabled" ? { enabled: false, generator: null } : lesson().generation;
     const notification = { enabled: !!server.daily?.notification.enabled, channel: server.daily?.notification.channel ?? null };
-    const view = (l: ListeningLesson) => ({ ...l, generation, notification, state: stateOf(l) });
+    const view = (l: ListeningLesson) => ({ ...l, generation, notification, state: stateOf(l), current_exercise_id: currentExerciseId(l) });
     const find = (id: number) => server.lessons.find((l) => l.material.id === id);
     let m: RegExpExecArray | null;
     if (method === "GET" && p === "/api/listening/materials") {

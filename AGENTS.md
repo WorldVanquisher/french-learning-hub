@@ -724,9 +724,16 @@ Authored listening scripts (workbook):
   `accepted_alternatives`, `evidence`) are refused in generated content. A
   script is never a playlist item, so pulls never select or announce it. Not in
   the public demo (routes not allowlisted).
-- Model preparation on a script uses the existing explicit route unchanged (a
-  newer generated exercise is then the one shown; ARCHITECTURE.md §4.3, pinned
-  by a test). Do not change that contract as part of UI work.
+- A script's exercise is fixed: `POST /listening/materials/{id}/exercises` on a
+  script is `409 authored_script` before any attempt or call, and the lesson
+  read's `current_exercise_id` is always the authored exercise (an older
+  generated row stays stored, unshown). YouTube preparation is unchanged
+  (ARCHITECTURE.md §4.3, pinned by tests).
+- Pack corrections keep item IDs, lines and answer positions; an earlier import
+  keeps its stored wording (re-import `409 script_conflict`). Listening
+  questions must rest on their script: `python3 -m flh_workbooks check` runs the
+  evidence audit (no reading-text facts, every reason cites a line, no option
+  showing another question's answer) and builds every study pack.
 
 ## Design Priorities
 
