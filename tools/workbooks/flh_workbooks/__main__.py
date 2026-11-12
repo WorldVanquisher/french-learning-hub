@@ -12,7 +12,8 @@
   python3 -m flh_workbooks studypack (--unit u05 | --all) --out DIR
                                               ten-minute listening study packs: student checklist,
                                               reader sheet, teacher debrief and verification report
-  python3 -m flh_workbooks audit --out DIR    evidence audit of the 120 listening questions
+  python3 -m flh_workbooks audit --out DIR [--doc FILE]
+                                              evidence audit of the 120 listening questions (or of FILE)
 """
 
 import argparse
@@ -77,7 +78,7 @@ def main(argv=None):
     p = sub.add_parser("report"); p.add_argument("--out", required=True)
     c = sub.add_parser("capture"); c.add_argument("--question", required=True); c.add_argument("--text", required=True)
     sp = sub.add_parser("studypack"); g = sp.add_mutually_exclusive_group(required=True); g.add_argument("--unit"); g.add_argument("--all", action="store_true"); sp.add_argument("--out", required=True)
-    au = sub.add_parser("audit"); au.add_argument("--out", required=True)
+    au = sub.add_parser("audit"); au.add_argument("--out", required=True); au.add_argument("--doc", help="a workbook JSON to audit instead of the built one (e.g. a test fixture)")
     a = ap.parse_args(argv)
 
     if a.cmd in ("build", "check"):
@@ -160,7 +161,7 @@ def main(argv=None):
             failed = failed or bool(summary["errors"])
         return 1 if failed else 0
     if a.cmd == "audit":
-        rows, errors = audit.listening_audit(rl)
+        rows, errors = audit.listening_audit(json.loads(Path(a.doc).read_text(encoding="utf-8")) if a.doc else rl)
         out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
         (out / "listening-evidence-audit.md").write_text(audit.report_md(rows, errors), encoding="utf-8")
         (out / "listening-evidence-audit.json").write_text(audit.dumps(rows), encoding="utf-8")

@@ -12,7 +12,7 @@ notice says otherwise.
 | `reading_listening_v1.json` | 12 units: one reading text and one listening **script** each, 20 questions per unit (240), vocabulary, follow-up |
 | `productive_v1.json` | 12 units: a writing task and a speaking task, annotated samples, 6 grammar/vocabulary items, 3 common mistakes and a retry draft per unit; shared rubric (no score) |
 | `adapters/` | The same content in formats the application already validates (see below) |
-| `study_packs/*_v1.json` | Ten-minute listening study packs, each with its own goal: u02 (times and durations), u05 (an enrolment: days, price, payment; with a context line quoted from p1), u08 (following several speakers), u11 (reasons and what is not said directly). Each has focus questions, a plan, debrief prompts and a short authored transfer dialogue with three questions. Rendered and verified by `python3 -m flh_workbooks studypack --all`. |
+| `study_packs/*_v1.json` | Ten-minute listening study packs, each with its own goal: u02 (times and durations), u05 (an enrolment: days, price, payment; with a context line quoted from p1), u08 (following several speakers), u11 (reasons and what is not said directly), u01 (directions and an address), u06 (a problem, the solution offered and what to do next), u12 (advice: what to do, what to avoid, and why). Each has focus questions, a plan, debrief prompts and a short authored transfer dialogue with three questions. Rendered and verified by `python3 -m flh_workbooks studypack --all`. |
 | `authoring/` | Source of truth: hand-written Python modules (`rl_units_*.py`, `pw_units_*.py`, `pw_rubric.py`, `wb.py`) |
 | `review/` | Machine-critique notes and the listening evidence audit (`listening-evidence-audit-v1.md`): self-reviews, not independent validation |
 

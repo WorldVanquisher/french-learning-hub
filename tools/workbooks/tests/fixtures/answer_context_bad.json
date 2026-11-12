@@ -1,0 +1,48 @@
+{
+ "_comment": "Deliberately bad fixture for the answer-context check (audit.answer_context). One synthetic unit: the answers of u90-l01, u90-l02 and u90-l03 need context the script never gives (two only in the reading text, one nowhere); u90-l04 and u90-l05 are controls that must pass (a number said in words, a name said in a cited line). Not workbook content.",
+ "units": [
+  {
+   "id": "u90",
+   "reading": {
+    "segments": [
+     {"id": "p1", "text": "Atelier de conversation : chaque jeudi à 18 h 30, salle 2."}
+    ]
+   },
+   "listening": {
+    "turns": [
+     {"id": "s1", "speaker": "A", "text": "Bonjour Mei, tu viens à l'atelier de conversation ?"},
+     {"id": "s2", "speaker": "B", "text": "Oui, après le travail. J'ai attendu quatre jours pour m'inscrire."},
+     {"id": "s3", "speaker": "A", "text": "Parfait, à bientôt alors."}
+    ],
+    "questions": [
+     {"id": "u90-l01", "type": "single_choice", "kind": "detail", "stem": "Quand a lieu l'atelier ?",
+      "options": [
+       {"key": "A", "text": "Le jeudi.", "correct": true},
+       {"key": "B", "text": "Le matin.", "correct": false, "why_wrong_en": "She goes after work (s2).", "why_wrong_zh": "她下班后去（s2）。"}
+      ],
+      "answer": "A", "evidence": [{"ref": "s2", "excerpt": "après le travail"}],
+      "explanation_en": "She goes after work (s2).", "explanation_zh": "她下班后去（s2）。"},
+     {"id": "u90-l02", "type": "short_answer", "kind": "detail", "stem": "À quelle heure commence l'atelier ?",
+      "reference_answer": "à 18 h 30", "accepted_alternatives": [],
+      "evidence": [{"ref": "s2", "excerpt": "après le travail"}],
+      "explanation_en": "After work (s2).", "explanation_zh": "下班后（s2）。"},
+     {"id": "u90-l03", "type": "short_answer", "kind": "inference", "stem": "Dans quelle ville habite Mei ?",
+      "reference_answer": "à Lyon", "accepted_alternatives": [],
+      "evidence": [{"ref": "s1", "excerpt": "Bonjour Mei"}],
+      "explanation_en": "She is greeted (s1).", "explanation_zh": "有人和她打招呼（s1）。"},
+     {"id": "u90-l04", "type": "short_answer", "kind": "detail", "stem": "Combien de jours a-t-elle attendu ?",
+      "reference_answer": "4 jours", "accepted_alternatives": ["quatre jours"],
+      "evidence": [{"ref": "s2", "excerpt": "J'ai attendu quatre jours"}],
+      "explanation_en": "Four days (s2).", "explanation_zh": "四天（s2）。"},
+     {"id": "u90-l05", "type": "single_choice", "kind": "detail", "stem": "Qui va à l'atelier ?",
+      "options": [
+       {"key": "A", "text": "Une personne qui s'appelle Mei.", "correct": true},
+       {"key": "B", "text": "Personne.", "correct": false, "why_wrong_en": "She says yes (s2).", "why_wrong_zh": "她说会去（s2）。"}
+      ],
+      "answer": "A", "evidence": [{"ref": "s1", "excerpt": "Bonjour Mei"}],
+      "explanation_en": "Mei is invited and says yes (s1, s2).", "explanation_zh": "Mei 被邀请并答应了（s1、s2）。"}
+    ]
+   }
+  }
+ ]
+}

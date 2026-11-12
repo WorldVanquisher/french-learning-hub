@@ -921,14 +921,47 @@ the learning workflow only through §4.1.
   stored, append-only, but is never current; import still replays. YouTube
   lessons are unchanged: the newest completed exercise is current. Pinned by
   `TestListeningScripts_ModelPreparationNeverDisplacesTheAuthoredExercise`.
-- **Pack corrections and earlier imports:** an imported script is immutable.
-  When a later pack corrects a script (same IDs, lines and answer positions;
-  for example the 2026-11-11 evidence audit), a lesson imported before keeps
-  its stored wording, stays listed as imported and keeps opening; importing it
-  again is `409 script_conflict` and writes nothing; a Mistake Notebook item
-  saved from it resolves to the words it was saved from. A script imported
-  afterwards gets the corrected wording. There is no upgrade path for an
-  earlier import. Pinned by
+- **Pack corrections, revisions and explicit updates:** stored revisions are
+  immutable. Revision *N* of an imported script is its transcript version *N*
+  (the lines, no timestamps) with the authored exercise stored on it; import
+  creates revision 1, and the lesson shows the current (latest) revision. No
+  migration: revisions use the existing transcript and exercise tables. A
+  revision's `fingerprint` is `sha256:` over its lines and its exercise, each
+  as canonical JSON (decoded and re-encoded with sorted keys), joined by a
+  newline; it is the same equality the import comparison uses. When a later
+  pack corrects a script (for example the 2026-11-11 evidence audit):
+  - **Nothing changes silently.** The lesson keeps its stored wording, stays
+    listed as imported and keeps opening. Reads compare it with the pack:
+    `script_revision.pack_status` is `up_to_date`, `update_available`,
+    `title_changed` (a material's title is fixed, so no update is offered) or
+    `not_in_pack`. Importing again is `200` only when the current revision has
+    the pack's content and title; otherwise `409 script_conflict`, naming the
+    lesson (`material_id`, `current_revision`, `pack_status`), writes nothing.
+  - **Preview, then confirm.** `GET /listening/materials/{id}/script-update`
+    lists what differs (lines by position; questions by item ID with the
+    changed fields; annotations) and the `pack_fingerprint`. Only `POST` of
+    the same path with `{from_revision, pack_fingerprint}` writes: it appends
+    revision *N+1* (the next transcript version and its authored exercise) in
+    one transaction under the write lock, never changing an earlier revision.
+    If the current revision already has the pack's content, it writes nothing
+    and replays (`200`, `Idempotency-Replayed`): a repeated or concurrent
+    confirmation, or a resend after a lost response, adds one revision at most.
+    If the pack's fingerprint differs from the confirmed one, or the lesson is
+    no longer at `from_revision`, it is `409 stale_preview` with a fresh
+    preview and writes nothing. The workbench never updates on load; the
+    learner opens the preview and confirms it.
+  - **Previous practice stays where it was.** A Mistake Notebook record names
+    one exercise and item, so it keeps resolving to the revision the learner
+    saw (question, reference, explanation, attempt, transcript version), with
+    `latest_version` naming the newer revision. `GET
+    /listening/materials/{id}/revisions/{n}` reads any revision's lines and
+    exercise; opening an earlier item from the Notebook shows that revision.
+    A new record saves against the current revision's exercise (a different
+    record from the same question on an earlier revision).
+  - A script imported after a correction gets the corrected wording as
+    revision 1. YouTube lessons have no revisions (`script_revision: null`;
+    the revision routes answer `409 not_authored_script`).
+  Pinned by `TestListeningScriptRevisions_*` and
   `TestListeningScripts_EarlierImportKeepsItsContentAfterAPackCorrection`.
 - **Workbench:** the script catalogue lists **Imported (N)** and **Available to
   import (N)** separately, after the learner's own material. A script lesson is
@@ -940,12 +973,19 @@ the learning workflow only through §4.1.
   the exercise (focused) lists every question with the learner's answer beside
   the reference: a chosen option reads "Same as the reference" or "Different
   from the reference" (exact comparison with the authored answer); a typed
-  short answer is left for the learner to compare; nothing is totalled, sent
-  or stored. Each row links to its question, and each revealed question links
+  short answer is left for the learner to compare and to mark "I got it" / "I
+  missed it" in its row (the same page-only self-check as under the question,
+  shared with it); nothing is totalled, sent or stored. Each row links to its question, and each revealed question links
   back. Opening a saved item from the Mistake Notebook brings that question to
   the top of the screen, including after a reload. It ends with navigation
   back to the list and to the next workbook script in pack order, which imports
-  it on that explicit click.
+  it on that explicit click. A lesson whose pack status is `update_available`
+  shows a notice (never an update button on load); "Review the changes" reads
+  the preview (lines and questions that differ, with the exact before/after
+  behind a disclosure because it shows the key), and only its confirm button
+  writes; a lost response offers the same confirmation again, a stale preview
+  is replaced by the fresh one. A Mistake Notebook item from an earlier
+  revision opens that revision above the current one, with the item marked.
 - **Migration `021`** rebuilds `listening_materials` (SQLite cannot relax
   `NOT NULL`) inside its transaction with foreign keys on: the parent rows are
   re-inserted after the rebuilt table takes the old name, which settles the
@@ -3961,12 +4001,15 @@ does not expose these routes.
 | --- | --- |
 | `GET /listening/materials` | `materials` (newest first: `material`, `transcript_version` or null, `segment_count`, `latest_exercise` without `content`, or null) and `generation` (`enabled`, `generator` or null). No provider call |
 | `POST /listening/materials` | Body `{"source_url", "title", "transcript"?}` (unknown fields refused, 32 KiB). `201` lesson; `400` invalid JSON; `413` too large; `422` invalid link, title or transcript (messages name the field or line, never the text) |
-| `GET /listening/materials/{id}` | Lesson: `material`, `transcript` (`id`, `version`, `has_timestamps`, `segments` [`index`, `start_seconds` or null, `text`]) or null, `exercises` (newest first, with `content`), `current_exercise_id` (the exercise to show, or null; for an authored script always its authored exercise), `generation`. `404` unknown. No provider call |
+| `GET /listening/materials/{id}` | Lesson: `material`, `transcript` (`id`, `version`, `has_timestamps`, `segments` [`index`, `start_seconds` or null, `text`]) or null, `exercises` (newest first, with `content`), `current_exercise_id` (the exercise to show, or null; for an authored script the authored exercise of its current revision), `script_revision` (authored script: `script_id`, `revision`, `fingerprint`, `pack_status` [`up_to_date`, `update_available`, `title_changed`, `not_in_pack`], `pack_fingerprint` or null; null for YouTube), `generation`. `404` unknown. No provider call |
 | `POST /listening/materials/{id}/transcripts` | Body `{"transcript"}`. `201` lesson with the next transcript version; `404`; `409` `{code: "authored_script"}` for an authored script (nothing stored); `422` |
 | `POST /listening/materials/{id}/exercises` | Optional UUID `Idempotency-Key`; optional body `{"confirm_unknown_retry": true}`. One provider call through the shared preparation path. `201` `{preparation, exercise}`; `200` same-key replay (`Idempotency-Replayed: true`) in any state, no call; `502`/`504` `{error, preparation, exercise}` with the stored attempt and failed exercise (`preparation.state` is `failed` or `unknown`); `409` `{code}`: `authored_script` (an authored script keeps its authored exercise; checked first, no attempt, no call, nothing stored), `no_transcript` (no call), `preparation_in_progress` or `outcome_unknown` (no call; the blocking `preparation` is returned), `key_conflict`; `503` disabled (nothing stored); `404`; `400` invalid key or body |
 | `GET /listening/preparations/{key}` | `{preparation, exercise}` for an attempt (`exercise` without `content`, null while unfinished). `404` nothing recorded under the key (never proof it was not sent) |
-| `GET /listening/scripts` | `pack` (`flh_listening_script_pack_v1`) and `scripts`: `id`, `title`, `genre`, `style_level`, `source_pack`, `notice`, `lines`, `questions`, `imported_material_id` or null. No line, choice or key. No provider call |
-| `POST /listening/scripts/{id}` | No body. Imports the authored script with its exercise in one transaction, no provider call. `201` lesson; `200` already imported (`Idempotency-Replayed: true`, nothing written); `404` unknown script; `409` `{code: "script_conflict"}` imported before with other content (nothing written) |
+| `GET /listening/scripts` | `pack` (`flh_listening_script_pack_v1`) and `scripts`: `id`, `title`, `genre`, `style_level`, `source_pack`, `notice`, `lines`, `questions`, `imported_material_id`, `imported_revision` and `pack_status` (null when not imported). No line, choice or key. No provider call |
+| `POST /listening/scripts/{id}` | No body. Imports the authored script with its exercise (revision 1) in one transaction, no provider call. `201` lesson; `200` already imported and its current revision has the pack's content and title (`Idempotency-Replayed: true`, nothing written); `404` unknown script; `409` `{code: "script_conflict", material_id, current_revision, pack_status}` (nothing written; an update is the explicit route below) |
+| `GET /listening/materials/{id}/script-update` | Read-only preview: `material_id`, `script_id`, `current_revision`, `current_fingerprint`, `pack_status`, `pack_fingerprint`, `next_revision` (null unless `update_available`), `changes` (`lines` [`line`, `change` `changed`/`added`/`removed`, `before`, `after` {`id`, `speaker`, `text`} or null], `questions` [`item_id`, `change`, `before_position`, `after_position`, `fields` among `kind`, `question`, `choices`, `expected_answer`, `accepted_alternatives`, `wrong_answers`, `rationale`, `segments`, `evidence`, `position`; `before`, `after` items or null], `annotations_changed`). `404`; `409` `{code}` `not_authored_script` or `script_not_in_pack` |
+| `POST /listening/materials/{id}/script-update` | Body `{"from_revision", "pack_fingerprint"}` from the preview (unknown fields refused). Appends the next revision in one transaction, no provider call. `201` `{revision, replayed: false, lesson}`; `200` the current revision already has the pack's content (`Idempotency-Replayed: true`, nothing written); `409` `{code: "stale_preview", preview}` (pack or lesson changed since the preview; nothing written), `not_authored_script`, `script_not_in_pack`, `script_title_changed`; `422` `from_revision` < 1 or a malformed fingerprint; `400`; `404` |
+| `GET /listening/materials/{id}/revisions/{n}` | One revision of an authored script: `material_id`, `revision`, `current_revision`, `fingerprint`, `transcript`, `exercise` (with `content`). `400` invalid revision; `404` unknown lesson or revision; `409 not_authored_script`. No provider call |
 
 A `material` has `id`, `source_kind` (`youtube` or `authored_script`),
 `video_id` and `source_url` (null for an authored script), `pack_script_id`

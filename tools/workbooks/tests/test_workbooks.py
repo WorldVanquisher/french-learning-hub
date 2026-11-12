@@ -290,17 +290,59 @@ class StudyPacks(unittest.TestCase):
                 pack = studypack.load_pack(unit_id)
                 checklist = (Path(a) / f"{unit_id}-student-checklist.html").read_text(encoding="utf-8")
                 teacher = (Path(a) / f"{unit_id}-teacher-debrief.html").read_text(encoding="utf-8")
+                # What the student reads (the stylesheet holds sizes such as 14mm).
+                visible = html.unescape(scan._visible_text(checklist))
                 for q in studypack.find_unit(self.doc, unit_id)["listening"]["questions"] + pack["transfer"]["questions"]:
                     self.assertNotIn(html.escape(q["explanation_en"]), checklist, q["id"])
                     self.assertIn(html.escape(q["explanation_en"]), teacher, q["id"])
                     if q["type"] == "short_answer":
-                        self.assertNotIn(html.escape(q["reference_answer"]), checklist, q["id"])
+                        # A very short answer that is an ordinary word, letter or digit (« A » for metro
+                        # line A, « un » or « 1 » for one password) cannot be told from an option letter,
+                        # the plan's minutes or the sheet's own French; two-digit numbers (« 14 ») and
+                        # longer answers are checked as whole words.
+                        for ref in [r for r in [q["reference_answer"]] + q["accepted_alternatives"]
+                                    if len(r) >= 3 or (len(r) == 2 and r.isdigit())]:
+                            self.assertIsNone(re.search(r"(?<!\w)" + re.escape(scan.norm(ref)) + r"(?!\w)", scan.norm(visible), re.I),
+                                              f"{q['id']} « {ref} »")
                 self.assertNotIn(html.escape(pack["transfer"]["productive"]["model"]), checklist)
                 self.assertIn(html.escape(pack["goal"]["fr"]), checklist)
             names = sorted(p.name for p in Path(a).iterdir())
             self.assertEqual(names, sorted(p.name for p in Path(b).iterdir()))
             for name in names:
                 self.assertEqual((Path(a) / name).read_bytes(), (Path(b) / name).read_bytes(), name)
+
+
+class StudyPackChecksCanFail(unittest.TestCase):
+    """Positive controls: each pack rule and the sheet scanner catch a planted defect."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = json.loads(model.RL_PATH.read_text(encoding="utf-8"))
+
+    def test_a_transfer_answer_needs_its_own_dialogue(self):
+        pack = copy.deepcopy(studypack.load_pack("u01"))
+        x01, x02, x03 = pack["transfer"]["questions"]
+        next(o for o in x01["options"] if o["correct"])["text"] = "À l'arrêt Bellecour."
+        next(o for o in x03["options"] if not o["correct"])["text"] = "À côté de la pharmacie, au fond."
+        errors, _, _ = studypack.verify(self.doc, pack)
+        text = " | ".join(errors)
+        self.assertIn("transfer u01-x01: the answer « À l'arrêt Bellecour. » needs « Bellecour »", text)
+        self.assertIn("transfer u01-x02: « à côté de la pharmacie » is shown in u01-x03 option", text)
+
+    def test_the_sheet_scanner_catches_an_injected_key(self):
+        pack = studypack.load_pack("u06")
+        clean = studypack.student_html(self.doc, pack)
+        shorts = [q["reference_answer"] for q in pack["transfer"]["questions"] if q["type"] == "short_answer"]
+        self.assertEqual(studypack._scan_sheet(clean, self.doc, "student", shorts), [])
+        unit_q = studypack.find_unit(self.doc, "u06")["listening"]["questions"][0]
+        planted = {
+            "visible reference": clean.replace("</body>", f"<p>{html.escape(shorts[0])}</p></body>"),
+            "hidden comment": clean.replace("</body>", "<!-- corrigé : B --></body>"),
+            "workbook explanation": clean.replace("</body>", f"<p>{html.escape(unit_q['explanation_en'])}</p></body>"),
+            "display none": clean.replace("</body>", '<p style="display:none">x</p></body>'),
+        }
+        for name, markup in planted.items():
+            self.assertNotEqual(studypack._scan_sheet(markup, self.doc, "student", shorts), [], name)
 
 
 class ListeningAudit(unittest.TestCase):
@@ -329,6 +371,59 @@ class ListeningAudit(unittest.TestCase):
         self.assertIn("u01-l10: « le numéro 14 » is shown in u01-l01 stem, before reveal", text)
         self.assertIn("u03-l01 option", text)
         self.assertEqual({r["id"]: r["basis"] for r in rows}["u01-l08"], "reading")
+
+
+class AnswerContext(unittest.TestCase):
+    """The answer itself must not need context the script does not give."""
+
+    FIXTURE = Path(__file__).parent / "fixtures" / "answer_context_bad.json"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = json.loads(model.RL_PATH.read_text(encoding="utf-8"))
+
+    def test_workbook_answers_are_heard_in_their_scripts(self):
+        rows, errors = audit.answer_context(self.doc)
+        self.assertEqual(errors, [])
+        self.assertGreater(len(rows), 60)
+        self.assertEqual({(r["id"], r["anchor"]) for r in rows if r["heard"] == "reviewed"}, set(audit.REVIEWED_ANSWER_CONTEXT))
+        self.assertFalse({r["heard"] for r in rows} & {"reading", "nowhere"})
+
+    def test_the_deliberately_bad_fixture_fails(self):
+        bad = json.loads(self.FIXTURE.read_text(encoding="utf-8"))
+        rows, errors = audit.answer_context(bad)
+        self.assertEqual(errors, [
+            "u90-l01: the answer « Le jeudi. » needs « jeudi », which only the reading text gives",
+            "u90-l02: the answer « à 18 h 30 » needs « 18 h 30 », which only the reading text gives",
+            "u90-l03: the answer « à Lyon » needs « Lyon » (name), which the script never says",
+        ])
+        heard = {(r["id"], r["anchor"]): r["heard"] for r in rows}
+        self.assertEqual(heard[("u90-l04", "4")], "cited line")  # said in words: « quatre jours »
+        self.assertEqual(heard[("u90-l05", "Mei")], "cited line")
+        audit_rows, audit_errors = audit.listening_audit(bad)
+        self.assertEqual([e for e in audit_errors if "the answer" in e], errors)
+        self.assertEqual({r["id"]: r["basis"] for r in audit_rows},
+                         {"u90-l01": "reading", "u90-l02": "reading", "u90-l03": "absent context", "u90-l04": "script", "u90-l05": "script"})
+
+    def test_a_reading_only_answer_in_the_workbook_fails_the_audit(self):
+        doc = copy.deepcopy(self.doc)
+        q = next(q for q in studypack.find_unit(doc, "u05")["listening"]["questions"] if q["id"] == "u05-l04")
+        next(o for o in q["options"] if o["correct"])["text"] = "Le cours commence à 18 h 30, après son travail."
+        _, errors = audit.listening_audit(doc)
+        self.assertTrue(any(e.startswith("u05-l04: the answer") and "18 h 30" in e for e in errors), errors)
+
+    def test_a_stale_reviewed_entry_is_reported(self):
+        doc = copy.deepcopy(self.doc)
+        q = next(q for q in studypack.find_unit(doc, "u04")["listening"]["questions"] if q["id"] == "u04-l04")
+        next(o for o in q["options"] if o["correct"])["text"] = "Il a vécu six mois à Dublin."
+        _, errors = audit.answer_context(doc)
+        self.assertEqual(errors, ["REVIEWED_ANSWER_CONTEXT u04-l04 « Irlande » is no longer needed; remove it"])
+
+    def test_numbers_said_in_words(self):
+        for text, want in [("quatre-vingt-dix euros", 90), ("au troisième étage", 3), ("c'est le 48 213", 48213),
+                           ("deux cents, soixante-douze", 200), ("vingt et un", 21), ("plus qu'un seul mot", 1), ("la première fois", 1)]:
+            self.assertIn(want, audit.heard_numbers(text), text)
+        self.assertNotIn(272, audit.heard_numbers("deux cents, soixante-douze"))
 
 
 def find_turns(doc, unit_id):

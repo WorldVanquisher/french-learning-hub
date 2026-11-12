@@ -1,0 +1,216 @@
+{
+ "schema_version": "flh_study_pack_v1",
+ "unit": "u01",
+ "section": "listening",
+ "title": "Dix minutes d'écoute : Au téléphone : organiser la visite",
+ "goal": {
+  "fr": "Suivre un itinéraire et une adresse : la ligne, l'arrêt, le repère, le numéro et l'étage, dans l'ordre.",
+  "en": "Follow directions and an address: the line, the stop, the landmark, the number and the floor, in order.",
+  "zh": "听懂路线和地址：地铁线、站名、参照物、门牌号和楼层，并按顺序记下。"
+ },
+ "focus": [
+  "u01-l05",
+  "u01-l06",
+  "u01-l07",
+  "u01-l08",
+  "u01-l10"
+ ],
+ "provenance": {
+  "synthetic": true,
+  "human_reviewed": false,
+  "authoring": "Goal, plan and transfer exercise written by Claude Code (claude-opus-5-5) on 2026-11-12 from workbook unit u01; no provider or API generated them. Not reviewed by a teacher or a native speaker.",
+  "audio": "none: a person reads the script aloud from the reader sheet"
+ },
+ "plan": [
+  {
+   "minutes": 1,
+   "fr": "Lisez les questions ★. Dessinez un plan vide en cinq cases : ligne, arrêt, à pied, immeuble, étage. Ne lisez pas le script.",
+   "en": "Read the ★ questions. Draw an empty plan with five boxes: line, stop, on foot, building, floor. Do not read the script.",
+   "zh": "先读带★的题。画一张空白路线图，分五格：线路、站名、步行、楼房、楼层。不要看脚本。"
+  },
+  {
+   "minutes": 3,
+   "fr": "Première écoute : une autre personne lit le script. Remplissez les cases dans l'ordre où vous entendez les indications.",
+   "en": "First listening: someone else reads the script. Fill in the boxes in the order you hear the directions.",
+   "zh": "第一遍听：请他人朗读脚本。按听到指路信息的顺序填写各格。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Deuxième écoute : complétez le plan (numéro, étage, vélo), puis répondez aux dix questions.",
+   "en": "Second listening: complete the plan (number, floor, bike), then answer the ten questions.",
+   "zh": "第二遍听：补全路线图（门牌号、楼层、自行车），再回答十道题。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Vérifiez : dans l'application, « Reveal answers and evidence », ou avec la fiche de l'enseignant. Notez ce que vous avez manqué.",
+   "en": "Check: in the app, “Reveal answers and evidence”, or with the teacher debrief. Note what you missed.",
+   "zh": "核对：在应用中点击“Reveal answers and evidence”，或用教师讲评页。记下没听懂的地方。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Transfert : une nouvelle petite écoute (trois questions), puis une phrase à vous.",
+   "en": "Transfer: a new short listening (three questions), then one sentence of your own.",
+   "zh": "迁移练习：一段新的简短听力（三道题），再说或写一句自己的话。"
+  }
+ ],
+ "optional": {
+  "fr": "Option : enregistrez un point manqué comme question (Écoute → « Save as a learning question… »).",
+  "en": "Optional: save one missed point as a learning question (Listening → “Save as a learning question…”).",
+  "zh": "可选：把一个没听懂的点保存为学习问题（听力 → “Save as a learning question…”）。"
+ },
+ "transfer": {
+  "title": "Pour venir à l'atelier de cuisine",
+  "speakers": [
+   {
+    "id": "A",
+    "label": "Organisatrice de l'atelier",
+    "voice": "voix claire, rythme normal"
+   },
+   {
+    "id": "B",
+    "label": "Un participant",
+    "voice": "deuxième voix"
+   }
+  ],
+  "lines": [
+   {
+    "id": "t1",
+    "speaker": "A",
+    "text": "Bonjour ! Vous venez à l'atelier de cuisine jeudi ? Je vous explique le chemin."
+   },
+   {
+    "id": "t2",
+    "speaker": "B",
+    "text": "Oui, merci. Je viens en bus."
+   },
+   {
+    "id": "t3",
+    "speaker": "A",
+    "text": "Alors prenez le bus 36 et descendez à l'arrêt Mairie."
+   },
+   {
+    "id": "t4",
+    "speaker": "B",
+    "text": "Et ensuite ?"
+   },
+   {
+    "id": "t5",
+    "speaker": "A",
+    "text": "Traversez la place. La salle est à côté de la pharmacie, au numéro 8. C'est au rez-de-chaussée, la porte bleue."
+   },
+   {
+    "id": "t6",
+    "speaker": "B",
+    "text": "Il faut apporter quelque chose ?"
+   },
+   {
+    "id": "t7",
+    "speaker": "A",
+    "text": "Juste un tablier. Le reste est sur place."
+   }
+  ],
+  "questions": [
+   {
+    "id": "u01-x01",
+    "type": "single_choice",
+    "kind": "detail",
+    "stem": "À quel arrêt faut-il descendre ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "À l'arrêt Mairie.",
+      "correct": true
+     },
+     {
+      "key": "B",
+      "text": "À l'arrêt de la pharmacie.",
+      "correct": false,
+      "why_wrong_en": "The pharmacy is next to the room, not a bus stop (t5).",
+      "why_wrong_zh": "药店在活动室旁边，不是公交站（t5）。"
+     },
+     {
+      "key": "C",
+      "text": "Au bout de la place.",
+      "correct": false,
+      "why_wrong_en": "He crosses the square on foot after getting off (t3, t5).",
+      "why_wrong_zh": "他下车后步行穿过广场（t3、t5）。"
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t3",
+      "excerpt": "descendez à l'arrêt Mairie"
+     }
+    ],
+    "explanation_en": "Take bus 36 and get off at Mairie (t3).",
+    "explanation_zh": "坐36路公交车，在Mairie站下车（t3）。"
+   },
+   {
+    "id": "u01-x02",
+    "type": "short_answer",
+    "kind": "detail",
+    "stem": "Où se trouve la salle ?",
+    "reference_answer": "à côté de la pharmacie",
+    "accepted_alternatives": [
+     "près de la pharmacie",
+     "à côté de la pharmacie, au numéro 8"
+    ],
+    "evidence": [
+     {
+      "ref": "t5",
+      "excerpt": "La salle est à côté de la pharmacie"
+     }
+    ],
+    "explanation_en": "Next to the pharmacy, at number 8 (t5).",
+    "explanation_zh": "在药店旁边，8号（t5）。"
+   },
+   {
+    "id": "u01-x03",
+    "type": "single_choice",
+    "kind": "detail",
+    "stem": "Comment trouve-t-on l'entrée ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "En sonnant au premier étage.",
+      "correct": false,
+      "why_wrong_en": "The room is on the ground floor; nothing is said about ringing (t5).",
+      "why_wrong_zh": "活动室在一楼，没有提到按门铃（t5）。"
+     },
+     {
+      "key": "B",
+      "text": "C'est la porte bleue, au rez-de-chaussée.",
+      "correct": true
+     },
+     {
+      "key": "C",
+      "text": "C'est en face de l'arrêt de bus.",
+      "correct": false,
+      "why_wrong_en": "The bus stop is before the square; the room is next to the pharmacy (t3, t5).",
+      "why_wrong_zh": "公交站在广场之前；活动室在药店旁边（t3、t5）。"
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t5",
+      "excerpt": "C'est au rez-de-chaussée, la porte bleue"
+     }
+    ],
+    "explanation_en": "Ground floor, the blue door (t5).",
+    "explanation_zh": "一楼，蓝色的门（t5）。"
+   }
+  ],
+  "productive": {
+   "fr": "À vous (une minute) : expliquez à quelqu'un comment venir chez vous en trois étapes, avec « Prenez… », « Descendez à… » et « C'est à côté de… » ou « C'est en face de… ».",
+   "en": "Your turn (one minute): tell someone how to come to your home in three steps, with “Prenez…”, “Descendez à…” and “C'est à côté de…” or “C'est en face de…”.",
+   "zh": "轮到你（一分钟）：用三步告诉别人怎么到你家，用上 « Prenez… »、« Descendez à… » 和 « C'est à côté de… » 或 « C'est en face de… »。",
+   "model": "Prenez le tram T1, descendez à l'arrêt Gare, puis c'est la maison jaune en face de l'école.",
+   "model_note_en": "One possible answer, not the only one.",
+   "model_note_zh": "这只是一个可能的答案，不是唯一答案。"
+  }
+ },
+ "debrief": [
+  "Demandez d'abord : « Refaites le chemin dans l'ordre : quelle ligne, quel arrêt, puis à pied ? ».",
+  "Comparez le plan de l'élève avec la ligne s7 : métro A, Charpennes, dix minutes à pied, en face de la boulangerie, numéro 14, troisième étage."
+ ]
+}

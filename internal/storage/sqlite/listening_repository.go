@@ -86,10 +86,12 @@ func nullable(s string) any {
 }
 
 // ImportAuthoredScript stores an authored script, its lines as transcript
-// version 1 and its authored exercise in one transaction. If the pack script
-// is already imported, its version-1 lines, authored exercise and title are
-// compared with the pack: equal is a replay (true) and nothing is written;
-// different is domain.ErrListeningScriptConflict and nothing is written.
+// version 1 and its authored exercise (revision 1) in one transaction. If the
+// pack script is already imported, its CURRENT revision (latest transcript
+// version and its authored exercise) and title are compared with the pack:
+// equal is a replay (true) and nothing is written; different is
+// domain.ErrListeningScriptConflict and nothing is written. A lesson updated
+// to the pack's content therefore replays.
 func (r *ListeningRepository) ImportAuthoredScript(ctx context.Context, m domain.ListeningMaterial, segments []domain.TranscriptSegment,
 	content domain.ListeningExerciseContent, now time.Time) (domain.ListeningMaterial, bool, error) {
 	if m.SourceKind != domain.ListeningSourceAuthoredScript || m.PackScriptID == "" || m.VideoID != "" || m.SourceURL != "" {
@@ -119,14 +121,15 @@ func (r *ListeningRepository) ImportAuthoredScript(ctx context.Context, m domain
 		if err != nil {
 			return domain.ListeningMaterial{}, false, err
 		}
-		var storedSegments, storedContent string
-		if err := tx.QueryRowContext(ctx, `SELECT t.segments, e.content FROM listening_transcripts t
-			JOIN listening_exercises e ON e.transcript_id = t.id
-			WHERE t.material_id = ? AND t.version = 1 AND e.generator = ? AND e.status = ? ORDER BY e.id LIMIT 1`,
-			existingID, domain.ListeningAuthoredGenerator, domain.ListeningExerciseCompleted).Scan(&storedSegments, &storedContent); err != nil {
+		current, err := readScriptRevision(ctx, tx, existingID, 0)
+		if err != nil {
 			return existing, false, fmt.Errorf("read imported script: %w", err)
 		}
-		if !jsonEqual(storedSegments, rawSegments) || !jsonEqual(storedContent, rawContent) || existing.Title != m.Title {
+		fresh, err := domain.ListeningScriptFingerprint(rawSegments, rawContent)
+		if err != nil {
+			return existing, false, err
+		}
+		if current.Fingerprint != fresh || existing.Title != m.Title {
 			return existing, false, domain.ErrListeningScriptConflict
 		}
 		return existing, true, tx.Commit()
@@ -151,6 +154,135 @@ func (r *ListeningRepository) ImportAuthoredScript(ctx context.Context, m domain
 		return domain.ListeningMaterial{}, false, err
 	}
 	return saved, false, tx.Commit()
+}
+
+// CurrentScriptRevision returns an imported script's current revision: its
+// latest transcript version with the newest completed authored exercise on it.
+// ErrNotFound: unknown material; ErrListeningNotAuthoredScript: not a script.
+func (r *ListeningRepository) CurrentScriptRevision(ctx context.Context, materialID int64) (domain.ListeningScriptRevision, error) {
+	return r.ScriptRevision(ctx, materialID, 0)
+}
+
+// ScriptRevision returns revision n (transcript version n) of an imported
+// script, or its current revision when n is 0. ErrNotFound: unknown material
+// or revision; ErrListeningNotAuthoredScript: not a script.
+func (r *ListeningRepository) ScriptRevision(ctx context.Context, materialID int64, revision int) (domain.ListeningScriptRevision, error) {
+	m, err := readMaterial(ctx, r.db, materialID)
+	if err != nil {
+		return domain.ListeningScriptRevision{}, err
+	}
+	if !m.IsAuthoredScript() {
+		return domain.ListeningScriptRevision{}, domain.ErrListeningNotAuthoredScript
+	}
+	return readScriptRevision(ctx, r.db, materialID, revision)
+}
+
+// ReviseAuthoredScript appends the next revision of an imported script (its
+// lines as the next transcript version, no timestamps, and the authored
+// exercise on it) in one transaction, under the write lock. It never changes
+// an earlier revision. If the current revision already has this content it
+// writes nothing and replays it (true): a repeated or concurrent confirmation
+// of the same update, or a resend after a lost response, adds one revision at
+// most. Otherwise fromRevision must be the current revision, or nothing is
+// written and the error is domain.ErrListeningScriptRevisionStale.
+func (r *ListeningRepository) ReviseAuthoredScript(ctx context.Context, materialID int64, fromRevision int, segments []domain.TranscriptSegment,
+	content domain.ListeningExerciseContent, now time.Time) (domain.ListeningScriptRevision, bool, error) {
+	rawSegments, err := json.Marshal(segments)
+	if err != nil {
+		return domain.ListeningScriptRevision{}, false, err
+	}
+	rawContent, err := json.Marshal(content)
+	if err != nil {
+		return domain.ListeningScriptRevision{}, false, err
+	}
+	target, err := domain.ListeningScriptFingerprint(rawSegments, rawContent)
+	if err != nil {
+		return domain.ListeningScriptRevision{}, false, err
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return domain.ListeningScriptRevision{}, false, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	// Take the write lock first, so two confirmations cannot both append.
+	if _, err := tx.ExecContext(ctx, `UPDATE listening_transcripts SET id = id WHERE 0`); err != nil {
+		return domain.ListeningScriptRevision{}, false, fmt.Errorf("take write lock: %w", err)
+	}
+	m, err := readMaterial(ctx, tx, materialID)
+	if err != nil {
+		return domain.ListeningScriptRevision{}, false, err
+	}
+	if !m.IsAuthoredScript() {
+		return domain.ListeningScriptRevision{}, false, domain.ErrListeningNotAuthoredScript
+	}
+	current, err := readScriptRevision(ctx, tx, materialID, 0)
+	if err != nil {
+		return domain.ListeningScriptRevision{}, false, err
+	}
+	if current.Fingerprint == target {
+		return current, true, tx.Commit()
+	}
+	if fromRevision != current.Revision {
+		return current, false, domain.ErrListeningScriptRevisionStale
+	}
+	ts := now.UTC().Format(rfc3339)
+	t, err := insertTranscript(ctx, tx, materialID, current.Revision+1, segments, false, ts)
+	if err != nil {
+		return domain.ListeningScriptRevision{}, false, err
+	}
+	if _, err := insertExercise(ctx, tx, domain.ListeningExercise{MaterialID: materialID, TranscriptID: t.ID, Status: domain.ListeningExerciseCompleted,
+		Generator: domain.ListeningAuthoredGenerator, Content: &content}, ts); err != nil {
+		return domain.ListeningScriptRevision{}, false, err
+	}
+	next, err := readScriptRevision(ctx, tx, materialID, t.Version)
+	if err != nil {
+		return domain.ListeningScriptRevision{}, false, err
+	}
+	if next.Fingerprint != target {
+		return domain.ListeningScriptRevision{}, false, fmt.Errorf("stored revision %d does not read back as written", next.Revision)
+	}
+	if err := tx.Commit(); err != nil {
+		return domain.ListeningScriptRevision{}, false, fmt.Errorf("commit tx: %w", err)
+	}
+	return next, false, nil
+}
+
+// readScriptRevision reads revision n of a script (0: the latest transcript
+// version) with the newest completed authored exercise on it, and fingerprints
+// the stored JSON exactly as the import comparison reads it.
+func readScriptRevision(ctx context.Context, q queryer, materialID int64, revision int) (domain.ListeningScriptRevision, error) {
+	var out domain.ListeningScriptRevision
+	query := `SELECT t.id, t.segments, e.id, e.content FROM listening_transcripts t
+		JOIN listening_exercises e ON e.transcript_id = t.id AND e.material_id = t.material_id
+		WHERE t.material_id = ? AND e.generator = ? AND e.status = ? AND t.version = `
+	args := []any{materialID, domain.ListeningAuthoredGenerator, domain.ListeningExerciseCompleted}
+	if revision == 0 {
+		query += `(SELECT MAX(version) FROM listening_transcripts WHERE material_id = ?)`
+		args = append(args, materialID)
+	} else {
+		query += `?`
+		args = append(args, revision)
+	}
+	var transcriptID, exerciseID int64
+	var rawSegments, rawContent string
+	err := q.QueryRowContext(ctx, query+` ORDER BY e.id DESC LIMIT 1`, args...).Scan(&transcriptID, &rawSegments, &exerciseID, &rawContent)
+	if errors.Is(err, sql.ErrNoRows) {
+		return out, fmt.Errorf("%w: listening script revision", domain.ErrNotFound)
+	}
+	if err != nil {
+		return out, fmt.Errorf("read script revision: %w", err)
+	}
+	if out.Fingerprint, err = domain.ListeningScriptFingerprint([]byte(rawSegments), []byte(rawContent)); err != nil {
+		return out, err
+	}
+	if out.Transcript, err = readTranscript(ctx, q, `id = ?`, transcriptID); err != nil {
+		return out, err
+	}
+	if out.Exercise, err = readExercise(ctx, q, `id = ?`, exerciseID); err != nil {
+		return out, err
+	}
+	out.Revision = out.Transcript.Version
+	return out, nil
 }
 
 // AddTranscript stores the next transcript version for an existing material.

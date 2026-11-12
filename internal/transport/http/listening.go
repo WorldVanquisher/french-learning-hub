@@ -24,6 +24,9 @@ type ListeningService interface {
 	GetPreparation(ctx context.Context, operationID string) (*application.ListeningPreparationResult, error)
 	ListScripts(ctx context.Context) ([]application.ListeningScriptSummary, error)
 	ImportScript(ctx context.Context, scriptID string) (*application.ListeningLesson, bool, error)
+	ScriptUpdatePreview(ctx context.Context, materialID int64) (*application.ListeningScriptUpdatePreview, error)
+	UpdateScript(ctx context.Context, materialID int64, fromRevision int, packFingerprint string) (*application.ListeningScriptUpdateResult, bool, error)
+	GetScriptRevision(ctx context.Context, materialID int64, revision int) (*domain.ListeningScriptRevision, int, error)
 	Now() time.Time
 }
 
@@ -46,6 +49,9 @@ func (h *Handler) registerListeningRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /listening/preparations/{operation_id}", h.handleGetListeningPreparation)
 	mux.HandleFunc("GET /listening/scripts", h.handleListListeningScripts)
 	mux.HandleFunc("POST /listening/scripts/{script_id}", h.handleImportListeningScript)
+	mux.HandleFunc("GET /listening/materials/{id}/script-update", h.handleListeningScriptUpdatePreview)
+	mux.HandleFunc("POST /listening/materials/{id}/script-update", h.handleListeningScriptUpdate)
+	mux.HandleFunc("GET /listening/materials/{id}/revisions/{revision}", h.handleGetListeningScriptRevision)
 	h.registerListeningDailyRoutes(mux)
 }
 
@@ -92,8 +98,11 @@ type listeningLessonResponse struct {
 	// CurrentExerciseID is the exercise the lesson shows (null when none): the
 	// newest completed one on the latest transcript, or for an authored script
 	// its authored exercise, never a generated one.
-	CurrentExerciseID *int64                      `json:"current_exercise_id"`
-	Generation        listeningGenerationResponse `json:"generation"`
+	CurrentExerciseID *int64 `json:"current_exercise_id"`
+	// ScriptRevision is an authored script's current revision against the
+	// server's pack (null for YouTube material).
+	ScriptRevision *listeningScriptStateResponse `json:"script_revision"`
+	Generation     listeningGenerationResponse   `json:"generation"`
 	// Daily Listening: derived state, playlist membership and every attempt.
 	State         string                          `json:"state"`
 	InPlaylist    bool                            `json:"in_playlist"`
@@ -171,6 +180,10 @@ func (h *Handler) toListeningLesson(l *application.ListeningLesson) listeningLes
 		id := l.Current.ID
 		out.CurrentExerciseID = &id
 	}
+	if l.Script != nil {
+		st := toListeningScriptState(*l.Script)
+		out.ScriptRevision = &st
+	}
 	return out
 }
 
@@ -216,6 +229,12 @@ func writeListeningError(w http.ResponseWriter, err error, action string) {
 		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "script_conflict"})
 	case errors.Is(err, domain.ErrListeningScriptFixed), errors.Is(err, domain.ErrListeningScriptExerciseFixed):
 		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "authored_script"})
+	case errors.Is(err, domain.ErrListeningNotAuthoredScript):
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "not_authored_script"})
+	case errors.Is(err, domain.ErrListeningScriptNotInPack):
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "script_not_in_pack"})
+	case errors.Is(err, domain.ErrListeningScriptTitleChanged):
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "script_title_changed"})
 	default:
 		writeError(w, http.StatusInternalServerError, "could not "+action)
 	}
@@ -236,15 +255,18 @@ func (h *Handler) handleListListeningScripts(w http.ResponseWriter, r *http.Requ
 	for _, s := range rows {
 		out = append(out, map[string]any{"id": s.ID, "title": s.Title, "genre": s.Genre, "style_level": s.StyleLevel,
 			"source_pack": s.SourcePack, "notice": s.Notice, "lines": s.Lines, "questions": s.Questions,
-			"imported_material_id": s.ImportedMaterialID})
+			"imported_material_id": s.ImportedMaterialID, "imported_revision": positiveInt(s.ImportedRevision), "pack_status": optionalString(s.PackStatus)})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"pack": domain.ListeningScriptPackID, "scripts": out})
 }
 
 // handleImportListeningScript imports one authored script (material with no
 // link, its lines as an untimed transcript, its authored exercise) in one
-// transaction. No provider call. 201 new; 200 already imported (replay); 404
-// unknown script; 409 script_conflict (imported before with other content).
+// transaction. No provider call. 201 new; 200 already imported with the
+// pack's content (replay); 404 unknown script; 409 script_conflict (the
+// lesson's current revision differs from the pack: nothing is written, and the
+// body names the lesson, its revision and pack_status; an update is the
+// explicit script-update route).
 func (h *Handler) handleImportListeningScript(w http.ResponseWriter, r *http.Request) {
 	if h.listeningUnavailable(w) {
 		return
@@ -252,6 +274,12 @@ func (h *Handler) handleImportListeningScript(w http.ResponseWriter, r *http.Req
 	lesson, replay, err := h.listening.ImportScript(r.Context(), r.PathValue("script_id"))
 	if errors.Is(err, domain.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "listening script not found")
+		return
+	}
+	var conflict *application.ListeningScriptConflictError
+	if errors.As(err, &conflict) {
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "script_conflict",
+			"material_id": conflict.MaterialID, "current_revision": conflict.Revision, "pack_status": conflict.PackStatus})
 		return
 	}
 	if err != nil {

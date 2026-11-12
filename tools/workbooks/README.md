@@ -13,8 +13,8 @@ python3 -m flh_workbooks scan --workbook rl|pw --html STUDENT.html [--pdf-text T
 python3 -m flh_workbooks capture --question u05-r05 --text "the learner's own question"
 python3 -m flh_workbooks studypack --all --out DIR      # every ten-minute listening study pack (below)
 python3 -m flh_workbooks studypack --unit u05 --out DIR # one pack
-python3 -m flh_workbooks audit --out DIR  # evidence audit of the 120 listening questions (below)
-python3 -m unittest discover -s tests     # 28 stdlib tests
+python3 -m flh_workbooks audit --out DIR [--doc FILE]  # evidence audit of the 120 listening questions (below)
+python3 -m unittest discover -s tests     # 35 stdlib tests
 ```
 
 The Go side is `internal/reading/workbook_adapter_test.go`, which validates the
@@ -34,6 +34,9 @@ questions it focuses on (marked ★ for the student):
 | u05 | Understand an enrolment: days, price and payment |
 | u08 | Follow several voices: who asks what, and which answer each one gets |
 | u11 | Understand reasons and what is not said directly |
+| u01 | Follow directions and an address: line, stop, landmark, number, floor |
+| u06 | Pick out the problem, the solution offered and what to do next |
+| u12 | In advice, tell apart what to do, what to avoid, and why |
 
 Per pack it writes:
 - a student checklist: the goal, the ten-minute plan, the questions and the
@@ -59,7 +62,9 @@ The command fails when:
 - the student checklist or reader sheet carries the key (the workbook scanner's
   checks; the teacher debrief must fail them, as the positive control);
 - the student checklist contains the script, an evidence excerpt that no stem
-  or option already shows, a short-answer reference or the transfer key.
+  or option already shows, a short-answer reference or the transfer key;
+- a transfer answer needs a name, number, time, day or month its own dialogue
+  never says, or a transfer question's options show another one's short answer.
 
 A number or time found nowhere (for example 8:15 computed from 7:00 plus an hour
 and a quarter) is flagged in the debrief for the teacher, not refused. No audio
@@ -71,9 +76,19 @@ is made: a person reads the script aloud. `check` builds every pack.
 question, the evidence occurrences, whether every wrong-option reason cites a
 script line, values restated or computed from the script, anything that relies
 on the reading text, and the basis (`script`, `script, restated or computed
-value`, `reading` or `error`). `check` fails on `reading` and `error`, and when
-a question's stem or options show another question's short answer. Hand-made
-judgements are in `content/workbooks/review/listening-evidence-audit-v1.md`.
+value`, `reading`, `absent context` or `error`). `check` fails on `reading`,
+`absent context` and `error`, and when a question's stem or options show
+another question's short answer.
+
+The answer-context check (`audit.answer_context`) tests the answer itself: its
+anchors (numbers in digits or words, ordinals, clock times, days and months,
+names after the first word) must be heard in the script. An anchor only in the
+reading text, or nowhere, fails unless `REVIEWED_ANSWER_CONTEXT` records a
+person's judgement (an entry no longer needed also fails). The deliberately bad
+fixture `tests/fixtures/answer_context_bad.json` proves it can fail:
+`audit --doc tests/fixtures/answer_context_bad.json --out DIR` exits 1 with
+three errors. Hand-made judgements, and what still needs a person, are in
+`content/workbooks/review/listening-evidence-audit-v1.md`.
 
 ## Quality gates
 

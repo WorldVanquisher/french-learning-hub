@@ -54,3 +54,39 @@ To compare with an earlier tree, build that tree's server and web bundle the
 same way and run with another tag. On the tree before this change the
 overview, reload-reopen, script-preparation and zh-CN checks fail (the
 recorded baseline: 51 of 61 checks).
+
+## Script revisions: old import -> update -> reopen the old mistake
+
+`revisions.py` + `revisions.mjs` walk the revision contract (ARCHITECTURE.md
+§4.3) in real Chromium, on four fresh scratch databases: phone and desktop,
+English and Simplified Chinese.
+
+1. An OLD server (a binary whose embedded pack predates a correction, e.g.
+   built from commit `c53b42c`, before the 2026-11-11 evidence audit) imports
+   `ls-wb1-u05` in its own UI, answers question 4 wrongly, reveals and saves
+   it (always in English: it is the setup).
+2. The NEW server opens the same database: the list tags the script
+   **Update available** / **Revision 1**; the lesson shows a notice and no
+   update button, with its old wording; the old mistake opens its question;
+   **Review the changes** (focus, the one-sentence note on earlier practice,
+   question 4 listed, key behind a closed disclosure, nothing written);
+   **Update this lesson to revision 2** (201); the same confirmation again
+   replays (200) and a re-import replays (200); the old mistake keeps its
+   explanation and opens **Revision 1: the version you saved from** with the
+   question at the top; a typed answer is self-assessed in its overview row;
+   a new mistake on revision 2 is a separate record; only two writes; no
+   console error; no horizontal scroll.
+
+```sh
+OLD=/abs/old-build   # server + web-dist from a tree whose pack predates a correction
+NEW=/abs/new-build   # this tree: go build -o $NEW/server ./cmd/server; (cd web && npx vite build --outDir $NEW/web-dist --emptyOutDir)
+python3 -I scripts/validation/listening_workbook/revisions.py \
+  $OLD/server $OLD/web-dist $NEW/server $NEW/web-dist /abs/scratch/out mytag
+# -> out/results-mytag.json, out/shots-mytag/<combo>-A1…B07.png, out/run-mytag/<combo>/{old,new}-server.log
+```
+
+Recorded on 2026-11-12 (Chromium 131.0.6778.33, Playwright 1.49.1): this tree
+120/120; the tree before the revision path (`521279a`) 16/32 (no tag, no
+notice, re-import `409 script_conflict`, the old wording after reveal). Not
+covered: Safari, Firefox, a real phone (Chromium phone emulation only), and
+the old part in Chinese.

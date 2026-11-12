@@ -138,6 +138,16 @@ def verify(doc, pack):
     e2, f2, r2 = _check_block("transfer", "t", tlines, tr["questions"], {})
     if [t["id"] for t in tr["lines"]] != [f"t{i}" for i in range(1, len(tr["lines"]) + 1)]:
         e2.append("transfer: line ids must be t1..tN in order")
+    # The transfer answers, like the unit's, must not need context its own
+    # dialogue does not give (audit.answer_context's anchors).
+    from . import audit  # audit imports this module
+    heard = " ".join(tlines.values())
+    for q in tr["questions"]:
+        answers = ([o["text"] for o in q["options"] if o["correct"]] if q["type"] == "single_choice"
+                   else [q["reference_answer"]] + q["accepted_alternatives"])
+        e2 += [f"transfer {q['id']}: the answer « {a} » needs « {anchor} », which the transfer dialogue never says"
+               for a in answers for anchor, kind in audit.answer_anchors(a) if not audit._says(heard, anchor, kind)]
+    e2 += [f"transfer {qid}: « {a} » is shown in {oid} {where}, before reveal" for qid, a, oid, where in audit.clues(tr["questions"])]
     return e1 + e2, f1 + f2, r1 + r2
 
 

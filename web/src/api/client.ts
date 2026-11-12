@@ -11,7 +11,10 @@ import type {
   ListeningNotification,
   ListeningPreparationResult,
   ListeningPullRun,
+  ListeningScriptRevisionView,
   ListeningScripts,
+  ListeningScriptUpdatePreview,
+  ListeningScriptUpdateResult,
 } from "../types/listening";
 import type {
   Concept,
@@ -707,6 +710,35 @@ export function listListeningScripts(fetchImpl: typeof fetch = fetch): Promise<L
 // questions; no model call. Importing it again returns the same lesson (200).
 export function importListeningScript(scriptId: string, fetchImpl: typeof fetch = fetch): Promise<ListeningLesson> {
   return request<ListeningLesson>("POST", `/listening/scripts/${encodeURIComponent(scriptId)}`, undefined, fetchImpl);
+}
+
+// getListeningScriptUpdate compares an imported script's current revision with
+// the server's pack. It only reads.
+export function getListeningScriptUpdate(materialId: number, fetchImpl: typeof fetch = fetch): Promise<ListeningScriptUpdatePreview> {
+  return request<ListeningScriptUpdatePreview>("GET", `/listening/materials/${materialId}/script-update`, undefined, fetchImpl);
+}
+
+// updateListeningScript confirms the preview the learner read: it appends the
+// next revision. Sending the same confirmation again (after a lost response,
+// or from a second tab) never adds a second revision: the server replays.
+// 409 stale_preview carries a fresh preview in the error body.
+export function updateListeningScript(
+  materialId: number,
+  fromRevision: number,
+  packFingerprint: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ListeningScriptUpdateResult> {
+  return request<ListeningScriptUpdateResult>(
+    "POST",
+    `/listening/materials/${materialId}/script-update`,
+    { from_revision: fromRevision, pack_fingerprint: packFingerprint },
+    fetchImpl,
+  );
+}
+
+// getListeningScriptRevision reads one revision of an imported script.
+export function getListeningScriptRevision(materialId: number, revision: number, fetchImpl: typeof fetch = fetch): Promise<ListeningScriptRevisionView> {
+  return request<ListeningScriptRevisionView>("GET", `/listening/materials/${materialId}/revisions/${revision}`, undefined, fetchImpl);
 }
 
 // ---- Daily Listening (pull, prepare, notify) ----
