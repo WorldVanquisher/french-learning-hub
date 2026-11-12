@@ -815,6 +815,13 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .listening-overview-row p { margin: 2px 0; }
 .tag.listening-same { color: var(--same); border-color: var(--same); }
 .tag.listening-different { color: #b54708; border-color: #b54708; }
+.listening-revision-changes { margin: 6px 0; padding-left: 20px; overflow-wrap: anywhere; }
+.listening-revision-changes li { margin: 4px 0; }
+.listening-revision-details { margin: 8px 0; }
+.listening-revision-details summary { cursor: pointer; }
+.listening-revision-pair { padding: 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.listening-revision-pair p { margin: 2px 0; }
+.tag.listening-update { color: var(--accent); border-color: var(--accent); }
 .listening-segment { margin: 4px 0; }
 .listening-context { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; background: var(--warn-bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
 /* Daily Listening: pull status and attempts */

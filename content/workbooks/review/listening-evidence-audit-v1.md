@@ -90,3 +90,48 @@ script_conflict` and writes nothing; Mistake Notebook items saved from it keep
 resolving to the words they were saved from. Scripts imported afterwards get the
 corrected wording. Pinned by
 `TestListeningScripts_EarlierImportKeepsItsContentAfterAPackCorrection`.
+
+## Answer context check (added 2026-11-12)
+
+`audit.answer_context` (run by `audit` and by `check`) looks at the answer
+itself: the correct option, or the reference answer and every accepted
+alternative. Its anchors are the tokens a listener must have heard to give
+that answer: numbers and codes (« 180 », « A2 », « 3e »), clock times, day
+and month names, and capitalised words after the first (names, places). Each
+anchor must be said by the script: literally (accents and case folded), as
+the same number in words or grouped digits (« quatre jours », « troisième
+étage », « 48 213 »), or as the same time. An anchor found only in the unit's
+reading text, or nowhere, fails the check unless `REVIEWED_ANSWER_CONTEXT`
+records a person's judgement; an entry that is no longer needed also fails.
+
+Result on the 120 questions: 83 anchors, 80 in a cited line, 2 in another line
+(u10-l01 « M. Martin »), 1 reviewed (u04-l04 « Irlande », general knowledge,
+see above), 0 errors. The deliberately bad fixture
+`tools/workbooks/tests/fixtures/answer_context_bad.json` must fail with three
+errors (a day and a time only in the reading text, a city never said) while
+its two controls pass (a number said in words, a name in a cited line):
+`python3 -m flh_workbooks audit --doc tests/fixtures/answer_context_bad.json --out DIR`
+exits 1.
+
+**Still needs a person** (the check does not claim to detect these):
+
+- answers that paraphrase content words (« Elle travaille la journée » for
+  « je finis le travail à 17 h 30 »): whether the paraphrase follows;
+- inferences that rest on general or cultural knowledge without a named
+  anchor (a price that is "expensive", a place that "must be a café");
+- whether a restated or computed value is the one meant (8:15 from 7:00 plus
+  an hour and a quarter; « 3e » for « troisième »);
+- anything the written script cannot carry: intonation, irony, hesitation;
+  these scripts have no audio, so a reader may change what is heard;
+- the plausibility of the wrong options, and whether a stem's names (not
+  spoken) are enough to follow who is who.
+
+## Update (2026-11-12): earlier imports can be updated explicitly
+
+The section "Effect on lessons already imported" above describes the contract
+when this audit was made. Since 2026-11-12 a lesson imported before a
+correction still keeps its wording and is never rewritten, but the workbench
+says a corrected version exists, shows a preview of what changes, and on an
+explicit confirmation adds the corrected text as the lesson's next revision.
+Mistake Notebook items stay linked to the revision they were saved from
+(ARCHITECTURE.md §4.3, "Pack corrections, revisions and explicit updates").

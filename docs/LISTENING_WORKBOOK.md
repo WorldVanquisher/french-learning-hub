@@ -45,6 +45,68 @@ answers), or you record it yourself and listen back without looking.
    or after a reload. The saved item always shows the wording it was saved
    from.
 
+## When the workbook is corrected: revisions
+
+Each imported script is a lesson with **revisions**. Importing creates
+revision 1. When a later version of the app ships a corrected script, your
+lesson does **not** change by itself: it keeps the words you practised until
+you choose to update it, and an update only adds the next revision. Your
+saved mistakes stay with the revision you saw.
+
+### Worked example 1: a script imported before a correction
+
+You imported **À l'accueil de la Maison des langues** before the 2026-11-11
+correction and saved question 4 (« Pourquoi l'horaire du soir lui
+convient-il ? ») as a mistake. Its explanation then read "Work ends before
+the 18:30 class.", a class time the dialogue never says.
+
+1. **Listening → Workbook listening scripts** lists it under **Imported**
+   with **Revision 1** and **Update available**.
+2. Open it. The questions are the ones you practised, with a notice: **A
+   corrected version of this script is available. This lesson stays as it is
+   (revision 1) until you review the changes and update it.** Nothing has
+   changed yet, and nothing updates when the page opens.
+3. **Review the changes** lists what differs without showing answers:
+   **Question 4 changed:** *explanation*, *cited lines*, *cited words*. **Show
+   the exact before and after** shows the old and new wording, including the
+   reference answers, so open it after you have practised. One sentence says
+   what happens to your earlier practice: it stays with revision 1.
+4. **Update this lesson to revision 2**. The page says **This lesson now
+   shows revision 2. Items you saved from revision 1 stay in the Mistake
+   Notebook exactly as you saved them.** The new explanation rests on the
+   dialogue only (« Je finis le travail à 17 h 30 » and « cours du soir »).
+5. **Mistake Notebook → Show reference** on your question-4 item still shows
+   the explanation and your answer as saved, with **The source now has
+   version 2. This item is shown as it was saved.** **Open source** opens **Revision 1: the version you saved from**,
+   with question 4 marked at the top; the lesson below it shows revision 2.
+6. Saving question 4 again from revision 2 makes a new, separate item.
+
+If the connection drops after you confirm, **Confirm the update again** is
+safe: the server never adds a second revision. If the lesson or the app's
+scripts changed after you opened the preview, nothing is updated and a fresh
+preview replaces the old one. **Not now** leaves the lesson as it is.
+
+### Worked example 2: a fresh import
+
+You have never imported **Au guichet de la gare**. **Import Au guichet de la
+gare** stores revision 1 with the current wording; the lesson shows no notice
+because there is nothing to update. Importing it again (for example from **Next workbook
+script: …** at the end of the previous lesson, or after a lost response)
+opens the same lesson and stores nothing twice.
+
+### Where the server still refuses (409)
+
+These refusals change nothing; the workbench avoids them, but another client
+calling the API would see them:
+
+- importing a script again while your lesson is on an older revision:
+  `409 script_conflict` (use the update above instead);
+- asking the model to prepare questions for a script: `409 authored_script`
+  (a script's questions are fixed);
+- adding your own transcript to a script: `409 authored_script`;
+- confirming an update from a preview that went stale: `409 stale_preview`
+  (the workbench shows the fresh preview).
+
 ## Ten-minute study packs (printable)
 
 For a session with a second person, build the packs (no app or model needed):
@@ -65,6 +127,9 @@ questions that train the pack's goal.
 | u05 À l'accueil de la Maison des langues | An enrolment: days, price and payment |
 | u08 Réunion d'information à la mairie annexe | Following several speakers |
 | u11 Commander avec une allergie | Reasons and what is not said directly |
+| u01 Au téléphone : organiser la visite | Directions and an address: line, stop, landmark, number, floor |
+| u06 Au service client : un colis abîmé | The problem, the solution offered and what to do next |
+| u12 Podcast « Clic Clair » : des mots de passe plus sûrs | Advice: what to do, what to avoid, and why |
 
 The ten minutes: read the questions (1), first listening (3), second listening
 (2), check with the app's reveal or the teacher debrief (2), a new short
@@ -73,8 +138,14 @@ transfer dialogue and one sentence of your own (2).
 ## Good to know
 
 - Every question can be answered from its dialogue alone; the 2026-11-11
-  evidence audit removed the few that relied on the unit's reading text.
-- A script imported before a correction keeps its earlier wording; nothing is
-  rewritten in your lessons.
+  evidence audit removed the few that relied on the unit's reading text, and
+  the check now also tests each answer (names, numbers, times, days) against
+  the dialogue. A few judgements still need a person; they are listed in
+  `content/workbooks/review/listening-evidence-audit-v1.md`.
+- A correction never rewrites a lesson: you see what changed and choose
+  whether to update (see above).
 - A script's questions are fixed: the app never replaces them with
   model-generated ones.
+- After **Reveal answers and evidence**, a short answer is yours to judge:
+  mark **I got it** or **I missed it** right in its row of the answer overview
+  (or under the question; both show the same mark). It stays on the page.

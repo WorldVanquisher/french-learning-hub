@@ -736,11 +736,20 @@ Authored listening scripts (workbook):
   read's `current_exercise_id` is always the authored exercise (an older
   generated row stays stored, unshown). YouTube preparation is unchanged
   (ARCHITECTURE.md §4.3, pinned by tests).
-- Pack corrections keep item IDs, lines and answer positions; an earlier import
-  keeps its stored wording (re-import `409 script_conflict`). Listening
-  questions must rest on their script: `python3 -m flh_workbooks check` runs the
-  evidence audit (no reading-text facts, every reason cites a line, no option
-  showing another question's answer) and builds every study pack.
+- Pack corrections keep item IDs, lines and answer positions. A stored
+  revision (transcript version N + its authored exercise) is never rewritten:
+  reads report `script_revision.pack_status`; only an explicit, previewed
+  `POST /listening/materials/{id}/script-update` (`from_revision`,
+  `pack_fingerprint`) appends the next revision, replays when already applied
+  and is `409 stale_preview` otherwise. Never update on lesson load. Notebook
+  records keep their exercise ID (the revision the learner saw). No migration.
+  Re-import of an outdated lesson stays `409 script_conflict`.
+- Listening questions must rest on their script: `python3 -m flh_workbooks
+  check` runs the evidence audit (no reading-text facts, every reason cites a
+  line, no option showing another question's answer, every answer anchor heard
+  in the script unless `REVIEWED_ANSWER_CONTEXT` records a person's judgement)
+  and builds every study pack (transfer answers must be heard in their own
+  dialogue).
 
 ## Design Priorities
 

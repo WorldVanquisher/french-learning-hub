@@ -489,12 +489,26 @@ describe("Workbook listening scripts (private workbench)", () => {
     fireEvent.click(within(reveal1).getByRole("button", { name: "Back to the answer overview" }));
     expect(heading).toHaveFocus();
 
+    // A typed answer is self-assessed in its row, beside the reference: the
+    // same page-only self-check as under the question, in both places.
+    expect(within(rows[0]).queryByRole("group", { name: /Your own comparison/ })).toBeNull(); // a chosen option is compared exactly
+    const rowCheck = within(rows[1]).getByRole("group", { name: "Your own comparison for question 2 (kept on this page only)" });
+    fireEvent.click(within(rowCheck).getByRole("button", { name: "I missed it" }));
+    expect(within(rowCheck).getByRole("button", { name: "I missed it" })).toHaveAttribute("aria-pressed", "true");
+    const questionCheck = screen.getByRole("group", { name: "Self-check for question 2 (kept on this page only)" });
+    expect(within(questionCheck).getByRole("button", { name: "I missed it" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(questionCheck).getByRole("button", { name: "I got it" }));
+    expect(within(rowCheck).getByRole("button", { name: "I got it" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(rowCheck).getByRole("button", { name: "I missed it" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("Self-checked 1 of 2. Your answers and checks stay on this page.")).toBeInTheDocument();
+
     // Choosing the reference reads "Same"; an unanswered question says so.
     fireEvent.click(within(screen.getByRole("group", { name: "Your choice for question 1" })).getByLabelText("Elle s'inscrit au cours du soir de français."));
     fireEvent.change(screen.getByLabelText("Your answer to question 2"), { target: { value: "  " } });
     expect(rows[0]).toHaveTextContent("Same as the reference");
     expect(rows[1]).toHaveTextContent("Not answered");
     expect(rows[1]).not.toHaveTextContent("Your answer:");
+    expect(within(rows[1]).queryByRole("group")).toBeNull();
     expect(writes(server).map((c) => c.path)).toEqual(["/api/listening/scripts/ls-wb1-u05"]);
   });
 

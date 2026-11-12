@@ -213,6 +213,13 @@ type ListeningRepository interface {
 	// exercise, in one transaction. The same pack script with the same content
 	// replays (true); different content is ErrListeningScriptConflict.
 	ImportAuthoredScript(ctx context.Context, m ListeningMaterial, segments []TranscriptSegment, content ListeningExerciseContent, now time.Time) (ListeningMaterial, bool, error)
+	// ScriptRevision returns revision n of an imported script (0: the current
+	// one): its transcript version n with the authored exercise on it.
+	ScriptRevision(ctx context.Context, materialID int64, revision int) (ListeningScriptRevision, error)
+	// ReviseAuthoredScript appends the next revision in one transaction, or
+	// replays (true) when the current revision already has this content;
+	// ErrListeningScriptRevisionStale when fromRevision is not current.
+	ReviseAuthoredScript(ctx context.Context, materialID int64, fromRevision int, segments []TranscriptSegment, content ListeningExerciseContent, now time.Time) (ListeningScriptRevision, bool, error)
 }
 
 var youTubeID = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)

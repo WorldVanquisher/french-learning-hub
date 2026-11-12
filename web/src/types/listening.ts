@@ -157,8 +157,11 @@ export interface ListeningLesson {
   exercises: ListeningExercise[];
   // The exercise the lesson shows (the server decides): the newest completed
   // one on the latest transcript; for an authored script, always its authored
-  // exercise. null when there is none.
+  // exercise of its current revision. null when there is none.
   current_exercise_id: number | null;
+  // Authored script only: its current revision compared with the server's
+  // pack (null for YouTube). Older servers omit it.
+  script_revision?: ListeningScriptRevisionState | null;
   generation: ListeningGeneration;
   state: ListeningMaterialState;
   // The video is in the configured playlist (a pull created or matched it).
@@ -239,9 +242,103 @@ export interface ListeningScriptSummary {
   lines: number;
   questions: number;
   imported_material_id: number | null;
+  // Imported scripts only (null otherwise; older servers omit them).
+  imported_revision?: number | null;
+  pack_status?: ListeningScriptPackStatus | null;
 }
 
 export interface ListeningScripts {
   pack: string;
   scripts: ListeningScriptSummary[];
+}
+
+// ---- Revisions of an imported script (explicit, previewed update) ----
+//
+// Revision N of an imported script is its transcript version N with the
+// authored exercise on it. A pack correction never changes a lesson by itself:
+// the learner reads the preview and confirms it, and the update appends the
+// next revision. Earlier revisions and the Mistake Notebook items saved from
+// them stay exactly as they were.
+
+// "title_changed": the pack renamed the script; a lesson's title is fixed, so
+// no update is offered. "not_in_pack": this server's pack no longer has it.
+export type ListeningScriptPackStatus = "up_to_date" | "update_available" | "title_changed" | "not_in_pack";
+
+export interface ListeningScriptRevisionState {
+  script_id: string;
+  revision: number;
+  fingerprint: string;
+  pack_status: ListeningScriptPackStatus;
+  pack_fingerprint: string | null;
+}
+
+export interface ListeningScriptLine {
+  id: string;
+  speaker: string;
+  text: string;
+}
+
+export interface ListeningScriptLineChange {
+  line: string;
+  change: "changed" | "added" | "removed";
+  before: ListeningScriptLine | null;
+  after: ListeningScriptLine | null;
+}
+
+export type ListeningQuestionField =
+  | "kind"
+  | "question"
+  | "choices"
+  | "expected_answer"
+  | "accepted_alternatives"
+  | "wrong_answers"
+  | "rationale"
+  | "segments"
+  | "evidence"
+  | "position";
+
+export interface ListeningScriptQuestionChange {
+  item_id: string;
+  change: "changed" | "added" | "removed";
+  before_position: number | null;
+  after_position: number | null;
+  fields: ListeningQuestionField[];
+  before: ListeningItem | null;
+  after: ListeningItem | null;
+}
+
+// GET /listening/materials/{id}/script-update (read-only).
+export interface ListeningScriptUpdatePreview {
+  material_id: number;
+  script_id: string;
+  current_revision: number;
+  current_fingerprint: string;
+  pack_status: ListeningScriptPackStatus;
+  pack_fingerprint: string;
+  // Set only when an update is available.
+  next_revision: number | null;
+  changes: {
+    lines: ListeningScriptLineChange[];
+    questions: ListeningScriptQuestionChange[];
+    annotations_changed: boolean;
+  };
+}
+
+// POST /listening/materials/{id}/script-update: 201 updated, 200 replayed
+// (the lesson already had the pack's content; nothing written).
+export interface ListeningScriptUpdateResult {
+  revision: number;
+  replayed: boolean;
+  lesson: ListeningLesson;
+}
+
+// GET /listening/materials/{id}/revisions/{n}: one revision, e.g. the one a
+// Mistake Notebook item was saved from.
+export interface ListeningScriptRevisionView {
+  material_id: number;
+  revision: number;
+  current_revision: number;
+  fingerprint: string;
+  transcript: ListeningTranscript;
+  exercise: ListeningExercise;
 }

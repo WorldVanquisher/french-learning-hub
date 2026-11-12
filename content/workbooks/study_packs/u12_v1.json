@@ -1,0 +1,217 @@
+{
+ "schema_version": "flh_study_pack_v1",
+ "unit": "u12",
+ "section": "listening",
+ "title": "Dix minutes d'écoute : Podcast « Clic Clair » : des mots de passe plus sûrs",
+ "goal": {
+  "fr": "Dans des conseils, séparer ce qu'il faut faire, ce qu'il faut éviter, et pourquoi.",
+  "en": "In a piece of advice, tell apart what to do, what to avoid, and why.",
+  "zh": "在建议中分清：应该做什么、应该避免什么，以及为什么。"
+ },
+ "focus": [
+  "u12-l02",
+  "u12-l03",
+  "u12-l07",
+  "u12-l08",
+  "u12-l09"
+ ],
+ "provenance": {
+  "synthetic": true,
+  "human_reviewed": false,
+  "authoring": "Goal, plan and transfer exercise written by Claude Code (claude-opus-5-5) on 2026-11-12 from workbook unit u12; no provider or API generated them. Not reviewed by a teacher or a native speaker.",
+  "audio": "none: a person reads the script aloud from the reader sheet"
+ },
+ "plan": [
+  {
+   "minutes": 1,
+   "fr": "Lisez les questions ★. Préparez deux colonnes, « à faire » et « à éviter », avec une place pour « pourquoi ». Ne lisez pas le script.",
+   "en": "Read the ★ questions. Prepare two columns, to do and to avoid, with room for why. Do not read the script.",
+   "zh": "先读带★的题。准备两栏：“要做”和“要避免”，并留出写“为什么”的地方。不要看脚本。"
+  },
+  {
+   "minutes": 3,
+   "fr": "Première écoute : une autre personne lit le podcast avec deux voix. Classez chaque conseil dans une colonne.",
+   "en": "First listening: someone else reads the podcast with two voices. Put each piece of advice in a column.",
+   "zh": "第一遍听：请他人用两种声音朗读这期播客。把每条建议放进相应的一栏。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Deuxième écoute : ajoutez le « pourquoi » de chaque conseil, puis répondez aux dix questions.",
+   "en": "Second listening: add the why of each piece of advice, then answer the ten questions.",
+   "zh": "第二遍听：给每条建议补上“为什么”，再回答十道题。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Vérifiez : dans l'application, « Reveal answers and evidence », ou avec la fiche de l'enseignant. Notez ce que vous avez manqué.",
+   "en": "Check: in the app, “Reveal answers and evidence”, or with the teacher debrief. Note what you missed.",
+   "zh": "核对：在应用中点击“Reveal answers and evidence”，或用教师讲评页。记下没听懂的地方。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Transfert : une nouvelle petite écoute (trois questions), puis une phrase à vous.",
+   "en": "Transfer: a new short listening (three questions), then one sentence of your own.",
+   "zh": "迁移练习：一段新的简短听力（三道题），再说或写一句自己的话。"
+  }
+ ],
+ "optional": {
+  "fr": "Option : enregistrez un point manqué comme question (Écoute → « Save as a learning question… »).",
+  "en": "Optional: save one missed point as a learning question (Listening → “Save as a learning question…”).",
+  "zh": "可选：把一个没听懂的点保存为学习问题（听力 → “Save as a learning question…”）。"
+ },
+ "transfer": {
+  "title": "Podcast « Clic Clair » : le wifi public",
+  "speakers": [
+   {
+    "id": "A",
+    "label": "Lucie, animatrice",
+    "voice": "voix dynamique"
+   },
+   {
+    "id": "B",
+    "label": "Karim, formateur",
+    "voice": "deuxième voix, posée"
+   }
+  ],
+  "lines": [
+   {
+    "id": "t1",
+    "speaker": "A",
+    "text": "Dans « Clic Clair » aujourd'hui : le wifi gratuit des cafés et des gares. Karim, on peut l'utiliser ?"
+   },
+   {
+    "id": "t2",
+    "speaker": "B",
+    "text": "Oui, pour lire les actualités ou regarder la météo, pas de problème."
+   },
+   {
+    "id": "t3",
+    "speaker": "B",
+    "text": "Mais évitez de vous connecter à votre banque sur un wifi public : quelqu'un sur le même réseau peut parfois voir ce que vous envoyez."
+   },
+   {
+    "id": "t4",
+    "speaker": "A",
+    "text": "Alors, comment faire si c'est urgent ?"
+   },
+   {
+    "id": "t5",
+    "speaker": "B",
+    "text": "Utilisez plutôt les données de votre téléphone. C'est plus sûr, parce que la connexion n'est pas partagée."
+   },
+   {
+    "id": "t6",
+    "speaker": "A",
+    "text": "Et un dernier conseil ?"
+   },
+   {
+    "id": "t7",
+    "speaker": "B",
+    "text": "Désactivez la connexion automatique aux réseaux inconnus, dans les réglages de votre téléphone."
+   }
+  ],
+  "questions": [
+   {
+    "id": "u12-x01",
+    "type": "single_choice",
+    "kind": "detail",
+    "stem": "Pour quoi Karim accepte-t-il le wifi public ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "Pour se connecter à sa banque.",
+      "correct": false,
+      "why_wrong_en": "That is exactly what he says to avoid (t3).",
+      "why_wrong_zh": "这正是他说要避免的（t3）。"
+     },
+     {
+      "key": "B",
+      "text": "Pour lire les actualités ou la météo.",
+      "correct": true
+     },
+     {
+      "key": "C",
+      "text": "Pour envoyer des documents importants.",
+      "correct": false,
+      "why_wrong_en": "He warns that others may see what you send (t3).",
+      "why_wrong_zh": "他提醒别人有时能看到你发送的内容（t3）。"
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t2",
+      "excerpt": "pour lire les actualités ou regarder la météo"
+     }
+    ],
+    "explanation_en": "News or the weather are fine (t2).",
+    "explanation_zh": "看新闻或天气没问题（t2）。"
+   },
+   {
+    "id": "u12-x02",
+    "type": "single_choice",
+    "kind": "inference",
+    "stem": "Pourquoi vaut-il mieux éviter sa banque sur un wifi public ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "D'autres personnes sur le réseau peuvent voir ce qu'on envoie.",
+      "correct": true
+     },
+     {
+      "key": "B",
+      "text": "Le wifi public est trop lent.",
+      "correct": false,
+      "why_wrong_en": "Speed is never mentioned; the risk is others seeing what you send (t3).",
+      "why_wrong_zh": "没有提到速度；风险是别人能看到你发送的内容（t3）。"
+     },
+     {
+      "key": "C",
+      "text": "La banque refuse les connexions des cafés.",
+      "correct": false,
+      "why_wrong_en": "Nothing is said about banks refusing; the danger is the shared network (t3, t5).",
+      "why_wrong_zh": "没有说银行会拒绝；危险来自共享的网络（t3、t5）。"
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t3",
+      "excerpt": "quelqu'un sur le même réseau peut parfois voir ce que vous envoyez"
+     }
+    ],
+    "explanation_en": "Someone on the same network can sometimes see what you send (t3); a phone's own data is not shared (t5).",
+    "explanation_zh": "同一网络上的人有时能看到你发送的内容（t3）；手机自己的流量不共享（t5）。"
+   },
+   {
+    "id": "u12-x03",
+    "type": "short_answer",
+    "kind": "detail",
+    "stem": "Que faut-il utiliser si c'est urgent ?",
+    "reference_answer": "les données de son téléphone",
+    "accepted_alternatives": [
+     "les données du téléphone",
+     "les données de votre téléphone",
+     "ses données mobiles"
+    ],
+    "evidence": [
+     {
+      "ref": "t5",
+      "excerpt": "Utilisez plutôt les données de votre téléphone"
+     }
+    ],
+    "explanation_en": "The phone's own data, because that connection is not shared (t5).",
+    "explanation_zh": "用手机自己的流量，因为这个连接不是共享的（t5）。"
+   }
+  ],
+  "productive": {
+   "fr": "À vous (une minute) : donnez un conseil numérique à un ami, avec « Évite de… » et « Utilise plutôt…, parce que… ».",
+   "en": "Your turn (one minute): give a friend a piece of digital advice, with “Évite de…” and “Utilise plutôt…, parce que…”.",
+   "zh": "轮到你（一分钟）：给朋友一条数字生活的建议，用上 « Évite de… » 和 « Utilise plutôt…, parce que… »。",
+   "model": "Évite de cliquer sur les liens des SMS inconnus ; utilise plutôt l'application de ta banque, parce que c'est plus sûr.",
+   "model_note_en": "One possible answer, not the only one.",
+   "model_note_zh": "这只是一个可能的答案，不是唯一答案。"
+  }
+ },
+ "debrief": [
+  "Demandez d'abord : « Quels conseils étaient à faire, lesquels à éviter, et pourquoi ? ».",
+  "Reprenez la colonne « pourquoi » : pour chaque conseil, faites retrouver la ligne qui donne la raison (s4, s8, s10, s11)."
+ ]
+}

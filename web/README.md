@@ -622,9 +622,11 @@ practice. Contract: [ARCHITECTURE.md §4.3](../docs/ARCHITECTURE.md#43-listening
   Revealing moves focus to **Your answers and the reference** at the top of the
   exercise: one row per question with your answer beside the reference, a
   chosen option tagged **Same as the reference** or **Different from the
-  reference**, a typed answer tagged **Short answer: compare it yourself**, and
-  **Go to question N** (each revealed question has **Back to the answer
-  overview**). Nothing is totalled or sent. The exercise shown is the lesson's
+  reference**, a typed answer tagged **Short answer: compare it yourself** with
+  its own **I got it** / **I missed it** (the same page-only self-check as
+  under the question, so marking one marks both), and **Go to question N**
+  (each revealed question has **Back to the answer overview**). Nothing is
+  totalled or sent. The exercise shown is the lesson's
   `current_exercise_id`, chosen by the server.
 - **Save as a learning question…** opens a form showing the context that will
   be attached (title, video link at the cited time, question, cited lines).
@@ -652,8 +654,23 @@ practice. Contract: [ARCHITECTURE.md §4.3](../docs/ARCHITECTURE.md#43-listening
   no audio or video (<pack id>)` instead of a video link. A script's exercise is
   fixed: the server refuses model preparation on it (`409 authored_script`) and
   always names its authored exercise as current (ARCHITECTURE.md §4.3).
+- **Script revisions:** an imported script whose pack version was corrected is
+  tagged **Revision N** and **Update available** in the list; its lesson keeps
+  the stored wording and shows a notice with **Review the changes** (never an
+  update button on load). The preview (`GET …/script-update`) lists the lines
+  and questions that differ, says in one sentence that earlier practice stays
+  with the current revision, and keeps the exact before/after (which shows
+  the key) behind a disclosure. Only **Update this lesson to revision N**
+  writes (`POST …/script-update` with `from_revision` and `pack_fingerprint`).
+  A lost response offers **Confirm the update again** (the server replays, so
+  no second revision); a stale preview is replaced by the fresh one; **Not
+  now** closes it. Types: `ListeningScriptUpdatePreview` and friends in
+  `types/listening.ts`; tests: `ListeningRevisions.test.tsx`.
 - **Reopening from the Mistake Notebook** (**Open source**) brings the saved
-  question to the top of the screen and marks it, also after a reload.
+  question to the top of the screen and marks it, also after a reload. An item
+  saved from an earlier revision opens **Revision N: the version you saved
+  from** (`GET …/revisions/{n}`) above the current lesson, with the question
+  marked.
 - **Every lesson:** "Answered N of M" (then "Self-checked N of M") counts on the
   page only. **Lesson navigation** at the end offers **Back to all listening
   material** and, for a script, **Next workbook script: …** (secondary, so

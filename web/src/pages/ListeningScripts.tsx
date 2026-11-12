@@ -11,7 +11,9 @@ import type { ListeningScripts } from "../types/listening";
 // title only and imports one on an explicit click: the server stores it as a
 // script-only listening lesson (no link, video, audio or timestamp) and makes
 // no model call. Importing again replays and opens the same lesson, so a lost
-// response is safe to resend.
+// response is safe to resend. An imported script whose pack version was
+// corrected is tagged "Update available"; the update itself is offered only
+// inside the lesson, after a preview (never from this list, never on load).
 
 const describe = (e: unknown) =>
   e instanceof ApiError ? `(${e.status}) ${e.message}` : e instanceof Error ? e.message : String(e);
@@ -97,6 +99,18 @@ export function ScriptsPanel({ epoch, onOpen }: { epoch: number; onOpen: (materi
                           <>
                             {" "}
                             <span className="tag">{t("listening.scripts.imported")}</span>
+                            {s.imported_revision ? (
+                              <>
+                                {" "}
+                                <span className="tag">{t("listening.revision.tag", { n: s.imported_revision })}</span>
+                              </>
+                            ) : null}
+                            {s.pack_status === "update_available" ? (
+                              <>
+                                {" "}
+                                <span className="tag listening-update">{t("listening.scripts.updateAvailable")}</span>
+                              </>
+                            ) : null}
                           </>
                         ) : null}
                         <div className="hint">

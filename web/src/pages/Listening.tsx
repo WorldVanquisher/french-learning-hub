@@ -15,6 +15,10 @@ import type {
   ListeningMaterial,
   ListeningMaterialState,
   ListeningPreparation,
+  ListeningQuestionField,
+  ListeningScriptRevisionState,
+  ListeningScriptRevisionView,
+  ListeningScriptUpdatePreview,
   ListeningTranscript,
   TranscriptSegment,
 } from "../types/listening";
@@ -47,6 +51,11 @@ import { NextScript, ScriptsPanel } from "./ListeningScripts";
 // - After reveal, an answer overview puts each answer beside the reference
 //   (a chosen option is compared exactly; a short answer is left to the
 //   learner) with a link to the question. It is not a score and sends nothing.
+// - Script revisions: when the server's pack corrects an imported script, the
+//   lesson says so and stays as it is. "Review the changes" reads a preview;
+//   only its confirm button writes, appending the next revision (resending the
+//   same confirmation never adds a second one). Nothing updates on load. A
+//   Mistake Notebook item saved from an earlier revision opens that revision.
 
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
 
@@ -268,6 +277,10 @@ function LessonScreen({
   const [epoch, setEpoch] = useState(0);
   const lesson = useLoad<ListeningLesson>(String(id), () => api.getListening(id), epoch);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // The outcome of an explicit script update, kept here so it survives the
+  // lesson reload that follows it.
+  const [updated, setUpdated] = useState<{ from: number; to: number; replayed: boolean } | null>(null);
+  const [earlierShown, setEarlierShown] = useState(false);
   // Focus the lesson heading when it loads. When the Mistake Notebook asked for
   // a question that this lesson shows, focus must not scroll the page back to
   // the heading: the question is brought to the top of the screen instead (this
@@ -325,6 +338,12 @@ function LessonScreen({
           <>
             <p>
               <span className="tag">{t("listening.source.scriptOnly")}</span>
+              {lesson.data.script_revision ? (
+                <>
+                  {" "}
+                  <span className="tag">{t("listening.revision.tag", { n: lesson.data.script_revision.revision })}</span>
+                </>
+              ) : null}
             </p>
             <div className="banner info" role="note">
               {t("listening.script.hint")}
@@ -346,8 +365,40 @@ function LessonScreen({
         </p>
       </section>
 
+      {updated ? (
+        <div className="banner success" role="status">
+          {updated.replayed ? t("listening.revision.already", { to: updated.to }) : t("listening.revision.updated", { from: updated.from, to: updated.to })}
+        </div>
+      ) : null}
+      {isScript(material) && lesson.data.script_revision ? (
+        <ScriptUpdate
+          key={`${lesson.data.script_revision.revision}-${lesson.data.script_revision.pack_fingerprint ?? ""}`}
+          materialId={id}
+          state={lesson.data.script_revision}
+          onUpdated={(from, to, replayed) => {
+            setUpdated({ from, to, replayed });
+            setEpoch((n) => n + 1);
+          }}
+          onReload={() => setEpoch((n) => n + 1)}
+        />
+      ) : null}
       {target ? (
-        <NotebookOrigin skill="listening" target={target} shownExerciseId={current?.id ?? null} currentVersion={transcript?.version ?? null} />
+        <NotebookOrigin
+          skill="listening"
+          target={target}
+          shownExerciseId={earlierShown ? target.exerciseId : (current?.id ?? null)}
+          currentVersion={transcript?.version ?? null}
+        />
+      ) : null}
+      {target && transcript && current && isScript(material) && target.exerciseId !== current.id && target.version < transcript.version &&
+      exercises.some((e) => e.id === target.exerciseId && e.generator.startsWith("authored:")) ? (
+        <EarlierRevision
+          material={material}
+          target={target}
+          currentRevision={transcript.version}
+          onShown={setEarlierShown}
+          onOpenRecord={onOpenRecord}
+        />
       ) : null}
       {!transcript ? (
         <AddTranscriptForm id={id} onSaved={() => setEpoch((n) => n + 1)} />
@@ -386,6 +437,277 @@ function LessonScreen({
         {isScript(material) && material.pack_script_id && onOpenLesson ? <NextScript packScriptId={material.pack_script_id} onOpen={onOpenLesson} /> : null}
       </nav>
     </div>
+  );
+}
+
+const fieldKey: Record<ListeningQuestionField, MessageKey> = {
+  kind: "listening.revision.field.kind",
+  question: "listening.revision.field.question",
+  choices: "listening.revision.field.choices",
+  expected_answer: "listening.revision.field.expected_answer",
+  accepted_alternatives: "listening.revision.field.accepted_alternatives",
+  wrong_answers: "listening.revision.field.wrong_answers",
+  rationale: "listening.revision.field.rationale",
+  segments: "listening.revision.field.segments",
+  evidence: "listening.revision.field.evidence",
+  position: "listening.revision.field.position",
+};
+
+type UpdateFlow =
+  | { step: "closed" }
+  | { step: "loading" }
+  | { step: "failed"; message: string }
+  | { step: "preview"; preview: ListeningScriptUpdatePreview; stale: boolean; sending: boolean; unknown: boolean; error: string | null };
+
+// ScriptUpdate offers an explicit update of an imported script when the
+// server's pack has a corrected version. Nothing changes on load: the notice
+// opens a read-only preview, and only its confirm button writes. The
+// confirmation names the revision and pack fingerprint the learner read, so a
+// resend (after a lost response or from another tab) never adds a second
+// revision, and a preview that went stale is replaced by a fresh one.
+function ScriptUpdate({
+  materialId,
+  state,
+  onUpdated,
+  onReload,
+}: {
+  materialId: number;
+  state: ListeningScriptRevisionState;
+  onUpdated: (from: number, to: number, replayed: boolean) => void;
+  onReload: () => void;
+}) {
+  const { t } = useI18n();
+  const [flow, setFlow] = useState<UpdateFlow>({ step: "closed" });
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (flow.step === "preview" && !flow.sending) headingRef.current?.focus();
+  }, [flow.step, flow.step === "preview" && flow.stale]);
+  if (state.pack_status === "title_changed" || state.pack_status === "not_in_pack")
+    return <p className="hint">{t("listening.revision.cannotUpdate")}</p>;
+  if (state.pack_status !== "update_available") return null;
+  const open = async () => {
+    setFlow({ step: "loading" });
+    try {
+      const preview = await api.getListeningScriptUpdate(materialId);
+      setFlow({ step: "preview", preview, stale: false, sending: false, unknown: false, error: null });
+    } catch (e) {
+      setFlow({ step: "failed", message: describe(e) });
+    }
+  };
+  const confirm = async (preview: ListeningScriptUpdatePreview) => {
+    setFlow({ step: "preview", preview, stale: false, sending: true, unknown: false, error: null });
+    try {
+      const res = await api.updateListeningScript(materialId, preview.current_revision, preview.pack_fingerprint);
+      onUpdated(preview.current_revision, res.revision, res.replayed);
+    } catch (e) {
+      const body = e instanceof ApiError ? (e.body as { code?: string; preview?: ListeningScriptUpdatePreview } | null) : null;
+      if (e instanceof ApiError && e.status === 409 && body?.code === "stale_preview" && body.preview) {
+        if (body.preview.pack_status !== "update_available") {
+          // Already applied elsewhere (another tab): say so, then show the lesson as it is.
+          onUpdated(preview.current_revision, body.preview.current_revision, true);
+          return;
+        }
+        setFlow({ step: "preview", preview: body.preview, stale: true, sending: false, unknown: false, error: null });
+      } else if (e instanceof NetworkError) {
+        setFlow({ step: "preview", preview, stale: false, sending: false, unknown: true, error: null });
+      } else {
+        setFlow({ step: "preview", preview, stale: false, sending: false, unknown: false, error: t("listening.revision.failed", { message: describe(e) }) });
+      }
+    }
+  };
+  return (
+    <section className="panel listening-revision" aria-label={t("listening.revision.region")}>
+      {flow.step !== "preview" ? (
+        <div className="banner info" role="note">
+          {t("listening.revision.available", { revision: state.revision })}{" "}
+          <button type="button" className="ghost" disabled={flow.step === "loading"} onClick={open}>
+            {flow.step === "loading" ? t("listening.revision.loading") : t("listening.revision.review")}
+          </button>
+        </div>
+      ) : null}
+      {flow.step === "failed" ? (
+        <div className="banner error" role="alert">
+          {t("listening.revision.loadFailed", { message: flow.message })}
+        </div>
+      ) : null}
+      {flow.step === "preview" ? (
+        <>
+          <h3 ref={headingRef} tabIndex={-1}>
+            {t("listening.revision.heading", { from: flow.preview.current_revision, to: flow.preview.next_revision ?? flow.preview.current_revision + 1 })}
+          </h3>
+          {flow.stale ? (
+            <div className="banner info" role="alert">
+              {t("listening.revision.stale")}
+            </div>
+          ) : null}
+          <p>{t("listening.revision.previous", { from: flow.preview.current_revision, to: flow.preview.next_revision ?? flow.preview.current_revision + 1 })}</p>
+          <ScriptChanges preview={flow.preview} />
+          {flow.unknown ? (
+            <div className="banner info" role="alert">
+              {t("listening.revision.unknown")}
+            </div>
+          ) : null}
+          {flow.error ? (
+            <div className="banner error" role="alert">
+              {flow.error}
+            </div>
+          ) : null}
+          <div className="actions">
+            <button type="button" className="primary" disabled={flow.sending} onClick={() => confirm(flow.preview)}>
+              {flow.sending
+                ? t("listening.revision.updating")
+                : flow.unknown
+                  ? t("listening.revision.retry")
+                  : t("listening.revision.confirm", { to: flow.preview.next_revision ?? flow.preview.current_revision + 1 })}
+            </button>
+            {flow.unknown ? (
+              <button type="button" className="ghost" onClick={onReload}>
+                {t("listening.revision.check")}
+              </button>
+            ) : (
+              <button type="button" className="ghost" disabled={flow.sending} onClick={() => setFlow({ step: "closed" })}>
+                {t("listening.revision.cancel")}
+              </button>
+            )}
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+// ScriptChanges lists what an update changes without showing the script or a
+// key; the exact before and after (lines and reference answers) are behind an
+// explicit disclosure, since the lesson hides them until reveal.
+function ScriptChanges({ preview }: { preview: ListeningScriptUpdatePreview }) {
+  const { t } = useI18n();
+  const { lines, questions, annotations_changed } = preview.changes;
+  const lineKey = { changed: "listening.revision.lineChanged", added: "listening.revision.lineAdded", removed: "listening.revision.lineRemoved" } as const;
+  const where = (q: ListeningScriptUpdatePreview["changes"]["questions"][number]) => q.after_position ?? q.before_position ?? 0;
+  return (
+    <>
+      <ul className="listening-revision-changes">
+        {lines.map((l) => (
+          <li key={l.line}>{t(lineKey[l.change], { line: l.line })}</li>
+        ))}
+        {questions.map((q) => (
+          <li key={`${q.item_id}-${q.change}`}>
+            {q.change === "added"
+              ? t("listening.revision.questionAdded", { n: where(q) })
+              : q.change === "removed"
+                ? t("listening.revision.questionRemoved", { n: where(q), from: preview.current_revision })
+                : t("listening.revision.questionChanged", { n: where(q) })}
+            {q.change === "changed"
+              ? q.fields.map((f) => (
+                  <span key={f}>
+                    {" "}
+                    <span className="tag">{t(fieldKey[f])}</span>
+                  </span>
+                ))
+              : null}
+          </li>
+        ))}
+        {annotations_changed ? <li>{t("listening.revision.notesChanged")}</li> : null}
+      </ul>
+      <details className="listening-revision-details">
+        <summary>{t("listening.revision.details")}</summary>
+        {lines.map((l) => (
+          <div key={l.line} className="listening-revision-pair">
+            <p className="label">{t("listening.revision.lineLabel", { line: l.line })}</p>
+            {(["before", "after"] as const).map((side) =>
+              l[side] ? (
+                <p key={side}>
+                  <span className="label">{t(side === "before" ? "listening.revision.before" : "listening.revision.after")}</span>{" "}
+                  <strong lang="fr">{l[side]!.speaker} :</strong>{" "}
+                  <span lang="fr" className="french">
+                    {l[side]!.text}
+                  </span>
+                </p>
+              ) : null,
+            )}
+          </div>
+        ))}
+        {questions.map((q) => (
+          <div key={`${q.item_id}-${q.change}`} className="listening-revision-pair">
+            <p className="label">{t("listening.revision.questionLabel", { n: where(q) })}</p>
+            {(["before", "after"] as const).map((side) => {
+              const it = q[side];
+              return it ? (
+                <div key={side}>
+                  <p>
+                    <span className="label">{t(side === "before" ? "listening.revision.before" : "listening.revision.after")}</span>{" "}
+                    <span lang="fr" className="french">
+                      {it.question}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="label">{t("listening.overview.reference")}</span>{" "}
+                    <span lang="fr" className="french">
+                      {it.expected_answer}
+                    </span>
+                  </p>
+                  <StoredText primary={it.rationale_en} variants={{ en: it.rationale_en, zh: it.rationale_zh }} kind="explanation" />
+                </div>
+              ) : null;
+            })}
+          </div>
+        ))}
+      </details>
+    </>
+  );
+}
+
+// EarlierRevision shows the revision a Mistake Notebook item was saved from,
+// when the lesson has moved on to a later one: the same lines and questions
+// the learner practised, with that question marked and brought to the top.
+function EarlierRevision({
+  material,
+  target,
+  currentRevision,
+  onShown,
+  onOpenRecord,
+}: {
+  material: ListeningMaterial;
+  target: NotebookTarget;
+  currentRevision: number;
+  onShown: (shown: boolean) => void;
+  onOpenRecord?: (entryId: number) => void;
+}) {
+  const { t } = useI18n();
+  const rev = useLoad<ListeningScriptRevisionView>(`${material.id}-${target.version}`, () => api.getListeningScriptRevision(material.id, target.version), 0);
+  const shown = rev.status === "ready" && rev.data.exercise.id === target.exerciseId && rev.data.exercise.content !== null;
+  useEffect(() => {
+    onShown(shown);
+    if (shown) document.getElementById(notebookItemDomId("listening", target.exerciseId, target.item))?.scrollIntoView?.({ block: "start" });
+  }, [shown, target.exerciseId, target.item]);
+  if (rev.status === "loading")
+    return (
+      <p className="hint" role="status">
+        {t("listening.revision.earlierLoading", { revision: target.version })}
+      </p>
+    );
+  if (rev.status === "error")
+    return (
+      <div className="banner error" role="alert">
+        {t("listening.revision.earlierFailed", { revision: target.version, message: rev.message })}
+      </div>
+    );
+  if (!shown) return null;
+  return (
+    <section className="listening-earlier" aria-label={t("listening.revision.earlierRegion")}>
+      <div className="panel">
+        <h3>{t("listening.revision.earlierHeading", { revision: rev.data.revision })}</h3>
+        <p className="hint">{t("listening.revision.earlierHint", { current: currentRevision })}</p>
+      </div>
+      <ExerciseView
+        key={rev.data.exercise.id}
+        material={material}
+        transcript={rev.data.transcript}
+        exercise={rev.data.exercise}
+        onOpenRecord={onOpenRecord}
+        targetItem={target.item}
+      />
+    </section>
   );
 }
 
@@ -622,7 +944,15 @@ function ExerciseView({
           <p className="hint">{t("listening.overview.hint")}</p>
           <ol className="listening-overview-list">
             {content.items.map((item, i) => (
-              <OverviewRow key={i} item={item} index={i} answer={answers[i]} onOpen={() => toQuestion(i)} />
+              <OverviewRow
+                key={i}
+                item={item}
+                index={i}
+                answer={answers[i]}
+                check={checks[i]}
+                onCheck={(c) => setChecks((prev) => ({ ...prev, [i]: c }))}
+                onOpen={() => toQuestion(i)}
+              />
             ))}
           </ol>
         </section>
@@ -752,7 +1082,24 @@ const comparisonKey: Record<Comparison, MessageKey> = {
   unanswered: "listening.overview.unanswered",
 };
 
-function OverviewRow({ item, index, answer, onOpen }: { item: ListeningItem; index: number; answer: string; onOpen: () => void }) {
+// OverviewRow: a typed short answer stands beside the reference here, so the
+// learner can mark their own comparison in the row (the same page-only
+// self-check as under the question, shared with it); nothing judges it.
+function OverviewRow({
+  item,
+  index,
+  answer,
+  check,
+  onCheck,
+  onOpen,
+}: {
+  item: ListeningItem;
+  index: number;
+  answer: string;
+  check: SelfCheck | undefined;
+  onCheck: (c: SelfCheck) => void;
+  onOpen: () => void;
+}) {
   const { t } = useI18n();
   const c = compareAnswer(item, answer);
   return (
@@ -777,6 +1124,16 @@ function OverviewRow({ item, index, answer, onOpen }: { item: ListeningItem; ind
           {item.expected_answer}
         </span>
       </p>
+      {c === "compare" ? (
+        <div className="actions" role="group" aria-label={t("listening.overview.check", { n: index + 1 })}>
+          <button type="button" aria-pressed={check === "got"} onClick={() => onCheck("got")}>
+            {t("listening.check.got")}
+          </button>
+          <button type="button" aria-pressed={check === "missed"} onClick={() => onCheck("missed")}>
+            {t("listening.check.missed")}
+          </button>
+        </div>
+      ) : null}
     </li>
   );
 }

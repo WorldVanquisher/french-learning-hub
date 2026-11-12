@@ -196,7 +196,7 @@ Knowledge Library 在 Linux 上的验收和在 macOS 真实浏览器中的演练
 | [docs/AWS_DEMO.md](docs/AWS_DEMO.md) | 只读公开演示的 AWS 运维手册：单台 EC2，通过 Session Manager 私下预览；可选的公开 HTTPS 入口已准备、尚未启用（FLH-088） |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 系统如何工作；附录 A 为 HTTP API 参考 |
 | [web/README.md](web/README.md) | 工作台各视图与标注行为 |
-| [docs/LISTENING_WORKBOOK.zh-CN.md](docs/LISTENING_WORKBOOK.zh-CN.md) | 用练习册的 12 篇听力脚本学习（书面脚本，没有音频）：一节课的完整流程、答案对照、错题本和可打印的十分钟学习包（简体中文） |
+| [docs/LISTENING_WORKBOOK.zh-CN.md](docs/LISTENING_WORKBOOK.zh-CN.md) | 用练习册的 12 篇听力脚本学习（书面脚本，没有音频）：一节课的完整流程、答案对照、练习册更正后更新课程、错题本和可打印的十分钟学习包（简体中文） |
 | [docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md](docs/LOCAL_LEARNING_WORKFLOW.zh-CN.md) | 可重复的本地学习流程（简体中文），配合[捕获提示词](docs/CAPTURE_PROMPT.zh-CN.md) |
 | [docs/history/](docs/history/README.md) | 设计如何演进，附日期与证据 |
 | [docs/blog/](docs/blog/README.md) | 回顾性文章草稿 |

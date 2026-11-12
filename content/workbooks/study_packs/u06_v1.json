@@ -1,0 +1,216 @@
+{
+ "schema_version": "flh_study_pack_v1",
+ "unit": "u06",
+ "section": "listening",
+ "title": "Dix minutes d'écoute : Au service client : un colis abîmé",
+ "goal": {
+  "fr": "Repérer le problème, la solution proposée et ce que le client doit faire ensuite, dans l'ordre et à quelle condition.",
+  "en": "Pick out the problem, the solution offered and what the customer must do next, in order and on what condition.",
+  "zh": "听出问题是什么、对方提出的解决办法，以及客户接下来要按什么顺序、在什么条件下做什么。"
+ },
+ "focus": [
+  "u06-l01",
+  "u06-l03",
+  "u06-l04",
+  "u06-l08",
+  "u06-l09"
+ ],
+ "provenance": {
+  "synthetic": true,
+  "human_reviewed": false,
+  "authoring": "Goal, plan and transfer exercise written by Claude Code (claude-opus-5-5) on 2026-11-12 from workbook unit u06; no provider or API generated them. Not reviewed by a teacher or a native speaker.",
+  "audio": "none: a person reads the script aloud from the reader sheet"
+ },
+ "plan": [
+  {
+   "minutes": 1,
+   "fr": "Lisez les questions ★. Préparez trois lignes : « problème », « solution », « à faire ». Ne lisez pas le script.",
+   "en": "Read the ★ questions. Prepare three lines: problem, solution, to do. Do not read the script.",
+   "zh": "先读带★的题。准备三行：问题、解决办法、要做的事。不要看脚本。"
+  },
+  {
+   "minutes": 3,
+   "fr": "Première écoute : une autre personne lit l'appel avec deux voix. Notez le problème et les deux solutions proposées.",
+   "en": "First listening: someone else reads the call with two voices. Note the problem and the two solutions offered.",
+   "zh": "第一遍听：请他人用两种声音朗读这通电话。记下问题和对方提出的两种解决办法。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Deuxième écoute : notez ce que le client doit faire, dans l'ordre, puis répondez aux dix questions.",
+   "en": "Second listening: note what the customer must do, in order, then answer the ten questions.",
+   "zh": "第二遍听：按顺序记下客户要做的事，再回答十道题。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Vérifiez : dans l'application, « Reveal answers and evidence », ou avec la fiche de l'enseignant. Notez ce que vous avez manqué.",
+   "en": "Check: in the app, “Reveal answers and evidence”, or with the teacher debrief. Note what you missed.",
+   "zh": "核对：在应用中点击“Reveal answers and evidence”，或用教师讲评页。记下没听懂的地方。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Transfert : une nouvelle petite écoute (trois questions), puis une phrase à vous.",
+   "en": "Transfer: a new short listening (three questions), then one sentence of your own.",
+   "zh": "迁移练习：一段新的简短听力（三道题），再说或写一句自己的话。"
+  }
+ ],
+ "optional": {
+  "fr": "Option : enregistrez un point manqué comme question (Écoute → « Save as a learning question… »).",
+  "en": "Optional: save one missed point as a learning question (Listening → “Save as a learning question…”).",
+  "zh": "可选：把一个没听懂的点保存为学习问题（听力 → “Save as a learning question…”）。"
+ },
+ "transfer": {
+  "title": "Au service client : une machine à café",
+  "speakers": [
+   {
+    "id": "A",
+    "label": "Conseiller, service client",
+    "voice": "voix calme, rythme normal"
+   },
+   {
+    "id": "B",
+    "label": "Mme Petit, cliente",
+    "voice": "deuxième voix, un peu inquiète"
+   }
+  ],
+  "lines": [
+   {
+    "id": "t1",
+    "speaker": "A",
+    "text": "Service client Cafénor, bonjour. Je vous écoute."
+   },
+   {
+    "id": "t2",
+    "speaker": "B",
+    "text": "Bonjour. Ma machine à café fait du bruit et le café coule froid. Je l'ai achetée il y a trois semaines."
+   },
+   {
+    "id": "t3",
+    "speaker": "A",
+    "text": "Elle est donc sous garantie. Vous pouvez la déposer dans un de nos magasins, ou nous l'envoyer par la poste."
+   },
+   {
+    "id": "t4",
+    "speaker": "B",
+    "text": "Je préfère la déposer. Il y a un magasin près de chez moi."
+   },
+   {
+    "id": "t5",
+    "speaker": "A",
+    "text": "Très bien. Apportez la machine et votre ticket de caisse. Sans le ticket, nous ne pouvons pas la réparer gratuitement."
+   },
+   {
+    "id": "t6",
+    "speaker": "B",
+    "text": "Et la réparation prend combien de temps ?"
+   },
+   {
+    "id": "t7",
+    "speaker": "A",
+    "text": "Environ une semaine. Le magasin vous prêtera une machine en attendant."
+   }
+  ],
+  "questions": [
+   {
+    "id": "u06-x01",
+    "type": "single_choice",
+    "kind": "main_idea",
+    "stem": "Quel est le problème de Mme Petit ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "Elle n'a pas encore reçu sa machine.",
+      "correct": false,
+      "why_wrong_en": "She bought it three weeks ago and uses it (t2).",
+      "why_wrong_zh": "她三周前买的，已经在用（t2）。"
+     },
+     {
+      "key": "B",
+      "text": "Sa machine coûte trop cher.",
+      "correct": false,
+      "why_wrong_en": "She talks about the noise and cold coffee, not the price (t2).",
+      "why_wrong_zh": "她说的是噪音和咖啡是凉的，不是价格（t2）。"
+     },
+     {
+      "key": "C",
+      "text": "Sa machine à café ne marche pas bien.",
+      "correct": true
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t2",
+      "excerpt": "Ma machine à café fait du bruit et le café coule froid"
+     }
+    ],
+    "explanation_en": "It makes noise and the coffee comes out cold (t2).",
+    "explanation_zh": "机器有噪音，咖啡流出来是凉的（t2）。"
+   },
+   {
+    "id": "u06-x02",
+    "type": "single_choice",
+    "kind": "detail",
+    "stem": "Que doit-elle apporter au magasin ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "La machine et le ticket de caisse.",
+      "correct": true
+     },
+     {
+      "key": "B",
+      "text": "Seulement la machine.",
+      "correct": false,
+      "why_wrong_en": "Without the receipt the repair is not free (t5).",
+      "why_wrong_zh": "没有购物小票就不能免费修理（t5）。"
+     },
+     {
+      "key": "C",
+      "text": "Une photo de la machine.",
+      "correct": false,
+      "why_wrong_en": "No photo is asked for; the machine and the receipt are (t5).",
+      "why_wrong_zh": "没有要求照片，要求的是机器和购物小票（t5）。"
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t5",
+      "excerpt": "Apportez la machine et votre ticket de caisse"
+     }
+    ],
+    "explanation_en": "The machine and the till receipt; without it the repair is not free (t5).",
+    "explanation_zh": "机器和购物小票；没有小票就不能免费修理（t5）。"
+   },
+   {
+    "id": "u06-x03",
+    "type": "short_answer",
+    "kind": "detail",
+    "stem": "Que fera le magasin pendant la réparation ?",
+    "reference_answer": "il lui prêtera une machine",
+    "accepted_alternatives": [
+     "prêter une machine",
+     "lui prêter une machine"
+    ],
+    "evidence": [
+     {
+      "ref": "t7",
+      "excerpt": "Le magasin vous prêtera une machine en attendant"
+     }
+    ],
+    "explanation_en": "The shop will lend her a machine while she waits, about a week (t7).",
+    "explanation_zh": "修理期间（大约一周）商店会借给她一台机器（t7）。"
+   }
+  ],
+  "productive": {
+   "fr": "À vous (une minute) : au téléphone, décrivez un problème avec un achat et dites ce que vous préférez, avec « Je l'ai acheté il y a… », « … ne marche plus » et « Je préfère… ».",
+   "en": "Your turn (one minute): on the phone, describe a problem with something you bought and say what you prefer, with “Je l'ai acheté il y a…”, “… ne marche plus” and “Je préfère…”.",
+   "zh": "轮到你（一分钟）：在电话里描述你买的东西出了什么问题，并说出你更想要的处理方式，用上 « Je l'ai acheté il y a… »、« … ne marche plus » 和 « Je préfère… »。",
+   "model": "Je l'ai acheté il y a deux semaines, et le son ne marche plus à gauche. Je préfère un échange.",
+   "model_note_en": "One possible answer, not the only one.",
+   "model_note_zh": "这只是一个可能的答案，不是唯一答案。"
+  }
+ },
+ "debrief": [
+  "Demandez d'abord : « Quel était le problème, et quelles étaient les deux solutions ? ».",
+  "Faites redire les étapes dans l'ordre : photos, réponse au courriel de confirmation, livraison jeudi, lampe cassée dans le carton d'origine."
+ ]
+}

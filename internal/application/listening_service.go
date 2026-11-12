@@ -74,8 +74,11 @@ type ListeningLesson struct {
 	Transcript *domain.ListeningTranscript
 	Exercises  []domain.ListeningExercise
 	// Current is the exercise the lesson shows (domain.CurrentListeningExercise):
-	// for an authored script, always its authored exercise.
+	// for an authored script, the authored exercise of its current revision.
 	Current *domain.ListeningExercise
+	// Script is the authored script's revision compared with the server's
+	// pack; nil for YouTube material.
+	Script *ListeningScriptState
 	// Status is derived: state, playlist membership, attempts and notifications.
 	Status domain.ListeningMaterialStatus
 	Now    time.Time
@@ -178,7 +181,19 @@ func (s *ListeningService) GetLesson(ctx context.Context, materialID int64) (*Li
 	if err != nil {
 		return nil, err
 	}
-	return &ListeningLesson{Material: m, Transcript: tr, Exercises: ex, Current: domain.CurrentListeningExercise(m, tr, ex), Status: st, Now: now}, nil
+	lesson := &ListeningLesson{Material: m, Transcript: tr, Exercises: ex, Current: domain.CurrentListeningExercise(m, tr, ex), Status: st, Now: now}
+	if m.IsAuthoredScript() {
+		rev, err := s.repo.ScriptRevision(ctx, m.ID, 0)
+		if err != nil {
+			return nil, err
+		}
+		state, err := s.scriptState(m, rev)
+		if err != nil {
+			return nil, err
+		}
+		lesson.Script = &state
+	}
+	return lesson, nil
 }
 
 // ListMaterials lists every material, newest first. It never calls the generator.
@@ -226,6 +241,10 @@ type ListeningScriptSummary struct {
 	Lines              int
 	Questions          int
 	ImportedMaterialID *int64
+	// ImportedRevision and PackStatus describe an imported script's current
+	// revision against this pack (zero and "" when not imported).
+	ImportedRevision int
+	PackStatus       string
 }
 
 // ListScripts lists the authored scripts and whether each is imported. It
@@ -247,16 +266,40 @@ func (s *ListeningService) ListScripts(ctx context.Context) ([]ListeningScriptSu
 			SourcePack: sc.Source.Pack, Notice: sc.Source.Notice, Lines: len(sc.Lines), Questions: len(sc.Questions)}
 		if id, ok := imported[sc.PackScriptID()]; ok {
 			row.ImportedMaterialID = &id
+			rev, err := s.repo.ScriptRevision(ctx, id, 0)
+			if err != nil {
+				return nil, err
+			}
+			state, err := s.scriptStateFor(sc, rev)
+			if err != nil {
+				return nil, err
+			}
+			row.ImportedRevision, row.PackStatus = rev.Revision, state.PackStatus
 		}
 		out = append(out, row)
 	}
 	return out, nil
 }
 
+// ListeningScriptConflictError is ErrListeningScriptConflict with the lesson
+// that holds the script: its current revision differs from the pack.
+type ListeningScriptConflictError struct {
+	MaterialID int64
+	Revision   int
+	PackStatus string
+}
+
+func (e *ListeningScriptConflictError) Error() string {
+	return domain.ErrListeningScriptConflict.Error()
+}
+func (e *ListeningScriptConflictError) Unwrap() error { return domain.ErrListeningScriptConflict }
+
 // ImportScript imports one authored script with its authored exercise, in one
 // transaction and without a model call. Importing it again returns the same
-// lesson (true). ErrNotFound: no such script; ErrListeningScriptConflict: it
-// was imported before with different content (nothing is changed).
+// lesson (true) when its current revision has the pack's content.
+// ErrNotFound: no such script; *ListeningScriptConflictError: the lesson's
+// current revision differs from the pack (nothing is changed; an explicit
+// update is UpdateScript).
 func (s *ListeningService) ImportScript(ctx context.Context, scriptID string) (*ListeningLesson, bool, error) {
 	for _, sc := range s.scripts.Scripts {
 		if sc.ID != scriptID {
@@ -264,6 +307,17 @@ func (s *ListeningService) ImportScript(ctx context.Context, scriptID string) (*
 		}
 		m := domain.ListeningMaterial{SourceKind: domain.ListeningSourceAuthoredScript, PackScriptID: sc.PackScriptID(), Title: sc.Title}
 		saved, replay, err := s.repo.ImportAuthoredScript(ctx, m, sc.Segments(), sc.Content(), s.now())
+		if errors.Is(err, domain.ErrListeningScriptConflict) && saved.ID != 0 {
+			rev, revErr := s.repo.ScriptRevision(ctx, saved.ID, 0)
+			if revErr != nil {
+				return nil, false, revErr
+			}
+			state, stateErr := s.scriptStateFor(sc, rev)
+			if stateErr != nil {
+				return nil, false, stateErr
+			}
+			return nil, false, &ListeningScriptConflictError{MaterialID: saved.ID, Revision: rev.Revision, PackStatus: state.PackStatus}
+		}
 		if err != nil {
 			return nil, false, err
 		}
@@ -271,6 +325,178 @@ func (s *ListeningService) ImportScript(ctx context.Context, scriptID string) (*
 		return lesson, replay, err
 	}
 	return nil, false, fmt.Errorf("%w: listening script %q", domain.ErrNotFound, scriptID)
+}
+
+// ListeningScriptState is an imported script's current revision compared with
+// the server's pack.
+type ListeningScriptState struct {
+	ScriptID        string // the pack's script id, e.g. ls-wb1-u05
+	Revision        int
+	Fingerprint     string
+	PackStatus      string // domain.ListeningScriptUpToDate, …UpdateAvailable, …TitleChanged, …NotInPack
+	PackFingerprint string // "" when the pack has no such script
+}
+
+func (s *ListeningService) packScript(m domain.ListeningMaterial) (domain.ListeningScript, bool) {
+	for _, sc := range s.scripts.Scripts {
+		if sc.PackScriptID() == m.PackScriptID {
+			return sc, true
+		}
+	}
+	return domain.ListeningScript{}, false
+}
+
+func (s *ListeningService) scriptState(m domain.ListeningMaterial, rev domain.ListeningScriptRevision) (ListeningScriptState, error) {
+	sc, ok := s.packScript(m)
+	if !ok {
+		return ListeningScriptState{ScriptID: strings.TrimPrefix(m.PackScriptID, domain.ListeningScriptPackID+"/"), Revision: rev.Revision,
+			Fingerprint: rev.Fingerprint, PackStatus: domain.ListeningScriptNotInPack}, nil
+	}
+	state, err := s.scriptStateFor(sc, rev)
+	if err == nil && sc.Title != m.Title {
+		state.PackStatus = domain.ListeningScriptTitleChanged
+	}
+	return state, err
+}
+
+func (s *ListeningService) scriptStateFor(sc domain.ListeningScript, rev domain.ListeningScriptRevision) (ListeningScriptState, error) {
+	fp, err := sc.Fingerprint()
+	if err != nil {
+		return ListeningScriptState{}, err
+	}
+	state := ListeningScriptState{ScriptID: sc.ID, Revision: rev.Revision, Fingerprint: rev.Fingerprint, PackStatus: domain.ListeningScriptUpToDate, PackFingerprint: fp}
+	if fp != rev.Fingerprint {
+		state.PackStatus = domain.ListeningScriptUpdateAvailable
+	}
+	return state, nil
+}
+
+// ListeningScriptUpdatePreview is what an explicit update of an imported
+// script would change: the current revision against the server's pack.
+type ListeningScriptUpdatePreview struct {
+	MaterialID int64
+	State      ListeningScriptState
+	Changes    domain.ListeningScriptChanges
+}
+
+// ListeningScriptStaleError is ErrListeningScriptRevisionStale with a fresh
+// preview of the lesson as it is now.
+type ListeningScriptStaleError struct {
+	Preview *ListeningScriptUpdatePreview
+}
+
+func (e *ListeningScriptStaleError) Error() string {
+	return domain.ErrListeningScriptRevisionStale.Error()
+}
+func (e *ListeningScriptStaleError) Unwrap() error { return domain.ErrListeningScriptRevisionStale }
+
+// ScriptUpdatePreview compares an imported script's current revision with
+// the server's pack. It reads only. ErrNotFound: unknown material;
+// ErrListeningNotAuthoredScript: YouTube material; ErrListeningScriptNotInPack:
+// the pack has no such script.
+func (s *ListeningService) ScriptUpdatePreview(ctx context.Context, materialID int64) (*ListeningScriptUpdatePreview, error) {
+	m, err := s.repo.GetMaterial(ctx, materialID)
+	if err != nil {
+		return nil, err
+	}
+	if !m.IsAuthoredScript() {
+		return nil, domain.ErrListeningNotAuthoredScript
+	}
+	sc, ok := s.packScript(m)
+	if !ok {
+		return nil, domain.ErrListeningScriptNotInPack
+	}
+	rev, err := s.repo.ScriptRevision(ctx, materialID, 0)
+	if err != nil {
+		return nil, err
+	}
+	state, err := s.scriptState(m, rev)
+	if err != nil {
+		return nil, err
+	}
+	changes := domain.DiffListeningScript(rev.Transcript.Segments, *rev.Exercise.Content, sc.Segments(), sc.Content())
+	return &ListeningScriptUpdatePreview{MaterialID: m.ID, State: state, Changes: changes}, nil
+}
+
+// ListeningScriptUpdateResult is the lesson after an update and its revision.
+type ListeningScriptUpdateResult struct {
+	Revision int
+	Lesson   *ListeningLesson
+}
+
+// UpdateScript is the explicit, confirmed update of an imported script to the
+// server's pack. fromRevision and packFingerprint are the preview the learner
+// confirmed. It appends the next revision (never changing an earlier one) in
+// one transaction and makes no provider call. The returned bool is true when
+// nothing was written because the lesson already has the pack's content
+// (a repeated or concurrent confirmation, or a resend after a lost response).
+// Errors, all with nothing written: ErrValidation (malformed confirmation),
+// ErrNotFound, ErrListeningNotAuthoredScript, ErrListeningScriptNotInPack,
+// ErrListeningScriptTitleChanged, and *ListeningScriptStaleError when the pack
+// or the lesson changed since the preview.
+func (s *ListeningService) UpdateScript(ctx context.Context, materialID int64, fromRevision int, packFingerprint string) (*ListeningScriptUpdateResult, bool, error) {
+	if fromRevision < 1 || !domain.ValidListeningScriptFingerprint(packFingerprint) {
+		return nil, false, fmt.Errorf("%w: from_revision must be at least 1 and pack_fingerprint a sha256: fingerprint from the preview", domain.ErrValidation)
+	}
+	m, err := s.repo.GetMaterial(ctx, materialID)
+	if err != nil {
+		return nil, false, err
+	}
+	if !m.IsAuthoredScript() {
+		return nil, false, domain.ErrListeningNotAuthoredScript
+	}
+	sc, ok := s.packScript(m)
+	if !ok {
+		return nil, false, domain.ErrListeningScriptNotInPack
+	}
+	if sc.Title != m.Title {
+		return nil, false, domain.ErrListeningScriptTitleChanged
+	}
+	stale := func() error {
+		preview, err := s.ScriptUpdatePreview(ctx, materialID)
+		if err != nil {
+			return err
+		}
+		return &ListeningScriptStaleError{Preview: preview}
+	}
+	fp, err := sc.Fingerprint()
+	if err != nil {
+		return nil, false, err
+	}
+	if fp != packFingerprint {
+		return nil, false, stale()
+	}
+	rev, replay, err := s.repo.ReviseAuthoredScript(ctx, materialID, fromRevision, sc.Segments(), sc.Content(), s.now())
+	if errors.Is(err, domain.ErrListeningScriptRevisionStale) {
+		return nil, false, stale()
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	lesson, err := s.GetLesson(ctx, materialID)
+	if err != nil {
+		return nil, false, err
+	}
+	return &ListeningScriptUpdateResult{Revision: rev.Revision, Lesson: lesson}, replay, nil
+}
+
+// GetScriptRevision reads one revision of an imported script (its lines and
+// authored exercise), e.g. the one a Mistake Notebook record was saved from.
+// It reads only. ErrValidation: revision < 1; ErrNotFound: unknown material
+// or revision; ErrListeningNotAuthoredScript: YouTube material.
+func (s *ListeningService) GetScriptRevision(ctx context.Context, materialID int64, revision int) (*domain.ListeningScriptRevision, int, error) {
+	if revision < 1 {
+		return nil, 0, fmt.Errorf("%w: revision must be at least 1", domain.ErrValidation)
+	}
+	rev, err := s.repo.ScriptRevision(ctx, materialID, revision)
+	if err != nil {
+		return nil, 0, err
+	}
+	current, err := s.repo.ScriptRevision(ctx, materialID, 0)
+	if err != nil {
+		return nil, 0, err
+	}
+	return &rev, current.Revision, nil
 }
 
 // ListeningPrepareRequest is one explicit Prepare click.
