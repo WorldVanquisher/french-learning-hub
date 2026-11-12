@@ -718,6 +718,90 @@ A private **Writing** view (never in the public demo). Contract:
   ID is fixed for the form. **Open record #N** comes back with **← Back to
   Writing**.
 
+## Speaking (Speaking v1)
+
+A private **Speaking** view (never in the public demo). Contract:
+[ARCHITECTURE.md §4.7](../docs/ARCHITECTURE.md#47-speaking-v1).
+
+- **Practice prompts** lists the embedded prompts (`GET /speaking/prompts`);
+  **Start** creates the exercise; **Open** reopens it.
+- **New take** (`speakingRecorder.ts`):
+  - `getUserMedia` + `MediaRecorder` (webm/opus preferred), a live timer, and an
+    automatic stop at the backend's `max_duration_ms`. The take is a `Blob` in
+    memory, played back from an object URL. Nothing is requested while
+    recording or playing back, and nothing goes to browser storage.
+  - A refused permission (`NotAllowedError`), a missing device and a browser
+    without recording each have their own message. **Upload an audio file**
+    (type, size and duration checked in the browser) and **Type what you said
+    instead** remain available.
+  - **Use as take N** posts only metadata: type, size, SHA-256 (WebCrypto) and
+    duration.
+- **Take N:**
+  - local playback while the audio is in memory (`Speaking` stays mounted;
+    an honest note once it is gone);
+  - **Send audio of take N for transcription…** opens a panel naming the take,
+    length, size, type and provider. Only **Send audio** posts the base64 audio
+    under a fresh key, with the Listening/Writing recovery flow;
+  - the transcript editor is prefilled with the machine transcript, then with
+    the latest confirmed version. **Confirm as version N** saves a version;
+  - version tabs (`aria-pressed`) show the origin of each version.
+- **Feedback on take N, version M** shows only reports for that transcript.
+  Hints come first; **Show suggested wording** reveals the rest. **Show in
+  version M** marks a `located` quote. Quotes not found in the text
+  (`shownAsGrounded`) are listed apart.
+- **Compare** diffs any two confirmed transcripts (`diffWords` from Writing),
+  from the earlier take and version to the later one.
+- **Save this mistake…** posts one `learning_capture_v1` only on **Save
+  learning record**. The context names the exercise, take, transcript version
+  and feedback. **Open record #N** comes back with **← Back to Speaking**.
+
+## Mistake Notebook (Mistake Notebook v1)
+
+A private **Mistake Notebook** view (never in the public demo). Contract:
+[ARCHITECTURE.md §4.8](../docs/ARCHITECTURE.md#48-mistake-notebook-v1).
+
+- **Save paths:** `notebookLink.ts`'s `sourceRef(type, recordId, index,
+  attempt)` adds `source_ref` to the four existing capture saves:
+  - Listening and Reading send the exercise and question. The typed answer is
+    included only behind an unticked **Include my answer** box.
+  - Writing and Speaking send the report and correction or improvement.
+
+  `alreadySaved(e)` turns `409 source_already_saved` into "already saved as
+  learning record #N".
+- **Mistakes:** `GET /mistake-notebook/items` with skill and marked filters.
+  Each item shows the prompt, your words or answer, your record, and the
+  source line from its `link`.
+  - **Show reference** reveals the reference.
+  - **Open source** uses `sourceOpen(item)` and the skill view's
+    `openRequest` prop: the listening or reading lesson, the writing task with
+    `initialVersion`, or the speaking exercise with `initialTake` and
+    `initialVersion`.
+  - **Mark for retry** sends an explicit `PUT …/retry`.
+- **Retry session:** marked items from any skill. The reference stays hidden
+  until **Reveal reference**; the self-check uses `aria-pressed`. Typed
+  answers and checks stay in component state. The only write is an explicit
+  removal from the retry list.
+- **Grammar / Vocabulary / Unclassified:** `GET /mistake-notebook/concepts`,
+  shown with their kinds and reasons. A row opens the Concept in the
+  Knowledge Library.
+- **Record view:** `RecordSource` (in `RecordDetail`, when the App passes
+  `onOpenSource`) shows "Saved from …" with **Open source**, or the honest
+  "no structured source link" notice.
+
+
+### Learning home and source honesty (sections v1)
+
+- `LearningHome.tsx` (tab **Home**) lists the seven sections; Grammar and
+  Vocabulary open `MistakeNotebook` with `modeRequest`. It makes no request.
+- Notebook items: **What I got wrong** groups the learner's words or included
+  answer and record; the reference heading comes from `reference_origin`
+  (authored / generated with `generator`). `latest_version` adds a note;
+  `source_status` other than `resolved` shows the stored reference only, and
+  the retry session leaves such items out.
+- `NotebookOrigin.tsx`: Listening and Reading `openRequest` carry `target`
+  {`exerciseId`, `item`, `version`}; the lesson marks that question
+  (`notebook-target`) or says it now shows another version or exercise.
+
 ## Correcting a reviewed unit from the inspection (FLH-082)
 
 The unit inspection opened from a record offers corrections for a unit of the
@@ -756,6 +840,26 @@ INVALID judgment. It uses only existing endpoints and adds no semantics:
   unit #N** succeeds.
 - While a correction is in flight, other corrections and **Back to record #N**
   wait. Returning moves focus to the unit and re-reads its review status.
+
+## Mock Exam (Mock Exam v1)
+
+A private **Mock Exam** view (`pages/MockExam.tsx`, never in the public demo).
+Contract: [ARCHITECTURE.md §4.9](../docs/ARCHITECTURE.md#49-mock-exam-v1).
+
+- **Home:** `GET /exam/forms` and `GET /exam/sessions`; **Start** sends
+  `POST /exam/sessions` with a fresh `randomOperationId()` key, resent unchanged
+  after a lost response; in-progress sessions offer **Resume**.
+- **Session:** the countdown follows `deadline_at` with the server clock
+  offset from `server_now`; each choice is a `PUT …/answers/{position}` with a
+  per-question saved / failed state. Submit asks for confirmation; a
+  `NetworkError` offers **Check status** (re-read) or **Submit the same answers
+  again** (replayed by the server). At zero the page submits once. A `409` with
+  an `exam` body shows that closed view.
+- **Results:** score, per-question explanation (Explanation-language
+  preference), authored reason, **Show evidence** (highlight in the document),
+  and the frozen source line. **Save this missed point…** imports the authored
+  passage (`importReadingExample`) and posts a capture with a `reading_item`
+  `source_ref`; **Practise a related question** posts `…/retries`.
 
 ## Human feedback (FLH-018)
 
@@ -856,6 +960,18 @@ selector.
   whose placeholders take React nodes (no markup inside messages). No
   translation service, model call or network request is involved;
   `i18n.test.tsx` checks key and placeholder parity.
+
+## Theme (Endfield preview)
+
+`theme.tsx` adds a **Theme** selector to the workbench header (Standard, the
+default, or Endfield preview), stored as `flh.ui-theme.v1` with the same
+fallbacks as the language choice. `theme-endfield.css` holds every rule under
+`:root[data-theme="endfield"]`: a dark command bar with the current view as a
+yellow block, square panels with an ink tab, cut-corner actions (gradient
+corners, so focus outlines are never clipped), wide upper-case labels, calm
+reading surfaces and highlighter-style marks, and no transitions under
+reduced motion. `theme.test.tsx` checks the default, persistence, fallbacks,
+the public demo and the stylesheet's scoping.
 
 ## Layout
 

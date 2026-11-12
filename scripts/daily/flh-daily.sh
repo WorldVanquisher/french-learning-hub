@@ -111,10 +111,17 @@ rd = envr.get("READING_PROVIDER", "") or "disabled"
 if rd not in ("openai", "disabled"): problems.append("READING_PROVIDER must be openai or disabled")
 wr = envr.get("WRITING_PROVIDER", "") or "disabled"
 if wr not in ("openai", "disabled"): problems.append("WRITING_PROVIDER must be openai or disabled")
-real = "openai" in (ai, ex, sg, ls, rd, wr)
+sp = envr.get("SPEAKING_PROVIDER", "") or "disabled"
+if sp not in ("openai", "disabled"): problems.append("SPEAKING_PROVIDER must be openai or disabled")
+stt = envr.get("SPEAKING_TRANSCRIPTION_PROVIDER", "") or "disabled"
+if stt not in ("openai", "disabled"): problems.append("SPEAKING_TRANSCRIPTION_PROVIDER must be openai or disabled")
+if stt == "openai" and not envr.get("SPEAKING_TRANSCRIPTION_MODEL"):
+    problems.append("SPEAKING_TRANSCRIPTION_MODEL must be set to the transcription model you chose")
+text_model = "openai" in (ai, ex, sg, ls, rd, wr, sp)
+real = text_model or stt == "openai"
 if real:
     if not envr.get("OPENAI_API_KEY"): problems.append("OPENAI_API_KEY must be set (the value is never shown)")
-    if not envr.get("OPENAI_MODEL"): problems.append("OPENAI_MODEL must be set to the model you chose")
+    if text_model and not envr.get("OPENAI_MODEL"): problems.append("OPENAI_MODEL must be set to the model you chose")
 def secs(key, default):
     v = envr.get(key) or ""
     try:
@@ -178,6 +185,8 @@ if mode == "summary":
     print(f"listening:  {ls}" + (" — explicit requests call the provider and may be billed" if ls == "openai" else " — off"))
     print(f"reading:    {rd}" + (" — explicit requests call the provider and may be billed" if rd == "openai" else " — off (authored examples still work)"))
     print(f"writing:    {wr}" + (" — explicit feedback requests call the provider and may be billed" if wr == "openai" else " — off (drafting and revising still work)"))
+    print(f"speaking transcription: {stt}" + (" — each explicit click sends the audio of one take to the provider (never stored) and may be billed" if stt == "openai" else " — off (type the transcript)"))
+    print(f"speaking feedback: {sp}" + (" — explicit feedback requests call the provider and may be billed" if sp == "openai" else " — off (recording and transcripts still work)"))
     if src == "disabled" and auto == "disabled":
         print("daily listening: off")
     else:

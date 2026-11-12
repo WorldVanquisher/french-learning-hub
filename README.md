@@ -101,6 +101,26 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   (`WRITING_PROVIDER`) gives feedback on the version you choose, with hints
   before suggestions and quotes checked against that exact text, versions can
   be compared, and a mistake can be saved as a normal learning record.
+- Practise **Speaking** on authored prompts: record a take and play it back in
+  the browser (nothing is sent, the audio is never stored), or upload a file
+  or type what you said. Opt-in requests transcribe one take you choose
+  (`SPEAKING_TRANSCRIPTION_PROVIDER`) and give feedback on one transcript
+  version you confirmed (`SPEAKING_PROVIDER`), based on the text only and never
+  on pronunciation. Takes can be compared, and a mistake can be saved as a
+  normal learning record.
+- Revisit saved misses from all four skills in one **Mistake Notebook**. Each
+  item is a normal learning record linked to the exact exercise item, draft
+  version or transcript version it came from. You can filter by skill, mark
+  items for retry and practise them in a Recall-style session (nothing is
+  scored). Grammar and Vocabulary views list Concepts by the kinds of their
+  supporting units. A **Home** tab names the seven learning sections and opens
+  each one.
+- Take a timed **Mock Exam** in reading comprehension, built only from the
+  authored reading pack. The deadline and your answers live on the server, so a
+  reload or a lost connection resumes; a repeated submission returns the same
+  result. After submitting, each question is explained against the document,
+  and a missed point can be saved or practised with a related question. It is
+  practice, not an official score.
 - Inspect effective annotations, export the versioned Concept Annotation
   Dataset v1, check its quality report, and compare exact, weighted lexical,
   BM25 and optional embedding retrieval baselines under one evaluation
@@ -112,6 +132,9 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   Only interface text is translated: learner content, stored and AI-generated
   text, Concept identities, IDs, decision names and raw server errors are shown
   as written.
+- Try the opt-in **Endfield preview** theme in the private workbench (Theme →
+  Endfield preview). The standard look stays the default; the choice is
+  remembered in the browser and never changes the public demo.
 
 ## What it is not
 

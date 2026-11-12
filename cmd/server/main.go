@@ -17,9 +17,11 @@ import (
 	"french-learning-app/internal/application"
 	"french-learning-app/internal/config"
 	"french-learning-app/internal/embedding"
+	"french-learning-app/internal/exam"
 	"french-learning-app/internal/extractor"
 	"french-learning-app/internal/listening"
 	"french-learning-app/internal/reading"
+	"french-learning-app/internal/speaking"
 	"french-learning-app/internal/storage/sqlite"
 	"french-learning-app/internal/suggester"
 	transporthttp "french-learning-app/internal/transport/http"
@@ -110,7 +112,11 @@ func run() error {
 	feedbackSvc := application.NewFeedbackService(feedbackRepo)
 	effectiveSvc := application.NewEffectiveAnalysisService(analysisRepo, feedbackRepo)
 	inventorySvc := application.NewInventoryService(inventoryRepo)
-	captureSvc := application.NewCaptureService(captureRepo)
+	// Mistake Notebook v1: a capture's optional source_ref must name a stored
+	// listening/reading item, writing correction or speaking improvement.
+	sourceResolver := application.NewMistakeSourceResolver(sqlite.NewListeningRepository(db), sqlite.NewReadingRepository(db),
+		sqlite.NewWritingRepository(db), sqlite.NewSpeakingRepository(db))
+	captureSvc := application.NewCaptureService(captureRepo, application.WithSourceResolver(sourceResolver))
 	knowledgeSvc := application.NewKnowledgeService(entryRepo, analysisRepo, feedbackRepo, knowledgeRepo, admissionRepo, selectedExtractor)
 	conceptSvc := application.NewConceptService(knowledgeRepo, conceptRepo, conceptRepo)
 	effectiveAnnotationSvc := application.NewEffectiveAnnotationService(conceptRepo, conceptRepo)
@@ -140,6 +146,7 @@ func run() error {
 	log.Printf("listening provider: %s", cfg.Listening.Provider)
 	log.Printf("reading provider: %s", cfg.Reading.Provider)
 	log.Printf("writing provider: %s", cfg.Writing.Provider)
+	log.Printf("speaking providers: transcription %s, feedback %s", cfg.Speaking.Transcription, cfg.Speaking.Feedback)
 	log.Printf("daily listening: playlist %s, automatic preparation %s, notify %s (timezone %s)",
 		cfg.ListeningDaily.Source, onOff(cfg.ListeningDaily.AutoPrepare), cfg.ListeningDaily.Notify, cfg.ListeningDaily.Location)
 	log.Printf("embedding provider: %s", cfg.Embedding.Provider)
@@ -152,11 +159,21 @@ func run() error {
 		transporthttp.WithRetrievalEvaluation(retrievalEvaluationSvc),
 		transporthttp.WithRetrievalComparison(retrievalComparisonSvc),
 		transporthttp.WithKnowledgeLibrary(libraryService),
+		// Mistake Notebook v1: read-only views plus explicit retry marks; its
+		// Grammar/Vocabulary views reuse the library search and support rules.
+		transporthttp.WithMistakeNotebook(application.NewMistakeNotebookService(sqlite.NewNotebookRepository(db), sourceResolver, entryRepo, libraryService)),
 		transporthttp.WithReadiness(db.PingContext),
 		transporthttp.WithConceptSuggestions(application.NewConceptSuggestionService(
 			sqlite.NewConceptSuggestionRepository(db), selectedSuggester)),
 	}
 	options = append(options, transporthttp.WithListening(listeningLessons), transporthttp.WithListeningDaily(listeningDaily))
+	// Mock Exam v1: authored forms over the embedded reading pack, validated
+	// here (a bad pair stops startup); no provider is involved.
+	examSvc, err := application.NewExamService(sqlite.NewExamRepository(db), exam.Forms(), reading.ExamplePack())
+	if err != nil {
+		log.Fatalf("mock exam: %v", err)
+	}
+	options = append(options, transporthttp.WithExam(examSvc))
 	// Exam Reading v1: the generator is opt-in (READING_PROVIDER); the authored
 	// examples are embedded and validated here, so a bad pack stops startup.
 	selectedReading, err := reading.New(cfg.Reading)
@@ -181,6 +198,20 @@ func run() error {
 		return err
 	}
 	options = append(options, transporthttp.WithWriting(writingSvc))
+	// Speaking v1: transcription (SPEAKING_TRANSCRIPTION_PROVIDER) and feedback
+	// (SPEAKING_PROVIDER) are opt-in and independent; recording and playback
+	// happen in the browser and never reach a provider. The authored prompts
+	// are validated here.
+	selectedTranscriber, selectedSpeaking, err := speaking.New(cfg.Speaking)
+	if err != nil {
+		return err
+	}
+	speakingSvc, err := application.NewSpeakingService(sqlite.NewSpeakingRepository(db), selectedTranscriber, selectedSpeaking, speaking.ExamplePrompts(),
+		application.WithSpeakingDeadline(cfg.Speaking.OpenAITimeout+30*time.Second))
+	if err != nil {
+		return err
+	}
+	options = append(options, transporthttp.WithSpeaking(speakingSvc))
 	// Semantic search is opt-in (SEMANTIC_SEARCH=qdrant). The server only reads
 	// the index; building it is an explicit operator command (semantic-index).
 	if cfg.Semantic.Mode == config.SemanticQdrant {

@@ -475,6 +475,16 @@ FLH-083 UI localization:
   (no markup in strings, no sentences assembled from fragments), and outcome or
   notice text stored as message references so a language switch re-renders it.
 
+Workbench theme (Endfield preview, opt-in):
+
+- `web/src/theme.tsx` sets `data-theme="endfield"` on `<html>` only from the
+  private workbench's Theme selector (`flh.ui-theme.v1`; anything else or
+  unavailable storage = standard, the default). The public demo never sets it.
+- `web/src/theme-endfield.css`: every selector starts with
+  `:root[data-theme="endfield"]`; no `clip-path` (focus rings stay whole), no
+  fonts, images or `url()`; reduced motion turns transitions off. Original CSS
+  after hhikr/endfield-ui-skill's notes; never copy game art, logos or fonts.
+
 FLH-095 bilingual explanations:
 
 - Only an analysis explanation and a unit statement have English/Chinese
@@ -603,6 +613,70 @@ Exam Writing v1 (private workbench):
   version or carry a correction over. No score. A mistake is a capture
   (`source: manual`) on explicit confirmation only; no Concept, no mastery.
   Never in the public demo.
+
+Speaking v1 (private workbench):
+
+- Migration 018: `speaking_exercises` (authored prompts only, unique
+  `prompt_id`), `speaking_takes` (audio METADATA only: type, size, SHA-256,
+  browser-measured duration; there is no audio column), `speaking_transcriptions`
+  + `speaking_transcription_requests`, `speaking_transcripts` (confirmed,
+  immutable versions; origin `transcription`/`corrected`/`typed`),
+  `speaking_feedback` + `speaking_feedback_requests` (about exactly one
+  transcript version). Contract: `docs/ARCHITECTURE.md` §4.7, A.19.
+- Recording and playback stay in the browser and send nothing. Never store
+  audio (no column, file, log or browser storage). Audio leaves the browser
+  only on an explicit transcription request, as base64 in JSON (do not loosen
+  the browser boundary for it), checked first: accepted type, size, magic
+  bytes and the take's SHA-256.
+- `SPEAKING_TRANSCRIPTION_PROVIDER=openai` (+ `SPEAKING_TRANSCRIPTION_MODEL`)
+  and `SPEAKING_PROVIDER=openai` are opt-in, independent and default
+  `disabled`. No language field, no prompt to the transcriber.
+- Feedback reads the confirmed text only. The server grounds quotes against
+  that version. Categories exclude spelling, punctuation and pronunciation,
+  and comments about pronunciation or scores are refused as `invalid_output`.
+  A mistake is a capture (`source: manual`) on explicit confirmation only.
+  Never in the public demo.
+
+Mistake Notebook v1 (private workbench):
+
+- Optional `source_ref` on `learning_capture_v1` (`listening_item`,
+  `reading_item`, `writing_correction`, `speaking_improvement` + record id +
+  1-based item; `attempt` only for listening/reading when the learner ticks
+  it). Validated against stored items by `MistakeSourceResolver` (422
+  otherwise) and stored in `learning_capture_sources` (migration 019) in the
+  capture's transaction. The fingerprint includes it only when present.
+- `UNIQUE(type, record_id, item)`: a second record for the same item is
+  `409 source_already_saved` with the existing `entry_id`. Never link old
+  records by parsing prose or capture IDs; never backfill or rewrite them.
+- `mistake_retry_marks` is append-only and learner-explicit; a mark is not a
+  Concept judgment, score or schedule. Retry sessions keep answers and
+  self-checks in the page only.
+- Grammar/Vocabulary views (`concept_kind_view_v1`) classify active Concepts
+  only by the kinds of current supporting units (all grammar / all
+  vocabulary); everything else stays unclassified. Reuse the Knowledge
+  Library search and Concept IDs; no second catalog. Contract:
+  `docs/ARCHITECTURE.md` §4.8, A.20. Never in the public demo.
+- Sections v1: the **Home** tab (`LearningHome.tsx`) only opens the seven
+  sections. Items label the reference `authored` or `generated` (from stored
+  provenance) and keep the learner's side apart; items stay on their source
+  version (`latest_version` flags a newer one); an unresolvable source degrades
+  that item only (`source_status`), never the list, and is never guessed.
+
+Mock Exam v1 (private workbench):
+
+- Migration 020: `exam_sessions` (start under a UUID `Idempotency-Key`, server
+  `deadline_at`, forms/pack hashes), `exam_session_items` (frozen authored
+  questions with content hashes), `exam_answers` (append-only, accepted only up
+  to the deadline inside the write transaction), `exam_submissions` (one per
+  session). State is derived (submitted, else expired after the deadline);
+  reads never write. Contract: `docs/ARCHITECTURE.md` §4.9, A.21.
+- Forms (`internal/exam/forms/`) reference reading-pack questions only and are
+  validated at startup; choices are the authored answer and authored wrong
+  answers. No provider, no official score or level.
+- Keys, explanations, reasons and evidence only in `result` (closed sessions).
+  Repeat submit with the same final answers replays; other answers `409`.
+  A missed point is an explicit capture of the same authored `reading_item`.
+  Never in the public demo: not allowlisted, tables empty in demo artifacts.
 
 Daily Listening (pull, prepare, notify):
 

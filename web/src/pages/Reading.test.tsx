@@ -5,6 +5,8 @@ import { StrictMode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
+import { LocaleProvider } from "../i18n";
+import { Reading } from "./Reading";
 import PublicDemoApp from "../PublicDemoApp";
 import { authoredExercise, generatedItems, items, lessonView, passageText, segments } from "../test/readingFixture";
 import type { ReadingExercise, ReadingLessonView, ReadingPreparation } from "../types/reading";
@@ -198,7 +200,9 @@ describe("Reading (private workbench)", () => {
     const posts = writes(server);
     expect(posts.map((c) => c.path)).toEqual(["/api/captures"]);
     const doc = JSON.parse(posts[0].body) as Record<string, string>;
-    expect(Object.keys(doc).sort()).toEqual(["capture_id", "original_context", "original_input", "schema_version", "source"]);
+    expect(Object.keys(doc).sort()).toEqual(["capture_id", "original_context", "original_input", "schema_version", "source", "source_ref"]);
+    // Mistake Notebook v1: the exact stored item, never the typed answer unless the learner includes it.
+    expect((doc as unknown as { source_ref: unknown }).source_ref).toEqual({ type: "reading_item", record_id: 1, item: 3 });
     expect(doc.source).toBe("manual");
     expect(doc.capture_id).toMatch(/^reading-1-1-3-[0-9a-f-]{36}$/);
     expect(doc.original_context).toContain("Reading lesson #1:");
@@ -210,6 +214,26 @@ describe("Reading (private workbench)", () => {
     expect(await screen.findByText("Opened from a reading lesson.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "← Back to Reading" }));
     expect(screen.getByLabelText("Your answer to question 3")).toHaveValue("réponse-privée-123");
+  });
+
+  it("sends the typed answer with the record only when the learner ticks it (Mistake Notebook)", async () => {
+    const server = newServer([lessonView()]);
+    serve(server);
+    await openReading();
+    fireEvent.click(await screen.findByRole("button", { name: lessonView().lesson.title }));
+    fireEvent.change(await screen.findByLabelText("Your answer to question 3"), { target: { value: "Le technicien revient demain." } });
+    fireEvent.click(screen.getByRole("button", { name: "Reveal answers and evidence" }));
+    const q3 = screen.getByRole("group", { name: "Reference for question 3" });
+    fireEvent.click(within(q3).getByRole("button", { name: "Save as a learning question…" }));
+    const form = screen.getByRole("form", { name: "Save a missed point from question 3" });
+    const include = within(form).getByRole("checkbox", { name: "Include my answer in the record: Le technicien revient demain." });
+    expect(include).not.toBeChecked();
+    fireEvent.click(include);
+    fireEvent.change(within(form).getByLabelText("What did you miss, or what do you want to ask?"), { target: { value: "Le délai m'a échappé." } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save learning record" }));
+    expect(await screen.findByText("Saved as learning record #88.")).toBeInTheDocument();
+    const doc = JSON.parse(writes(server)[0].body) as { source_ref: unknown };
+    expect(doc.source_ref).toEqual({ type: "reading_item", record_id: 1, item: 3, attempt: "Le technicien revient demain." });
   });
 
   it("prepares an exercise for a learner passage under a key and, after a lost response, finds it by that key", async () => {
@@ -285,5 +309,31 @@ describe("Reading (private workbench)", () => {
     expect(screen.queryByRole("button", { name: "Reading" })).toBeNull();
     await waitFor(() => expect(server.calls.length).toBeGreaterThan(0));
     expect(server.calls.filter((c) => c.path.startsWith("/api/reading"))).toEqual([]);
+  });
+});
+
+describe("Reading opened from the Mistake Notebook (FLH sections v1)", () => {
+  it("marks the saved question when the lesson still shows its exercise", async () => {
+    serve(newServer([lessonView()]));
+    render(
+      <LocaleProvider>
+        <Reading openRequest={{ lessonId: 1, nonce: 1, target: { exerciseId: 1, item: 2, version: 1 } }} />
+      </LocaleProvider>,
+    );
+    expect(await screen.findByText(/Opened from the Mistake Notebook for question 2 of exercise #1 \(passage version 1\)\. Question 2 is marked below\./)).toBeTruthy();
+    expect(document.getElementById("reading-item-1-2")?.className).toContain("notebook-target");
+    expect(document.getElementById("reading-item-1-1")?.className).not.toContain("notebook-target");
+  });
+
+  it("says so, instead of pointing at another question, when the lesson now shows a newer version", async () => {
+    const newer = lessonView({ passage: { id: 2, version: 2, segments, created_at: "2026-11-10T09:00:00Z" }, versions: 2, exercises: [authoredExercise(7, 2), authoredExercise(1, 1)] });
+    serve(newServer([newer]));
+    render(
+      <LocaleProvider>
+        <Reading openRequest={{ lessonId: 1, nonce: 1, target: { exerciseId: 1, item: 2, version: 1 } }} />
+      </LocaleProvider>,
+    );
+    expect(await screen.findByText(/This lesson now shows version 2, so that question is not shown here/)).toBeTruthy();
+    expect(document.querySelector(".notebook-target")).toBeNull();
   });
 });

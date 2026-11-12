@@ -87,6 +87,7 @@ internal/embedding    optional HTTP text-to-vector provider (M12-D evaluation, F
 internal/listening    listening exercise generator, YouTube playlist source, Telegram notifier, wiring
 internal/reading      reading exercise generator (opt-in, READING_PROVIDER) and the embedded authored pack
 internal/writing      writing feedback generator (opt-in, WRITING_PROVIDER) and the embedded authored prompts
+internal/speaking     speaking transcriber and feedback generator (opt-in, SPEAKING_*) and the embedded authored prompts
 internal/vectorindex  single-instance Qdrant REST adapter for the optional semantic index
 internal/captureclient   thin HTTP client for POST /captures (used by cmd/capture)
 internal/storage/sqlite  SQLite repositories + migration runner
@@ -618,6 +619,12 @@ the server. Strict decoding (`DisallowUnknownFields` plus a trailing-token check
 rejects unknown fields at the top level and inside `analysis`, and rejects a
 second JSON object after the first.
 
+Mistake Notebook v1 adds one optional field, `source_ref`: the exact stored
+item a record is saved from ([§4.8](#48-mistake-notebook-v1)). It is checked
+against stored data, stored in the same transaction as the receipt, and is
+part of the fingerprint only when present. Captures without it, including
+every earlier one, behave and fingerprint exactly as before.
+
 `schema_version` must be exactly `learning_capture_v1` (a single domain constant,
 not scattered string literals); any other value is a validation error. `source`
 is a typed vocabulary (`chatgpt-web`, `manual`); an unknown source is rejected,
@@ -1108,6 +1115,232 @@ feeds the learning workflow only through §4.1. Migration `017`.
     learner's revised wording and the stored reason. The context names the
     task, version, feedback and generator. No Concept and no mastery.
 - **Not in the public demo:** the routes are not allowlisted and the four
+  tables must be empty in demo artifacts.
+
+### 4.7 Speaking v1
+
+A private workbench section for spoken practice: authored prompts, takes
+recorded and played back in the browser, confirmed transcripts, and optional
+feedback on one chosen transcript version. It feeds the learning workflow only
+through §4.1. Migration `018`.
+
+- **Exercise** (`speaking_exercises`): one per prompt of the embedded set
+  `internal/speaking/prompts/speaking_prompts_v1.json`
+  (`flh_speaking_prompts_v1`, validated at startup). The set has three
+  original practical prompts: respond to an invitation, ask for information,
+  explain a change of plan. Each has content points, a duration range (at most
+  120 s) and an example transcript with deliberate mistakes. They are not
+  official exam items and carry no certified CEFR level. Starting a prompt
+  again returns the same exercise.
+- **Take** (`speaking_takes`, numbered `1…20`): recorded with MediaRecorder,
+  uploaded as a file, or typed (`audio_source` `recording`, `file` or `none`).
+  - **Audio stays in the browser.** Recording and playback make no request.
+    **Use as take N** stores only metadata: the canonical type, size, SHA-256
+    and browser-measured duration. No column can hold audio.
+  - Accepted types are those both of the provider's pages list: `audio/webm`,
+    `audio/mp4` (m4a), `audio/mpeg` (mp3) and `audio/wav`. The limits are
+    8 MiB and 120 s. The server enforces the size and the declared duration,
+    but it cannot decode audio, so the duration is the browser's measurement.
+- **Transcription** (`speaking_transcriptions`,
+  `speaking_transcription_requests`): opt-in
+  `SPEAKING_TRANSCRIPTION_PROVIDER=openai` with an explicit
+  `SPEAKING_TRANSCRIPTION_MODEL`. It reuses `OPENAI_API_KEY`, `OPENAI_BASE_URL`
+  and `OPENAI_TIMEOUT`.
+  - One `POST /speaking/takes/{id}/transcriptions` per click, after a panel
+    that names the take, its length, size and type, and the provider.
+  - The audio travels as base64 inside JSON: the HTTP boundary accepts browser
+    bodies only as JSON, and it is unchanged.
+  - Before any call, the server checks the type, the size, the magic bytes for
+    that type, and that the audio's SHA-256 and type are the take's.
+  - The adapter sends `multipart/form-data` to `{base}/audio/transcriptions`
+    with `file` (named `take.<ext>`, with its type), `model` and
+    `response_format=json`, and reads only `text`. It sends no language field
+    (its name differs between models) and no prompt, so the transcript is not
+    nudged towards the expected answer.
+  - The audio is held in memory for that call only and never written.
+  - Requests follow §4.4's attempt-first rules: one in progress per exercise;
+    an `unknown` outcome for that take needs `confirm_unknown_retry`; a same-key
+    resend with other audio is `key_conflict`. A machine transcript is
+    `openai:<model>:speaking_transcription_v1`.
+- **Confirmed transcript** (`speaking_transcripts`, versions `1…10` per take):
+  the learner checks the text and confirms it.
+  - The origin is decided by the server: `transcription` (the machine
+    transcript unchanged), `corrected` (an edit of it or of an earlier
+    version) or `typed`.
+  - Versions are immutable; a text identical to the latest is refused
+    (`409 unchanged`). Feedback is requested only for a confirmed version.
+- **Feedback** (`speaking_feedback`, `speaking_feedback_requests`): opt-in
+  `SPEAKING_PROVIDER=openai` (reuses `OPENAI_*`). One explicit
+  `POST /speaking/transcripts/{id}/feedback` per click, with Writing's
+  discipline (§4.6).
+  - **Content:**
+    - `task_fulfilment` (`met`/`partly_met`/`not_met`, which is not a score);
+    - `clarity`;
+    - at most 4 `improvements`, each with `grammar`, `vocabulary`,
+      `register` or `organisation`. There is no spelling, punctuation or
+      pronunciation category: those belong to the transcriber, or cannot be
+      heard in text.
+  - Every quote is grounded server-side against that exact version (`located`
+    with a rune `start`, `ambiguous`, `not_found`).
+  - `ValidateSpeakingFeedback` also refuses any English or Chinese comment
+    that judges pronunciation, accent or intonation, or claims a score, grade,
+    CEFR level or exam result.
+  - A report names its take and version and is never carried over to another
+    version.
+- **Workbench:**
+  - Takes (`aria-pressed`) and their confirmed versions; local playback while
+    the audio is in memory, with an honest note once it is gone.
+  - Hints before **Show suggested wording**. **Show in version N** marks only a
+    `located` quote.
+  - **Compare** diffs any two confirmed transcripts, from earlier to later.
+  - A denied permission, a missing device and a browser that cannot record
+    each say so and keep the file and typed fallbacks.
+  - **Save this mistake…** posts one `learning_capture_v1` (`source: manual`)
+    on explicit confirmation. Its context names the exercise, take,
+    transcript version and feedback. **Open record #N** returns with
+    **← Back to Speaking**. No Concept, score or mastery.
+- **Not in the public demo:** the routes are not allowlisted, and the seven
+  tables must be empty in demo artifacts.
+
+### 4.8 Mistake Notebook v1
+
+One private place to revisit the misses a learner saved from Listening,
+Reading, Writing and Speaking. A notebook item is an ordinary learning record
+(§4.1), saved with a structured **source reference**. Migration `019`.
+
+- **Source reference:** the optional `source_ref` of `learning_capture_v1`:
+  `{"type", "record_id", "item", "attempt"?}`.
+  - `type` is `listening_item`, `reading_item` (an exercise and its 1-based
+    question), `writing_correction` or `speaking_improvement` (a feedback
+    report and its 1-based correction or improvement).
+  - `attempt` is the learner's own answer. It is allowed only for listening
+    and reading, and only when the learner ticks **Include my answer**.
+    Writing and speaking quote the learner's own words from that exact
+    version instead.
+- **Checks:** the server checks the referenced item exists. It must be
+  completed content, the item must be in range, and a writing or speaking
+  quote must have been found in its version. A reference that fails any check
+  is `422` and nothing is stored.
+- **Storage:** the reference goes in `learning_capture_sources`, in the same
+  transaction as the entry and receipt. The capture fingerprint covers it only
+  when it is present, so every other capture keeps its fingerprint.
+- **Duplicates:** `UNIQUE(type, record_id, item)` means one record per source
+  item. A second save of the same item under another `capture_id` is `409
+  {"code": "source_already_saved", "entry_id"}`, naming the record. The same
+  `capture_id` replays as before.
+- **No inference:** old records are never linked by parsing their prose or
+  `capture_id`, and are never rewritten. `GET /entries/{id}/source` answers
+  `linked: false` with a notice, and the record view says so.
+- **Items:** `GET /mistake-notebook/items` (filter by `skill` and
+  `marked=true`, newest first). Each item is resolved from its stored source:
+  - the prompt (question, task prompt or situation) and category;
+  - the learner's quoted words or included answer;
+  - the reference answer or suggested wording, with the explanation in
+    English and Chinese, and writing and speaking hints;
+  - an exact `link` (listening material, exercise and transcript version;
+    reading lesson, passage version and exercise; writing task, draft and
+    version, and feedback; speaking exercise, take, transcript and version,
+    and feedback);
+  - the record's own text.
+- **Retry marks** (`mistake_retry_marks`): append-only; the latest row per
+  record is current. `PUT /mistake-notebook/items/{id}/retry {"marked"}` adds a
+  row only when the state changes, and only for notebook records. A mark is
+  not a Concept judgment, a score or a schedule.
+- **Workbench (Mistake Notebook view):**
+  - **Mistakes:** skill filter, "marked for retry" filter, **Show reference**,
+    **Open source** (opens the skill view at that lesson, the writing task at
+    that draft version, or the speaking take at that transcript version),
+    **Open record**, and **Mark for retry**.
+  - **Retry session:** Recall Practice over marked items from any skill. The
+    reference stays hidden until **Reveal reference**. Typed answers and the
+    self-check stay in the page: never sent, scored or scheduled. Taking an
+    item off the list is a separate, explicit action.
+  - The four save forms send the `source_ref`, and show "already saved as
+    record #N" for a duplicate.
+- **Grammar / Vocabulary / Unclassified**
+  (`GET /mistake-notebook/concepts?kind=&q=`, rule `concept_kind_view_v1`):
+  - The Knowledge Library search (§9) runs over **active** Concepts, with its
+    tokens, ordering and support rules.
+  - Each Concept is classified by the `fr_l2_knowledge_v1` kinds of its current
+    supporting units: all `grammar` gives Grammar; all `vocabulary` gives
+    Vocabulary.
+  - Mixed kinds, another kind (`morphology`, `orthography`, `pronunciation`,
+    `usage`, `expression`) or no supporting unit stays unclassified, with the
+    reason. There is no separate catalog and nothing is guessed.
+  - Rows open the Concept in the Knowledge Library by its ID.
+- **Not in the public demo:** the routes are not allowlisted, and both tables
+  must be empty in demo artifacts.
+
+**Sections v1 (learning home and source honesty).** No schema change.
+- **Learning home** (workbench tab **Home**): one page naming the seven
+  sections (Listening, Reading, Writing, Speaking, Grammar, Vocabulary,
+  Mistake Notebook). It reads and writes nothing. Grammar and Vocabulary open
+  the notebook's kind views; a Concept opens in the Knowledge Library, which
+  shows its source records and starts Recall Practice. The default view is
+  still Concept Review.
+- **Mine versus suggested:** an item keeps the learner's side ("What I got
+  wrong": their quoted words or included answer, and their record) apart from
+  the reference, which is labelled by `reference_origin`: `authored` (provenance
+  `authored:<pack>`, written and reviewed by a person) or `generated` (any
+  model provenance; nobody reviewed it), with the stored `generator`. Nothing
+  generated becomes a record, a confirmed mistake or a Concept membership
+  except through the learner's explicit save.
+- **Exact versions:** an item is always read from the version it came from.
+  `latest_version` is set when the source now has a newer reading passage or
+  listening transcript version. Opening a listening or reading item passes the
+  exercise, item and version; the lesson marks that question, or says the
+  lesson now shows another version or exercise instead of pointing at a
+  different question. Writing and Speaking open the exact draft or transcript
+  version, as before.
+- **Unreadable source:** if a stored reference no longer resolves (a missing
+  row: `missing`; a row that no longer yields the item: `unusable`), that item
+  is listed with its stored reference only and nothing guessed; the rest of the
+  notebook still loads, its retry mark still works, and a retry session leaves
+  it out and says how many were left out.
+
+### 4.9 Mock Exam v1
+
+A private, timed reading-comprehension exam built only from authored material
+(migration `020`). No provider is involved; nothing is an official score.
+- **Forms** (`internal/exam/forms/mock_exam_forms_v1.json`, schema
+  `flh_mock_exam_forms_v1`, validated against the reading pack at startup):
+  `ce-examen-blanc-1` (3 documents, 9 questions, 20 min) and
+  `ce-entrainement-express` (1 document, 3 questions, 90 s). Every question
+  is a reading-pack question; its choices are the authored reference answer
+  and the authored wrong answers (each with its English and Chinese reason),
+  in an order fixed by a hash of the question id and the choice text.
+- **Assembly is immutable:** a start (`Idempotency-Key`) freezes a copy of each
+  question, its choices, key, explanations and evidence in
+  `exam_session_items` with a content hash, plus the forms and pack hashes on
+  `exam_sessions`. A later pack change never alters a running or past exam.
+  The same key replays the session; another form under it is `409`.
+- **Server-owned deadline:** `deadline_at` = start + duration, on the server's
+  clock. Answers are append-only events (`exam_answers`) accepted only up to
+  the deadline, re-checked inside the write transaction. A reload or a
+  reconnect reads the session back (answers and remaining time) from the
+  server; the browser stores nothing.
+- **State is derived:** a submission (`exam_submissions`, at most one per
+  session) closes it; otherwise the deadline does (`expired`), and its result
+  is the answers saved in time. Reading never writes.
+- **Safe repeat submission:** a submit merges the body's answers over the saved
+  ones. Repeating it with the same final answers replays the stored result;
+  other answers after a submission are `409 already_submitted`; after the
+  deadline `409 exam_expired` with the expired result, and nothing is written.
+- **Keys stay out until closed:** an in-progress view has questions and
+  choices only. Once closed, `result` adds per question the choice, the key,
+  the explanation (en/zh), the authored reason for a wrong choice, the
+  evidence excerpts and the source (pack, passage, question, `pack_item`,
+  content hash).
+- **Save a missed point:** the workbench imports the authored passage into
+  Reading (an existing call, no provider) and saves a capture whose
+  `source_ref` is that same authored `reading_item`; it appears in the
+  Mistake Notebook with an authored reference. A duplicate is the existing
+  `409 source_already_saved`.
+- **Retry a related question:** `POST /exam/sessions/{id}/retries` (closed
+  sessions only, `Idempotency-Key`) starts a one-question session of another
+  authored question of the same kind from another passage (then the same
+  passage), never one already asked in that exam or its retries.
+- **Not in the public demo:** the routes are not allowlisted, and the four
   tables must be empty in demo artifacts.
 
 ## 5. Knowledge extraction and admission
@@ -2592,6 +2825,9 @@ empty values behave as unset. Defaults work out of the box:
 | `LISTENING_PROVIDER` | `disabled`                  | Listening exercise generator ([§4.3](#43-listening-lessons-exam-listening-lesson-v1)): `disabled` or `openai`; reuses `OPENAI_*` |
 | `READING_PROVIDER`   | `disabled`                  | Reading exercise generator ([§4.5](#45-exam-reading-v1)): `disabled` or `openai`; reuses `OPENAI_*`; authored examples work without it |
 | `WRITING_PROVIDER`   | `disabled`                  | Writing feedback generator ([§4.6](#46-exam-writing-v1)): `disabled` or `openai`; reuses `OPENAI_*`; tasks and drafts work without it |
+| `SPEAKING_PROVIDER`  | `disabled`                  | Speaking feedback generator ([§4.7](#47-speaking-v1)): `disabled` or `openai`; reuses `OPENAI_*`; recording and typed transcripts work without it |
+| `SPEAKING_TRANSCRIPTION_PROVIDER` | `disabled`     | Speaking transcription ([§4.7](#47-speaking-v1)): `disabled` or `openai`; reuses `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_TIMEOUT`; sends one take's audio per explicit request, never stores it |
+| `SPEAKING_TRANSCRIPTION_MODEL` | _(none)_          | Required for `openai` transcription: the operator's transcription model (e.g. `gpt-transcribe`) |
 | `LISTENING_PLAYLIST_SOURCE` | `disabled`           | Daily Listening playlist ([§4.4](#44-daily-listening-pull-prepare-notify)): `disabled` or `youtube` |
 | `LISTENING_PLAYLIST_ID` | _(none)_                 | Required for `youtube`: the playlist ID |
 | `YOUTUBE_API_KEY`    | _(none)_                    | Required for `youtube`; sent only in the `X-Goog-Api-Key` header; never logged |
@@ -2693,6 +2929,19 @@ vocabulary and raw server errors are rendered unchanged. The choice is a
 browser-local preference; it never reaches the server and changes no API,
 schema or stored data.
 
+The private workbench also offers an opt-in **Endfield preview** theme
+(`web/src/theme.tsx`, `web/src/theme-endfield.css`); the standard theme stays
+the default. It is presentation only: one stylesheet whose every rule is
+scoped to `:root[data-theme="endfield"]`, set only by the workbench's theme
+selector and remembered per browser (`flh.ui-theme.v1`; unavailable storage
+or another value means standard). The public demo never sets it. The style is
+original CSS after the public design notes of `hhikr/endfield-ui-skill`
+(revision `96702a36317b4c76538d1a20ed6beaae4e6067e2`): no game art, logo,
+font or image is used. Reading surfaces stay calm (ink on paper, 1.85
+leading, a 68-character measure, highlights as a highlighter stroke); cut
+corners are gradient corners, never `clip-path`, so focus rings are never
+clipped; `prefers-reduced-motion: reduce` turns every transition off.
+
 ## 11. Persistence, migrations and recovery
 
 SQLite is embedded through the pure-Go `modernc.org/sqlite` driver; no SQLite
@@ -2719,6 +2968,9 @@ forward-only; there are no down migrations.
 | `016_reading_lessons` | `reading_lessons`, `reading_passages`, `reading_exercises`, `reading_preparations` (Reading v1; see [§4.5](#45-exam-reading-v1)) |
 | `015_listening_daily` | `listening_pull_runs`, `listening_playlist_items`, `listening_preparations`, `listening_notifications`: receipts inserted before each outside call and finished once (Daily Listening; see [§4.4](#44-daily-listening-pull-prepare-notify)) |
 | `017_writing_tasks` | `writing_tasks`, `writing_drafts`, `writing_feedback`, `writing_feedback_requests` (Writing v1; see [§4.6](#46-exam-writing-v1)) |
+| `018_speaking_exercises` | `speaking_exercises`, `speaking_takes` (audio metadata only), `speaking_transcriptions`, `speaking_transcription_requests`, `speaking_transcripts`, `speaking_feedback`, `speaking_feedback_requests` (Speaking v1; see [§4.7](#47-speaking-v1)) |
+| `019_mistake_notebook` | `learning_capture_sources` (one structured source per capture, written with it), `mistake_retry_marks` (append-only) (Mistake Notebook v1; see [§4.8](#48-mistake-notebook-v1)) |
+| `020_mock_exams` | `exam_sessions`, `exam_session_items` (frozen authored questions with content hashes), `exam_answers` (append-only), `exam_submissions` (at most one per session) (Mock Exam v1; see [§4.9](#49-mock-exam-v1)) |
 
 The optional Qdrant index is not part of the database: it holds no authority
 and is recreated with `semantic-index rebuild` from the embedding cache in
@@ -3112,6 +3364,7 @@ Request fields:
 | `original_context`   | yes      | Surrounding context. Validated like a normal entry.                   |
 | `analysis`           | no       | Optional imported classification (see below).                         |
 | `discussion_summary` | no       | Optional short summary of the discussion. Trimmed, bounded.           |
+| `source_ref`         | no       | Mistake Notebook v1 ([§4.8](#48-mistake-notebook-v1)): `{"type", "record_id", "item", "attempt"?}` naming the exact stored exercise item, writing correction or speaking improvement. It is checked against stored data (`422` if absent) and stored in the same transaction. A second record for the same item is `409 {"code": "source_already_saved", "entry_id"}`. Without it, nothing changes |
 
 The optional `analysis` object uses the shared `fr_l2_taxonomy_v1` taxonomy and
 reuses the same validation as any other analysis: `category` (in the taxonomy),
@@ -3227,6 +3480,8 @@ through the existing entry, analysis, and inventory endpoints. A malformed
 | Unsupported `schema_version`                | `422`  |
 | Invalid content (source, entry data, analysis) | `422` |
 | Same `capture_id` with changed content      | `409`  |
+| `source_ref` names an item already saved under another `capture_id` | `409` `{"code": "source_already_saved", "entry_id"}` |
+| `source_ref` does not name a stored, completed item | `422` |
 | Lookup of a missing capture                 | `404`  |
 | Malformed `capture_id` on lookup            | `400`  |
 | Unexpected storage failure                  | `500`  |
@@ -3704,3 +3959,49 @@ A request has `id`, `operation_id`, `draft_id`, `after_unknown`, `started_at`,
 `deadline_at`, `finished_at`, `state` (`in_progress`, `completed`, `failed`,
 `unknown`) and `feedback_id`. The public demo boundary does not expose these
 routes.
+
+### A.19 Speaking (Speaking v1)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `GET /speaking/prompts` | `set`, `notice`, `prompts` (`id`, `format`, `style_level`, `title`, `situation`, `requirements`, `seconds_min`, `seconds_max`, `started_exercise_id`), `providers`, `limits`. No provider call |
+| `POST /speaking/prompts/{prompt_id}` | Starts the exercise for an authored prompt. `201` new; `200` already started (`Idempotency-Replayed: true`); `404`; `409 prompt_conflict` |
+| `GET /speaking/exercises` | `exercises` (newest first: `exercise`, `takes`) and `providers` |
+| `GET /speaking/exercises/{id}` | `exercise`, `takes` (`id`, `number`, `audio_source`, `audio_mime`, `audio_bytes`, `audio_sha256`, `duration_ms`), `transcriptions` (`status`, `failure_code`, `transcriber`, `text`), `transcription_requests`, `transcripts` (`take_id`, `version`, `text`, `word_count`, `origin`, `transcription_id`), `feedback` (`transcript_id`, `status`, `failure_code`, `generator`, `content`), `feedback_requests`, `example_transcript`, `providers`, `limits`, `word_convention`. No provider call |
+| `POST /speaking/exercises/{id}/takes` | Body `{"audio_source": "recording"\|"file"\|"none", "audio_mime"?, "audio_bytes"?, "audio_sha256"?, "duration_ms"?}`: metadata only, never audio (`201`). `409 too_many_takes` (20); `422`; `404` |
+| `POST /speaking/takes/{id}/transcriptions` | Body `{"audio_base64", "audio_mime", "confirm_unknown_retry"?}` (at most 8 MiB of audio), optional UUID `Idempotency-Key`. One provider call; the audio is not stored. `201` `{request, transcription}`; `200` same-key replay; `502`/`504` stored failure or unknown outcome; `409` `{code}`: `request_in_progress`, `outcome_unknown`, `key_conflict`, `no_audio`; `413`; `422` refused before any call (type, size, magic bytes, not this take's audio); `503` disabled (before the body is read); `404` |
+| `GET /speaking/transcription-requests/{key}` | `{request, transcription}`; `404` nothing recorded under the key |
+| `POST /speaking/takes/{id}/transcripts` | Body `{"text", "transcription_id"?}`: the take's next confirmed version (`201`). `409` `{code}`: `unchanged`, `too_many_versions` (10); `422` (also a transcription that is not a completed transcription of this take); `404` |
+| `POST /speaking/transcripts/{id}/feedback` | Optional UUID `Idempotency-Key`, optional `{"confirm_unknown_retry": true}`. One provider call for that version. `201` `{request, feedback}` with grounded improvements; `200` replay; `502`/`504`; `409` `{code}`: `request_in_progress`, `outcome_unknown`, `key_conflict`; `503` disabled; `404` |
+| `GET /speaking/feedback-requests/{key}` | `{request, feedback}`; `404` nothing recorded under the key |
+
+A request has `id`, `operation_id`, `take_id` (transcription) or
+`transcript_id` (feedback), `after_unknown`, `started_at`, `deadline_at`,
+`finished_at`, `state` (`in_progress`, `completed`, `failed`, `unknown`) and
+`result_id`. The public demo boundary does not expose these routes.
+
+### A.20 Mistake Notebook (Mistake Notebook v1)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `POST /captures` with `source_ref` | See A.7. `422` for a reference that does not name a stored, completed item; `409 {"code": "source_already_saved", "entry_id"}` when that item is already a record |
+| `GET /mistake-notebook/items` | Optional `skill` (`listening`, `reading`, `writing`, `speaking`) and `marked=true`. `items` (newest first: `entry_id`, `capture_id`, `saved_at`, `skill`, `source` {`type`, `record_id`, `item`, `attempt`}, `title`, `prompt`, `category`, `quote`, `reference`, `explanation_en`/`_zh`, `hint_en`/`_zh`, `link`, `record` {`original_input`, `original_context`}, `retry` {`marked`, `since`}, `source_status` (`resolved`, `missing`, `unusable`; only `resolved` items carry resolved fields), `reference_origin` (`authored` or `generated`), `generator`, `latest_version` (a newer reading passage or listening transcript version, else null)) and `unlinked_notice`. Read-only |
+| `PUT /mistake-notebook/items/{entry_id}/retry` | Body `{"marked": true\|false}`. `200` `{item, changed}` (a row is appended only on a change); `404` not a notebook record; `422` missing `marked` |
+| `GET /mistake-notebook/concepts` | `kind` = `grammar`, `vocabulary` or `unclassified`, optional `q` (library search syntax). `rule` (`concept_kind_view_v1`), `classified`, `truncated`, `concepts` (`concept_id`, `target`, `pedagogical_intent`, `scope`, `state`, `class`, `reason`, `kinds`, `supporting_unit_count`, `match_tier`). `400` for an unknown kind or an unsearchable query. Read-only |
+| `GET /entries/{id}/source` | `{entry_id, linked: true, item}` or `{entry_id, linked: false, notice}`; `404` unknown record. Read-only |
+
+The public demo boundary does not expose these routes.
+
+### A.21 Mock Exam (Mock Exam v1)
+
+| Endpoint (also under `/api`) | Behaviour |
+| --- | --- |
+| `GET /exam/forms` | `schema_version`, `notice`, `pack`, `forms` (`id`, `title`, `section`, `duration_seconds`, `description`, `question_count`). Read-only |
+| `GET /exam/sessions` | `server_now`, `sessions` newest first (`id`, `kind` `exam`/`retry`, `form_id`, `title`, `retry_of`, `state`, `started_at`, `deadline_at`, `question_count`, `result` {`correct`, `total`} once closed). Read-only |
+| `POST /exam/sessions` | Body `{"form_id"}`, one UUID `Idempotency-Key` (`400` without). `201` new, `200` replay of that key, `409` another form under that key, `422` unknown form. Returns the view below |
+| `GET /exam/sessions/{id}` | The view: `session` {`id`, `kind`, `form_id`, `title`, `retry_of`, `duration_seconds`, `started_at`, `deadline_at`, `forms_sha256`, `pack_sha256`}, `state` (`in_progress`, `submitted`, `expired`), `server_now`, `remaining_seconds`, `notice`, `passages`, `questions` (`position`, `passage_id`, `kind`, `question`, `choices`), `answers` (`position`, `choice`, `saved_at`), `result` (null while in progress; else `closed`, `closed_at`, `correct`, `total`, `items` with `choice`, `key`, `correct`, `explanation_en`/`_zh`, `why_wrong`, `evidence`, `source`). Read-only |
+| `PUT /exam/sessions/{id}/answers/{position}` | Body `{"choice": n\|null}`. `200` {`position`, `choice`, `saved_at`, `server_now`, `remaining_seconds`}; an unchanged answer appends nothing. `409` {`code`: `exam_submitted`\|`exam_expired`, `exam`} when closed; `422` out of range |
+| `POST /exam/sessions/{id}/submit` | Body `{"answers": {"1": n\|null, …}}`. `200` the closed view with `replayed` (true when the same final answers were already submitted); `409` {`code`: `already_submitted`\|`exam_expired`, `exam`} |
+| `POST /exam/sessions/{id}/retries` | Body `{"position"}`, UUID `Idempotency-Key`. `201`/`200` replay: a one-question related session (`retry_seconds` = 120); `409` while the exam is in progress or when no related authored question is left |
+
+The public demo boundary does not expose these routes.

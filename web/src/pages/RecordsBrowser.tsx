@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import type { SourceOpen } from "../types/notebook";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import { QuestionIntake } from "../components/QuestionIntake";
@@ -62,6 +63,7 @@ export function RecordsBrowser({
   returnEpoch = 0,
   onNavigateToUnit,
   onOpenConcept,
+  onOpenSource,
   openRequest = null,
 }: {
   // Changes when the reader returns from another workbench view.
@@ -70,6 +72,8 @@ export function RecordsBrowser({
   onNavigateToUnit?: (target: UnitTarget) => void;
   // Opens the Concept a decided unit is filed under, in the Knowledge Library.
   onOpenConcept?: (conceptId: number, from: UnitTarget) => void;
+  // Opens the exact exercise item a notebook record was saved from (Mistake Notebook v1).
+  onOpenSource?: (open: SourceOpen) => void;
   // A record another view asked to open (e.g. from a Concept's source). The
   // nonce makes a repeated request for the same record open it again.
   openRequest?: { entryId: number; nonce: number } | null;
@@ -262,6 +266,7 @@ export function RecordsBrowser({
           returnEpoch={returnEpoch}
           onNavigateToUnit={onNavigateToUnit}
           onOpenConcept={onOpenConcept}
+          onOpenSource={onOpenSource}
         />
       ) : null}
 

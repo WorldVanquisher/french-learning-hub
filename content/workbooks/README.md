@@ -34,7 +34,7 @@ lines of the script, not to times. The production checklist
 | `reading_pack_workbook_rl_v1.json` | Valid `flh_reading_pack_v1` (Go `ParseReadingPack` test). **Not importable**: the server embeds only its own pack. Using it needs a deliberate pack change. |
 | `writing_tasks_pw_v1.json` | Request bodies for the existing `POST /writing/tasks` (Go `NormalizeWritingTask` test). |
 | `writing_prompts_workbook_pw_v1.json` | Valid `flh_writing_prompts_v1` (Go `ParseWritingPrompts` test). **Not embedded.** Each example draft is the unit's retry draft, which contains deliberate mistakes. |
-| `speaking_prompts_workbook_pw_v1.json` | `flh_speaking_prompts_v1`, the format of the Speaking section. That section is not in this tree, so the file is only checked against it outside this patch. |
+| `speaking_prompts_workbook_pw_v1.json` | `flh_speaking_prompts_v1`, the format of the Speaking section. Not embedded by the server; `internal/reading/workbook_adapter_test.go` checks it with the Speaking parser. |
 | Listening | **No adapter.** `POST /listening/materials` requires a YouTube link, and inventing one is not allowed. |
 | Captures | `python3 -m flh_workbooks capture --question ID --text "…"` prints a `learning_capture_v1` (`source: manual`, no analysis) built around the learner's own question. |
 

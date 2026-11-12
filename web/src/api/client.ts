@@ -3,6 +3,7 @@
 // in one file. All calls go through the "/api" prefix, which Vite proxies to the Go
 // backend in development (see vite.config.ts).
 
+import type { ExamForms, ExamSessionRow, ExamView } from "../types/exam";
 import type {
   ListeningDaily,
   ListeningLesson,
@@ -46,6 +47,15 @@ import type {
 import type { SuggestionConfirmResult, SuggestionOverview, SuggestionRun } from "../types/suggestion";
 import type { ReadingExamples, ReadingList, ReadingLessonView, ReadingPreparationResult } from "../types/reading";
 import type { WritingFeedbackResult, WritingPrompts, WritingTaskSummary, WritingTaskView } from "../types/writing";
+import type { EntrySource, KindConcepts, KindView, NotebookItem, NotebookList, Skill } from "../types/notebook";
+import type {
+  NewSpeakingTake,
+  SpeakingExerciseSummary,
+  SpeakingExerciseView,
+  SpeakingFeedbackResult,
+  SpeakingPrompts,
+  SpeakingTranscriptionResult,
+} from "../types/speaking";
 import type { HybridSearch, LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, PublicDemoInfo, SemanticSearch } from "../types/library";
 
 // ApiError carries the HTTP status so callers can react specifically — most
@@ -835,4 +845,153 @@ export function requestWritingFeedback(
 // getWritingFeedbackRequest looks a request up by its key (404: nothing recorded yet).
 export function getWritingFeedbackRequest(operationId: string, fetchImpl: typeof fetch = fetch): Promise<WritingFeedbackResult> {
   return request<WritingFeedbackResult>("GET", `/writing/feedback-requests/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// ---- Speaking v1 (private workbench) ----
+
+// listSpeakingPrompts lists the authored practice prompts, providers and limits.
+export function listSpeakingPrompts(fetchImpl: typeof fetch = fetch): Promise<SpeakingPrompts> {
+  return request<SpeakingPrompts>("GET", "/speaking/prompts", undefined, fetchImpl);
+}
+
+// startSpeakingPrompt starts (or reopens) the exercise for an authored prompt.
+export function startSpeakingPrompt(promptId: string, fetchImpl: typeof fetch = fetch): Promise<SpeakingExerciseView> {
+  return request<SpeakingExerciseView>("POST", `/speaking/prompts/${encodeURIComponent(promptId)}`, undefined, fetchImpl);
+}
+
+// listSpeakingExercises lists started exercises.
+export function listSpeakingExercises(fetchImpl: typeof fetch = fetch): Promise<{ exercises: SpeakingExerciseSummary[] }> {
+  return request<{ exercises: SpeakingExerciseSummary[] }>("GET", "/speaking/exercises", undefined, fetchImpl);
+}
+
+// getSpeakingExercise reads an exercise with every take, transcript and report.
+export function getSpeakingExercise(exerciseId: number, fetchImpl: typeof fetch = fetch): Promise<SpeakingExerciseView> {
+  return request<SpeakingExerciseView>("GET", `/speaking/exercises/${exerciseId}`, undefined, fetchImpl);
+}
+
+// addSpeakingTake stores a take's metadata only (never its audio). No provider call.
+export function addSpeakingTake(exerciseId: number, take: NewSpeakingTake, fetchImpl: typeof fetch = fetch): Promise<SpeakingExerciseView> {
+  return request<SpeakingExerciseView>("POST", `/speaking/exercises/${exerciseId}/takes`, take, fetchImpl);
+}
+
+// transcribeSpeakingTake is the one explicit transcription call: it sends this
+// take's audio (base64 in JSON) once, under the caller's key.
+export function transcribeSpeakingTake(
+  takeId: number,
+  audio: { audio_base64: string; audio_mime: string },
+  operationId: string,
+  confirmUnknownRetry = false,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SpeakingTranscriptionResult> {
+  return request<SpeakingTranscriptionResult>(
+    "POST",
+    `/speaking/takes/${takeId}/transcriptions`,
+    { ...audio, confirm_unknown_retry: confirmUnknownRetry },
+    fetchImpl,
+    operationId,
+  );
+}
+
+// getSpeakingTranscriptionRequest looks a transcription request up by its key.
+export function getSpeakingTranscriptionRequest(operationId: string, fetchImpl: typeof fetch = fetch): Promise<SpeakingTranscriptionResult> {
+  return request<SpeakingTranscriptionResult>("GET", `/speaking/transcription-requests/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// confirmSpeakingTranscript saves the learner's confirmed transcript as the
+// take's next version. No provider call.
+export function confirmSpeakingTranscript(
+  takeId: number,
+  text: string,
+  transcriptionId: number | null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SpeakingExerciseView> {
+  return request<SpeakingExerciseView>("POST", `/speaking/takes/${takeId}/transcripts`, { text, transcription_id: transcriptionId }, fetchImpl);
+}
+
+// requestSpeakingFeedback is the one explicit feedback call, for one confirmed
+// transcript version, under the caller's key.
+export function requestSpeakingFeedback(
+  transcriptId: number,
+  operationId: string,
+  confirmUnknownRetry = false,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SpeakingFeedbackResult> {
+  return request<SpeakingFeedbackResult>(
+    "POST",
+    `/speaking/transcripts/${transcriptId}/feedback`,
+    confirmUnknownRetry ? { confirm_unknown_retry: true } : undefined,
+    fetchImpl,
+    operationId,
+  );
+}
+
+// getSpeakingFeedbackRequest looks a feedback request up by its key.
+export function getSpeakingFeedbackRequest(operationId: string, fetchImpl: typeof fetch = fetch): Promise<SpeakingFeedbackResult> {
+  return request<SpeakingFeedbackResult>("GET", `/speaking/feedback-requests/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// ---- Mistake Notebook v1 (private workbench) ----
+
+// listNotebookItems lists records saved with a source link (newest first).
+export function listNotebookItems(filter: { skill?: Skill; marked?: boolean } = {}, fetchImpl: typeof fetch = fetch): Promise<NotebookList> {
+  const q = new URLSearchParams();
+  if (filter.skill) q.set("skill", filter.skill);
+  if (filter.marked) q.set("marked", "true");
+  const qs = q.toString();
+  return request<NotebookList>("GET", `/mistake-notebook/items${qs ? `?${qs}` : ""}`, undefined, fetchImpl);
+}
+
+// setNotebookRetry records one explicit "mark for retry" / "remove" decision.
+export function setNotebookRetry(entryId: number, marked: boolean, fetchImpl: typeof fetch = fetch): Promise<{ item: NotebookItem; changed: boolean }> {
+  return request<{ item: NotebookItem; changed: boolean }>("PUT", `/mistake-notebook/items/${entryId}/retry`, { marked }, fetchImpl);
+}
+
+// getKindConcepts reads one Grammar / Vocabulary / Unclassified view.
+export function getKindConcepts(kind: KindView, query = "", fetchImpl: typeof fetch = fetch): Promise<KindConcepts> {
+  const q = new URLSearchParams({ kind });
+  if (query.trim()) q.set("q", query.trim());
+  return request<KindConcepts>("GET", `/mistake-notebook/concepts?${q.toString()}`, undefined, fetchImpl);
+}
+
+// getEntrySource reads a record's structured source, or linked:false.
+export function getEntrySource(entryId: number, fetchImpl: typeof fetch = fetch): Promise<EntrySource> {
+  return request<EntrySource>("GET", `/entries/${entryId}/source`, undefined, fetchImpl);
+}
+
+// ---- Mock Exam v1 (private workbench) ----
+
+export function listExamForms(fetchImpl: typeof fetch = fetch): Promise<ExamForms> {
+  return request<ExamForms>("GET", "/exam/forms", undefined, fetchImpl);
+}
+
+export function listExamSessions(fetchImpl: typeof fetch = fetch): Promise<{ server_now: string; sessions: ExamSessionRow[] }> {
+  return request("GET", "/exam/sessions", undefined, fetchImpl);
+}
+
+// startExam starts a session under an Idempotency-Key: resending the same key
+// after a lost response returns the same session.
+export function startExam(formId: string, operationId: string, fetchImpl: typeof fetch = fetch): Promise<ExamView> {
+  return request<ExamView>("POST", "/exam/sessions", { form_id: formId }, fetchImpl, operationId);
+}
+
+export function getExam(id: number, fetchImpl: typeof fetch = fetch): Promise<ExamView> {
+  return request<ExamView>("GET", `/exam/sessions/${id}`, undefined, fetchImpl);
+}
+
+export function saveExamAnswer(
+  id: number,
+  position: number,
+  choice: number | null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ position: number; choice: number | null; saved_at: string; server_now: string; remaining_seconds: number }> {
+  return request("PUT", `/exam/sessions/${id}/answers/${position}`, { choice }, fetchImpl);
+}
+
+// submitExam closes a session; repeating it with the same answers replays the result.
+export function submitExam(id: number, answers: Record<string, number | null>, fetchImpl: typeof fetch = fetch): Promise<ExamView> {
+  return request<ExamView>("POST", `/exam/sessions/${id}/submit`, { answers }, fetchImpl);
+}
+
+export function startExamRetry(id: number, position: number, operationId: string, fetchImpl: typeof fetch = fetch): Promise<ExamView> {
+  return request<ExamView>("POST", `/exam/sessions/${id}/retries`, { position }, fetchImpl, operationId);
 }

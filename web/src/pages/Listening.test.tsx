@@ -327,7 +327,9 @@ describe("Listening (private workbench)", () => {
     expect(doc.original_context).toContain("https://www.youtube.com/watch?v=FLHlisten01&t=16s");
     expect(doc.original_context).toContain(segments[3].text);
     expect(doc.original_context).toContain(content.items[1].question);
-    expect(Object.keys(doc).sort()).toEqual(["capture_id", "original_context", "original_input", "schema_version", "source"]);
+    expect(Object.keys(doc).sort()).toEqual(["capture_id", "original_context", "original_input", "schema_version", "source", "source_ref"]);
+    // Mistake Notebook v1: the exact stored item, never the typed answer unless the learner includes it.
+    expect((doc as unknown as { source_ref: unknown }).source_ref).toEqual({ type: "listening_item", record_id: 100, item: 2 });
     // Typed answers and self-checks never leave the page.
     expect(server.calls.some((c) => c.body.includes("réponse-secrète-xyz"))).toBe(false);
     expect(stored.mock.calls.some((args) => JSON.stringify(args).includes("réponse-secrète-xyz"))).toBe(false);

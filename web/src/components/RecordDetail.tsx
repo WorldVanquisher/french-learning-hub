@@ -10,6 +10,8 @@ import { FeedbackPanel } from "./FeedbackPanel";
 import { RecordStage } from "./RecordStage";
 import { deriveRecordStage, type AnalysisFacts, type ExtractionFacts } from "./recordStage";
 import { recordHeadingId, type UnitTarget } from "../navigation";
+import type { SourceOpen } from "../types/notebook";
+import { RecordSource } from "./RecordSource";
 import { useI18n } from "../i18n";
 
 // Load is the lifecycle of one independent read. Each section of the detail has its
@@ -48,6 +50,7 @@ export function RecordDetail({
   returnEpoch = 0,
   onNavigateToUnit,
   onOpenConcept,
+  onOpenSource,
 }: {
   entryId: number;
   onBack: () => void;
@@ -56,6 +59,8 @@ export function RecordDetail({
   returnEpoch?: number;
   onNavigateToUnit?: (target: UnitTarget) => void;
   onOpenConcept?: (conceptId: number, from: UnitTarget) => void;
+  // Opens the exact exercise item a notebook record was saved from.
+  onOpenSource?: (open: SourceOpen) => void;
 }) {
   const { t } = useI18n();
   const [entry, setEntry] = useState<Load<Entry>>({ status: "loading" });
@@ -258,6 +263,8 @@ export function RecordDetail({
           </dl>
         )}
       </section>
+
+      {onOpenSource ? <RecordSource entryId={entryId} onOpenSource={onOpenSource} /> : null}
 
       <section className="panel" aria-label={t("record.analyses")}>
         <h2>{t("record.analyses")}</h2>

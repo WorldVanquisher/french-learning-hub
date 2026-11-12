@@ -69,6 +69,16 @@ func CaptureFingerprint(in PreparedLearningCapture) string {
 		writeField("has_analysis", "0")
 	}
 
+	// The structured source (Mistake Notebook v1) is part of the content only
+	// when present, so every capture without one keeps its existing fingerprint.
+	if in.SourceRef != nil {
+		writeField("has_source_ref", "1")
+		writeField("source_type", in.SourceRef.Type)
+		writeField("source_record_id", strconv.FormatInt(in.SourceRef.RecordID, 10))
+		writeField("source_item", strconv.Itoa(in.SourceRef.Item))
+		writeField("source_attempt", in.SourceRef.Attempt)
+	}
+
 	sum := sha256.Sum256([]byte(b.String()))
 	return hex.EncodeToString(sum[:])
 }

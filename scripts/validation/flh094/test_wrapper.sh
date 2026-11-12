@@ -141,6 +141,24 @@ run "openai writing alone still requires the key" 2 "OPENAI_API_KEY must be set"
 run "writing defaults to disabled when unset" 0 "writing:    disabled — off \\(drafting and revising still work\\)" "$WORK/defaults.env" check
 good "$WORK/writeon.env"; echo "WRITING_PROVIDER=openai" >> "$WORK/writeon.env"
 run "openai writing is accepted and labelled as billable" 0 "writing:    openai — explicit feedback requests call the provider" "$WORK/writeon.env" check
+# Speaking v1: two independent providers; transcription needs its own model.
+good "$WORK/badspeak.env"; echo "SPEAKING_PROVIDER=anthropic" >> "$WORK/badspeak.env"
+run "an unknown speaking feedback provider is refused" 2 "SPEAKING_PROVIDER must be openai or disabled" "$WORK/badspeak.env" check
+good "$WORK/badstt.env"; echo "SPEAKING_TRANSCRIPTION_PROVIDER=local" >> "$WORK/badstt.env"
+run "an unknown transcription provider is refused" 2 "SPEAKING_TRANSCRIPTION_PROVIDER must be openai or disabled" "$WORK/badstt.env" check
+good "$WORK/sttnomodel.env"; echo "SPEAKING_TRANSCRIPTION_PROVIDER=openai" >> "$WORK/sttnomodel.env"
+run "openai transcription requires its own model" 2 "SPEAKING_TRANSCRIPTION_MODEL must be set" "$WORK/sttnomodel.env" check
+good "$WORK/sttnokey.env"
+sed -i 's/^AI_PROVIDER=.*/AI_PROVIDER=rule-based/; s/^EXTRACTOR_PROVIDER=.*/EXTRACTOR_PROVIDER=disabled/; /^OPENAI_API_KEY=/d; /^OPENAI_MODEL=/d' "$WORK/sttnokey.env"
+{ echo "SPEAKING_TRANSCRIPTION_PROVIDER=openai"; echo "SPEAKING_TRANSCRIPTION_MODEL=gpt-transcribe"; } >> "$WORK/sttnokey.env"
+run "openai transcription alone still requires the key" 2 "OPENAI_API_KEY must be set" "$WORK/sttnokey.env" check
+good "$WORK/sttonly.env"
+sed -i 's/^AI_PROVIDER=.*/AI_PROVIDER=rule-based/; s/^EXTRACTOR_PROVIDER=.*/EXTRACTOR_PROVIDER=disabled/; /^OPENAI_MODEL=/d' "$WORK/sttonly.env"
+{ echo "SPEAKING_TRANSCRIPTION_PROVIDER=openai"; echo "SPEAKING_TRANSCRIPTION_MODEL=gpt-transcribe"; } >> "$WORK/sttonly.env"
+run "openai transcription alone needs no text model and is labelled as sending audio" 0 "speaking transcription: openai — each explicit click sends the audio of one take" "$WORK/sttonly.env" check
+run "speaking defaults to disabled when unset" 0 "speaking feedback: disabled — off \\(recording and transcripts still work\\)" "$WORK/defaults.env" check
+good "$WORK/speakon.env"; echo "SPEAKING_PROVIDER=openai" >> "$WORK/speakon.env"
+run "openai speaking feedback is accepted and labelled as billable" 0 "speaking feedback: openai — explicit feedback requests call the provider" "$WORK/speakon.env" check
 # Daily Listening: every part off by default; each enabled part needs its settings.
 daily() { # daily FILE: a valid settings file with every Daily Listening part on
   good "$1"
