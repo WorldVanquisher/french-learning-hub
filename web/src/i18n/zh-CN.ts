@@ -986,6 +986,20 @@ export const zhCN: Record<MessageKey, string> = {
   "demo.concept.details": "概念详情：状态、类型和身份",
   "demo.concept.whyEvidence": "证据：取自学习记录 #{record}，并归入此概念。",
   "demo.source.why": "为什么显示这条记录：单元 #{unit} 取自这条记录，并归入 {concept}。",
+  // 公开演示的引导步骤、空状态和证据名称（demo-ux）
+  "demo.walk.step3": "第 3 步，共 4 步 · 概念",
+  "demo.walk.next3": "下一步：在任意单元上打开“查看来源记录”，查看它取自哪个问题。",
+  "demo.walk.step4": "第 4 步，共 4 步 · 来源证据",
+  "demo.example.step.evidence": "来源证据",
+  "demo.example.step.evidence.hint":
+    "这个问题是学习记录 #{record}。它的单元来自提取 v{extraction}，该提取使用了解释 v{analysis}；每个单元都链接回按原样保存的问题。",
+  "demo.example.openEvidence": "查看“{unit}”的证据",
+  "demo.concept.viewSourceFor": "查看来源记录 #{record}（单元 #{unit}）",
+  "demo.library.empty": "此演示构建中没有可显示的概念。",
+  "demo.noMatch.heading": "没有找到？试试这些",
+  "demo.noMatch.how": "关键词搜索按词首匹配。概念标题是英文的；身份详情和单元的措辞是法语的。",
+  "demo.noMatch.try": "搜索“{q}”",
+  "demo.noMatch.showAll": "显示全部概念",
   // Concept content and membership comparison (FLH-093)
   "content.show": "查看概念 #{id} 的内容",
   "content.hide": "收起概念 #{id} 的内容",

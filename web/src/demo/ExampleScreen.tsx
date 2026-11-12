@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "../api/client";
 import { useI18n } from "../i18n";
-import { DEMO_EXAMPLES, resolveExample, type DemoExample, type ExampleResolution } from "./examples";
+import { DEMO_EXAMPLES, resolveExample, type DemoExample, type ExampleResolution, type ResolvedExample } from "./examples";
 
 type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: ExampleResolution };
 
@@ -35,6 +35,43 @@ export function ExamplePicker({ onOpen }: { onOpen: (key: string) => void }) {
 
 export function focusExampleCard(key: string) {
   document.getElementById(exampleCardId(key))?.focus();
+}
+
+// EvidenceStep is the walk's last step: the record this question became and the
+// extraction and interpretation its units came from, with the way to the
+// evidence screen of the unit the example was found by.
+function EvidenceStep({
+  resolved,
+  onOpenSource,
+}: {
+  resolved: ResolvedExample;
+  onOpenSource: (conceptId: number, unitId: number) => void;
+}) {
+  const { t } = useI18n();
+  const s = resolved.source;
+  const seed = resolved.extracted.find((e) => e.unit.unit_id === s.unit.unit_id);
+  return (
+    <section className="panel demo-step" aria-labelledby="demo-step-evidence">
+      <h3 id="demo-step-evidence">
+        <span className="demo-step-n" aria-hidden="true">
+          4
+        </span>
+        {t("demo.example.step.evidence")}
+      </h3>
+      <p className="hint">
+        {t("demo.example.step.evidence.hint", {
+          record: s.entry.id,
+          extraction: s.extraction.version,
+          analysis: s.source_interpretation.analysis.version,
+        })}
+      </p>
+      {seed ? (
+        <button type="button" className="primary" onClick={() => onOpenSource(seed.concept.id, seed.unit.unit_id)}>
+          {t("demo.example.openEvidence", { unit: seed.unit.canonical })}
+        </button>
+      ) : null}
+    </section>
+  );
 }
 
 // ExampleScreen walks one example: the learner's question, the units extracted
@@ -194,6 +231,8 @@ export function ExampleScreen({
               ))}
             </ul>
           </section>
+
+          <EvidenceStep resolved={load.data.example} onOpenSource={onOpenSource} />
         </>
       )}
 

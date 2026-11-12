@@ -18,7 +18,9 @@ import { useI18n, type I18n, type MessageKey } from "../i18n";
 import { RecallPractice } from "./RecallPractice";
 import { DEMO_EXAMPLES } from "../demo/examples";
 import { ExamplePicker, ExampleScreen, focusExampleCard } from "../demo/ExampleScreen";
-import { screenFromHash, urlForScreen } from "../demo/deepLink";
+import { linkFromHash, queryToSearch, sameSearch, searchToQuery, type LinkSearch } from "../demo/deepLink";
+import { adoptEntry, entryKey, pushEntry, readEntry, replaceEntry, stepsBack } from "../demo/history";
+import { NoMatchHelp, RecordedTime } from "../demo/DemoStates";
 
 // One search outcome per submitted query. Semantic and hybrid modes need a
 // query; with an empty one nothing is requested (browsing is keyword search's job).
@@ -147,21 +149,63 @@ export function KnowledgeLibrary({
 } = {}) {
   const i18n = useI18n();
   const { t, tn } = i18n;
-  const [draft, setDraft] = useState<LibraryQuery>({ q: "", state: "all" });
-  const [draftPreset, setDraftPreset] = useState<string>(demo?.presets[0]?.id ?? "");
-  const [query, setQuery] = useState<LibraryQuery>({ q: "", state: "all" });
-  const [draftMode, setDraftMode] = useState<LibrarySearchMode>("keyword");
-  const [mode, setMode] = useState<LibrarySearchMode>("keyword");
-  // The public demo opens the screen a direct link names (demo/deepLink.ts).
-  const [screen, setScreenState] = useState<Screen>(() => (demo ? screenFromHash(window.location.hash) : { kind: "results" }));
-  // The public demo keeps each screen in the browser history (same URL, no
-  // route), so the browser's or phone's Back returns to the previous screen
-  // instead of leaving the demo. The workbench has its own views and does not.
+  // The public demo opens the screen and search a direct link names
+  // (demo/deepLink.ts); the workbench always starts on an empty search.
+  const [link] = useState(() => (demo ? linkFromHash(window.location.hash, demo.presets.map((p) => p.id)) : null));
+  const initial = link && demo ? searchToQuery(link.search, demo.presets) : null;
+  const [draft, setDraft] = useState<LibraryQuery>(() =>
+    initial ? { q: initial.mode === "keyword" ? initial.query.q : "", state: initial.query.state } : { q: "", state: "all" },
+  );
+  const [draftPreset, setDraftPreset] = useState<string>(initial?.query.preset ?? demo?.presets[0]?.id ?? "");
+  const [query, setQuery] = useState<LibraryQuery>(initial?.query ?? { q: "", state: "all" });
+  const [draftMode, setDraftMode] = useState<LibrarySearchMode>(initial?.mode ?? "keyword");
+  const [mode, setMode] = useState<LibrarySearchMode>(initial?.mode ?? "keyword");
+  const [screen, setScreenState] = useState<Screen>(() => link?.screen ?? { kind: "results" });
+  // The public demo keeps each screen in the browser history (demo/history.ts),
+  // so the browser's or phone's Back and Forward walk the screens instead of
+  // leaving the demo, and in-page back actions are the same moves. The
+  // workbench has its own views and keeps no history here.
   const screenRef = useRef(screen);
   screenRef.current = screen;
-  const setScreen = (next: Screen) => {
-    if (demo) window.history.pushState({ ...(window.history.state ?? {}), flhLibrary: next }, "", urlForScreen(next));
+  const searchRef = useRef<LinkSearch>(queryToSearch(query, mode));
+  searchRef.current = queryToSearch(query, mode);
+  const trailRef = useRef<string[]>([]);
+  const setScreen = (next: Screen, search: LinkSearch = searchRef.current) => {
+    if (demo) trailRef.current = pushEntry(next, search, trailRef.current);
     setScreenState(next);
+  };
+  // An in-page back action: the browser's Back when the screen it names is
+  // earlier in this visit, otherwise that screen replaces the current entry.
+  const goBack = (target: Screen) => {
+    if (demo) {
+      const steps = stepsBack(trailRef.current, entryKey(target, searchRef.current));
+      if (steps > 0) {
+        window.history.go(-steps);
+        return;
+      }
+      trailRef.current = replaceEntry(target, searchRef.current, trailRef.current);
+    }
+    setScreenState(target);
+  };
+  // A submitted search. In the demo, one that changes the results is a new
+  // history entry, so Back returns to the previous results.
+  const runSearch = (nextQuery: LibraryQuery, nextMode: LibrarySearchMode) => {
+    setQuery(nextQuery);
+    setMode(nextMode);
+    const next = queryToSearch(nextQuery, nextMode);
+    if (demo && !sameSearch(next, searchRef.current)) {
+      searchRef.current = next;
+      trailRef.current = pushEntry({ kind: "results" }, next, trailRef.current);
+    }
+  };
+  // Shows the search a history entry or a link names, in the form and the results.
+  const applySearch = (search: LinkSearch) => {
+    const next = searchToQuery(search, demo?.presets ?? []);
+    setQuery(next.query);
+    setMode(next.mode);
+    setDraftMode(next.mode);
+    setDraft({ q: next.mode === "keyword" ? next.query.q : "", state: next.query.state });
+    if (next.query.preset) setDraftPreset(next.query.preset);
   };
   const [retry, setRetry] = useState(0);
   const returnTo = useRef<number | null>(null);
@@ -186,21 +230,43 @@ export function KnowledgeLibrary({
 
   useEffect(() => {
     if (!demo) return;
-    window.history.replaceState({ ...(window.history.state ?? {}), flhLibrary: screenRef.current }, "");
+    const presetIds = demo.presets.map((p) => p.id);
+    // This entry: keep the trail a reload kept, otherwise this visit starts here.
+    // The address is rewritten to the screen's own link (a malformed one becomes `/`).
+    const kept = readEntry<Screen>(window.history.state);
+    const key = entryKey(screenRef.current, searchRef.current);
+    trailRef.current = replaceEntry(
+      screenRef.current,
+      searchRef.current,
+      kept && kept.flhTrail[kept.flhTrail.length - 1] === key ? kept.flhTrail : [key],
+    );
     const onPop = (event: PopStateEvent) => {
-      // A fragment typed or pasted into the address bar has no saved state.
-      const next = (event.state as { flhLibrary?: Screen } | null)?.flhLibrary ?? screenFromHash(window.location.hash);
-      if (!next) return;
+      const entry = readEntry<Screen>(event.state);
+      let next: Screen;
+      let search: LinkSearch;
+      if (entry) {
+        next = entry.flhLibrary;
+        search = entry.flhSearch;
+        trailRef.current = entry.flhTrail;
+      } else {
+        // A fragment typed or pasted into the address bar has no saved state.
+        const linked = linkFromHash(window.location.hash, presetIds);
+        next = linked.screen;
+        search = linked.search;
+        trailRef.current = adoptEntry(next, search, trailRef.current);
+      }
       const left = screenRef.current;
       if (next.kind === "results") {
         if (left.kind === "example") returnToExample.current = left.example;
-        else if (left.kind === "concept" && left.from) returnToExample.current = left.from;
+        else if ((left.kind === "concept" || left.kind === "source") && left.from) returnToExample.current = left.from;
         else if (left.kind === "concept" || left.kind === "source") returnTo.current = left.conceptId;
       }
+      if (!sameSearch(search, searchRef.current)) applySearch(search);
       setScreenState(next);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
+    // The listener only calls state setters and reads refs.
   }, [demo]);
 
   // On return, focus the result the reader opened. Detail screens focus their own heading.
@@ -219,27 +285,35 @@ export function KnowledgeLibrary({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const preset = demo && draftMode !== "keyword" ? demo.presets.find((p) => p.id === draftPreset) : undefined;
-    setQuery(preset ? { q: preset.text, state: draft.state, preset: preset.id } : { q: draft.q.trim(), state: draft.state });
-    setMode(draftMode);
+    runSearch(preset ? { q: preset.text, state: draft.state, preset: preset.id } : { q: draft.q.trim(), state: draft.state }, draftMode);
   };
   const backToResults = (conceptId: number) => {
     returnTo.current = conceptId;
-    setScreen({ kind: "results" });
+    goBack({ kind: "results" });
   };
   const openConcept = (conceptId: number, from?: string) => setScreen({ kind: "concept", conceptId, from });
   const openExample = (key: string) => setScreen({ kind: "example", example: key });
+  const backToExample = (key: string) => goBack({ kind: "example", example: key });
   const backFromExample = (key: string) => {
     returnToExample.current = key;
-    setScreen({ kind: "results" });
+    goBack({ kind: "results" });
   };
   // The guided example a Concept or source was opened from, if any.
   const fromExample = (key: string | undefined) => (key ? DEMO_EXAMPLES.find((e) => e.key === key) : undefined);
+  // A keyword search started by the page itself (an example this build lacks,
+  // or a suggestion after a search found nothing), shown in the form too.
   const searchFor = (q: string) => {
     setDraft({ q, state: "all" });
-    setQuery({ q, state: "all" });
     setDraftMode("keyword");
+    if (screenRef.current.kind === "results") {
+      runSearch({ q, state: "all" }, "keyword");
+      return;
+    }
+    const next = { q, state: "all" as const };
+    setQuery(next);
     setMode("keyword");
-    setScreen({ kind: "results" });
+    searchRef.current = queryToSearch(next, "keyword");
+    setScreen({ kind: "results" }, searchRef.current);
   };
   const requestedNonce = openRequest?.nonce ?? null;
   const requestedConcept = openRequest?.conceptId ?? null;
@@ -307,9 +381,8 @@ export function KnowledgeLibrary({
               className="ghost"
               onClick={() => {
                 setDraft({ q: "", state: "all" });
-                setQuery({ q: "", state: "all" });
                 setDraftMode("keyword");
-                setMode("keyword");
+                runSearch({ q: "", state: "all" }, "keyword");
               }}
             >
               {t("common.clear")}
@@ -370,6 +443,17 @@ export function KnowledgeLibrary({
             query={query}
             onOpen={openConcept}
             onRetry={() => setRetry((n) => n + 1)}
+            demo={Boolean(demo)}
+            noMatchHelp={
+              guided ? (
+                <NoMatchHelp
+                  onSearch={(q) => {
+                    searchFor(q);
+                    document.getElementById("library-query")?.focus();
+                  }}
+                />
+              ) : undefined
+            }
           />
         ) : search.status === "ready" && search.data.kind === "semantic" ? (
           <SemanticResults data={search.data.data} query={query} onOpen={openConcept} mechanical={demo ? !demo.artifact.real_model : false} />
@@ -408,7 +492,8 @@ export function KnowledgeLibrary({
               ? t("demo.example.backTo", { title: t(fromExample(screen.from)!.title) })
               : t("library.backTo", { label: resultsLabel })
           }
-          onBack={() => (screen.from ? openExample(screen.from) : backToResults(screen.conceptId))}
+          walkthrough={Boolean(guided && fromExample(screen.from))}
+          onBack={() => (screen.from ? backToExample(screen.from) : backToResults(screen.conceptId))}
           onOpenConcept={(conceptId) => openConcept(conceptId, screen.from)}
           onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId, from: screen.from })}
           demo={Boolean(demo)}
@@ -443,8 +528,9 @@ export function KnowledgeLibrary({
               ? t("demo.example.backTo", { title: t(fromExample(screen.from)!.title) })
               : t("library.backTo", { label: resultsLabel })
           }
-          onBackToConcept={() => openConcept(screen.conceptId, screen.from)}
-          onBackToResults={() => (screen.from ? openExample(screen.from) : backToResults(screen.conceptId))}
+          walkthrough={Boolean(guided && fromExample(screen.from))}
+          onBackToConcept={() => goBack({ kind: "concept", conceptId: screen.conceptId, from: screen.from })}
+          onBackToResults={() => (screen.from ? backToExample(screen.from) : backToResults(screen.conceptId))}
           onBackToPractice={
             screen.practice !== undefined
               ? () => setScreen({ kind: "practice", conceptId: screen.conceptId, session: screen.practice! })
@@ -475,11 +561,17 @@ function Results({
   query,
   onOpen,
   onRetry,
+  demo = false,
+  noMatchHelp,
 }: {
   search: Load<LibrarySearch>;
   query: LibraryQuery;
   onOpen: (conceptId: number) => void;
   onRetry: () => void;
+  // Public demo: an empty catalog is described as the demo build's, and a
+  // search or filter that finds nothing is followed by `noMatchHelp`.
+  demo?: boolean;
+  noMatchHelp?: ReactNode;
 }) {
   const i18n = useI18n();
   const { t, tp, status } = i18n;
@@ -494,18 +586,28 @@ function Results({
       </div>
     );
   const data = search.data;
-  if (data.results.length === 0)
-    return (
+  if (data.results.length === 0) {
+    const message = query.q
+      ? query.state === "all"
+        ? t("library.noMatch", { q: query.q })
+        : t("library.noMatchState", { q: query.q, state: status(query.state) })
+      : query.state === "all"
+        ? t(demo ? "demo.library.empty" : "library.empty")
+        : t("library.emptyState", { state: status(query.state) });
+    const empty = (
       <div className="empty" role="status">
-        {query.q
-          ? query.state === "all"
-            ? t("library.noMatch", { q: query.q })
-            : t("library.noMatchState", { q: query.q, state: status(query.state) })
-          : query.state === "all"
-            ? t("library.empty")
-            : t("library.emptyState", { state: status(query.state) })}
+        {message}
       </div>
     );
+    return noMatchHelp && (query.q || query.state !== "all") ? (
+      <div className="demo-no-match">
+        {empty}
+        {noMatchHelp}
+      </div>
+    ) : (
+      empty
+    );
+  }
   return (
     <section aria-label={t("library.results")}>
       <p className="hint" role="status">
@@ -728,6 +830,7 @@ function ConceptScreen({
   onOpenSource,
   onPractice,
   demo = false,
+  walkthrough = false,
 }: {
   conceptId: number;
   backLabel: string;
@@ -740,6 +843,8 @@ function ConceptScreen({
   // fold away, each supporting unit says why it is evidence, and empty
   // curation sections are left out. The data and its meaning are unchanged.
   demo?: boolean;
+  // Public demo, opened from a guided example: this is step 3 of its walk.
+  walkthrough?: boolean;
 }) {
   const i18n = useI18n();
   const { t, tp, tn, status } = i18n;
@@ -795,16 +900,24 @@ function ConceptScreen({
   // Within a section a unit appears once, except relations: one unit may hold
   // several distinct relations to this concept, so those rows key by link ID.
   const unit = (u: LibraryUnit, note?: ReactNode, key: string | number = u.unit_id) => (
-    <UnitCard key={key} unit={u} note={note} onOpenSource={() => onOpenSource(u.unit_id)} />
+    <UnitCard
+      key={key}
+      unit={u}
+      note={note}
+      onOpenSource={() => onOpenSource(u.unit_id)}
+      // Two units from one record would otherwise share one button name.
+      sourceLabel={demo ? t("demo.concept.viewSourceFor", { record: u.entry_id, unit: u.unit_id }) : undefined}
+    />
   );
   return (
     <div>
       {demo ? <nav className="demo-return" aria-label={t("demo.return")}>{back}</nav> : null}
       <section className="panel library-concept" aria-label={t("library.concept.region")}>
-        {demo ? <p className="demo-eyebrow">{t("demo.concept.eyebrow")}</p> : null}
+        {demo ? <p className="demo-eyebrow">{t(walkthrough ? "demo.walk.step3" : "demo.concept.eyebrow")}</p> : null}
         <h2 ref={headingRef} tabIndex={-1} className="library-title">
           {c.target} <StateTag state={c.state} />
         </h2>
+        {walkthrough ? <p className="demo-walk-next">{t("demo.walk.next3")}</p> : null}
         {demo ? (
           <details className="demo-details">
             <summary>{t("demo.concept.details")}</summary>
@@ -943,7 +1056,18 @@ function HistoricalNote({ h, onOpenConcept }: { h: LibraryHistoricalUnit; onOpen
   );
 }
 
-function UnitCard({ unit, note, onOpenSource }: { unit: LibraryUnit; note?: ReactNode; onOpenSource: () => void }) {
+function UnitCard({
+  unit,
+  note,
+  onOpenSource,
+  sourceLabel,
+}: {
+  unit: LibraryUnit;
+  note?: ReactNode;
+  onOpenSource: () => void;
+  // Public demo: an accessible name for the source button that also names the unit.
+  sourceLabel?: string;
+}) {
   const i18n = useI18n();
   const { t } = i18n;
   return (
@@ -965,7 +1089,7 @@ function UnitCard({ unit, note, onOpenSource }: { unit: LibraryUnit; note?: Reac
           version: unit.extraction_version,
           admission: spaced(i18n, unit.admission),
         })}{" "}
-        <button type="button" className="link-button" onClick={onOpenSource}>
+        <button type="button" className="link-button" onClick={onOpenSource} aria-label={sourceLabel}>
           {t("library.unit.viewSource", { id: unit.entry_id })}
         </button>
       </div>
@@ -1012,9 +1136,12 @@ function SourceScreen({
   onOpenConcept,
   onOpenRecord,
   demo = false,
+  walkthrough = false,
 }: {
   unitId: number;
   conceptId: number;
+  // Public demo, opened from a guided example: this is the last step of its walk.
+  walkthrough?: boolean;
   // The second back action's full text: to the search results, or to the
   // guided example the source was opened from.
   backText: string;
@@ -1142,6 +1269,7 @@ function SourceScreen({
     <div>
       {demo ? <nav className="demo-return" aria-label={t("demo.return")}>{nav}</nav> : null}
       <section className="panel" aria-label={t("library.source.region")}>
+        {walkthrough ? <p className="demo-eyebrow">{t("demo.walk.step4")}</p> : null}
         <h2 ref={headingRef} tabIndex={-1} className="library-title">
           {t("library.source.title", { unit: s.unit.unit_id, record: s.entry.id })}
         </h2>
@@ -1172,7 +1300,9 @@ function SourceScreen({
             </Row>
           )}
           <Row label={t("library.source.context")}>{s.entry.original_context || <em>{t("library.noneLower")}</em>}</Row>
-          <Row label={t("library.source.recorded")}>{s.entry.created_at}</Row>
+          <Row label={t("library.source.recorded")}>
+            <RecordedTime value={s.entry.created_at} locale={i18n.locale} />
+          </Row>
         </dl>
         {onOpenRecord ? (
           <button type="button" className="ghost" onClick={() => onOpenRecord(s.entry.id)}>
