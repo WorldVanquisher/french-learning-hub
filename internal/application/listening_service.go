@@ -22,6 +22,7 @@ import (
 type ListeningService struct {
 	repo      ListeningStore
 	generator domain.ListeningExerciseGenerator // nil when LISTENING_PROVIDER=disabled
+	scripts   domain.ListeningScriptPack        // authored scripts offered for import (may be empty)
 	now       func() time.Time
 	deadline  time.Duration
 }
@@ -46,6 +47,12 @@ func WithListeningClock(now func() time.Time) ListeningOption {
 // generator's own timeout.
 func WithPreparationDeadline(d time.Duration) ListeningOption {
 	return func(s *ListeningService) { s.deadline = d }
+}
+
+// WithListeningScripts offers a validated authored-script pack for import.
+// Without it no script is listed and every import is ErrNotFound.
+func WithListeningScripts(pack domain.ListeningScriptPack) ListeningOption {
+	return func(s *ListeningService) { s.scripts = pack }
 }
 
 // DefaultPreparationDeadline is used when no deadline is configured.
@@ -122,15 +129,23 @@ func (s *ListeningService) CreateMaterial(ctx context.Context, sourceURL, title,
 			return nil, err
 		}
 	}
-	m, _, err := s.repo.CreateMaterial(ctx, domain.ListeningMaterial{VideoID: videoID, SourceURL: canonical, Title: t}, segments, timed)
+	m, _, err := s.repo.CreateMaterial(ctx, domain.ListeningMaterial{SourceKind: domain.ListeningSourceYouTube, VideoID: videoID, SourceURL: canonical, Title: t}, segments, timed)
 	if err != nil {
 		return nil, err
 	}
 	return s.GetLesson(ctx, m.ID)
 }
 
-// AddTranscript stores a new transcript version for existing material.
+// AddTranscript stores a new transcript version for existing material. An
+// authored script is fixed text and takes none (ErrListeningScriptFixed).
 func (s *ListeningService) AddTranscript(ctx context.Context, materialID int64, transcript string) (*ListeningLesson, error) {
+	m, err := s.repo.GetMaterial(ctx, materialID)
+	if err != nil {
+		return nil, err
+	}
+	if m.IsAuthoredScript() {
+		return nil, domain.ErrListeningScriptFixed
+	}
 	segments, timed, err := domain.ParseTranscript(transcript)
 	if err != nil {
 		return nil, err
@@ -194,6 +209,65 @@ func (s *ListeningService) ListMaterials(ctx context.Context) ([]ListeningMateri
 		out = append(out, row)
 	}
 	return out, nil
+}
+
+// ListeningScriptSummary is one authored script offered for import: what it
+// is and, once imported, the material that holds it. It carries no line or key.
+type ListeningScriptSummary struct {
+	ID                 string
+	Title              string
+	Genre              string
+	StyleLevel         string
+	SourcePack         string
+	Notice             string
+	Lines              int
+	Questions          int
+	ImportedMaterialID *int64
+}
+
+// ListScripts lists the authored scripts and whether each is imported. It
+// never calls a provider.
+func (s *ListeningService) ListScripts(ctx context.Context) ([]ListeningScriptSummary, error) {
+	ms, err := s.repo.ListMaterials(ctx)
+	if err != nil {
+		return nil, err
+	}
+	imported := map[string]int64{}
+	for _, m := range ms {
+		if m.PackScriptID != "" {
+			imported[m.PackScriptID] = m.ID
+		}
+	}
+	out := make([]ListeningScriptSummary, 0, len(s.scripts.Scripts))
+	for _, sc := range s.scripts.Scripts {
+		row := ListeningScriptSummary{ID: sc.ID, Title: sc.Title, Genre: sc.Genre, StyleLevel: sc.StyleLevel,
+			SourcePack: sc.Source.Pack, Notice: sc.Source.Notice, Lines: len(sc.Lines), Questions: len(sc.Questions)}
+		if id, ok := imported[sc.PackScriptID()]; ok {
+			row.ImportedMaterialID = &id
+		}
+		out = append(out, row)
+	}
+	return out, nil
+}
+
+// ImportScript imports one authored script with its authored exercise, in one
+// transaction and without a model call. Importing it again returns the same
+// lesson (true). ErrNotFound: no such script; ErrListeningScriptConflict: it
+// was imported before with different content (nothing is changed).
+func (s *ListeningService) ImportScript(ctx context.Context, scriptID string) (*ListeningLesson, bool, error) {
+	for _, sc := range s.scripts.Scripts {
+		if sc.ID != scriptID {
+			continue
+		}
+		m := domain.ListeningMaterial{SourceKind: domain.ListeningSourceAuthoredScript, PackScriptID: sc.PackScriptID(), Title: sc.Title}
+		saved, replay, err := s.repo.ImportAuthoredScript(ctx, m, sc.Segments(), sc.Content(), s.now())
+		if err != nil {
+			return nil, false, err
+		}
+		lesson, err := s.GetLesson(ctx, saved.ID)
+		return lesson, replay, err
+	}
+	return nil, false, fmt.Errorf("%w: listening script %q", domain.ErrNotFound, scriptID)
 }
 
 // ListeningPrepareRequest is one explicit Prepare click.

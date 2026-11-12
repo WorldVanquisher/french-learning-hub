@@ -1,0 +1,209 @@
+{
+ "schema_version": "flh_study_pack_v1",
+ "unit": "u05",
+ "section": "listening",
+ "title": "Dix minutes d'écoute : À l'accueil de la Maison des langues",
+ "provenance": {
+  "synthetic": true,
+  "human_reviewed": false,
+  "authoring": "Plan and transfer exercise written by Claude Code (claude-opus-5-5) on 2026-11-11 from workbook unit u05; no provider or API generated them. Not reviewed by a teacher or a native speaker.",
+  "audio": "none: a person reads the script aloud from the reader sheet"
+ },
+ "context": {
+  "fr": "Contexte : à la Maison des langues, les cours du soir ont lieu du lundi au jeudi, de 18 h 30 à 20 h.",
+  "source": "p1",
+  "excerpt": "du lundi au jeudi, de 18 h 30 à 20 h",
+  "why_en": "Read before the dialogue: question u05-l04's explanation relies on the class time, which only the unit's reading brochure (p1) gives."
+ },
+ "plan": [
+  {
+   "minutes": 1,
+   "fr": "Lisez l'objectif et les dix questions. Ne lisez pas le script.",
+   "en": "Read the goal and the ten questions. Do not read the script.",
+   "zh": "阅读目标和十道题。不要看脚本。"
+  },
+  {
+   "minutes": 3,
+   "fr": "Première écoute : une autre personne lit le script (feuille du lecteur). Répondez à ce que vous pouvez.",
+   "en": "First listening: someone else reads the script (reader sheet). Answer what you can.",
+   "zh": "第一遍听：请他人朗读脚本（朗读者用纸）。能答多少答多少。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Deuxième écoute. Complétez vos réponses.",
+   "en": "Second listening. Complete your answers.",
+   "zh": "第二遍听，补全答案。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Vérifiez : dans l'application, « Reveal answers and evidence », ou avec la fiche de l'enseignant. Notez ce que vous avez manqué.",
+   "en": "Check: in the app, “Reveal answers and evidence”, or with the teacher debrief. Note what you missed.",
+   "zh": "核对：在应用中点击“Reveal answers and evidence”，或用教师讲评页。记下没听懂的地方。"
+  },
+  {
+   "minutes": 2,
+   "fr": "Transfert : une nouvelle petite écoute (trois questions), puis une phrase à vous.",
+   "en": "Transfer: a new short listening (three questions), then one sentence of your own.",
+   "zh": "迁移练习：一段新的简短听力（三道题），再说或写一句自己的话。"
+  }
+ ],
+ "optional": {
+  "fr": "Option : enregistrez un point manqué comme question (Écoute → « Save as a learning question… »).",
+  "en": "Optional: save one missed point as a learning question (Listening → “Save as a learning question…”).",
+  "zh": "可选：把一个没听懂的点保存为学习问题（听力 → “Save as a learning question…”）。"
+ },
+ "transfer": {
+  "title": "Au centre social : l'atelier de cuisine",
+  "speakers": [
+   {
+    "id": "A",
+    "label": "Agent du centre social",
+    "voice": "voix calme, rythme normal"
+   },
+   {
+    "id": "B",
+    "label": "Karim",
+    "voice": "voix différente de l'agent"
+   }
+  ],
+  "lines": [
+   {
+    "id": "t1",
+    "speaker": "B",
+    "text": "Bonjour, je voudrais m'inscrire à l'atelier de cuisine du samedi."
+   },
+   {
+    "id": "t2",
+    "speaker": "A",
+    "text": "Le samedi, c'est complet. Il reste de la place le jeudi soir, de 19 h à 21 h."
+   },
+   {
+    "id": "t3",
+    "speaker": "B",
+    "text": "Le jeudi soir, ça me va. C'est combien ?"
+   },
+   {
+    "id": "t4",
+    "speaker": "A",
+    "text": "60 euros pour le trimestre. Vous pouvez payer en deux fois : 30 euros aujourd'hui et 30 euros en janvier."
+   },
+   {
+    "id": "t5",
+    "speaker": "B",
+    "text": "Je préfère tout payer aujourd'hui. Et l'atelier, c'est où ?"
+   },
+   {
+    "id": "t6",
+    "speaker": "A",
+    "text": "Au rez-de-chaussée, dans la grande cuisine. Le premier atelier, c'est jeudi prochain."
+   }
+  ],
+  "questions": [
+   {
+    "id": "u05-x01",
+    "type": "single_choice",
+    "kind": "detail",
+    "stem": "Quel jour Karim va-t-il à l'atelier ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "Le samedi matin.",
+      "correct": false,
+      "why_wrong_en": "Saturday is full (t2).",
+      "why_wrong_zh": "周六已经满了（t2）。"
+     },
+     {
+      "key": "B",
+      "text": "Le jeudi soir.",
+      "correct": true
+     },
+     {
+      "key": "C",
+      "text": "Le mercredi soir.",
+      "correct": false,
+      "why_wrong_en": "Only Thursday evening still has places (t2).",
+      "why_wrong_zh": "只有周四晚上还有名额（t2）。"
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t2",
+      "excerpt": "Il reste de la place le jeudi soir"
+     },
+     {
+      "ref": "t3",
+      "excerpt": "Le jeudi soir, ça me va"
+     }
+    ],
+    "explanation_en": "Saturday is full, so he takes Thursday evening.",
+    "explanation_zh": "周六满了，所以他选了周四晚上。"
+   },
+   {
+    "id": "u05-x02",
+    "type": "single_choice",
+    "kind": "detail",
+    "stem": "Comment Karim paie-t-il ?",
+    "options": [
+     {
+      "key": "A",
+      "text": "En deux fois : 30 euros aujourd'hui et 30 euros en janvier.",
+      "correct": false,
+      "why_wrong_en": "Two instalments are offered, but he prefers to pay everything today (t4, t5).",
+      "why_wrong_zh": "可以分两次付，但他更愿意今天全部付清（t4、t5）。"
+     },
+     {
+      "key": "B",
+      "text": "Tout aujourd'hui : 60 euros.",
+      "correct": true
+     },
+     {
+      "key": "C",
+      "text": "Tout en janvier.",
+      "correct": false,
+      "why_wrong_en": "January is only when a second instalment would be paid (t4).",
+      "why_wrong_zh": "一月只是第二期付款的时间（t4）。"
+     }
+    ],
+    "evidence": [
+     {
+      "ref": "t4",
+      "excerpt": "60 euros pour le trimestre"
+     },
+     {
+      "ref": "t5",
+      "excerpt": "Je préfère tout payer aujourd'hui"
+     }
+    ],
+    "explanation_en": "He pays the whole 60 euros today.",
+    "explanation_zh": "他今天付清全部60欧元。"
+   },
+   {
+    "id": "u05-x03",
+    "type": "short_answer",
+    "kind": "detail",
+    "stem": "Où a lieu l'atelier ?",
+    "reference_answer": "au rez-de-chaussée, dans la grande cuisine",
+    "accepted_alternatives": [
+     "au rez-de-chaussée",
+     "dans la grande cuisine"
+    ],
+    "evidence": [
+     {
+      "ref": "t6",
+      "excerpt": "Au rez-de-chaussée, dans la grande cuisine"
+     }
+    ],
+    "explanation_en": "On the ground floor, in the big kitchen.",
+    "explanation_zh": "在底层（一楼）的大厨房。"
+   }
+  ],
+  "productive": {
+   "fr": "À vous (une minute) : dites ou écrivez une phrase sur votre semaine avec « … ça me va » ou « c'est complet ».",
+   "en": "Your turn (one minute): say or write one sentence about your week with “… ça me va” or “c'est complet”.",
+   "zh": "轮到你（一分钟）：用 « … ça me va » 或 « c'est complet » 说或写一句关于你这一周的话。",
+   "model": "Le mardi soir, ça me va : je finis le travail à 18 heures.",
+   "model_note_en": "One possible answer, not the only one.",
+   "model_note_zh": "这只是一个可能的答案，不是唯一答案。"
+  }
+ }
+}

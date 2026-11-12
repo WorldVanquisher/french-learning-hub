@@ -40,8 +40,10 @@ export const segments = parseTranscript(transcriptText);
 
 export const material: ListeningMaterial = {
   id: 1,
+  source_kind: "youtube",
   video_id: "FLHlisten01",
   source_url: "https://www.youtube.com/watch?v=FLHlisten01",
+  pack_script_id: null,
   title: "La minute du quartier",
   created_at: "2026-11-08T09:00:00Z",
 };

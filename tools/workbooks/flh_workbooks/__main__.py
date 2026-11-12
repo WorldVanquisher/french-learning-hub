@@ -1,6 +1,7 @@
 """FLH workbooks command line (run from tools/workbooks):
 
-  python3 -m flh_workbooks build              write content/workbooks/*.json from the authoring modules
+  python3 -m flh_workbooks build              write content/workbooks/*.json (and the embedded listening
+                                              script pack) from the authoring modules
   python3 -m flh_workbooks check              quality gates; committed JSON must equal a fresh build
   python3 -m flh_workbooks render --out DIR   student/teacher Markdown + HTML, recording script, TTS script
   python3 -m flh_workbooks scan [--workbook rl|pw] --html F [--pdf-text F] [--pdf-info F]
@@ -8,6 +9,9 @@
   python3 -m flh_workbooks report --out DIR   inventory JSON/Markdown and machine-critique flags
   python3 -m flh_workbooks capture --question ID --text "learner's own question"
                                               print a learning_capture_v1 document (no analysis)
+  python3 -m flh_workbooks studypack --unit u05 --out DIR
+                                              ten-minute listening study pack: student checklist,
+                                              reader sheet, teacher debrief and verification report
 """
 
 import argparse
@@ -15,9 +19,11 @@ import json
 import sys
 from pathlib import Path
 
-from . import adapters, model, quality, render, report, scan
+from . import adapters, model, quality, render, report, scan, studypack
 
 ADAPTER_DIR = model.CONTENT / "adapters"
+# The listening script pack is embedded by the server, so it lives in its package.
+LISTENING_PACK = model.ROOT / "internal" / "listening" / "pack" / "listening_scripts_v1.json"
 
 
 def outputs():
@@ -28,6 +34,7 @@ def outputs():
         model.RL_PATH: model.dumps(rl),
         ADAPTER_DIR / "reading_pack_workbook_rl_v1.json": adapters.dumps(adapters.reading_pack(rl)),
         ADAPTER_DIR / "reading_learner_lessons_rl_v1.json": adapters.dumps(adapters.learner_lessons(rl)),
+        LISTENING_PACK: adapters.dumps(adapters.listening_script_pack(rl)),
         model.PW_PATH: model.dumps(pw),
         ADAPTER_DIR / "writing_tasks_pw_v1.json": adapters.dumps(adapters.writing_task_bodies(pw)),
         ADAPTER_DIR / "writing_prompts_workbook_pw_v1.json": adapters.dumps(adapters.writing_prompt_set(pw)),
@@ -59,6 +66,7 @@ def main(argv=None):
     s = sub.add_parser("scan"); s.add_argument("--workbook", choices=("rl", "pw"), default="rl"); s.add_argument("--html", required=True); s.add_argument("--pdf-text"); s.add_argument("--pdf-info")
     p = sub.add_parser("report"); p.add_argument("--out", required=True)
     c = sub.add_parser("capture"); c.add_argument("--question", required=True); c.add_argument("--text", required=True)
+    sp = sub.add_parser("studypack"); sp.add_argument("--unit", required=True); sp.add_argument("--out", required=True)
     a = ap.parse_args(argv)
 
     if a.cmd in ("build", "check"):
@@ -131,6 +139,12 @@ def main(argv=None):
     if a.cmd == "capture":
         print(adapters.dumps(adapters.capture(rl, a.question, a.text)), end="")
         return 0
+    if a.cmd == "studypack":
+        summary = studypack.build(rl, a.unit, Path(a.out))
+        print(json.dumps(summary, ensure_ascii=False))
+        for e in summary["errors"]:
+            print("ERROR:", e, file=sys.stderr)
+        return 1 if summary["errors"] else 0
     return 2
 
 

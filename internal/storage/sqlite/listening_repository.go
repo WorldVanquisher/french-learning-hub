@@ -40,12 +40,7 @@ func (r *ListeningRepository) CreateMaterial(ctx context.Context, m domain.Liste
 	}
 	defer func() { _ = tx.Rollback() }()
 	ts := r.now().Format(rfc3339)
-	res, err := tx.ExecContext(ctx, `INSERT INTO listening_materials (video_id, source_url, title, created_at) VALUES (?, ?, ?, ?)`,
-		m.VideoID, m.SourceURL, m.Title, ts)
-	if err != nil {
-		return domain.ListeningMaterial{}, nil, fmt.Errorf("insert listening material: %w", err)
-	}
-	id, err := res.LastInsertId()
+	id, err := insertMaterial(ctx, tx, m, ts)
 	if err != nil {
 		return domain.ListeningMaterial{}, nil, err
 	}
@@ -65,6 +60,97 @@ func (r *ListeningRepository) CreateMaterial(ctx context.Context, m domain.Liste
 		return domain.ListeningMaterial{}, nil, fmt.Errorf("commit tx: %w", err)
 	}
 	return saved, transcript, nil
+}
+
+// insertMaterial stores one material. A YouTube material always has its link;
+// an authored script has none (the table's CHECK refuses anything else).
+func insertMaterial(ctx context.Context, tx *sql.Tx, m domain.ListeningMaterial, ts string) (int64, error) {
+	kind := m.SourceKind
+	if kind == "" {
+		kind = domain.ListeningSourceYouTube
+	}
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO listening_materials (source_kind, video_id, source_url, pack_script_id, title, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		kind, nullable(m.VideoID), nullable(m.SourceURL), nullable(m.PackScriptID), m.Title, ts)
+	if err != nil {
+		return 0, fmt.Errorf("insert listening material: %w", err)
+	}
+	return res.LastInsertId()
+}
+
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+// ImportAuthoredScript stores an authored script, its lines as transcript
+// version 1 and its authored exercise in one transaction. If the pack script
+// is already imported, its version-1 lines, authored exercise and title are
+// compared with the pack: equal is a replay (true) and nothing is written;
+// different is domain.ErrListeningScriptConflict and nothing is written.
+func (r *ListeningRepository) ImportAuthoredScript(ctx context.Context, m domain.ListeningMaterial, segments []domain.TranscriptSegment,
+	content domain.ListeningExerciseContent, now time.Time) (domain.ListeningMaterial, bool, error) {
+	if m.SourceKind != domain.ListeningSourceAuthoredScript || m.PackScriptID == "" || m.VideoID != "" || m.SourceURL != "" {
+		return domain.ListeningMaterial{}, false, fmt.Errorf("%w: an authored script has a pack script id and no link", domain.ErrValidation)
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return domain.ListeningMaterial{}, false, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	// Take the write lock first, so two imports cannot both insert.
+	if _, err := tx.ExecContext(ctx, `UPDATE listening_materials SET id = id WHERE 0`); err != nil {
+		return domain.ListeningMaterial{}, false, fmt.Errorf("take write lock: %w", err)
+	}
+	rawSegments, err := json.Marshal(segments)
+	if err != nil {
+		return domain.ListeningMaterial{}, false, err
+	}
+	rawContent, err := json.Marshal(content)
+	if err != nil {
+		return domain.ListeningMaterial{}, false, err
+	}
+	var existingID int64
+	switch err := tx.QueryRowContext(ctx, `SELECT id FROM listening_materials WHERE pack_script_id = ?`, m.PackScriptID).Scan(&existingID); {
+	case err == nil:
+		existing, err := readMaterial(ctx, tx, existingID)
+		if err != nil {
+			return domain.ListeningMaterial{}, false, err
+		}
+		var storedSegments, storedContent string
+		if err := tx.QueryRowContext(ctx, `SELECT t.segments, e.content FROM listening_transcripts t
+			JOIN listening_exercises e ON e.transcript_id = t.id
+			WHERE t.material_id = ? AND t.version = 1 AND e.generator = ? AND e.status = ? ORDER BY e.id LIMIT 1`,
+			existingID, domain.ListeningAuthoredGenerator, domain.ListeningExerciseCompleted).Scan(&storedSegments, &storedContent); err != nil {
+			return existing, false, fmt.Errorf("read imported script: %w", err)
+		}
+		if !jsonEqual(storedSegments, rawSegments) || !jsonEqual(storedContent, rawContent) || existing.Title != m.Title {
+			return existing, false, domain.ErrListeningScriptConflict
+		}
+		return existing, true, tx.Commit()
+	case !errors.Is(err, sql.ErrNoRows):
+		return domain.ListeningMaterial{}, false, fmt.Errorf("find imported script: %w", err)
+	}
+	ts := now.UTC().Format(rfc3339)
+	id, err := insertMaterial(ctx, tx, m, ts)
+	if err != nil {
+		return domain.ListeningMaterial{}, false, err
+	}
+	t, err := insertTranscript(ctx, tx, id, 1, segments, false, ts)
+	if err != nil {
+		return domain.ListeningMaterial{}, false, err
+	}
+	if _, err := insertExercise(ctx, tx, domain.ListeningExercise{MaterialID: id, TranscriptID: t.ID, Status: domain.ListeningExerciseCompleted,
+		Generator: domain.ListeningAuthoredGenerator, Content: &content}, ts); err != nil {
+		return domain.ListeningMaterial{}, false, err
+	}
+	saved, err := readMaterial(ctx, tx, id)
+	if err != nil {
+		return domain.ListeningMaterial{}, false, err
+	}
+	return saved, false, tx.Commit()
 }
 
 // AddTranscript stores the next transcript version for an existing material.
@@ -123,7 +209,7 @@ func (r *ListeningRepository) GetMaterial(ctx context.Context, id int64) (domain
 
 // ListMaterials returns every material, newest first.
 func (r *ListeningRepository) ListMaterials(ctx context.Context) ([]domain.ListeningMaterial, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, video_id, source_url, title, created_at FROM listening_materials ORDER BY id DESC`)
+	rows, err := r.db.QueryContext(ctx, `SELECT `+materialColumns+` FROM listening_materials ORDER BY id DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list listening materials: %w", err)
 	}
@@ -205,20 +291,26 @@ func (r *ListeningRepository) ListExercises(ctx context.Context, materialID int6
 	return out, rows.Err()
 }
 
+const materialColumns = `id, source_kind, video_id, source_url, pack_script_id, title, created_at`
+
 func readMaterial(ctx context.Context, q queryer, id int64) (domain.ListeningMaterial, error) {
-	m, err := scanMaterial(q.QueryRowContext(ctx, `SELECT id, video_id, source_url, title, created_at FROM listening_materials WHERE id = ?`, id).Scan)
+	m, err := scanMaterial(q.QueryRowContext(ctx, `SELECT `+materialColumns+` FROM listening_materials WHERE id = ?`, id).Scan)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.ListeningMaterial{}, fmt.Errorf("%w: listening material %d", domain.ErrNotFound, id)
 	}
 	return m, err
 }
 
+// scanMaterial reads one material. video_id and source_url are NULL for an
+// authored script, pack_script_id is NULL for YouTube material; NULL reads as "".
 func scanMaterial(scan func(...any) error) (domain.ListeningMaterial, error) {
 	var m domain.ListeningMaterial
+	var videoID, sourceURL, packScriptID sql.NullString
 	var created string
-	if err := scan(&m.ID, &m.VideoID, &m.SourceURL, &m.Title, &created); err != nil {
+	if err := scan(&m.ID, &m.SourceKind, &videoID, &sourceURL, &packScriptID, &m.Title, &created); err != nil {
 		return m, err
 	}
+	m.VideoID, m.SourceURL, m.PackScriptID = videoID.String, sourceURL.String, packScriptID.String
 	m.CreatedAt, _ = time.Parse(rfc3339, created)
 	return m, nil
 }

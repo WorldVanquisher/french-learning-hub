@@ -11,6 +11,7 @@ import type {
   ListeningNotification,
   ListeningPreparationResult,
   ListeningPullRun,
+  ListeningScripts,
 } from "../types/listening";
 import type {
   Concept,
@@ -694,6 +695,18 @@ export function prepareListeningExercise(
 // recorded under it yet; it never proves the request was not received.
 export function getListeningPreparation(operationId: string, fetchImpl: typeof fetch = fetch): Promise<ListeningPreparationResult> {
   return request<ListeningPreparationResult>("GET", `/listening/preparations/${encodeURIComponent(operationId)}`, undefined, fetchImpl);
+}
+
+// listListeningScripts lists the embedded authored listening scripts (titles
+// and counts only) and whether each is imported.
+export function listListeningScripts(fetchImpl: typeof fetch = fetch): Promise<ListeningScripts> {
+  return request<ListeningScripts>("GET", "/listening/scripts", undefined, fetchImpl);
+}
+
+// importListeningScript imports one authored script with its authored
+// questions; no model call. Importing it again returns the same lesson (200).
+export function importListeningScript(scriptId: string, fetchImpl: typeof fetch = fetch): Promise<ListeningLesson> {
+  return request<ListeningLesson>("POST", `/listening/scripts/${encodeURIComponent(scriptId)}`, undefined, fetchImpl);
 }
 
 // ---- Daily Listening (pull, prepare, notify) ----

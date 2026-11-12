@@ -6,7 +6,11 @@ import random
 import re
 import unittest
 
-from flh_workbooks import adapters, model, quality, render, scan
+import copy
+import tempfile
+from pathlib import Path
+
+from flh_workbooks import adapters, model, quality, render, scan, studypack
 from flh_workbooks.__main__ import gates, outputs
 
 
@@ -100,6 +104,30 @@ class Adapters(unittest.TestCase):
                 for e in q["evidence"]:
                     self.assertEqual(texts[e["segment"]].count(e["excerpt"]), 1)
 
+    def test_listening_script_pack_keeps_every_question_and_invents_nothing(self):
+        pack = adapters.listening_script_pack(self.doc)
+        self.assertEqual(pack["schema_version"], "flh_listening_script_pack_v1")
+        self.assertEqual(len(pack["scripts"]), 12)
+        raw = json.dumps(pack, ensure_ascii=False)
+        for banned in ("http", "youtu", '"audio"', '"video_id"', '"source_url"', '"start_seconds"'):
+            self.assertNotIn(banned, raw)
+        for s, u in zip(pack["scripts"], self.doc["units"]):
+            turns = u["listening"]["turns"]
+            self.assertEqual([(x["id"], x["text"]) for x in s["lines"]], [(t["id"], t["text"]) for t in turns])
+            self.assertEqual([q["id"] for q in s["questions"]], [q["id"] for q in u["listening"]["questions"]])
+            for q, src in zip(s["questions"], u["listening"]["questions"]):
+                if src["type"] == "single_choice":
+                    self.assertEqual(q["choices"], [o["text"] for o in src["options"]])
+                    self.assertEqual(q["expected_answer"], next(o["text"] for o in src["options"] if o["correct"]))
+                    self.assertEqual(len(q["wrong_answers"]), len(src["options"]) - 1)
+                else:
+                    self.assertNotIn("choices", q)
+                for e in q["evidence"]:
+                    self.assertIn(e["segment"], q["segments"])
+                    self.assertEqual(s["lines"][e["segment"] - 1]["text"].count(e["excerpt"]), 1)
+            for a in s["annotations"]:
+                self.assertEqual(s["lines"][a["segment"] - 1]["text"].count(a["excerpt"]), 1)
+
     def test_lesson_text_splits_into_workbook_paragraphs(self):
         for b, u in zip(adapters.learner_lessons(self.doc)["bodies"], self.doc["units"]):
             parts = [p.strip() for p in b["body"]["text"].split("\n\n")]
@@ -180,3 +208,47 @@ class Productive(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StudyPack(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = json.loads(model.RL_PATH.read_text(encoding="utf-8"))
+        cls.pack = studypack.load_pack("u05")
+
+    def test_u05_pack_builds_clean_and_only_the_teacher_sheet_has_the_key(self):
+        with tempfile.TemporaryDirectory() as d:
+            summary = studypack.build(self.doc, "u05", Path(d))
+            self.assertEqual(summary["errors"], [])
+            self.assertEqual(summary["flags"], [])
+            self.assertEqual(summary["scan_findings"]["student-checklist"], 0)
+            self.assertEqual(summary["scan_findings"]["reader-sheet"], 0)
+            self.assertGreater(summary["scan_findings"]["teacher-debrief"], 0)
+            checklist = (Path(d) / "u05-student-checklist.html").read_text(encoding="utf-8")
+            for t in find_turns(self.doc, "u05"):
+                self.assertNotIn(t, checklist)
+            reader = (Path(d) / "u05-reader-sheet.html").read_text(encoding="utf-8")
+            self.assertIn("18 h 30", reader)  # the context line is read before the dialogue
+
+    def test_without_the_context_line_the_class_time_is_flagged_with_its_source(self):
+        pack = copy.deepcopy(self.pack)
+        del pack["context"]
+        errors, flags, _ = studypack.verify(self.doc, pack)
+        self.assertEqual(errors, [])
+        self.assertEqual({(f["id"], f["fact"], tuple(f["found_in"])) for f in flags}, {("u05-l04", "18 h 30", ("p1",))})
+
+    def test_broken_evidence_reasons_or_plan_are_refused(self):
+        pack = copy.deepcopy(self.pack)
+        pack["transfer"]["questions"][0]["evidence"][0]["excerpt"] = "le vendredi"
+        pack["transfer"]["questions"][1]["options"][0]["why_wrong_en"] = "He pays today (t9)."
+        errors, _, _ = studypack.verify(self.doc, pack)
+        self.assertTrue(any("occurs 0 times in t2" in e for e in errors), errors)
+        self.assertTrue(any("u05-x02 option A" in e for e in errors), errors)
+        pack = copy.deepcopy(self.pack)
+        pack["context"]["excerpt"] = "de 18 h à 20 h"
+        self.assertTrue(any(e.startswith("context:") for e in studypack.verify(self.doc, pack)[0]))
+        self.assertEqual(sum(s["minutes"] for s in self.pack["plan"]), 10)
+
+
+def find_turns(doc, unit_id):
+    return [t["text"] for t in studypack.find_unit(doc, unit_id)["listening"]["turns"]]

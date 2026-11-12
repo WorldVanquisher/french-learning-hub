@@ -1,0 +1,4742 @@
+{
+ "schema_version": "flh_listening_script_pack_v1",
+ "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level.",
+ "scripts": [
+  {
+   "id": "ls-wb1-u01",
+   "title": "Au téléphone : organiser la visite",
+   "genre": "conversation téléphonique",
+   "style_level": "A2",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Hugo, colocataire",
+     "text": "Allô, bonjour, c'est Hugo, de la colocation de Villeurbanne. Je vous appelle à propos de votre message."
+    },
+    {
+     "id": "s2",
+     "speaker": "Lina, candidate",
+     "text": "Ah, bonjour ! Merci de me rappeler. La chambre est toujours libre ?"
+    },
+    {
+     "id": "s3",
+     "speaker": "Hugo, colocataire",
+     "text": "Oui, elle est toujours libre. On organise les visites samedi, entre dix heures et midi. Ça vous irait ?"
+    },
+    {
+     "id": "s4",
+     "speaker": "Lina, candidate",
+     "text": "Samedi matin, je travaille jusqu'à onze heures. Je peux venir vers onze heures et demie ?"
+    },
+    {
+     "id": "s5",
+     "speaker": "Hugo, colocataire",
+     "text": "Pas de problème. Venez avec une pièce d'identité, s'il vous plaît, parce que le propriétaire veut faire une copie."
+    },
+    {
+     "id": "s6",
+     "speaker": "Lina, candidate",
+     "text": "D'accord. Et pour y aller, c'est quel arrêt ?"
+    },
+    {
+     "id": "s7",
+     "speaker": "Hugo, colocataire",
+     "text": "Prenez le métro A jusqu'à Charpennes, puis marchez dix minutes. L'immeuble est en face de la boulangerie, au numéro 14. Sonnez au troisième étage."
+    },
+    {
+     "id": "s8",
+     "speaker": "Lina, candidate",
+     "text": "Parfait. Une dernière question : est-ce que je peux garder mon vélo dans l'immeuble ?"
+    },
+    {
+     "id": "s9",
+     "speaker": "Hugo, colocataire",
+     "text": "Oui, il y a un local à vélos au sous-sol. Bon, à samedi alors !"
+    },
+    {
+     "id": "s10",
+     "speaker": "Lina, candidate",
+     "text": "À samedi, merci beaucoup !"
+    }
+   ],
+   "questions": [
+    {
+     "id": "u01-l01",
+     "kind": "main_idea",
+     "question": "Pourquoi Hugo appelle-t-il Lina ?",
+     "expected_answer": "Pour organiser la visite de la chambre.",
+     "rationale_en": "Hugo replies to her message and proposes a viewing time.",
+     "rationale_zh": "Hugo回复她的留言并提出看房时间。",
+     "segments": [
+      1,
+      3
+     ],
+     "choices": [
+      "Pour organiser la visite de la chambre.",
+      "Pour lui proposer un travail le samedi.",
+      "Pour annuler les visites du week-end."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Pour lui proposer un travail le samedi.",
+       "why_wrong_en": "Lina mentions her own job; Hugo is calling about her message (s1).",
+       "why_wrong_zh": "工作是Lina自己提到的；Hugo是因她的留言而打电话（s1）。"
+      },
+      {
+       "answer": "Pour annuler les visites du week-end.",
+       "why_wrong_en": "He confirms that visits take place on Saturday (s3).",
+       "why_wrong_zh": "他确认周六照常看房（s3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 1,
+       "excerpt": "Je vous appelle à propos de votre message"
+      },
+      {
+       "segment": 3,
+       "excerpt": "On organise les visites samedi"
+      }
+     ]
+    },
+    {
+     "id": "u01-l02",
+     "kind": "detail",
+     "question": "À quelle heure Lina va-t-elle venir ?",
+     "expected_answer": "Vers onze heures et demie.",
+     "rationale_en": "She proposes 11:30 and Hugo agrees.",
+     "rationale_zh": "她提出十一点半，Hugo同意了。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Vers onze heures et demie.",
+      "À midi.",
+      "À dix heures."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "À midi.",
+       "why_wrong_en": "Midday is when viewings end; she proposes half past eleven (s4).",
+       "why_wrong_zh": "中午是看房结束时间，她提出十一点半（s4）。"
+      },
+      {
+       "answer": "À dix heures.",
+       "why_wrong_en": "Ten is when viewings start; she works until eleven (s3, s4).",
+       "why_wrong_zh": "十点是看房开始时间，而她工作到十一点（s3、s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "Je peux venir vers onze heures et demie"
+      }
+     ]
+    },
+    {
+     "id": "u01-l03",
+     "kind": "detail",
+     "question": "Qu'est-ce que Lina doit apporter ?",
+     "expected_answer": "Une pièce d'identité.",
+     "rationale_en": "Hugo asks her to bring an identity document.",
+     "rationale_zh": "Hugo请她带身份证件。",
+     "segments": [
+      5
+     ],
+     "choices": [
+      "Une photo de son vélo.",
+      "Une pièce d'identité.",
+      "Un mois de loyer."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Une photo de son vélo.",
+       "why_wrong_en": "She only asks where to keep her bike (s8).",
+       "why_wrong_zh": "她只是问自行车放在哪里（s8）。"
+      },
+      {
+       "answer": "Un mois de loyer.",
+       "why_wrong_en": "Money is not mentioned in the call.",
+       "why_wrong_zh": "通话中没有提到钱。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 5,
+       "excerpt": "Venez avec une pièce d'identité"
+      }
+     ]
+    },
+    {
+     "id": "u01-l04",
+     "kind": "detail",
+     "question": "Pourquoi faut-il ce document ?",
+     "expected_answer": "Le propriétaire veut une copie.",
+     "rationale_en": "« Parce que » gives the reason: the owner wants a copy.",
+     "rationale_zh": "« parce que » 说明原因：房东想复印一份。",
+     "segments": [
+      5
+     ],
+     "choices": [
+      "Pour entrer dans le métro.",
+      "Pour pouvoir ouvrir le local à vélos du sous-sol.",
+      "Le propriétaire veut une copie."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Pour entrer dans le métro.",
+       "why_wrong_en": "The metro is only mentioned for directions (s7).",
+       "why_wrong_zh": "提到地铁只是为了指路（s7）。"
+      },
+      {
+       "answer": "Pour pouvoir ouvrir le local à vélos du sous-sol.",
+       "why_wrong_en": "The bike room is mentioned without any document (s9).",
+       "why_wrong_zh": "提到自行车间时并没有说需要证件（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 5,
+       "excerpt": "parce que le propriétaire veut faire une copie"
+      }
+     ]
+    },
+    {
+     "id": "u01-l05",
+     "kind": "detail",
+     "question": "Quelle ligne de métro faut-il prendre ?",
+     "expected_answer": "la ligne A",
+     "rationale_en": "Line A to Charpennes.",
+     "rationale_zh": "乘地铁A线到Charpennes站。",
+     "segments": [
+      7
+     ],
+     "accepted_alternatives": [
+      "le métro A",
+      "A"
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "Prenez le métro A jusqu'à Charpennes"
+      }
+     ]
+    },
+    {
+     "id": "u01-l06",
+     "kind": "detail",
+     "question": "Où se trouve l'immeuble ?",
+     "expected_answer": "En face de la boulangerie.",
+     "rationale_en": "The building is opposite the bakery.",
+     "rationale_zh": "楼在面包店对面。",
+     "segments": [
+      7
+     ],
+     "choices": [
+      "Derrière le supermarché.",
+      "À côté de la station Charpennes.",
+      "En face de la boulangerie."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Derrière le supermarché.",
+       "why_wrong_en": "No supermarket is mentioned.",
+       "why_wrong_zh": "没有提到超市。"
+      },
+      {
+       "answer": "À côté de la station Charpennes.",
+       "why_wrong_en": "From the station it is a ten-minute walk (s7).",
+       "why_wrong_zh": "从车站还要走十分钟（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "L'immeuble est en face de la boulangerie"
+      }
+     ]
+    },
+    {
+     "id": "u01-l07",
+     "kind": "detail",
+     "question": "À quel étage faut-il sonner ?",
+     "expected_answer": "au troisième étage",
+     "rationale_en": "Ring on the third floor.",
+     "rationale_zh": "按三楼的门铃。",
+     "segments": [
+      7
+     ],
+     "accepted_alternatives": [
+      "au troisième",
+      "troisième",
+      "3e étage"
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "Sonnez au troisième étage"
+      }
+     ]
+    },
+    {
+     "id": "u01-l08",
+     "kind": "detail",
+     "question": "Où Lina pourra-t-elle mettre son vélo ?",
+     "expected_answer": "Dans un local au sous-sol.",
+     "rationale_en": "There is a bike room in the basement.",
+     "rationale_zh": "地下室有自行车间。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Dans sa chambre.",
+      "Dans la cour.",
+      "Dans un local au sous-sol."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Dans sa chambre.",
+       "why_wrong_en": "Hugo names a dedicated room in the basement (s9).",
+       "why_wrong_zh": "Hugo说的是地下室的专用车间（s9）。"
+      },
+      {
+       "answer": "Dans la cour.",
+       "why_wrong_en": "The courtyard is in the advert, not in the call, and is not a bike place.",
+       "why_wrong_zh": "庭院出现在广告里，不是放车的地方，通话中也没提到。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "il y a un local à vélos au sous-sol"
+      }
+     ]
+    },
+    {
+     "id": "u01-l09",
+     "kind": "inference",
+     "question": "Que comprend-on sur l'emploi du temps de Lina ?",
+     "expected_answer": "Elle travaille le samedi matin.",
+     "rationale_en": "She has work on Saturday mornings.",
+     "rationale_zh": "她周六上午要上班。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Elle travaille le samedi matin.",
+      "Elle ne travaille jamais le week-end.",
+      "Elle est libre toute la journée samedi."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle ne travaille jamais le week-end.",
+       "why_wrong_en": "She says she works on Saturday morning (s4).",
+       "why_wrong_zh": "她说她周六上午要工作（s4）。"
+      },
+      {
+       "answer": "Elle est libre toute la journée samedi.",
+       "why_wrong_en": "She works until eleven on Saturday (s4).",
+       "why_wrong_zh": "她周六工作到十一点（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "Samedi matin, je travaille jusqu'à onze heures"
+      }
+     ]
+    },
+    {
+     "id": "u01-l10",
+     "kind": "detail",
+     "question": "Quel est le numéro de l'immeuble ?",
+     "expected_answer": "14",
+     "rationale_en": "Number 14.",
+     "rationale_zh": "14号。",
+     "segments": [
+      7
+     ],
+     "accepted_alternatives": [
+      "le numéro 14",
+      "quatorze"
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "au numéro 14"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 5,
+     "excerpt": "une pièce d'identité",
+     "note_en": "an identity document",
+     "note_zh": "身份证件"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u02",
+   "title": "Au guichet de la gare",
+   "genre": "dialogue au guichet",
+   "style_level": "A2",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Voyageur",
+     "text": "Bonjour madame. J'avais un billet pour le train de 7 h 12 pour Saint-Nazaire, demain. Il est annulé ?"
+    },
+    {
+     "id": "s2",
+     "speaker": "Agent SNCF fictif",
+     "text": "Bonjour monsieur. Oui, demain, aucun train ne part avant 9 heures sur cette ligne. Vous pouvez prendre le car de 7 heures, à la gare routière."
+    },
+    {
+     "id": "s3",
+     "speaker": "Voyageur",
+     "text": "La gare routière, c'est loin d'ici ?"
+    },
+    {
+     "id": "s4",
+     "speaker": "Agent SNCF fictif",
+     "text": "Non, c'est juste derrière la gare, à deux minutes à pied. Sortez par la porte nord."
+    },
+    {
+     "id": "s5",
+     "speaker": "Voyageur",
+     "text": "Et avec mon billet de train, je peux monter dans le car ?"
+    },
+    {
+     "id": "s6",
+     "speaker": "Agent SNCF fictif",
+     "text": "Oui, votre billet est accepté. Mais attention, le car met plus de temps : comptez une heure et quart au lieu de cinquante minutes."
+    },
+    {
+     "id": "s7",
+     "speaker": "Voyageur",
+     "text": "Une heure et quart… J'ai un rendez-vous à 8 h 30. Il y a un car plus tôt ?"
+    },
+    {
+     "id": "s8",
+     "speaker": "Agent SNCF fictif",
+     "text": "Le premier part à 6 heures. Sinon, je peux vous rembourser votre billet si vous préférez y aller en voiture."
+    },
+    {
+     "id": "s9",
+     "speaker": "Voyageur",
+     "text": "Non, je vais prendre le car de 6 heures. Merci pour votre aide."
+    },
+    {
+     "id": "s10",
+     "speaker": "Agent SNCF fictif",
+     "text": "Je vous en prie. Bon voyage, et bon courage pour demain matin !"
+    }
+   ],
+   "questions": [
+    {
+     "id": "u02-l01",
+     "kind": "main_idea",
+     "question": "Quel est le problème du voyageur ?",
+     "expected_answer": "Son train de demain matin est annulé.",
+     "rationale_en": "His 7:12 train is cancelled because no train runs before 9:00.",
+     "rationale_zh": "他7点12分的车被取消，因为9点前没有列车。",
+     "segments": [
+      1,
+      2
+     ],
+     "choices": [
+      "Il a perdu son billet.",
+      "Son train de demain matin est annulé.",
+      "Il ne trouve pas la gare."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il a perdu son billet.",
+       "why_wrong_en": "He still has his ticket and asks if it is valid (s5).",
+       "why_wrong_zh": "他还有票，并问能否使用（s5）。"
+      },
+      {
+       "answer": "Il ne trouve pas la gare.",
+       "why_wrong_en": "He is already at the station counter (s1).",
+       "why_wrong_zh": "他已经在车站柜台了（s1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 1,
+       "excerpt": "Il est annulé ?"
+      },
+      {
+       "segment": 2,
+       "excerpt": "aucun train ne part avant 9 heures sur cette ligne"
+      }
+     ]
+    },
+    {
+     "id": "u02-l02",
+     "kind": "detail",
+     "question": "Où se trouve la gare routière ?",
+     "expected_answer": "Juste derrière la gare.",
+     "rationale_en": "Right behind the station.",
+     "rationale_zh": "就在车站后面。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "À vingt minutes à pied.",
+      "Juste derrière la gare.",
+      "En face de la porte sud."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "À vingt minutes à pied.",
+       "why_wrong_en": "It is two minutes on foot (s4).",
+       "why_wrong_zh": "步行只要两分钟（s4）。"
+      },
+      {
+       "answer": "En face de la porte sud.",
+       "why_wrong_en": "The agent says to leave by the north door (s4).",
+       "why_wrong_zh": "工作人员说从北门出去（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "c'est juste derrière la gare"
+      }
+     ]
+    },
+    {
+     "id": "u02-l03",
+     "kind": "detail",
+     "question": "Par quelle porte faut-il sortir ?",
+     "expected_answer": "la porte nord",
+     "rationale_en": "The north door.",
+     "rationale_zh": "北门。",
+     "segments": [
+      4
+     ],
+     "accepted_alternatives": [
+      "par la porte nord",
+      "nord"
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "Sortez par la porte nord"
+      }
+     ]
+    },
+    {
+     "id": "u02-l04",
+     "kind": "detail",
+     "question": "Le billet de train est-il valable dans le car ?",
+     "expected_answer": "Oui, il est accepté.",
+     "rationale_en": "His train ticket is valid on the coach.",
+     "rationale_zh": "他的火车票在大巴上有效。",
+     "segments": [
+      6
+     ],
+     "choices": [
+      "Non, il faut acheter un ticket de car.",
+      "Seulement avec un supplément.",
+      "Oui, il est accepté."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Non, il faut acheter un ticket de car.",
+       "why_wrong_en": "The agent says the ticket is accepted (s6).",
+       "why_wrong_zh": "工作人员说车票可以使用（s6）。"
+      },
+      {
+       "answer": "Seulement avec un supplément.",
+       "why_wrong_en": "No extra charge is mentioned (s6).",
+       "why_wrong_zh": "没有提到要加钱（s6）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 6,
+       "excerpt": "votre billet est accepté"
+      }
+     ]
+    },
+    {
+     "id": "u02-l05",
+     "kind": "detail",
+     "question": "Combien de temps dure le trajet en car ?",
+     "expected_answer": "Une heure et quart.",
+     "rationale_en": "75 minutes instead of 50.",
+     "rationale_zh": "七十五分钟，而不是五十分钟。",
+     "segments": [
+      6
+     ],
+     "choices": [
+      "Deux heures.",
+      "Une heure et quart.",
+      "Cinquante minutes."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Deux heures.",
+       "why_wrong_en": "The agent says one hour and a quarter (s6).",
+       "why_wrong_zh": "工作人员说一小时十五分钟（s6）。"
+      },
+      {
+       "answer": "Cinquante minutes.",
+       "why_wrong_en": "Fifty minutes is the train journey (s6).",
+       "why_wrong_zh": "五十分钟是火车的车程（s6）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 6,
+       "excerpt": "comptez une heure et quart au lieu de cinquante minutes"
+      }
+     ]
+    },
+    {
+     "id": "u02-l06",
+     "kind": "detail",
+     "question": "À quelle heure est le rendez-vous du voyageur ?",
+     "expected_answer": "à 8 h 30",
+     "rationale_en": "At 8:30.",
+     "rationale_zh": "八点半。",
+     "segments": [
+      7
+     ],
+     "accepted_alternatives": [
+      "8 h 30",
+      "huit heures et demie",
+      "à 8 h 30 du matin"
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "J'ai un rendez-vous à 8 h 30"
+      }
+     ]
+    },
+    {
+     "id": "u02-l07",
+     "kind": "inference",
+     "question": "Pourquoi le car de 7 heures ne convient-il pas ?",
+     "expected_answer": "Il arriverait trop juste pour son rendez-vous.",
+     "rationale_en": "7:00 plus 1 h 15 is 8:15 at the earliest, too tight for 8:30.",
+     "rationale_zh": "7点加一小时十五分最早8点15分到，赶8点半太紧。",
+     "segments": [
+      6,
+      7
+     ],
+     "choices": [
+      "Il ne part pas de la gare routière mais de la porte sud de la gare.",
+      "Il est complet.",
+      "Il arriverait trop juste pour son rendez-vous."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il ne part pas de la gare routière mais de la porte sud de la gare.",
+       "why_wrong_en": "All replacement coaches leave from there (s2).",
+       "why_wrong_zh": "替代大巴都从那里出发（s2）。"
+      },
+      {
+       "answer": "Il est complet.",
+       "why_wrong_en": "Nothing is said about seats.",
+       "why_wrong_zh": "没有提到座位情况。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 6,
+       "excerpt": "comptez une heure et quart"
+      },
+      {
+       "segment": 7,
+       "excerpt": "J'ai un rendez-vous à 8 h 30"
+      }
+     ]
+    },
+    {
+     "id": "u02-l08",
+     "kind": "detail",
+     "question": "À quelle heure part le premier car ?",
+     "expected_answer": "à 6 heures",
+     "rationale_en": "At 6:00.",
+     "rationale_zh": "六点。",
+     "segments": [
+      8
+     ],
+     "accepted_alternatives": [
+      "6 heures",
+      "6 h",
+      "six heures"
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "Le premier part à 6 heures"
+      }
+     ]
+    },
+    {
+     "id": "u02-l09",
+     "kind": "detail",
+     "question": "Quelle autre solution l'agent propose-t-elle ?",
+     "expected_answer": "Le remboursement du billet.",
+     "rationale_en": "She offers a refund if he goes by car.",
+     "rationale_zh": "如果他开车去，她可以退票。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "Un taxi gratuit.",
+      "Un train plus tard dans la matinée.",
+      "Le remboursement du billet."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Un taxi gratuit.",
+       "why_wrong_en": "No taxi is offered (s8).",
+       "why_wrong_zh": "没有提供出租车（s8）。"
+      },
+      {
+       "answer": "Un train plus tard dans la matinée.",
+       "why_wrong_en": "She offers a refund, not a later train (s8).",
+       "why_wrong_zh": "她提出退款，而不是晚一点的火车（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "je peux vous rembourser votre billet"
+      }
+     ]
+    },
+    {
+     "id": "u02-l10",
+     "kind": "detail",
+     "question": "Que décide le voyageur ?",
+     "expected_answer": "Prendre le car de 6 heures.",
+     "rationale_en": "He takes the 6:00 coach.",
+     "rationale_zh": "他坐六点的大巴。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Prendre le car de 6 heures.",
+      "Y aller en voiture.",
+      "Annuler son rendez-vous."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Y aller en voiture.",
+       "why_wrong_en": "He refuses the refund and chooses the coach (s9).",
+       "why_wrong_zh": "他拒绝退票，选择坐大巴（s9）。"
+      },
+      {
+       "answer": "Annuler son rendez-vous.",
+       "why_wrong_en": "He keeps his appointment and leaves earlier (s9).",
+       "why_wrong_zh": "他保留约会，提前出发（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "je vais prendre le car de 6 heures"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 6,
+     "excerpt": "au lieu de",
+     "note_en": "instead of",
+     "note_zh": "代替、而不是"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u03",
+   "title": "Prendre rendez-vous au cabinet médical",
+   "genre": "appel téléphonique",
+   "style_level": "A2",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Secrétaire médicale",
+     "text": "Cabinet médical des Lilas, bonjour."
+    },
+    {
+     "id": "s2",
+     "speaker": "Patient, M. Benali",
+     "text": "Bonjour madame, je voudrais un rendez-vous avec le docteur Martin, s'il vous plaît. J'ai de la fièvre depuis quatre jours."
+    },
+    {
+     "id": "s3",
+     "speaker": "Secrétaire médicale",
+     "text": "Le docteur Martin est en congé cette semaine. Je peux vous proposer le docteur Roche, demain à 10 h 15."
+    },
+    {
+     "id": "s4",
+     "speaker": "Patient, M. Benali",
+     "text": "Demain matin, c'est difficile, j'ai une réunion importante. Vous n'avez rien aujourd'hui ?"
+    },
+    {
+     "id": "s5",
+     "speaker": "Secrétaire médicale",
+     "text": "Aujourd'hui, il reste une place à 18 h 40, avec le docteur Roche aussi."
+    },
+    {
+     "id": "s6",
+     "speaker": "Patient, M. Benali",
+     "text": "18 h 40, c'est parfait. Je m'appelle Karim Benali, B-E-N-A-L-I."
+    },
+    {
+     "id": "s7",
+     "speaker": "Secrétaire médicale",
+     "text": "C'est noté, monsieur Benali. C'est votre première visite chez nous ?"
+    },
+    {
+     "id": "s8",
+     "speaker": "Patient, M. Benali",
+     "text": "Non, je viens depuis deux ans, mais je n'ai jamais vu le docteur Roche."
+    },
+    {
+     "id": "s9",
+     "speaker": "Secrétaire médicale",
+     "text": "Très bien. Pensez à apporter votre carte Vitale. Et si vous êtes en retard de plus de dix minutes, appelez-nous."
+    },
+    {
+     "id": "s10",
+     "speaker": "Patient, M. Benali",
+     "text": "D'accord, merci beaucoup. À ce soir."
+    }
+   ],
+   "questions": [
+    {
+     "id": "u03-l01",
+     "kind": "main_idea",
+     "question": "Pourquoi M. Benali appelle-t-il ?",
+     "expected_answer": "Pour prendre un rendez-vous chez le médecin.",
+     "rationale_en": "He wants an appointment.",
+     "rationale_zh": "他想预约看病。",
+     "segments": [
+      2
+     ],
+     "choices": [
+      "Pour annuler un rendez-vous.",
+      "Pour demander une ordonnance par téléphone, sans venir au cabinet.",
+      "Pour prendre un rendez-vous chez le médecin."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Pour annuler un rendez-vous.",
+       "why_wrong_en": "He asks for an appointment (s2).",
+       "why_wrong_zh": "他是在约诊（s2）。"
+      },
+      {
+       "answer": "Pour demander une ordonnance par téléphone, sans venir au cabinet.",
+       "why_wrong_en": "No prescription is requested (s2).",
+       "why_wrong_zh": "他没有要处方（s2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 2,
+       "excerpt": "je voudrais un rendez-vous avec le docteur Martin"
+      }
+     ]
+    },
+    {
+     "id": "u03-l02",
+     "kind": "detail",
+     "question": "Depuis combien de temps a-t-il de la fièvre ?",
+     "expected_answer": "depuis quatre jours",
+     "rationale_en": "Four days.",
+     "rationale_zh": "四天。",
+     "segments": [
+      2
+     ],
+     "accepted_alternatives": [
+      "quatre jours",
+      "4 jours"
+     ],
+     "evidence": [
+      {
+       "segment": 2,
+       "excerpt": "J'ai de la fièvre depuis quatre jours"
+      }
+     ]
+    },
+    {
+     "id": "u03-l03",
+     "kind": "detail",
+     "question": "Pourquoi ne peut-il pas voir le docteur Martin ?",
+     "expected_answer": "Le docteur Martin est en congé.",
+     "rationale_en": "Dr Martin is on leave this week.",
+     "rationale_zh": "Martin医生这周休假。",
+     "segments": [
+      3
+     ],
+     "choices": [
+      "Le cabinet est fermé aujourd'hui.",
+      "Le docteur Martin ne prend plus de nouveaux patients.",
+      "Le docteur Martin est en congé."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Le cabinet est fermé aujourd'hui.",
+       "why_wrong_en": "There is a slot today at 18:40 (s5).",
+       "why_wrong_zh": "今天18点40分有空位（s5）。"
+      },
+      {
+       "answer": "Le docteur Martin ne prend plus de nouveaux patients.",
+       "why_wrong_en": "He is on leave this week (s3).",
+       "why_wrong_zh": "这周他在休假（s3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 3,
+       "excerpt": "Le docteur Martin est en congé cette semaine"
+      }
+     ]
+    },
+    {
+     "id": "u03-l04",
+     "kind": "detail",
+     "question": "Pourquoi refuse-t-il le rendez-vous de demain ?",
+     "expected_answer": "Il a une réunion importante.",
+     "rationale_en": "He has an important meeting tomorrow morning.",
+     "rationale_zh": "他明天上午有重要会议。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Il travaille de nuit.",
+      "Il a une réunion importante.",
+      "Il part en voyage."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il travaille de nuit.",
+       "why_wrong_en": "He mentions a meeting, not night work (s4).",
+       "why_wrong_zh": "他提到的是会议，不是夜班（s4）。"
+      },
+      {
+       "answer": "Il part en voyage.",
+       "why_wrong_en": "No trip is mentioned (s4).",
+       "why_wrong_zh": "没有提到出行（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "j'ai une réunion importante"
+      }
+     ]
+    },
+    {
+     "id": "u03-l05",
+     "kind": "detail",
+     "question": "Quand est son rendez-vous ?",
+     "expected_answer": "Aujourd'hui à 18 h 40.",
+     "rationale_en": "Today at 18:40.",
+     "rationale_zh": "今天18点40分。",
+     "segments": [
+      5,
+      6
+     ],
+     "choices": [
+      "Aujourd'hui à 18 h 40.",
+      "Aujourd'hui à 10 h 15.",
+      "Demain à 10 h 15."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Aujourd'hui à 10 h 15.",
+       "why_wrong_en": "10:15 was offered for tomorrow (s3).",
+       "why_wrong_zh": "10点15分是明天的时间（s3）。"
+      },
+      {
+       "answer": "Demain à 10 h 15.",
+       "why_wrong_en": "He refused that slot (s4).",
+       "why_wrong_zh": "他拒绝了这个时间（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 5,
+       "excerpt": "Aujourd'hui, il reste une place à 18 h 40"
+      },
+      {
+       "segment": 6,
+       "excerpt": "18 h 40, c'est parfait"
+      }
+     ]
+    },
+    {
+     "id": "u03-l06",
+     "kind": "detail",
+     "question": "Avec quel médecin a-t-il rendez-vous ?",
+     "expected_answer": "le docteur Roche",
+     "rationale_en": "Dr Roche.",
+     "rationale_zh": "Roche医生。",
+     "segments": [
+      5
+     ],
+     "accepted_alternatives": [
+      "Docteur Roche",
+      "Roche"
+     ],
+     "evidence": [
+      {
+       "segment": 5,
+       "excerpt": "avec le docteur Roche aussi"
+      }
+     ]
+    },
+    {
+     "id": "u03-l07",
+     "kind": "detail",
+     "question": "Est-ce sa première visite au cabinet ?",
+     "expected_answer": "Non, il vient depuis deux ans.",
+     "rationale_en": "A patient for two years, but new to Dr Roche.",
+     "rationale_zh": "就诊两年，但没看过Roche医生。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "Oui, c'est la première fois.",
+      "Non, il vient depuis deux ans.",
+      "Non, il vient depuis dix ans."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Oui, c'est la première fois.",
+       "why_wrong_en": "He has been coming for two years (s8).",
+       "why_wrong_zh": "他已经来了两年（s8）。"
+      },
+      {
+       "answer": "Non, il vient depuis dix ans.",
+       "why_wrong_en": "He says two years (s8).",
+       "why_wrong_zh": "他说的是两年（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "je viens depuis deux ans"
+      }
+     ]
+    },
+    {
+     "id": "u03-l08",
+     "kind": "detail",
+     "question": "Que doit-il apporter ?",
+     "expected_answer": "sa carte Vitale",
+     "rationale_en": "His Vitale card.",
+     "rationale_zh": "他的医保卡。",
+     "segments": [
+      9
+     ],
+     "accepted_alternatives": [
+      "la carte Vitale",
+      "carte Vitale"
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "Pensez à apporter votre carte Vitale"
+      }
+     ]
+    },
+    {
+     "id": "u03-l09",
+     "kind": "detail",
+     "question": "Que doit-il faire s'il est en retard de plus de dix minutes ?",
+     "expected_answer": "Appeler le cabinet.",
+     "rationale_en": "Call the practice.",
+     "rationale_zh": "给诊所打电话。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Venir le lendemain.",
+      "Prendre un autre rendez-vous en ligne.",
+      "Appeler le cabinet."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Venir le lendemain.",
+       "why_wrong_en": "Nothing is said about coming the next day (s9).",
+       "why_wrong_zh": "没有说第二天来（s9）。"
+      },
+      {
+       "answer": "Prendre un autre rendez-vous en ligne.",
+       "why_wrong_en": "The secretary asks him to call (s9).",
+       "why_wrong_zh": "秘书请他打电话（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "appelez-nous"
+      }
+     ]
+    },
+    {
+     "id": "u03-l10",
+     "kind": "inference",
+     "question": "Pourquoi la secrétaire lui propose-t-elle un médecin ?",
+     "expected_answer": "Il a de la fièvre et son médecin est absent.",
+     "rationale_en": "With a fever for four days and his doctor away, another doctor is offered.",
+     "rationale_zh": "发烧四天而他的医生不在，所以安排了另一位医生。",
+     "segments": [
+      2,
+      3
+     ],
+     "choices": [
+      "Il a de la fièvre et son médecin est absent.",
+      "Il veut changer de médecin.",
+      "Il n'a pas de carte Vitale et ne peut pas payer."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il veut changer de médecin.",
+       "why_wrong_en": "He asked for Dr Martin first (s2).",
+       "why_wrong_zh": "他一开始要的是Martin医生（s2）。"
+      },
+      {
+       "answer": "Il n'a pas de carte Vitale et ne peut pas payer.",
+       "why_wrong_en": "She simply reminds him to bring it; payment is not discussed (s9).",
+       "why_wrong_zh": "她只是提醒他带上医保卡，没有谈到付款（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 2,
+       "excerpt": "J'ai de la fièvre depuis quatre jours"
+      },
+      {
+       "segment": 3,
+       "excerpt": "Le docteur Martin est en congé cette semaine"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 5,
+     "excerpt": "il reste une place",
+     "note_en": "there is one slot left",
+     "note_zh": "还剩一个名额"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u04",
+   "title": "Entretien téléphonique",
+   "genre": "entretien",
+   "style_level": "B1",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Mme Garnier, gérante",
+     "text": "Bonjour Tom, c'est Mme Garnier, de La Terrasse du Port. Vous avez un moment pour parler de votre candidature ?"
+    },
+    {
+     "id": "s2",
+     "speaker": "Tom, candidat",
+     "text": "Oui, bien sûr, bonjour madame."
+    },
+    {
+     "id": "s3",
+     "speaker": "Mme Garnier, gérante",
+     "text": "Votre CV dit que vous avez travaillé dans une boulangerie. C'était pendant combien de temps ?"
+    },
+    {
+     "id": "s4",
+     "speaker": "Tom, candidat",
+     "text": "Pendant un an, le week-end, pendant mes études. Je servais les clients et je tenais la caisse."
+    },
+    {
+     "id": "s5",
+     "speaker": "Mme Garnier, gérante",
+     "text": "Très bien. Et vous parlez anglais ?"
+    },
+    {
+     "id": "s6",
+     "speaker": "Tom, candidat",
+     "text": "Oui, assez bien. J'ai passé six mois à Dublin l'année dernière."
+    },
+    {
+     "id": "s7",
+     "speaker": "Mme Garnier, gérante",
+     "text": "Parfait. Une question importante : vous êtes disponible jusqu'au 15 septembre ?"
+    },
+    {
+     "id": "s8",
+     "speaker": "Tom, candidat",
+     "text": "Euh… jusqu'au 10 seulement, parce que mes cours reprennent le 12. C'est un problème ?"
+    },
+    {
+     "id": "s9",
+     "speaker": "Mme Garnier, gérante",
+     "text": "Non, on peut s'arranger. Je vous propose de venir faire un essai samedi prochain, de 11 heures à 15 heures. L'essai est payé."
+    },
+    {
+     "id": "s10",
+     "speaker": "Tom, candidat",
+     "text": "Avec plaisir ! Je dois apporter quelque chose ?"
+    },
+    {
+     "id": "s11",
+     "speaker": "Mme Garnier, gérante",
+     "text": "Un pantalon noir et des chaussures confortables. On vous donnera le tee-shirt du restaurant."
+    }
+   ],
+   "questions": [
+    {
+     "id": "u04-l01",
+     "kind": "main_idea",
+     "question": "Quel est le but de cet appel ?",
+     "expected_answer": "Faire un premier entretien avec un candidat.",
+     "rationale_en": "A first interview about his application.",
+     "rationale_zh": "就他的申请进行初次面试。",
+     "segments": [
+      1
+     ],
+     "choices": [
+      "Faire un premier entretien avec un candidat.",
+      "Commander du pain à la boulangerie où Tom a travaillé.",
+      "Annoncer à Tom qu'il n'est pas retenu."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Commander du pain à la boulangerie où Tom a travaillé.",
+       "why_wrong_en": "The bakery is only part of his experience (s3).",
+       "why_wrong_zh": "面包店只是他的工作经历之一（s3）。"
+      },
+      {
+       "answer": "Annoncer à Tom qu'il n'est pas retenu.",
+       "why_wrong_en": "She asks him questions and proposes a trial (s1, s9).",
+       "why_wrong_zh": "她向他提问，并提出试工（s1、s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 1,
+       "excerpt": "parler de votre candidature"
+      }
+     ]
+    },
+    {
+     "id": "u04-l02",
+     "kind": "detail",
+     "question": "Combien de temps Tom a-t-il travaillé à la boulangerie ?",
+     "expected_answer": "Un an, le week-end.",
+     "rationale_en": "One year at weekends.",
+     "rationale_zh": "周末工作了一年。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Deux ans, pendant les vacances d'été.",
+      "Un an, le week-end.",
+      "Six mois, tous les jours."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Deux ans, pendant les vacances d'été.",
+       "why_wrong_en": "He says one year, at weekends (s4).",
+       "why_wrong_zh": "他说的是一年，周末工作（s4）。"
+      },
+      {
+       "answer": "Six mois, tous les jours.",
+       "why_wrong_en": "Six months is his stay in Dublin (s6).",
+       "why_wrong_zh": "六个月是他在都柏林的时间（s6）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "Pendant un an, le week-end"
+      }
+     ]
+    },
+    {
+     "id": "u04-l03",
+     "kind": "detail",
+     "question": "Que faisait Tom à la boulangerie ?",
+     "expected_answer": "Il servait les clients et tenait la caisse.",
+     "rationale_en": "Serving and running the till.",
+     "rationale_zh": "接待顾客和收银。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Il livrait les commandes.",
+      "Il préparait le pain.",
+      "Il servait les clients et tenait la caisse."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il livrait les commandes.",
+       "why_wrong_en": "Deliveries are not mentioned (s4).",
+       "why_wrong_zh": "没有提到送货（s4）。"
+      },
+      {
+       "answer": "Il préparait le pain.",
+       "why_wrong_en": "He served customers and ran the till (s4).",
+       "why_wrong_zh": "他负责接待顾客和收银（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "Je servais les clients et je tenais la caisse"
+      }
+     ]
+    },
+    {
+     "id": "u04-l04",
+     "kind": "inference",
+     "question": "Pourquoi Tom parle-t-il assez bien anglais ?",
+     "expected_answer": "Il a vécu six mois en Irlande.",
+     "rationale_en": "Six months in Dublin (Ireland).",
+     "rationale_zh": "在都柏林（爱尔兰）待了六个月。",
+     "segments": [
+      6
+     ],
+     "choices": [
+      "Ses parents sont anglais.",
+      "Il a vécu six mois en Irlande.",
+      "Il a pris des cours en ligne pendant ses études."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Ses parents sont anglais.",
+       "why_wrong_en": "His family is not mentioned (s6).",
+       "why_wrong_zh": "没有提到他的家人（s6）。"
+      },
+      {
+       "answer": "Il a pris des cours en ligne pendant ses études.",
+       "why_wrong_en": "He mentions living in Dublin, not courses (s6).",
+       "why_wrong_zh": "他提到的是在都柏林生活，不是网课（s6）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 6,
+       "excerpt": "J'ai passé six mois à Dublin l'année dernière"
+      }
+     ]
+    },
+    {
+     "id": "u04-l05",
+     "kind": "detail",
+     "question": "Jusqu'à quelle date Tom est-il disponible ?",
+     "expected_answer": "jusqu'au 10 septembre",
+     "rationale_en": "Until 10 September.",
+     "rationale_zh": "到9月10日。",
+     "segments": [
+      8
+     ],
+     "accepted_alternatives": [
+      "le 10 septembre",
+      "le 10"
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "jusqu'au 10 seulement"
+      }
+     ]
+    },
+    {
+     "id": "u04-l06",
+     "kind": "detail",
+     "question": "Pourquoi n'est-il pas disponible jusqu'au 15 ?",
+     "expected_answer": "Ses cours reprennent le 12.",
+     "rationale_en": "Classes start again on the 12th.",
+     "rationale_zh": "12日开学。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "Ses cours reprennent le 12.",
+      "Il part en vacances le 11.",
+      "Il commence un autre travail."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il part en vacances le 11.",
+       "why_wrong_en": "He mentions classes, not holidays (s8).",
+       "why_wrong_zh": "他提到的是上课，不是度假（s8）。"
+      },
+      {
+       "answer": "Il commence un autre travail.",
+       "why_wrong_en": "The reason is the start of his classes (s8).",
+       "why_wrong_zh": "原因是开学（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "parce que mes cours reprennent le 12"
+      }
+     ]
+    },
+    {
+     "id": "u04-l07",
+     "kind": "inference",
+     "question": "Comment réagit Mme Garnier à ce problème ?",
+     "expected_answer": "Elle accepte de s'arranger.",
+     "rationale_en": "She says it is not a problem.",
+     "rationale_zh": "她说没问题。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Elle refuse la candidature.",
+      "Elle accepte de s'arranger.",
+      "Elle lui demande de changer la date de ses cours."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle refuse la candidature.",
+       "why_wrong_en": "She says they can work it out and offers a trial (s9).",
+       "why_wrong_zh": "她说可以安排，并提出试工（s9）。"
+      },
+      {
+       "answer": "Elle lui demande de changer la date de ses cours.",
+       "why_wrong_en": "She does not ask him to change anything (s9).",
+       "why_wrong_zh": "她没有要求他做任何改变（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "Non, on peut s'arranger"
+      }
+     ]
+    },
+    {
+     "id": "u04-l08",
+     "kind": "detail",
+     "question": "Quand a lieu l'essai ?",
+     "expected_answer": "samedi prochain, de 11 heures à 15 heures",
+     "rationale_en": "Next Saturday, 11:00 to 15:00.",
+     "rationale_zh": "下周六，11点到15点。",
+     "segments": [
+      9
+     ],
+     "accepted_alternatives": [
+      "samedi prochain",
+      "samedi de 11 h à 15 h"
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "samedi prochain, de 11 heures à 15 heures"
+      }
+     ]
+    },
+    {
+     "id": "u04-l09",
+     "kind": "detail",
+     "question": "L'essai est-il payé ?",
+     "expected_answer": "Oui, il est payé.",
+     "rationale_en": "The trial is paid.",
+     "rationale_zh": "试工有报酬。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Oui, il est payé.",
+      "Non, c'est une journée d'observation gratuite.",
+      "Seulement si Tom est engagé ensuite."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Non, c'est une journée d'observation gratuite.",
+       "why_wrong_en": "She says the trial is paid (s9).",
+       "why_wrong_zh": "她说试工是有报酬的（s9）。"
+      },
+      {
+       "answer": "Seulement si Tom est engagé ensuite.",
+       "why_wrong_en": "No condition is mentioned (s9).",
+       "why_wrong_zh": "没有提到任何条件（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "L'essai est payé"
+      }
+     ]
+    },
+    {
+     "id": "u04-l10",
+     "kind": "detail",
+     "question": "Que doit apporter Tom ?",
+     "expected_answer": "Un pantalon noir et des chaussures confortables.",
+     "rationale_en": "Black trousers and comfortable shoes.",
+     "rationale_zh": "黑色长裤和舒适的鞋子。",
+     "segments": [
+      11
+     ],
+     "choices": [
+      "Une copie de son CV et de son passeport.",
+      "Le tee-shirt du restaurant.",
+      "Un pantalon noir et des chaussures confortables."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Une copie de son CV et de son passeport.",
+       "why_wrong_en": "No document is requested (s11).",
+       "why_wrong_zh": "没有要求带任何证件（s11）。"
+      },
+      {
+       "answer": "Le tee-shirt du restaurant.",
+       "why_wrong_en": "The restaurant will give him the T-shirt (s11).",
+       "why_wrong_zh": "餐厅会给他T恤（s11）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 11,
+       "excerpt": "Un pantalon noir et des chaussures confortables"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 9,
+     "excerpt": "s'arranger",
+     "note_en": "to work something out",
+     "note_zh": "协调、通融"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u05",
+   "title": "À l'accueil de la Maison des langues",
+   "genre": "dialogue",
+   "style_level": "A2",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Mei, future élève",
+     "text": "Bonjour, je voudrais m'inscrire au cours du soir de français."
+    },
+    {
+     "id": "s2",
+     "speaker": "Agent d'accueil",
+     "text": "Bonjour ! Vous avez déjà passé le test de niveau ?"
+    },
+    {
+     "id": "s3",
+     "speaker": "Mei, future élève",
+     "text": "Oui, la semaine dernière. Le professeur m'a dit que j'étais en A2."
+    },
+    {
+     "id": "s4",
+     "speaker": "Agent d'accueil",
+     "text": "Très bien. Pour l'A2, il reste de la place le lundi et le mercredi. Le mardi et le jeudi, c'est complet."
+    },
+    {
+     "id": "s5",
+     "speaker": "Mei, future élève",
+     "text": "Le lundi et le mercredi, ça me va. Je finis le travail à 17 h 30."
+    },
+    {
+     "id": "s6",
+     "speaker": "Agent d'accueil",
+     "text": "Vous êtes étudiante ou demandeuse d'emploi ?"
+    },
+    {
+     "id": "s7",
+     "speaker": "Mei, future élève",
+     "text": "Non, je travaille dans un laboratoire."
+    },
+    {
+     "id": "s8",
+     "speaker": "Agent d'accueil",
+     "text": "Alors c'est le tarif normal, 180 euros. Vous pouvez payer en deux fois si vous voulez : 90 euros maintenant et 90 euros en novembre."
+    },
+    {
+     "id": "s9",
+     "speaker": "Mei, future élève",
+     "text": "Oui, je préfère payer en deux fois. Et le livre, je l'achète ici ?"
+    },
+    {
+     "id": "s10",
+     "speaker": "Agent d'accueil",
+     "text": "Non, à la librairie Papier Plume, rue des Écoles. Ils ont une réduction pour nos élèves."
+    },
+    {
+     "id": "s11",
+     "speaker": "Mei, future élève",
+     "text": "Parfait, merci. Je commence le 6 octobre, c'est ça ?"
+    },
+    {
+     "id": "s12",
+     "speaker": "Agent d'accueil",
+     "text": "C'est ça. Salle 3, au premier étage. Bonne soirée !"
+    }
+   ],
+   "questions": [
+    {
+     "id": "u05-l01",
+     "kind": "main_idea",
+     "question": "Que fait Mei à l'accueil ?",
+     "expected_answer": "Elle s'inscrit à un cours du soir.",
+     "rationale_en": "She enrols.",
+     "rationale_zh": "她在报名。",
+     "segments": [
+      1
+     ],
+     "choices": [
+      "Elle demande un remboursement pour le trimestre dernier.",
+      "Elle s'inscrit à un cours du soir.",
+      "Elle passe le test de niveau."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle demande un remboursement pour le trimestre dernier.",
+       "why_wrong_en": "She enrols and pays; no refund is asked for (s1).",
+       "why_wrong_zh": "她是报名付费，没有要求退款（s1）。"
+      },
+      {
+       "answer": "Elle passe le test de niveau.",
+       "why_wrong_en": "She already took it last week (s3).",
+       "why_wrong_zh": "她上周已经考过了（s3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 1,
+       "excerpt": "je voudrais m'inscrire au cours du soir de français"
+      }
+     ]
+    },
+    {
+     "id": "u05-l02",
+     "kind": "detail",
+     "question": "Quel est le niveau de Mei ?",
+     "expected_answer": "A2.",
+     "rationale_en": "Her level is A2.",
+     "rationale_zh": "她的级别是A2。",
+     "segments": [
+      3
+     ],
+     "choices": [
+      "B1, après six mois de cours.",
+      "A1, débutante.",
+      "A2."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "B1, après six mois de cours.",
+       "why_wrong_en": "The level given is A2 (s3).",
+       "why_wrong_zh": "给出的级别是A2（s3）。"
+      },
+      {
+       "answer": "A1, débutante.",
+       "why_wrong_en": "The teacher said A2 (s3).",
+       "why_wrong_zh": "老师说是A2（s3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 3,
+       "excerpt": "j'étais en A2"
+      }
+     ]
+    },
+    {
+     "id": "u05-l03",
+     "kind": "detail",
+     "question": "Quels jours a-t-elle cours ?",
+     "expected_answer": "Le lundi et le mercredi.",
+     "rationale_en": "Monday and Wednesday.",
+     "rationale_zh": "周一和周三。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Le lundi et le mercredi.",
+      "Le mardi et le jeudi.",
+      "Le samedi matin, avec un autre groupe A2."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Le mardi et le jeudi.",
+       "why_wrong_en": "Those groups are full (s4).",
+       "why_wrong_zh": "那两天的班已经满了（s4）。"
+      },
+      {
+       "answer": "Le samedi matin, avec un autre groupe A2.",
+       "why_wrong_en": "There are no Saturday classes in the dialogue (s4).",
+       "why_wrong_zh": "对话中没有周六的课（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "il reste de la place le lundi et le mercredi"
+      }
+     ]
+    },
+    {
+     "id": "u05-l04",
+     "kind": "inference",
+     "question": "Pourquoi l'horaire du soir lui convient-il ?",
+     "expected_answer": "Elle finit le travail à 17 h 30.",
+     "rationale_en": "Work ends before the 18:30 class.",
+     "rationale_zh": "她在18点30分上课前就下班了。",
+     "segments": [
+      5
+     ],
+     "choices": [
+      "Elle habite à côté de la Maison des langues et rentre déjeuner.",
+      "Elle finit le travail à 17 h 30.",
+      "Elle étudie la journée à l'université."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle habite à côté de la Maison des langues et rentre déjeuner.",
+       "why_wrong_en": "Only her finishing time is given (s5).",
+       "why_wrong_zh": "文中只给出了她的下班时间（s5）。"
+      },
+      {
+       "answer": "Elle étudie la journée à l'université.",
+       "why_wrong_en": "She works in a laboratory (s7).",
+       "why_wrong_zh": "她在实验室工作（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 5,
+       "excerpt": "Je finis le travail à 17 h 30"
+      }
+     ]
+    },
+    {
+     "id": "u05-l05",
+     "kind": "detail",
+     "question": "Combien paie-t-elle pour le trimestre ?",
+     "expected_answer": "180 euros.",
+     "rationale_en": "The normal price, 180 euros.",
+     "rationale_zh": "正常价格180欧元。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "180 euros.",
+      "90 euros pour tout le trimestre.",
+      "120 euros, le tarif réduit."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "90 euros pour tout le trimestre.",
+       "why_wrong_en": "90 euros is one of two instalments (s8).",
+       "why_wrong_zh": "90欧元只是两期中的一期（s8）。"
+      },
+      {
+       "answer": "120 euros, le tarif réduit.",
+       "why_wrong_en": "She is not a student or job seeker (s7).",
+       "why_wrong_zh": "她不是学生也不是求职者（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "c'est le tarif normal, 180 euros"
+      }
+     ]
+    },
+    {
+     "id": "u05-l06",
+     "kind": "detail",
+     "question": "Quand paiera-t-elle la deuxième partie ?",
+     "expected_answer": "en novembre",
+     "rationale_en": "In November.",
+     "rationale_zh": "十一月。",
+     "segments": [
+      8
+     ],
+     "accepted_alternatives": [
+      "novembre"
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "90 euros en novembre"
+      }
+     ]
+    },
+    {
+     "id": "u05-l07",
+     "kind": "detail",
+     "question": "Où doit-elle acheter le livre ?",
+     "expected_answer": "à la librairie Papier Plume",
+     "rationale_en": "At the Papier Plume bookshop.",
+     "rationale_zh": "在Papier Plume书店。",
+     "segments": [
+      10
+     ],
+     "accepted_alternatives": [
+      "à la librairie",
+      "librairie Papier Plume, rue des Écoles"
+     ],
+     "evidence": [
+      {
+       "segment": 10,
+       "excerpt": "à la librairie Papier Plume, rue des Écoles"
+      }
+     ]
+    },
+    {
+     "id": "u05-l08",
+     "kind": "detail",
+     "question": "Pourquoi acheter le livre dans cette librairie ?",
+     "expected_answer": "Elle fait une réduction aux élèves.",
+     "rationale_en": "A discount for students of the school.",
+     "rationale_zh": "对本校学生有折扣。",
+     "segments": [
+      10
+     ],
+     "choices": [
+      "Le livre n'existe que dans cette librairie.",
+      "Elle fait une réduction aux élèves.",
+      "Elle est ouverte le soir après les cours."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Le livre n'existe que dans cette librairie.",
+       "why_wrong_en": "The reason given is a discount (s10).",
+       "why_wrong_zh": "给出的原因是有折扣（s10）。"
+      },
+      {
+       "answer": "Elle est ouverte le soir après les cours.",
+       "why_wrong_en": "Opening hours are not mentioned (s10).",
+       "why_wrong_zh": "没有提到营业时间（s10）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 10,
+       "excerpt": "Ils ont une réduction pour nos élèves"
+      }
+     ]
+    },
+    {
+     "id": "u05-l09",
+     "kind": "detail",
+     "question": "Dans quelle salle a-t-elle cours ?",
+     "expected_answer": "salle 3",
+     "rationale_en": "Room 3, first floor.",
+     "rationale_zh": "三号教室，二楼。",
+     "segments": [
+      12
+     ],
+     "accepted_alternatives": [
+      "dans la salle 3",
+      "la salle 3, au premier étage"
+     ],
+     "evidence": [
+      {
+       "segment": 12,
+       "excerpt": "Salle 3, au premier étage"
+      }
+     ]
+    },
+    {
+     "id": "u05-l10",
+     "kind": "inference",
+     "question": "Que sait-on sur la situation professionnelle de Mei ?",
+     "expected_answer": "Elle travaille dans un laboratoire.",
+     "rationale_en": "She works in a lab, so she pays the normal price.",
+     "rationale_zh": "她在实验室工作，所以付正常价格。",
+     "segments": [
+      7
+     ],
+     "choices": [
+      "Elle travaille dans un laboratoire.",
+      "Elle cherche du travail en ce moment.",
+      "Elle est étudiante en chimie à l'université."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle cherche du travail en ce moment.",
+       "why_wrong_en": "She says she works in a laboratory (s7).",
+       "why_wrong_zh": "她说她在实验室工作（s7）。"
+      },
+      {
+       "answer": "Elle est étudiante en chimie à l'université.",
+       "why_wrong_en": "She is not a student (s7).",
+       "why_wrong_zh": "她不是学生（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "je travaille dans un laboratoire"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 4,
+     "excerpt": "complet",
+     "note_en": "full",
+     "note_zh": "满了"
+    },
+    {
+     "kind": "vocabulary",
+     "segment": 8,
+     "excerpt": "payer en deux fois",
+     "note_en": "to pay in two instalments",
+     "note_zh": "分两次付款"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u06",
+   "title": "Au service client : un colis abîmé",
+   "genre": "appel au service client",
+   "style_level": "B1",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Conseillère, service client",
+     "text": "Maison Lumière, service client, Sarah à l'appareil. Que puis-je faire pour vous ?"
+    },
+    {
+     "id": "s2",
+     "speaker": "M. Dufour, client",
+     "text": "Bonjour. J'ai reçu ce matin une lampe, et le pied est cassé. Le carton était déchiré."
+    },
+    {
+     "id": "s3",
+     "speaker": "Conseillère, service client",
+     "text": "Je suis désolée, monsieur. Vous avez votre numéro de commande ?"
+    },
+    {
+     "id": "s4",
+     "speaker": "M. Dufour, client",
+     "text": "Oui, c'est le 48 213."
+    },
+    {
+     "id": "s5",
+     "speaker": "Conseillère, service client",
+     "text": "Merci. Est-ce que vous avez pris des photos de la lampe et du carton ?"
+    },
+    {
+     "id": "s6",
+     "speaker": "M. Dufour, client",
+     "text": "Oui, deux photos, avec mon téléphone."
+    },
+    {
+     "id": "s7",
+     "speaker": "Conseillère, service client",
+     "text": "Parfait. Envoyez-les en répondant au courriel de confirmation de commande. Ensuite, vous avez deux possibilités : on vous envoie une nouvelle lampe, ou on vous rembourse."
+    },
+    {
+     "id": "s8",
+     "speaker": "M. Dufour, client",
+     "text": "Je préfère une nouvelle lampe. C'est un cadeau pour l'anniversaire de ma femme, samedi."
+    },
+    {
+     "id": "s9",
+     "speaker": "Conseillère, service client",
+     "text": "Alors je la mets en livraison express, sans frais. Vous la recevrez jeudi. Un livreur reprendra la lampe cassée en même temps."
+    },
+    {
+     "id": "s10",
+     "speaker": "M. Dufour, client",
+     "text": "Très bien. Je dois la remettre dans le carton ?"
+    },
+    {
+     "id": "s11",
+     "speaker": "Conseillère, service client",
+     "text": "Oui, s'il vous plaît, dans le carton d'origine, même s'il est abîmé. Je vous souhaite une bonne journée, monsieur Dufour."
+    }
+   ],
+   "questions": [
+    {
+     "id": "u06-l01",
+     "kind": "main_idea",
+     "question": "Pourquoi M. Dufour appelle-t-il ?",
+     "expected_answer": "Sa lampe est arrivée cassée.",
+     "rationale_en": "The lamp's base is broken.",
+     "rationale_zh": "台灯底座坏了。",
+     "segments": [
+      2
+     ],
+     "choices": [
+      "Sa lampe est arrivée cassée.",
+      "Il n'a pas encore reçu sa commande.",
+      "Il veut changer la couleur de la lampe qu'il a commandée."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il n'a pas encore reçu sa commande.",
+       "why_wrong_en": "He received it this morning (s2).",
+       "why_wrong_zh": "他今天早上收到了（s2）。"
+      },
+      {
+       "answer": "Il veut changer la couleur de la lampe qu'il a commandée.",
+       "why_wrong_en": "The problem is a broken base (s2).",
+       "why_wrong_zh": "问题是底座坏了（s2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 2,
+       "excerpt": "le pied est cassé"
+      }
+     ]
+    },
+    {
+     "id": "u06-l02",
+     "kind": "detail",
+     "question": "Quel est le numéro de commande ?",
+     "expected_answer": "48 213",
+     "rationale_en": "The order number is 48 213.",
+     "rationale_zh": "订单号是48213。",
+     "segments": [
+      4
+     ],
+     "accepted_alternatives": [
+      "48213",
+      "le 48 213"
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "c'est le 48 213"
+      }
+     ]
+    },
+    {
+     "id": "u06-l03",
+     "kind": "detail",
+     "question": "Comment doit-il envoyer les photos ?",
+     "expected_answer": "En répondant au courriel de confirmation.",
+     "rationale_en": "By replying to the confirmation email.",
+     "rationale_zh": "回复订单确认邮件。",
+     "segments": [
+      7
+     ],
+     "choices": [
+      "Sur le site, dans son compte.",
+      "Par la poste, avec la lampe cassée.",
+      "En répondant au courriel de confirmation."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Sur le site, dans son compte.",
+       "why_wrong_en": "The adviser names the confirmation email (s7).",
+       "why_wrong_zh": "客服说的是确认邮件（s7）。"
+      },
+      {
+       "answer": "Par la poste, avec la lampe cassée.",
+       "why_wrong_en": "He replies to the confirmation email (s7).",
+       "why_wrong_zh": "他要回复订单确认邮件（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "en répondant au courriel de confirmation de commande"
+      }
+     ]
+    },
+    {
+     "id": "u06-l04",
+     "kind": "detail",
+     "question": "Quelles sont les deux possibilités proposées ?",
+     "expected_answer": "Une nouvelle lampe ou un remboursement.",
+     "rationale_en": "A replacement or a refund.",
+     "rationale_zh": "换货或退款。",
+     "segments": [
+      7
+     ],
+     "choices": [
+      "Une réduction de 20 % ou un bon d'achat.",
+      "Une réparation à domicile ou un échange en magasin.",
+      "Une nouvelle lampe ou un remboursement."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Une réduction de 20 % ou un bon d'achat.",
+       "why_wrong_en": "She offers a new lamp or a refund (s7).",
+       "why_wrong_zh": "她提出换新灯或退款（s7）。"
+      },
+      {
+       "answer": "Une réparation à domicile ou un échange en magasin.",
+       "why_wrong_en": "Neither repair nor a shop is mentioned (s7).",
+       "why_wrong_zh": "没有提到维修或门店（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "on vous envoie une nouvelle lampe, ou on vous rembourse"
+      }
+     ]
+    },
+    {
+     "id": "u06-l05",
+     "kind": "inference",
+     "question": "Pourquoi choisit-il une nouvelle lampe ?",
+     "expected_answer": "C'est un cadeau pour samedi.",
+     "rationale_en": "He needs it before Saturday.",
+     "rationale_zh": "他需要在周六前拿到。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "La lampe est moins chère maintenant sur le site.",
+      "Le remboursement prend trop de temps.",
+      "C'est un cadeau pour samedi."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "La lampe est moins chère maintenant sur le site.",
+       "why_wrong_en": "Prices are not mentioned (s8).",
+       "why_wrong_zh": "没有提到价格（s8）。"
+      },
+      {
+       "answer": "Le remboursement prend trop de temps.",
+       "why_wrong_en": "He gives the gift as his reason (s8).",
+       "why_wrong_zh": "他给出的理由是礼物（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "C'est un cadeau pour l'anniversaire de ma femme, samedi"
+      }
+     ]
+    },
+    {
+     "id": "u06-l06",
+     "kind": "detail",
+     "question": "Quand recevra-t-il la nouvelle lampe ?",
+     "expected_answer": "jeudi",
+     "rationale_en": "On Thursday.",
+     "rationale_zh": "周四。",
+     "segments": [
+      9
+     ],
+     "accepted_alternatives": [
+      "ce jeudi"
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "Vous la recevrez jeudi"
+      }
+     ]
+    },
+    {
+     "id": "u06-l07",
+     "kind": "detail",
+     "question": "Combien coûte la livraison express ?",
+     "expected_answer": "Rien, elle est sans frais.",
+     "rationale_en": "Free of charge.",
+     "rationale_zh": "免费。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Le prix d'une lampe.",
+      "Rien, elle est sans frais.",
+      "Dix euros, payés à la livraison."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Le prix d'une lampe.",
+       "why_wrong_en": "No cost is mentioned (s9).",
+       "why_wrong_zh": "没有提到费用（s9）。"
+      },
+      {
+       "answer": "Dix euros, payés à la livraison.",
+       "why_wrong_en": "She says express delivery is free (s9).",
+       "why_wrong_zh": "她说加急配送免费（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "en livraison express, sans frais"
+      }
+     ]
+    },
+    {
+     "id": "u06-l08",
+     "kind": "detail",
+     "question": "Qu'est-ce qui se passera pour la lampe cassée ?",
+     "expected_answer": "Un livreur la reprendra jeudi.",
+     "rationale_en": "The courier takes it back on delivery.",
+     "rationale_zh": "送货时快递员取回坏灯。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "M. Dufour doit la déposer dans un point relais.",
+      "Un livreur la reprendra jeudi.",
+      "Il peut la garder."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "M. Dufour doit la déposer dans un point relais.",
+       "why_wrong_en": "A courier collects it at the same time (s9).",
+       "why_wrong_zh": "快递员会同时取走（s9）。"
+      },
+      {
+       "answer": "Il peut la garder.",
+       "why_wrong_en": "It will be collected (s9).",
+       "why_wrong_zh": "它会被取走（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "Un livreur reprendra la lampe cassée en même temps"
+      }
+     ]
+    },
+    {
+     "id": "u06-l09",
+     "kind": "detail",
+     "question": "Dans quoi doit-il remettre la lampe cassée ?",
+     "expected_answer": "Dans le carton d'origine, même abîmé.",
+     "rationale_en": "The original box.",
+     "rationale_zh": "原纸箱。",
+     "segments": [
+      11
+     ],
+     "choices": [
+      "Dans le carton de la nouvelle lampe.",
+      "Dans un carton neuf qu'il achète lui-même.",
+      "Dans le carton d'origine, même abîmé."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Dans le carton de la nouvelle lampe.",
+       "why_wrong_en": "The original box is requested (s11).",
+       "why_wrong_zh": "要求的是原纸箱（s11）。"
+      },
+      {
+       "answer": "Dans un carton neuf qu'il achète lui-même.",
+       "why_wrong_en": "She asks for the original box (s11).",
+       "why_wrong_zh": "她要求用原来的纸箱（s11）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 11,
+       "excerpt": "dans le carton d'origine, même s'il est abîmé"
+      }
+     ]
+    },
+    {
+     "id": "u06-l10",
+     "kind": "inference",
+     "question": "Comment la conseillère traite-t-elle le client ?",
+     "expected_answer": "Avec politesse et une solution rapide.",
+     "rationale_en": "She apologises and offers a free express replacement.",
+     "rationale_zh": "她道歉并提供免费加急换货。",
+     "segments": [
+      3
+     ],
+     "choices": [
+      "Elle lui demande de rappeler plus tard parce qu'elle est occupée.",
+      "Elle lui reproche d'avoir abîmé le colis.",
+      "Avec politesse et une solution rapide."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle lui demande de rappeler plus tard parce qu'elle est occupée.",
+       "why_wrong_en": "She solves the problem during the call (s9).",
+       "why_wrong_zh": "她在通话中就解决了问题（s9）。"
+      },
+      {
+       "answer": "Elle lui reproche d'avoir abîmé le colis.",
+       "why_wrong_en": "She apologises and does not blame him (s3).",
+       "why_wrong_zh": "她道了歉，并没有责怪他（s3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 3,
+       "excerpt": "Je suis désolée, monsieur"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 1,
+     "excerpt": "à l'appareil",
+     "note_en": "speaking (on the phone)",
+     "note_zh": "（电话中）我是……"
+    },
+    {
+     "kind": "vocabulary",
+     "segment": 9,
+     "excerpt": "sans frais",
+     "note_en": "free of charge",
+     "note_zh": "免费"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u07",
+   "title": "On va à la fête ?",
+   "genre": "conversation entre amis",
+   "style_level": "A2",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Chloé",
+     "text": "Tu as vu ? Samedi, c'est la fête du quartier. On y va ensemble ?"
+    },
+    {
+     "id": "s2",
+     "speaker": "Yanis",
+     "text": "Oui, pourquoi pas. Mais le matin, je ne peux pas, je travaille jusqu'à 13 heures."
+    },
+    {
+     "id": "s3",
+     "speaker": "Chloé",
+     "text": "Dommage, je voulais aller au vide-grenier. Je cherche une petite table pour mon balcon."
+    },
+    {
+     "id": "s4",
+     "speaker": "Yanis",
+     "text": "Vas-y sans moi le matin. On se retrouve le soir pour manger ?"
+    },
+    {
+     "id": "s5",
+     "speaker": "Chloé",
+     "text": "D'accord. Les stands ouvrent à 19 heures. On se donne rendez-vous devant la fontaine à 19 h 30 ?"
+    },
+    {
+     "id": "s6",
+     "speaker": "Yanis",
+     "text": "Parfait. Et après, on reste pour le concert ? Mon cousin joue de la guitare dans un des groupes."
+    },
+    {
+     "id": "s7",
+     "speaker": "Chloé",
+     "text": "Ah oui ? Super ! Mais je ne pourrai pas rester au bal, je prends le train à 7 heures le lendemain."
+    },
+    {
+     "id": "s8",
+     "speaker": "Yanis",
+     "text": "Pas de problème. Et s'il pleut ?"
+    },
+    {
+     "id": "s9",
+     "speaker": "Chloé",
+     "text": "Alors on se retrouve directement à la salle des fêtes. J'enverrai un message dimanche… euh, non, samedi après-midi pour confirmer."
+    },
+    {
+     "id": "s10",
+     "speaker": "Yanis",
+     "text": "OK. Ah, et viens à pied : on ne pourra pas se garer sur la place."
+    }
+   ],
+   "questions": [
+    {
+     "id": "u07-l01",
+     "kind": "main_idea",
+     "question": "De quoi parlent Chloé et Yanis ?",
+     "expected_answer": "De leur sortie à la fête du quartier.",
+     "rationale_en": "They plan to go to the festival.",
+     "rationale_zh": "他们计划一起去节日活动。",
+     "segments": [
+      1
+     ],
+     "choices": [
+      "Du travail de Yanis.",
+      "D'un voyage en train qu'ils préparent ensemble.",
+      "De leur sortie à la fête du quartier."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Du travail de Yanis.",
+       "why_wrong_en": "His work is only mentioned to explain his schedule (s2).",
+       "why_wrong_zh": "提到他的工作只是为了说明他的时间（s2）。"
+      },
+      {
+       "answer": "D'un voyage en train qu'ils préparent ensemble.",
+       "why_wrong_en": "Chloé mentions a train only as a reason to leave early (s7).",
+       "why_wrong_zh": "Chloé提到火车只是为了说明要早点走（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 1,
+       "excerpt": "On y va ensemble ?"
+      }
+     ]
+    },
+    {
+     "id": "u07-l02",
+     "kind": "detail",
+     "question": "Pourquoi Yanis ne peut-il pas venir le matin ?",
+     "expected_answer": "Il travaille jusqu'à 13 heures.",
+     "rationale_en": "He works until 1 p.m.",
+     "rationale_zh": "他工作到下午一点。",
+     "segments": [
+      2
+     ],
+     "choices": [
+      "Il travaille jusqu'à 13 heures.",
+      "Il dort tard le samedi.",
+      "Il aide son cousin à préparer le concert."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il dort tard le samedi.",
+       "why_wrong_en": "He says he works until 13:00 (s2).",
+       "why_wrong_zh": "他说他工作到13点（s2）。"
+      },
+      {
+       "answer": "Il aide son cousin à préparer le concert.",
+       "why_wrong_en": "His cousin is only mentioned for the concert (s6).",
+       "why_wrong_zh": "他表哥只在说到音乐会时被提及（s6）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 2,
+       "excerpt": "je travaille jusqu'à 13 heures"
+      }
+     ]
+    },
+    {
+     "id": "u07-l03",
+     "kind": "detail",
+     "question": "Que cherche Chloé au vide-grenier ?",
+     "expected_answer": "une petite table",
+     "rationale_en": "A small table for her balcony.",
+     "rationale_zh": "一张放在阳台的小桌子。",
+     "segments": [
+      3
+     ],
+     "accepted_alternatives": [
+      "une table pour son balcon",
+      "une petite table pour son balcon"
+     ],
+     "evidence": [
+      {
+       "segment": 3,
+       "excerpt": "Je cherche une petite table pour mon balcon"
+      }
+     ]
+    },
+    {
+     "id": "u07-l04",
+     "kind": "detail",
+     "question": "Où et quand se retrouvent-ils ?",
+     "expected_answer": "Devant la fontaine à 19 h 30.",
+     "rationale_en": "At the fountain at 19:30.",
+     "rationale_zh": "19点30分在喷泉前。",
+     "segments": [
+      5
+     ],
+     "choices": [
+      "Devant l'école à 21 heures, avant le concert.",
+      "À la salle des fêtes à 19 heures.",
+      "Devant la fontaine à 19 h 30."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Devant l'école à 21 heures, avant le concert.",
+       "why_wrong_en": "They meet at the fountain at 19:30 (s5).",
+       "why_wrong_zh": "他们19点30分在喷泉前见面（s5）。"
+      },
+      {
+       "answer": "À la salle des fêtes à 19 heures.",
+       "why_wrong_en": "That is the meeting place only if it rains (s9).",
+       "why_wrong_zh": "那是下雨时的见面地点（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 5,
+       "excerpt": "devant la fontaine à 19 h 30"
+      }
+     ]
+    },
+    {
+     "id": "u07-l05",
+     "kind": "inference",
+     "question": "Pourquoi Yanis veut-il rester au concert ?",
+     "expected_answer": "Son cousin joue dans un groupe.",
+     "rationale_en": "His cousin plays guitar in one of the bands.",
+     "rationale_zh": "他表哥在其中一个乐队弹吉他。",
+     "segments": [
+      6
+     ],
+     "choices": [
+      "Chloé lui a acheté des billets.",
+      "Son cousin joue dans un groupe.",
+      "Il adore danser au bal."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Chloé lui a acheté des billets.",
+       "why_wrong_en": "Entry is free; no tickets are mentioned (s6).",
+       "why_wrong_zh": "入场免费，没有提到票（s6）。"
+      },
+      {
+       "answer": "Il adore danser au bal.",
+       "why_wrong_en": "He gives his cousin as the reason (s6).",
+       "why_wrong_zh": "他给出的理由是他表哥（s6）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 6,
+       "excerpt": "Mon cousin joue de la guitare dans un des groupes"
+      }
+     ]
+    },
+    {
+     "id": "u07-l06",
+     "kind": "detail",
+     "question": "De quel instrument joue le cousin de Yanis ?",
+     "expected_answer": "de la guitare",
+     "rationale_en": "Guitar.",
+     "rationale_zh": "吉他。",
+     "segments": [
+      6
+     ],
+     "accepted_alternatives": [
+      "la guitare",
+      "guitare"
+     ],
+     "evidence": [
+      {
+       "segment": 6,
+       "excerpt": "joue de la guitare"
+      }
+     ]
+    },
+    {
+     "id": "u07-l07",
+     "kind": "detail",
+     "question": "Pourquoi Chloé ne restera-t-elle pas au bal ?",
+     "expected_answer": "Elle prend un train tôt le lendemain.",
+     "rationale_en": "An early train the next day.",
+     "rationale_zh": "第二天要赶早班火车。",
+     "segments": [
+      7
+     ],
+     "choices": [
+      "Elle n'aime pas la musique des groupes locaux.",
+      "Elle prend un train tôt le lendemain.",
+      "Elle doit rendre la table qu'elle a achetée."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle n'aime pas la musique des groupes locaux.",
+       "why_wrong_en": "Her reason is the early train (s7).",
+       "why_wrong_zh": "她的理由是第二天的早班火车（s7）。"
+      },
+      {
+       "answer": "Elle doit rendre la table qu'elle a achetée.",
+       "why_wrong_en": "No such reason is given (s7).",
+       "why_wrong_zh": "没有给出这样的理由（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "je prends le train à 7 heures le lendemain"
+      }
+     ]
+    },
+    {
+     "id": "u07-l08",
+     "kind": "detail",
+     "question": "Que feront-ils s'il pleut ?",
+     "expected_answer": "Ils se retrouveront à la salle des fêtes.",
+     "rationale_en": "They meet at the hall.",
+     "rationale_zh": "在礼堂见面。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Ils annuleront la sortie.",
+      "Ils se retrouveront à la salle des fêtes.",
+      "Ils iront dîner au restaurant."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Ils annuleront la sortie.",
+       "why_wrong_en": "They will meet at the community hall (s9).",
+       "why_wrong_zh": "他们会在礼堂见面（s9）。"
+      },
+      {
+       "answer": "Ils iront dîner au restaurant.",
+       "why_wrong_en": "No restaurant is mentioned (s9).",
+       "why_wrong_zh": "没有提到餐馆（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "on se retrouve directement à la salle des fêtes"
+      }
+     ]
+    },
+    {
+     "id": "u07-l09",
+     "kind": "detail",
+     "question": "Quand Chloé enverra-t-elle un message ?",
+     "expected_answer": "Samedi après-midi.",
+     "rationale_en": "Saturday afternoon (she corrects « dimanche »).",
+     "rationale_zh": "周六下午（她纠正了“周日”）。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Vendredi soir.",
+      "Dimanche matin, après la fête.",
+      "Samedi après-midi."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Vendredi soir.",
+       "why_wrong_en": "She says Saturday afternoon (s9).",
+       "why_wrong_zh": "她说的是周六下午（s9）。"
+      },
+      {
+       "answer": "Dimanche matin, après la fête.",
+       "why_wrong_en": "She corrects herself: Saturday afternoon (s9).",
+       "why_wrong_zh": "她纠正了自己：是周六下午（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "non, samedi après-midi pour confirmer"
+      }
+     ]
+    },
+    {
+     "id": "u07-l10",
+     "kind": "inference",
+     "question": "Pourquoi Yanis conseille-t-il de venir à pied ?",
+     "expected_answer": "On ne pourra pas se garer sur la place.",
+     "rationale_en": "Parking is not allowed on the square.",
+     "rationale_zh": "广场上不能停车。",
+     "segments": [
+      10
+     ],
+     "choices": [
+      "La fontaine est très près de chez Chloé.",
+      "Les bus ne circulent pas le samedi soir.",
+      "On ne pourra pas se garer sur la place."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "La fontaine est très près de chez Chloé.",
+       "why_wrong_en": "He gives parking as the reason (s10).",
+       "why_wrong_zh": "他给出的理由是停车（s10）。"
+      },
+      {
+       "answer": "Les bus ne circulent pas le samedi soir.",
+       "why_wrong_en": "Buses are not mentioned (s10).",
+       "why_wrong_zh": "没有提到公交车（s10）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 10,
+       "excerpt": "on ne pourra pas se garer sur la place"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 7,
+     "excerpt": "le lendemain",
+     "note_en": "the next day",
+     "note_zh": "第二天"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u08",
+   "title": "Réunion d'information à la mairie annexe (extrait)",
+   "genre": "réunion publique",
+   "style_level": "B1",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "M. Leroy, adjoint au maire",
+     "text": "Merci d'être venus si nombreux. Je vais répondre à vos questions sur les nouvelles règles de tri."
+    },
+    {
+     "id": "s2",
+     "speaker": "Une habitante",
+     "text": "Moi, j'habite au quatrième étage sans ascenseur. Descendre trois poubelles, c'est compliqué à mon âge."
+    },
+    {
+     "id": "s3",
+     "speaker": "M. Leroy, adjoint au maire",
+     "text": "Je comprends, madame. Les personnes de plus de 75 ans ou à mobilité réduite peuvent demander l'aide d'un service gratuit : quelqu'un passe deux fois par semaine."
+    },
+    {
+     "id": "s4",
+     "speaker": "Une habitante",
+     "text": "Ah, très bien. Et comment on fait la demande ?"
+    },
+    {
+     "id": "s5",
+     "speaker": "M. Leroy, adjoint au maire",
+     "text": "Il suffit d'appeler l'accueil de la mairie ou de remplir le formulaire que je vous donnerai à la fin."
+    },
+    {
+     "id": "s6",
+     "speaker": "Un habitant",
+     "text": "Moi, j'ai une question sur le bac marron. Ça ne va pas sentir mauvais, l'été ?"
+    },
+    {
+     "id": "s7",
+     "speaker": "M. Leroy, adjoint au maire",
+     "text": "C'est une bonne question. Le bac a un couvercle hermétique, et nous conseillons de mettre un peu de papier journal au fond. En été, la collecte sera aussi plus fréquente."
+    },
+    {
+     "id": "s8",
+     "speaker": "Un habitant",
+     "text": "Et si je n'ai pas de place dans ma cuisine pour un bac de plus ?"
+    },
+    {
+     "id": "s9",
+     "speaker": "M. Leroy, adjoint au maire",
+     "text": "Nous avons deux tailles : dix litres et vingt litres. Vous pouvez échanger votre bac contre le petit modèle ici même, ce soir."
+    },
+    {
+     "id": "s10",
+     "speaker": "Une habitante",
+     "text": "Et les personnes qui ne trient pas, elles auront une amende ?"
+    },
+    {
+     "id": "s11",
+     "speaker": "M. Leroy, adjoint au maire",
+     "text": "Non, pas cette année. Nous voulons d'abord expliquer. On fera un bilan dans un an."
+    }
+   ],
+   "questions": [
+    {
+     "id": "u08-l01",
+     "kind": "main_idea",
+     "question": "Quel est le but de cette réunion ?",
+     "expected_answer": "Répondre aux questions des habitants sur le tri.",
+     "rationale_en": "To answer residents' questions.",
+     "rationale_zh": "回答居民的问题。",
+     "segments": [
+      1
+     ],
+     "choices": [
+      "Présenter le budget de la ville pour l'année prochaine.",
+      "Répondre aux questions des habitants sur le tri.",
+      "Élire un nouvel adjoint au maire."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Présenter le budget de la ville pour l'année prochaine.",
+       "why_wrong_en": "No budget is discussed (s1).",
+       "why_wrong_zh": "没有讨论预算（s1）。"
+      },
+      {
+       "answer": "Élire un nouvel adjoint au maire.",
+       "why_wrong_en": "He came to answer questions about sorting (s1).",
+       "why_wrong_zh": "他是来回答关于分类的问题的（s1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 1,
+       "excerpt": "Je vais répondre à vos questions sur les nouvelles règles de tri"
+      }
+     ]
+    },
+    {
+     "id": "u08-l02",
+     "kind": "detail",
+     "question": "Quel est le problème de l'habitante ?",
+     "expected_answer": "Elle a du mal à descendre plusieurs poubelles.",
+     "rationale_en": "Carrying three bins down is hard for her.",
+     "rationale_zh": "搬三个垃圾桶下楼对她来说很难。",
+     "segments": [
+      2
+     ],
+     "choices": [
+      "Elle n'aime pas l'odeur du compost.",
+      "Elle n'a pas reçu son bac marron.",
+      "Elle a du mal à descendre plusieurs poubelles."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle n'aime pas l'odeur du compost.",
+       "why_wrong_en": "The smell question comes from another resident (s6).",
+       "why_wrong_zh": "气味的问题是另一位居民提的（s6）。"
+      },
+      {
+       "answer": "Elle n'a pas reçu son bac marron.",
+       "why_wrong_en": "Her problem is carrying bins down four floors (s2).",
+       "why_wrong_zh": "她的问题是要把垃圾桶搬下四楼（s2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 2,
+       "excerpt": "Descendre trois poubelles, c'est compliqué à mon âge"
+      }
+     ]
+    },
+    {
+     "id": "u08-l03",
+     "kind": "detail",
+     "question": "Quelle aide propose M. Leroy ?",
+     "expected_answer": "Un service gratuit qui passe deux fois par semaine.",
+     "rationale_en": "A free service twice a week.",
+     "rationale_zh": "每周两次的免费服务。",
+     "segments": [
+      3
+     ],
+     "choices": [
+      "Un ascenseur installé dans son immeuble.",
+      "Un voisin payé par la mairie chaque jour.",
+      "Un service gratuit qui passe deux fois par semaine."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Un ascenseur installé dans son immeuble.",
+       "why_wrong_en": "He offers a free service, not works (s3).",
+       "why_wrong_zh": "他提供的是免费服务，不是施工（s3）。"
+      },
+      {
+       "answer": "Un voisin payé par la mairie chaque jour.",
+       "why_wrong_en": "Someone comes twice a week, free (s3).",
+       "why_wrong_zh": "有人每周免费来两次（s3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 3,
+       "excerpt": "quelqu'un passe deux fois par semaine"
+      }
+     ]
+    },
+    {
+     "id": "u08-l04",
+     "kind": "detail",
+     "question": "Comment faire la demande d'aide ?",
+     "expected_answer": "appeler l'accueil de la mairie ou remplir le formulaire",
+     "rationale_en": "Call the town hall or fill in the form.",
+     "rationale_zh": "打电话给市政厅或填表。",
+     "segments": [
+      5
+     ],
+     "accepted_alternatives": [
+      "par téléphone ou avec le formulaire",
+      "remplir le formulaire"
+     ],
+     "evidence": [
+      {
+       "segment": 5,
+       "excerpt": "Il suffit d'appeler l'accueil de la mairie ou de remplir le formulaire"
+      }
+     ]
+    },
+    {
+     "id": "u08-l05",
+     "kind": "detail",
+     "question": "Que craint l'habitant à propos du bac marron ?",
+     "expected_answer": "Les mauvaises odeurs en été.",
+     "rationale_en": "Bad smells in summer.",
+     "rationale_zh": "夏天的异味。",
+     "segments": [
+      6
+     ],
+     "choices": [
+      "Les mauvaises odeurs en été.",
+      "Le prix du bac.",
+      "Le bruit du camion de collecte le matin."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Le prix du bac.",
+       "why_wrong_en": "He asks about the smell (s6).",
+       "why_wrong_zh": "他问的是气味（s6）。"
+      },
+      {
+       "answer": "Le bruit du camion de collecte le matin.",
+       "why_wrong_en": "Noise is not mentioned (s6).",
+       "why_wrong_zh": "没有提到噪音（s6）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 6,
+       "excerpt": "Ça ne va pas sentir mauvais, l'été ?"
+      }
+     ]
+    },
+    {
+     "id": "u08-l06",
+     "kind": "detail",
+     "question": "Que conseille M. Leroy contre les odeurs ?",
+     "expected_answer": "Mettre du papier journal au fond du bac.",
+     "rationale_en": "Newspaper at the bottom; the lid is airtight.",
+     "rationale_zh": "底部垫报纸；盖子是密封的。",
+     "segments": [
+      7
+     ],
+     "choices": [
+      "Mettre du papier journal au fond du bac.",
+      "Laver le bac chaque jour avec un produit spécial.",
+      "Garder le bac sur le balcon."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Laver le bac chaque jour avec un produit spécial.",
+       "why_wrong_en": "He advises newspaper at the bottom (s7).",
+       "why_wrong_zh": "他建议在底部垫报纸（s7）。"
+      },
+      {
+       "answer": "Garder le bac sur le balcon.",
+       "why_wrong_en": "No such advice is given (s7).",
+       "why_wrong_zh": "没有这样的建议（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "mettre un peu de papier journal au fond"
+      }
+     ]
+    },
+    {
+     "id": "u08-l07",
+     "kind": "detail",
+     "question": "Quelles sont les deux tailles de bac ?",
+     "expected_answer": "dix litres et vingt litres",
+     "rationale_en": "Ten and twenty litres.",
+     "rationale_zh": "十升和二十升。",
+     "segments": [
+      9
+     ],
+     "accepted_alternatives": [
+      "10 et 20 litres",
+      "dix et vingt litres"
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "dix litres et vingt litres"
+      }
+     ]
+    },
+    {
+     "id": "u08-l08",
+     "kind": "detail",
+     "question": "Où et quand peut-on échanger son bac ?",
+     "expected_answer": "Ici même, le soir de la réunion.",
+     "rationale_en": "Here, tonight.",
+     "rationale_zh": "就在这里，今晚。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Ici même, le soir de la réunion.",
+      "À la déchetterie, le samedi.",
+      "À la mairie principale, en mars."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "À la déchetterie, le samedi.",
+       "why_wrong_en": "He says here, this evening (s9).",
+       "why_wrong_zh": "他说就在这里，今晚（s9）。"
+      },
+      {
+       "answer": "À la mairie principale, en mars.",
+       "why_wrong_en": "The exchange happens at the meeting (s9).",
+       "why_wrong_zh": "交换就在会上进行（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "ici même, ce soir"
+      }
+     ]
+    },
+    {
+     "id": "u08-l09",
+     "kind": "detail",
+     "question": "Les personnes qui ne trient pas auront-elles une amende ?",
+     "expected_answer": "Non, pas cette année.",
+     "rationale_en": "No fines this year.",
+     "rationale_zh": "今年不罚款。",
+     "segments": [
+      11
+     ],
+     "choices": [
+      "Oui, mais seulement dans le centre-ville.",
+      "Oui, dès le 1er mars.",
+      "Non, pas cette année."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Oui, mais seulement dans le centre-ville.",
+       "why_wrong_en": "No fines are planned this year anywhere (s11).",
+       "why_wrong_zh": "今年哪里都不罚款（s11）。"
+      },
+      {
+       "answer": "Oui, dès le 1er mars.",
+       "why_wrong_en": "No fines this year (s11).",
+       "why_wrong_zh": "今年不会罚款（s11）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 11,
+       "excerpt": "Non, pas cette année"
+      }
+     ]
+    },
+    {
+     "id": "u08-l10",
+     "kind": "inference",
+     "question": "Quelle est l'approche de la mairie ?",
+     "expected_answer": "Expliquer d'abord, puis faire un bilan.",
+     "rationale_en": "Explanation first, review in a year.",
+     "rationale_zh": "先解释，一年后总结。",
+     "segments": [
+      11
+     ],
+     "choices": [
+      "Expliquer d'abord, puis faire un bilan.",
+      "Punir rapidement pour changer les habitudes.",
+      "Laisser chaque quartier décider de ses règles."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Punir rapidement pour changer les habitudes.",
+       "why_wrong_en": "They want to explain first (s11).",
+       "why_wrong_zh": "他们想先解释（s11）。"
+      },
+      {
+       "answer": "Laisser chaque quartier décider de ses règles.",
+       "why_wrong_en": "The rules are the same for the city (s11).",
+       "why_wrong_zh": "全市规则相同（s11）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 11,
+       "excerpt": "Nous voulons d'abord expliquer"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 3,
+     "excerpt": "à mobilité réduite",
+     "note_en": "with reduced mobility",
+     "note_zh": "行动不便的"
+    },
+    {
+     "kind": "vocabulary",
+     "segment": 7,
+     "excerpt": "hermétique",
+     "note_en": "airtight",
+     "note_zh": "密封的"
+    },
+    {
+     "kind": "vocabulary",
+     "segment": 10,
+     "excerpt": "une amende",
+     "note_en": "a fine",
+     "note_zh": "罚款"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u09",
+   "title": "À la réception : un problème de chambre",
+   "genre": "dialogue",
+   "style_level": "B1",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Mme Rossi, cliente",
+     "text": "Bonsoir, excusez-moi. On nous a donné la chambre 21, mais elle donne sur la rue, et il y a beaucoup de bruit."
+    },
+    {
+     "id": "s2",
+     "speaker": "Réceptionniste",
+     "text": "Bonsoir madame. Vous avez réservé une chambre côté jardin, c'est ça ?"
+    },
+    {
+     "id": "s3",
+     "speaker": "Mme Rossi, cliente",
+     "text": "Oui, c'est écrit dans la confirmation. Et en plus, le chauffage ne marche pas."
+    },
+    {
+     "id": "s4",
+     "speaker": "Réceptionniste",
+     "text": "Je suis vraiment désolé. Ce soir, toutes les chambres côté jardin sont occupées. Je peux vous proposer une chambre plus grande, côté cour, très calme, au même prix."
+    },
+    {
+     "id": "s5",
+     "speaker": "Mme Rossi, cliente",
+     "text": "Côté cour… Il n'y a pas de bruit ?"
+    },
+    {
+     "id": "s6",
+     "speaker": "Réceptionniste",
+     "text": "Non, aucun. Et demain matin, une chambre côté jardin sera libre ; nous pourrons vous y installer après le petit-déjeuner, si vous le souhaitez."
+    },
+    {
+     "id": "s7",
+     "speaker": "Mme Rossi, cliente",
+     "text": "Non merci, si la chambre est calme, nous resterons dedans. On ne veut pas refaire les valises."
+    },
+    {
+     "id": "s8",
+     "speaker": "Réceptionniste",
+     "text": "Je comprends. Pour nous excuser, le petit-déjeuner de demain vous est offert, et je vais demander au technicien de vérifier le chauffage de la chambre 21."
+    },
+    {
+     "id": "s9",
+     "speaker": "Mme Rossi, cliente",
+     "text": "C'est gentil, merci. Et c'est quel numéro, la nouvelle chambre ?"
+    },
+    {
+     "id": "s10",
+     "speaker": "Réceptionniste",
+     "text": "La 34, au troisième étage. Voici la clé. L'ascenseur est à gauche."
+    }
+   ],
+   "questions": [
+    {
+     "id": "u09-l01",
+     "kind": "main_idea",
+     "question": "Pourquoi Mme Rossi va-t-elle à la réception ?",
+     "expected_answer": "Sa chambre ne correspond pas à la réservation.",
+     "rationale_en": "Street side and noisy instead of garden side.",
+     "rationale_zh": "房间临街吵闹，而不是朝花园。",
+     "segments": [
+      1,
+      3
+     ],
+     "choices": [
+      "Sa chambre ne correspond pas à la réservation.",
+      "Elle a perdu la clé.",
+      "Elle veut annuler son séjour et partir tout de suite."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle a perdu la clé.",
+       "why_wrong_en": "She complains about the room (s1).",
+       "why_wrong_zh": "她投诉的是房间（s1）。"
+      },
+      {
+       "answer": "Elle veut annuler son séjour et partir tout de suite.",
+       "why_wrong_en": "She asks for a solution, not to leave (s1).",
+       "why_wrong_zh": "她想要解决问题，而不是离开（s1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 1,
+       "excerpt": "elle donne sur la rue, et il y a beaucoup de bruit"
+      },
+      {
+       "segment": 3,
+       "excerpt": "c'est écrit dans la confirmation"
+      }
+     ]
+    },
+    {
+     "id": "u09-l02",
+     "kind": "detail",
+     "question": "Quel autre problème signale-t-elle ?",
+     "expected_answer": "Le chauffage ne fonctionne pas.",
+     "rationale_en": "The heating does not work.",
+     "rationale_zh": "暖气坏了。",
+     "segments": [
+      3
+     ],
+     "choices": [
+      "Le chauffage ne fonctionne pas.",
+      "La douche est froide.",
+      "Il n'y a pas de serviettes dans la salle de bains."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "La douche est froide.",
+       "why_wrong_en": "She mentions the heating (s3).",
+       "why_wrong_zh": "她提到的是暖气（s3）。"
+      },
+      {
+       "answer": "Il n'y a pas de serviettes dans la salle de bains.",
+       "why_wrong_en": "Towels are not mentioned (s3).",
+       "why_wrong_zh": "没有提到毛巾（s3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 3,
+       "excerpt": "le chauffage ne marche pas"
+      }
+     ]
+    },
+    {
+     "id": "u09-l03",
+     "kind": "detail",
+     "question": "Pourquoi le réceptionniste ne donne-t-il pas une chambre côté jardin ?",
+     "expected_answer": "Elles sont toutes occupées ce soir.",
+     "rationale_en": "All are taken tonight.",
+     "rationale_zh": "今晚都住满了。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Elles sont en travaux jusqu'à la fin du mois.",
+      "Elles sont toutes occupées ce soir.",
+      "Elles sont plus chères."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elles sont en travaux jusqu'à la fin du mois.",
+       "why_wrong_en": "No works are mentioned; one is free tomorrow (s6).",
+       "why_wrong_zh": "没有提到施工；明天就有一间空出（s6）。"
+      },
+      {
+       "answer": "Elles sont plus chères.",
+       "why_wrong_en": "They are occupied tonight (s4).",
+       "why_wrong_zh": "今晚都住满了（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "toutes les chambres côté jardin sont occupées"
+      }
+     ]
+    },
+    {
+     "id": "u09-l04",
+     "kind": "detail",
+     "question": "Que propose-t-il à la place ?",
+     "expected_answer": "Une chambre plus grande et calme, côté cour.",
+     "rationale_en": "A bigger, quiet courtyard room.",
+     "rationale_zh": "更大、安静、朝庭院的房间。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Une réduction de 20 % sur la chambre 21.",
+      "Une chambre dans un autre hôtel.",
+      "Une chambre plus grande et calme, côté cour."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Une réduction de 20 % sur la chambre 21.",
+       "why_wrong_en": "He offers a bigger, quiet room at the same price (s4).",
+       "why_wrong_zh": "他提供更大、安静的房间，价格不变（s4）。"
+      },
+      {
+       "answer": "Une chambre dans un autre hôtel.",
+       "why_wrong_en": "The room is in the same hotel (s4).",
+       "why_wrong_zh": "房间在同一家酒店（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "une chambre plus grande, côté cour, très calme, au même prix"
+      }
+     ]
+    },
+    {
+     "id": "u09-l05",
+     "kind": "detail",
+     "question": "La nouvelle chambre coûte-t-elle plus cher ?",
+     "expected_answer": "Non, c'est le même prix.",
+     "rationale_en": "Same price.",
+     "rationale_zh": "价格不变。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Oui, dix euros de plus par nuit.",
+      "Non, c'est le même prix.",
+      "Oui, mais seulement la première nuit."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Oui, dix euros de plus par nuit.",
+       "why_wrong_en": "He says the same price (s4).",
+       "why_wrong_zh": "他说价格不变（s4）。"
+      },
+      {
+       "answer": "Oui, mais seulement la première nuit.",
+       "why_wrong_en": "There is no extra charge (s4).",
+       "why_wrong_zh": "没有额外费用（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "au même prix"
+      }
+     ]
+    },
+    {
+     "id": "u09-l06",
+     "kind": "inference",
+     "question": "Pourquoi Mme Rossi refuse-t-elle de changer encore le lendemain ?",
+     "expected_answer": "Elle ne veut pas refaire ses valises.",
+     "rationale_en": "She does not want to pack again.",
+     "rationale_zh": "她不想再收拾行李。",
+     "segments": [
+      7
+     ],
+     "choices": [
+      "Elle ne veut pas refaire ses valises.",
+      "La chambre côté jardin est trop petite pour deux.",
+      "Elle part tôt le lendemain matin."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "La chambre côté jardin est trop petite pour deux.",
+       "why_wrong_en": "Her reason is packing again (s7).",
+       "why_wrong_zh": "她的理由是不想再收拾行李（s7）。"
+      },
+      {
+       "answer": "Elle part tôt le lendemain matin.",
+       "why_wrong_en": "No departure time is mentioned; her reason is packing again (s7).",
+       "why_wrong_zh": "对话没有提到出发时间；她的理由是不想再收拾行李（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "On ne veut pas refaire les valises"
+      }
+     ]
+    },
+    {
+     "id": "u09-l07",
+     "kind": "detail",
+     "question": "Comment l'hôtel s'excuse-t-il ?",
+     "expected_answer": "Il offre le petit-déjeuner du lendemain.",
+     "rationale_en": "Free breakfast tomorrow.",
+     "rationale_zh": "明天的早餐免费。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "Il offre le petit-déjeuner du lendemain.",
+      "Il offre une place au parking de l'hôtel.",
+      "Il rembourse la première nuit."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il offre une place au parking de l'hôtel.",
+       "why_wrong_en": "Parking is not mentioned in the dialogue (s8).",
+       "why_wrong_zh": "对话中没有提到停车（s8）。"
+      },
+      {
+       "answer": "Il rembourse la première nuit.",
+       "why_wrong_en": "He offers tomorrow's breakfast (s8).",
+       "why_wrong_zh": "他提供明天的免费早餐（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "le petit-déjeuner de demain vous est offert"
+      }
+     ]
+    },
+    {
+     "id": "u09-l08",
+     "kind": "detail",
+     "question": "Que va faire le technicien ?",
+     "expected_answer": "Vérifier le chauffage de la chambre 21.",
+     "rationale_en": "Check room 21's heating.",
+     "rationale_zh": "检查21号房的暖气。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "Vérifier le chauffage de la chambre 21.",
+      "Installer un rideau plus épais dans la chambre 21.",
+      "Réparer la fenêtre de la nouvelle chambre."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Installer un rideau plus épais dans la chambre 21.",
+       "why_wrong_en": "No curtain is mentioned (s8).",
+       "why_wrong_zh": "没有提到窗帘（s8）。"
+      },
+      {
+       "answer": "Réparer la fenêtre de la nouvelle chambre.",
+       "why_wrong_en": "He will check the heating in room 21 (s8).",
+       "why_wrong_zh": "他会检查21号房的暖气（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "vérifier le chauffage de la chambre 21"
+      }
+     ]
+    },
+    {
+     "id": "u09-l09",
+     "kind": "detail",
+     "question": "Quel est le numéro de la nouvelle chambre ?",
+     "expected_answer": "34",
+     "rationale_en": "Room 34.",
+     "rationale_zh": "34号房。",
+     "segments": [
+      10
+     ],
+     "accepted_alternatives": [
+      "la 34",
+      "la chambre 34",
+      "trente-quatre"
+     ],
+     "evidence": [
+      {
+       "segment": 10,
+       "excerpt": "La 34, au troisième étage"
+      }
+     ]
+    },
+    {
+     "id": "u09-l10",
+     "kind": "detail",
+     "question": "Où est l'ascenseur ?",
+     "expected_answer": "à gauche",
+     "rationale_en": "On the left.",
+     "rationale_zh": "在左边。",
+     "segments": [
+      10
+     ],
+     "accepted_alternatives": [
+      "sur la gauche"
+     ],
+     "evidence": [
+      {
+       "segment": 10,
+       "excerpt": "L'ascenseur est à gauche"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 4,
+     "excerpt": "côté cour",
+     "note_en": "courtyard side",
+     "note_zh": "朝庭院一侧"
+    },
+    {
+     "kind": "vocabulary",
+     "segment": 7,
+     "excerpt": "refaire les valises",
+     "note_en": "to pack again",
+     "note_zh": "重新收拾行李"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u10",
+   "title": "Un message de la mairie, puis le rappel",
+   "genre": "message vocal et appel téléphonique",
+   "style_level": "B1",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Mme Benali, service des titres d'identité",
+     "text": "Bonjour, ici Mme Benali, du service des titres d'identité de la mairie de Villeneuve. Ce message est pour M. Paul Martin."
+    },
+    {
+     "id": "s2",
+     "speaker": "Mme Benali, service des titres d'identité",
+     "text": "Votre rendez-vous de jeudi 14 heures pour votre carte d'identité doit être déplacé : l'agent sera absent ce jour-là, nous en sommes désolés."
+    },
+    {
+     "id": "s3",
+     "speaker": "Mme Benali, service des titres d'identité",
+     "text": "Nous pouvons vous proposer vendredi à 9 h 15 ou lundi à 16 h 30. Merci de rappeler l'accueil au 01 99 00 42 17 avant mercredi midi pour choisir."
+    },
+    {
+     "id": "s4",
+     "speaker": "Mme Benali, service des titres d'identité",
+     "text": "Autre chose : sur votre pré-demande, l'adresse est incomplète, il manque le numéro de l'appartement. Vous pouvez la corriger en ligne, ce n'est pas la peine de tout recommencer. Bonne journée, monsieur."
+    },
+    {
+     "id": "s5",
+     "speaker": "Paul Martin",
+     "text": "Bonjour, Paul Martin à l'appareil. J'ai eu un message de Mme Benali pour changer mon rendez-vous."
+    },
+    {
+     "id": "s6",
+     "speaker": "Accueil de la mairie",
+     "text": "Oui, je vois. Vendredi 9 h 15 ou lundi 16 h 30, qu'est-ce qui vous arrange ?"
+    },
+    {
+     "id": "s7",
+     "speaker": "Paul Martin",
+     "text": "Vendredi matin, je travaille. Lundi 16 h 30, c'est parfait."
+    },
+    {
+     "id": "s8",
+     "speaker": "Accueil de la mairie",
+     "text": "C'est noté : lundi 16 h 30, bureau 3, au premier étage. Vous avez corrigé l'adresse ?"
+    },
+    {
+     "id": "s9",
+     "speaker": "Paul Martin",
+     "text": "Oui, hier soir. Est-ce que je dois apporter autre chose ?"
+    },
+    {
+     "id": "s10",
+     "speaker": "Accueil de la mairie",
+     "text": "Non, les documents habituels suffisent. Pensez juste à arriver cinq minutes en avance."
+    }
+   ],
+   "questions": [
+    {
+     "id": "u10-l01",
+     "kind": "main_idea",
+     "question": "Pourquoi Mme Benali laisse-t-elle un message ?",
+     "expected_answer": "Pour déplacer le rendez-vous de M. Martin.",
+     "rationale_en": "The appointment has to be moved.",
+     "rationale_zh": "预约需要更改。",
+     "segments": [
+      2
+     ],
+     "choices": [
+      "Pour lui demander une autre photo.",
+      "Pour lui dire que sa nouvelle carte est prête.",
+      "Pour déplacer le rendez-vous de M. Martin."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Pour lui demander une autre photo.",
+       "why_wrong_en": "The photo is not mentioned (s1–s4).",
+       "why_wrong_zh": "没有提到照片（s1–s4）。"
+      },
+      {
+       "answer": "Pour lui dire que sa nouvelle carte est prête.",
+       "why_wrong_en": "The appointment is being moved; the card is not ready (s2).",
+       "why_wrong_zh": "是预约要改期，证件还没办好（s2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 2,
+       "excerpt": "doit être déplacé"
+      }
+     ]
+    },
+    {
+     "id": "u10-l02",
+     "kind": "detail",
+     "question": "Pourquoi le rendez-vous de jeudi ne peut-il pas avoir lieu ?",
+     "expected_answer": "L'agent sera absent.",
+     "rationale_en": "The agent will be absent.",
+     "rationale_zh": "工作人员当天不在。",
+     "segments": [
+      2
+     ],
+     "choices": [
+      "La mairie sera fermée pour travaux.",
+      "M. Martin n'a pas fait sa pré-demande.",
+      "L'agent sera absent."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "La mairie sera fermée pour travaux.",
+       "why_wrong_en": "The reason is the agent's absence (s2).",
+       "why_wrong_zh": "原因是工作人员不在（s2）。"
+      },
+      {
+       "answer": "M. Martin n'a pas fait sa pré-demande.",
+       "why_wrong_en": "He did it; only the address is incomplete (s4).",
+       "why_wrong_zh": "他已经填了预申请，只是地址不完整（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 2,
+       "excerpt": "l'agent sera absent ce jour-là"
+      }
+     ]
+    },
+    {
+     "id": "u10-l03",
+     "kind": "detail",
+     "question": "Quels créneaux propose-t-elle ?",
+     "expected_answer": "Vendredi 9 h 15 ou lundi 16 h 30.",
+     "rationale_en": "Friday 9:15 or Monday 16:30.",
+     "rationale_zh": "周五9点15分或周一16点30分。",
+     "segments": [
+      3
+     ],
+     "choices": [
+      "Jeudi 14 h ou vendredi 9 h 15.",
+      "Vendredi 9 h 15 ou lundi 16 h 30.",
+      "Lundi 9 h 15 ou mardi 16 h 30."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Jeudi 14 h ou vendredi 9 h 15.",
+       "why_wrong_en": "Thursday is the cancelled slot (s2, s3).",
+       "why_wrong_zh": "周四是被取消的时间（s2、s3）。"
+      },
+      {
+       "answer": "Lundi 9 h 15 ou mardi 16 h 30.",
+       "why_wrong_en": "The days are Friday and Monday (s3).",
+       "why_wrong_zh": "提供的是周五和周一（s3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 3,
+       "excerpt": "vendredi à 9 h 15 ou lundi à 16 h 30"
+      }
+     ]
+    },
+    {
+     "id": "u10-l04",
+     "kind": "detail",
+     "question": "Avant quand faut-il rappeler ?",
+     "expected_answer": "avant mercredi midi",
+     "rationale_en": "Before Wednesday noon.",
+     "rationale_zh": "周三中午之前。",
+     "segments": [
+      3
+     ],
+     "accepted_alternatives": [
+      "mercredi midi",
+      "avant mercredi à midi"
+     ],
+     "evidence": [
+      {
+       "segment": 3,
+       "excerpt": "avant mercredi midi"
+      }
+     ]
+    },
+    {
+     "id": "u10-l05",
+     "kind": "detail",
+     "question": "Quel problème y a-t-il sur la pré-demande ?",
+     "expected_answer": "Il manque le numéro de l'appartement.",
+     "rationale_en": "The flat number is missing.",
+     "rationale_zh": "缺少公寓号。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Il manque le numéro de l'appartement.",
+      "La photo jointe est trop ancienne.",
+      "Le nom de famille est mal écrit."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "La photo jointe est trop ancienne.",
+       "why_wrong_en": "The problem is the address (s4).",
+       "why_wrong_zh": "问题在地址（s4）。"
+      },
+      {
+       "answer": "Le nom de famille est mal écrit.",
+       "why_wrong_en": "Only the address is incomplete (s4).",
+       "why_wrong_zh": "只是地址不完整（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "il manque le numéro de l'appartement"
+      }
+     ]
+    },
+    {
+     "id": "u10-l06",
+     "kind": "inference",
+     "question": "Faut-il refaire toute la pré-demande ?",
+     "expected_answer": "Non, on peut corriger l'adresse en ligne.",
+     "rationale_en": "Correct it online; no need to restart.",
+     "rationale_zh": "网上修改即可，不必重填。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Non, on peut corriger l'adresse en ligne.",
+      "Oui, une nouvelle pré-demande est obligatoire.",
+      "Oui, et il faut la refaire au guichet."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Oui, une nouvelle pré-demande est obligatoire.",
+       "why_wrong_en": "A correction online is enough (s4).",
+       "why_wrong_zh": "在网上修改即可（s4）。"
+      },
+      {
+       "answer": "Oui, et il faut la refaire au guichet.",
+       "why_wrong_en": "She says there is no need to start again (s4).",
+       "why_wrong_zh": "她说不需要重新填写（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "ce n'est pas la peine de tout recommencer"
+      }
+     ]
+    },
+    {
+     "id": "u10-l07",
+     "kind": "detail",
+     "question": "Pourquoi Paul ne choisit-il pas vendredi ?",
+     "expected_answer": "Il travaille le vendredi matin.",
+     "rationale_en": "He works on Friday morning.",
+     "rationale_zh": "他周五上午要上班。",
+     "segments": [
+      7
+     ],
+     "choices": [
+      "Il travaille le vendredi matin.",
+      "Il part en voyage vendredi.",
+      "Le bureau 3 est fermé ce jour-là."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Il part en voyage vendredi.",
+       "why_wrong_en": "He says he works (s7).",
+       "why_wrong_zh": "他说他要上班（s7）。"
+      },
+      {
+       "answer": "Le bureau 3 est fermé ce jour-là.",
+       "why_wrong_en": "No closure is mentioned (s7, s8).",
+       "why_wrong_zh": "没有提到关门（s7、s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "Vendredi matin, je travaille"
+      }
+     ]
+    },
+    {
+     "id": "u10-l08",
+     "kind": "detail",
+     "question": "Où aura lieu le rendez-vous ?",
+     "expected_answer": "bureau 3, au premier étage",
+     "rationale_en": "Office 3, first floor.",
+     "rationale_zh": "二楼（法式一楼）3号办公室。",
+     "segments": [
+      8
+     ],
+     "accepted_alternatives": [
+      "au bureau 3",
+      "bureau 3",
+      "au premier étage, bureau 3"
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "bureau 3, au premier étage"
+      }
+     ]
+    },
+    {
+     "id": "u10-l09",
+     "kind": "detail",
+     "question": "Quand Paul a-t-il corrigé l'adresse ?",
+     "expected_answer": "La veille au soir.",
+     "rationale_en": "Yesterday evening.",
+     "rationale_zh": "昨天晚上。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Pendant l'appel, avec l'agent d'accueil.",
+      "La veille au soir.",
+      "Il ne l'a pas encore corrigée."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Pendant l'appel, avec l'agent d'accueil.",
+       "why_wrong_en": "He corrected it the evening before (s9).",
+       "why_wrong_zh": "他前一天晚上就改好了（s9）。"
+      },
+      {
+       "answer": "Il ne l'a pas encore corrigée.",
+       "why_wrong_en": "He says he did it last night (s9).",
+       "why_wrong_zh": "他说昨晚已经改了（s9）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "Oui, hier soir"
+      }
+     ]
+    },
+    {
+     "id": "u10-l10",
+     "kind": "inference",
+     "question": "Que conseille l'agent d'accueil ?",
+     "expected_answer": "D'arriver un peu en avance.",
+     "rationale_en": "Arrive five minutes early.",
+     "rationale_zh": "提前五分钟到。",
+     "segments": [
+      10
+     ],
+     "choices": [
+      "D'apporter une deuxième photo d'identité.",
+      "D'arriver un peu en avance.",
+      "De rappeler Mme Benali lundi matin."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "D'apporter une deuxième photo d'identité.",
+       "why_wrong_en": "The usual documents are enough (s10).",
+       "why_wrong_zh": "常规材料就够了（s10）。"
+      },
+      {
+       "answer": "De rappeler Mme Benali lundi matin.",
+       "why_wrong_en": "The appointment is already booked (s8).",
+       "why_wrong_zh": "预约已经定好了（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 10,
+       "excerpt": "arriver cinq minutes en avance"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 4,
+     "excerpt": "ce n'est pas la peine de",
+     "note_en": "there is no need to",
+     "note_zh": "没必要……"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u11",
+   "title": "Commander avec une allergie",
+   "genre": "dialogue au restaurant",
+   "style_level": "A2",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Serveur",
+     "text": "Bonjour ! Vous avez choisi ?"
+    },
+    {
+     "id": "s2",
+     "speaker": "Inès, cliente",
+     "text": "Bonjour. Oui, mais d'abord : je suis allergique aux fruits à coque, aux noix, aux noisettes… C'est assez grave."
+    },
+    {
+     "id": "s3",
+     "speaker": "Serveur",
+     "text": "D'accord, merci de me le dire. Alors, pas de salade de chèvre, elle a des noix. La soupe de potiron, en revanche, n'en contient pas."
+    },
+    {
+     "id": "s4",
+     "speaker": "Inès, cliente",
+     "text": "Très bien, je prends la soupe. Et comme plat, le poulet. Les pommes de terre sont cuites avec quoi ?"
+    },
+    {
+     "id": "s5",
+     "speaker": "Serveur",
+     "text": "À l'huile d'olive, avec du romarin. Je vais quand même demander au cuisinier de les cuire à part, pour éviter les traces."
+    },
+    {
+     "id": "s6",
+     "speaker": "Inès, cliente",
+     "text": "C'est très gentil. Et pas de dessert pour moi, merci."
+    },
+    {
+     "id": "s7",
+     "speaker": "Hugo, ami d'Inès",
+     "text": "Moi, je prends le menu complet : la salade de chèvre, les lasagnes et la tarte aux pommes."
+    },
+    {
+     "id": "s8",
+     "speaker": "Serveur",
+     "text": "Monsieur, comme vous êtes à côté de madame, je peux servir votre salade un peu plus tard, si vous préférez ?"
+    },
+    {
+     "id": "s9",
+     "speaker": "Inès, cliente",
+     "text": "Non, ça va, je réagis seulement si j'en mange. Mais merci d'y penser."
+    },
+    {
+     "id": "s10",
+     "speaker": "Serveur",
+     "text": "Parfait. Alors : un menu à 13 euros et un menu à 16,50. Je vous apporte une carafe d'eau."
+    }
+   ],
+   "questions": [
+    {
+     "id": "u11-l01",
+     "kind": "main_idea",
+     "question": "Où se passe la scène ?",
+     "expected_answer": "Dans un café, au moment de commander.",
+     "rationale_en": "In a café, ordering.",
+     "rationale_zh": "在咖啡馆点餐。",
+     "segments": [
+      1
+     ],
+     "choices": [
+      "Dans un café, au moment de commander.",
+      "Dans une pharmacie, chez le pharmacien.",
+      "Dans une cuisine, pendant la préparation."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Dans une pharmacie, chez le pharmacien.",
+       "why_wrong_en": "They order food from a waiter (s1).",
+       "why_wrong_zh": "他们在向服务员点餐（s1）。"
+      },
+      {
+       "answer": "Dans une cuisine, pendant la préparation.",
+       "why_wrong_en": "They talk to a waiter, not a cook (s1).",
+       "why_wrong_zh": "他们是在和服务员说话，不是厨师（s1）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 1,
+       "excerpt": "Vous avez choisi ?"
+      }
+     ]
+    },
+    {
+     "id": "u11-l02",
+     "kind": "detail",
+     "question": "À quoi Inès est-elle allergique ?",
+     "expected_answer": "Aux fruits à coque.",
+     "rationale_en": "Tree nuts.",
+     "rationale_zh": "坚果。",
+     "segments": [
+      2
+     ],
+     "choices": [
+      "Aux fruits à coque.",
+      "Au gluten.",
+      "Au lait et aux œufs."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Au gluten.",
+       "why_wrong_en": "She names tree nuts (s2).",
+       "why_wrong_zh": "她说的是坚果（s2）。"
+      },
+      {
+       "answer": "Au lait et aux œufs.",
+       "why_wrong_en": "She names tree nuts (s2).",
+       "why_wrong_zh": "她说的是坚果（s2）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 2,
+       "excerpt": "je suis allergique aux fruits à coque"
+      }
+     ]
+    },
+    {
+     "id": "u11-l03",
+     "kind": "detail",
+     "question": "Pourquoi le serveur écarte-t-il la salade de chèvre ?",
+     "expected_answer": "Elle contient des noix.",
+     "rationale_en": "It has walnuts.",
+     "rationale_zh": "沙拉里有核桃。",
+     "segments": [
+      3
+     ],
+     "choices": [
+      "Elle contient des noix.",
+      "Elle coûte plus cher que la soupe.",
+      "Elle n'est plus disponible ce midi."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle coûte plus cher que la soupe.",
+       "why_wrong_en": "Price is not the reason (s3).",
+       "why_wrong_zh": "原因不是价格（s3）。"
+      },
+      {
+       "answer": "Elle n'est plus disponible ce midi.",
+       "why_wrong_en": "He says it has walnuts (s3).",
+       "why_wrong_zh": "他说沙拉里有核桃（s3）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 3,
+       "excerpt": "elle a des noix"
+      }
+     ]
+    },
+    {
+     "id": "u11-l04",
+     "kind": "detail",
+     "question": "Quelle entrée Inès choisit-elle ?",
+     "expected_answer": "la soupe de potiron",
+     "rationale_en": "The pumpkin soup.",
+     "rationale_zh": "南瓜汤。",
+     "segments": [
+      4
+     ],
+     "accepted_alternatives": [
+      "la soupe",
+      "soupe de potiron"
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "je prends la soupe"
+      }
+     ]
+    },
+    {
+     "id": "u11-l05",
+     "kind": "detail",
+     "question": "Avec quoi les pommes de terre sont-elles cuites ?",
+     "expected_answer": "À l'huile d'olive, avec du romarin.",
+     "rationale_en": "Olive oil and rosemary.",
+     "rationale_zh": "橄榄油和迷迭香。",
+     "segments": [
+      5
+     ],
+     "choices": [
+      "À l'huile de noix, avec du sel.",
+      "À l'huile d'olive, avec du romarin.",
+      "Au beurre, avec un peu de thym."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "À l'huile de noix, avec du sel.",
+       "why_wrong_en": "Walnut oil is not mentioned (s5).",
+       "why_wrong_zh": "没有提到核桃油（s5）。"
+      },
+      {
+       "answer": "Au beurre, avec un peu de thym.",
+       "why_wrong_en": "He says olive oil and rosemary (s5).",
+       "why_wrong_zh": "他说的是橄榄油和迷迭香（s5）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 5,
+       "excerpt": "À l'huile d'olive, avec du romarin"
+      }
+     ]
+    },
+    {
+     "id": "u11-l06",
+     "kind": "inference",
+     "question": "Pourquoi le serveur fait-il cuire les pommes de terre à part ?",
+     "expected_answer": "Pour éviter les traces d'allergènes.",
+     "rationale_en": "To avoid cross-contamination.",
+     "rationale_zh": "为了避免交叉污染。",
+     "segments": [
+      5
+     ],
+     "choices": [
+      "Pour éviter les traces d'allergènes.",
+      "Pour qu'elles soient prêtes plus vite.",
+      "Parce qu'Inès les veut sans romarin."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Pour qu'elles soient prêtes plus vite.",
+       "why_wrong_en": "His reason is avoiding traces (s5).",
+       "why_wrong_zh": "他的理由是避免微量过敏原（s5）。"
+      },
+      {
+       "answer": "Parce qu'Inès les veut sans romarin.",
+       "why_wrong_en": "Inès does not ask for this (s4–s6).",
+       "why_wrong_zh": "Inès没有这样要求（s4–s6）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 5,
+       "excerpt": "pour éviter les traces"
+      }
+     ]
+    },
+    {
+     "id": "u11-l07",
+     "kind": "detail",
+     "question": "Que commande Hugo ?",
+     "expected_answer": "Le menu complet.",
+     "rationale_en": "The full menu.",
+     "rationale_zh": "全套套餐。",
+     "segments": [
+      7
+     ],
+     "choices": [
+      "Le même menu qu'Inès.",
+      "Seulement les lasagnes.",
+      "Le menu complet."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Le même menu qu'Inès.",
+       "why_wrong_en": "Inès takes no dessert; Hugo takes the full menu (s6, s7).",
+       "why_wrong_zh": "Inès不要甜点，Hugo点了全套（s6、s7）。"
+      },
+      {
+       "answer": "Seulement les lasagnes.",
+       "why_wrong_en": "He orders starter, main and dessert (s7).",
+       "why_wrong_zh": "他点了前菜、主菜和甜点（s7）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 7,
+       "excerpt": "je prends le menu complet"
+      }
+     ]
+    },
+    {
+     "id": "u11-l08",
+     "kind": "detail",
+     "question": "Que propose le serveur pour la salade de Hugo ?",
+     "expected_answer": "De la servir un peu plus tard.",
+     "rationale_en": "To serve it later.",
+     "rationale_zh": "晚一点上。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "De remplacer les noix par du fromage.",
+      "De la servir à une autre table.",
+      "De la servir un peu plus tard."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "De remplacer les noix par du fromage.",
+       "why_wrong_en": "He offers to serve it later (s8).",
+       "why_wrong_zh": "他提议晚一点上（s8）。"
+      },
+      {
+       "answer": "De la servir à une autre table.",
+       "why_wrong_en": "He offers a later time, not another table (s8).",
+       "why_wrong_zh": "他提议的是晚点上，不是换桌（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "je peux servir votre salade un peu plus tard"
+      }
+     ]
+    },
+    {
+     "id": "u11-l09",
+     "kind": "inference",
+     "question": "Pourquoi Inès refuse-t-elle cette proposition ?",
+     "expected_answer": "Elle réagit seulement si elle en mange.",
+     "rationale_en": "She only reacts if she eats nuts.",
+     "rationale_zh": "她只有吃下坚果才会过敏。",
+     "segments": [
+      9
+     ],
+     "choices": [
+      "Hugo n'a plus très faim.",
+      "Elle réagit seulement si elle en mange.",
+      "Elle a déjà fini sa soupe."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Hugo n'a plus très faim.",
+       "why_wrong_en": "Hugo has just ordered a full menu (s7).",
+       "why_wrong_zh": "Hugo刚点了全套（s7）。"
+      },
+      {
+       "answer": "Elle a déjà fini sa soupe.",
+       "why_wrong_en": "The food has not arrived yet (s9, s10).",
+       "why_wrong_zh": "菜还没上（s9、s10）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 9,
+       "excerpt": "je réagis seulement si j'en mange"
+      }
+     ]
+    },
+    {
+     "id": "u11-l10",
+     "kind": "detail",
+     "question": "Combien coûte le menu d'Inès ?",
+     "expected_answer": "13 euros",
+     "rationale_en": "13 euros (starter and main).",
+     "rationale_zh": "13欧元（前菜和主菜）。",
+     "segments": [
+      10
+     ],
+     "accepted_alternatives": [
+      "13 €",
+      "treize euros"
+     ],
+     "evidence": [
+      {
+       "segment": 10,
+       "excerpt": "un menu à 13 euros"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 3,
+     "excerpt": "en revanche",
+     "note_en": "on the other hand",
+     "note_zh": "相反，然而"
+    },
+    {
+     "kind": "vocabulary",
+     "segment": 5,
+     "excerpt": "à part",
+     "note_en": "separately",
+     "note_zh": "单独地"
+    },
+    {
+     "kind": "vocabulary",
+     "segment": 10,
+     "excerpt": "une carafe d'eau",
+     "note_en": "a jug of tap water",
+     "note_zh": "一壶（自来）水"
+    }
+   ]
+  },
+  {
+   "id": "ls-wb1-u12",
+   "title": "Podcast « Clic Clair » : des mots de passe plus sûrs",
+   "genre": "podcast (entretien)",
+   "style_level": "B1",
+   "source": {
+    "kind": "authored",
+    "pack": "flh_workbook_reading_listening_v1",
+    "notice": "Synthetic listening script from the FLH reading/listening workbook v1 (unreviewed). Written text only: no audio, no video, no timestamps. Not an official exam item; no certified CEFR level."
+   },
+   "lines": [
+    {
+     "id": "s1",
+     "speaker": "Lucie, animatrice",
+     "text": "Bonjour à tous et bienvenue dans « Clic Clair », le podcast qui rend le numérique plus simple. Aujourd'hui, on parle des mots de passe avec Karim, formateur au point numérique de la médiathèque."
+    },
+    {
+     "id": "s2",
+     "speaker": "Karim, formateur au point numérique",
+     "text": "Bonjour Lucie. Merci de m'inviter."
+    },
+    {
+     "id": "s3",
+     "speaker": "Lucie, animatrice",
+     "text": "Karim, quelle est l'erreur la plus fréquente ?"
+    },
+    {
+     "id": "s4",
+     "speaker": "Karim, formateur au point numérique",
+     "text": "Utiliser le même mot de passe partout. Si un site se fait pirater, les pirates essaient ce mot de passe sur vos autres comptes : votre messagerie, votre banque…"
+    },
+    {
+     "id": "s5",
+     "speaker": "Lucie, animatrice",
+     "text": "Mais retenir vingt mots de passe différents, c'est impossible !"
+    },
+    {
+     "id": "s6",
+     "speaker": "Karim, formateur au point numérique",
+     "text": "C'est vrai. C'est pour ça que je conseille un gestionnaire de mots de passe : un coffre-fort numérique qui les retient pour vous. Vous n'avez plus qu'un seul mot de passe à connaître."
+    },
+    {
+     "id": "s7",
+     "speaker": "Lucie, animatrice",
+     "text": "Et ce mot de passe principal, comment le choisir ?"
+    },
+    {
+     "id": "s8",
+     "speaker": "Karim, formateur au point numérique",
+     "text": "Le plus simple, c'est une phrase de passe : quatre ou cinq mots au hasard, par exemple « girafe-tambour-lundi-citron ». C'est long, donc difficile à deviner, mais facile à retenir."
+    },
+    {
+     "id": "s9",
+     "speaker": "Lucie, animatrice",
+     "text": "Et la date de naissance de mon chat, c'est une bonne idée ?"
+    },
+    {
+     "id": "s10",
+     "speaker": "Karim, formateur au point numérique",
+     "text": "Non, surtout pas ! Évitez tout ce qu'on peut trouver sur vous : les dates, les prénoms, le nom de votre ville."
+    },
+    {
+     "id": "s11",
+     "speaker": "Karim, formateur au point numérique",
+     "text": "Dernier conseil : activez la double authentification, surtout pour votre messagerie. Même si quelqu'un a votre mot de passe, il lui faut aussi un code reçu sur votre téléphone."
+    },
+    {
+     "id": "s12",
+     "speaker": "Lucie, animatrice",
+     "text": "Merci Karim ! Et pour pratiquer, rendez-vous à l'atelier de mercredi, à la médiathèque."
+    }
+   ],
+   "questions": [
+    {
+     "id": "u12-l01",
+     "kind": "main_idea",
+     "question": "Quel est le sujet de l'émission ?",
+     "expected_answer": "Comment mieux protéger ses comptes avec de bons mots de passe.",
+     "rationale_en": "Safer passwords.",
+     "rationale_zh": "更安全的密码。",
+     "segments": [
+      1
+     ],
+     "choices": [
+      "Comment mieux protéger ses comptes avec de bons mots de passe.",
+      "Les animaux de compagnie et le numérique.",
+      "Comment acheter un téléphone moins cher."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Les animaux de compagnie et le numérique.",
+       "why_wrong_en": "The cat is only an example of a bad password (s9).",
+       "why_wrong_zh": "猫只是一个糟糕密码的例子（s9）。"
+      },
+      {
+       "answer": "Comment acheter un téléphone moins cher.",
+       "why_wrong_en": "Phones appear only for receiving a code (s11).",
+       "why_wrong_zh": "手机只在接收验证码时提到（s11）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 1,
+       "excerpt": "Aujourd'hui, on parle des mots de passe"
+      }
+     ]
+    },
+    {
+     "id": "u12-l02",
+     "kind": "detail",
+     "question": "Quelle est l'erreur la plus fréquente, selon Karim ?",
+     "expected_answer": "Utiliser le même mot de passe partout.",
+     "rationale_en": "Reusing the same password everywhere.",
+     "rationale_zh": "到处使用同一个密码。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Changer de mot de passe trop souvent.",
+      "Écrire ses mots de passe dans un carnet.",
+      "Utiliser le même mot de passe partout."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Changer de mot de passe trop souvent.",
+       "why_wrong_en": "He names reusing one password (s4).",
+       "why_wrong_zh": "他说的是到处用同一个密码（s4）。"
+      },
+      {
+       "answer": "Écrire ses mots de passe dans un carnet.",
+       "why_wrong_en": "He names reusing one password (s4).",
+       "why_wrong_zh": "他说的是到处用同一个密码（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "Utiliser le même mot de passe partout"
+      }
+     ]
+    },
+    {
+     "id": "u12-l03",
+     "kind": "inference",
+     "question": "Pourquoi cette erreur est-elle dangereuse ?",
+     "expected_answer": "Un mot de passe volé peut ouvrir d'autres comptes.",
+     "rationale_en": "Attackers try it on your other accounts.",
+     "rationale_zh": "攻击者会在你的其他账户上尝试。",
+     "segments": [
+      4
+     ],
+     "choices": [
+      "Les sites bloquent un mot de passe utilisé deux fois.",
+      "Un mot de passe volé peut ouvrir d'autres comptes.",
+      "La banque fait payer des frais de sécurité."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Les sites bloquent un mot de passe utilisé deux fois.",
+       "why_wrong_en": "The danger is attackers trying it elsewhere (s4).",
+       "why_wrong_zh": "危险在于攻击者会在其他账户上尝试（s4）。"
+      },
+      {
+       "answer": "La banque fait payer des frais de sécurité.",
+       "why_wrong_en": "Fees are not mentioned (s4).",
+       "why_wrong_zh": "没有提到费用（s4）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 4,
+       "excerpt": "les pirates essaient ce mot de passe sur vos autres comptes"
+      }
+     ]
+    },
+    {
+     "id": "u12-l04",
+     "kind": "detail",
+     "question": "Qu'est-ce qu'un gestionnaire de mots de passe, d'après Karim ?",
+     "expected_answer": "Un coffre-fort numérique qui retient les mots de passe.",
+     "rationale_en": "A digital safe that remembers them.",
+     "rationale_zh": "替你记住密码的数字保险箱。",
+     "segments": [
+      6
+     ],
+     "choices": [
+      "Un coffre-fort numérique qui retient les mots de passe.",
+      "Un carnet à garder près de l'ordinateur.",
+      "Une personne qui change vos mots de passe pour vous."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Un carnet à garder près de l'ordinateur.",
+       "why_wrong_en": "It is digital (s6).",
+       "why_wrong_zh": "它是数字工具（s6）。"
+      },
+      {
+       "answer": "Une personne qui change vos mots de passe pour vous.",
+       "why_wrong_en": "It is a digital safe, not a person (s6).",
+       "why_wrong_zh": "它是数字保险箱，不是人（s6）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 6,
+       "excerpt": "un coffre-fort numérique qui les retient pour vous"
+      }
+     ]
+    },
+    {
+     "id": "u12-l05",
+     "kind": "detail",
+     "question": "Avec un gestionnaire, combien de mots de passe faut-il encore connaître ?",
+     "expected_answer": "un seul",
+     "rationale_en": "Only one.",
+     "rationale_zh": "只需一个。",
+     "segments": [
+      6
+     ],
+     "accepted_alternatives": [
+      "un",
+      "un seul mot de passe",
+      "1"
+     ],
+     "evidence": [
+      {
+       "segment": 6,
+       "excerpt": "Vous n'avez plus qu'un seul mot de passe à connaître"
+      }
+     ]
+    },
+    {
+     "id": "u12-l06",
+     "kind": "detail",
+     "question": "Qu'est-ce qu'une phrase de passe ?",
+     "expected_answer": "Quatre ou cinq mots choisis au hasard.",
+     "rationale_en": "Four or five random words.",
+     "rationale_zh": "四五个随机的词。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "Quatre ou cinq mots choisis au hasard.",
+      "Une phrase qu'on répète chaque matin.",
+      "Un mot court avec beaucoup de chiffres."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Une phrase qu'on répète chaque matin.",
+       "why_wrong_en": "It is four or five random words (s8).",
+       "why_wrong_zh": "它是四五个随机的词（s8）。"
+      },
+      {
+       "answer": "Un mot court avec beaucoup de chiffres.",
+       "why_wrong_en": "It is long and made of words (s8).",
+       "why_wrong_zh": "它很长，由单词组成（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "quatre ou cinq mots au hasard"
+      }
+     ]
+    },
+    {
+     "id": "u12-l07",
+     "kind": "inference",
+     "question": "Pourquoi une phrase de passe est-elle efficace ?",
+     "expected_answer": "Elle est longue mais facile à retenir.",
+     "rationale_en": "Long, hard to guess, easy to remember.",
+     "rationale_zh": "长、难猜、好记。",
+     "segments": [
+      8
+     ],
+     "choices": [
+      "Elle ne contient que des chiffres.",
+      "Elle change toute seule chaque mois.",
+      "Elle est longue mais facile à retenir."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Elle ne contient que des chiffres.",
+       "why_wrong_en": "It is made of words (s8).",
+       "why_wrong_zh": "它由单词组成（s8）。"
+      },
+      {
+       "answer": "Elle change toute seule chaque mois.",
+       "why_wrong_en": "Nothing changes automatically (s8).",
+       "why_wrong_zh": "它不会自动改变（s8）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 8,
+       "excerpt": "C'est long, donc difficile à deviner, mais facile à retenir"
+      }
+     ]
+    },
+    {
+     "id": "u12-l08",
+     "kind": "detail",
+     "question": "La date de naissance de son chat est-elle une bonne idée ?",
+     "expected_answer": "Non, c'est une information facile à trouver.",
+     "rationale_en": "No: avoid anything people can find out about you.",
+     "rationale_zh": "不行：避免使用别人能查到的信息。",
+     "segments": [
+      10
+     ],
+     "choices": [
+      "Non, c'est une information facile à trouver.",
+      "Oui, avec un point d'exclamation à la fin.",
+      "Oui, si le chat est encore jeune."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Oui, avec un point d'exclamation à la fin.",
+       "why_wrong_en": "Karim says to avoid dates (s10).",
+       "why_wrong_zh": "Karim说要避免使用日期（s10）。"
+      },
+      {
+       "answer": "Oui, si le chat est encore jeune.",
+       "why_wrong_en": "Karim says no (s10).",
+       "why_wrong_zh": "Karim说不行（s10）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 10,
+       "excerpt": "Évitez tout ce qu'on peut trouver sur vous"
+      }
+     ]
+    },
+    {
+     "id": "u12-l09",
+     "kind": "detail",
+     "question": "Pour quel compte Karim conseille-t-il surtout la double authentification ?",
+     "expected_answer": "la messagerie",
+     "rationale_en": "Email.",
+     "rationale_zh": "电子邮箱。",
+     "segments": [
+      11
+     ],
+     "accepted_alternatives": [
+      "sa messagerie",
+      "pour la messagerie",
+      "votre messagerie"
+     ],
+     "evidence": [
+      {
+       "segment": 11,
+       "excerpt": "surtout pour votre messagerie"
+      }
+     ]
+    },
+    {
+     "id": "u12-l10",
+     "kind": "detail",
+     "question": "Avec la double authentification, que faut-il en plus du mot de passe ?",
+     "expected_answer": "Un code reçu sur son téléphone.",
+     "rationale_en": "A code sent to your phone.",
+     "rationale_zh": "手机收到的验证码。",
+     "segments": [
+      11
+     ],
+     "choices": [
+      "Une deuxième phrase de passe.",
+      "Un code reçu sur son téléphone.",
+      "Une carte de la médiathèque."
+     ],
+     "wrong_answers": [
+      {
+       "answer": "Une deuxième phrase de passe.",
+       "why_wrong_en": "The extra factor is a code on the phone (s11).",
+       "why_wrong_zh": "额外的验证是手机上的验证码（s11）。"
+      },
+      {
+       "answer": "Une carte de la médiathèque.",
+       "why_wrong_en": "The library card is not mentioned (s11).",
+       "why_wrong_zh": "没有提到图书馆卡（s11）。"
+      }
+     ],
+     "evidence": [
+      {
+       "segment": 11,
+       "excerpt": "un code reçu sur votre téléphone"
+      }
+     ]
+    }
+   ],
+   "annotations": [
+    {
+     "kind": "vocabulary",
+     "segment": 6,
+     "excerpt": "un gestionnaire de mots de passe",
+     "note_en": "a password manager",
+     "note_zh": "密码管理器"
+    },
+    {
+     "kind": "vocabulary",
+     "segment": 8,
+     "excerpt": "deviner",
+     "note_en": "to guess",
+     "note_zh": "猜"
+    },
+    {
+     "kind": "vocabulary",
+     "segment": 11,
+     "excerpt": "la double authentification",
+     "note_en": "two-factor authentication",
+     "note_zh": "双重认证"
+    }
+   ]
+  }
+ ]
+}

@@ -22,6 +22,8 @@ type ListeningService interface {
 	ListMaterials(ctx context.Context) ([]application.ListeningMaterialSummary, error)
 	PrepareExercise(ctx context.Context, req application.ListeningPrepareRequest) (*application.ListeningPreparationResult, bool, error)
 	GetPreparation(ctx context.Context, operationID string) (*application.ListeningPreparationResult, error)
+	ListScripts(ctx context.Context) ([]application.ListeningScriptSummary, error)
+	ImportScript(ctx context.Context, scriptID string) (*application.ListeningLesson, bool, error)
 	Now() time.Time
 }
 
@@ -42,15 +44,22 @@ func (h *Handler) registerListeningRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /listening/materials/{id}/transcripts", h.handleAddListeningTranscript)
 	mux.HandleFunc("POST /listening/materials/{id}/exercises", h.handleGenerateListeningExercise)
 	mux.HandleFunc("GET /listening/preparations/{operation_id}", h.handleGetListeningPreparation)
+	mux.HandleFunc("GET /listening/scripts", h.handleListListeningScripts)
+	mux.HandleFunc("POST /listening/scripts/{script_id}", h.handleImportListeningScript)
 	h.registerListeningDailyRoutes(mux)
 }
 
+// listeningMaterialResponse: video_id and source_url are null for an authored
+// script (source_kind "authored_script"), which has no link, video or
+// timestamp; pack_script_id is null for YouTube material.
 type listeningMaterialResponse struct {
-	ID        int64  `json:"id"`
-	VideoID   string `json:"video_id"`
-	SourceURL string `json:"source_url"`
-	Title     string `json:"title"`
-	CreatedAt string `json:"created_at"`
+	ID           int64   `json:"id"`
+	SourceKind   string  `json:"source_kind"`
+	VideoID      *string `json:"video_id"`
+	SourceURL    *string `json:"source_url"`
+	PackScriptID *string `json:"pack_script_id"`
+	Title        string  `json:"title"`
+	CreatedAt    string  `json:"created_at"`
 }
 
 type listeningTranscriptResponse struct {
@@ -101,7 +110,15 @@ type listeningSummaryResponse struct {
 func ts(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 
 func toListeningMaterial(m domain.ListeningMaterial) listeningMaterialResponse {
-	return listeningMaterialResponse{ID: m.ID, VideoID: m.VideoID, SourceURL: m.SourceURL, Title: m.Title, CreatedAt: ts(m.CreatedAt)}
+	return listeningMaterialResponse{ID: m.ID, SourceKind: m.SourceKind, VideoID: optionalString(m.VideoID), SourceURL: optionalString(m.SourceURL),
+		PackScriptID: optionalString(m.PackScriptID), Title: m.Title, CreatedAt: ts(m.CreatedAt)}
+}
+
+func optionalString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 // toListeningExercise includes the content only when asked: list rows carry
@@ -187,9 +204,58 @@ func writeListeningError(w http.ResponseWriter, err error, action string) {
 		writeError(w, http.StatusNotFound, "listening material not found")
 	case errors.Is(err, domain.ErrValidation):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, domain.ErrListeningScriptConflict):
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "script_conflict"})
+	case errors.Is(err, domain.ErrListeningScriptFixed):
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "authored_script"})
 	default:
 		writeError(w, http.StatusInternalServerError, "could not "+action)
 	}
+}
+
+// handleListListeningScripts lists the embedded authored scripts (no line and
+// no key) and whether each is imported. It never calls a provider.
+func (h *Handler) handleListListeningScripts(w http.ResponseWriter, r *http.Request) {
+	if h.listeningUnavailable(w) {
+		return
+	}
+	rows, err := h.listening.ListScripts(r.Context())
+	if err != nil {
+		writeListeningError(w, err, "list listening scripts")
+		return
+	}
+	out := make([]map[string]any, 0, len(rows))
+	for _, s := range rows {
+		out = append(out, map[string]any{"id": s.ID, "title": s.Title, "genre": s.Genre, "style_level": s.StyleLevel,
+			"source_pack": s.SourcePack, "notice": s.Notice, "lines": s.Lines, "questions": s.Questions,
+			"imported_material_id": s.ImportedMaterialID})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"pack": domain.ListeningScriptPackID, "scripts": out})
+}
+
+// handleImportListeningScript imports one authored script (material with no
+// link, its lines as an untimed transcript, its authored exercise) in one
+// transaction. No provider call. 201 new; 200 already imported (replay); 404
+// unknown script; 409 script_conflict (imported before with other content).
+func (h *Handler) handleImportListeningScript(w http.ResponseWriter, r *http.Request) {
+	if h.listeningUnavailable(w) {
+		return
+	}
+	lesson, replay, err := h.listening.ImportScript(r.Context(), r.PathValue("script_id"))
+	if errors.Is(err, domain.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "listening script not found")
+		return
+	}
+	if err != nil {
+		writeListeningError(w, err, "import the listening script")
+		return
+	}
+	status := http.StatusCreated
+	if replay {
+		status = http.StatusOK
+		w.Header().Set("Idempotency-Replayed", "true")
+	}
+	writeJSON(w, status, h.toListeningLesson(lesson))
 }
 
 // handleListListening lists materials with their transcript and latest
@@ -265,7 +331,8 @@ type addListeningTranscriptRequest struct {
 }
 
 // handleAddListeningTranscript stores the next transcript version. Earlier
-// versions and their exercises are kept. 201, 400, 404, 413, 422, 500.
+// versions and their exercises are kept. 201, 400, 404, 409 authored_script
+// (an authored script is fixed text), 413, 422, 500.
 func (h *Handler) handleAddListeningTranscript(w http.ResponseWriter, r *http.Request) {
 	if h.listeningUnavailable(w) {
 		return

@@ -3,11 +3,21 @@
 // excerpts are stored text and are never translated; rationales and notes are
 // stored in English and Simplified Chinese.
 
+// "youtube": a saved or pulled video link. "authored_script": written text
+// imported from the embedded script pack; it has no link, no video, no audio
+// and no timestamp, and the workbench never shows one for it.
+export type ListeningSourceKind = "youtube" | "authored_script";
+
 export interface ListeningMaterial {
   id: number;
-  video_id: string;
-  // Canonical https://www.youtube.com/watch?v=<video_id>. The server never fetches it.
-  source_url: string;
+  source_kind: ListeningSourceKind;
+  // YouTube only (null for an authored script).
+  video_id: string | null;
+  // YouTube only: canonical https://www.youtube.com/watch?v=<video_id>. The
+  // server never fetches it. Null for an authored script.
+  source_url: string | null;
+  // Authored script only: flh_listening_script_pack_v1/<script id>.
+  pack_script_id: string | null;
   title: string;
   created_at: string;
 }
@@ -16,6 +26,8 @@ export interface TranscriptSegment {
   index: number;
   // Set only when the learner's source supplied a timestamp for this line.
   start_seconds: number | null;
+  // Authored scripts only: the speaker the script names for this line.
+  speaker?: string;
   text: string;
 }
 
@@ -29,7 +41,21 @@ export interface ListeningTranscript {
 
 export type ListeningItemKind = "main_idea" | "detail" | "inference";
 
+export interface ListeningWrongAnswer {
+  answer: string;
+  why_wrong_en: string;
+  why_wrong_zh: string;
+}
+
+// A verbatim excerpt that occurs exactly once in the cited segment.
+export interface ListeningEvidence {
+  segment: number;
+  excerpt: string;
+}
+
 export interface ListeningItem {
+  // Authored scripts only: the workbook question ID.
+  id?: string;
   kind: ListeningItemKind;
   question: string;
   expected_answer: string;
@@ -37,6 +63,12 @@ export interface ListeningItem {
   rationale_zh: string;
   // 1-based segment numbers of the transcript the exercise was generated from.
   segments: number[];
+  // Authored scripts only. choices: the options in authored order (single
+  // choice); absent for a short answer.
+  choices?: string[];
+  accepted_alternatives?: string[];
+  wrong_answers?: ListeningWrongAnswer[];
+  evidence?: ListeningEvidence[];
 }
 
 export interface ListeningAnnotation {
@@ -188,4 +220,24 @@ export interface ListeningDaily {
 export interface ListeningList {
   materials: ListeningSummary[];
   generation: ListeningGeneration;
+}
+
+// ---- Authored listening scripts (GET /listening/scripts) ----
+
+// One script offered for import: what it is, never its lines or key.
+export interface ListeningScriptSummary {
+  id: string;
+  title: string;
+  genre: string;
+  style_level: string;
+  source_pack: string;
+  notice: string;
+  lines: number;
+  questions: number;
+  imported_material_id: number | null;
+}
+
+export interface ListeningScripts {
+  pack: string;
+  scripts: ListeningScriptSummary[];
 }

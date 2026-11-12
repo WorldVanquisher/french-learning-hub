@@ -4,17 +4,46 @@ Build, check and render the synthetic workbooks in `content/workbooks/`. It uses
 the Python 3 standard library only. Run every command from this directory.
 
 ```bash
-python3 -m flh_workbooks build            # authoring modules -> content/workbooks/*.json and adapters/
+python3 -m flh_workbooks build            # authoring modules -> content/workbooks/*.json, adapters/ and
+                                          # internal/listening/pack/listening_scripts_v1.json
 python3 -m flh_workbooks check            # quality gates; generated files must equal a fresh build
 python3 -m flh_workbooks render --out DIR # student/teacher Markdown + printable HTML, listening script, checklist
 python3 -m flh_workbooks report --out DIR # inventory and machine-critique flags (reading/listening)
 python3 -m flh_workbooks scan --workbook rl|pw --html STUDENT.html [--pdf-text T] [--pdf-info I]
 python3 -m flh_workbooks capture --question u05-r05 --text "the learner's own question"
-python3 -m unittest discover -s tests     # 20 stdlib tests
+python3 -m flh_workbooks studypack --unit u05 --out DIR  # ten-minute listening study pack (below)
+python3 -m unittest discover -s tests     # 24 stdlib tests
 ```
 
-The Go side is `internal/reading/workbook_adapter_test.go`. It validates the
-reading-pack, learner-lesson and writing adapters with the server's own parsers.
+The Go side is `internal/reading/workbook_adapter_test.go`, which validates the
+reading-pack, learner-lesson and writing adapters with the server's own parsers,
+and `internal/listening/script_pack_test.go`, which checks that the embedded
+listening script pack passes `ParseListeningScriptPack` and equals the workbook.
+
+## Ten-minute study pack
+
+`studypack --unit u05 --out DIR` turns one listening unit into:
+- a student checklist: the ten-minute plan, the questions and the transfer
+  questions, with no script and no key;
+- a reader sheet: reading instructions, the voices and the script;
+- a teacher debrief: the key, the evidence, every wrong-answer reason, the
+  vocabulary and the transfer key.
+
+It also writes `u05-verification.md`. Its input is
+`content/workbooks/study_packs/u05_v1.json`: the plan, a context line and a
+short authored transfer exercise.
+
+The command fails when:
+- an evidence excerpt does not occur exactly once in its line;
+- a wrong-option reason cites no line, or a line that does not exist;
+- the student checklist or reader sheet carries the key (the workbook scanner's
+  checks; the teacher debrief must fail them, as the positive control);
+- the student checklist contains the script.
+
+Numbers and times in explanations that the script does not contain are flagged
+with where they were found. The context line, quoted from the unit's reading
+text and read before the dialogue, counts as heard. No audio is made: a person
+reads the script aloud.
 
 ## Quality gates
 
