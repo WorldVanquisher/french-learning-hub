@@ -612,6 +612,105 @@ Direct links and accessibility:
   the run if the check does not catch it.
 - **Static guards:** `web/src/demo/demoStyles.test.ts` runs in CI.
 
+## Shared links, the way back and the package check (demo-candidate lane)
+
+**Links that name nothing in this build:**
+- **Malformed link** (an unknown example key or preset, a malformed ID, an
+  over-long query, a link cut short): the start opens with a notice that the
+  link matched nothing, and the address becomes `/`. Before, the start opened
+  silently.
+- **Well-formed link to an ID this build lacks** (`#concept=999`,
+  `#concept=12&unit=999`): the screen says that this demo build does not have
+  that Concept or unit and that the link may be mistyped, cut short or from
+  another build. It offers "Open the example …", which opens the link's own
+  example or the first one, as a new entry with no reload. There is no retry,
+  because the server's 404 will not change. A failure that may pass (503, a
+  network error) keeps its retry.
+
+**Focus on the way back** (`web/src/demo/history.ts`):
+- Opening a screen focuses its heading, as before.
+- Coming back to a screen (Back, an in-page back or Forward) focuses the
+  control that left it, when that control is on the page again. Examples are
+  the "View source record" button used, the example's "Open the Concept"
+  button, and the search field after Back undoes a search. Each entry records
+  the control's id (`flhFocus`) when it is left.
+- Otherwise, for example after a direct link or in a browser that does not
+  focus a clicked button, the heading is focused, as when opening.
+- **Before:** the evidence → Concept and Concept → example returns focused the
+  heading, and Back past a search left focus on the page body.
+
+**Overflow, measured twice** (`scripts/validation/demo_ux/accept_matrix.mjs`):
+- **Document:** the root `scrollWidth` against the device width.
+- **Elements:** every rendered element's right edge against the device
+  width, even when an ancestor hides the overflow.
+- **Self-test:** a second self-test hides the old layout's overflow with
+  `overflow-x: hidden`. The document then fits, and the element check must
+  still name the `dd`.
+
+**Package check:** `scripts/validation/demo_candidate/check_package.sh PKG
+WORK` checks one package from identity to browser, reusing the maintained
+tools: `validate-release.sh`, `smoke_package.sh`, `deploy/ctl.sh`, the
+write probe and the browser suites. `negative_controls.sh` proves that a
+wrong identity, an accepted write and a build that mishandles a malformed
+link are detected. See `scripts/validation/demo_candidate/README.md`.
+
+## Real-E5 candidate (owner only)
+
+**Not performed by any agent.** It sends the 23 synthetic catalog texts (14
+Concept documents and 9 preset queries) to the owner's E5 service. Nothing in
+it uploads, deploys or changes DNS; deployment stays a separate owner
+decision ([AWS_DEMO.md](AWS_DEMO.md)).
+
+**Inputs:**
+
+| Input | Value |
+|---|---|
+| Tree | the integrated commit you will release, checked out clean; `make verify` passes there |
+| `REV` | that commit's label (12 characters is enough), for `RELEASE.json` |
+| `E5` | your E5 service's `/v1` base URL (loopback or a private address; never a public one) |
+| `DEP` | the pinned deployment id, unless you adopt a new one: `multilingual-e5-base@d128750597153bb5987e10b1c3493a34e5a4502a/flh_e5_role_prefix_v1/float16/singleton_v1/5a3e23f28a05baff` |
+| `R` | a new directory outside the repository; it must not exist |
+| Browser | Chromium or Chrome (`CHROME`), and a `node_modules` holding `playwright-core` 1.49.1 (`NM`) |
+
+**Commands**, from the repository root:
+
+```sh
+mkdir "$R" && go build -o "$R/flh-prepare" ./scripts/demo/flh073/prepare
+"$R/flh-prepare" plan                                   # 1
+"$R/flh-prepare" embed -work "$R/e5-work" -base-url "$E5" -deployment "$DEP" -dimensions 768 -allow-live   # 2
+"$R/flh-prepare" status -work "$R/e5-work"              # 3
+"$R/flh-prepare" import -work "$R/e5-work" -out "$R/artifact-e5"                                            # 4
+"$R/flh-prepare" validate -artifact "$R/artifact-e5" -release; echo "exit=$?"                              # 5
+bash scripts/demo/flh076/package.sh --artifact "$R/artifact-e5" --revision "$REV" --label e5-rc1 \
+  --out "$R/packages" --expected-deployment "$DEP"                                                         # 6
+PKG="$R/packages/flh-public-demo-e5-rc1"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); a=d["artifact"]; print(d["release_status"], a["real_model"], a["version"], a["manifest_sha256"])' "$PKG/RELEASE.json"   # 7
+CHROME=/path/to/chromium bash scripts/validation/demo_candidate/check_package.sh "$PKG" "$R/check" \
+  --expect-status CANDIDATE --expect-version <version from 7> --expect-manifest <manifest from 7> \
+  --node-modules "$NM" --suites all                                                                        # 8
+CHROME=/path/to/chromium bash scripts/validation/demo_candidate/negative_controls.sh "$PKG" "$R/controls" \
+  --node-modules "$NM"                                                                                     # 9
+```
+
+**Expected output and stop conditions:**
+
+| Step | Expect | Stop if |
+|---|---|---|
+| 1 `plan` | `"positions": 23`, `"posts_at_batch": 3`, `"plan_sha256": "536021a4aaa5e2211b5c5a6d48263350ef10aa2021861ee9b6af0255b5412ada"`, `"fixtures_sha256": "d7b97b560e34ac6f453033fbeb78e65e16a8f0c84501f1e29ba41fe167ee2ab9"` (catalog of 2026-11-12) | any value differs: the catalog changed, so review that change first |
+| 2 `embed` | readiness 200, `/manifest` reports exactly `DEP`; 3 POSTs, 23 receipts; at most 2 probes, 16 POSTs, 64 positions | it refuses (deployment mismatch: adopting a new id is a separate decision; budget short: exit 3, nothing sent); any POST fails (nothing is retried, the POST stays charged; rerunning the same command sends only positions without a receipt) |
+| 3 `status` | 23 of 23 positions with valid receipts | fewer |
+| 4 `import` | `$R/artifact-e5` created and validated | it refuses (plan differs, or a missing or invalid receipt) |
+| 5 `validate -release` | `exit=0` | `exit=3` (mechanical) or `exit=1` (invalid) |
+| 6 `package.sh` | `CANDIDATE package: …/flh-public-demo-e5-rc1`, with no `-BLOCKED` | the name ends in `-BLOCKED`, or it refuses the model id or `--expected-deployment` |
+| 7 `RELEASE.json` | `CANDIDATE True <version> <manifest>`; record these, the live check after any installation compares against them | anything else |
+| 8 `check_package.sh` | `PACKAGE CHECK PASSED (CANDIDATE package)`, exit 0; `summary.json` stages all `PASS` | any stage `FAIL` or `NOT RUN` |
+| 9 `negative_controls.sh` | the identity and write controls `DETECTED`, exit 0 (the link control is `NOT RUN` without a pre-fix package) | any `MISSED` |
+
+**Then, by eye:** open the 9 preset results in `$R/check/browser/` (the
+matrix and FLH-076 screenshots) and judge their relevance yourself. Mechanical
+vectors proved only the mechanics. A passing CANDIDATE is ready for the
+separate deployment decision; it is not deployed by any of this.
+
 ## Limits
 
 - **Synthetic data:** 11 questions (3 written in French), 16 units and 14

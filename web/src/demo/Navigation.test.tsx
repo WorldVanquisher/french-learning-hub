@@ -40,11 +40,18 @@ const search = (q: string) => {
 
 describe("demo links name the screen and the search", () => {
   it("reads and writes keyword, filtered and preset searches before any screen", () => {
-    expect(linkFromHash("#q=il+faut")).toEqual({ screen: { kind: "results" }, search: { mode: "keyword", q: "il faut", state: "all" } });
+    expect(linkFromHash("#q=il+faut")).toEqual({
+      screen: { kind: "results" },
+      search: { mode: "keyword", q: "il faut", state: "all" },
+      malformed: false,
+    });
     expect(linkFromHash("#q=il+faut&concept=1")).toEqual({
       screen: { kind: "concept", conceptId: 1, from: undefined },
       search: { mode: "keyword", q: "il faut", state: "all" },
+      malformed: false,
     });
+    expect(linkFromHash("").malformed).toBe(false);
+    expect(linkFromHash("#").malformed).toBe(false);
     expect(linkFromHash("#state=active").search).toEqual({ mode: "keyword", q: "", state: "active" });
     expect(linkFromHash("#mode=semantic&preset=right-now", ["right-now"]).search).toEqual({ mode: "semantic", q: "", state: "all", preset: "right-now" });
     for (const hash of [
@@ -71,7 +78,7 @@ describe("demo links name the screen and the search", () => {
       `#q=${"a".repeat(201)}`,
       "#mode=semantic&preset=Right%20Now",
     ]) {
-      expect(linkFromHash(bad, ["right-now"]), bad).toEqual({ screen: { kind: "results" }, search: NO_SEARCH });
+      expect(linkFromHash(bad, ["right-now"]), bad).toEqual({ screen: { kind: "results" }, search: NO_SEARCH, malformed: true });
     }
   });
 

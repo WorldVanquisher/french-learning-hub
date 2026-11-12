@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { ApiError } from "../api/client";
 import { useI18n } from "../i18n";
 import { DEMO_EXAMPLES, resolveExample, type DemoExample, type ExampleResolution, type ResolvedExample } from "./examples";
+import { focusControl } from "./history";
 
 type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: ExampleResolution };
 
@@ -66,7 +67,12 @@ function EvidenceStep({
         })}
       </p>
       {seed ? (
-        <button type="button" className="primary" onClick={() => onOpenSource(seed.concept.id, seed.unit.unit_id)}>
+        <button
+          type="button"
+          className="primary"
+          id="demo-ex-evidence"
+          onClick={() => onOpenSource(seed.concept.id, seed.unit.unit_id)}
+        >
           {t("demo.example.openEvidence", { unit: seed.unit.canonical })}
         </button>
       ) : null}
@@ -76,6 +82,8 @@ function EvidenceStep({
 
 // ExampleScreen walks one example: the learner's question, the units extracted
 // from it, and the Concepts they are filed under, all read from the server.
+// Every control that opens another screen has an id, so coming back focuses it
+// (`returnFocus`, demo/history.ts); opening the example focuses its heading.
 export function ExampleScreen({
   example,
   onBack,
@@ -83,6 +91,7 @@ export function ExampleScreen({
   onOpenExample,
   onOpenConcept,
   onOpenSource,
+  returnFocus,
 }: {
   example: DemoExample;
   onBack: () => void;
@@ -91,6 +100,7 @@ export function ExampleScreen({
   onOpenExample: (key: string) => void;
   onOpenConcept: (conceptId: number) => void;
   onOpenSource: (conceptId: number, unitId: number) => void;
+  returnFocus?: MutableRefObject<string | null>;
 }) {
   const { t, tp, tn, status } = useI18n();
   const [retry, setRetry] = useState(0);
@@ -114,6 +124,15 @@ export function ExampleScreen({
     };
   }, [example, retry]);
   useEffect(() => {
+    const id = returnFocus?.current;
+    if (id && load.status !== "loading") {
+      returnFocus.current = null;
+      const el = document.getElementById(id);
+      if (el && heading.current?.closest(".demo-example")?.contains(el)) {
+        focusControl(el);
+        return;
+      }
+    }
     heading.current?.focus();
   }, [load.status]);
 
@@ -144,7 +163,7 @@ export function ExampleScreen({
       ) : load.data.kind === "missing" ? (
         <div className="banner info" role="status">
           {t("demo.example.missing")}{" "}
-          <button type="button" className="ghost" onClick={() => onSearch(example.query)}>
+          <button type="button" className="ghost" id="demo-ex-search" onClick={() => onSearch(example.query)}>
             {t("demo.example.searchInstead", { q: example.query })}
           </button>
         </div>
@@ -191,12 +210,22 @@ export function ExampleScreen({
                   <p className="hint">
                     {tn("demo.example.filedUnder", {
                       concept: (
-                        <button type="button" className="link-button" onClick={() => onOpenConcept(concept.id)}>
+                        <button
+                          type="button"
+                          className="link-button"
+                          id={`demo-ex-concept-of-${unit.unit_id}`}
+                          onClick={() => onOpenConcept(concept.id)}
+                        >
                           {concept.target}
                         </button>
                       ),
                     })}{" "}
-                    <button type="button" className="link-button" onClick={() => onOpenSource(concept.id, unit.unit_id)}>
+                    <button
+                      type="button"
+                      className="link-button"
+                      id={`demo-ex-source-${unit.unit_id}`}
+                      onClick={() => onOpenSource(concept.id, unit.unit_id)}
+                    >
                       {t("demo.example.howExtracted")}
                     </button>
                   </p>
@@ -224,7 +253,12 @@ export function ExampleScreen({
                       ? tp("demo.example.conceptEvidence.more", c.supporting, { mine: c.fromThisQuestion, others: c.supporting - c.fromThisQuestion })
                       : tp("demo.example.conceptEvidence.only", c.supporting)}
                   </p>
-                  <button type="button" className="primary" onClick={() => onOpenConcept(c.concept.id)}>
+                  <button
+                    type="button"
+                    className="primary"
+                    id={`demo-ex-open-concept-${c.concept.id}`}
+                    onClick={() => onOpenConcept(c.concept.id)}
+                  >
                     {t("demo.example.openConcept")}
                   </button>
                 </li>
@@ -240,7 +274,7 @@ export function ExampleScreen({
         <h3 id="demo-next-heading">{t("demo.example.next")}</h3>
         <div className="actions">
           {others.map((o) => (
-            <button key={o.key} type="button" className="ghost" onClick={() => onOpenExample(o.key)}>
+            <button key={o.key} type="button" className="ghost" id={`demo-ex-next-${o.key}`} onClick={() => onOpenExample(o.key)}>
               {t(o.title)}
             </button>
           ))}

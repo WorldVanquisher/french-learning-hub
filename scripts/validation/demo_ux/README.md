@@ -32,8 +32,21 @@ evidence ("Step 4 of 4"). Then the navigation contract:
   Concept that was opened.
 - Browser Back undoes the search.
 
+**Shared links** (each opened as a new document, as a pasted link is)
+- A malformed link (`#concept=abc`) opens the start with a notice, and the
+  address becomes the start's.
+- A link to an ID the build lacks (`#concept=999`, `#concept=12&unit=999`)
+  says so, offers no retry, and its button opens a working example without a
+  reload (one history entry added; Back returns to the link's screen). Their
+  404s are the only console errors allowed.
+- Coming back focuses the control that left a screen: the source button used,
+  after the in-page back from the evidence; “Open the Concept”, after the
+  browser's Back to the example.
+- A language change keeps the screen, the address and the history length.
+
 **Keyboard only**
 - Start → example → Concept → evidence → example → start.
+- Back on the example, focus is on “Open the Concept”, the control used.
 - At every stop, focus is visible and not under the sticky return bar.
 - Key presses are counted.
 
@@ -55,16 +68,21 @@ evidence ("Step 4 of 4"). Then the navigation contract:
   finds Concepts.
 - An empty catalog.
 
-**Overflow**
-- Every screen is measured against the device width; the element that sticks
-  out is named.
+**Overflow**, measured against the device width in two separate checks per
+screen:
+- **document:** the root `scrollWidth` (the page scrolls sideways);
+- **elements:** every rendered leaf element whose right edge is past the
+  device edge, named, even when an ancestor clips it (text cut off with no
+  sideways scroll). Content inside a horizontal scroll container is left to
+  that container.
 - Under phone emulation `innerWidth` grows with the content, so
   `scrollWidth <= innerWidth` can never fail. The D1 check had that problem:
   it passed 421 px on a 390 px phone.
 - **Self-test:** the run injects the old evidence-row layout on the
-  "être en train de" evidence screen, at 320 and 390 px in both languages,
-  and requires the check to catch it with the `dd` named. Otherwise the run
-  fails.
+  "être en train de" evidence screen, at 320 and 390 px in both languages.
+  The document check must catch it with the `dd` named. With
+  `html, body { overflow-x: hidden }` added, the document fits again, and the
+  element check must still name the `dd`. Otherwise the run fails.
 
 **Read-only**
 - Every request is a same-origin GET on the demo allowlist.
