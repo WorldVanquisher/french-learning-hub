@@ -1,0 +1,17 @@
+
+
+
+{"event": "stack_mismatch_allowed", "verdict": "STALE_OR_INCOMPLETE: rebuild the image from requirements-train.txt; huggingface-hub 0.36.2 != 2.4.0, tokenizers 0.22.2 != 0.23.3, transformers 4.57.6 != 5.21.1"}
+/opt/program/flh_extraction/train.py:164: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  acc += float(loss)
+{"step": 1, "train_loss": 7.125659, "dev_loss": 7.113498}
+{"step": 2, "train_loss": 7.124969, "dev_loss": 7.113255}
+{"event": "finished", "steps": 2, "train_examples": 6, "train_sha256": "c1e76528081722ea9f1f060927a53e8664f2992e7c50d4e5fa5d80ce172052cf", "suitable_for_production": false}
+{"event": "stack_mismatch_allowed", "verdict": "STALE_OR_INCOMPLETE: rebuild the image from requirements-train.txt; huggingface-hub 0.36.2 != 2.4.0, tokenizers 0.22.2 != 0.23.3, transformers 4.57.6 != 5.21.1"}
+{"predicted": 3, "profile": "auto", "chat_template_kwargs": {}}
+...
+----------------------------------------------------------------------
+Ran 3 tests in 1.203s
+
+OK

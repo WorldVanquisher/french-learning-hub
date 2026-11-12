@@ -140,11 +140,35 @@ python3 -B -m flh_extraction review-packet --base OUT/train/candidates.jsonl --i
   --probe OUT/probe-rb.jsonl --out OUT/review-packet
 ```
 
+## 1c. Three-system comparison (2026-11-12)
+
+The experiment is now scored as a comparison of the current extractor,
+untuned Qwen3.5-4B and tuned Qwen3.5-4B on one pinned 472-record slice
+(frozen evaluation, `rb` probe, `challenge_test` of the paired cue challenge).
+Owner steps, what is measured and what is pending: `COMPARISON_RUNBOOK.md`;
+evidence: `docs/validation/EXTRACTOR-COMPARISON-V1.md`. Changes that affect
+the steps below:
+
+- **Prediction jobs.** They run in two shards per model (`predict-base-a/-b`,
+  `predict-eval-a/-b`), and each fits the reviewed one-hour bound. Job names
+  carry their role, so no two rendered jobs share a name or an output prefix.
+- **Pinned dtype.** Prediction pins `dtype` bfloat16 (`predict.py --dtype`, job
+  hyperparameter `dtype`). Before, the dtype was left to the installed transformers.
+- **Stack check.** The SageMaker entry point compares the installed stack with
+  `requirements-train.txt` and writes `stack-check.json`. A mismatch fails the
+  job unless `FLH_ALLOW_STACK_MISMATCH=1`, which only tiny offline fixtures set.
+  The local `flh-extractor-sft:smoke-cpu` image is stale (transformers 4.57.6,
+  pinned 5.21.1) and cannot load `qwen3_5`.
+- **Scoring.** `compare` gives every slice row exactly one status, so a missing
+  shard or a truncated output is counted, never dropped. `decision-report`
+  replaces a single winner/baseline judgment with the pre-registered
+  three-system rules.
+
 ## 2. Local checks (no network after installation)
 
 ```sh
 cd tools/extraction
-python3 -B -m unittest discover -s tests -t tests                      # standard-library tests (37, 7 skipped)
+python3 -B -m unittest discover -s tests -t tests                      # standard-library tests (57, 7 skipped)
 TINY_SFT=OUT/sft-sample.jsonl python3 -B -m unittest discover -s tests -t tests   # + backend tests (needs requirements-train.txt)
 python3 -B scripts/check_tokenizer.py qwen3.5-4b-851bf6e8 OUT/sft-train.jsonl --profile qwen3.5-4b --max-length 1280
 # Profile vs the checkpoint's own small files (template, masking text, LoRA targets on the real weight names);

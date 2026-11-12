@@ -1,0 +1,45 @@
+{
+  "mismatches": [
+    "huggingface-hub",
+    "tokenizers",
+    "transformers"
+  ],
+  "packages": {
+    "huggingface-hub": {
+      "installed": "0.36.2",
+      "pinned": "2.4.0",
+      "status": "MISMATCH"
+    },
+    "peft": {
+      "installed": "0.21.2",
+      "pinned": "0.21.2",
+      "status": "OK"
+    },
+    "safetensors": {
+      "installed": "0.8.0",
+      "pinned": null,
+      "status": "UNPINNED"
+    },
+    "tokenizers": {
+      "installed": "0.22.2",
+      "pinned": "0.23.3",
+      "status": "MISMATCH"
+    },
+    "torch": {
+      "installed": "2.15.0+cpu",
+      "local_variant": "cpu",
+      "pinned": "2.15.0",
+      "status": "OK"
+    },
+    "transformers": {
+      "installed": "4.57.6",
+      "pinned": "5.21.1",
+      "status": "MISMATCH"
+    }
+  },
+  "requirements": "requirements-train.txt",
+  "schema": "flh_extractor_stack_check_v1",
+  "stack_matches_requirements": false,
+  "transformers_knows_qwen3_5": false,
+  "verdict": "STALE_OR_INCOMPLETE: rebuild the image from requirements-train.txt; huggingface-hub 0.36.2 != 2.4.0, tokenizers 0.22.2 != 0.23.3, transformers 4.57.6 != 5.21.1"
+}

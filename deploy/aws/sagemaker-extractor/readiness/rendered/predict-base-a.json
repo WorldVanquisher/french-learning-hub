@@ -1,5 +1,5 @@
 {
-  "TrainingJobName": "flh-extractor-predict-20261112-025505",
+  "TrainingJobName": "flh-extractor-predict-base-a-20261112-051238",
   "AlgorithmSpecification": {
     "TrainingImage": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
     "TrainingInputMode": "File",
@@ -15,10 +15,11 @@
   },
   "RoleArn": "arn:aws:iam::000000000000:role/flh-extractor-exec",
   "HyperParameters": {
-    "prompts_sha256": "2974e13e66b7cb2816cb550ce33b764941f07a9e30f5d91bfe1b3d08d38d57eb",
+    "prompts_sha256": "f75494750995c242a3414a716ff0fe4d6f447fbeceeb7f1686eb314a60e44678",
     "max_new_tokens": "512",
     "template_kwargs": "{\"enable_thinking\": false}",
-    "model_profile": "qwen3.5-4b"
+    "model_profile": "qwen3.5-4b",
+    "dtype": "bfloat16"
   },
   "InputDataConfig": [
     {
@@ -28,7 +29,7 @@
       "DataSource": {
         "S3DataSource": {
           "S3DataType": "S3Prefix",
-          "S3Uri": "s3://example-flh-extractor-private/extractor/prompts/2974e13e66b7cb2816cb550ce33b764941f07a9e30f5d91bfe1b3d08d38d57eb/",
+          "S3Uri": "s3://example-flh-extractor-private/extractor/prompts/f75494750995c242a3414a716ff0fe4d6f447fbeceeb7f1686eb314a60e44678/",
           "S3DataDistributionType": "FullyReplicated"
         }
       }
@@ -41,18 +42,6 @@
         "S3DataSource": {
           "S3DataType": "S3Prefix",
           "S3Uri": "s3://example-flh-extractor-private/extractor/models/qwen3.5-4b-851bf6e8/",
-          "S3DataDistributionType": "FullyReplicated"
-        }
-      }
-    },
-    {
-      "ChannelName": "adapter",
-      "InputMode": "File",
-      "ContentType": "application/octet-stream",
-      "DataSource": {
-        "S3DataSource": {
-          "S3DataType": "S3Prefix",
-          "S3Uri": "s3://example-flh-extractor-private/extractor/adapters/flh-extractor-experiment-YYYYMMDD-HHMMSS/",
           "S3DataDistributionType": "FullyReplicated"
         }
       }
@@ -82,7 +71,7 @@
     },
     {
       "Key": "Run",
-      "Value": "predict"
+      "Value": "predict-base"
     },
     {
       "Key": "DatasetSha256",

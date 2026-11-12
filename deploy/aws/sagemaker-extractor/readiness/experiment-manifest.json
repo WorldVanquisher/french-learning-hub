@@ -1,0 +1,94 @@
+{
+  "comparison_matrix_sha256": "b3f66edaf76b0886a82a76a0bcafef5a472e406d4f0d811b01eda3ba182e7a66",
+  "files": {
+    "boundary": {
+      "bytes": 105354,
+      "records": 80,
+      "sha256": "5960b48a3f0832afb752cefcf37c45ed7a9800ddcf0ff27e143d0e6faff92edc"
+    },
+    "challenge_v1": {
+      "bytes": 166783,
+      "records": 96,
+      "sha256": "b004f6ed1bc82e6f154206740c2fea11e7fb24588904334c76e39c5b739bb5f5"
+    },
+    "comparison_inputs": {
+      "bytes": 196919,
+      "records": 472,
+      "sha256": "25169ae982a4eb00165ac50302cf3e8238213d2f3a886555220bbb67b13cf1de"
+    },
+    "comparison_prompts": {
+      "bytes": 1237755,
+      "records": 472,
+      "sha256": "cb859d8dffabc5752f4de194f72978cef1f23049ed852c370387a1c6e838f94e"
+    },
+    "comparison_slice": {
+      "bytes": 800705,
+      "records": 472,
+      "sha256": "de4c61e570909483f888a2366d874692f8138fe4f3c8cd73e3a480523bce9f43"
+    },
+    "eval_frozen": {
+      "bytes": 307433,
+      "records": 200,
+      "sha256": "99602feba1cd13f526ad9530888ab2d57d7807beadfd1692be7536b78ecfe32a"
+    },
+    "increment_v2": {
+      "bytes": 300329,
+      "records": 182,
+      "sha256": "5a40c6e723adfdf9f097e89d5afc68438c143e475518466da86ca73b05ed6655"
+    },
+    "probe_rb": {
+      "bytes": 366308,
+      "records": 200,
+      "sha256": "9e9e0b24b51635abeea3c0381222723cefa6c36893044593de1e2d25accd6653"
+    },
+    "probe_swap": {
+      "bytes": 348296,
+      "records": 200,
+      "sha256": "5a3ec4de7b29f3edf2a4c2c0ea7949ab78a0afbe74d71afbd648afc12d832e18"
+    },
+    "prompts_shard_a": {
+      "bytes": 701216,
+      "records": 272,
+      "sha256": "f75494750995c242a3414a716ff0fe4d6f447fbeceeb7f1686eb314a60e44678"
+    },
+    "prompts_shard_b": {
+      "bytes": 536539,
+      "records": 200,
+      "sha256": "52b00b781bf1eea3631e8e25a33e6d5ce3e6dde87406d75c88109def760c390f"
+    },
+    "sft_dev": {
+      "bytes": 431868,
+      "records": 137,
+      "sha256": "31285fe884c8990f7f04bf13f6fb1aab1505bf9df2110bd8d5d8515c9de736fc"
+    },
+    "sft_train": {
+      "bytes": 3927907,
+      "records": 1245,
+      "sha256": "4dab4e7bd8e2d14f174328ea221f43dc452f8954ec49ec348c6fa091d45eb1dd"
+    },
+    "train": {
+      "bytes": 1928022,
+      "records": 1200,
+      "sha256": "8ec9b1724340ad3cd96fcac822290df694def3e8a749e6d4c9b87165b690b59a"
+    }
+  },
+  "generators": {
+    "bank_challenge_v1.py": "3e853165db69bf486a9af24aaeb9208f982f70539ad21e32e8c6f0bfc55dd90c",
+    "challenge_v1_rule_based.json": "b08e68833fc04898cfadbf03d4adbec436cc0c1c086d2b4f40fbebac043d01ac",
+    "generate_challenge.py": "b95623f3b489d06ba7554af0c2a78e3bba1351859f03122fd48a003ed9c3fc91",
+    "generate_eval.py": "de5f38cee5c19ed6429f65d3d5093101c497cc8473276055f4c4a0ebcb25f857",
+    "generate_increment.py": "36984efe36ef6a425aa6fa30dcab379ff48650cd8d2a3db385edf0fa3f09174f",
+    "generate_train.py": "1bca6fe4cca4fe373ec66e9358c795801a9d7f6e5e6a2d85feaa81641cc166bf",
+    "increment_v2_rule_based.json": "5c97318d93dd2fabe3b4efaea7de4951fa5bb31e5bb7669f3f3bc77c117ec824",
+    "qwen3.5-4b-851bf6e8.sha256": "717d63c6020de3026ed7a947fd9f8df572a9d47a2c52be4d431d0acdd22c316e",
+    "requirements-train.txt": "0d5acc4f77a01f45a7329b0a3af3ce33628e300c86b8a7348611e9cdf3c56efd",
+    "sft-qwen3.5-4b-lora-smoke.json": "8cc0a576a35616a3d8b88186c944e7ca4d296ece54c06b819dfef81199c8a985",
+    "sft-qwen3.5-4b-lora.json": "42a65f6dd9a92ff921a95aeb3d01d029b30ebd2bc043e2a2398b2625365fc61f"
+  },
+  "manifest_sha256": "27a14f8b81fa6b1ffdb45479ada5ceed87c501f3d0a96483b27c5ffa0ac4a57a",
+  "output_schema_sha256": "8335a158738dbde443a08a867d0966145e15fa2d917cdfdbbd4dcea808065195",
+  "readiness_input_manifest_sha256": "0c18fb8bbd1379e5afde5a64c67c5bed75680529683eeeece842d1ae2145adeb",
+  "real_runs_performed": 0,
+  "schema": "flh_extraction_manifest_v1",
+  "scoring_version_sha256": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd"
+}

@@ -1,0 +1,96 @@
+{
+  "criteria_version": "flh_extractor_decision_v1 (pre-registered 2026-11-12)",
+  "reasons": [
+    "runs not performed: current_extractor, qwen3.5-4b-tuned",
+    "qwen3.5-4b-untuned ineligible: abstention on frozen >= 0.9; abstention on rb probe >= 0.9; challenge paired consistency >= 0.9; challenge abstain-group paired accuracy >= 0.8"
+  ],
+  "review": {
+    "basis": "human",
+    "criterion": "review packets: every item has a verdict (>= 25), <= 10% rejected",
+    "evidence": {
+      "items": 44,
+      "rejected": 0,
+      "verdicts": 0
+    },
+    "status": "PENDING"
+  },
+  "schema": "flh_extractor_decision_report_v1",
+  "systems": {
+    "current_extractor": {
+      "criteria": [],
+      "eligible": null,
+      "status": "NOT_PERFORMED"
+    },
+    "qwen3.5-4b-tuned": {
+      "criteria": [],
+      "eligible": null,
+      "status": "NOT_PERFORMED"
+    },
+    "qwen3.5-4b-untuned": {
+      "criteria": [
+        {
+          "basis": "exact",
+          "criterion": "strict structural validity >= 0.98 (scorable rows / slice rows)",
+          "evidence": {
+            "references": 472,
+            "scorable": 405
+          },
+          "status": "FAIL"
+        },
+        {
+          "basis": "exact",
+          "criterion": "abstention on frozen >= 0.9",
+          "evidence": 0.85,
+          "status": "FAIL"
+        },
+        {
+          "basis": "exact",
+          "criterion": "abstention on rb probe >= 0.9",
+          "evidence": 0.85,
+          "status": "FAIL"
+        },
+        {
+          "basis": "exact",
+          "criterion": "over-abstention on frozen <= 0.1",
+          "evidence": 0.0,
+          "status": "PASS"
+        },
+        {
+          "basis": "exact",
+          "criterion": "over-abstention on rb probe <= 0.1",
+          "evidence": 0.0,
+          "status": "PASS"
+        },
+        {
+          "basis": "exact",
+          "criterion": "challenge paired consistency >= 0.9",
+          "evidence": 0.583,
+          "status": "FAIL"
+        },
+        {
+          "basis": "exact",
+          "criterion": "challenge abstain-group paired accuracy >= 0.8",
+          "evidence": 0.556,
+          "status": "FAIL"
+        },
+        {
+          "basis": "human",
+          "criterion": "human-judged unit F1 recorded (>= 100 judged examples)",
+          "evidence": null,
+          "status": "PENDING"
+        }
+      ],
+      "eligible": false,
+      "human_unit_f1": null,
+      "status": "MEASURED",
+      "weak_abstention_or_cue_dependence": [
+        "abstention on frozen >= 0.9",
+        "abstention on rb probe >= 0.9",
+        "challenge paired consistency >= 0.9",
+        "challenge abstain-group paired accuracy >= 0.8"
+      ]
+    }
+  },
+  "verdict": "PENDING",
+  "winner": null
+}

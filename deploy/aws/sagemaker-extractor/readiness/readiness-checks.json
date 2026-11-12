@@ -1,0 +1,56 @@
+{
+  "input_digests": {
+    "comparison_prompts_sha256": "cb859d8dffabc5752f4de194f72978cef1f23049ed852c370387a1c6e838f94e",
+    "pass": true,
+    "problems": [],
+    "shards": {
+      "a": {
+        "records": 272,
+        "sha256": "f75494750995c242a3414a716ff0fe4d6f447fbeceeb7f1686eb314a60e44678"
+      },
+      "b": {
+        "records": 200,
+        "sha256": "52b00b781bf1eea3631e8e25a33e6d5ce3e6dde87406d75c88109def760c390f"
+      }
+    }
+  },
+  "output_naming": {
+    "jobs": {
+      "predict-base-a": "flh-extractor-predict-base-a-20261112-051238",
+      "predict-base-b": "flh-extractor-predict-base-b-20261112-051238",
+      "predict-eval-a": "flh-extractor-predict-eval-a-20261112-051238",
+      "predict-eval-b": "flh-extractor-predict-eval-b-20261112-051238",
+      "sft-experiment": "flh-extractor-sft-experiment-20261112-051238",
+      "sft-smoke": "flh-extractor-sft-smoke-20261112-051238"
+    },
+    "output_prefixes": [
+      "s3://example-flh-extractor-private/extractor/output/flh-extractor-predict-base-a-20261112-051238",
+      "s3://example-flh-extractor-private/extractor/output/flh-extractor-predict-base-b-20261112-051238",
+      "s3://example-flh-extractor-private/extractor/output/flh-extractor-predict-eval-a-20261112-051238",
+      "s3://example-flh-extractor-private/extractor/output/flh-extractor-predict-eval-b-20261112-051238",
+      "s3://example-flh-extractor-private/extractor/output/flh-extractor-sft-experiment-20261112-051238",
+      "s3://example-flh-extractor-private/extractor/output/flh-extractor-sft-smoke-20261112-051238"
+    ],
+    "pass": true,
+    "problems": []
+  },
+  "pass": true,
+  "reference_isolation": {
+    "never_uploaded": [
+      "eval_candidates.jsonl (references)",
+      "probe references",
+      "challenge references",
+      "comparison-slice.jsonl",
+      "boundary cases",
+      "learner data"
+    ],
+    "pass": true,
+    "problems": [],
+    "uploaded": [
+      "predict-a/eval-prompts.jsonl",
+      "predict-b/eval-prompts.jsonl",
+      "sft-dev.jsonl",
+      "sft-train.jsonl"
+    ]
+  }
+}

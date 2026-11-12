@@ -1,0 +1,97 @@
+{
+  "TrainingJobName": "flh-extractor-predict-eval-b-20261112-051238",
+  "AlgorithmSpecification": {
+    "TrainingImage": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "TrainingInputMode": "File",
+    "ContainerEntrypoint": [
+      "python3",
+      "-B",
+      "-m",
+      "flh_extraction.sagemaker_entry"
+    ],
+    "ContainerArguments": [
+      "predict"
+    ]
+  },
+  "RoleArn": "arn:aws:iam::000000000000:role/flh-extractor-exec",
+  "HyperParameters": {
+    "prompts_sha256": "52b00b781bf1eea3631e8e25a33e6d5ce3e6dde87406d75c88109def760c390f",
+    "max_new_tokens": "512",
+    "template_kwargs": "{\"enable_thinking\": false}",
+    "model_profile": "qwen3.5-4b",
+    "dtype": "bfloat16"
+  },
+  "InputDataConfig": [
+    {
+      "ChannelName": "prompts",
+      "InputMode": "File",
+      "ContentType": "application/jsonl",
+      "DataSource": {
+        "S3DataSource": {
+          "S3DataType": "S3Prefix",
+          "S3Uri": "s3://example-flh-extractor-private/extractor/prompts/52b00b781bf1eea3631e8e25a33e6d5ce3e6dde87406d75c88109def760c390f/",
+          "S3DataDistributionType": "FullyReplicated"
+        }
+      }
+    },
+    {
+      "ChannelName": "model",
+      "InputMode": "File",
+      "ContentType": "application/octet-stream",
+      "DataSource": {
+        "S3DataSource": {
+          "S3DataType": "S3Prefix",
+          "S3Uri": "s3://example-flh-extractor-private/extractor/models/qwen3.5-4b-851bf6e8/",
+          "S3DataDistributionType": "FullyReplicated"
+        }
+      }
+    },
+    {
+      "ChannelName": "adapter",
+      "InputMode": "File",
+      "ContentType": "application/octet-stream",
+      "DataSource": {
+        "S3DataSource": {
+          "S3DataType": "S3Prefix",
+          "S3Uri": "s3://example-flh-extractor-private/extractor/adapters/flh-extractor-experiment-YYYYMMDD-HHMMSS/",
+          "S3DataDistributionType": "FullyReplicated"
+        }
+      }
+    }
+  ],
+  "OutputDataConfig": {
+    "S3OutputPath": "s3://example-flh-extractor-private/extractor/output/"
+  },
+  "ResourceConfig": {
+    "InstanceType": "ml.g5.xlarge",
+    "InstanceCount": 1,
+    "VolumeSizeInGB": 50
+  },
+  "StoppingCondition": {
+    "MaxRuntimeInSeconds": 3600
+  },
+  "EnableNetworkIsolation": true,
+  "EnableManagedSpotTraining": false,
+  "Tags": [
+    {
+      "Key": "Project",
+      "Value": "flh"
+    },
+    {
+      "Key": "Component",
+      "Value": "extractor-sft"
+    },
+    {
+      "Key": "Run",
+      "Value": "predict"
+    },
+    {
+      "Key": "DatasetSha256",
+      "Value": "4dab4e7bd8e2d14f174328ea221f43dc452f8954ec49ec348c6fa091d45eb1dd"
+    },
+    {
+      "Key": "ImageDigest",
+      "Value": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}

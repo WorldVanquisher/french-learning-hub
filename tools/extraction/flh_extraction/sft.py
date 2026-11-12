@@ -36,9 +36,9 @@ def build(candidates, rendered, splits=("train", "dev")):
     return out, refused
 
 
-def eval_prompts(candidates, rendered):
+def eval_prompts(candidates, rendered, split_groups=("eval",)):
     """Evaluation prompts without any expected output (for a prediction job)."""
     by_id = {r["id"]: r for r in rendered}
     return [{"id": c["id"], "messages": [{"role": "system", "content": by_id[c["id"]]["developer"]},
                                          {"role": "user", "content": by_id[c["id"]]["user"]}]}
-            for c in candidates if c["meta"]["split_group"] == "eval"]
+            for c in candidates if c["meta"]["split_group"] in split_groups]
