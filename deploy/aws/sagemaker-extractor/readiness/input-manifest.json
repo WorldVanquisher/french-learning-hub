@@ -5,18 +5,23 @@
     "s3_prefix": "extractor/models/qwen3.5-4b-851bf6e8/",
     "weights_bytes": 9319737856
   },
+  "comparison_prompts": {
+    "records": 472,
+    "sha256": "cb859d8dffabc5752f4de194f72978cef1f23049ed852c370387a1c6e838f94e",
+    "shards": "a = frozen evaluation + challenge_test, b = rb probe (see readiness-checks.json)"
+  },
   "files": {
-    "predict-full/eval-prompts.jsonl": {
-      "bytes": 1052355,
-      "records": 400,
-      "s3_key": "extractor/prompts/2974e13e66b7cb2816cb550ce33b764941f07a9e30f5d91bfe1b3d08d38d57eb/eval-prompts.jsonl",
-      "sha256": "2974e13e66b7cb2816cb550ce33b764941f07a9e30f5d91bfe1b3d08d38d57eb"
+    "predict-a/eval-prompts.jsonl": {
+      "bytes": 701216,
+      "records": 272,
+      "s3_key": "extractor/prompts/f75494750995c242a3414a716ff0fe4d6f447fbeceeb7f1686eb314a60e44678/eval-prompts.jsonl",
+      "sha256": "f75494750995c242a3414a716ff0fe4d6f447fbeceeb7f1686eb314a60e44678"
     },
-    "predict-smoke/eval-prompts.jsonl": {
-      "bytes": 260919,
-      "records": 100,
-      "s3_key": "extractor/prompts/d63dc7f5295e026ea991d3a87416c468d724573f2631a81ae22f2daa0dc31b22/eval-prompts.jsonl",
-      "sha256": "d63dc7f5295e026ea991d3a87416c468d724573f2631a81ae22f2daa0dc31b22"
+    "predict-b/eval-prompts.jsonl": {
+      "bytes": 536539,
+      "records": 200,
+      "s3_key": "extractor/prompts/52b00b781bf1eea3631e8e25a33e6d5ce3e6dde87406d75c88109def760c390f/eval-prompts.jsonl",
+      "sha256": "52b00b781bf1eea3631e8e25a33e6d5ce3e6dde87406d75c88109def760c390f"
     },
     "sft-dev.jsonl": {
       "bytes": 431868,
@@ -35,10 +40,12 @@
     "sft-qwen3.5-4b-lora-smoke.json": "8cc0a576a35616a3d8b88186c944e7ca4d296ece54c06b819dfef81199c8a985",
     "sft-qwen3.5-4b-lora.json": "42a65f6dd9a92ff921a95aeb3d01d029b30ebd2bc043e2a2398b2625365fc61f"
   },
-  "manifest_sha256": "233a97cf6b31d0f8f56ccc7c0c2d5a1bd76a1494662cbfdcb83b0b2170eab4b9",
+  "manifest_sha256": "0c18fb8bbd1379e5afde5a64c67c5bed75680529683eeeece842d1ae2145adeb",
   "never_uploaded": [
     "eval_candidates.jsonl (references)",
     "probe references",
+    "challenge references",
+    "comparison-slice.jsonl",
     "boundary cases",
     "learner data"
   ],

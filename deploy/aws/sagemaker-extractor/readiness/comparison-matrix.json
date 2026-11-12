@@ -1,0 +1,132 @@
+{
+  "created": "2026-11-12",
+  "matrix_sha256": "b3f66edaf76b0886a82a76a0bcafef5a472e406d4f0d811b01eda3ba182e7a66",
+  "output_schema": {
+    "developer_instruction_sha256": "988f46551b39e2f9476135d4ed07f3f047488416ff6073c3c9fabc5a3f5b18fc",
+    "name": "knowledge_extraction_v2",
+    "sha256": "8335a158738dbde443a08a867d0966145e15fa2d917cdfdbbd4dcea808065195"
+  },
+  "real_runs_performed": 0,
+  "schema": "flh_extractor_comparison_matrix_v1",
+  "scoring_version": {
+    "files": {
+      "audit.py": "a02d2a788572d5ded2f3bbaae19ed42105972bd03ee35230cc30d39d1ea50cd0",
+      "challenge.py": "e5f6dbb0eee80274bef153099a236e9f64086327f7c8a1b74fa5b0a56beed643",
+      "comparison.py": "17c72b2a21e3e929ceccaf51b46897bfe9deaa34df134f376386ab1c10a219e7",
+      "controls.py": "bba23521900562fe14670f8c9196ccf2c86287dfbb5cc5df4db22d479a488196",
+      "evaluate.py": "b85c8e28e00a720b23e0ebd1061e43dac050cda09fcd6d68348ab6fce9792907",
+      "matrix.py": "49abb57bdbef72dfa992c6ea90e9c8fa6414a8a18f71f7e908e40af9c631ef2c",
+      "paired.py": "ff0003f4804aa54f913bb4b86f6be0f84fc1a2b10bd96fa2cb1aaa0aae95a48d",
+      "quality.py": "9ee1cb42f859f62c593a0157bc6c9f00661c960949cc697de6ecd0eb73aee51d",
+      "textnorm.py": "c0b4b209b437293de074b623a8fb2dce66bdbeb21a40f35bf1782dea73bd2cdf"
+    },
+    "name": "flh_extraction_scoring_v1",
+    "sha256": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd"
+  },
+  "slice": {
+    "files": {
+      "comparison-inputs.jsonl": {
+        "bytes": 196919,
+        "path": "comparison-inputs.jsonl",
+        "records": 472,
+        "sha256": "25169ae982a4eb00165ac50302cf3e8238213d2f3a886555220bbb67b13cf1de"
+      },
+      "comparison-prompts.jsonl": {
+        "bytes": 1237755,
+        "path": "comparison-prompts.jsonl",
+        "records": 472,
+        "sha256": "cb859d8dffabc5752f4de194f72978cef1f23049ed852c370387a1c6e838f94e"
+      },
+      "comparison-slice.jsonl": {
+        "bytes": 800705,
+        "path": "comparison-slice.jsonl",
+        "records": 472,
+        "sha256": "de4c61e570909483f888a2366d874692f8138fe4f3c8cd73e3a480523bce9f43"
+      }
+    },
+    "parts": {
+      "challenge_test": 72,
+      "frozen": 200,
+      "rb": 200
+    },
+    "records": 472
+  },
+  "systems": [
+    {
+      "decoding": {
+        "api": "OpenAI Responses",
+        "requests": 472,
+        "retries": 0,
+        "store": false,
+        "structured_output": "json_schema strict (knowledge_units)",
+        "temperature": "not set by the request (provider default)"
+      },
+      "how": "EXTRACTOR_PROVIDER=openai with OPENAI_MODEL set: extraction-render run -in comparison-inputs.jsonl -out current-results.jsonl -max-requests 472 -confirm-paid-calls",
+      "input_slice": "comparison-inputs.jsonl (provider) / comparison-prompts.jsonl (local model): the same inputs",
+      "provenance": "openai:<OPENAI_MODEL>:knowledge_extraction_v2 (record the model at run time)",
+      "reason": "paid provider call; owner decision",
+      "scored_by": "compare (account + production validator + quality + paired consistency)",
+      "status": "NOT_PERFORMED",
+      "system": "current_extractor"
+    },
+    {
+      "adapter": null,
+      "decoding": {
+        "add_generation_prompt": true,
+        "batch_size": 1,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "do_sample": false,
+        "dtype": "bfloat16",
+        "max_new_tokens": 512,
+        "num_beams": 1,
+        "prompt": "system = production developer instruction, user = production user payload (extraction-render render)",
+        "stop": "eos (<|im_end|>) or max_new_tokens; row field `stopped`"
+      },
+      "how": "rendered/predict-base-a.json then predict-base-b.json (owner submits; concatenate a, b)",
+      "input_slice": "comparison-inputs.jsonl (provider) / comparison-prompts.jsonl (local model): the same inputs",
+      "model": {
+        "hf_id": "Qwen/Qwen3.5-4B",
+        "model_profile": "qwen3.5-4b",
+        "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"
+      },
+      "reason": "needs the GPU prediction job (readiness step 6)",
+      "scored_by": "compare (account + production validator + quality + paired consistency)",
+      "status": "NOT_PERFORMED",
+      "system": "qwen3.5-4b-untuned"
+    },
+    {
+      "adapter": "sft-experiment output (config sft-qwen3.5-4b-lora.json; train/dev hashes in input-manifest.json)",
+      "decoding": {
+        "add_generation_prompt": true,
+        "batch_size": 1,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "do_sample": false,
+        "dtype": "bfloat16",
+        "max_new_tokens": 512,
+        "num_beams": 1,
+        "prompt": "system = production developer instruction, user = production user payload (extraction-render render)",
+        "stop": "eos (<|im_end|>) or max_new_tokens; row field `stopped`"
+      },
+      "how": "rendered/predict-eval-a.json then predict-eval-b.json (owner submits; concatenate a, b)",
+      "input_slice": "comparison-inputs.jsonl (provider) / comparison-prompts.jsonl (local model): the same inputs",
+      "model": {
+        "hf_id": "Qwen/Qwen3.5-4B",
+        "model_profile": "qwen3.5-4b",
+        "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"
+      },
+      "reason": "needs the experiment and adapter prediction jobs (steps 7-8)",
+      "scored_by": "compare (account + production validator + quality + paired consistency)",
+      "status": "NOT_PERFORMED",
+      "system": "qwen3.5-4b-tuned"
+    }
+  ],
+  "validator_sources": {
+    "cmd/extraction-render/main.go": "d74af0aa9025f09c54b4d4bb3c5391075e0e2391e033b9650582bfb0fd51f6f8",
+    "internal/domain/knowledge.go": "0721f58ef3d52adb9ea90df768d6317ec5686e260f103be44ceac621fdedd6c9",
+    "internal/extractor/openai.go": "60eeceb072c339d4b25b4bf816108ecc2394ecd0d57724a08542db89e61e0281"
+  }
+}

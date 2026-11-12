@@ -1,43 +1,59 @@
 {
-  "schema": "flh_extractor_output_manifest_v1",
-  "$comment": "What each job must leave behind and how the owner verifies it before the next step. Hashes of outputs are unknown until a job runs; every check is local and offline after `aws s3 cp`.",
+  "schema": "flh_extractor_output_manifest_v2",
+  "$comment": "What each job must leave behind and how the owner verifies it before the next step. Output hashes are unknown until a job runs; every check is local and offline after `aws s3 cp`. Every job writes model/stack-check.json; a job on a stack that differs from requirements-train.txt fails unless FLH_ALLOW_STACK_MISMATCH=1, which no rendered job sets.",
+  "naming": "Job names are flh-extractor-<role>-<UTC yyyymmdd-hhmmss>, one role per rendered file; outputs land under s3://<BUCKET>/extractor/output/<job name>/ (readiness-checks.json proves names and prefixes are distinct).",
   "jobs": {
     "sft-smoke": {
       "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
-      "contains": ["model/adapter_config.json", "model/adapter_model.safetensors", "model/tokenizer files", "losses.jsonl", "config.json", "run_manifest.json"],
+      "contains": ["model/adapter_config.json", "model/adapter_model.safetensors", "model/tokenizer files", "losses.jsonl", "config.json", "run_manifest.json", "stack-check.json"],
       "checks": [
         "describe-training-job: TrainingJobStatus Completed, BillableTimeInSeconds <= 1800",
+        "stack-check.json: stack_matches_requirements true, transformers_knows_qwen3_5 true",
         "run_manifest.json: train_sha256 and dev_sha256 equal input-manifest.json; steps == 12; smoke true; suitable_for_production false; model_profile qwen3.5-4b; chat_template_kwargs {enable_thinking: false}; skipped_too_long == 0",
         "run_manifest.json files: every listed sha256 matches the extracted file",
         "losses.jsonl: 12 finite train_loss values; dev_loss at steps 6 and 12",
         "timing: seconds / 12 = seconds per step; projected experiment = 234 steps x seconds per step + 10 dev evaluations; must be <= 9000 s (the 10800 s bound with margin)"
       ]
     },
-    "predict-base": {
+    "predict-base-a": {
       "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
-      "contains": ["predictions.jsonl"],
+      "contains": ["predictions.jsonl", "stack-check.json"],
       "checks": [
-        "100 rows, ids = the 50-item frozen subset then the same 50 with suffix #rb, in prompt order",
+        "272 rows: the 200 frozen evaluation prompts, then the 72 challenge_test prompts, in prompt order (shard a)",
         "every row has output_text, generated_tokens and stopped; count stopped == max_new_tokens (truncation)",
-        "scored locally: attach-inputs, extraction-render validate, quality (frozen and probe halves), quality-compare"
+        "BillableTimeInSeconds and rows give the inference rate; shard b (200 rows) fits the same bound"
+      ]
+    },
+    "predict-base-b": {
+      "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
+      "contains": ["predictions.jsonl", "stack-check.json"],
+      "checks": [
+        "200 rows: the rb probe prompts in prompt order (shard b)",
+        "concatenate a then b as qwen3.5-4b-untuned predictions; `compare` accounts for every slice row (a missing shard shows as 200 or 272 missing_prediction rows, never as a smaller slice)"
       ]
     },
     "sft-experiment": {
       "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
-      "contains": ["model/adapter_config.json", "model/adapter_model.safetensors", "losses.jsonl", "config.json", "run_manifest.json"],
+      "contains": ["model/adapter_config.json", "model/adapter_model.safetensors", "losses.jsonl", "config.json", "run_manifest.json", "stack-check.json"],
       "checks": [
         "TrainingJobStatus Completed, BillableTimeInSeconds <= 10800",
+        "stack-check.json: stack_matches_requirements true",
         "run_manifest.json: hashes equal input-manifest.json; smoke false; suitable_for_production false; skipped_too_long == 0; steps == 234",
-        "losses.jsonl: dev loss does not rise at two consecutive evaluations (promotion-check reads it)",
-        "the adapter is extracted and copied to s3://<BUCKET>/extractor/adapters/<job>/ for predict-eval"
+        "losses.jsonl: dev loss does not rise at two consecutive evaluations (promotion-check and decision-report read it)",
+        "the adapter is extracted and copied to s3://<BUCKET>/extractor/adapters/<job>/ for predict-eval-a and predict-eval-b"
       ]
     },
-    "predict-eval": {
+    "predict-eval-a": {
       "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
-      "contains": ["predictions.jsonl"],
+      "contains": ["predictions.jsonl", "stack-check.json"],
+      "checks": ["272 rows (shard a), as predict-base-a; the adapter channel points at the experiment's adapter"]
+    },
+    "predict-eval-b": {
+      "s3": "s3://<BUCKET>/extractor/output/<job>/output/model.tar.gz",
+      "contains": ["predictions.jsonl", "stack-check.json"],
       "checks": [
-        "400 rows: the 200 frozen evaluation prompts, then the 200 rb-probe prompts",
-        "scored locally as for predict-base, on all 200 + 200; then promotion-check against the baseline reports"
+        "200 rows (shard b); concatenate a then b as qwen3.5-4b-tuned predictions",
+        "scored locally: compare --matrix comparison-matrix.json (all three systems), then decision-report"
       ]
     }
   }

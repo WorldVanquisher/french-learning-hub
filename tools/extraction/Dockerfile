@@ -9,6 +9,7 @@ RUN if [ "$TORCH_INDEX" = cpu ]; then IDX="--index-url https://download.pytorch.
  && pip install --no-cache-dir $IDX -r /opt/program/requirements-train.txt \
  && useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin trainer
 COPY flh_extraction /opt/program/flh_extraction
-RUN python3 -c "import flh_extraction.sagemaker_entry, torch, transformers, peft"
+RUN python3 -c "import flh_extraction.sagemaker_entry, torch, transformers, peft" \
+ && python3 -B -m flh_extraction.packaging
 WORKDIR /opt/program
 ENTRYPOINT ["python3", "-B", "-m", "flh_extraction.sagemaker_entry"]

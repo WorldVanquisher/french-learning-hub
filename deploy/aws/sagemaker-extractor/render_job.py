@@ -28,11 +28,18 @@ def fill(obj, values):
     return obj
 
 
-def render(template, run, out_dir, values):
+def render(template, run, out_dir, values, role=None):
+    """role names the job (default: the run type); two jobs rendered in the
+    same second need different roles to get different names."""
     if run not in BOUNDS:
         raise SystemExit(f"render: run must be one of {sorted(BOUNDS)}")
+    role = role or run
+    if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", role):
+        raise SystemExit("render: role must be lower-case words joined by '-'")
     values = dict(values)
-    values["JOB_NAME"] = f"flh-extractor-{run}-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+    values["JOB_NAME"] = f"flh-extractor-{role}-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+    if len(values["JOB_NAME"]) > 63:
+        raise SystemExit("render: job name longer than 63 characters")
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", values.get("IMAGE_DIGEST", "")):
         raise SystemExit("render: IMAGE_DIGEST must be sha256:<64 hex> (images are referenced by digest only)")
     values["IMAGE_URI_BY_DIGEST"] = f"{values['REGISTRY']}/flh-extractor-sft@{values['IMAGE_DIGEST']}"

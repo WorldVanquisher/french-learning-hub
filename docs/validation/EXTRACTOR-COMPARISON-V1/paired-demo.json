@@ -1,0 +1,2593 @@
+{
+  "challenge": {
+    "bytes": 166783,
+    "path": "challenge_candidates.jsonl",
+    "records": 96,
+    "sha256": "b004f6ed1bc82e6f154206740c2fea11e7fb24588904334c76e39c5b739bb5f5"
+  },
+  "systems": {
+    "category_only": {
+      "aggregate": {
+        "abstention_rate": 0.333,
+        "exact_unit_count_rate": 0.542,
+        "heuristic_unit_f1": 0.662,
+        "over_abstention_rate": 0.333,
+        "structural_validity": 1.0
+      },
+      "all": {
+        "count_consistent": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "cue_flip": {
+          "count": 32,
+          "rate": 1.0
+        },
+        "decision_consistent": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "groups": 32,
+        "invalid_or_missing": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "objective_consistent": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "paired_correct": {
+          "count": 0,
+          "rate": 0.0
+        }
+      },
+      "basis": {
+        "count_consistent": "exact",
+        "cue_flip": "exact",
+        "decision_consistent": "exact",
+        "objective_consistent": "heuristic",
+        "paired_correct": "exact"
+      },
+      "by_intent": {
+        "abstain": {
+          "count_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "cue_flip": {
+            "count": 12,
+            "rate": 1.0
+          },
+          "decision_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "groups": 12,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "paired_correct": {
+            "count": 0,
+            "rate": 0.0
+          }
+        },
+        "extract": {
+          "count_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "cue_flip": {
+            "count": 20,
+            "rate": 1.0
+          },
+          "decision_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "groups": 20,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "paired_correct": {
+            "count": 0,
+            "rate": 0.0
+          }
+        }
+      },
+      "by_split": {
+        "challenge_dev": {
+          "count_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "cue_flip": {
+            "count": 8,
+            "rate": 1.0
+          },
+          "decision_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "groups": 8,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "paired_correct": {
+            "count": 0,
+            "rate": 0.0
+          }
+        },
+        "challenge_test": {
+          "count_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "cue_flip": {
+            "count": 24,
+            "rate": 1.0
+          },
+          "decision_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "groups": 24,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "paired_correct": {
+            "count": 0,
+            "rate": 0.0
+          }
+        }
+      },
+      "groups": [
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g01",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g02",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g03",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g04",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g05",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g06",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g07",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g08",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g09",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g10",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g11",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g12",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g13",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g14",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g15",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g16",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 0,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g17",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 2,
+            "conflicting": 0,
+            "rb": 2
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g18",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 2,
+            "conflicting": 0,
+            "rb": 2
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g19",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 2,
+            "conflicting": 0,
+            "rb": 2
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "empty",
+            "rb": "units"
+          },
+          "group_id": "chl-g20",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g21",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g22",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g23",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g24",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g25",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g26",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g27",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g28",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g29",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g30",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g31",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": false,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": true,
+          "decision_consistent": false,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g32",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": false,
+          "paired_correct": false,
+          "split": "challenge_test"
+        }
+      ],
+      "headline": {
+        "abstention_rate": 0.333,
+        "cue_flip_rate": 1.0,
+        "exact_unit_count_rate": 0.542,
+        "heuristic_unit_f1": 0.662,
+        "over_abstention_rate": 0.333,
+        "paired_accuracy": 0.0,
+        "paired_consistency": 0.0,
+        "structural_validity": 1.0
+      },
+      "per_variant": {
+        "aligned": {
+          "abstention_on_abstain_groups": 1.0,
+          "decision_accuracy": 1.0,
+          "invalid_or_missing": 0,
+          "over_abstention_on_extract_groups": 0.0
+        },
+        "conflicting": {
+          "abstention_on_abstain_groups": 0.0,
+          "decision_accuracy": 0.0,
+          "invalid_or_missing": 0,
+          "over_abstention_on_extract_groups": 1.0
+        },
+        "rb": {
+          "abstention_on_abstain_groups": 0.0,
+          "decision_accuracy": 0.625,
+          "invalid_or_missing": 0,
+          "over_abstention_on_extract_groups": 0.0
+        }
+      },
+      "schema": "flh_extraction_paired_consistency_v1",
+      "scoring_version": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd"
+    },
+    "constant_empty": {
+      "aggregate": {
+        "abstention_rate": 1.0,
+        "exact_unit_count_rate": 0.375,
+        "heuristic_unit_f1": null,
+        "over_abstention_rate": 1.0,
+        "structural_validity": 1.0
+      },
+      "all": {
+        "count_consistent": {
+          "count": 32,
+          "rate": 1.0
+        },
+        "cue_flip": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "decision_consistent": {
+          "count": 32,
+          "rate": 1.0
+        },
+        "groups": 32,
+        "invalid_or_missing": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "objective_consistent": {
+          "count": 32,
+          "rate": 1.0
+        },
+        "paired_correct": {
+          "count": 12,
+          "rate": 0.375
+        }
+      },
+      "basis": {
+        "count_consistent": "exact",
+        "cue_flip": "exact",
+        "decision_consistent": "exact",
+        "objective_consistent": "heuristic",
+        "paired_correct": "exact"
+      },
+      "by_intent": {
+        "abstain": {
+          "count_consistent": {
+            "count": 12,
+            "rate": 1.0
+          },
+          "cue_flip": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "decision_consistent": {
+            "count": 12,
+            "rate": 1.0
+          },
+          "groups": 12,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 12,
+            "rate": 1.0
+          },
+          "paired_correct": {
+            "count": 12,
+            "rate": 1.0
+          }
+        },
+        "extract": {
+          "count_consistent": {
+            "count": 20,
+            "rate": 1.0
+          },
+          "cue_flip": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "decision_consistent": {
+            "count": 20,
+            "rate": 1.0
+          },
+          "groups": 20,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 20,
+            "rate": 1.0
+          },
+          "paired_correct": {
+            "count": 0,
+            "rate": 0.0
+          }
+        }
+      },
+      "by_split": {
+        "challenge_dev": {
+          "count_consistent": {
+            "count": 8,
+            "rate": 1.0
+          },
+          "cue_flip": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "decision_consistent": {
+            "count": 8,
+            "rate": 1.0
+          },
+          "groups": 8,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 8,
+            "rate": 1.0
+          },
+          "paired_correct": {
+            "count": 3,
+            "rate": 0.375
+          }
+        },
+        "challenge_test": {
+          "count_consistent": {
+            "count": 24,
+            "rate": 1.0
+          },
+          "cue_flip": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "decision_consistent": {
+            "count": 24,
+            "rate": 1.0
+          },
+          "groups": 24,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 24,
+            "rate": 1.0
+          },
+          "paired_correct": {
+            "count": 9,
+            "rate": 0.375
+          }
+        }
+      },
+      "groups": [
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g01",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g02",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g03",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g04",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g05",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g06",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g07",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g08",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g09",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g10",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g11",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g12",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g13",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g14",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g15",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g16",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g17",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g18",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g19",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g20",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": false,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g21",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g22",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g23",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g24",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g25",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g26",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g27",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g28",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g29",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g30",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g31",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g32",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        }
+      ],
+      "headline": {
+        "abstention_rate": 1.0,
+        "cue_flip_rate": 0.0,
+        "exact_unit_count_rate": 0.375,
+        "heuristic_unit_f1": null,
+        "over_abstention_rate": 1.0,
+        "paired_accuracy": 0.375,
+        "paired_consistency": 1.0,
+        "structural_validity": 1.0
+      },
+      "per_variant": {
+        "aligned": {
+          "abstention_on_abstain_groups": 1.0,
+          "decision_accuracy": 0.375,
+          "invalid_or_missing": 0,
+          "over_abstention_on_extract_groups": 1.0
+        },
+        "conflicting": {
+          "abstention_on_abstain_groups": 1.0,
+          "decision_accuracy": 0.375,
+          "invalid_or_missing": 0,
+          "over_abstention_on_extract_groups": 1.0
+        },
+        "rb": {
+          "abstention_on_abstain_groups": 1.0,
+          "decision_accuracy": 0.375,
+          "invalid_or_missing": 0,
+          "over_abstention_on_extract_groups": 1.0
+        }
+      },
+      "schema": "flh_extraction_paired_consistency_v1",
+      "scoring_version": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd"
+    },
+    "oracle": {
+      "aggregate": {
+        "abstention_rate": 1.0,
+        "exact_unit_count_rate": 1.0,
+        "heuristic_unit_f1": 1.0,
+        "over_abstention_rate": 0.0,
+        "structural_validity": 1.0
+      },
+      "all": {
+        "count_consistent": {
+          "count": 32,
+          "rate": 1.0
+        },
+        "cue_flip": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "decision_consistent": {
+          "count": 32,
+          "rate": 1.0
+        },
+        "groups": 32,
+        "invalid_or_missing": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "objective_consistent": {
+          "count": 32,
+          "rate": 1.0
+        },
+        "paired_correct": {
+          "count": 32,
+          "rate": 1.0
+        }
+      },
+      "basis": {
+        "count_consistent": "exact",
+        "cue_flip": "exact",
+        "decision_consistent": "exact",
+        "objective_consistent": "heuristic",
+        "paired_correct": "exact"
+      },
+      "by_intent": {
+        "abstain": {
+          "count_consistent": {
+            "count": 12,
+            "rate": 1.0
+          },
+          "cue_flip": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "decision_consistent": {
+            "count": 12,
+            "rate": 1.0
+          },
+          "groups": 12,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 12,
+            "rate": 1.0
+          },
+          "paired_correct": {
+            "count": 12,
+            "rate": 1.0
+          }
+        },
+        "extract": {
+          "count_consistent": {
+            "count": 20,
+            "rate": 1.0
+          },
+          "cue_flip": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "decision_consistent": {
+            "count": 20,
+            "rate": 1.0
+          },
+          "groups": 20,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 20,
+            "rate": 1.0
+          },
+          "paired_correct": {
+            "count": 20,
+            "rate": 1.0
+          }
+        }
+      },
+      "by_split": {
+        "challenge_dev": {
+          "count_consistent": {
+            "count": 8,
+            "rate": 1.0
+          },
+          "cue_flip": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "decision_consistent": {
+            "count": 8,
+            "rate": 1.0
+          },
+          "groups": 8,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 8,
+            "rate": 1.0
+          },
+          "paired_correct": {
+            "count": 8,
+            "rate": 1.0
+          }
+        },
+        "challenge_test": {
+          "count_consistent": {
+            "count": 24,
+            "rate": 1.0
+          },
+          "cue_flip": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "decision_consistent": {
+            "count": 24,
+            "rate": 1.0
+          },
+          "groups": 24,
+          "invalid_or_missing": {
+            "count": 0,
+            "rate": 0.0
+          },
+          "objective_consistent": {
+            "count": 24,
+            "rate": 1.0
+          },
+          "paired_correct": {
+            "count": 24,
+            "rate": 1.0
+          }
+        }
+      },
+      "groups": [
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g01",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g02",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g03",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g04",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g05",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g06",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g07",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g08",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g09",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g10",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g11",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g12",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g13",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g14",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g15",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g16",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 1,
+            "conflicting": 1,
+            "rb": 1
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g17",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 2,
+            "conflicting": 2,
+            "rb": 2
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g18",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 2,
+            "conflicting": 2,
+            "rb": 2
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g19",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 2,
+            "conflicting": 2,
+            "rb": 2
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "units",
+            "conflicting": "units",
+            "rb": "units"
+          },
+          "group_id": "chl-g20",
+          "intent": "extract",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g21",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g22",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g23",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g24",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g25",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g26",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g27",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g28",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g29",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_dev"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g30",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g31",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        },
+        {
+          "count_consistent": true,
+          "counts": {
+            "aligned": 0,
+            "conflicting": 0,
+            "rb": 0
+          },
+          "cue_flip": false,
+          "decision_consistent": true,
+          "decisions": {
+            "aligned": "empty",
+            "conflicting": "empty",
+            "rb": "empty"
+          },
+          "group_id": "chl-g32",
+          "intent": "abstain",
+          "invalid_or_missing": false,
+          "objective_consistent": true,
+          "paired_correct": true,
+          "split": "challenge_test"
+        }
+      ],
+      "headline": {
+        "abstention_rate": 1.0,
+        "cue_flip_rate": 0.0,
+        "exact_unit_count_rate": 1.0,
+        "heuristic_unit_f1": 1.0,
+        "over_abstention_rate": 0.0,
+        "paired_accuracy": 1.0,
+        "paired_consistency": 1.0,
+        "structural_validity": 1.0
+      },
+      "per_variant": {
+        "aligned": {
+          "abstention_on_abstain_groups": 1.0,
+          "decision_accuracy": 1.0,
+          "invalid_or_missing": 0,
+          "over_abstention_on_extract_groups": 0.0
+        },
+        "conflicting": {
+          "abstention_on_abstain_groups": 1.0,
+          "decision_accuracy": 1.0,
+          "invalid_or_missing": 0,
+          "over_abstention_on_extract_groups": 0.0
+        },
+        "rb": {
+          "abstention_on_abstain_groups": 1.0,
+          "decision_accuracy": 1.0,
+          "invalid_or_missing": 0,
+          "over_abstention_on_extract_groups": 0.0
+        }
+      },
+      "schema": "flh_extraction_paired_consistency_v1",
+      "scoring_version": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd"
+    }
+  }
+}

@@ -119,3 +119,183 @@ def markdown(items):
 
 def jsonl(items):
     return "".join(json.dumps(i, ensure_ascii=False, sort_keys=True) + "\n" for i in items)
+
+
+# ---- v3 expansion (2026-11-12): one prioritized sample per error family ----
+
+LABELS = {
+    "OK": ("The decision and every unit pass the rubric.",
+           "« Je suis allé au marché » asked about « aller » + être → one unit « aller — passé composé avec être »."),
+    "OVER_SPLIT": ("One objective is spread over several units.",
+                   "« Comment conjuguer vouloir au présent ? » → units « vouloir — je veux » and « vouloir — nous voulons »; "
+                   "one unit « vouloir — présent » is right (rule 2)."),
+    "UNDER_SPLIT": ("Two objectives share one unit, or one is missing.",
+                    "« Elle est une acteuse » → « C'est une actrice » corrects « c'est / elle est » and the « -trice » "
+                    "feminine; a single « -eur → -trice » unit misses the first."),
+    "FALSE_PREMISE": ("A statement repeats the learner's or the explanation's false claim as true.",
+                      "« depuis prend le passé composé : j'ai habité ici depuis 2019 » → a unit saying « depuis » takes the "
+                      "passé composé adopts the premise; the right unit is « depuis » + présent."),
+    "BILINGUAL_DRIFT": ("`statement_zh` says something different from `statement` (scope, claim or quoted forms).",
+                        "EN « Grâce à » introduces a positive cause » vs ZH « grâce à » 表示原因 drops « positive »."),
+    "UNSUPPORTED": ("A unit's objective was not raised by the interaction (often only the explanation names it).",
+                    "A thank-you message whose explanation mentions « lui / leur » → a unit on indirect pronouns is unsupported."),
+    "CUE_DEPENDENT": ("The reference would change with the category or explanation although the learner's text is the same.",
+                      "« Est-ce qu'on peut décaler notre séance ? » is zero units under `other` and under `grammar`; "
+                      "a label that extracts a rule only under `grammar` is cue-dependent."),
+}
+
+RUBRIC_V3 = [
+    "1. Decision: is units vs zero, and the number of units, right for the learner's text alone? (yes / no)",
+    "2. Label: pick ONE of OK, OVER_SPLIT, UNDER_SPLIT, FALSE_PREMISE, BILINGUAL_DRIFT, UNSUPPORTED, CUE_DEPENDENT "
+    "(the worst that applies; one example per label below).",
+    "3. Verdict: accept / edit (write the fix) / reject / quarantine (reasonable people disagree), reviewer and date.",
+]
+
+
+def _units_sim(r):
+    from .evaluate import similarity
+    us = r["expected"]["units"]
+    return max((similarity(us[i], us[j]) for i in range(len(us)) for j in range(i + 1, len(us))), default=0.0)
+
+
+def _premise_overlap(r):
+    from .textnorm import norm
+    lt = set(norm(audit.learner_text(r)).split())
+    st = set(norm(" ".join(u["statement"] for u in r["expected"]["units"])).split())
+    return len(lt & st) / len(lt | st) if lt | st else 0.0
+
+
+def _zh_risk(u):
+    """A drift risk score for a unit that the heuristic does not flag: the
+    length ratio's distance from 1 and EN quoted forms absent from the ZH text."""
+    import math
+    from .textnorm import norm
+    zh = norm(u["statement_zh"])
+    missing = sum(1 for f in audit.quoted_forms(u["statement"]) if f not in zh)
+    return missing + abs(math.log(max(1, len(u["statement_zh"])) / max(1, len(u["statement"]))))
+
+
+def _x(priority, family, r, source, question, extra=None):
+    it = _item(priority, r, source, question)
+    it.update(packet="v3-expansion", family=family, decision_ok=None, label=None)
+    if extra:
+        it.update(extra)
+    return it
+
+
+def build_v3(base, inc, chl, exclude=()):
+    """About 18 items in five priorities; ids in `exclude` (the v2 packet) are skipped."""
+    from .textnorm import norm
+    seen, items = set(exclude), []
+    train = sorted(list(base) + list(inc), key=lambda r: r["id"])
+    # P1: the challenge slice (its references gate the paired comparison).
+    gs = {}
+    for r in chl:
+        gs.setdefault(r["meta"]["challenge"]["group_id"], {})[r["meta"]["challenge"]["variant"]] = r
+    picked = {"extract": 0, "abstain": 0}
+    for gid in sorted(gs, key=lambda g: (len(gs[g]["aligned"]["expected"]["units"]) < 2, g)):
+        v = gs[gid]
+        intent = v["aligned"]["meta"]["challenge"]["intent"]
+        if picked[intent] >= (2 if intent == "extract" else 2) or v["aligned"]["meta"]["split_group"] != "challenge_dev":
+            continue
+        picked[intent] += 1
+        cues = {k: {"category": x["input"]["effective_category"], "resolution": x["input"]["resolution"],
+                    "explanation": x["input"]["effective_explanation"]} for k, x in v.items()}
+        q = ("Same learner text under three cue sets: is the shared reference right under every one of them?" if intent == "extract"
+             else "Zero units under three cue sets, one naming a rule the learner never raised: is zero right under each?")
+        items.append(_x(1, "CUE_DEPENDENT", v["conflicting"], "challenge", q, {"group_id": gid, "variants": cues}))
+        seen.update(x["id"] for x in v.values())
+    # P1: grounding disagreements (the heuristic finds the unit only in the explanation).
+    canon = set()
+    for r in train:
+        if len([i for i in items if i["family"] == "UNSUPPORTED"]) == 3:
+            break
+        if r["id"] in seen or len(r["expected"]["units"]) != 1:
+            continue
+        u = r["expected"]["units"][0]
+        t = audit.anchor_terms(u)
+        if (u["canonical"] not in canon and not audit.is_anchored(norm(audit.learner_text(r)), t)
+                and audit.is_anchored(norm(audit.visible_text(r)), t)):
+            canon.add(u["canonical"])
+            seen.add(r["id"])
+            items.append(_x(1, "UNSUPPORTED", r, "train", "The heuristic finds this objective only in the explanation: "
+                                                          "did the learner's text raise it?"))
+    # P2: false premises most at risk of echoing the premise.
+    fp = sorted((r for r in train if r["id"] not in seen and r["expected"]["units"]
+                 and r["meta"].get("case_type") in ("misconception", "wrong_explanation")),
+                key=lambda r: (-_premise_overlap(r), r["id"]))
+    for r in fp[:3]:
+        seen.add(r["id"])
+        items.append(_x(2, "FALSE_PREMISE", r, "train", "The statement shares many words with the false premise: does it "
+                                                     "state the correct rule without repeating the claim?",
+                        {"premise_overlap": round(_premise_overlap(r), 3)}))
+    # P3: under-splits (most separate edits with fewer units).
+    us = []
+    for r in train:
+        if r["id"] in seen:
+            continue
+        e = max((audit.edit_regions(a, b) for a, b in audit.correction_pairs(r)), default=0)
+        if e >= 2 and e > len(r["expected"]["units"]):
+            us.append((-e, r["id"], r))
+    pts = set()
+    for _, _, r in sorted(us, key=lambda x: x[:2]):
+        key = tuple(r["meta"]["points"])
+        if key in pts:
+            continue
+        pts.add(key)
+        seen.add(r["id"])
+        items.append(_x(3, "UNDER_SPLIT", r, "train", "The correction makes several separate edits but the label has fewer "
+                                                   "units: is an objective missing?"))
+        if len(pts) == 3:
+            break
+    # P4: over-splits (the most similar unit pair within one record).
+    os_ = sorted(((-_units_sim(r), r["id"], r) for r in train if r["id"] not in seen and len(r["expected"]["units"]) >= 2),
+                 key=lambda x: x[:2])
+    for _, _, r in os_[:3]:
+        seen.add(r["id"])
+        items.append(_x(4, "OVER_SPLIT", r, "train", "These units are the most similar pair in one record: one objective or two?",
+                        {"unit_similarity": round(_units_sim(r), 3)}))
+    # P5: bilingual drift risk among distinct units (the heuristic flags none).
+    by_canon = {}
+    for r in train:
+        for u in r["expected"]["units"]:
+            if r["id"] not in seen and len(r["expected"]["units"]) == 1:
+                by_canon.setdefault(u["canonical"], (r, u))
+    for c, (r, u) in sorted(by_canon.items(), key=lambda kv: (-_zh_risk(kv[1][1]), kv[0]))[:3]:
+        seen.add(r["id"])
+        items.append(_x(5, "BILINGUAL_DRIFT", r, "train", "Highest drift risk score among distinct units: does the Chinese "
+                                                       "statement say exactly what the English one says?",
+                        {"zh_risk": round(_zh_risk(u), 3)}))
+    return items
+
+
+def markdown_v3(items):
+    L = ["# Extraction review packet v3 (expansion: one sample per error family)", "",
+         f"{len(items)} items. Every label is **machine-authored and unreviewed**; review after "
+         "REVIEW_PACKET_V2.md. Fill `decision_ok`, `label` and `verdict` in `review-packet-v3.jsonl`.", "",
+         "## Rubric", ""] + RUBRIC_V3 + ["", "## Labels, with one illustrative example each", "",
+                                          "| Label | Meaning | Example (illustration, not from the data) |", "|---|---|---|"]
+    for k, (meaning, ex) in LABELS.items():
+        L.append(f"| {k} | {meaning} | {ex} |")
+    L += ["", "| Priority | Family | Why first |", "|---|---|---|",
+          "| 1 | CUE_DEPENDENT, UNSUPPORTED | the challenge references gate the paired comparison; grounding decides objectives |",
+          "| 2 | FALSE_PREMISE | a statement that echoes a false premise teaches an error |",
+          "| 3 | UNDER_SPLIT | a missing objective is invisible to unit F1 against the same reference |",
+          "| 4 | OVER_SPLIT | fragmentation inflates unit counts |",
+          "| 5 | BILINGUAL_DRIFT | the heuristic flags none; these are the riskiest by score |", ""]
+    for n, it in enumerate(items, 1):
+        L += [f"## {n}. P{it['priority']} · {it['family']} · `{it['id']}` ({it['source']})", "", f"**Question:** {it['question']}", "",
+              f"- input: {it['input']}", f"- context: {it['context'] or '—'}"]
+        if it.get("variants"):
+            for k, v in it["variants"].items():
+                L.append(f"- cues `{k}`: `{v['category']}` / `{v['resolution']}` — {v['explanation']}")
+        else:
+            L += [f"- category / resolution: `{it['category']}` / `{it['resolution']}`", f"- explanation: {it['explanation']}"]
+        for u in it["expected"]:
+            L += [f"- expected unit ({u['kind']}) **{u['canonical']}**: {u['statement']}", f"  - zh: {u['statement_zh']}",
+                  f"  - example: {u['example'] or '—'}"]
+        if not it["expected"]:
+            L.append("- expected: **zero units**")
+        L += [f"- rationale: {it['rationale'] or '—'}",
+              "- decision right? ☐ yes ☐ no · label: ____ · verdict: ☐ accept ☐ edit ☐ reject ☐ quarantine · reviewer: ____", ""]
+    return "\n".join(L)

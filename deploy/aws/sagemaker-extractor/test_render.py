@@ -48,31 +48,51 @@ class Render(unittest.TestCase):
 
 
 class Readiness(unittest.TestCase):
-    def test_package_renders_every_job_from_the_data_hashes(self):
-        import build_readiness
+    def package_data(self, d, prompt_rows=None):
         rec = {"id": "r", "split": "train", "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "u"},
                                                          {"role": "assistant", "content": '{"units":[]}'}]}
+        data = Path(d) / "data"
+        data.mkdir()
+        for name in ("sft-train.jsonl", "sft-dev.jsonl"):
+            (data / name).write_text(json.dumps(rec) + "\n")
+        prompt_rows = prompt_rows or [{"id": i, "messages": rec["messages"][:2]}
+                                      for i in ("ext-evl-0001", "ext-evl-0002", "ext-evl-0001#rb", "ext-evl-0002#rb", "ext-chl-0001")]
+        (data / "comparison-prompts.jsonl").write_text("".join(json.dumps(r) + "\n" for r in prompt_rows))
+        return data
+
+    def test_package_renders_every_job_from_the_data_hashes(self):
+        import build_readiness
         with tempfile.TemporaryDirectory() as d:
-            data = Path(d) / "data"
-            data.mkdir()
-            for name in ("sft-train.jsonl", "sft-dev.jsonl"):
-                (data / name).write_text(json.dumps(rec) + "\n")
-            for name in ("eval-prompts-inputs-only.jsonl", "probe-rb-prompts.jsonl", "sub50-prompts.jsonl", "sub50-probe-prompts.jsonl"):
-                (data / name).write_text(json.dumps({"id": name, "messages": rec["messages"][:2]}) + "\n")
-            m, rendered = build_readiness.build(data, Path(d) / "out")
-            self.assertEqual(set(rendered), {"sft-smoke", "sft-experiment", "predict-base", "predict-eval"})
-            self.assertEqual(m["files"]["predict-full/eval-prompts.jsonl"]["records"], 2)
+            m, rendered = build_readiness.build(self.package_data(d), Path(d) / "out")
+            self.assertEqual(set(rendered), {"sft-smoke", "sft-experiment", "predict-base-a", "predict-base-b",
+                                             "predict-eval-a", "predict-eval-b"})
+            self.assertEqual(m["files"]["predict-a/eval-prompts.jsonl"]["records"], 3)
+            self.assertEqual(m["files"]["predict-b/eval-prompts.jsonl"]["records"], 2)
             t = m["files"]["sft-train.jsonl"]["sha256"]
             self.assertTrue(m["files"]["sft-dev.jsonl"]["s3_key"].startswith(f"extractor/datasets/{t}/dev/"))
-            smoke = json.loads((Path(d) / "out" / "rendered" / "sft-smoke.json").read_text())
-            exp = json.loads((Path(d) / "out" / "rendered" / "sft-experiment.json").read_text())
+            out = Path(d) / "out"
+            smoke = json.loads((out / "rendered" / "sft-smoke.json").read_text())
+            exp = json.loads((out / "rendered" / "sft-experiment.json").read_text())
             self.assertTrue(json.loads(smoke["HyperParameters"]["config_json"])["smoke"])
             self.assertFalse(json.loads(exp["HyperParameters"]["config_json"])["smoke"])
             self.assertEqual(exp["HyperParameters"]["train_sha256"], t)
-            pred = json.loads((Path(d) / "out" / "rendered" / "predict-eval.json").read_text())
-            full = Path(d) / "out" / "prompts" / "full" / "eval-prompts.jsonl"
-            self.assertEqual(pred["HyperParameters"]["prompts_sha256"], build_readiness.sha(full))
+            pa = json.loads((out / "rendered" / "predict-eval-a.json").read_text())
+            self.assertEqual(pa["HyperParameters"]["prompts_sha256"], build_readiness.sha(out / "prompts" / "a" / "eval-prompts.jsonl"))
+            self.assertEqual(pa["HyperParameters"]["dtype"], "bfloat16")
+            chk = json.loads((out / "readiness-checks.json").read_text())
+            self.assertTrue(chk["pass"])
+            names = list(chk["output_naming"]["jobs"].values())
+            self.assertEqual(len(set(names)), 6)
+            self.assertIn("predict-base-a", chk["output_naming"]["jobs"]["predict-base-a"])
 
+    def test_package_refuses_prompts_that_carry_references(self):
+        import build_readiness
+        bad = [{"id": "ext-evl-0001", "messages": [{"role": "system", "content": "s"},
+                                                   {"role": "user", "content": json.dumps({"original_input": "x", "expected": []})}]}]
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(SystemExit) as e:
+                build_readiness.build(self.package_data(d, bad), Path(d) / "out")
+            self.assertIn("reference fields", str(e.exception))
 
 if __name__ == "__main__":
     unittest.main()

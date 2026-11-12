@@ -1,0 +1,92 @@
+{
+  "against": {
+    "boundary": {
+      "exact_duplicates": [],
+      "examples": [],
+      "near_pairs_ge_0.5": 0,
+      "near_pairs_ge_0.8": 0,
+      "pool": "boundary",
+      "pool_records": 80
+    },
+    "eval": {
+      "exact_duplicates": [],
+      "examples": [],
+      "near_pairs_ge_0.5": 0,
+      "near_pairs_ge_0.8": 0,
+      "pool": "frozen eval",
+      "pool_records": 200
+    },
+    "train_dev": {
+      "exact_duplicates": [],
+      "examples": [],
+      "near_pairs_ge_0.5": 0,
+      "near_pairs_ge_0.8": 0,
+      "pool": "train+dev",
+      "pool_records": 1382
+    }
+  },
+  "between_groups": {
+    "exact_duplicates": [],
+    "examples": [],
+    "near_pairs_ge_0.5": 0,
+    "near_pairs_ge_0.8": 0
+  },
+  "composition": {
+    "by_variant_and_cue": {
+      "aligned:aligned_objective_category": 20,
+      "aligned:aligned_other_abstention": 12,
+      "conflicting:other_dismissive": 10,
+      "conflicting:other_no_summary": 10,
+      "conflicting:real_category_rule_not_raised": 12,
+      "rb:production_rule_based": 32
+    },
+    "learner_text_languages": "French, English and Chinese learner messages",
+    "resolution": {
+      "accepted": 32,
+      "unreviewed": 64
+    },
+    "units_hist": {
+      "0": 36,
+      "1": 51,
+      "2": 9
+    }
+  },
+  "groups": {
+    "count": 32,
+    "problems": {
+      "family_shared_between_groups": []
+    }
+  },
+  "not_unreviewed": [],
+  "objectives": {
+    "canonicals_in_training": [],
+    "headwords_in_training": [],
+    "points": 23,
+    "points_in_training": [],
+    "points_shared_with_frozen_eval": 23
+  },
+  "pass": true,
+  "production_validation": {
+    "invalid_ids": [],
+    "of": 96,
+    "units_changed_by_validation": [],
+    "valid": 96
+  },
+  "records": 96,
+  "schema": "flh_extraction_challenge_check_v1",
+  "splits": {
+    "both_intents_in_both_splits": true,
+    "groups_by_split_and_intent": {
+      "challenge_dev/abstain": 3,
+      "challenge_dev/extract": 5,
+      "challenge_test/abstain": 9,
+      "challenge_test/extract": 15
+    },
+    "records_by_split": {
+      "challenge_dev": 24,
+      "challenge_test": 72
+    },
+    "refused_by_sft": "96/96"
+  },
+  "structural_errors": {}
+}

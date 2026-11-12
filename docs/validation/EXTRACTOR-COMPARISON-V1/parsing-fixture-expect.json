@@ -1,0 +1,17 @@
+{
+  "prediction_rows": 473,
+  "status_counts": {
+    "duplicate_prediction": 6,
+    "invalid_output": 12,
+    "missing_prediction": 6,
+    "unparseable:code_fence": 7,
+    "unparseable:leading_text": 9,
+    "unparseable:think_block": 7,
+    "unparseable:trailing_text": 7,
+    "unparseable:truncated_at_max_new_tokens": 7,
+    "valid_empty": 57,
+    "valid_extra_keys": 6,
+    "valid_units": 348
+  },
+  "unknown_id_rows": 1
+}

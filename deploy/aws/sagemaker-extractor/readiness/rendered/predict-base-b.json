@@ -1,5 +1,5 @@
 {
-  "TrainingJobName": "flh-extractor-predict-20261112-025505",
+  "TrainingJobName": "flh-extractor-predict-base-b-20261112-051238",
   "AlgorithmSpecification": {
     "TrainingImage": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
     "TrainingInputMode": "File",
@@ -15,10 +15,11 @@
   },
   "RoleArn": "arn:aws:iam::000000000000:role/flh-extractor-exec",
   "HyperParameters": {
-    "prompts_sha256": "d63dc7f5295e026ea991d3a87416c468d724573f2631a81ae22f2daa0dc31b22",
+    "prompts_sha256": "52b00b781bf1eea3631e8e25a33e6d5ce3e6dde87406d75c88109def760c390f",
     "max_new_tokens": "512",
     "template_kwargs": "{\"enable_thinking\": false}",
-    "model_profile": "qwen3.5-4b"
+    "model_profile": "qwen3.5-4b",
+    "dtype": "bfloat16"
   },
   "InputDataConfig": [
     {
@@ -28,7 +29,7 @@
       "DataSource": {
         "S3DataSource": {
           "S3DataType": "S3Prefix",
-          "S3Uri": "s3://example-flh-extractor-private/extractor/prompts/d63dc7f5295e026ea991d3a87416c468d724573f2631a81ae22f2daa0dc31b22/",
+          "S3Uri": "s3://example-flh-extractor-private/extractor/prompts/52b00b781bf1eea3631e8e25a33e6d5ce3e6dde87406d75c88109def760c390f/",
           "S3DataDistributionType": "FullyReplicated"
         }
       }

@@ -1,0 +1,258 @@
+{
+  "matrix_sha256": "b3f66edaf76b0886a82a76a0bcafef5a472e406d4f0d811b01eda3ba182e7a66",
+  "real_runs_measured": 1,
+  "refused": [],
+  "schema": "flh_extractor_comparison_report_v1",
+  "systems": {
+    "current_extractor": {
+      "metrics": null,
+      "rows": null,
+      "status": "NOT_PERFORMED"
+    },
+    "qwen3.5-4b-tuned": {
+      "metrics": null,
+      "rows": null,
+      "status": "NOT_PERFORMED"
+    },
+    "qwen3.5-4b-untuned": {
+      "metrics": {
+        "challenge_test": {
+          "by_intent": {
+            "abstain": {
+              "decision_consistent": 0.556,
+              "paired_correct": 0.556
+            },
+            "extract": {
+              "decision_consistent": 0.6,
+              "paired_correct": 0.6
+            }
+          },
+          "confusion": {
+            "abstention": {
+              "false_extraction": 0,
+              "invalid_or_missing": 10,
+              "over_abstention": 0,
+              "true_abstain": 23,
+              "true_extraction": 39
+            },
+            "basis": "exact",
+            "by_category_cue": {
+              "category_not_other": {
+                "ref_units": {
+                  "empty": 0,
+                  "invalid": 4,
+                  "missing": 0,
+                  "units": 26
+                },
+                "ref_zero": {
+                  "empty": 15,
+                  "invalid": 3,
+                  "missing": 0,
+                  "units": 0
+                }
+              },
+              "category_other": {
+                "ref_units": {
+                  "empty": 0,
+                  "invalid": 2,
+                  "missing": 0,
+                  "units": 13
+                },
+                "ref_zero": {
+                  "empty": 8,
+                  "invalid": 1,
+                  "missing": 0,
+                  "units": 0
+                }
+              }
+            },
+            "ref_by_pred": {
+              "ref_units": {
+                "empty": 0,
+                "invalid": 6,
+                "missing": 0,
+                "units": 39
+              },
+              "ref_zero": {
+                "empty": 23,
+                "invalid": 4,
+                "missing": 0,
+                "units": 0
+              }
+            }
+          },
+          "headline": {
+            "abstention_rate": 0.852,
+            "cue_flip_rate": 0.0,
+            "exact_unit_count_rate": 1.0,
+            "heuristic_unit_f1": 1.0,
+            "over_abstention_rate": 0.0,
+            "paired_accuracy": 0.583,
+            "paired_consistency": 0.583,
+            "structural_validity": 0.861
+          }
+        },
+        "frozen": {
+          "confusion": {
+            "abstention": {
+              "false_extraction": 0,
+              "invalid_or_missing": 28,
+              "over_abstention": 0,
+              "true_abstain": 17,
+              "true_extraction": 155
+            },
+            "basis": "exact",
+            "by_category_cue": {
+              "category_not_other": {
+                "ref_units": {
+                  "empty": 0,
+                  "invalid": 25,
+                  "missing": 0,
+                  "units": 155
+                },
+                "ref_zero": {
+                  "empty": 0,
+                  "invalid": 0,
+                  "missing": 0,
+                  "units": 0
+                }
+              },
+              "category_other": {
+                "ref_units": {
+                  "empty": 0,
+                  "invalid": 0,
+                  "missing": 0,
+                  "units": 0
+                },
+                "ref_zero": {
+                  "empty": 17,
+                  "invalid": 3,
+                  "missing": 0,
+                  "units": 0
+                }
+              }
+            },
+            "ref_by_pred": {
+              "ref_units": {
+                "empty": 0,
+                "invalid": 25,
+                "missing": 0,
+                "units": 155
+              },
+              "ref_zero": {
+                "empty": 17,
+                "invalid": 3,
+                "missing": 0,
+                "units": 0
+              }
+            }
+          },
+          "headline": {
+            "abstention_rate": 0.85,
+            "bilingual_flagged_units": 0,
+            "exact_unit_count_rate": 1.0,
+            "false_extraction_on_zero_refs": 0,
+            "not_anchored_units": 1,
+            "over_split+merged+duplicate": 0,
+            "structural_validity": 0.86,
+            "unit_f1": 1.0,
+            "unit_refs_answered_empty": 0,
+            "unsupported_units": 0
+          },
+          "over_abstention_rate": 0.0
+        },
+        "rb": {
+          "confusion": {
+            "abstention": {
+              "false_extraction": 0,
+              "invalid_or_missing": 29,
+              "over_abstention": 0,
+              "true_abstain": 17,
+              "true_extraction": 154
+            },
+            "basis": "exact",
+            "by_category_cue": {
+              "category_not_other": {
+                "ref_units": {
+                  "empty": 0,
+                  "invalid": 26,
+                  "missing": 0,
+                  "units": 154
+                },
+                "ref_zero": {
+                  "empty": 17,
+                  "invalid": 3,
+                  "missing": 0,
+                  "units": 0
+                }
+              },
+              "category_other": {
+                "ref_units": {
+                  "empty": 0,
+                  "invalid": 0,
+                  "missing": 0,
+                  "units": 0
+                },
+                "ref_zero": {
+                  "empty": 0,
+                  "invalid": 0,
+                  "missing": 0,
+                  "units": 0
+                }
+              }
+            },
+            "ref_by_pred": {
+              "ref_units": {
+                "empty": 0,
+                "invalid": 26,
+                "missing": 0,
+                "units": 154
+              },
+              "ref_zero": {
+                "empty": 17,
+                "invalid": 3,
+                "missing": 0,
+                "units": 0
+              }
+            }
+          },
+          "headline": {
+            "abstention_rate": 0.85,
+            "bilingual_flagged_units": 0,
+            "exact_unit_count_rate": 1.0,
+            "false_extraction_on_zero_refs": 0,
+            "not_anchored_units": 11,
+            "over_split+merged+duplicate": 0,
+            "structural_validity": 0.855,
+            "unit_f1": 1.0,
+            "unit_refs_answered_empty": 0,
+            "unsupported_units": 0
+          },
+          "over_abstention_rate": 0.0
+        }
+      },
+      "rows": {
+        "references": 472,
+        "scorable": 405,
+        "status_counts": {
+          "duplicate_prediction": 6,
+          "invalid_output": 12,
+          "missing_prediction": 6,
+          "unparseable:code_fence": 7,
+          "unparseable:leading_text": 9,
+          "unparseable:think_block": 7,
+          "unparseable:trailing_text": 7,
+          "unparseable:truncated_at_max_new_tokens": 7,
+          "valid_empty": 57,
+          "valid_extra_keys": 6,
+          "valid_units": 348
+        },
+        "unknown_id_rows": 1,
+        "unknown_ids": [
+          "not-in-slice-0001"
+        ]
+      },
+      "status": "MEASURED"
+    }
+  }
+}

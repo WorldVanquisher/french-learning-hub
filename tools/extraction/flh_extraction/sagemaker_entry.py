@@ -13,6 +13,11 @@
 No evaluation channel exists: evaluation inputs are scored in a separate
 prediction step, and their references never enter a training job.
 FLH_SM_ROOT overrides /opt/ml for local tests.
+
+Before training or prediction the installed stack is compared with
+requirements-train.txt (packaging.py) and written to /opt/ml/model/stack-check.json;
+a mismatch (a stale image) fails the job unless FLH_ALLOW_STACK_MISMATCH=1,
+which only tiny offline fixtures set.
 """
 
 import hashlib
@@ -28,6 +33,19 @@ from . import train
 
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def stack_gate(root):
+    """Record the installed stack beside the outputs; refuse a mismatch unless allowed."""
+    from . import packaging
+    rep = packaging.check()
+    (root / "model").mkdir(parents=True, exist_ok=True)
+    (root / "model" / "stack-check.json").write_text(json.dumps(rep, indent=2, sort_keys=True) + "\n")
+    if not rep["stack_matches_requirements"]:
+        if not packaging.allowed_mismatch():
+            raise RuntimeError(f"{rep['verdict']} (set {packaging.ALLOW_ENV}=1 only for a tiny offline fixture)")
+        print(json.dumps({"event": "stack_mismatch_allowed", "verdict": rep["verdict"]}))
+    return rep
 
 
 def main(argv):
@@ -49,6 +67,7 @@ def main(argv):
             raise ValueError("train_sha256 is missing or does not match the train channel")
         if dv.is_file() and hp.get("dev_sha256") and sha(dv) != hp["dev_sha256"]:
             raise ValueError("dev_sha256 does not match the dev channel")
+        stack_gate(root)
         cfg_obj = json.loads(hp.get("config_json") or "{}")
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
             json.dump(cfg_obj, f)
@@ -76,9 +95,10 @@ def predict(root, failure):
         prompts = data / "prompts" / "eval-prompts.jsonl"
         if not hp.get("prompts_sha256") or sha(prompts) != hp["prompts_sha256"]:
             raise ValueError("prompts_sha256 is missing or does not match the prompts channel")
+        stack_gate(root)
         args = ["--model", str(data / "model"), "--prompts", str(prompts), "--out", str(root / "model" / "predictions.jsonl"),
                 "--max-new-tokens", hp.get("max_new_tokens", "512"), "--template-kwargs", hp.get("template_kwargs", "{}"),
-                "--profile", hp.get("model_profile", "auto")]
+                "--profile", hp.get("model_profile", "auto"), "--dtype", hp.get("dtype", "default")]
         if (data / "adapter").is_dir():
             args += ["--adapter", str(data / "adapter")]
         (root / "model").mkdir(parents=True, exist_ok=True)

@@ -17,8 +17,22 @@
   probe     --eval E --analyses A --variant rb|swap --out P.jsonl   (production-input probe; eval only)
   control-matrix --refs R --render BIN --out DIR [--probe P.jsonl]  (controlled failures vs metrics)
   review-packet --base T --increment I --probe P --out PREFIX   (25 prioritized items; verdicts left empty)
+            [--challenge C --v3-out PREFIX]   (v3 expansion: one sample per error family, rubric, one example per label)
   promotion-check --candidate-frozen Q --candidate-probe Q --baseline-frozen Q [--baseline-probe Q] [--losses L]
             [--run-manifest M] [--input-manifest M] [--review V] --out PREFIX   (PASS / FAIL / PENDING per criterion)
+  shortcut-repro --eval E --probe-rb P --probe-swap S --render BIN --out DIR
+            (oracle, category-only and constant-empty systems; manifests and abstention confusion counts)
+  account   --slice R --predictions P --render BIN --out PREFIX   (one status per reference row; nothing dropped)
+  challenge-check --challenge C --train T [T2 …] --eval E [--boundary B] [--validated V] --out REPORT.json
+            (paired cue challenge slice: groups, splits, production validation, leakage)
+  paired-consistency --challenge C --results V [--outputs O] --out PREFIX   (paired consistency + components + aggregate)
+  paired-demo --challenge C --render BIN --out DIR   (oracle, category-only, constant-empty through the validator)
+  comparison-slice --eval E --probe-rb P --challenge C --rendered R [R2 …] --out DIR   (refs, inputs, prompts)
+  comparison-matrix --slice-dir DIR --rendered R --repo ROOT --out MATRIX.json   (pinned; every run NOT_PERFORMED)
+  compare   --matrix M --slice S --render BIN [--predictions SYSTEM=FILE …] --out PREFIX   (missing systems stay NOT_PERFORMED)
+  parsing-fixture --slice S --out P.jsonl --expect E.json   (raw outputs with known faults, for compare)
+  decision-report --comparison R [--human H] [--review V …] [--losses L] [--run-manifest M] [--input-manifest M] --out PREFIX
+            (WINNER_FOR_OWNER_DECISION / PENDING / NO_WINNER / REFUSED across the three systems)
 """
 
 import argparse
@@ -26,8 +40,8 @@ import json
 import sys
 from pathlib import Path
 
-from . import (audit, categories, controls, evaluate, increment, manifest, probe, promotion, quality, records,
-               review_packet, sft, splits)
+from . import (audit, categories, challenge, comparison, controls, decision, evaluate, increment, manifest, matrix, paired, probe,
+               promotion, quality, records, review_packet, sft, splits)
 
 
 def dump(path, obj):
@@ -52,6 +66,7 @@ def main(argv):
     s = sub.add_parser("sft"); s.add_argument("--candidates", nargs="+"); s.add_argument("--rendered", nargs="+"); s.add_argument("--out")
     s.add_argument("--out-train"); s.add_argument("--out-dev")
     p = sub.add_parser("eval-prompts"); p.add_argument("--candidates"); p.add_argument("--rendered"); p.add_argument("--out")
+    p.add_argument("--split-groups", nargs="+", default=["eval"])
     j = sub.add_parser("attach-inputs"); j.add_argument("--predictions"); j.add_argument("--candidates"); j.add_argument("--out")
     k = sub.add_parser("categories"); k.add_argument("--refs"); k.add_argument("--results"); k.add_argument("--report")
     k.add_argument("--title", default="Failure categories"); k.add_argument("--out")
@@ -70,12 +85,131 @@ def main(argv):
     cm.add_argument("--probe"); cm.add_argument("--out", required=True)
     rp = sub.add_parser("review-packet"); rp.add_argument("--base", required=True); rp.add_argument("--increment", required=True)
     rp.add_argument("--probe", required=True); rp.add_argument("--out", required=True)
+    rp.add_argument("--challenge"); rp.add_argument("--v3-out")
     pc = sub.add_parser("promotion-check")
     for k in ("--candidate-frozen", "--candidate-probe", "--baseline-frozen", "--out"):
         pc.add_argument(k, required=True)
     for k in ("--baseline-probe", "--losses", "--run-manifest", "--input-manifest", "--review"):
         pc.add_argument(k)
+    sr = sub.add_parser("shortcut-repro")
+    for k in ("--eval", "--probe-rb", "--probe-swap", "--render", "--out"):
+        sr.add_argument(k, required=True)
+    ac = sub.add_parser("account")
+    for k in ("--slice", "--predictions", "--render", "--out"):
+        ac.add_argument(k, required=True)
+    ch = sub.add_parser("challenge-check"); ch.add_argument("--challenge", required=True)
+    ch.add_argument("--train", nargs="+", required=True); ch.add_argument("--eval", required=True)
+    ch.add_argument("--boundary"); ch.add_argument("--validated"); ch.add_argument("--out", required=True)
+    pcs = sub.add_parser("paired-consistency"); pcs.add_argument("--challenge", required=True)
+    pcs.add_argument("--results", required=True); pcs.add_argument("--outputs"); pcs.add_argument("--out", required=True)
+    pd = sub.add_parser("paired-demo")
+    for k in ("--challenge", "--render", "--out"):
+        pd.add_argument(k, required=True)
+    cs = sub.add_parser("comparison-slice")
+    for k in ("--eval", "--probe-rb", "--challenge", "--out"):
+        cs.add_argument(k, required=True)
+    cs.add_argument("--rendered", nargs="+", required=True)
+    cmx = sub.add_parser("comparison-matrix")
+    for k in ("--slice-dir", "--rendered", "--repo", "--out"):
+        cmx.add_argument(k, required=True)
+    cp = sub.add_parser("compare")
+    for k in ("--matrix", "--slice", "--render", "--out"):
+        cp.add_argument(k, required=True)
+    cp.add_argument("--predictions", nargs="*", default=[])
+    pf = sub.add_parser("parsing-fixture")
+    for k in ("--slice", "--out", "--expect"):
+        pf.add_argument(k, required=True)
+    dr = sub.add_parser("decision-report"); dr.add_argument("--comparison", required=True); dr.add_argument("--human")
+    dr.add_argument("--review", nargs="*", default=[]); dr.add_argument("--losses"); dr.add_argument("--run-manifest")
+    dr.add_argument("--input-manifest"); dr.add_argument("--out", required=True)
     a = ap.parse_args(argv)
+    if a.cmd == "decision-report":
+        rd = lambda x: json.loads(Path(x).read_text(encoding="utf-8")) if x else None  # noqa: E731
+        rep = decision.decide(rd(a.comparison), rd(a.human), [r for f in a.review for r in records.load_jsonl(f)] or None,
+                              records.load_jsonl(a.losses) if a.losses else None, rd(a.run_manifest), rd(a.input_manifest))
+        dump(a.out + ".json", rep)
+        Path(a.out + ".md").write_text(decision.markdown(rep), encoding="utf-8")
+        print(json.dumps({"verdict": rep["verdict"], "winner": rep["winner"], "reasons": rep["reasons"]}, ensure_ascii=False))
+        return {"WINNER_FOR_OWNER_DECISION": 0, "PENDING": 3}.get(rep["verdict"], 1)
+    if a.cmd == "parsing-fixture":
+        rows, expect = comparison.parsing_fixture(records.load_jsonl(a.slice))
+        write_jsonl(a.out, rows)
+        dump(a.expect, {"status_counts": expect, "unknown_id_rows": 1, "prediction_rows": len(rows)})
+        print(json.dumps({"rows": len(rows), "expect": expect}))
+        return 0
+    if a.cmd == "comparison-slice":
+        out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+        refs, inputs, prompts = matrix.build_slice(records.load_jsonl(a.eval), records.load_jsonl(a.probe_rb),
+                                                   records.load_jsonl(a.challenge),
+                                                   [r for f in a.rendered for r in records.load_jsonl(f)])
+        for name, rows in (("comparison-slice.jsonl", refs), ("comparison-inputs.jsonl", inputs), ("comparison-prompts.jsonl", prompts)):
+            matrix.write_jsonl(out / name, rows)
+        from collections import Counter
+        print(json.dumps({"records": len(refs), "parts": dict(Counter(matrix.part_of(r) for r in refs))}))
+        return 0
+    if a.cmd == "comparison-matrix":
+        m = matrix.build_matrix(a.slice_dir, records.load_jsonl(a.rendered)[0], a.repo)
+        dump(a.out, m)
+        Path(a.out).with_suffix(".md").write_text(matrix.markdown(m), encoding="utf-8")
+        print(json.dumps({"matrix_sha256": m["matrix_sha256"], "statuses": [s["status"] for s in m["systems"]]}))
+        return 0
+    if a.cmd == "compare":
+        m = json.loads(Path(a.matrix).read_text(encoding="utf-8"))
+        preds = {}
+        for x in a.predictions:
+            k, f = x.split("=", 1)
+            preds[k] = records.load_jsonl(f)
+        unknown = sorted(set(preds) - {s["system"] for s in m["systems"]})
+        if unknown:
+            raise SystemExit(f"unknown systems {unknown}")
+        rep = matrix.compare(m, a.slice, preds, controls.render_validator(a.render, Path(a.out + ".work")))
+        dump(a.out + ".json", rep)
+        Path(a.out + ".md").write_text(matrix.markdown(m, rep), encoding="utf-8")
+        print(json.dumps({"refused": rep["refused"], **{k: v["status"] for k, v in rep["systems"].items()}}))
+        return 1 if rep["refused"] else 0
+    if a.cmd == "paired-consistency":
+        rep = paired.report(records.load_jsonl(a.challenge), records.load_jsonl(a.results),
+                            records.load_jsonl(a.outputs) if a.outputs else None)
+        dump(a.out + ".json", rep)
+        Path(a.out + ".md").write_text(paired.markdown({"system": rep}), encoding="utf-8")
+        print(json.dumps(rep["headline"]))
+        return 0
+    if a.cmd == "paired-demo":
+        out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+        reps = paired.demo(records.load_jsonl(a.challenge), controls.render_validator(a.render, out / "work"))
+        dump(out / "paired-demo.json", {"challenge": comparison.file_entry(a.challenge), "systems": reps})
+        (out / "paired-demo.md").write_text(paired.markdown(reps), encoding="utf-8")
+        print(json.dumps({k: v["headline"] for k, v in reps.items()}))
+        return 0
+    if a.cmd == "challenge-check":
+        rep = challenge.check(records.load_jsonl(a.challenge), [r for t in a.train for r in records.load_jsonl(t)],
+                              records.load_jsonl(a.eval), records.load_jsonl(a.boundary) if a.boundary else [],
+                              records.load_jsonl(a.validated) if a.validated else None)
+        dump(a.out, rep)
+        pv = rep["production_validation"]
+        print(json.dumps({"pass": rep["pass"], "records": rep["records"], "groups": rep["groups"]["count"],
+                          "production_valid": pv if isinstance(pv, str) else f"{pv['valid']}/{pv['of']}",
+                          "splits": rep["splits"], "between_groups_ge_0.5": rep["between_groups"]["near_pairs_ge_0.5"],
+                          "near_ge_0.5": {k: v["near_pairs_ge_0.5"] for k, v in rep["against"].items() if isinstance(v, dict)},
+                          "objectives": rep["objectives"]}, ensure_ascii=False))
+        return 0 if rep["pass"] else 1
+    if a.cmd == "shortcut-repro":
+        out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+        val = controls.render_validator(a.render, out / "work")
+        slices = {n: (f, records.load_jsonl(f)) for n, f in (("frozen", a.eval), ("rb", a.probe_rb), ("swap", a.probe_swap))}
+        rep = comparison.shortcut_repro(slices, val, out / "runs")
+        dump(out / "shortcut-repro.json", rep)
+        (out / "shortcut-repro.md").write_text(comparison.shortcut_markdown(rep), encoding="utf-8")
+        print(json.dumps({k: v["confusion"]["abstention"] for k, v in rep["runs"].items()}))
+        return 0
+    if a.cmd == "account":
+        refs = records.load_jsonl(a.slice)
+        preds = records.load_jsonl(a.predictions)
+        acc = comparison.account_with_validator([r["id"] for r in refs], {r["id"]: r["input"] for r in refs}, preds,
+                                                controls.render_validator(a.render, Path(a.out + ".work")))
+        dump(a.out + ".json", acc)
+        print(json.dumps({k: acc[k] for k in ("references", "scorable", "status_counts", "unknown_id_rows")}))
+        return 0
     if a.cmd == "promotion-check":
         rd = lambda x: json.loads(Path(x).read_text(encoding="utf-8")) if x else None  # noqa: E731
         rep = promotion.check(rd(a.candidate_frozen), rd(a.candidate_probe), rd(a.baseline_frozen), rd(a.baseline_probe),
@@ -91,6 +225,12 @@ def main(argv):
         Path(a.out + ".jsonl").write_text(review_packet.jsonl(items), encoding="utf-8")
         from collections import Counter
         print(json.dumps({"items": len(items), "by_priority": dict(sorted(Counter(i["priority"] for i in items).items()))}))
+        if a.challenge and a.v3_out:
+            x = review_packet.build_v3(records.load_jsonl(a.base), records.load_jsonl(a.increment),
+                                       records.load_jsonl(a.challenge), exclude={i["id"] for i in items})
+            Path(a.v3_out + ".md").write_text(review_packet.markdown_v3(x), encoding="utf-8")
+            Path(a.v3_out + ".jsonl").write_text(review_packet.jsonl(x), encoding="utf-8")
+            print(json.dumps({"v3_items": len(x), "by_family": dict(sorted(Counter(i["family"] for i in x).items()))}))
         return 0
     if a.cmd == "quality":
         judg = {}
@@ -220,7 +360,7 @@ def main(argv):
                           "by_split": {s: sum(1 for r in rows if r["split"] == s) for s in ("train", "dev")}}))
         return 0
     if a.cmd == "eval-prompts":
-        rows = sft.eval_prompts(records.load_jsonl(a.candidates), records.load_jsonl(a.rendered))
+        rows = sft.eval_prompts(records.load_jsonl(a.candidates), records.load_jsonl(a.rendered), tuple(a.split_groups))
         write_jsonl(a.out, rows)
         print(json.dumps({"eval_prompts": len(rows)}))
         return 0

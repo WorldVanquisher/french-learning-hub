@@ -1,5 +1,5 @@
 {
-  "TrainingJobName": "flh-extractor-experiment-20261112-025505",
+  "TrainingJobName": "flh-extractor-sft-experiment-20261112-051238",
   "AlgorithmSpecification": {
     "TrainingImage": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
     "TrainingInputMode": "File",

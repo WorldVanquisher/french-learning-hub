@@ -1,7 +1,7 @@
 """Generate outputs for inputs-only evaluation prompts (optional backend).
 
   python3 -m flh_extraction.predict --model DIR --profile NAME [--adapter DIR] --prompts P.jsonl --out O.jsonl
-         [--candidates C.jsonl] [--max-new-tokens N] [--template-kwargs JSON] [--limit N]
+         [--candidates C.jsonl] [--max-new-tokens N] [--template-kwargs JSON] [--limit N] [--dtype D]
 
 --profile (flh_extraction/models.py) supplies the loader and the chat-template
 options; --template-kwargs overrides the latter. For Qwen3.5 the profile turns
@@ -43,11 +43,13 @@ def main(argv):
     ap.add_argument("--profile", default="auto", choices=sorted(models.PROFILES))
     ap.add_argument("--template-kwargs")
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--dtype", default="default", choices=("default", "bfloat16", "float16", "float32"),
+                    help="weights dtype; `default` leaves it to transformers (the comparison matrix pins bfloat16)")
     a = ap.parse_args(argv)
     import torch
     cfg = {"model_name_or_path": a.model, "model_profile": a.profile, "local_files_only": True}
     tok = models.load_tokenizer(cfg)
-    model = models.load_model(cfg)
+    model = models.load_model(cfg, None if a.dtype == "default" else getattr(torch, a.dtype))
     if a.adapter:
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, a.adapter)

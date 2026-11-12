@@ -16,12 +16,16 @@ extractor, its prompt, schema and routing are untouched.
 | Increment v2 | `authoring/bank_increment_v2.py`, `generate_increment.py`, `increment_v2_rule_based.json`; `flh_extraction/increment.py` (`increment-check`) | 182 targeted candidates (misconceptions, wrong explanations, production-style abstention and counter-shortcut records, splitting boundaries) reusing training points; validation against base, evaluation and boundary data |
 | Quality report | `flh_extraction/quality.py` (`quality`, `quality-compare`) | structural validity with parse diagnostics, unit counts, split/merge, abstention, grounding and bilingual fidelity, each labelled exact / heuristic / human |
 | Probes and controls | `flh_extraction/probe.py` (`probe`), `controls.py` (`control-matrix`) | the frozen evaluation as the production analyzer presents it (`rb`, `swap`; never training data); controlled failures showing what each metric catches |
-| Review and promotion | `flh_extraction/review_packet.py` (`review-packet`), `promotion.py` (`promotion-check`), `review/` | a 25-item prioritized packet; pre-registered promotion criteria as PASS / FAIL / PENDING |
+| Review and promotion | `flh_extraction/review_packet.py` (`review-packet`), `promotion.py` (`promotion-check`), `review/` | a 25-item prioritized packet (v2) and a 19-item expansion with a rubric and one example per label (v3); pre-registered promotion criteria as PASS / FAIL / PENDING |
+| Cue challenge slice | `authoring/bank_challenge_v1.py`, `generate_challenge.py`, `challenge_v1_rule_based.json`; `flh_extraction/challenge.py` (`challenge-check`) | 32 groups × 3 cue variants (96 records, evaluation only): the learner text and reference stay fixed while category and explanation change; group-level splits; validator and leakage checks |
+| Comparison | `flh_extraction/comparison.py` (`shortcut-repro`, `account`, `parsing-fixture`), `paired.py` (`paired-consistency`, `paired-demo`), `matrix.py` (`comparison-slice`, `comparison-matrix`, `compare`), `decision.py` (`decision-report`) | the category-shortcut reproduction with confusion counts; one status per reference row (nothing dropped); paired consistency with its components; the pinned three-system matrix; the pre-registered decision (PENDING / NO_WINNER / winner) |
+| Packaging and assets | `flh_extraction/packaging.py`, `scripts/check_model_assets.py` | installed stack vs `requirements-train.txt` (the SageMaker entry refuses a stale image); exact presence and hashes of the pinned tokenizer and weight files, with the owner command |
+| Comparison pipeline | `scripts/comparison_pipeline.sh`, `COMPARISON_RUNBOOK.md` | regenerates every comparison artifact offline and deterministically; owner steps, what is measured and what is pending |
 | Profile verification | `scripts/verify_profile.py`, `configs/qwen3.5-4b-851bf6e8.sha256` | the profile against the checkpoint's own small files: template, text-level masking, LoRA targets on real weight names; token-level with a tokenizer |
 | Model profiles | `flh_extraction/models.py` | the only model-specific wiring: base model, pinned revision, loader, chat-template options, LoRA targets. Default candidate `Qwen/Qwen3.5-4B` (Qwen3-1.7B superseded, never run) |
 | Training | `flh_extraction/train.py`, `sagemaker_entry.py`, `Dockerfile`, `requirements-train.txt`, `configs/` | SFT with answer-only loss through a model profile; SageMaker train and predict modes |
 | Untuned baseline | `scripts/untuned_baseline.sh`, `scripts/select_eval_subset.py`, `flh_extraction/categories.py` | one command: fixed 50-item frozen-eval subset → predict → production validator → harness → schema validity, unsupported claims, abstention and splitting reported separately |
-| AWS interface | `deploy/aws/sagemaker-extractor/` | bounded job templates (incl. `predict-base` without an adapter), renderer, IAM templates, `build_readiness.py` and `readiness/` (manifests, rendered jobs, sequence, criteria); prepared, never launched |
+| AWS interface | `deploy/aws/sagemaker-extractor/` | bounded job templates (incl. `predict-base` without an adapter), renderer, IAM templates, `build_readiness.py` and `readiness/` (manifests, six rendered jobs with unique names, readiness checks, comparison matrix, experiment manifest, sequence, criteria); prepared, never launched |
 | Runbook | `TRAINING_RUNBOOK.md` | the experiment, its gates, owner commands and cost bound |
 
 Every generated record is `origin: synthetic`, `review_status: unreviewed`,
@@ -30,7 +34,7 @@ reviewer accepts it (`authoring/build_review_queue.py`). Confidence values
 follow an authoring convention and are not calibrated.
 
 ```sh
-python3 -B -m unittest discover -s tests -t tests     # 37 tests; 7 need TINY_SFT and torch (backend, SageMaker-layout dry run)
+python3 -B -m unittest discover -s tests -t tests     # 57 tests; 7 need TINY_SFT and torch (backend, SageMaker-layout dry run)
 ```
 
 ## Generated data (not committed)

@@ -79,6 +79,21 @@ class Refusals(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(sagemaker_entry.main(["entry", "evaluate"]), 2)
 
+    def test_a_stale_stack_is_refused_and_recorded(self):
+        from flh_extraction import packaging
+        with tempfile.TemporaryDirectory() as d:
+            req = Path(d) / "requirements-train.txt"
+            req.write_text("transformers==0.0.0-never\n")
+            data = layout(Path(d) / "sm", {"prompts_sha256": ""}, prompts=[{"id": "p", "messages": REC["messages"][:2]}])
+            hp = {"prompts_sha256": sha(data / "prompts" / "eval-prompts.jsonl")}
+            (Path(d) / "sm" / "input" / "config" / "hyperparameters.json").write_text(json.dumps(hp))
+            with mock.patch.object(packaging, "REQUIREMENTS", req):
+                self.assertEqual(self.run_entry(Path(d) / "sm", "predict"), 1)
+            self.assertIn("STALE_OR_INCOMPLETE", (Path(d) / "sm" / "output" / "failure").read_text())
+            rep = json.loads((Path(d) / "sm" / "model" / "stack-check.json").read_text())
+            self.assertFalse(rep["stack_matches_requirements"])
+            self.assertEqual(rep["mismatches"], ["transformers"])
+
 
 @unittest.skipUnless(HAVE and os.environ.get("TINY_SFT"), "needs torch, transformers and TINY_SFT")
 class DryRun(unittest.TestCase):
@@ -94,7 +109,7 @@ class DryRun(unittest.TestCase):
             hp = {"config_json": json.dumps(cfg), "train_sha256": sha(data / "train" / "sft-train.jsonl"),
                   "dev_sha256": sha(data / "dev" / "sft-dev.jsonl")}
             (root / "input" / "config" / "hyperparameters.json").write_text(json.dumps(hp))
-            with mock.patch.dict(os.environ, {"FLH_SM_ROOT": str(root)}):
+            with mock.patch.dict(os.environ, {"FLH_SM_ROOT": str(root), "FLH_ALLOW_STACK_MISMATCH": "1"}):
                 self.assertEqual(sagemaker_entry.main(["entry", "train"]), 0)
             m = json.loads((root / "model" / "run_manifest.json").read_text())
             self.assertEqual((m["train_sha256"], m["steps"], m["suitable_for_production"]), (hp["train_sha256"], 2, False))
@@ -106,7 +121,7 @@ class DryRun(unittest.TestCase):
             hp = {"prompts_sha256": sha(pdata / "prompts" / "eval-prompts.jsonl"), "max_new_tokens": "4", "template_kwargs": "{}",
                   "model_profile": "auto"}
             (proot / "input" / "config" / "hyperparameters.json").write_text(json.dumps(hp))
-            with mock.patch.dict(os.environ, {"FLH_SM_ROOT": str(proot)}):
+            with mock.patch.dict(os.environ, {"FLH_SM_ROOT": str(proot), "FLH_ALLOW_STACK_MISMATCH": "1"}):
                 self.assertEqual(sagemaker_entry.main(["entry", "predict"]), 0)
             rows = [json.loads(line) for line in (proot / "model" / "predictions.jsonl").read_text().splitlines()]
             self.assertEqual([r["id"] for r in rows], [r["id"] for r in recs[:3]])

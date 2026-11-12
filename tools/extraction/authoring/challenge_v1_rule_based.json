@@ -1,0 +1,134 @@
+{
+ "analyses": {
+  "01ca7acc5422e7eb": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "07aee717e79d1ab2": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "1093cc3061ae63b1": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "1bb7ea0ff84c6c6b": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "20528c05f44f74af": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "24b70b5ed7743e11": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "3188607285b23b60": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "3e71d1c665221ec8": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "41d62b3ab122d30c": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "42ade9455616b7fc": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "4f7abdb9fa4095ca": {
+   "effective_category": "vocabulary",
+   "effective_explanation": "Local classification selected \"vocabulary\" because rule \"single_token_fallback\" input is a single token with alphabetic content (weak lexical guess)."
+  },
+  "5379d824d94c9ca2": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "56e20381bb172385": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "6ca0a82a9aba6e69": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "70e642320e18eb52": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "7b84dd03bd7afed0": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "81f315232fba14e9": {
+   "effective_category": "vocabulary",
+   "effective_explanation": "Local classification selected \"vocabulary\" because rule \"single_token_fallback\" input is a single token with alphabetic content (weak lexical guess)."
+  },
+  "83ac113de20d8ce2": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "87448505e41e0bf1": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "949c3ff76dbad568": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "ace72053f2f8b2da": {
+   "effective_category": "morphology",
+   "effective_explanation": "Local classification selected \"morphology\" because rule \"explicit_morphology_request\" matched \"conjugation\" in the input."
+  },
+  "b0ccaa0a3ff2265b": {
+   "effective_category": "translation",
+   "effective_explanation": "Local classification selected \"translation\" because rule \"explicit_translation_request\" matched \"怎么说\" in the input."
+  },
+  "c733d0af80d606a2": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "c9a39fe81cf3d9a0": {
+   "effective_category": "orthography",
+   "effective_explanation": "Local classification selected \"orthography\" because rule \"explicit_orthography_request\" matched \"spell\" in the input."
+  },
+  "cb8b71ba8d5f0b4c": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "ce04ee261afa9766": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "cfb13401bddf0796": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "cfc50164f6f74f2b": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "d3e8d4a7a4939b88": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "f407fdf3c2a9c992": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "f6cef0664dd11ff9": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "f9f8cba098d7f3d4": {
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  }
+ },
+ "analyzer": "rule-based:v2:fr_l2_taxonomy_v1",
+ "source": "extraction-render analyze (internal/analyzer rule engine, offline)"
+}

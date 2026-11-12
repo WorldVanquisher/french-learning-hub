@@ -1,0 +1,693 @@
+{
+  "inputs": {
+    "frozen": {
+      "bytes": 307433,
+      "path": "eval_candidates.jsonl",
+      "records": 200,
+      "sha256": "99602feba1cd13f526ad9530888ab2d57d7807beadfd1692be7536b78ecfe32a"
+    },
+    "rb": {
+      "bytes": 366308,
+      "path": "probe-rb.jsonl",
+      "records": 200,
+      "sha256": "9e9e0b24b51635abeea3c0381222723cefa6c36893044593de1e2d25accd6653"
+    },
+    "swap": {
+      "bytes": 348296,
+      "path": "probe-swap.jsonl",
+      "records": 200,
+      "sha256": "5a3ec4de7b29f3edf2a4c2c0ea7949ab78a0afbe74d71afbd648afc12d832e18"
+    }
+  },
+  "runs": {
+    "frozen/category_only": {
+      "abstention_rate": 1.0,
+      "confusion": {
+        "abstention": {
+          "false_extraction": 0,
+          "invalid_or_missing": 0,
+          "over_abstention": 0,
+          "true_abstain": 20,
+          "true_extraction": 180
+        },
+        "basis": "exact",
+        "by_category_cue": {
+          "category_not_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 180
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          },
+          "category_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 20,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          }
+        },
+        "ref_by_pred": {
+          "ref_units": {
+            "empty": 0,
+            "invalid": 0,
+            "missing": 0,
+            "units": 180
+          },
+          "ref_zero": {
+            "empty": 20,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          }
+        }
+      },
+      "heuristic_unit_f1": 1.0,
+      "outputs": {
+        "bytes": 172449,
+        "path": "frozen.category_only.outputs.jsonl",
+        "records": 200,
+        "sha256": "89e157a04694545ef099f43ecb0268b3084d756fd999ea5f39eaf2b94f1c44bf"
+      },
+      "over_abstention_rate": 0.0,
+      "structural_validity": 1.0,
+      "validated": {
+        "bytes": 95783,
+        "path": "frozen.category_only.validated.jsonl",
+        "records": 200,
+        "sha256": "f07738874d6b7c413e22059b83570d4dfeed44ee2f2897b765ee53f14cb65695"
+      }
+    },
+    "frozen/constant_empty": {
+      "abstention_rate": 1.0,
+      "confusion": {
+        "abstention": {
+          "false_extraction": 0,
+          "invalid_or_missing": 0,
+          "over_abstention": 180,
+          "true_abstain": 20,
+          "true_extraction": 0
+        },
+        "basis": "exact",
+        "by_category_cue": {
+          "category_not_other": {
+            "ref_units": {
+              "empty": 180,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          },
+          "category_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 20,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          }
+        },
+        "ref_by_pred": {
+          "ref_units": {
+            "empty": 180,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          },
+          "ref_zero": {
+            "empty": 20,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          }
+        }
+      },
+      "heuristic_unit_f1": null,
+      "outputs": {
+        "bytes": 82356,
+        "path": "frozen.constant_empty.outputs.jsonl",
+        "records": 200,
+        "sha256": "b632235b1ea3b0aa81fc555483b93d1a7ab9a76d690ba52373b4c7ce46f1b103"
+      },
+      "over_abstention_rate": 1.0,
+      "structural_validity": 1.0,
+      "validated": {
+        "bytes": 10200,
+        "path": "frozen.constant_empty.validated.jsonl",
+        "records": 200,
+        "sha256": "1bf16ac8ac92a0662d1edfa4a77a2ebe22f6172edf72b370ab9664f7eb098998"
+      }
+    },
+    "frozen/oracle": {
+      "abstention_rate": 1.0,
+      "confusion": {
+        "abstention": {
+          "false_extraction": 0,
+          "invalid_or_missing": 0,
+          "over_abstention": 0,
+          "true_abstain": 20,
+          "true_extraction": 180
+        },
+        "basis": "exact",
+        "by_category_cue": {
+          "category_not_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 180
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          },
+          "category_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 20,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          }
+        },
+        "ref_by_pred": {
+          "ref_units": {
+            "empty": 0,
+            "invalid": 0,
+            "missing": 0,
+            "units": 180
+          },
+          "ref_zero": {
+            "empty": 20,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          }
+        }
+      },
+      "heuristic_unit_f1": 1.0,
+      "outputs": {
+        "bytes": 172449,
+        "path": "frozen.oracle.outputs.jsonl",
+        "records": 200,
+        "sha256": "89e157a04694545ef099f43ecb0268b3084d756fd999ea5f39eaf2b94f1c44bf"
+      },
+      "over_abstention_rate": 0.0,
+      "structural_validity": 1.0,
+      "validated": {
+        "bytes": 95783,
+        "path": "frozen.oracle.validated.jsonl",
+        "records": 200,
+        "sha256": "f07738874d6b7c413e22059b83570d4dfeed44ee2f2897b765ee53f14cb65695"
+      }
+    },
+    "rb/category_only": {
+      "abstention_rate": 0.0,
+      "confusion": {
+        "abstention": {
+          "false_extraction": 20,
+          "invalid_or_missing": 0,
+          "over_abstention": 0,
+          "true_abstain": 0,
+          "true_extraction": 180
+        },
+        "basis": "exact",
+        "by_category_cue": {
+          "category_not_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 180
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 20
+            }
+          },
+          "category_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          }
+        },
+        "ref_by_pred": {
+          "ref_units": {
+            "empty": 0,
+            "invalid": 0,
+            "missing": 0,
+            "units": 180
+          },
+          "ref_zero": {
+            "empty": 0,
+            "invalid": 0,
+            "missing": 0,
+            "units": 20
+          }
+        }
+      },
+      "heuristic_unit_f1": 0.953,
+      "outputs": {
+        "bytes": 195224,
+        "path": "rb.category_only.outputs.jsonl",
+        "records": 200,
+        "sha256": "11c474dd81085e9925fe1c9517b157973094f7e352f84489e2c7d989fd156840"
+      },
+      "over_abstention_rate": 0.0,
+      "structural_validity": 1.0,
+      "validated": {
+        "bytes": 99683,
+        "path": "rb.category_only.validated.jsonl",
+        "records": 200,
+        "sha256": "89c6def2ed3feb4f86ed60fb8a408d5fc11ce763f0d69b55f301a2e84d1e74cd"
+      }
+    },
+    "rb/constant_empty": {
+      "abstention_rate": 1.0,
+      "confusion": {
+        "abstention": {
+          "false_extraction": 0,
+          "invalid_or_missing": 0,
+          "over_abstention": 180,
+          "true_abstain": 20,
+          "true_extraction": 0
+        },
+        "basis": "exact",
+        "by_category_cue": {
+          "category_not_other": {
+            "ref_units": {
+              "empty": 180,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 20,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          },
+          "category_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          }
+        },
+        "ref_by_pred": {
+          "ref_units": {
+            "empty": 180,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          },
+          "ref_zero": {
+            "empty": 20,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          }
+        }
+      },
+      "heuristic_unit_f1": null,
+      "outputs": {
+        "bytes": 101431,
+        "path": "rb.constant_empty.outputs.jsonl",
+        "records": 200,
+        "sha256": "b9758fc44a87f59d1ca5382cf52d844d9e6f197d0df2b3d3185fb7c5a65e0cd4"
+      },
+      "over_abstention_rate": 1.0,
+      "structural_validity": 1.0,
+      "validated": {
+        "bytes": 10800,
+        "path": "rb.constant_empty.validated.jsonl",
+        "records": 200,
+        "sha256": "4330bdc2a12a1b4306683534435dda8d6c499d8f2ed141326eae1352cf79719f"
+      }
+    },
+    "rb/oracle": {
+      "abstention_rate": 1.0,
+      "confusion": {
+        "abstention": {
+          "false_extraction": 0,
+          "invalid_or_missing": 0,
+          "over_abstention": 0,
+          "true_abstain": 20,
+          "true_extraction": 180
+        },
+        "basis": "exact",
+        "by_category_cue": {
+          "category_not_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 180
+            },
+            "ref_zero": {
+              "empty": 20,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          },
+          "category_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          }
+        },
+        "ref_by_pred": {
+          "ref_units": {
+            "empty": 0,
+            "invalid": 0,
+            "missing": 0,
+            "units": 180
+          },
+          "ref_zero": {
+            "empty": 20,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          }
+        }
+      },
+      "heuristic_unit_f1": 1.0,
+      "outputs": {
+        "bytes": 191524,
+        "path": "rb.oracle.outputs.jsonl",
+        "records": 200,
+        "sha256": "1bcd386cb635b7312dcdec4828e737f088f319660b6a1b1e75e0378e3e97ad73"
+      },
+      "over_abstention_rate": 0.0,
+      "structural_validity": 1.0,
+      "validated": {
+        "bytes": 96383,
+        "path": "rb.oracle.validated.jsonl",
+        "records": 200,
+        "sha256": "0b5502b76223c771472b437401657e4ea0fd24b1a1f67e0288aa9d327c607904"
+      }
+    },
+    "swap/category_only": {
+      "abstention_rate": 0.0,
+      "confusion": {
+        "abstention": {
+          "false_extraction": 20,
+          "invalid_or_missing": 0,
+          "over_abstention": 180,
+          "true_abstain": 0,
+          "true_extraction": 0
+        },
+        "basis": "exact",
+        "by_category_cue": {
+          "category_not_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 20
+            }
+          },
+          "category_other": {
+            "ref_units": {
+              "empty": 180,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          }
+        },
+        "ref_by_pred": {
+          "ref_units": {
+            "empty": 180,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          },
+          "ref_zero": {
+            "empty": 0,
+            "invalid": 0,
+            "missing": 0,
+            "units": 20
+          }
+        }
+      },
+      "heuristic_unit_f1": null,
+      "outputs": {
+        "bytes": 86719,
+        "path": "swap.category_only.outputs.jsonl",
+        "records": 200,
+        "sha256": "4b444164e0f6c2e96982908fcece3fc605423873aaca4a49291b08fa06b54032"
+      },
+      "over_abstention_rate": 1.0,
+      "structural_validity": 1.0,
+      "validated": {
+        "bytes": 14500,
+        "path": "swap.category_only.validated.jsonl",
+        "records": 200,
+        "sha256": "7443858cb7a1f183a063bf00553305636dbb9967a9db8f9cd82bff4da23af91f"
+      }
+    },
+    "swap/constant_empty": {
+      "abstention_rate": 1.0,
+      "confusion": {
+        "abstention": {
+          "false_extraction": 0,
+          "invalid_or_missing": 0,
+          "over_abstention": 180,
+          "true_abstain": 20,
+          "true_extraction": 0
+        },
+        "basis": "exact",
+        "by_category_cue": {
+          "category_not_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 20,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          },
+          "category_other": {
+            "ref_units": {
+              "empty": 180,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          }
+        },
+        "ref_by_pred": {
+          "ref_units": {
+            "empty": 180,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          },
+          "ref_zero": {
+            "empty": 20,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          }
+        }
+      },
+      "heuristic_unit_f1": null,
+      "outputs": {
+        "bytes": 83019,
+        "path": "swap.constant_empty.outputs.jsonl",
+        "records": 200,
+        "sha256": "fcdfa334b3a43af4a411f57d0a14252e5d1717ee2aaf022c95ba9af26f91de6f"
+      },
+      "over_abstention_rate": 1.0,
+      "structural_validity": 1.0,
+      "validated": {
+        "bytes": 11200,
+        "path": "swap.constant_empty.validated.jsonl",
+        "records": 200,
+        "sha256": "39533eba256e421c2737f56d4f70e20f4d5d89bccc847d3925e3079858af30a8"
+      }
+    },
+    "swap/oracle": {
+      "abstention_rate": 1.0,
+      "confusion": {
+        "abstention": {
+          "false_extraction": 0,
+          "invalid_or_missing": 0,
+          "over_abstention": 0,
+          "true_abstain": 20,
+          "true_extraction": 180
+        },
+        "basis": "exact",
+        "by_category_cue": {
+          "category_not_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            },
+            "ref_zero": {
+              "empty": 20,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          },
+          "category_other": {
+            "ref_units": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 180
+            },
+            "ref_zero": {
+              "empty": 0,
+              "invalid": 0,
+              "missing": 0,
+              "units": 0
+            }
+          }
+        },
+        "ref_by_pred": {
+          "ref_units": {
+            "empty": 0,
+            "invalid": 0,
+            "missing": 0,
+            "units": 180
+          },
+          "ref_zero": {
+            "empty": 20,
+            "invalid": 0,
+            "missing": 0,
+            "units": 0
+          }
+        }
+      },
+      "heuristic_unit_f1": 1.0,
+      "outputs": {
+        "bytes": 173112,
+        "path": "swap.oracle.outputs.jsonl",
+        "records": 200,
+        "sha256": "cd7b104da597a0bffc8cd0c1d75ef957c1335946c8578ad08a09c9dd6aa8612f"
+      },
+      "over_abstention_rate": 0.0,
+      "structural_validity": 1.0,
+      "validated": {
+        "bytes": 96783,
+        "path": "swap.oracle.validated.jsonl",
+        "records": 200,
+        "sha256": "dd76efa5194274a72b54698996fab3bb340ee8a76f5e205ffbe7205f9f673bf5"
+      }
+    }
+  },
+  "schema": "flh_extraction_shortcut_repro_v1",
+  "scoring_version": {
+    "files": {
+      "audit.py": "a02d2a788572d5ded2f3bbaae19ed42105972bd03ee35230cc30d39d1ea50cd0",
+      "challenge.py": "e5f6dbb0eee80274bef153099a236e9f64086327f7c8a1b74fa5b0a56beed643",
+      "comparison.py": "17c72b2a21e3e929ceccaf51b46897bfe9deaa34df134f376386ab1c10a219e7",
+      "controls.py": "bba23521900562fe14670f8c9196ccf2c86287dfbb5cc5df4db22d479a488196",
+      "evaluate.py": "b85c8e28e00a720b23e0ebd1061e43dac050cda09fcd6d68348ab6fce9792907",
+      "matrix.py": "49abb57bdbef72dfa992c6ea90e9c8fa6414a8a18f71f7e908e40af9c631ef2c",
+      "paired.py": "ff0003f4804aa54f913bb4b86f6be0f84fc1a2b10bd96fa2cb1aaa0aae95a48d",
+      "quality.py": "9ee1cb42f859f62c593a0157bc6c9f00661c960949cc697de6ecd0eb73aee51d",
+      "textnorm.py": "c0b4b209b437293de074b623a8fb2dce66bdbeb21a40f35bf1782dea73bd2cdf"
+    },
+    "name": "flh_extraction_scoring_v1",
+    "sha256": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd"
+  },
+  "systems": {
+    "category_only": "controls.outputs(refs, 'category_shortcut')",
+    "constant_empty": "controls.outputs(refs, 'over_abstain')",
+    "oracle": "controls.outputs(refs, 'oracle')"
+  }
+}
