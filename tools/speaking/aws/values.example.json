@@ -1,0 +1,10 @@
+{
+  "REGISTRY": "123456789012.dkr.ecr.us-east-1.amazonaws.com",
+  "IMAGE_DIGEST": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "EXEC_ROLE_ARN": "arn:aws:iam::123456789012:role/flh-speaking-sagemaker-exec",
+  "BUCKET": "example-flh-artifacts",
+  "DATA_SHA256": "4b1c067e76ab1e097af4c08ae5e08aebcf32e169bcf6ceb0e14b1bb4221dc9eb",
+  "BASE_MODEL": "whisper-base",
+  "BASE_REVISION": "e37978b90ca9030d5170a5c07aadb050351a65bb",
+  "DELETE_AFTER": "2026-12-31"
+}

@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {"Sid": "ListOwnPrefixes", "Effect": "Allow", "Action": "s3:ListBucket", "Resource": "arn:aws:s3:::__BUCKET__",
+     "Condition": {"StringLike": {"s3:prefix": ["speaking/datasets/*", "speaking/models/*", "speaking/output/*", "speaking/checkpoints/*"]}}},
+    {"Sid": "ReadInputs", "Effect": "Allow", "Action": "s3:GetObject",
+     "Resource": ["arn:aws:s3:::__BUCKET__/speaking/datasets/*", "arn:aws:s3:::__BUCKET__/speaking/models/*", "arn:aws:s3:::__BUCKET__/speaking/checkpoints/*"]},
+    {"Sid": "WriteOutputs", "Effect": "Allow", "Action": "s3:PutObject",
+     "Resource": ["arn:aws:s3:::__BUCKET__/speaking/output/*", "arn:aws:s3:::__BUCKET__/speaking/checkpoints/*"]},
+    {"Sid": "EcrToken", "Effect": "Allow", "Action": "ecr:GetAuthorizationToken", "Resource": "*"},
+    {"Sid": "PullTheImage", "Effect": "Allow", "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"],
+     "Resource": "arn:aws:ecr:__AWS_REGION__:__AWS_ACCOUNT_ID__:repository/flh-speaking"},
+    {"Sid": "TrainingLogs", "Effect": "Allow", "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"],
+     "Resource": "arn:aws:logs:__AWS_REGION__:__AWS_ACCOUNT_ID__:log-group:/aws/sagemaker/TrainingJobs*"},
+    {"Sid": "Metrics", "Effect": "Allow", "Action": "cloudwatch:PutMetricData", "Resource": "*",
+     "Condition": {"StringEquals": {"cloudwatch:namespace": "/aws/sagemaker/TrainingJobs"}}}
+  ]
+}
