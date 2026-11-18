@@ -1,0 +1,78 @@
+{
+ "deployment_id": "whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/3cb0fbf137cef809",
+ "manifest_sha256": "3cb0fbf137cef80980e3884809b2a55d97cf9dfe2ef7b3c52b6d43ef0d84ea7d",
+ "provider_setting": "openai",
+ "readiness_transitions": [
+  [
+   0.01,
+   "down",
+   "ConnectionResetError"
+  ],
+  [
+   0.52,
+   503,
+   "loading"
+  ],
+  [
+   5.07,
+   503,
+   "warming"
+  ],
+  [
+   5.57,
+   200,
+   "ready"
+  ]
+ ],
+ "service_log_lines": [
+  "Loading weights: 100%|██████████| 245/245 [00:00<00:00, 10859.53it/s]",
+  "{\"method\": \"GET\", \"path\": \"/readyz\", \"status\": 503, \"ms\": 0}",
+  "{\"method\": \"GET\", \"path\": \"/readyz\", \"status\": 200, \"ms\": 0}",
+  "{\"method\": \"GET\", \"path\": \"/manifest\", \"status\": 200, \"ms\": 0}",
+  "{\"method\": \"GET\", \"path\": \"/metrics\", \"status\": 200, \"ms\": 0}",
+  "{\"method\": \"POST\", \"path\": \"/v1/audio/transcriptions\", \"status\": 200, \"ms\": 1570, \"result\": \"transcribed\", \"audio_s\": 16.49, \"model_s\": 1.506}",
+  "{\"method\": \"GET\", \"path\": \"/metrics\", \"status\": 200, \"ms\": 0}",
+  "{\"method\": \"POST\", \"path\": \"/v1/audio/transcriptions\", \"status\": 200, \"ms\": 9, \"result\": \"no_speech\", \"audio_s\": 3.0, \"model_s\": 0.0}"
+ ],
+ "service_log_mentions_transcript": false,
+ "service_tmp_after": "1",
+ "steps": {
+  "confirm_transcript": {
+   "http": 201
+  },
+  "replay_same_key": {
+   "http": 200,
+   "replayed_header": "true",
+   "same_text": true,
+   "seconds": 0.002,
+   "service_requests_after": 1,
+   "service_requests_before": 0
+  },
+  "request_lookup": {
+   "http": 200,
+   "state": "completed"
+  },
+  "service_down": {
+   "failure_code": "provider_unavailable",
+   "http": 502,
+   "seconds": 0.005,
+   "status": "failed"
+  },
+  "silent_take": {
+   "failure_code": "invalid_output",
+   "http": 502,
+   "seconds": 0.056,
+   "status": "failed"
+  },
+  "start_prompt": 201,
+  "transcribe": {
+   "http": 201,
+   "seconds": 1.577,
+   "status": "completed",
+   "transcriber": "openai:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/3cb0fbf137cef809:speaking_transcription_v1",
+   "wer_vs_reference": 0.21277
+  }
+ },
+ "take": "1406_1028_000000",
+ "take_seconds": 16.49
+}

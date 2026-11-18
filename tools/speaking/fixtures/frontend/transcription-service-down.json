@@ -1,0 +1,23 @@
+{
+ "error": "the transcription provider is unavailable; your take and transcripts are kept",
+ "request": {
+  "id": 3,
+  "operation_id": "f57bf168-3793-4158-b7db-49fa5c837e7d",
+  "take_id": 3,
+  "after_unknown": false,
+  "started_at": "2026-11-18T01:55:52.327662488Z",
+  "deadline_at": "2026-11-18T01:58:22.327662488Z",
+  "finished_at": "2026-11-18T01:55:52.328947606Z",
+  "state": "failed",
+  "result_id": 3
+ },
+ "transcription": {
+  "id": 3,
+  "take_id": 3,
+  "status": "failed",
+  "failure_code": "provider_unavailable",
+  "transcriber": "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/3cb0fbf137cef809:speaking_transcription_v1",
+  "text": null,
+  "created_at": "2026-11-18T01:55:52.328947606Z"
+ }
+}

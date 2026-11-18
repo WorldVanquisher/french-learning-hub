@@ -1,0 +1,21 @@
+{
+ "schema": "flh_speaking_train_config_v1",
+ "note": "Local CPU smoke: real whisper-tiny weights, real audio (the dataset's tiny fixture), every training operation. Plumbing only; not a model.",
+ "base_model": "whisper-tiny",
+ "seed": 20261117,
+ "train_ids": "tiny:train",
+ "dev_ids": "tiny:eval",
+ "max_steps": 6,
+ "batch_size": 2,
+ "grad_accum": 2,
+ "lr": 1e-05,
+ "warmup_steps": 2,
+ "weight_decay": 0.0,
+ "max_grad_norm": 1.0,
+ "freeze": "none",
+ "gradient_checkpointing": true,
+ "eval_every": 3,
+ "save_every": 2,
+ "keep_checkpoints": 0,
+ "threads": 3
+}

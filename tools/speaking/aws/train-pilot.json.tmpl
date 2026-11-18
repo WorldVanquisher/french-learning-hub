@@ -1,0 +1,45 @@
+{
+  "TrainingJobName": "${JOB_NAME}",
+  "AlgorithmSpecification": {
+    "TrainingImage": "${IMAGE_URI_BY_DIGEST}",
+    "TrainingInputMode": "File",
+    "ContainerEntrypoint": ["python3", "-B", "-m", "flh_speaking.sagemaker_entry"],
+    "ContainerArguments": ["train"]
+  },
+  "RoleArn": "${EXEC_ROLE_ARN}",
+  "HyperParameters": {
+    "config_json": "${CONFIG_JSON}",
+    "data_sha256": "${DATA_SHA256}",
+    "base_model": "${BASE_MODEL}"
+  },
+  "InputDataConfig": [
+    {
+      "ChannelName": "data",
+      "InputMode": "File",
+      "ContentType": "application/octet-stream",
+      "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": "s3://${BUCKET}/speaking/datasets/${DATA_SHA256}/", "S3DataDistributionType": "FullyReplicated"}}
+    },
+    {
+      "ChannelName": "model",
+      "InputMode": "File",
+      "ContentType": "application/octet-stream",
+      "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": "s3://${BUCKET}/speaking/models/${BASE_MODEL}/${BASE_REVISION}/", "S3DataDistributionType": "FullyReplicated"}}
+    }
+  ],
+  "OutputDataConfig": {"S3OutputPath": "s3://${BUCKET}/speaking/output/"},
+  "CheckpointConfig": {"S3Uri": "s3://${BUCKET}/speaking/checkpoints/${JOB_NAME}/", "LocalPath": "/opt/ml/checkpoints"},
+  "ResourceConfig": {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1, "VolumeSizeInGB": 30},
+  "StoppingCondition": {"MaxRuntimeInSeconds": 3600, "MaxWaitTimeInSeconds": 7200},
+  "EnableNetworkIsolation": true,
+  "EnableManagedSpotTraining": true,
+  "RetryStrategy": {"MaximumRetryAttempts": 1},
+  "Tags": [
+    {"Key": "Project", "Value": "flh"},
+    {"Key": "Component", "Value": "speaking-asr"},
+    {"Key": "Run", "Value": "pilot"},
+    {"Key": "DatasetSha256", "Value": "${DATA_SHA256}"},
+    {"Key": "ImageDigest", "Value": "${IMAGE_DIGEST}"},
+    {"Key": "Owner", "Value": "flh-owner"},
+    {"Key": "DeleteAfter", "Value": "${DELETE_AFTER}"}
+  ]
+}
