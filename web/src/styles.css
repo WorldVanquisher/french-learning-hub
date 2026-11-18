@@ -1138,3 +1138,10 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
     line-height: 1.2;
   }
 }
+
+/* Speaking: self-review when feedback is off (page-only ticks). */
+.speaking-self-review { margin: 8px 0; }
+.speaking-self-review-list { list-style: none; padding-left: 0; margin: 6px 0; }
+.speaking-self-review-list li { margin: 4px 0; }
+.speaking-self-review-list label { display: flex; gap: 8px; align-items: flex-start; }
+.speaking-self-review-list input { margin-top: 3px; flex: none; }

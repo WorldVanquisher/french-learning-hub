@@ -471,6 +471,9 @@ type UpdateFlow =
   | { step: "closed" }
   | { step: "loading" }
   | { step: "failed"; message: string }
+  // The fresh preview offers nothing: another tab or device already updated
+  // the lesson (revision), or the pack no longer offers the update.
+  | { step: "elsewhere"; revision: number }
   | { step: "preview"; preview: ListeningScriptUpdatePreview; stale: boolean; sending: boolean; unknown: boolean; error: string | null };
 
 // ScriptUpdate offers an explicit update of an imported script when the
@@ -514,6 +517,12 @@ function ScriptUpdate({
     setFlow({ step: "loading" });
     try {
       const preview = await api.getListeningScriptUpdate(materialId);
+      if (preview.pack_status !== "update_available") {
+        // Nothing to confirm here: say what happened and keep this page (and
+        // any unsaved answers) until the learner chooses to reload.
+        setFlow({ step: "elsewhere", revision: preview.current_revision });
+        return;
+      }
       setFlow({ step: "preview", preview, stale: false, sending: false, unknown: false, error: null });
     } catch (e) {
       setFlow({ step: "failed", message: describe(e) });
@@ -542,7 +551,17 @@ function ScriptUpdate({
   };
   return (
     <section className="panel listening-revision" aria-label={t("listening.revision.region")}>
-      {flow.step !== "preview" ? (
+      {flow.step === "elsewhere" ? (
+        <div className="banner info" role="status">
+          {flow.revision > state.revision
+            ? t("listening.revision.elsewhere", { to: flow.revision, from: state.revision })
+            : t("listening.revision.noLonger")}{" "}
+          <button type="button" className="ghost" onClick={onReload}>
+            {t("listening.revision.showCurrent")}
+          </button>
+        </div>
+      ) : null}
+      {flow.step !== "preview" && flow.step !== "elsewhere" ? (
         <div className="banner info" role="note">
           {t("listening.revision.available", { revision: state.revision })}{" "}
           <button type="button" className="ghost" ref={reviewRef} disabled={flow.step === "loading"} onClick={open}>
@@ -622,6 +641,7 @@ type QuestionChange = ListeningScriptUpdatePreview["changes"]["questions"][numbe
 function ScriptChanges({ preview }: { preview: ListeningScriptUpdatePreview }) {
   const { t, tp } = useI18n();
   const { lines, questions, annotations_changed } = preview.changes;
+  const renumbered = preview.changes.lines_renumbered ?? [];
   const lineKey = { changed: "listening.revision.lineChanged", added: "listening.revision.lineAdded", removed: "listening.revision.lineRemoved" } as const;
   const from = preview.current_revision;
   const where = (q: QuestionChange) => q.after_position ?? q.before_position ?? 0;
@@ -671,8 +691,25 @@ function ScriptChanges({ preview }: { preview: ListeningScriptUpdatePreview }) {
     <>
       <ul className="listening-revision-changes">
         {lines.map((l) => (
-          <li key={l.line}>{t(lineKey[l.change], { line: l.line })}</li>
+          <li key={`${l.change}-${l.line}`}>
+            {l.change === "changed" && l.before_line && l.before_line !== l.line
+              ? t("listening.revision.lineChangedMoved", { line: l.line, before: l.before_line, from })
+              : t(lineKey[l.change], { line: l.line })}
+          </li>
         ))}
+        {renumbered.length > 0 ? (
+          <li>
+            {tp("listening.revision.linesShifted", renumbered.length)}
+            <details className="listening-revision-shifts">
+              <summary>{t("listening.revision.shiftedShow")}</summary>
+              <ul>
+                {renumbered.map((m) => (
+                  <li key={m.before}>{t("listening.revision.lineMoved", { before: m.before, after: m.after })}</li>
+                ))}
+              </ul>
+            </details>
+          </li>
+        ) : null}
         {listed.map((q) => (
           <li key={`${q.item_id}-${q.change}`}>
             {summary(q)}

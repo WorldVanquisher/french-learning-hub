@@ -107,14 +107,22 @@ func newSpeakingFixture(t *testing.T, enabled bool, timeout time.Duration) *spea
 // open (re)builds the handler over the same database file: a restart.
 func (f *speakingFixture) open(t *testing.T, enabled bool, timeout time.Duration) {
 	t.Helper()
+	f.openProviders(t, enabled, enabled, timeout)
+}
+
+// openProviders is a restart with each provider switched on or off.
+func (f *speakingFixture) openProviders(t *testing.T, transcription, feedback bool, timeout time.Duration) {
+	t.Helper()
 	db, err := sqlite.Open(f.dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var tr domain.SpeakingTranscriber
 	var gen domain.SpeakingFeedbackGenerator
-	if enabled {
+	if transcription {
 		tr = speaking.NewTranscriber(speakingKey, "fake-transcribe", f.stt.URL(), timeout)
+	}
+	if feedback {
 		gen = speaking.NewOpenAI(speakingKey, "fake-model", f.model.URL(), timeout)
 	}
 	svc, err := application.NewSpeakingService(sqlite.NewSpeakingRepository(db), tr, gen, speaking.ExamplePrompts(), application.WithSpeakingDeadline(timeout+30*time.Second))

@@ -100,11 +100,14 @@ func (v *SpeakingExerciseView) attempt(t domain.SpeakingTake) SpeakingAttempt {
 			}
 		}
 	}
+	// A completed report on the latest version completes the attempt; a later
+	// request about the same version (running, failed or unknown) cannot undo
+	// that, so completed counts never dip while a second request runs.
 	switch {
-	case fbState == domain.ListeningStateInProgress:
-		a.State = domain.SpeakingFeedbackInProgress
 	case completed != nil:
 		a.State, a.Feedback, a.Improvements = domain.SpeakingFeedbackReady, completed, len(completed.Content.Improvements)
+	case fbState == domain.ListeningStateInProgress:
+		a.State = domain.SpeakingFeedbackInProgress
 	case fbState == domain.ListeningOutcomeUnknown:
 		a.State = domain.SpeakingFeedbackUnknown
 	case newest != nil:
@@ -145,6 +148,12 @@ type SpeakingQueueItem struct {
 	State        string
 	Improvements int
 	Since        *time.Time
+	// Request is the provider request the step concerns ("" when none can
+	// apply, e.g. a typed take awaiting its transcript); RequestEnabled says
+	// whether that provider is on now, so the step can say what is possible.
+	Request        string
+	RequestEnabled bool
+	PackStatus     string // of a started exercise
 }
 
 // SpeakingPracticeSummary counts attempts by what they actually reached. Only
@@ -170,34 +179,56 @@ type SpeakingPractice struct {
 	Summary   SpeakingPracticeSummary
 	Queue     []SpeakingQueueItem
 	Exercises []SpeakingPracticeExercise
-	Now       time.Time
+	// Resume is the queue item of the most recently active started exercise
+	// whose latest take is not complete (or that has no take yet); nil when
+	// every started exercise is complete.
+	Resume *SpeakingQueueItem
+	Now    time.Time
 }
 
-// queueReason maps an exercise's latest attempt to a next step; "" means
-// nothing to do now (in progress, or complete with nothing to improve).
-func queueReason(a *SpeakingAttempt, feedbackEnabled bool) string {
+// queueStep maps an exercise's latest attempt to its next step. The reason
+// follows from the attempt's state; the providers only decide between asking
+// for feedback and reviewing without it. "" means nothing to do: the latest
+// take is complete and its feedback raised nothing to improve.
+func queueStep(a *SpeakingAttempt, transcriptionOn, feedbackOn bool) (reason, request string, enabled bool) {
 	if a == nil {
-		return domain.SpeakingQueueFirstTake
+		return domain.SpeakingQueueFirstTake, "", false
 	}
-	switch a.State {
-	case domain.SpeakingTranscriptionUnknown, domain.SpeakingFeedbackUnknown:
-		return domain.SpeakingQueueCheckUnknown
-	case domain.SpeakingTranscriptionFailed, domain.SpeakingFeedbackFailed:
-		return domain.SpeakingQueueRequestFailed
-	case domain.SpeakingTranscriptToConfirm:
-		return domain.SpeakingQueueConfirmTranscript
-	case domain.SpeakingAwaitingTranscript:
-		return domain.SpeakingQueueAddTranscript
-	case domain.SpeakingAwaitingFeedback:
-		if feedbackEnabled {
-			return domain.SpeakingQueueRequestFeedback
+	transcription := func(r string) (string, string, bool) {
+		if a.Take.AudioSource == domain.SpeakingAudioNone {
+			return r, "", false // a typed take has no audio to transcribe
 		}
+		return r, domain.SpeakingRequestTranscription, transcriptionOn
+	}
+	feedback := func(r string) (string, string, bool) { return r, domain.SpeakingRequestFeedback, feedbackOn }
+	switch a.State {
+	case domain.SpeakingTranscriptionUnknown:
+		return transcription(domain.SpeakingQueueCheckUnknown)
+	case domain.SpeakingFeedbackUnknown:
+		return feedback(domain.SpeakingQueueCheckUnknown)
+	case domain.SpeakingTranscriptionFailed:
+		return transcription(domain.SpeakingQueueRequestFailed)
+	case domain.SpeakingFeedbackFailed:
+		return feedback(domain.SpeakingQueueRequestFailed)
+	case domain.SpeakingTranscriptToConfirm:
+		return domain.SpeakingQueueConfirmTranscript, "", false
+	case domain.SpeakingAwaitingTranscript:
+		return transcription(domain.SpeakingQueueAddTranscript)
+	case domain.SpeakingTranscribing:
+		return transcription(domain.SpeakingQueueRequestInProgress)
+	case domain.SpeakingFeedbackInProgress:
+		return feedback(domain.SpeakingQueueRequestInProgress)
+	case domain.SpeakingAwaitingFeedback:
+		if feedbackOn {
+			return feedback(domain.SpeakingQueueRequestFeedback)
+		}
+		return feedback(domain.SpeakingQueueReviewWithoutFeedback)
 	case domain.SpeakingFeedbackReady:
 		if a.Improvements > 0 {
-			return domain.SpeakingQueueAnswerAgain
+			return domain.SpeakingQueueAnswerAgain, "", false
 		}
 	}
-	return ""
+	return "", "", false
 }
 
 // Practice builds the overview: per-exercise progress from every take, one
@@ -208,7 +239,7 @@ func (s *SpeakingService) Practice(ctx context.Context) (*SpeakingPractice, erro
 	if err != nil {
 		return nil, err
 	}
-	_, generator := s.Providers()
+	transcriber, generator := s.Providers()
 	p := &SpeakingPractice{Now: s.now(), Queue: []SpeakingQueueItem{}, Exercises: []SpeakingPracticeExercise{}}
 	sum := &p.Summary
 	sum.Prompts, sum.Started = len(s.prompts.Prompts), len(views)
@@ -246,9 +277,10 @@ func (s *SpeakingService) Practice(ctx context.Context) (*SpeakingPractice, erro
 			sum.ExercisesCompleted++
 		}
 		p.Exercises = append(p.Exercises, row)
-		if reason := queueReason(row.Latest, generator != ""); reason != "" {
+		if reason, request, enabled := queueStep(row.Latest, transcriber != "", generator != ""); reason != "" {
 			id := v.Exercise.ID
-			item := SpeakingQueueItem{Reason: reason, PromptID: v.Exercise.PromptID, Title: v.Exercise.Title, ExerciseID: &id}
+			item := SpeakingQueueItem{Reason: reason, PromptID: v.Exercise.PromptID, Title: v.Exercise.Title, ExerciseID: &id,
+				Request: request, RequestEnabled: enabled, PackStatus: v.PackStatus}
 			since := row.LastActivity
 			item.Since = &since
 			if a := row.Latest; a != nil {
@@ -279,6 +311,17 @@ func (s *SpeakingService) Practice(ctx context.Context) (*SpeakingPractice, erro
 		}
 		return p.Exercises[i].Exercise.ID > p.Exercises[j].Exercise.ID
 	})
+	for _, e := range p.Exercises { // most recent activity first
+		if e.Latest != nil && e.Latest.State == domain.SpeakingFeedbackReady {
+			continue
+		}
+		for i := range p.Queue {
+			if q := p.Queue[i]; q.ExerciseID != nil && *q.ExerciseID == e.Exercise.ID {
+				p.Resume = &p.Queue[i]
+			}
+		}
+		break
+	}
 	return p, nil
 }
 

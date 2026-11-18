@@ -3,6 +3,7 @@ package domain
 import (
 	"encoding/json"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -102,5 +103,73 @@ func TestDiffListeningScript_ListsOnlyWhatDiffers(t *testing.T) {
 	// The reverse removes the added line.
 	if r := DiffListeningScript(b.Segments(), b.Content(), a.Segments(), a.Content()); r.Lines[1].Change != "removed" || r.Lines[1].After != nil {
 		t.Fatalf("reverse lines: %+v", r.Lines)
+	}
+}
+
+// Lines are aligned by content: a removed or added line is reported once, the
+// unchanged lines after it only get new numbers (lines_renumbered), and a line
+// that changed and moved names both numbers. Reordered lines stay visible.
+func TestDiffListeningScript_AlignsLinesByContent(t *testing.T) {
+	seg := func(texts ...string) []TranscriptSegment {
+		out := make([]TranscriptSegment, len(texts))
+		for i, x := range texts {
+			out[i] = TranscriptSegment{Index: i + 1, Speaker: "Mei", Text: x}
+		}
+		return out
+	}
+	var content ListeningExerciseContent
+	moves := func(c ListeningScriptChanges) string {
+		var parts []string
+		for _, m := range c.LinesRenumbered {
+			parts = append(parts, m.Before+">"+m.After)
+		}
+		return strings.Join(parts, " ")
+	}
+	lines := func(c ListeningScriptChanges) string {
+		var parts []string
+		for _, l := range c.Lines {
+			b, a := "-", "-"
+			if l.BeforeLine != nil {
+				b = *l.BeforeLine
+			}
+			if l.AfterLine != nil {
+				a = *l.AfterLine
+			}
+			parts = append(parts, l.Change+":"+l.Line+"("+b+","+a+")")
+		}
+		return strings.Join(parts, " ")
+	}
+	ten := seg("a", "b", "c", "d", "e", "f", "g", "h", "i", "j")
+	// A deletion: one removed line, seven renumbered, nothing reported as changed.
+	c := DiffListeningScript(ten, content, seg("a", "b", "d", "e", "f", "g", "h", "i", "j"), content)
+	if lines(c) != "removed:s3(s3,-)" || moves(c) != "s4>s3 s5>s4 s6>s5 s7>s6 s8>s7 s9>s8 s10>s9" {
+		t.Fatalf("deletion: %s | %s", lines(c), moves(c))
+	}
+	// A deletion and an edit further down: the edit names both numbers.
+	c = DiffListeningScript(ten, content, seg("a", "b", "d", "e", "f", "g", "H!", "i", "j"), content)
+	if lines(c) != "removed:s3(s3,-) changed:s7(s8,s7)" || c.Lines[1].Before.Text != "h" || c.Lines[1].After.Text != "H!" ||
+		moves(c) != "s4>s3 s5>s4 s6>s5 s7>s6 s9>s8 s10>s9" {
+		t.Fatalf("deletion and edit: %s | %s", lines(c), moves(c))
+	}
+	// An insertion.
+	c = DiffListeningScript(seg("a", "b", "c"), content, seg("a", "new", "b", "c"), content)
+	if lines(c) != "added:s2(-,s2)" || moves(c) != "s2>s3 s3>s4" {
+		t.Fatalf("insertion: %s | %s", lines(c), moves(c))
+	}
+	// Edits in place in an equal-length script pair by position, as before.
+	c = DiffListeningScript(seg("a", "b", "c"), content, seg("a", "B", "C"), content)
+	if lines(c) != "changed:s2(s2,s2) changed:s3(s3,s3)" || moves(c) != "" {
+		t.Fatalf("edits in place: %s | %s", lines(c), moves(c))
+	}
+	// Two lines swapped: the move stays visible as a removal and an addition.
+	c = DiffListeningScript(seg("a", "b", "c", "d"), content, seg("a", "c", "b", "d"), content)
+	if lines(c) != "removed:s2(s2,-) added:s3(-,s3)" || moves(c) != "s3>s2" {
+		t.Fatalf("swap: %s | %s", lines(c), moves(c))
+	}
+	// A speaker change alone is a change.
+	b := seg("a", "b")
+	b[1].Speaker = "Léa"
+	if c = DiffListeningScript(seg("a", "b"), content, b, content); lines(c) != "changed:s2(s2,s2)" {
+		t.Fatalf("speaker: %s", lines(c))
 	}
 }

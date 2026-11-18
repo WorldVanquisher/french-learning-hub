@@ -23,6 +23,15 @@ export interface SpeakingExercise {
 
 export type SpeakingPackStatus = "current" | "changed" | "removed";
 
+export interface SpeakingCurrentPrompt {
+  title: string;
+  situation: string;
+  requirements: string[];
+  seconds_min: number;
+  seconds_max: number;
+  content_fingerprint: string;
+}
+
 // A take's attempt state, derived by the backend from its records.
 export type SpeakingAttemptState =
   | "awaiting_transcript"
@@ -140,6 +149,11 @@ export interface SpeakingExerciseView {
   feedback: SpeakingFeedback[]; // newest first
   feedback_requests: SpeakingRequest[]; // newest first
   example_transcript: string | null; // only while the stored prompt is the set's current one
+  // The set's corrected wording, only when pack_status is "changed"; the
+  // exercise and its takes keep the stored wording (exercise.*). The server
+  // always sends it (null otherwise); optional here so hand-built test views
+  // in other lanes' files need no change.
+  current_prompt?: SpeakingCurrentPrompt | null;
   providers: SpeakingProviders;
   limits: SpeakingLimits;
   word_convention: string;
@@ -202,13 +216,15 @@ export type SpeakingQueueReason =
   | "confirm_transcript"
   | "add_transcript"
   | "request_feedback"
+  | "review_without_feedback" // checked transcript, feedback off: review it yourself
   | "answer_again"
   | "start_first_take"
+  | "request_in_progress" // a request is running: check again in a moment
   | "not_started";
 
 export interface SpeakingQueueItem {
   reason: SpeakingQueueReason;
-  priority: number;
+  priority: number; // ordinal, 0 = most urgent
   prompt_id: string;
   title: string;
   exercise_id: number | null; // null: the prompt is not started yet
@@ -217,6 +233,11 @@ export interface SpeakingQueueItem {
   state: SpeakingAttemptState | null;
   improvements: number;
   since: string | null;
+  // The provider request this step concerns (null when none applies, e.g. a
+  // typed take awaiting its transcript) and whether it can be sent now.
+  request: "transcription" | "feedback" | null;
+  request_enabled: boolean;
+  pack_status: SpeakingPackStatus | null; // null for a prompt not started
 }
 
 export interface SpeakingAttemptSummary {
@@ -254,6 +275,9 @@ export interface SpeakingPractice {
   generated_at: string;
   summary: SpeakingPracticeSummary;
   queue: SpeakingQueueItem[];
+  // The queue item of the most recently active exercise whose latest take is
+  // not complete; null when every started exercise is complete.
+  resume: SpeakingQueueItem | null;
   exercises: { exercise: SpeakingExercise; takes: number; completed: number; latest: SpeakingAttemptSummary | null; last_activity_at: string }[];
   providers: SpeakingProviders;
 }

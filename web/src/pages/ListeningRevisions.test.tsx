@@ -486,6 +486,38 @@ describe("Workbook script revisions (private workbench)", () => {
     expect(r.shifts).toEqual(["Question 3 of revision 1 is now question 2."]);
   });
 
+  it("reports a removed line once and folds the lines it renumbers; a line that changed and moved names both numbers", async () => {
+    const line = (id: string, text: string) => ({ id, speaker: "Mei", text });
+    const moves = Array.from({ length: 7 }, (_, i) => ({ before: `s${i + 4}`, after: `s${i + 3}` })).filter((m) => m.before !== "s8");
+    serve({
+      revision: 1,
+      calls: [],
+      packFingerprint: FP2,
+      changes: {
+        lines: [
+          { line: "s3", change: "removed", before_line: "s3", after_line: null, before: line("s3", "Ligne trois."), after: null },
+          { line: "s7", change: "changed", before_line: "s8", after_line: "s7", before: line("s8", "Ligne huit."), after: line("s7", "Ligne huit, corrigée.") },
+        ],
+        lines_renumbered: moves,
+        questions: [],
+        annotations_changed: false,
+      },
+    });
+    const scripts = await openLesson();
+    fireEvent.click(await within(scripts).findByRole("button", { name: `Open ${TITLE}` }));
+    const notice = await screen.findByRole("region", { name: "Script update" });
+    fireEvent.click(within(notice).getByRole("button", { name: "Review the changes" }));
+    await within(notice).findByRole("heading", { name: "What the update changes: revision 1 → 2" });
+    const top = [...notice.querySelectorAll("ul.listening-revision-changes > li")].map((li) => li.firstChild!.textContent);
+    expect(top).toEqual([
+      "Line s3 is removed.",
+      "Line s7 (line s8 in revision 1): the wording changed.",
+      "6 other lines are renumbered; their wording does not change.",
+    ]);
+    const shifts = [...notice.querySelectorAll("details.listening-revision-shifts li")].map((li) => li.textContent);
+    expect(shifts).toEqual(moves.map((m) => `Line ${m.before} is now line ${m.after}.`));
+  });
+
   it("replaces a stale preview with a fresh one and updates only on the second confirmation", async () => {
     const server: Server = { revision: 1, calls: [], packFingerprint: FP2, staleNextUpdate: true };
     serve(server);
@@ -516,6 +548,28 @@ describe("Workbook script revisions (private workbench)", () => {
     expect(bodies).toHaveLength(2);
     expect(bodies[1]).toBe(bodies[0]); // the identical confirmation
     expect(server.revision).toBe(2);
+  });
+
+  it("when another tab updated first, reviewing says so, writes nothing and keeps unsaved answers and saved mistakes", async () => {
+    const server: Server = { revision: 1, calls: [], packFingerprint: FP2, notebook: [oldMistake] };
+    serve(server);
+    const scripts = await openLesson();
+    fireEvent.click(await within(scripts).findByRole("button", { name: `Open ${TITLE}` }));
+    const notice = await screen.findByRole("region", { name: "Script update" });
+    const a1 = screen.getByLabelText("Your answer to question 1") as HTMLInputElement;
+    fireEvent.change(a1, { target: { value: "S'inscrire." } });
+    server.revision = 2; // another tab confirmed the update meanwhile
+    fireEvent.click(within(notice).getByRole("button", { name: "Review the changes" }));
+    expect(await within(notice).findByText(/This lesson was updated to revision 2 elsewhere \(another tab or device\)\. This page still shows revision 1/)).toBeInTheDocument();
+    expect(within(notice).queryByRole("button", { name: /Update this lesson to revision/ })).toBeNull();
+    expect(within(notice).queryByRole("heading", { name: /What the update changes/ })).toBeNull();
+    expect(a1.value).toBe("S'inscrire.");
+    expect(updates(server)).toEqual([]);
+    expect(writes(server)).toEqual([]);
+    // Showing the current lesson is the learner's choice; the saved mistake keeps revision 1.
+    fireEvent.click(within(notice).getByRole("button", { name: "Show the current lesson" }));
+    await waitFor(() => expect(document.querySelector("#listening-item-901-1")).not.toBeNull());
+    expect(server.notebook![0].link.listening_transcript_version).toBe(1);
   });
 
   it("opens an old Mistake Notebook item on the revision it was saved from, after the lesson moved on", async () => {

@@ -663,11 +663,19 @@ Speaking v1 (private workbench):
 - Practice overview (`GET /speaking/practice`) and NDJSON export (`GET
   /speaking/export`) are read-only and derived on every read: a take's
   `state`, one queue item per exercise from its latest take, and counts in
-  which only `feedback_ready` on the latest confirmed version is completed.
+  which only `feedback_ready` on the latest confirmed version is completed
+  (a later request on that version never undoes it). Never drop a started,
+  incomplete exercise from the queue because a provider is off: the reason
+  follows from the take's state (`review_without_feedback` when feedback is
+  off), and `request`/`request_enabled` say what can be sent now; failed and
+  unknown stay failed and unknown. Self-review ticks stay in the page.
   The export never holds audio and has no import. The same audio SHA-256 in
   one exercise replays the existing take (`take_conflict` if its metadata
-  differs). An exercise keeps its started wording; `pack_status` reports a
-  corrected set. Contract: `docs/ARCHITECTURE.md` §4.7, A.19.
+  differs); a typed save replays the latest take while it is typed and has no
+  transcript. An exercise keeps its started wording; `pack_status` reports a
+  corrected set and `current_prompt` shows it read-only (practising it needs
+  a migration: `docs/plans/SPEAKING-PROMPT-REVISIONS.md`). Contract:
+  `docs/ARCHITECTURE.md` §4.7, A.19.
 
 Mistake Notebook v1 (private workbench):
 
@@ -766,7 +774,8 @@ Authored listening scripts (workbook):
   reads report `script_revision.pack_status`; only an explicit, previewed
   `POST /listening/materials/{id}/script-update` (`from_revision`,
   `pack_fingerprint`) appends the next revision, replays when already applied
-  and is `409 stale_preview` otherwise. Never update on lesson load. Notebook
+  and is `409 stale_preview` otherwise. Previews align lines by content, so a
+  removed line is listed once and the lines it renumbers are folded. Never update on lesson load. Notebook
   records keep their exercise ID (the revision the learner saw). No migration.
   Re-import of an outdated lesson stays `409 script_conflict`.
 - Listening questions must rest on their script: `python3 -m flh_workbooks

@@ -108,12 +108,23 @@ type ListeningScriptRevision struct {
 
 // ListeningLineChange is one script line that differs between two revisions.
 // Change is "changed", "added" or "removed"; Before or After is nil for an
-// added or removed line.
+// added or removed line. Line is the line's ID in the next revision (in the
+// stored one for a removed line); BeforeLine and AfterLine name it on each
+// side, so a changed line that also moved names both numbers.
 type ListeningLineChange struct {
-	Line   string               `json:"line"`
-	Change string               `json:"change"`
-	Before *ListeningScriptLine `json:"before"`
-	After  *ListeningScriptLine `json:"after"`
+	Line       string               `json:"line"`
+	Change     string               `json:"change"`
+	BeforeLine *string              `json:"before_line"`
+	AfterLine  *string              `json:"after_line"`
+	Before     *ListeningScriptLine `json:"before"`
+	After      *ListeningScriptLine `json:"after"`
+}
+
+// ListeningLineMove is an unchanged line whose number changes only because
+// lines before it were removed or added.
+type ListeningLineMove struct {
+	Before string `json:"before"`
+	After  string `json:"after"`
 }
 
 // ListeningQuestionChange is one question that differs, matched by its item
@@ -134,14 +145,16 @@ type ListeningQuestionChange struct {
 // ListeningScriptChanges is what an update would change. Unchanged lines and
 // questions are not listed.
 type ListeningScriptChanges struct {
-	Lines              []ListeningLineChange     `json:"lines"`
+	Lines []ListeningLineChange `json:"lines"`
+	// LinesRenumbered lists unchanged lines that only get a new number.
+	LinesRenumbered    []ListeningLineMove       `json:"lines_renumbered"`
 	Questions          []ListeningQuestionChange `json:"questions"`
 	AnnotationsChanged bool                      `json:"annotations_changed"`
 }
 
 // Empty reports whether nothing differs.
 func (c ListeningScriptChanges) Empty() bool {
-	return len(c.Lines) == 0 && len(c.Questions) == 0 && !c.AnnotationsChanged
+	return len(c.Lines) == 0 && len(c.LinesRenumbered) == 0 && len(c.Questions) == 0 && !c.AnnotationsChanged
 }
 
 func sameJSON(a, b any) bool {
@@ -160,22 +173,27 @@ func sameJSON(a, b any) bool {
 }
 
 // DiffListeningScript lists what differs between a stored revision (its
-// segments and exercise) and the next content. Lines are compared by
-// position, questions by item ID (an item without an ID by position).
+// segments and exercise) and the next content. Lines are aligned by content
+// (alignLines), so removing or adding a line reports that line, not every
+// later one; questions are matched by item ID (an item without an ID by
+// position).
 func DiffListeningScript(beforeSegments []TranscriptSegment, before ListeningExerciseContent, afterSegments []TranscriptSegment, after ListeningExerciseContent) ListeningScriptChanges {
-	out := ListeningScriptChanges{Lines: []ListeningLineChange{}, Questions: []ListeningQuestionChange{}}
+	out := ListeningScriptChanges{Lines: []ListeningLineChange{}, LinesRenumbered: []ListeningLineMove{}, Questions: []ListeningQuestionChange{}}
 	line := func(s TranscriptSegment) *ListeningScriptLine {
 		return &ListeningScriptLine{ID: fmt.Sprintf("s%d", s.Index), Speaker: s.Speaker, Text: s.Text}
 	}
-	for i := 0; i < max(len(beforeSegments), len(afterSegments)); i++ {
-		id := fmt.Sprintf("s%d", i+1)
+	id := func(i int) *string { s := fmt.Sprintf("s%d", i+1); return &s }
+	for _, p := range alignLines(beforeSegments, afterSegments) {
 		switch {
-		case i >= len(beforeSegments):
-			out.Lines = append(out.Lines, ListeningLineChange{Line: id, Change: "added", After: line(afterSegments[i])})
-		case i >= len(afterSegments):
-			out.Lines = append(out.Lines, ListeningLineChange{Line: id, Change: "removed", Before: line(beforeSegments[i])})
-		case !sameJSON(beforeSegments[i], afterSegments[i]):
-			out.Lines = append(out.Lines, ListeningLineChange{Line: id, Change: "changed", Before: line(beforeSegments[i]), After: line(afterSegments[i])})
+		case p.before < 0:
+			out.Lines = append(out.Lines, ListeningLineChange{Line: *id(p.after), Change: "added", AfterLine: id(p.after), After: line(afterSegments[p.after])})
+		case p.after < 0:
+			out.Lines = append(out.Lines, ListeningLineChange{Line: *id(p.before), Change: "removed", BeforeLine: id(p.before), Before: line(beforeSegments[p.before])})
+		case !sameJSON(lineContent(beforeSegments[p.before]), lineContent(afterSegments[p.after])):
+			out.Lines = append(out.Lines, ListeningLineChange{Line: *id(p.after), Change: "changed", BeforeLine: id(p.before), AfterLine: id(p.after),
+				Before: line(beforeSegments[p.before]), After: line(afterSegments[p.after])})
+		case p.before != p.after:
+			out.LinesRenumbered = append(out.LinesRenumbered, ListeningLineMove{Before: *id(p.before), After: *id(p.after)})
 		}
 	}
 	key := func(it ListeningItem, pos int) string {
@@ -219,6 +237,77 @@ func DiffListeningScript(beforeSegments []TranscriptSegment, before ListeningExe
 		}
 	}
 	out.AnnotationsChanged = !sameJSON(before.Annotations, after.Annotations)
+	return out
+}
+
+// lineContent is what a line says, without its number.
+func lineContent(s TranscriptSegment) TranscriptSegment {
+	s.Index = 0
+	return s
+}
+
+// linePair pairs a stored line with a next one by index; -1 is a missing side.
+type linePair struct{ before, after int }
+
+// alignLines pairs the lines of two revisions in order: lines with the same
+// content (speaker and wording) are matched by their longest common
+// subsequence; between two matches, the remaining lines pair up by position as
+// changed lines, and the rest are removed or added. Equal-length scripts with
+// edits in place therefore pair exactly by position, as before.
+func alignLines(a, b []TranscriptSegment) []linePair {
+	n, m := len(a), len(b)
+	same := func(i, j int) bool { return sameJSON(lineContent(a[i]), lineContent(b[j])) }
+	// lcs[i][j]: length of the longest common subsequence of a[i:] and b[j:].
+	lcs := make([][]int, n+1)
+	for i := range lcs {
+		lcs[i] = make([]int, m+1)
+	}
+	for i := n - 1; i >= 0; i-- {
+		for j := m - 1; j >= 0; j-- {
+			if same(i, j) {
+				lcs[i][j] = lcs[i+1][j+1] + 1
+			} else {
+				lcs[i][j] = max(lcs[i+1][j], lcs[i][j+1])
+			}
+		}
+	}
+	var out []linePair
+	var gapA, gapB []int
+	flush := func() {
+		k := 0
+		for ; k < len(gapA) && k < len(gapB); k++ {
+			out = append(out, linePair{gapA[k], gapB[k]})
+		}
+		for _, i := range gapA[k:] {
+			out = append(out, linePair{i, -1})
+		}
+		for _, j := range gapB[k:] {
+			out = append(out, linePair{-1, j})
+		}
+		gapA, gapB = gapA[:0], gapB[:0]
+	}
+	i, j := 0, 0
+	for i < n && j < m {
+		switch {
+		case same(i, j) && lcs[i][j] == lcs[i+1][j+1]+1:
+			flush()
+			out = append(out, linePair{i, j})
+			i, j = i+1, j+1
+		case lcs[i+1][j] >= lcs[i][j+1]:
+			gapA = append(gapA, i)
+			i++
+		default:
+			gapB = append(gapB, j)
+			j++
+		}
+	}
+	for ; i < n; i++ {
+		gapA = append(gapA, i)
+	}
+	for ; j < m; j++ {
+		gapB = append(gapB, j)
+	}
+	flush()
 	return out
 }
 

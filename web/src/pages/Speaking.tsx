@@ -179,6 +179,62 @@ export function Speaking({
 
 // PracticeOverview shows the backend's practice overview: what was actually
 // completed, what is waiting, and one next step per exercise with its reason.
+// queueReasonKey picks the message for one queue step: the reason comes from
+// the take's state; the request and whether it can be sent now decide what the
+// learner is told they can do.
+function queueReasonKey(q: SpeakingQueueItem): MessageKey | null {
+  const on = q.request_enabled;
+  const viaTranscription = q.request === "transcription";
+  switch (q.reason) {
+    case "check_unknown_outcome":
+      return viaTranscription
+        ? on
+          ? "speaking.queue.reason.check_unknown_outcome.transcription"
+          : "speaking.queue.reason.check_unknown_outcome.transcriptionOff"
+        : on
+          ? "speaking.queue.reason.check_unknown_outcome.feedback"
+          : "speaking.queue.reason.check_unknown_outcome.feedbackOff";
+    case "request_failed":
+      return viaTranscription
+        ? on
+          ? "speaking.queue.reason.request_failed.transcription"
+          : "speaking.queue.reason.request_failed.transcriptionOff"
+        : on
+          ? "speaking.queue.reason.request_failed.feedback"
+          : "speaking.queue.reason.request_failed.feedbackOff";
+    case "add_transcript":
+      return !viaTranscription
+        ? "speaking.queue.reason.add_transcript.typed"
+        : on
+          ? "speaking.queue.reason.add_transcript.transcription"
+          : "speaking.queue.reason.add_transcript.transcriptionOff";
+    case "request_in_progress":
+      return viaTranscription ? "speaking.queue.reason.request_in_progress.transcription" : "speaking.queue.reason.request_in_progress.feedback";
+    case "confirm_transcript":
+    case "request_feedback":
+    case "review_without_feedback":
+    case "start_first_take":
+    case "not_started":
+      return `speaking.queue.reason.${q.reason}`;
+    default:
+      return null;
+  }
+}
+
+function QueueReason({ q }: { q: SpeakingQueueItem }) {
+  const { t, tp } = useI18n();
+  const n = q.take_number ?? 0;
+  const key = queueReasonKey(q);
+  return (
+    <>
+      <p>{q.reason === "answer_again" ? tp("speaking.queue.reason.answer_again", q.improvements, { n }) : key ? t(key, { n }) : q.reason}</p>
+      {q.pack_status === "changed" || q.pack_status === "removed" ? (
+        <p className="hint">{t(q.pack_status === "changed" ? "speaking.queue.packChanged" : "speaking.queue.packRemoved")}</p>
+      ) : null}
+    </>
+  );
+}
+
 function PracticeOverview({ load, onRetry, onOpen, onStart, busy }: {
   load: Load<SpeakingPractice>;
   onRetry: () => void;
@@ -186,22 +242,7 @@ function PracticeOverview({ load, onRetry, onOpen, onStart, busy }: {
   onStart: (promptId: string) => void;
   busy: boolean;
 }) {
-  const { t, tp } = useI18n();
-  const reason = (q: SpeakingQueueItem) => {
-    const n = q.take_number ?? 0;
-    switch (q.reason) {
-      case "answer_again":
-        return tp("speaking.queue.reason.answer_again", q.improvements, { n });
-      case "check_unknown_outcome":
-      case "request_failed":
-      case "confirm_transcript":
-      case "add_transcript":
-      case "request_feedback":
-        return t(`speaking.queue.reason.${q.reason}`, { n });
-      default:
-        return t(`speaking.queue.reason.${q.reason}`);
-    }
-  };
+  const { t } = useI18n();
   if (load.status !== "ready")
     return (
       <section className="panel" aria-label={t("speaking.practice.region")}>
@@ -238,6 +279,16 @@ function PracticeOverview({ load, onRetry, onOpen, onStart, busy }: {
         {s.last_completed_at ? <li>{t("speaking.practice.lastCompleted", { date: when(s.last_completed_at) })}</li> : null}
       </ul>
       <p className="hint">{t("speaking.practice.countsNote")}</p>
+      {p.resume && p.resume.exercise_id !== null ? (
+        <div className="banner info speaking-resume" role="group" aria-label={t("speaking.resume.heading")}>
+          <h3>{t("speaking.resume.heading")}</h3>
+          <span className="reading-example-title">{p.resume.title}</span>
+          <QueueReason q={p.resume} />
+          <button type="button" className="primary" onClick={() => onOpen(p.resume!.exercise_id!, p.resume!.take_id ?? undefined)}>
+            {t("speaking.resume.button")}
+          </button>
+        </div>
+      ) : null}
       <h3>{t("speaking.queue.heading")}</h3>
       <p className="hint">{t("speaking.queue.hint")}</p>
       {p.queue.length === 0 ? (
@@ -247,7 +298,7 @@ function PracticeOverview({ load, onRetry, onOpen, onStart, busy }: {
           {p.queue.map((q) => (
             <li key={`${q.prompt_id}-${q.exercise_id ?? 0}`} data-reason={q.reason}>
               <span className="reading-example-title">{q.title}</span>
-              <p>{reason(q)}</p>
+              <QueueReason q={q} />
               {q.exercise_id !== null ? (
                 <button type="button" className="ghost" onClick={() => onOpen(q.exercise_id!, q.take_id ?? undefined)}>
                   {t("speaking.queue.open")}
@@ -386,7 +437,12 @@ function ExerciseScreen({
   const [selectedTake, setSelectedTake] = useState<number | null>(initialTake ?? null);
   const [retry, setRetry] = useState<(RetryPoints & { nonce: number }) | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => headingRef.current?.focus(), [view.status]);
+  // Opened at a take (Continue, Next steps, a notebook link): that take's
+  // section takes focus instead, so a phone lands on it, not on the prompt.
+  const atTake = view.status === "ready" && initialTake !== undefined && view.data.takes.some((k) => k.id === initialTake);
+  useEffect(() => {
+    if (!atTake) headingRef.current?.focus();
+  }, [view.status, atTake]);
   const back = (
     <button type="button" className="ghost" onClick={onBack}>
       {t("speaking.back")}
@@ -421,6 +477,9 @@ function ExerciseScreen({
           {v.exercise.title}
         </h2>
         <div className="actions">{back}</div>
+        {v.exercise.pack_status !== "current" ? (
+          <p className="hint">{t("speaking.pack.answered", { revision: revisionOf(v.exercise.content_fingerprint) })}</p>
+        ) : null}
         <p lang="fr" className="french">
           {v.exercise.situation}
         </p>
@@ -435,6 +494,7 @@ function ExerciseScreen({
         {v.exercise.pack_status !== "current" ? (
           <div className="banner info" role="note">
             {t(v.exercise.pack_status === "removed" ? "speaking.pack.removed" : "speaking.pack.changed")}
+            {v.current_prompt ? <PromptCorrection view={v} /> : null}
           </div>
         ) : null}
         <p className="hint">{t("speaking.practiceNotice")}</p>
@@ -458,6 +518,7 @@ function ExerciseScreen({
             view={v}
             take={take}
             initialVersion={take.id === initialTake ? initialVersion : undefined}
+            focusOnMount={take.id === initialTake}
             local={audio.get(take.id) ?? null}
             onReattach={(a) => keep(take.id, a)}
             onChanged={reload}
@@ -468,6 +529,47 @@ function ExerciseScreen({
         </>
       ) : null}
     </div>
+  );
+}
+
+// revisionOf names a prompt wording by the start of its content fingerprint.
+export function revisionOf(fingerprint: string): string {
+  return fingerprint.slice(0, 8);
+}
+
+// PromptCorrection shows the set's corrected wording beside the one the
+// learner answered (above it), read-only: the exercise keeps its wording.
+function PromptCorrection({ view }: { view: SpeakingExerciseView }) {
+  const { t } = useI18n();
+  const c = view.current_prompt!;
+  const e = view.exercise;
+  const changed: MessageKey[] = [];
+  if (c.title !== e.title) changed.push("speaking.pack.field.title");
+  if (c.situation !== e.situation) changed.push("speaking.pack.field.situation");
+  if (JSON.stringify(c.requirements) !== JSON.stringify(e.requirements)) changed.push("speaking.pack.field.requirements");
+  if (c.seconds_min !== e.seconds_min || c.seconds_max !== e.seconds_max) changed.push("speaking.pack.field.range");
+  return (
+    <details className="speaking-correction">
+      <summary>{t("speaking.pack.showCurrent", { revision: revisionOf(c.content_fingerprint) })}</summary>
+      {changed.length > 0 ? <p className="hint">{t("speaking.pack.changedFields", { fields: changed.map((k) => t(k)).join(", ") })}</p> : null}
+      {c.title !== e.title ? (
+        <p lang="fr" className="french">
+          <strong>{c.title}</strong>
+        </p>
+      ) : null}
+      <p lang="fr" className="french">
+        {c.situation}
+      </p>
+      <ul className="listening-steps">
+        {c.requirements.map((r, i) => (
+          <li key={i} lang="fr" className="french">
+            {r}
+          </li>
+        ))}
+      </ul>
+      <p className="hint">{t("speaking.exercise.range", { min: c.seconds_min, max: c.seconds_max })}</p>
+      <p className="hint">{t("speaking.pack.notPractisable")}</p>
+    </details>
   );
 }
 
@@ -628,20 +730,20 @@ function RecordPanel({
     }
   };
   // After a save whose answer was lost: read the exercise again and look for a
-  // take with this recording's digest that was not there before.
+  // take with this recording's digest (or, for a typed take, a typed take)
+  // that was not there before.
   const checkSaved = async (local: LocalAudio | null) => {
-    if (!local) return;
     setState({ status: "error", message: t("speaking.record.saveUnknown"), local, unknown: true, checking: true });
     const known = new Set(view.takes.map((k) => k.id));
     try {
       const fresh = await api.getSpeakingExercise(view.exercise.id);
-      const found = fresh.takes.find((k) => !known.has(k.id) && k.audio_sha256 === local.sha256);
+      const found = fresh.takes.find((k) => !known.has(k.id) && (local ? k.audio_sha256 === local.sha256 : k.audio_source === "none"));
       if (found) {
         setAnnouncement(t("speaking.record.saved", { n: found.number }));
         onSaved(found.id, local);
         setState({ status: "idle" });
       } else {
-        setState({ status: "error", message: t("speaking.record.notSavedAfterCheck", { n: fresh.takes.length + 1 }), local });
+        setState({ status: "error", message: t(local ? "speaking.record.notSavedAfterCheck" : "speaking.record.typedNotSavedAfterCheck", { n: fresh.takes.length + 1 }), local });
       }
     } catch (e) {
       setState({ status: "error", message: t("speaking.record.checkFailed", { message: describe(e) }), local, unknown: true });
@@ -697,6 +799,14 @@ function RecordPanel({
         <div className="banner error" role="alert">
           {state.message}
           {state.local ? ` ${t("speaking.record.keptAfterError")}` : ""}
+          {state.unknown && !state.local ? (
+            <>
+              {" "}
+              <button type="button" className="ghost" disabled={busy} onClick={() => void checkSaved(null)}>
+                {state.checking ? t("speaking.record.checking") : t("speaking.record.checkSaved")}
+              </button>
+            </>
+          ) : null}
         </div>
       ) : null}
       {state.status === "recording" ? (
@@ -799,6 +909,9 @@ function TakesPanel({ view, take, onSelect }: { view: SpeakingExerciseView; take
         <>
           <h4>{t("speaking.history.heading")}</h4>
           <p className="hint">{t("speaking.history.hint")}</p>
+          {view.exercise.pack_status !== "current" ? (
+            <p className="hint">{t("speaking.history.revision", { revision: revisionOf(view.exercise.content_fingerprint) })}</p>
+          ) : null}
           <ol className="listening-list speaking-history" aria-label={t("speaking.history.heading")}>
             {view.takes.map((k) => {
               const versions = view.transcripts.filter((s) => s.take_id === k.id);
@@ -884,6 +997,7 @@ function TakeDetail({
   view,
   take,
   initialVersion,
+  focusOnMount = false,
   local,
   onReattach,
   onChanged,
@@ -893,6 +1007,7 @@ function TakeDetail({
   view: SpeakingExerciseView;
   take: SpeakingTake;
   initialVersion?: number;
+  focusOnMount?: boolean;
   local: LocalAudio | null;
   onReattach: (a: LocalAudio) => void;
   onChanged: () => void;
@@ -907,9 +1022,19 @@ function TakeDetail({
   const shown = versions.find((s) => s.version === selected) ?? latest;
   const machine = view.transcriptions.find((x) => x.take_id === take.id && x.status === "completed") ?? null;
   const hit = highlight && shown ? shown.text.indexOf(highlight) : -1;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (focusOnMount) headingRef.current?.focus();
+    // Only when the take is first shown; later selections keep focus where it is.
+  }, []);
   return (
     <section className="panel" aria-label={t("speaking.take.region", { n: take.number })}>
-      <h3>{t("speaking.take.heading", { n: take.number })}</h3>
+      <h3 ref={headingRef} tabIndex={-1}>
+        {t("speaking.take.heading", { n: take.number })}
+      </h3>
+      {view.exercise.pack_status !== "current" ? (
+        <p className="hint">{t("speaking.take.answeredRevision", { n: take.number, revision: revisionOf(view.exercise.content_fingerprint) })}</p>
+      ) : null}
       {take.audio_source === "none" ? (
         <p className="hint">{t("speaking.take.typed")}</p>
       ) : (
@@ -1034,7 +1159,11 @@ function TranscriptionSection({
             {t("speaking.checkAgain")}
           </button>
         </div>
-      ) : !local ? null : state.status === "confirming" ? (
+      ) : !local ? (
+        // After a reload or a restore the audio is gone: say how to send it
+        // again, unless a transcript is already there to check or confirmed.
+        confirmed || machine ? null : <p className="hint">{t("speaking.transcribe.needsAudio")}</p>
+      ) : state.status === "confirming" ? (
         <div className="banner info" role="alertdialog" aria-label={t("speaking.transcribe.confirmRegion")}>
           <p>
             {t("speaking.transcribe.confirmText", {
@@ -1095,8 +1224,29 @@ function TranscriptEditor({
   const { t } = useI18n();
   const fromMachine = !latest && machine?.text ? machine : null;
   const [text, setText] = useState(latest?.text ?? fromMachine?.text ?? "");
-  const [state, setState] = useState<{ status: "idle" | "saving" } | { status: "error"; message: string }>({ status: "idle" });
+  // `unknown`: no answer arrived, so this version may or may not be saved
+  // until it is checked.
+  const [state, setState] = useState<{ status: "idle" | "saving" | "checking" } | { status: "error"; message: string; unknown?: boolean }>({ status: "idle" });
   const next = (latest?.version ?? 0) + 1;
+  // savedVersion reads the take again: the server keeps the text trimmed, with
+  // CRLF as LF. A version at least `next` holding exactly this text means an
+  // earlier confirmation was saved even though its answer never arrived.
+  const savedVersion = async (): Promise<number | null> => {
+    const fresh = await api.getSpeakingExercise(view.exercise.id);
+    const mine = fresh.transcripts.filter((s) => s.take_id === take.id);
+    const top = mine[mine.length - 1];
+    return top && top.version >= next && top.text === text.replace(/\r\n/g, "\n").trim() ? top.version : null;
+  };
+  const check = async () => {
+    setState({ status: "checking" });
+    try {
+      const saved = await savedVersion();
+      if (saved !== null) onSaved(saved);
+      else setState({ status: "error", message: t("speaking.editor.notSaved", { version: next }) });
+    } catch (e) {
+      setState({ status: "error", message: t("speaking.editor.checkFailed", { message: describe(e) }), unknown: true });
+    }
+  };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setState({ status: "saving" });
@@ -1105,10 +1255,22 @@ function TranscriptEditor({
       onSaved(next);
     } catch (e) {
       const unchanged = e instanceof ApiError && (e.body as { code?: string } | undefined)?.code === "unchanged";
-      setState({
-        status: "error",
-        message: unchanged ? t("speaking.editor.unchanged") : e instanceof NetworkError ? t("speaking.editor.unknown") : t("speaking.editor.failed", { message: describe(e) }),
-      });
+      if (unchanged) {
+        // Confirming again after a lost answer: the page may be behind a save
+        // that did happen. Show that version instead of "nothing was saved".
+        const saved = await savedVersion().catch(() => null);
+        if (saved !== null) {
+          onSaved(saved);
+          return;
+        }
+      }
+      setState(
+        unchanged
+          ? { status: "error", message: t("speaking.editor.unchanged") }
+          : e instanceof NetworkError
+            ? { status: "error", message: t("speaking.editor.unknown"), unknown: true }
+            : { status: "error", message: t("speaking.editor.failed", { message: describe(e) }) },
+      );
     }
   };
   const fieldId = `speaking-editor-${take.id}`;
@@ -1133,11 +1295,19 @@ function TranscriptEditor({
       {state.status === "error" ? (
         <div className="banner error" role="alert">
           {state.message}
+          {state.unknown ? (
+            <>
+              {" "}
+              <button type="button" className="ghost" onClick={() => void check()}>
+                {t("speaking.editor.check")}
+              </button>
+            </>
+          ) : null}
         </div>
       ) : null}
       <div className="actions">
-        <button type="submit" className="primary" disabled={state.status === "saving" || !text.trim()}>
-          {t("speaking.editor.confirm", { version: next })}
+        <button type="submit" className="primary" disabled={state.status === "saving" || state.status === "checking" || !text.trim()}>
+          {state.status === "checking" ? t("speaking.editor.checking") : t("speaking.editor.confirm", { version: next })}
         </button>
       </div>
     </form>
@@ -1206,7 +1376,10 @@ function FeedbackSection({
       <h4>{t("speaking.feedback.heading", { n: take.number, version: transcript.version })}</h4>
       {elsewhere.length > 0 ? <p className="hint">{t("speaking.feedback.elsewhere", { versions: elsewhere.map((n) => `v${n}`).join(", ") })}</p> : null}
       {!view.providers.feedback.enabled ? (
-        <p className="hint">{t("speaking.feedback.disabled")}</p>
+        <>
+          <p className="hint">{t("speaking.feedback.disabled")}</p>
+          {completed ? null : <SelfReview key={transcript.id} view={view} take={take} transcript={transcript} />}
+        </>
       ) : anyInProgress ? (
         <div className="banner info" role="status">
           {t("speaking.feedback.inProgress")}{" "}
@@ -1253,6 +1426,40 @@ function FeedbackSection({
       ) : null}
       {completed ? <Report view={view} take={take} transcript={transcript} report={completed} onHighlight={onHighlight} onOpenRecord={onOpenRecord} onRetry={onRetry} /> : null}
     </section>
+  );
+}
+
+// SelfReview is the next step when feedback is off: the prompt's requirements
+// (the wording this exercise keeps) as a checklist next to the transcript, and
+// the take's length against the target. The ticks stay in this component: they
+// are never saved, sent or scored.
+function SelfReview({ view, take, transcript }: { view: SpeakingExerciseView; take: SpeakingTake; transcript: SpeakingTranscript }) {
+  const { t } = useI18n();
+  const reqs = view.exercise.requirements;
+  const [ticked, setTicked] = useState<boolean[]>(() => reqs.map(() => false));
+  return (
+    <div className="speaking-self-review" role="group" aria-label={t("speaking.selfReview.region", { n: take.number, version: transcript.version })}>
+      <p>{t("speaking.selfReview.heading", { n: take.number, version: transcript.version })}</p>
+      <p className="hint">{t("speaking.selfReview.hint")}</p>
+      <ul className="speaking-self-review-list">
+        {reqs.map((r, i) => (
+          <li key={i}>
+            <label>
+              <input type="checkbox" checked={ticked[i] ?? false} onChange={(e) => setTicked((x) => x.map((v, j) => (j === i ? e.target.checked : v)))} />{" "}
+              <span lang="fr" className="french">
+                {r}
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {take.duration_ms ? (
+        <p className="hint">
+          {t("speaking.selfReview.length", { duration: formatDuration(take.duration_ms), min: view.exercise.seconds_min, max: view.exercise.seconds_max })}
+        </p>
+      ) : null}
+      <p className="hint">{t("speaking.selfReview.next", { n: view.takes.length + 1 })}</p>
+    </div>
   );
 }
 
@@ -1576,6 +1783,67 @@ function CompareEvidence({
   );
 }
 
+// followThrough looks each point of the earlier version's feedback up in the
+// later transcript: the suggested wording appears ("used"), the quoted words
+// are still there ("still"), or neither ("gone"). A text check only, with
+// apostrophes and spacing normalised; it never judges correctness.
+export function followThrough(points: SpeakingImprovement[], later: string): ("used" | "still" | "gone")[] {
+  const norm = (x: string) => x.replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim();
+  const text = norm(later);
+  return points.map((k) => (k.suggestion && text.includes(norm(k.suggestion)) ? "used" : text.includes(norm(k.quote)) ? "still" : "gone"));
+}
+
+function FeedbackFollowThrough({
+  view,
+  older,
+  newer,
+  label,
+}: {
+  view: SpeakingExerciseView;
+  older: SpeakingTranscript;
+  newer: SpeakingTranscript;
+  label: (s: SpeakingTranscript) => string;
+}) {
+  const { t } = useI18n();
+  if (older.id === newer.id) return null;
+  // The report that counts for the earlier version: its newest completed one.
+  const report = view.feedback.find((f) => f.transcript_id === older.id && f.status === "completed" && f.content);
+  const a = label(older);
+  const b = label(newer);
+  if (!report?.content) return <p className="hint">{t("speaking.compare.followNone", { a })}</p>;
+  const points = report.content.improvements;
+  const found = followThrough(points, newer.text);
+  return (
+    <section className="speaking-follow" aria-label={t("speaking.compare.followHeading", { a, b })}>
+      <h4>{t("speaking.compare.followHeading", { a, b })}</h4>
+      <p className="hint">{t("speaking.compare.followHint", { b })}</p>
+      {points.length === 0 ? (
+        <p className="hint">{t("speaking.compare.followEmpty")}</p>
+      ) : (
+        <ul className="listening-list">
+          {points.map((k, i) => (
+            <li key={i} data-follow={found[i]}>
+              <span lang="fr" className="french">
+                « {k.quote} »
+              </span>
+              {k.suggestion ? (
+                <>
+                  {" → "}
+                  <span lang="fr" className="french">
+                    « {k.suggestion} »
+                  </span>
+                </>
+              ) : null}{" "}
+              <span className="tag">{t(`writing.category.${k.category}` as MessageKey)}</span>
+              <p>{t(found[i] === "used" ? "speaking.compare.follow.used" : found[i] === "still" ? "speaking.compare.follow.still" : "speaking.compare.follow.gone")}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function ComparePanel({ view }: { view: SpeakingExerciseView }) {
   const { t } = useI18n();
   const number = (s: SpeakingTranscript) => view.takes.find((k) => k.id === s.take_id)?.number ?? 0;
@@ -1616,6 +1884,7 @@ function ComparePanel({ view }: { view: SpeakingExerciseView }) {
         ))}
       </select>
       <CompareEvidence view={view} older={older} newer={newer} label={label} />
+      <FeedbackFollowThrough view={view} older={older} newer={newer} label={label} />
       <p className="hint">{t("speaking.compare.legend")}</p>
       {older.id === newer.id ? (
         <p className="hint">{t("speaking.compare.same")}</p>
