@@ -256,6 +256,14 @@ old=$(ls -d "$DATA".before-restore-* 2> /dev/null | head -1)
   && pass "restored data is active and the previous data is preserved" || fail "restore result"
 grep -q "^docker compose --env-file $WORK/daily.env up -d --force-recreate" "$WORK/shim.log" \
   && pass "restore recreates the container with the same settings file" || fail "restore recreate command"
+# A backup made read-only is restored read-only (cp -a): /readyz would pass and the
+# first write fail, so the service must not be started on it (FLH-152).
+cp -a "$backup" "$WORK/ro-backup"; chmod 444 "$WORK/ro-backup"/app.db*
+sleep 1 # restore paths carry a per-second timestamp
+: > "$WORK/shim.log"
+run "a read-only backup is restored but the service is not started" 2 "could not write the restored database" "$WORK/daily.env" restore "$WORK/ro-backup"
+grep -q "up -d --force-recreate" "$WORK/shim.log" && fail "the service was started on a read-only restore" || pass "no start after a failed write check"
+chmod 600 "$DATA"/app.db*
 
 # ---- v1.0 rehearsal: opt-in isolated project (FLH_COMPOSE_PROJECT + FLH_COMPOSE_OVERRIDE). ----
 grep -q "^docker compose -p\|^docker compose -f" "$WORK/shim.log" && fail "normal mode passes no -p/-f" || pass "normal mode passes no -p/-f (invocation unchanged)"

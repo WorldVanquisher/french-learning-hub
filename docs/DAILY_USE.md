@@ -239,10 +239,18 @@ bash scripts/daily/flh-daily.sh restore <FLH_DATA_DIR>.backups/flh-<UTC time>
 3. Renames the current data directory to `<FLH_DATA_DIR>.before-restore-<time>`.
    That copy is kept, never deleted.
 4. Moves the staged copy into place.
-5. Recreates the container **with the same settings file**.
+5. Checks that the service can write the restored files
+   (`scripts/release/restore_write_check.py`). `/readyz` alone passes on a
+   database the service may not write, and a backup kept read-only restores
+   read-only.
+6. Recreates the container **with the same settings file**.
 
 A checksum or integrity failure changes no data, but the service stays stopped
-until you run `start`. After a restore, check the records you expect.
+until you run `start`. When the write check fails, the restored data is
+already in place (the previous data kept aside) and the service stays
+stopped: make the files writable as the message says (for example `chmod 600`
+on `<FLH_DATA_DIR>/app.db*`), run the printed check again, then `start`.
+After a restore, check the records you expect.
 
 ### Health check [NAS]
 

@@ -10,7 +10,8 @@ network you do not trust.
 
 - Docker with the Compose plugin (verified with Docker 29.7 and Compose 5.5).
 - Host `sqlite3` and GNU `sha256sum` for integrity and checksum checks; Bash
-  for the fail-fast recovery blocks below.
+  for the fail-fast recovery blocks below; Python 3 for the restore write
+  check.
 - The repository checkout. Nothing is pulled from a private registry and no
   image is published.
 
@@ -298,21 +299,36 @@ integrity=$(sqlite3 -readonly "$stage/app.db" 'PRAGMA integrity_check;')
 # Both directories must be owned by the configured FLH_UID:FLH_GID.
 mv "$active" "$old"
 mv "$stage" "$active"
+# /readyz cannot tell that the service may not write the restored files (a
+# backup made read-only, or owned by another user, restores that way).
+python3 -I scripts/release/restore_write_check.py --uid "${FLH_UID:-1000}" --gid "${FLH_GID:-1000}" "$active"
 docker compose up -d --force-recreate
 ```
 
 If the second rename fails, leave the service stopped and move `old` back to
-`active` before retrying. On earlier errors, the original active directory is
-untouched; inspect the failed staging directory before removing it. Preserve
-`old` for review. Check `/readyz` and expected records after starting.
+`active` before retrying. If the write check fails, the restored files are in
+`active` and the service is still stopped: make `active`, `app.db` and any
+`app.db-wal`/`app.db-shm` writable by the service user (for example
+`chmod 600 "$active"/app.db*` and `chown FLH_UID:FLH_GID`), run the check
+again, then `docker compose up -d --force-recreate`. On earlier errors, the
+original active directory is untouched; inspect the failed staging directory
+before removing it. Preserve `old` for review. The backup itself is only read.
+Check `/readyz` and expected records after starting; `/readyz` shows that
+SQLite answers, not that it can write, which is what the write check is for.
+It runs as you: when the service user differs, it judges mode bits for that
+uid and skips its write probe (see the script's header).
 
 For an independent backup check, copy into another private directory, validate
 it as above, then use a separate project and port. This is a test instance,
-not the durable restore procedure:
+not the durable restore procedure. A copy of a read-only backup is read-only
+too (`cp -a` keeps the modes): its instance answers `/readyz` but fails its
+first write, so the write check runs first and `up` only after it passes. If
+it fails, run `chmod 600 "$check_dir"/app.db*` and the block again:
 
 ```bash
 : "${check_dir:?Set check_dir to the separately copied and validated directory}"
-FLH_DATA_DIR="$check_dir" FLH_HOST_PORT=18081 docker compose -p flh-restore-check up -d
+python3 -I scripts/release/restore_write_check.py --uid "${FLH_UID:-1000}" --gid "${FLH_GID:-1000}" "$check_dir" &&
+FLH_DATA_DIR="$check_dir" FLH_HOST_PORT=18081 docker compose -p flh-restore-check up -d &&
 curl --fail http://127.0.0.1:18081/readyz
 docker compose -p flh-restore-check down
 ```

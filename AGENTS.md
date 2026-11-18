@@ -351,6 +351,12 @@ v1.0 personal-use release packaging:
 - `scripts/release/disk_preflight.sh` runs before the smoke and the packaged
   browser check: exit 3 (BLOCKED) when the work directory, `TMPDIR` or Docker's
   root lacks room. It writes only its own probe file and never cleans others'.
+- `python3 -I scripts/release/restore_write_check.py DATA_DIR [--uid N --gid N]`
+  runs after a restore and before the service starts (RELEASE.md Restore and
+  independent backup check, `flh-daily.sh restore`): `/readyz` passes on an
+  `app.db` the service may not write, while the first write fails. It writes
+  only inside a rolled-back transaction; run as another user it judges mode
+  bits and skips that probe.
 - Publishable metadata (commit messages, PR bodies, squash messages) carries no
   Claude/Anthropic co-author trailer or identity and no private `claude.ai` link;
   check it with `scripts/release/publish_metadata_check.py`.

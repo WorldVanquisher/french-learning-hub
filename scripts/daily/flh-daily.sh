@@ -311,6 +311,7 @@ case "$CMD" in
     stage="$active.restore-$stamp"
     old="$active.before-restore-$stamp"
     [ ! -e "$stage" ] && [ ! -e "$old" ] || die "restore staging paths already exist"
+    owner=$(stat -c %u:%g "$active") # validated: owned by FLH_UID
     compose stop
     (cd "$backup" && sha256sum --quiet -c SHA256SUMS) || die "backup checksums do not match; nothing was changed (the service is stopped)"
     mkdir -m 700 "$stage"
@@ -319,6 +320,10 @@ case "$CMD" in
     mv "$active" "$old"
     mv "$stage" "$active" || { mv "$old" "$active"; die "could not move the restored copy into place; the original was put back"; }
     echo "flh-daily: restored $backup into $active; the previous data is kept at $old"
+    # /readyz cannot tell that the service may not write the restored files (a
+    # read-only or foreign-owned backup restores that way): check before starting.
+    python3 -I "$REPO/scripts/release/restore_write_check.py" --uid "${owner%:*}" --gid "${owner#*:}" "$active" \
+      || die "the service could not write the restored database, so it was not started. Make $active and its app.db files writable by uid ${owner%:*} (for example chmod 600 and chown), check again with: python3 -I $REPO/scripts/release/restore_write_check.py --uid ${owner%:*} --gid ${owner#*:} $active, then run: flh-daily.sh start"
     compose up -d --force-recreate
     wait_healthy
     ;;
