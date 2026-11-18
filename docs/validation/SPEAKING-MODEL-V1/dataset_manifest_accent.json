@@ -1,0 +1,30 @@
+{
+ "attribution": "African Accented French (OpenSLR SLR57), Apache-2.0. Audio is not redistributed in the repository.",
+ "audio_convention": "pcm_f32le/16000Hz/mono/ffmpeg-swr-v1",
+ "manifest_jsonl_sha256": "535717262f398886f3686f0c37947aac8077f447b9385bdf584725af8b8988da",
+ "schema": "flh_speaking_dataset_manifest_v1",
+ "sources": {
+  "slr57": {
+   "license": "Apache-2.0",
+   "pinning": "trust-on-first-use (server ETag \"6f6b4094-578efc2f66dc0\", Last-Modified 2018-10-24T01:54:07Z)",
+   "repo": "openslr/57",
+   "revision": "2018-10-24"
+  }
+ },
+ "splits": {
+  "accent": {
+   "audio_without_transcript": 0,
+   "hours": 0.313,
+   "source_channels": [
+    1
+   ],
+   "source_rates": [
+    16000
+   ],
+   "speakers": 12,
+   "transcripts_without_audio": 0,
+   "utterances": 515
+  }
+ },
+ "text_normalization": "flh_fr_asr_norm_v1"
+}

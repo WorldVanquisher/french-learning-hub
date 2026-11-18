@@ -1,0 +1,21 @@
+{
+ "schema": "flh_speaking_train_config_v1",
+ "note": "Training pilot: whisper-base, encoder-only fine-tune (decoder frozen) on the frozen MLS French train subset. The decoder is frozen because MLS references are lower-case without punctuation; training it on them would teach the served transcript to drop case and punctuation. Final step is the candidate (no checkpoint selection on test).",
+ "base_model": "whisper-base",
+ "seed": 20261117,
+ "train_ids": "split:train",
+ "dev_ids": "split:dev",
+ "max_steps": 180,
+ "batch_size": 2,
+ "grad_accum": 8,
+ "lr": 1e-05,
+ "warmup_steps": 18,
+ "weight_decay": 0.0,
+ "max_grad_norm": 1.0,
+ "freeze": "decoder",
+ "gradient_checkpointing": true,
+ "eval_every": 60,
+ "save_every": 5,
+ "keep_checkpoints": 2,
+ "threads": 4
+}

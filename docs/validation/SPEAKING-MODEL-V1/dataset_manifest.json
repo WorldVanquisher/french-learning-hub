@@ -1,0 +1,390 @@
+{
+ "attribution": "Multilingual LibriSpeech (Pratap et al., 2020; LibriVox recordings) and FLEURS (Conneau et al., 2022), both CC-BY-4.0. Audio is not redistributed in the repository.",
+ "audio_convention": "pcm_f32le/16000Hz/mono/ffmpeg-swr-v1",
+ "checks": {
+  "dev_sharing_examples": [],
+  "dev_utterances_sharing_an_8gram_with_train": 0,
+  "duplicate_audio": 0,
+  "group_overlap_dev_test": 0,
+  "group_overlap_train_dev": 0,
+  "group_overlap_train_test": 0,
+  "ood_sharing_examples": [],
+  "ood_speaker_ids": "not published by FLEURS; grouped by sentence id",
+  "ood_utterances_sharing_an_8gram_with_train": 0,
+  "same_text_across_splits": 0,
+  "same_text_within_ood": 152,
+  "source_overlap_dev_test": 0,
+  "source_overlap_train_dev": 0,
+  "source_overlap_train_test": 0,
+  "speaker_overlap_dev_test": 0,
+  "speaker_overlap_train_dev": 0,
+  "speaker_overlap_train_test": 0,
+  "test_sharing_examples": [],
+  "test_utterances_sharing_an_8gram_with_train": 0
+ },
+ "manifest_jsonl_sha256": "4b1c067e76ab1e097af4c08ae5e08aebcf32e169bcf6ceb0e14b1bb4221dc9eb",
+ "schema": "flh_speaking_dataset_manifest_v1",
+ "selection": {
+  "dev": [
+   {
+    "archive": "10087_11650",
+    "book": "11650",
+    "gender": "F",
+    "speaker": "10087"
+   },
+   {
+    "archive": "6318_2432",
+    "book": "2432",
+    "gender": "M",
+    "speaker": "6318"
+   },
+   {
+    "archive": "579_2548",
+    "book": "2548",
+    "gender": "F",
+    "speaker": "579"
+   },
+   {
+    "archive": "4724_3731",
+    "book": "3731",
+    "gender": "M",
+    "speaker": "4724"
+   }
+  ],
+  "test": [
+   {
+    "archive": "2154_1167",
+    "book": "1167",
+    "gender": "F",
+    "speaker": "2154"
+   },
+   {
+    "archive": "296_486",
+    "book": "486",
+    "gender": "M",
+    "speaker": "296"
+   },
+   {
+    "archive": "5207_2928",
+    "book": "2928",
+    "gender": "F",
+    "speaker": "5207"
+   },
+   {
+    "archive": "1406_1028",
+    "book": "1028",
+    "gender": "M",
+    "speaker": "1406"
+   },
+   {
+    "archive": "2085_1565",
+    "book": "1565",
+    "gender": "F",
+    "speaker": "2085"
+   },
+   {
+    "archive": "2114_1656",
+    "book": "1656",
+    "gender": "M",
+    "speaker": "2114"
+   },
+   {
+    "archive": "7762_8734",
+    "book": "8734",
+    "gender": "F",
+    "speaker": "7762"
+   },
+   {
+    "archive": "4482_3103",
+    "book": "3103",
+    "gender": "M",
+    "speaker": "4482"
+   }
+  ],
+  "train": [
+   {
+    "archive": "10827_14238",
+    "book": "14238",
+    "gender": "F",
+    "speaker": "10827"
+   },
+   {
+    "archive": "8778_8373",
+    "book": "8373",
+    "gender": "M",
+    "speaker": "8778"
+   },
+   {
+    "archive": "10620_7271",
+    "book": "7271",
+    "gender": "F",
+    "speaker": "10620"
+   },
+   {
+    "archive": "10058_9061",
+    "book": "9061",
+    "gender": "M",
+    "speaker": "10058"
+   },
+   {
+    "archive": "3698_4991",
+    "book": "4991",
+    "gender": "F",
+    "speaker": "3698"
+   },
+   {
+    "archive": "6856_5508",
+    "book": "5508",
+    "gender": "M",
+    "speaker": "6856"
+   },
+   {
+    "archive": "123_2193",
+    "book": "2193",
+    "gender": "F",
+    "speaker": "123"
+   },
+   {
+    "archive": "13177_14238",
+    "book": "14238",
+    "gender": "M",
+    "speaker": "13177"
+   },
+   {
+    "archive": "1474_1906",
+    "book": "1906",
+    "gender": "F",
+    "speaker": "1474"
+   },
+   {
+    "archive": "1840_4991",
+    "book": "4991",
+    "gender": "M",
+    "speaker": "1840"
+   },
+   {
+    "archive": "1649_5508",
+    "book": "5508",
+    "gender": "F",
+    "speaker": "1649"
+   },
+   {
+    "archive": "12713_12317",
+    "book": "12317",
+    "gender": "M",
+    "speaker": "12713"
+   },
+   {
+    "archive": "12899_12317",
+    "book": "12317",
+    "gender": "F",
+    "speaker": "12899"
+   },
+   {
+    "archive": "1590_2606",
+    "book": "2606",
+    "gender": "M",
+    "speaker": "1590"
+   },
+   {
+    "archive": "12709_9321",
+    "book": "9321",
+    "gender": "F",
+    "speaker": "12709"
+   },
+   {
+    "archive": "12501_14238",
+    "book": "14238",
+    "gender": "M",
+    "speaker": "12501"
+   },
+   {
+    "archive": "11247_7271",
+    "book": "7271",
+    "gender": "F",
+    "speaker": "11247"
+   },
+   {
+    "archive": "10065_9061",
+    "book": "9061",
+    "gender": "M",
+    "speaker": "10065"
+   },
+   {
+    "archive": "12541_9321",
+    "book": "9321",
+    "gender": "F",
+    "speaker": "12541"
+   },
+   {
+    "archive": "3060_2728",
+    "book": "2728",
+    "gender": "M",
+    "speaker": "3060"
+   },
+   {
+    "archive": "5232_5508",
+    "book": "5508",
+    "gender": "F",
+    "speaker": "5232"
+   },
+   {
+    "archive": "5764_5508",
+    "book": "5508",
+    "gender": "M",
+    "speaker": "5764"
+   },
+   {
+    "archive": "3204_5508",
+    "book": "5508",
+    "gender": "F",
+    "speaker": "3204"
+   },
+   {
+    "archive": "8582_9321",
+    "book": "9321",
+    "gender": "M",
+    "speaker": "8582"
+   }
+  ]
+ },
+ "selection_rule": "flh_mls_fr_subset_v1",
+ "sources": {
+  "fleurs": {
+   "config": "fr_fr",
+   "license": "CC-BY-4.0",
+   "repo": "google/fleurs",
+   "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd"
+  },
+  "mls": {
+   "license": "CC-BY-4.0",
+   "repo": "facebook/multilingual_librispeech",
+   "revision": "2e83e61823b4c47dcbcb1980bb88601274127609"
+  }
+ },
+ "splits": {
+  "dev": {
+   "gender": {
+    "F": 50,
+    "M": 50
+   },
+   "groups": 4,
+   "hours": 0.409,
+   "seconds_min_max": [
+    10.02,
+    19.81
+   ],
+   "source_channels": [
+    1
+   ],
+   "source_codecs": [
+    "flac"
+   ],
+   "source_rates": [
+    16000
+   ],
+   "speakers": 4,
+   "utterances": 100
+  },
+  "ood": {
+   "gender": {
+    "F": 62,
+    "M": 227
+   },
+   "groups": 137,
+   "hours": 0.795,
+   "seconds_min_max": [
+    3.96,
+    23.28
+   ],
+   "source_channels": [
+    1
+   ],
+   "source_codecs": [
+    "pcm_f32le"
+   ],
+   "source_rates": [
+    16000
+   ],
+   "speakers": 0,
+   "utterances": 289
+  },
+  "test": {
+   "gender": {
+    "F": 120,
+    "M": 120
+   },
+   "groups": 8,
+   "hours": 1.014,
+   "seconds_min_max": [
+    10.0,
+    20.0
+   ],
+   "source_channels": [
+    1
+   ],
+   "source_codecs": [
+    "flac"
+   ],
+   "source_rates": [
+    16000
+   ],
+   "speakers": 8,
+   "utterances": 240
+  },
+  "train": {
+   "gender": {
+    "F": 720,
+    "M": 720
+   },
+   "groups": 12,
+   "hours": 6.067,
+   "seconds_min_max": [
+    10.0,
+    20.0
+   ],
+   "source_channels": [
+    1
+   ],
+   "source_codecs": [
+    "flac"
+   ],
+   "source_rates": [
+    16000
+   ],
+   "speakers": 24,
+   "utterances": 1440
+  }
+ },
+ "text_normalization": "flh_fr_asr_norm_v1",
+ "tiny_fixture": {
+  "eval": [
+   "10087_11650_000000",
+   "10087_11650_000001",
+   "6318_2432_000000",
+   "6318_2432_000001",
+   "579_2548_000000",
+   "579_2548_000001",
+   "4724_3731_000000",
+   "4724_3731_000001"
+  ],
+  "train": [
+   "10827_14238_000000",
+   "10827_14238_000001",
+   "8778_8373_000000",
+   "8778_8373_000001",
+   "10620_7271_000000",
+   "10620_7271_000001",
+   "10058_9061_000000",
+   "10058_9061_000001",
+   "3698_4991_000000",
+   "3698_4991_000001",
+   "6856_5508_000000",
+   "6856_5508_000001",
+   "123_2193_000000",
+   "123_2193_000001",
+   "13177_14238_000000",
+   "13177_14238_000001"
+  ]
+ }
+}

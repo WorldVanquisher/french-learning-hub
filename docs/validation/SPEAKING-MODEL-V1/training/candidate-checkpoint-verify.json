@@ -1,0 +1,91 @@
+{
+ "checkpoint": "step-000180",
+ "manifest": {
+  "defining": {
+   "audio": "pcm_f32le/16000Hz/mono/ffmpeg-swr-v1",
+   "code_sha256": "3431085156968a37e60657fa4dbe84f2d185910beb23cfd79acd1cae05b12d40",
+   "decoding": {
+    "compression_threshold": 2.4,
+    "cut_search_s": 5.0,
+    "language": "fr",
+    "logprob_threshold": -1.0,
+    "loop_cut": [
+     4,
+     10
+    ],
+    "max_new_tokens": 220,
+    "min_sound_s": 0.3,
+    "no_speech_prob": 0.6,
+    "not_french": [
+     0.2,
+     0.6
+    ],
+    "phantom_patterns": [
+     "sous titres? (?:r[\u00e9e]alis[\u00e9e]s? |fait )?(?:par|pour) .*",
+     ".*\\bamara org\\b.*",
+     "merci d' avoir regard[\u00e9e] .*",
+     "abonnez vous .*",
+     "sous titrage .*",
+     ".*\\bst' 501\\b.*"
+    ],
+    "policy": "flh_speaking_transcribe_v1",
+    "search": "greedy",
+    "sound_dbfs": -70.0,
+    "task": "transcribe",
+    "timestamps": false,
+    "window_s": 30.0
+   },
+   "device": "cpu",
+   "dtype": "float32",
+   "model": {
+    "base": "whisper-base",
+    "config_sha256": "305de6bfb0e603f2f41e425fbce0c271f9cd24ec4cd0021c53e206f047da1a8b",
+    "data_manifest_sha256": "4b1c067e76ab1e097af4c08ae5e08aebcf32e169bcf6ceb0e14b1bb4221dc9eb",
+    "files": {
+     "added_tokens.json": "9715fd2243b6f06a5858b5e32950d2853f73dd5bc201aafcf76f5082a2d8acd1",
+     "config.json": "a153c53883a6799b6f056b4a8d1a515c9926d03994682ba88a7616618d7da0c1",
+     "generation_config.json": "444b3f636d2fff89dd9ecf549e2a085b61f7ff0fa0246d4628bac6a3b8cc9ba4",
+     "merges.txt": "2df2990a395e35e8dfbc7511e08c12d56018d8d04691e0133e5d63b21e154dc6",
+     "model.safetensors": "43cf1f2c4565f684ae1f299c2faed875389d46a1c7cd546a924ee8abd5289727",
+     "normalizer.json": "bf1c507dc8724ca9cf9903640dacfb69dae2f00edee4f21ceba106a7392f26dd",
+     "preprocessor_config.json": "9b5cd03a36fbb8a627c64d98a5b5b126ead95a77720723944487311f0110b666",
+     "special_tokens_map.json": "e67ae3a0aaa99abcd9f187138e12db1f65c16a14761c50ef10eef2c174a7a691",
+     "tokenizer.json": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+     "tokenizer_config.json": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce",
+     "train_config.json": "a3b09ece17388016359d18d076844b176cd9c9aaa4a275eb1604add9fd7fbe2a",
+     "vocab.json": "8f680bba319e01a653d2e8a5dbc17a9157179e0576e6ce74ce0c06356c6e24f9"
+    },
+    "kind": "fine_tuned",
+    "name": "whisper-base-ft",
+    "step": 180
+   },
+   "runtime": {
+    "av": "19.0.2",
+    "numpy": "2.5.4",
+    "python": "3.12.13",
+    "torch": "2.15.0+cpu",
+    "transformers": "5.21.1"
+   }
+  },
+  "deployment_id": "whisper-base-ft@step180-43cf1f2c4565/flh_speaking_transcribe_v1/cpu-fp32/9831ae6532cba509",
+  "limits": {
+   "accepted_containers": [
+    "webm",
+    "mp4",
+    "mp3",
+    "wav"
+   ],
+   "concurrent_inferences": 1,
+   "inference_timeout_s": 90.0,
+   "max_audio_bytes": 8388608,
+   "max_audio_seconds": 120.0,
+   "max_request_bytes": 8454144,
+   "read_timeout_s": 30.0
+  },
+  "manifest_sha256": "9831ae6532cba509ba3ce53cd8a435799bc6e2dff20ec6ea51d3f062c24b2b72",
+  "response_schema": "flh_speaking_transcription_v1",
+  "schema": "flh_speaking_deployment_manifest_v1"
+ },
+ "reload_ok": true,
+ "verify_checkpoint_problems": []
+}
