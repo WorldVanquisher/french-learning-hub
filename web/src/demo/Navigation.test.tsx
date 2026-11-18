@@ -28,7 +28,7 @@ const renderDemo = async (url = "/") => {
   render(<StrictMode><PublicDemoApp /></StrictMode>);
   return server;
 };
-const startScreen = () => screen.findByRole("button", { name: /One question, two pronouns/ });
+const startScreen = () => screen.findByRole("button", { name: /One question, two pronouns$/ });
 const exampleHeading = () => screen.findByRole("heading", { level: 2, name: "One question, two pronouns" });
 const conceptHeading = (name: RegExp = /the pronouns y and en/) => screen.findByRole("heading", { level: 2, name });
 const sourceHeading = () => screen.findByRole("heading", { level: 3, name: "Original learning record #9" });
@@ -97,7 +97,7 @@ describe("in-page back and the browser's Back are the same move", () => {
     await renderDemo();
     await startScreen();
     const before = window.history.length;
-    click(/One question, two pronouns/);
+    click(/One question, two pronouns$/);
     await exampleHeading();
     click("Open the Concept and its evidence");
     await conceptHeading();
@@ -106,14 +106,14 @@ describe("in-page back and the browser's Back are the same move", () => {
     expect(window.history.length).toBe(before + 3);
     expect(window.location.hash).toBe("#example=y-en&concept=12&unit=12");
 
-    click("← Back to concept #12");
+    click(/^← Back to concept #12/);
     const concept = await conceptHeading();
     await waitFor(() => expect(concept).toHaveFocus());
     expect(window.location.hash).toBe("#example=y-en&concept=12");
     expect(window.history.length).toBe(before + 3);
 
     window.history.back();
-    expect(await screen.findByText(QUESTION)).toBeInTheDocument();
+    expect(await screen.findByText(QUESTION, { selector: "blockquote" })).toBeInTheDocument();
     expect(window.location.hash).toBe("#example=y-en");
     window.history.forward();
     await conceptHeading();
@@ -124,7 +124,7 @@ describe("in-page back and the browser's Back are the same move", () => {
   it("goes from evidence straight back to its example, with the Concept still ahead", async () => {
     await renderDemo();
     await startScreen();
-    click(/One question, two pronouns/);
+    click(/One question, two pronouns$/);
     await exampleHeading();
     click("Open the Concept and its evidence");
     await conceptHeading();
@@ -142,13 +142,13 @@ describe("in-page back and the browser's Back are the same move", () => {
     await renderDemo("/#example=y-en&concept=12&unit=12");
     await sourceHeading();
     const before = window.history.length;
-    click("← Back to concept #12");
+    click(/^← Back to concept #12/);
     await conceptHeading();
     expect(window.location.hash).toBe("#example=y-en&concept=12");
     click("← Back to the example “One question, two pronouns”");
     await exampleHeading();
     click("← Back to examples and search");
-    await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns/ })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns$/ })).toHaveFocus());
     expect(window.location.hash).toBe("");
     expect(window.history.length).toBe(before);
   });
@@ -211,7 +211,7 @@ describe("searches are entries and links keep them", () => {
   it("keeps the visit's trail across a reload, so back actions still move back", async () => {
     await renderDemo();
     await startScreen();
-    click(/One question, two pronouns/);
+    click(/One question, two pronouns$/);
     await exampleHeading();
     click("Open the Concept and its evidence");
     await conceptHeading();

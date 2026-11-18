@@ -25,7 +25,7 @@ const renderDemo = (url: string) => {
 describe("learner text keeps its own direction", () => {
   it("on the example: the question and its context", async () => {
     renderDemo("/#example=y-en");
-    const question = await screen.findByText(QUESTION);
+    const question = await screen.findByText(QUESTION, { selector: "blockquote" });
     expect(question.closest("blockquote")).toHaveAttribute("dir", "auto");
     const context = question.closest("section")!.querySelector("p.hint");
     expect(context).toHaveAttribute("dir", "auto");

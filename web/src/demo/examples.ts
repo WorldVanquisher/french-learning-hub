@@ -5,15 +5,19 @@ import type { LibraryConcept, LibrarySource, LibraryUnit } from "../types/librar
 
 // The public demo's guided examples: the three questions written in French in
 // the synthetic catalog (scripts/demo/flh073/fixtures/catalog.json). An example
-// names only application text and how to find its question through the existing
-// read API: a keyword query (the library's own search) and a word from the
-// stored wording of one unit extracted from that question. Nothing here is
-// learner content; the question, units and Concepts shown are read from the
-// server. examples.test.ts keeps these in step with the catalog.
+// names application text, how to find its question through the existing read
+// API (a keyword query, the library's own search, and a word from the stored
+// wording of one unit extracted from that question) and, for the starting
+// screen's card only, the synthetic question's exact French wording, so a
+// visitor chooses by the French itself before anything is read. The question,
+// units and Concepts of an opened example are always read from the server;
+// GuidedExample.test.tsx keeps these definitions, the card wording included,
+// in step with the catalog.
 export interface DemoExample {
   key: string;
   title: MessageKey;
-  summary: MessageKey;
+  // The catalog question, verbatim (French; never translated).
+  question: string;
   // Existing keyword search; its Concepts hold the example's units.
   query: string;
   // Lower-case text found in the canonical wording of exactly one unit of the
@@ -22,18 +26,24 @@ export interface DemoExample {
 }
 
 export const DEMO_EXAMPLES: readonly DemoExample[] = [
-  { key: "y-en", title: "demo.example.yEn.title", summary: "demo.example.yEn.summary", query: "pronouns", seed: "y remplace" },
+  {
+    key: "y-en",
+    title: "demo.example.yEn.title",
+    question: "Dans « j'y vais » et « j'en veux », qu'est-ce que « y » et « en » remplacent ?",
+    query: "pronouns",
+    seed: "y remplace",
+  },
   {
     key: "il-faut-venir",
     title: "demo.example.ilFaut.title",
-    summary: "demo.example.ilFaut.summary",
+    question: "Dans mon exercice : « Il faut que tu viennes demain ». Pourquoi « viennes » et pas « viens » ?",
     query: "viennes",
     seed: "subjonctif de venir",
   },
   {
     key: "en-train-de",
     title: "demo.example.enTrainDe.title",
-    summary: "demo.example.enTrainDe.summary",
+    question: "Pour dire « I'm cooking right now », est-ce que « je suis cuisinant » existe ?",
     query: "action en cours",
     seed: "en train de",
   },

@@ -75,7 +75,7 @@ try {
   const kwItems = await kwResults.getByRole("listitem").allInnerTexts();
   check("keyword free text returns matches with evidence", kwItems.length >= 2 && kwItems.every((t) => /Found in /.test(t)), kwItems.length);
   check("keyword identity match evidence", kwItems.some((t) => /subjunctive/.test(t) && /Found in identity details, title/.test(t)));
-  check("keyword unit-wording match labelled as such", kwItems.some((t) => /not in the concept's title/.test(t)));
+  check("keyword unit-wording match labelled as such", kwItems.some((t) => /not in the concept's title/i.test(t)));
   await shot("keyword");
 
   phase = "keyword-empty";

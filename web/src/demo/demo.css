@@ -4,6 +4,20 @@
    tokens only; no fonts, images, url(), animations or transitions.
    demoStyles.test.ts keeps both promises. */
 
+/* Starting screen: each example card leads with the learner's French question;
+   the line under it says, in the interface language, what the example shows. */
+.demo-app .demo-example-card .demo-example-question { font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
+.demo-app .demo-example-card .demo-example-title { font-size: 14px; color: var(--muted); }
+
+/* A Concept named inside a sentence (the evidence's "why this record" line and
+   the unit's current filing) stays inline, so a long title wraps with the
+   sentence instead of taking a line of its own. */
+.demo-app .demo-why .link-button,
+.demo-app .library-section .hint .link-button { display: inline; }
+
+/* Guided example, step 3: the way to find the Concept by keyword search. */
+.demo-app .demo-find { margin: 6px 0 10px; }
+
 /* Walkthrough: the "next" hint under a Concept's title. */
 .demo-app .demo-walk-next { margin: 4px 0 0; }
 
@@ -33,6 +47,13 @@
 .demo-app .library button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; }
 .demo-app .library-search select { min-width: 0; max-width: 100%; }
 
+/* Phones (up to 480 px): an evidence row's label sits above its value, so long
+   French context, explanations and identifiers use the panel's full width
+   instead of a column beside a 110 px label (2 to 3 words a line at 320 px). */
+@media (max-width: 480px) {
+  .demo-app .unit-evidence div { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 4px 0; }
+}
+
 /* Narrow phones (up to 400 px): tighter page and panel padding and a smaller
    lead, so the guided examples begin on the first screen. demo.css loads before
    styles.css, so each rule carries one more class than the rule it adjusts. */
@@ -44,4 +65,5 @@
   .demo-app .demo-lead { font-size: 15px; margin-bottom: 8px; }
   .demo-app .demo-intro .banner { margin: 0; padding: 8px 10px; font-size: 13px; }
   .demo-app .demo-bad-link { padding: 8px 10px; font-size: 13px; }
+  .demo-app .library .demo-question { padding: 8px 10px; font-size: 17px; }
 }

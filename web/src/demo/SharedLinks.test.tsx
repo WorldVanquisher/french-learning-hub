@@ -22,7 +22,7 @@ const renderDemo = async (url = "/", options: Parameters<typeof demoServer>[0] =
   render(<StrictMode><PublicDemoApp /></StrictMode>);
   return server;
 };
-const firstCard = () => screen.findByRole("button", { name: /One question, two pronouns/ });
+const firstCard = () => screen.findByRole("button", { name: /One question, two pronouns$/ });
 const exampleHeading = () => screen.findByRole("heading", { level: 2, name: "One question, two pronouns" });
 const conceptHeading = (name: RegExp = /the pronouns y and en/) => screen.findByRole("heading", { level: 2, name });
 const sourceHeading = () => screen.findByRole("heading", { level: 3, name: "Original learning record #9" });
@@ -46,6 +46,17 @@ describe("a link that matches nothing says so", () => {
     },
   );
 
+  it("offers a concrete way on: the first example, opened as a new entry", async () => {
+    await renderDemo("/#concept=abc");
+    await screen.findByText(MALFORMED);
+    const before = window.history.length;
+    fireEvent.click(screen.getByRole("button", { name: "Open the example “One question, two pronouns”" }));
+    expect(await exampleHeading()).toHaveFocus();
+    expect(window.location.hash).toBe("#example=y-en");
+    expect(window.history.length).toBe(before + 1);
+    expect(screen.queryByText(MALFORMED)).toBeNull();
+  });
+
   it("shows no notice for the start itself or a working link", async () => {
     await renderDemo("/");
     await firstCard();
@@ -59,7 +70,7 @@ describe("a link that matches nothing says so", () => {
   it("drops the notice at the visitor's next move and for a later working fragment", async () => {
     await renderDemo("/#concept=abc");
     await screen.findByText(MALFORMED);
-    click(/One question, two pronouns/);
+    click(/One question, two pronouns$/);
     await exampleHeading();
     click("← Back to examples and search");
     await firstCard();
@@ -95,7 +106,7 @@ describe("a link to an ID this build lacks leads on to a working example", () =>
     const marker = (window as unknown as { __sameDocument?: number });
     marker.__sameDocument = 1;
     click("Open the example “One question, two pronouns”");
-    expect(await screen.findByText(QUESTION)).toBeInTheDocument();
+    expect(await screen.findByText(QUESTION, { selector: "blockquote" })).toBeInTheDocument();
     expect(window.location.hash).toBe("#example=y-en");
     expect(window.history.length).toBe(before + 1);
     expect(marker.__sameDocument).toBe(1);
@@ -108,7 +119,7 @@ describe("a link to an ID this build lacks leads on to a working example", () =>
     expect(await screen.findByText(/这个链接指向单元 #999，但此演示构建中没有它/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "再试一次" })).toBeNull();
     click("打开示例“一个问题，两个代词”");
-    expect(await screen.findByText(QUESTION)).toBeInTheDocument();
+    expect(await screen.findByText(QUESTION, { selector: "blockquote" })).toBeInTheDocument();
     expect(window.location.hash).toBe("#example=y-en");
   });
 
@@ -124,13 +135,13 @@ describe("coming back focuses the control that left the screen", () => {
   it("returns from the evidence to the source button used, by the in-page back and by the browser's Back", async () => {
     await renderDemo();
     await firstCard();
-    press(/One question, two pronouns/);
+    press(/One question, two pronouns$/);
     await exampleHeading();
     press("Open the Concept and its evidence");
     await conceptHeading();
     press("View source record #9 for unit #13");
     await sourceHeading();
-    press("← Back to concept #12");
+    press(/^← Back to concept #12/);
     await conceptHeading();
     await waitFor(() => expect(screen.getByRole("button", { name: "View source record #9 for unit #13" })).toHaveFocus());
 
@@ -148,7 +159,7 @@ describe("coming back focuses the control that left the screen", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Open the Concept and its evidence" })).toHaveFocus());
     // …and from the example to its card.
     window.history.back();
-    await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns/ })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns$/ })).toHaveFocus());
   });
 
   it("returns to the example's step 4 button from the evidence it opened", async () => {
@@ -182,7 +193,7 @@ describe("coming back focuses the control that left the screen", () => {
   it("focuses the heading when nothing was focused on the way out (a pointer click in some browsers)", async () => {
     await renderDemo();
     await firstCard();
-    click(/One question, two pronouns/);
+    click(/One question, two pronouns$/);
     await exampleHeading();
     click("Open the Concept and its evidence");
     await conceptHeading();

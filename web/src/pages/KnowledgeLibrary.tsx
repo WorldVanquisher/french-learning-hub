@@ -481,6 +481,15 @@ export function KnowledgeLibrary({
         {demo && badLink ? (
           <div className="banner info demo-bad-link" role="status">
             {t("demo.link.malformed")}
+            {guided ? (
+              <>
+                {" "}
+                {/* A concrete way on: the first guided example, as a new entry. */}
+                <button type="button" className="ghost" id="demo-bad-link-example" onClick={() => openExample(DEMO_EXAMPLES[0].key)}>
+                  {t("demo.missing.openExample", { title: t(DEMO_EXAMPLES[0].title) })}
+                </button>
+              </>
+            ) : null}
           </div>
         ) : null}
         {intro}
@@ -730,6 +739,22 @@ function ResultMeta({
   );
 }
 
+// MatchedWords lists a keyword search's normalized tokens (the words every
+// result matched, AND semantics), each marked. Public demo only.
+function MatchedWords({ tokens }: { tokens: readonly string[] }) {
+  const { t } = useI18n();
+  return (
+    <>
+      {tokens.map((token, i) => (
+        <span key={token}>
+          {i > 0 ? t("library.fieldSeparator") : ""}
+          <mark>{token}</mark>
+        </span>
+      ))}
+    </>
+  );
+}
+
 // FeatureSnippet shows the identity details a keyword search matched, with the
 // matching words marked (libraryHighlight.tsx), in the Concept's own wording.
 function FeatureSnippet({ features, tokens }: { features: Record<string, unknown>; tokens: readonly string[] }) {
@@ -818,7 +843,7 @@ function Results({
   onShowMore?: () => void;
 }) {
   const i18n = useI18n();
-  const { t, tp, status } = i18n;
+  const { t, tp, tn, status } = i18n;
   if (search.status === "loading") return <p className="empty" role="status">{t("library.searching")}</p>;
   if (search.status === "error")
     return (
@@ -883,7 +908,17 @@ function Results({
               marks={r.match_tier !== "browse" ? { tokens: data.tokens, fields: r.matched_fields } : undefined}
             />
             {r.matched_fields.includes("identity_features") ? <FeatureSnippet features={r.concept.identity_features} tokens={data.tokens} /> : null}
-            {r.match_tier !== "browse" ? (
+            {r.match_tier !== "browse" && demo ? (
+              // Public demo: say which words matched where, from the search's own
+              // tokens and matched fields. A unit-wording match shows no unit
+              // text (the result carries none); the Concept screen shows it.
+              <div className="hint demo-match">
+                {tn(r.match_tier === "unit_evidence" ? "demo.result.foundInUnits" : "demo.result.foundIn", {
+                  words: <MatchedWords tokens={data.tokens} />,
+                  fields: fieldList(i18n, r.matched_fields),
+                })}
+              </div>
+            ) : r.match_tier !== "browse" ? (
               <div className="hint">
                 {t(r.match_tier === "unit_evidence" ? "library.foundInUnits" : "library.foundIn", {
                   fields: fieldList(i18n, r.matched_fields),
@@ -1243,14 +1278,18 @@ function ConceptScreen({
         </section>
       ) : null}
 
-      <section className="panel library-section current" aria-labelledby="lib-preferred">
-        <h3 id="lib-preferred">{t("library.preferred")}</h3>
-        {d.preferred_unit ? (
-          unit(d.preferred_unit, preferredNote(i18n, d.preferred_unit, d), "preferred")
-        ) : (
-          <p className="hint">{t("library.preferred.none")}</p>
-        )}
-      </section>
+      {/* The public demo leaves the section out when no unit was chosen, like
+          the other empty curation sections. */}
+      {demo && !d.preferred_unit ? null : (
+        <section className="panel library-section current" aria-labelledby="lib-preferred">
+          <h3 id="lib-preferred">{t("library.preferred")}</h3>
+          {d.preferred_unit ? (
+            unit(d.preferred_unit, preferredNote(i18n, d.preferred_unit, d), "preferred")
+          ) : (
+            <p className="hint">{t("library.preferred.none")}</p>
+          )}
+        </section>
+      )}
 
       <section className="panel library-section current" aria-labelledby="lib-support">
         <h3 id="lib-support">{t("library.supporting", { count: d.supporting_units.length })}</h3>
@@ -1424,6 +1463,27 @@ const resolutionText: Record<string, MessageKey> = {
   rejected: "library.resolution.rejected",
 };
 
+// Public demo: a Concept's title for the evidence screen's labels, read once
+// through the allowlisted Concept read. While it loads, or if the read fails,
+// the labels name the Concept by its number only, as before.
+function useConceptTitle(conceptId: number | null): string | null {
+  const [title, setTitle] = useState<{ id: number; target: string } | null>(null);
+  useEffect(() => {
+    if (conceptId === null) return;
+    let active = true;
+    api
+      .getLibraryConcept(conceptId)
+      .then((d) => {
+        if (active) setTitle({ id: conceptId, target: d.concept.target });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [conceptId]);
+  return title && title.id === conceptId ? title.target : null;
+}
+
 function SourceScreen({
   unitId,
   conceptId,
@@ -1463,6 +1523,8 @@ function SourceScreen({
   const [retry, setRetry] = useState(0);
   const load = useLoad<LibrarySource>(String(unitId), () => api.getLibraryUnitSource(unitId), retry);
   const headingRef = useFocusedHeading(load.status, returnFocus);
+  // Public demo: name the Concept, not only its number, once its title is read.
+  const conceptTitle = useConceptTitle(demo ? conceptId : null);
   const nav = onBackToPractice ? (
     <div className="actions">
       <button type="button" className="ghost" onClick={onBackToPractice}>
@@ -1472,7 +1534,9 @@ function SourceScreen({
   ) : (
     <div className="actions">
       <button type="button" className="ghost" onClick={onBackToConcept}>
-        {t("library.source.backToConcept", { id: conceptId })}
+        {conceptTitle !== null
+          ? t("demo.source.backToConceptNamed", { id: conceptId, title: conceptTitle })
+          : t("library.source.backToConcept", { id: conceptId })}
       </button>
       <button type="button" className="ghost" onClick={onBackToResults}>
         {backText}
@@ -1587,7 +1651,9 @@ function SourceScreen({
                   id="demo-source-concept"
                   onClick={() => onOpenConcept(s.annotation.current_concept_id!)}
                 >
-                  {t("library.conceptLink", { id: s.annotation.current_concept_id })}
+                  {conceptTitle !== null && s.annotation.current_concept_id === conceptId
+                    ? t("demo.conceptNamed", { id: conceptId, title: conceptTitle })
+                    : t("library.conceptLink", { id: s.annotation.current_concept_id })}
                 </button>
               ),
               unit: s.unit.unit_id,
@@ -1642,7 +1708,9 @@ function SourceScreen({
               ? tn("library.source.now.filed", {
                   concept: (
                     <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
-                      {t("library.conceptLink", { id: s.annotation.current_concept_id })}
+                      {conceptTitle !== null && s.annotation.current_concept_id === conceptId
+                    ? t("demo.conceptNamed", { id: conceptId, title: conceptTitle })
+                    : t("library.conceptLink", { id: s.annotation.current_concept_id })}
                     </button>
                   ),
                 })
@@ -1667,7 +1735,9 @@ function SourceScreen({
               ? tn("library.source.now.filed", {
                   concept: (
                     <button type="button" className="link-button" onClick={() => onOpenConcept(s.annotation.current_concept_id!)}>
-                      {t("library.conceptLink", { id: s.annotation.current_concept_id })}
+                      {conceptTitle !== null && s.annotation.current_concept_id === conceptId
+                    ? t("demo.conceptNamed", { id: conceptId, title: conceptTitle })
+                    : t("library.conceptLink", { id: s.annotation.current_concept_id })}
                     </button>
                   ),
                 })

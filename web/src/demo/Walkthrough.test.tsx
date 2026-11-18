@@ -23,7 +23,7 @@ afterEach(() => {
 
 const UI = {
   en: {
-    exampleCard: /One question, two pronouns/,
+    exampleCard: /One question, two pronouns$/,
     exampleTitle: "One question, two pronouns",
     extracted: /What was extracted: 2 units/,
     evidenceStep: /The source evidence/,
@@ -91,14 +91,14 @@ describe.each(LOCALES)("first-visit walkthrough (%s)", (locale) => {
   it("shows question → units → Concept → evidence on the example, and names the step on the screens after it", async () => {
     renderDemo(locale);
     fireEvent.click(await screen.findByRole("button", { name: ui.exampleCard }));
-    await screen.findByText(QUESTION);
+    await screen.findByText(QUESTION, { selector: "blockquote" });
     expect(screen.getByRole("heading", { name: ui.extracted })).toBeInTheDocument();
     const step4 = screen.getByRole("region", { name: ui.evidenceStep });
     expect(within(step4).getByText(ui.evidenceHint)).toBeInTheDocument();
 
     fireEvent.click(within(step4).getByRole("button", { name: ui.openEvidence }));
     expect(await screen.findByText(ui.step4)).toBeInTheDocument();
-    expect(screen.getByText(QUESTION)).toBeInTheDocument();
+    expect(screen.getByText(QUESTION, { selector: "blockquote" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: ui.backToExample }));
     await screen.findByRole("heading", { level: 2, name: ui.exampleTitle });
 
@@ -170,7 +170,7 @@ describe.each(LOCALES)("first-visit walkthrough (%s)", (locale) => {
     fireEvent.click(await screen.findByRole("button", { name: ui.exampleCard }));
     expect(await screen.findByText(ui.exampleLoading)).toHaveAttribute("role", "status");
     server.release("/knowledge-library/units/12/source");
-    await screen.findByText(QUESTION);
+    await screen.findByText(QUESTION, { selector: "blockquote" });
     cleanup();
     window.history.replaceState(null, "", "/");
 
