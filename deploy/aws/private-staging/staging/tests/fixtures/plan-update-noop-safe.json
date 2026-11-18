@@ -1,0 +1,983 @@
+{
+ "configuration": {
+  "provider_config": {
+   "aws": {
+    "full_name": "registry.terraform.io/hashicorp/aws",
+    "name": "aws"
+   }
+  }
+ },
+ "format_version": "1.2",
+ "planned_values": {
+  "root_module": {}
+ },
+ "prior_state": {
+  "format_version": "1.0",
+  "values": {
+   "root_module": {
+    "resources": [
+     {
+      "address": "aws_vpc.stg",
+      "mode": "managed",
+      "name": "stg",
+      "type": "aws_vpc"
+     },
+     {
+      "address": "aws_internet_gateway.stg",
+      "mode": "managed",
+      "name": "stg",
+      "type": "aws_internet_gateway"
+     },
+     {
+      "address": "aws_subnet.public",
+      "mode": "managed",
+      "name": "public",
+      "type": "aws_subnet"
+     },
+     {
+      "address": "aws_route_table.public",
+      "mode": "managed",
+      "name": "public",
+      "type": "aws_route_table"
+     },
+     {
+      "address": "aws_route_table_association.public",
+      "mode": "managed",
+      "name": "public",
+      "type": "aws_route_table_association"
+     },
+     {
+      "address": "aws_vpc_endpoint.s3",
+      "mode": "managed",
+      "name": "s3",
+      "type": "aws_vpc_endpoint"
+     },
+     {
+      "address": "aws_security_group.host",
+      "mode": "managed",
+      "name": "host",
+      "type": "aws_security_group"
+     },
+     {
+      "address": "aws_vpc_security_group_egress_rule.https",
+      "mode": "managed",
+      "name": "https",
+      "type": "aws_vpc_security_group_egress_rule"
+     },
+     {
+      "address": "aws_s3_bucket.staging",
+      "mode": "managed",
+      "name": "staging",
+      "type": "aws_s3_bucket"
+     },
+     {
+      "address": "aws_s3_bucket_public_access_block.staging",
+      "mode": "managed",
+      "name": "staging",
+      "type": "aws_s3_bucket_public_access_block"
+     },
+     {
+      "address": "aws_s3_bucket_ownership_controls.staging",
+      "mode": "managed",
+      "name": "staging",
+      "type": "aws_s3_bucket_ownership_controls"
+     },
+     {
+      "address": "aws_s3_bucket_server_side_encryption_configuration.staging",
+      "mode": "managed",
+      "name": "staging",
+      "type": "aws_s3_bucket_server_side_encryption_configuration"
+     },
+     {
+      "address": "aws_s3_bucket_versioning.staging",
+      "mode": "managed",
+      "name": "staging",
+      "type": "aws_s3_bucket_versioning"
+     },
+     {
+      "address": "aws_s3_bucket_lifecycle_configuration.staging",
+      "mode": "managed",
+      "name": "staging",
+      "type": "aws_s3_bucket_lifecycle_configuration"
+     },
+     {
+      "address": "aws_s3_bucket_policy.staging",
+      "mode": "managed",
+      "name": "staging",
+      "type": "aws_s3_bucket_policy"
+     },
+     {
+      "address": "aws_iam_role.host",
+      "mode": "managed",
+      "name": "host",
+      "type": "aws_iam_role"
+     },
+     {
+      "address": "aws_iam_role_policy.host",
+      "mode": "managed",
+      "name": "host",
+      "type": "aws_iam_role_policy"
+     },
+     {
+      "address": "aws_iam_instance_profile.host",
+      "mode": "managed",
+      "name": "host",
+      "type": "aws_iam_instance_profile"
+     },
+     {
+      "address": "aws_instance.host",
+      "mode": "managed",
+      "name": "host",
+      "type": "aws_instance"
+     },
+     {
+      "address": "aws_ebs_volume.data",
+      "mode": "managed",
+      "name": "data",
+      "type": "aws_ebs_volume"
+     },
+     {
+      "address": "aws_volume_attachment.data",
+      "mode": "managed",
+      "name": "data",
+      "type": "aws_volume_attachment"
+     }
+    ]
+   }
+  }
+ },
+ "resource_changes": [
+  {
+   "address": "data.aws_ec2_instance_type.selected",
+   "change": {
+    "actions": [
+     "read"
+    ],
+    "after": {},
+    "after_unknown": {},
+    "before": null
+   },
+   "mode": "data",
+   "name": "selected",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_ec2_instance_type"
+  },
+  {
+   "address": "data.aws_iam_policy.host_boundary",
+   "change": {
+    "actions": [
+     "read"
+    ],
+    "after": {},
+    "after_unknown": {},
+    "before": null
+   },
+   "mode": "data",
+   "name": "host_boundary",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_iam_policy"
+  },
+  {
+   "address": "data.aws_caller_identity.current",
+   "change": {
+    "actions": [
+     "read"
+    ],
+    "after": {},
+    "after_unknown": {},
+    "before": null
+   },
+   "mode": "data",
+   "name": "current",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_caller_identity"
+  },
+  {
+   "address": "data.aws_iam_policy_document.bucket",
+   "change": {
+    "actions": [
+     "read"
+    ],
+    "after": {},
+    "after_unknown": {},
+    "before": null
+   },
+   "mode": "data",
+   "name": "bucket",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_iam_policy_document"
+  },
+  {
+   "address": "data.aws_iam_policy_document.ec2_assume",
+   "change": {
+    "actions": [
+     "read"
+    ],
+    "after": {},
+    "after_unknown": {},
+    "before": null
+   },
+   "mode": "data",
+   "name": "ec2_assume",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_iam_policy_document"
+  },
+  {
+   "address": "data.aws_iam_policy_document.host",
+   "change": {
+    "actions": [
+     "read"
+    ],
+    "after": {},
+    "after_unknown": {},
+    "before": null
+   },
+   "mode": "data",
+   "name": "host",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_iam_policy_document"
+  },
+  {
+   "address": "aws_vpc.stg",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "cidr_block": "10.85.0.0/24",
+     "enable_dns_support": true,
+     "tags": {
+      "Name": "flh-stg-vpc"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-vpc",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    },
+    "after_unknown": {},
+    "before": {
+     "cidr_block": "10.85.0.0/24",
+     "enable_dns_support": true,
+     "tags": {
+      "Name": "flh-stg-vpc"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-vpc",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    }
+   },
+   "mode": "managed",
+   "name": "stg",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_vpc"
+  },
+  {
+   "address": "aws_internet_gateway.stg",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "tags": {
+      "Name": "flh-stg-igw"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-igw",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    },
+    "after_unknown": {},
+    "before": {
+     "tags": {
+      "Name": "flh-stg-igw"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-igw",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    }
+   },
+   "mode": "managed",
+   "name": "stg",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_internet_gateway"
+  },
+  {
+   "address": "aws_subnet.public",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "cidr_block": "10.85.0.0/24",
+     "map_public_ip_on_launch": false,
+     "tags": {
+      "Name": "flh-stg-public"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-public",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    },
+    "after_unknown": {},
+    "before": {
+     "cidr_block": "10.85.0.0/24",
+     "map_public_ip_on_launch": false,
+     "tags": {
+      "Name": "flh-stg-public"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-public",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    }
+   },
+   "mode": "managed",
+   "name": "public",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_subnet"
+  },
+  {
+   "address": "aws_route_table.public",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "route": [
+      {
+       "cidr_block": "0.0.0.0/0"
+      }
+     ],
+     "tags": {
+      "Name": "flh-stg-public"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-public",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    },
+    "after_unknown": {},
+    "before": {
+     "route": [
+      {
+       "cidr_block": "0.0.0.0/0"
+      }
+     ],
+     "tags": {
+      "Name": "flh-stg-public"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-public",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    }
+   },
+   "mode": "managed",
+   "name": "public",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_route_table"
+  },
+  {
+   "address": "aws_route_table_association.public",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {},
+    "after_unknown": {},
+    "before": {}
+   },
+   "mode": "managed",
+   "name": "public",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_route_table_association"
+  },
+  {
+   "address": "aws_vpc_endpoint.s3",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "service_name": "com.amazonaws.us-east-1.s3",
+     "tags": {
+      "Name": "flh-stg-s3"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-s3",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     },
+     "vpc_endpoint_type": "Gateway"
+    },
+    "after_unknown": {},
+    "before": {
+     "service_name": "com.amazonaws.us-east-1.s3",
+     "tags": {
+      "Name": "flh-stg-s3"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-s3",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     },
+     "vpc_endpoint_type": "Gateway"
+    }
+   },
+   "mode": "managed",
+   "name": "s3",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_vpc_endpoint"
+  },
+  {
+   "address": "aws_security_group.host",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "egress": [],
+     "ingress": [],
+     "name": "flh-stg-host",
+     "tags": {
+      "Name": "flh-stg-host"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-host",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    },
+    "after_unknown": {},
+    "before": {
+     "egress": [],
+     "ingress": [],
+     "name": "flh-stg-host",
+     "tags": {
+      "Name": "flh-stg-host"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-host",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    }
+   },
+   "mode": "managed",
+   "name": "host",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_security_group"
+  },
+  {
+   "address": "aws_vpc_security_group_egress_rule.https",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "cidr_ipv4": "0.0.0.0/0",
+     "from_port": 443,
+     "ip_protocol": "tcp",
+     "tags": {},
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     },
+     "to_port": 443
+    },
+    "after_unknown": {},
+    "before": {
+     "cidr_ipv4": "0.0.0.0/0",
+     "from_port": 443,
+     "ip_protocol": "tcp",
+     "tags": {},
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     },
+     "to_port": 443
+    }
+   },
+   "mode": "managed",
+   "name": "https",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_vpc_security_group_egress_rule"
+  },
+  {
+   "address": "aws_s3_bucket.staging",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "bucket_prefix": "flh-stg-",
+     "force_destroy": true,
+     "tags": {},
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    },
+    "after_unknown": {},
+    "before": {
+     "bucket_prefix": "flh-stg-",
+     "force_destroy": true,
+     "tags": {},
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    }
+   },
+   "mode": "managed",
+   "name": "staging",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_s3_bucket"
+  },
+  {
+   "address": "aws_s3_bucket_public_access_block.staging",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    },
+    "after_unknown": {},
+    "before": {
+     "block_public_acls": true,
+     "block_public_policy": true,
+     "ignore_public_acls": true,
+     "restrict_public_buckets": true
+    }
+   },
+   "mode": "managed",
+   "name": "staging",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_s3_bucket_public_access_block"
+  },
+  {
+   "address": "aws_s3_bucket_ownership_controls.staging",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "rule": [
+      {
+       "object_ownership": "BucketOwnerEnforced"
+      }
+     ]
+    },
+    "after_unknown": {},
+    "before": {
+     "rule": [
+      {
+       "object_ownership": "BucketOwnerEnforced"
+      }
+     ]
+    }
+   },
+   "mode": "managed",
+   "name": "staging",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_s3_bucket_ownership_controls"
+  },
+  {
+   "address": "aws_s3_bucket_server_side_encryption_configuration.staging",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "AES256"
+        }
+       ]
+      }
+     ]
+    },
+    "after_unknown": {},
+    "before": {
+     "rule": [
+      {
+       "apply_server_side_encryption_by_default": [
+        {
+         "sse_algorithm": "AES256"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "mode": "managed",
+   "name": "staging",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_s3_bucket_server_side_encryption_configuration"
+  },
+  {
+   "address": "aws_s3_bucket_versioning.staging",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "versioning_configuration": [
+      {
+       "status": "Enabled"
+      }
+     ]
+    },
+    "after_unknown": {},
+    "before": {
+     "versioning_configuration": [
+      {
+       "status": "Enabled"
+      }
+     ]
+    }
+   },
+   "mode": "managed",
+   "name": "staging",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_s3_bucket_versioning"
+  },
+  {
+   "address": "aws_s3_bucket_lifecycle_configuration.staging",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "rule": [
+      {
+       "id": "expire-staging-objects"
+      }
+     ]
+    },
+    "after_unknown": {},
+    "before": {
+     "rule": [
+      {
+       "id": "expire-staging-objects"
+      }
+     ]
+    }
+   },
+   "mode": "managed",
+   "name": "staging",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_s3_bucket_lifecycle_configuration"
+  },
+  {
+   "address": "aws_s3_bucket_policy.staging",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {},
+    "after_unknown": {},
+    "before": {}
+   },
+   "mode": "managed",
+   "name": "staging",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_s3_bucket_policy"
+  },
+  {
+   "address": "aws_iam_role.host",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "name_prefix": "flh-stg-host-",
+     "permissions_boundary": "arn:aws:iam::111122223333:policy/flh-stg-host-boundary",
+     "tags": {},
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    },
+    "after_unknown": {},
+    "before": {
+     "name_prefix": "flh-stg-host-",
+     "permissions_boundary": "arn:aws:iam::111122223333:policy/flh-stg-host-boundary",
+     "tags": {},
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    }
+   },
+   "mode": "managed",
+   "name": "host",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_iam_role"
+  },
+  {
+   "address": "aws_iam_role_policy.host",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "name": "flh-stg-host"
+    },
+    "after_unknown": {},
+    "before": {
+     "name": "flh-stg-host"
+    }
+   },
+   "mode": "managed",
+   "name": "host",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_iam_role_policy"
+  },
+  {
+   "address": "aws_iam_instance_profile.host",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "name_prefix": "flh-stg-host-",
+     "tags": {},
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    },
+    "after_unknown": {},
+    "before": {
+     "name_prefix": "flh-stg-host-",
+     "tags": {},
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    }
+   },
+   "mode": "managed",
+   "name": "host",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_iam_instance_profile"
+  },
+  {
+   "address": "aws_instance.host",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "ami": "ami-0123456789abcdef0",
+     "associate_public_ip_address": true,
+     "instance_initiated_shutdown_behavior": "terminate",
+     "instance_type": "t3.small",
+     "metadata_options": [
+      {
+       "http_endpoint": "enabled",
+       "http_put_response_hop_limit": 2,
+       "http_tokens": "required"
+      }
+     ],
+     "root_block_device": [
+      {
+       "encrypted": true,
+       "volume_size": 16,
+       "volume_type": "gp3"
+      }
+     ],
+     "tags": {
+      "Name": "flh-stg-host"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-host",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    },
+    "after_unknown": {},
+    "before": {
+     "ami": "ami-0123456789abcdef0",
+     "associate_public_ip_address": true,
+     "instance_initiated_shutdown_behavior": "terminate",
+     "instance_type": "t3.small",
+     "metadata_options": [
+      {
+       "http_endpoint": "enabled",
+       "http_put_response_hop_limit": 2,
+       "http_tokens": "required"
+      }
+     ],
+     "root_block_device": [
+      {
+       "encrypted": true,
+       "volume_size": 16,
+       "volume_type": "gp3"
+      }
+     ],
+     "tags": {
+      "Name": "flh-stg-host"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-host",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     }
+    }
+   },
+   "mode": "managed",
+   "name": "host",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_instance"
+  },
+  {
+   "address": "aws_ebs_volume.data",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "encrypted": true,
+     "size": 8,
+     "tags": {
+      "Name": "flh-stg-data"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-data",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     },
+     "type": "gp3"
+    },
+    "after_unknown": {},
+    "before": {
+     "encrypted": true,
+     "size": 8,
+     "tags": {
+      "Name": "flh-stg-data"
+     },
+     "tags_all": {
+      "Component": "workbench-staging",
+      "ExpiresAt": "2026-11-18T18:00:00Z",
+      "ManagedBy": "terraform",
+      "Name": "flh-stg-data",
+      "Project": "flh",
+      "Run": "20261118T000000Z"
+     },
+     "type": "gp3"
+    }
+   },
+   "mode": "managed",
+   "name": "data",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_ebs_volume"
+  },
+  {
+   "address": "aws_volume_attachment.data",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "after": {
+     "device_name": "/dev/sdf"
+    },
+    "after_unknown": {},
+    "before": {
+     "device_name": "/dev/sdf"
+    }
+   },
+   "mode": "managed",
+   "name": "data",
+   "provider_name": "registry.terraform.io/hashicorp/aws",
+   "type": "aws_volume_attachment"
+  }
+ ],
+ "terraform_version": "1.16.6"
+}

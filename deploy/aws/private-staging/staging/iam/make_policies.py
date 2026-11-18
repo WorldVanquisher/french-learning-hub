@@ -10,8 +10,8 @@ changes, each listed in OUT_DIR/CHANGES.txt:
     requires an ExpiresAt and a Run tag (bounded lifecycle);
   - instance shape t4g.micro -> t3.small; AMI pinned to __STAGING_AMI_ID__;
   - no Elastic IP and no inbound rule (the staging host has no public path);
-  - the separate encrypted gp3 data volume: create (tagged, encrypted, gp3),
-    attach, detach, delete (tagged);
+  - the separate encrypted gp3 data volume: create (tagged, encrypted, gp3,
+    tag-on-create allowed for CreateVolume), attach, detach, delete (tagged);
   - host boundary: S3 backups/ read+write, SSM parameters under /flh/staging,
     kms:Decrypt only through SSM;
   - operator: upload releases/ and backups/, read backups/, manage the
@@ -79,6 +79,15 @@ for s in ec2["Statement"]:
         s["Resource"] = new
     elif isinstance(res, str):
         s["Resource"] = re.sub(r"image/ami-[0-9a-f]+", "image/__STAGING_AMI_ID__", res)
+    if s.get("Sid") == "Ec2TagOnCreateOnly":
+        # Tag-on-create for exactly what this stack creates: no Elastic IP or inbound
+        # rule exists here, and the data volume is created with tags (CreateVolume
+        # with TagSpecifications needs ec2:CreateTags under ec2:CreateAction=CreateVolume).
+        acts = s["Condition"]["StringEquals"]["ec2:CreateAction"]
+        dropped = [x for x in acts if x in ("AllocateAddress", "AuthorizeSecurityGroupIngress")]
+        s["Condition"]["StringEquals"]["ec2:CreateAction"] = [x for x in acts if x not in dropped] + ["CreateVolume"]
+        changes.append(f"deploy-ec2: Ec2TagOnCreateOnly: CreateAction dropped {dropped} (no public path), added CreateVolume "
+                       "(the tagged data volume; release lane IAM review 20261118)")
     if s.get("Sid") == "Ec2RunOnlyTheReviewedInstanceShape":
         cond = s.setdefault("Condition", {})
         cond.setdefault("Null", {}).update({"aws:RequestTag/ExpiresAt": "false", "aws:RequestTag/Run": "false"})
