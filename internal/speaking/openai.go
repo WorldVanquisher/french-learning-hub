@@ -1,6 +1,6 @@
 // Package speaking holds the Speaking v1 providers: a transcriber that sends
-// one take's audio to the OpenAI transcription endpoint once per explicit
-// request, and a feedback generator that asks the configured OpenAI model,
+// one take's audio to the OpenAI transcription endpoint, or to the local
+// transcription service (tools/speaking), once per explicit request, and a feedback generator that asks the configured OpenAI model,
 // once per explicit request, for focused feedback on one confirmed transcript
 // version. Output is decoded strictly and validated; the server, not the
 // model, grounds each quote against that exact transcript. Neither stores
@@ -267,6 +267,15 @@ func (o *OpenAI) Generate(ctx context.Context, in domain.SpeakingFeedbackInput) 
 	return content, nil
 }
 
+// statusError is a definite non-200 answer: the provider is unavailable for
+// this request. The local transcriber reads the code to tell refused audio apart.
+type statusError struct{ code int }
+
+func (e *statusError) Error() string {
+	return fmt.Sprintf("%v: provider returned HTTP %d", domain.ErrProviderUnavailable, e.code)
+}
+func (e *statusError) Unwrap() error { return domain.ErrProviderUnavailable }
+
 // send makes one POST and returns a 200 body (at most maxResponseBytes). It
 // tells a request that never left this process (a definite failure) from one
 // that was sent but got no usable answer (outcome unknown: the provider may
@@ -286,7 +295,9 @@ func send(ctx context.Context, client *http.Client, url, contentType, apiKey str
 		return nil, fmt.Errorf("%w: build request", domain.ErrProviderUnavailable)
 	}
 	httpReq.Header.Set("Content-Type", contentType)
-	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+	if apiKey != "" { // the local transcription service takes no key
+		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+	}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
@@ -306,7 +317,7 @@ func send(ctx context.Context, client *http.Client, url, contentType, apiKey str
 		return nil, fmt.Errorf("%w: %w: reading response body", domain.ErrProviderUnavailable, domain.ErrOutcomeUnknown)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: provider returned HTTP %d", domain.ErrProviderUnavailable, resp.StatusCode)
+		return nil, &statusError{code: resp.StatusCode}
 	}
 	if len(body) > maxResponseBytes {
 		return nil, fmt.Errorf("%w: provider response exceeds %d bytes", domain.ErrValidation, maxResponseBytes)

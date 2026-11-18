@@ -16,6 +16,8 @@ func New(cfg config.SpeakingConfig) (domain.SpeakingTranscriber, domain.Speaking
 	case config.SpeakingDisabled:
 	case config.SpeakingOpenAI:
 		tr = NewTranscriber(cfg.OpenAIAPIKey, cfg.TranscriptionModel, cfg.OpenAIBaseURL, cfg.OpenAITimeout)
+	case config.SpeakingLocal:
+		tr = NewLocalTranscriber(cfg.TranscriptionModel, cfg.TranscriptionBaseURL, cfg.TranscriptionTimeout)
 	default:
 		return nil, nil, fmt.Errorf("unsupported speaking transcription provider %q", string(cfg.Transcription))
 	}
