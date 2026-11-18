@@ -1,0 +1,1193 @@
+{
+ "decoding": "flh_speaking_transcribe_v1",
+ "probes": [
+  {
+   "expect": "abstain",
+   "latency_s": 0.006,
+   "name": "silence_1s",
+   "note": "",
+   "ok": true,
+   "seconds": 1.0,
+   "sound_seconds": 0.0,
+   "status": "no_speech",
+   "text": "",
+   "warnings": [
+    "no_sound"
+   ],
+   "window_detail": [],
+   "windows": 0
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.001,
+   "name": "silence_10s",
+   "note": "",
+   "ok": true,
+   "seconds": 10.0,
+   "sound_seconds": 0.0,
+   "status": "no_speech",
+   "text": "",
+   "warnings": [
+    "no_sound"
+   ],
+   "window_detail": [],
+   "windows": 0
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.404,
+   "name": "hiss_-50dBFS_5s",
+   "note": "",
+   "ok": true,
+   "seconds": 5.0,
+   "sound_seconds": 4.98,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_nn"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.6403,
+     "compression_ratio": 0.13,
+     "kept": null,
+     "no_speech_prob": 0.7294,
+     "p_fr": 0.0088,
+     "text": "...",
+     "top_language": "nn"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.411,
+   "name": "noise_-20dBFS_5s",
+   "note": "",
+   "ok": true,
+   "seconds": 5.0,
+   "sound_seconds": 4.98,
+   "status": "no_speech",
+   "text": "",
+   "warnings": [
+    "possibly_not_french"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.6803,
+     "compression_ratio": 0.13,
+     "kept": false,
+     "no_speech_prob": 0.7701,
+     "p_fr": 0.0132,
+     "text": "...",
+     "top_language": "nn"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.412,
+   "name": "noise_-10dBFS_10s",
+   "note": "",
+   "ok": true,
+   "seconds": 10.0,
+   "sound_seconds": 9.99,
+   "status": "no_speech",
+   "text": "",
+   "warnings": [
+    "possibly_not_french"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.6539,
+     "compression_ratio": 0.13,
+     "kept": false,
+     "no_speech_prob": 0.7143,
+     "p_fr": 0.0161,
+     "text": "...",
+     "top_language": "nn"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.41,
+   "name": "tone_440Hz_3s",
+   "note": "",
+   "ok": true,
+   "seconds": 3.0,
+   "sound_seconds": 3.0,
+   "status": "no_speech",
+   "text": "",
+   "warnings": [
+    "possibly_not_french"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.2468,
+     "compression_ratio": 0.13,
+     "kept": false,
+     "no_speech_prob": 0.7431,
+     "p_fr": 0.0129,
+     "text": "...",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.411,
+   "name": "hum_50Hz_5s",
+   "note": "",
+   "ok": true,
+   "seconds": 5.0,
+   "sound_seconds": 4.98,
+   "status": "no_speech",
+   "text": "",
+   "warnings": [
+    "possibly_not_french"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.4621,
+     "compression_ratio": 0.13,
+     "kept": false,
+     "no_speech_prob": 0.8863,
+     "p_fr": 0.0199,
+     "text": "...",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.412,
+   "name": "clicks_5s",
+   "note": "",
+   "ok": true,
+   "seconds": 5.0,
+   "sound_seconds": 0.3,
+   "status": "no_speech",
+   "text": "",
+   "warnings": [
+    "possibly_not_french"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.5777,
+     "compression_ratio": 0.13,
+     "kept": false,
+     "no_speech_prob": 0.6957,
+     "p_fr": 0.0056,
+     "text": "...",
+     "top_language": "nn"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "code": "empty_audio",
+   "expect": "refuse",
+   "message": "the audio is empty",
+   "name": "empty",
+   "ok": true,
+   "status": "refused"
+  },
+  {
+   "code": "unsupported_audio",
+   "expect": "refuse",
+   "message": "audio container is not one of webm, mp4, mp3, wav",
+   "name": "random_bytes",
+   "ok": true,
+   "status": "refused"
+  },
+  {
+   "code": "undecodable_audio",
+   "expect": "refuse",
+   "message": "audio could not be decoded (InvalidDataError)",
+   "name": "truncated_wav_header",
+   "ok": true,
+   "status": "refused"
+  },
+  {
+   "code": "unsupported_audio",
+   "expect": "refuse",
+   "message": "audio container is not one of webm, mp4, mp3, wav",
+   "name": "flac_not_accepted_by_service",
+   "ok": true,
+   "status": "refused"
+  },
+  {
+   "code": "audio_too_long",
+   "expect": "refuse",
+   "message": "audio is longer than 120 s",
+   "name": "too_long_125s",
+   "ok": true,
+   "status": "refused"
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 0.991,
+   "name": "speech_clean",
+   "note": "",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 16.41,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+   "warnings": [],
+   "wer": 0.17021,
+   "window_detail": [
+    {
+     "avg_logprob": -0.1945,
+     "compression_ratio": 1.392,
+     "kept": true,
+     "no_speech_prob": 0.0224,
+     "p_fr": 0.9888,
+     "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "record",
+   "latency_s": 0.408,
+   "name": "speech_first_0.5s",
+   "note": "partial word",
+   "ok": null,
+   "seconds": 0.5,
+   "sound_seconds": 0.42,
+   "status": "no_speech",
+   "text": "",
+   "warnings": [
+    "possibly_not_french"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.4059,
+     "compression_ratio": 0.13,
+     "kept": false,
+     "no_speech_prob": 0.8789,
+     "p_fr": 0.0155,
+     "text": "...",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "record",
+   "latency_s": 0.446,
+   "name": "speech_first_1.5s",
+   "note": "a few words",
+   "ok": null,
+   "seconds": 1.5,
+   "sound_seconds": 1.44,
+   "status": "transcribed",
+   "text": "par un de ce",
+   "warnings": [
+    "low_confidence",
+    "possibly_not_french"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.6829,
+     "compression_ratio": 0.375,
+     "kept": true,
+     "no_speech_prob": 0.3221,
+     "p_fr": 0.042,
+     "text": "par un de ce",
+     "top_language": "ko"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 1.04,
+   "name": "speech_snr_20dB",
+   "note": "",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 16.47,
+   "status": "transcribed",
+   "text": "pendant de second siècle je fit serment d'ouvrir tous les trésors de la terre à qui campent me mettrait en liberté et je ne suis pas pu yurer dans le troisième j'ai promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+   "warnings": [],
+   "wer": 0.2766,
+   "window_detail": [
+    {
+     "avg_logprob": -0.3113,
+     "compression_ratio": 1.38,
+     "kept": true,
+     "no_speech_prob": 0.0206,
+     "p_fr": 0.9854,
+     "text": "pendant de second siècle je fit serment d'ouvrir tous les trésors de la terre à qui campent me mettrait en liberté et je ne suis pas pu yurer dans le troisième j'ai promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 1.075,
+   "name": "speech_snr_10dB",
+   "note": "",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 16.47,
+   "status": "transcribed",
+   "text": "pendant de second siècle je fissèrement d'ouvrir tous les trésors de la terre à qui quand nous mettraient un idée de tout j'ai ne suis pas plus duré dans le troisième je promis de faire puissant mon art mon libérateur d'être que zô près de lui en esprit",
+   "warnings": [],
+   "wer": 0.40426,
+   "window_detail": [
+    {
+     "avg_logprob": -0.5073,
+     "compression_ratio": 1.389,
+     "kept": true,
+     "no_speech_prob": 0.0202,
+     "p_fr": 0.9832,
+     "text": "pendant de second siècle je fissèrement d'ouvrir tous les trésors de la terre à qui quand nous mettraient un idée de tout j'ai ne suis pas plus duré dans le troisième je promis de faire puissant mon art mon libérateur d'être que zô près de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 1.012,
+   "name": "speech_snr_5dB",
+   "note": "",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 16.47,
+   "status": "transcribed",
+   "text": "pendant le second siècle je suis servement devais tous les présorts de la terre à qui quand une estrée en idée de ce que je ne suis pas très devais dans le troisième je produis de faire puissant mon infromande de la terre d'être plus haut près de lui en espèce",
+   "warnings": [],
+   "wer": 0.53191,
+   "window_detail": [
+    {
+     "avg_logprob": -0.7701,
+     "compression_ratio": 1.484,
+     "kept": true,
+     "no_speech_prob": 0.0377,
+     "p_fr": 0.9621,
+     "text": "pendant le second siècle je suis servement devais tous les présorts de la terre à qui quand une estrée en idée de ce que je ne suis pas très devais dans le troisième je produis de faire puissant mon infromande de la terre d'être plus haut près de lui en espèce",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 0.853,
+   "name": "speech_snr_0dB",
+   "note": "",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 16.47,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fissèverai l'idée des présents de la faire qui compte une expérience de la France. dans le troisième je prôlis de faire qui semble un expérience de la France.",
+   "warnings": [
+    "low_confidence"
+   ],
+   "wer": 0.70213,
+   "window_detail": [
+    {
+     "avg_logprob": -1.2214,
+     "compression_ratio": 1.366,
+     "kept": true,
+     "no_speech_prob": 0.0522,
+     "p_fr": 0.8526,
+     "text": "pendant le second siècle je fissèverai l'idée des présents de la faire qui compte une expérience de la France. dans le troisième je prôlis de faire qui semble un expérience de la France.",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 1.0,
+   "name": "speech_clipped_x8",
+   "note": "",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 16.47,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+   "warnings": [],
+   "wer": 0.17021,
+   "window_detail": [
+    {
+     "avg_logprob": -0.2067,
+     "compression_ratio": 1.392,
+     "kept": true,
+     "no_speech_prob": 0.0187,
+     "p_fr": 0.9918,
+     "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 1.029,
+   "name": "speech_quiet_-30dB",
+   "note": "",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 8.31,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fissèrement d'ouvrir tous les trésors de la terre à qui quand ne maîtrait en liberté mais je ne fût pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+   "warnings": [],
+   "wer": 0.21277,
+   "window_detail": [
+    {
+     "avg_logprob": -0.2004,
+     "compression_ratio": 1.358,
+     "kept": true,
+     "no_speech_prob": 0.0382,
+     "p_fr": 0.9616,
+     "text": "pendant le second siècle je fissèrement d'ouvrir tous les trésors de la terre à qui quand ne maîtrait en liberté mais je ne fût pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 1.232,
+   "name": "speech_padded_20s_silence_each_side",
+   "note": "long-form windows; silent windows must add no text",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 56.49,
+   "sound_seconds": 16.44,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte ne maîtrait en liberté mais je ne fût pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+   "warnings": [],
+   "wer": 0.19149,
+   "window_detail": [
+    {
+     "avg_logprob": -0.3007,
+     "compression_ratio": 1.127,
+     "kept": true,
+     "no_speech_prob": 0.0065,
+     "p_fr": 0.9628,
+     "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte ne maîtrait en liberté mais je ne fût pas plus heureux",
+     "top_language": "fr"
+    },
+    {
+     "avg_logprob": -0.2208,
+     "compression_ratio": 1.048,
+     "kept": true,
+     "no_speech_prob": 0.063,
+     "p_fr": 0.981,
+     "text": "dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 2
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 3.884,
+   "name": "long_form_concat",
+   "note": "the same three utterances twice (cut at 120 s)",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit non ta mort est certaine dit le génie choisis seulement de quelle sorte tu veux que je te fasse mourir le pêcheur le voyant dans la résolution de le tuer en eut une douleur extrême non pas tant pour l'amour de lui qu'à cause de ses trois enfants dont il plaignait la misère où ils allaient être réduits par sa mort la nuit suivante appela sa soeur quand il en fut temps si vous ne dormez pas ma soeur lui dit-elle je vous prie en attendant le jour qui paraîtra bientôt de continuer le conte du pêcheur pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit non ta mort est certaine dit le génie choisis seulement de quelle sorte tu veux que je te fasse mourir le pêcheur le voyant dans la résolution de le tuer en eut une douleur extrême non pas tant pour l'amour de lui qu'à cause de ses trois enfants dont il plaignait la misère où ils allaient être réduits par sa mort la nuit suivante appela sa soeur quand il en fut temps si vous ne dormez pas ma soeur lui dit-elle je vous prie en attendant le jour qui paraîtra bientôt de continuer le conte du pêcheur",
+   "seconds": 96.9,
+   "sound_seconds": 95.94,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui campent me mettrait en liberté mais je ne fous pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit non ta mort est certaine dit de génie choisi seulement de quel sorte tu veux que je te fasse mourir le pêcheur le voyant dans les résolutions de le tuer en ee une douleur extrême non patin pour l'amour de lui qu'à cause de ces trois enfants dont il plingait la misère où il allait être riddui par sa mort d'hénardsa de la nuit suivante aplaça s'asseur quand il en fut un si vous ne dormez pas ma sœur lui dit elle je vous prie en attendant le jour qui paraît à bientôt de continuer le compte du pêcheur pendant le second siècle je fissèrement d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit non ta mort est certaine dit de génie choisis seulement de quel sortes tu veux que je te fasse mourir le pêcheur le voyant dans les résolutions de le tuer en eune douleur extrême non patin pour l'amour de lui qu'à cause de ses trois enfants dont il plingait la misère où il allait être réduit par sa mort dénarsat la nuit suivante a place à sœur quand il en fut tant si vous ne dormez pas ma sœur lui dit-elle je vous prie en attendant le jour qui paraît très bientôt de continuer le compte du pêcheur",
+   "warnings": [],
+   "wer": 0.20408,
+   "window_detail": [
+    {
+     "avg_logprob": -0.2063,
+     "compression_ratio": 1.595,
+     "kept": true,
+     "no_speech_prob": 0.0042,
+     "p_fr": 0.9921,
+     "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui campent me mettrait en liberté mais je ne fous pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit non ta mort est certaine dit de génie choisi seulement de quel sorte tu veux que je te fasse mourir le pêcheur le voyant dans les résolutions de le tuer en ee une douleur extrême",
+     "top_language": "fr"
+    },
+    {
+     "avg_logprob": -0.3223,
+     "compression_ratio": 1.524,
+     "kept": true,
+     "no_speech_prob": 0.0016,
+     "p_fr": 0.993,
+     "text": "non patin pour l'amour de lui qu'à cause de ces trois enfants dont il plingait la misère où il allait être riddui par sa mort d'hénardsa de la nuit suivante aplaça s'asseur quand il en fut un si vous ne dormez pas ma sœur lui dit elle je vous prie en attendant le jour qui paraît à bientôt de continuer le compte du pêcheur pendant le second siècle je fissèrement d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté",
+     "top_language": "fr"
+    },
+    {
+     "avg_logprob": -0.2439,
+     "compression_ratio": 1.592,
+     "kept": true,
+     "no_speech_prob": 0.0045,
+     "p_fr": 0.9927,
+     "text": "mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit non ta mort est certaine dit de génie choisis seulement de quel sortes tu veux que je te fasse mourir le pêcheur le voyant dans les résolutions de le tuer en eune douleur extrême non patin pour l'amour de lui qu'à cause de ses trois enfants dont il plingait la misère où il allait être réduit par sa mort",
+     "top_language": "fr"
+    },
+    {
+     "avg_logprob": -0.3252,
+     "compression_ratio": 1.259,
+     "kept": true,
+     "no_speech_prob": 0.0305,
+     "p_fr": 0.9789,
+     "text": "dénarsat la nuit suivante a place à sœur quand il en fut tant si vous ne dormez pas ma sœur lui dit-elle je vous prie en attendant le jour qui paraît très bientôt de continuer le compte du pêcheur",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 4
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 0.999,
+   "name": "reencoded_webm_opus",
+   "note": "154315 bytes; decoded webm/opus 48000 Hz x1; corr=0.9967",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 16.41,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+   "warnings": [],
+   "wer": 0.17021,
+   "window_detail": [
+    {
+     "avg_logprob": -0.1921,
+     "compression_ratio": 1.392,
+     "kept": true,
+     "no_speech_prob": 0.0227,
+     "p_fr": 0.9882,
+     "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 1.02,
+   "name": "reencoded_mp4_aac",
+   "note": "133743 bytes; decoded mp4/aac 16000 Hz x1; corr=0.0103",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.55,
+   "sound_seconds": 16.38,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte m'aimettrait en liberté et je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+   "warnings": [],
+   "wer": 0.21277,
+   "window_detail": [
+    {
+     "avg_logprob": -0.2113,
+     "compression_ratio": 1.39,
+     "kept": true,
+     "no_speech_prob": 0.0184,
+     "p_fr": 0.9876,
+     "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte m'aimettrait en liberté et je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 0.981,
+   "name": "reencoded_mp3",
+   "note": "132510 bytes; decoded mp3/mp3float 44100 Hz x1; corr=0.997",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 16.35,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+   "warnings": [],
+   "wer": 0.17021,
+   "window_detail": [
+    {
+     "avg_logprob": -0.1901,
+     "compression_ratio": 1.392,
+     "kept": true,
+     "no_speech_prob": 0.0225,
+     "p_fr": 0.9877,
+     "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "transcribe",
+   "latency_s": 0.983,
+   "name": "reencoded_wav_44k_stereo",
+   "note": "2908880 bytes; decoded wav/pcm_s16le 44100 Hz x2; corr=0.9926",
+   "ok": true,
+   "ref": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit",
+   "seconds": 16.49,
+   "sound_seconds": 16.47,
+   "status": "transcribed",
+   "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+   "warnings": [],
+   "wer": 0.17021,
+   "window_detail": [
+    {
+     "avg_logprob": -0.1939,
+     "compression_ratio": 1.392,
+     "kept": true,
+     "no_speech_prob": 0.021,
+     "p_fr": 0.9895,
+     "text": "pendant le second siècle je fit serment d'ouvrir tous les trésors de la terre à qui compte me mettre en liberté mais je ne suis pas plus heureux dans le troisième je promis de faire puissant mon arc mon libérateur d'être toujours prêt de lui en esprit",
+     "top_language": "fr"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.398,
+   "name": "non_french_cmn_hans_cn_10116334326946811387",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 18.38,
+   "sound_seconds": 18.12,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -2.6658,
+     "compression_ratio": 0.091,
+     "kept": null,
+     "no_speech_prob": 0.0679,
+     "p_fr": 0.0003,
+     "text": "la",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.54,
+   "name": "non_french_cmn_hans_cn_10149760684641961155",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 7.44,
+   "sound_seconds": 7.44,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.0933,
+     "compression_ratio": 0.512,
+     "kept": null,
+     "no_speech_prob": 0.0764,
+     "p_fr": 0.0001,
+     "text": "parce que la route de",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.707,
+   "name": "non_french_cmn_hans_cn_10291819997967779677",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 7.56,
+   "sound_seconds": 4.23,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -0.246,
+     "compression_ratio": 0.772,
+     "kept": null,
+     "no_speech_prob": 0.0631,
+     "p_fr": 0.0001,
+     "text": "亞馬遜河也是地球上最寬的河流,有些合作的寬度可達 6英里",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.578,
+   "name": "non_french_cmn_hans_cn_10312747577451821721",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 9.66,
+   "sound_seconds": 9.3,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.2657,
+     "compression_ratio": 0.73,
+     "kept": null,
+     "no_speech_prob": 0.0695,
+     "p_fr": 0.0001,
+     "text": "加 nann n'y a pas de la salle, donc il est très cool",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.527,
+   "name": "non_french_cmn_hans_cn_10323412965683910375",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 15.46,
+   "sound_seconds": 15.06,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.4654,
+     "compression_ratio": 0.438,
+     "kept": null,
+     "no_speech_prob": 0.0444,
+     "p_fr": 0.0002,
+     "text": "juge-j-fange-t",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.695,
+   "name": "non_french_cmn_hans_cn_10338323678123157612",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 12.22,
+   "sound_seconds": 11.94,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -0.5261,
+     "compression_ratio": 0.512,
+     "kept": null,
+     "no_speech_prob": 0.1057,
+     "p_fr": 0.0005,
+     "text": "y a eu lieu活動, il",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.61,
+   "name": "non_french_cmn_hans_cn_10364886378944165104",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 14.28,
+   "sound_seconds": 14.01,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.5361,
+     "compression_ratio": 1.069,
+     "kept": null,
+     "no_speech_prob": 0.0326,
+     "p_fr": 0.0001,
+     "text": "il y a une partie de la fâie est très longue, car la fâie est très longue",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.488,
+   "name": "non_french_cmn_hans_cn_10378712431948705352",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 15.38,
+   "sound_seconds": 15.09,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -2.0531,
+     "compression_ratio": 0.797,
+     "kept": null,
+     "no_speech_prob": 0.2332,
+     "p_fr": 0.0008,
+     "text": "beaucoup de personnes qui sont en train de se faire",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.429,
+   "name": "non_french_cmn_hans_cn_10399860241838146540",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 11.46,
+   "sound_seconds": 5.7,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -2.4753,
+     "compression_ratio": 0.394,
+     "kept": null,
+     "no_speech_prob": 0.0766,
+     "p_fr": 0.0002,
+     "text": "le plus grand",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.411,
+   "name": "non_french_cmn_hans_cn_1041347348625117196",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 9.12,
+   "sound_seconds": 4.47,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_zh"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -2.2734,
+     "compression_ratio": 0.091,
+     "kept": null,
+     "no_speech_prob": 0.0881,
+     "p_fr": 0.0001,
+     "text": "le",
+     "top_language": "zh"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.697,
+   "name": "non_french_en_us_10010138729160973689",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 6.54,
+   "sound_seconds": 6.45,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.1719,
+     "compression_ratio": 0.97,
+     "kept": null,
+     "no_speech_prob": 0.2636,
+     "p_fr": 0.0006,
+     "text": "quand vous parlez d'une personne qui est 1000 ou 10 h de majeur, vous êtes en train de s'assetler",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.748,
+   "name": "non_french_en_us_10035998729701048400",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 16.38,
+   "sound_seconds": 11.31,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.4635,
+     "compression_ratio": 0.933,
+     "kept": null,
+     "no_speech_prob": 0.0339,
+     "p_fr": 0.0,
+     "text": "Maintenant, le filtre réunit par l'archie de l'arcois de la poulago, la cuisine de",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.787,
+   "name": "non_french_en_us_1009709090964908274",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 7.92,
+   "sound_seconds": 7.77,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.1017,
+     "compression_ratio": 0.959,
+     "kept": null,
+     "no_speech_prob": 0.0242,
+     "p_fr": 0.0006,
+     "text": "UN aussi a aussi l'occasion d'affirter un fond de l'affirter de l'infos",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.555,
+   "name": "non_french_en_us_10098964113747380446",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 4.14,
+   "sound_seconds": 2.22,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.8528,
+     "compression_ratio": 0.904,
+     "kept": null,
+     "no_speech_prob": 0.0927,
+     "p_fr": 0.0006,
+     "text": "Et puis comme je le dis, pour le dire et le dire dans les passions",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.544,
+   "name": "non_french_en_us_10146705666908229607",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 4.92,
+   "sound_seconds": 2.4,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -0.6675,
+     "compression_ratio": 0.803,
+     "kept": null,
+     "no_speech_prob": 0.1626,
+     "p_fr": 0.0002,
+     "text": "le plus grand religion et Moldova est orthodoxe christian",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.661,
+   "name": "non_french_en_us_10238777279729691182",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 4.44,
+   "sound_seconds": 2.85,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -0.929,
+     "compression_ratio": 0.986,
+     "kept": null,
+     "no_speech_prob": 0.0652,
+     "p_fr": 0.0002,
+     "text": "l'Afrique des islands est dans l'Ontin d'Otin d'Afrique de l'Afrique",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.622,
+   "name": "non_french_en_us_10280794863324544626",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 6.84,
+   "sound_seconds": 6.69,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.3446,
+     "compression_ratio": 1.033,
+     "kept": null,
+     "no_speech_prob": 0.0467,
+     "p_fr": 0.0008,
+     "text": "Les sous-titres sont des spécules de campagne spéciales pour les familles avec les enfants.",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.952,
+   "name": "non_french_en_us_10290896634244679159",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 10.02,
+   "sound_seconds": 6.63,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -0.9002,
+     "compression_ratio": 1.305,
+     "kept": null,
+     "no_speech_prob": 0.1456,
+     "p_fr": 0.0001,
+     "text": "le bouteau de bouteau de bouteau est basé sur les teachings de bouteau, mais nous sommes exténés par le maïen, le patheur de l'eau et par un beaucoup de techniques de l'Indian-Yoga",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.674,
+   "name": "non_french_en_us_10305808618795196942",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 9.32,
+   "sound_seconds": 9.09,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -1.3698,
+     "compression_ratio": 1.108,
+     "kept": null,
+     "no_speech_prob": 0.0614,
+     "p_fr": 0.0003,
+     "text": "le renunciation est relativement facile et italien depuis que les huites sont renounced exactement à ce qu'ils sont rités",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  },
+  {
+   "expect": "abstain",
+   "latency_s": 0.678,
+   "name": "non_french_en_us_10312254140358477897",
+   "note": "other-language speech",
+   "ok": true,
+   "seconds": 9.48,
+   "sound_seconds": 5.1,
+   "status": "not_french",
+   "text": "",
+   "warnings": [
+    "detected_en"
+   ],
+   "window_detail": [
+    {
+     "avg_logprob": -0.9261,
+     "compression_ratio": 1.112,
+     "kept": null,
+     "no_speech_prob": 0.2096,
+     "p_fr": 0.0003,
+     "text": "Dans cette transporte dynamique, tous les gens sont connectés avec en apportant un système transport sur les caractéristiques.",
+     "top_language": "en"
+    }
+   ],
+   "windows": 1
+  }
+ ],
+ "schema": "flh_speaking_probes_v1",
+ "summary": {
+  "as_expected": 46,
+  "not_as_expected": [],
+  "not_run": [],
+  "probes": 48,
+  "recorded_only": [
+   "speech_first_0.5s",
+   "speech_first_1.5s"
+  ]
+ }
+}

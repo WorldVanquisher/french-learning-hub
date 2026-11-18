@@ -1,0 +1,171 @@
+{
+ "deployment_id": "whisper-small@973afd24965f/flh_speaking_transcribe_v1/cpu-fp32/6307099ec4850176",
+ "idle_mem_mib": 379.4,
+ "latency": {
+  "10s": {
+   "identical_text": true,
+   "median_wall_s": 2.532,
+   "rtf": 0.253,
+   "runs": [
+    {
+     "decode_s": 0.012,
+     "model_s": 2.483,
+     "status": "transcribed",
+     "text_sha256": "5a7b98fa7270d181",
+     "wall_s": 2.531,
+     "windows": 1
+    },
+    {
+     "decode_s": 0.008,
+     "model_s": 2.59,
+     "status": "transcribed",
+     "text_sha256": "5a7b98fa7270d181",
+     "wall_s": 2.609,
+     "windows": 1
+    },
+    {
+     "decode_s": 0.008,
+     "model_s": 2.506,
+     "status": "transcribed",
+     "text_sha256": "5a7b98fa7270d181",
+     "wall_s": 2.532,
+     "windows": 1
+    }
+   ]
+  },
+  "120s": {
+   "identical_text": true,
+   "median_wall_s": 17.273,
+   "rtf": 0.144,
+   "runs": [
+    {
+     "decode_s": 0.052,
+     "model_s": 17.156,
+     "status": "transcribed",
+     "text_sha256": "8023efb653e54ddd",
+     "wall_s": 17.316,
+     "windows": 5
+    },
+    {
+     "decode_s": 0.051,
+     "model_s": 17.093,
+     "status": "transcribed",
+     "text_sha256": "8023efb653e54ddd",
+     "wall_s": 17.258,
+     "windows": 5
+    },
+    {
+     "decode_s": 0.05,
+     "model_s": 17.107,
+     "status": "transcribed",
+     "text_sha256": "8023efb653e54ddd",
+     "wall_s": 17.273,
+     "windows": 5
+    }
+   ]
+  },
+  "30s": {
+   "identical_text": true,
+   "median_wall_s": 3.428,
+   "rtf": 0.114,
+   "runs": [
+    {
+     "decode_s": 0.016,
+     "model_s": 3.389,
+     "status": "transcribed",
+     "text_sha256": "5e1182a9c4606c88",
+     "wall_s": 3.428,
+     "windows": 1
+    },
+    {
+     "decode_s": 0.015,
+     "model_s": 3.396,
+     "status": "transcribed",
+     "text_sha256": "5e1182a9c4606c88",
+     "wall_s": 3.44,
+     "windows": 1
+    },
+    {
+     "decode_s": 0.015,
+     "model_s": 3.375,
+     "status": "transcribed",
+     "text_sha256": "5e1182a9c4606c88",
+     "wall_s": 3.421,
+     "windows": 1
+    }
+   ]
+  },
+  "60s": {
+   "identical_text": true,
+   "median_wall_s": 10.088,
+   "rtf": 0.168,
+   "runs": [
+    {
+     "decode_s": 0.028,
+     "model_s": 10.008,
+     "status": "transcribed",
+     "text_sha256": "e308104633c1c4e4",
+     "wall_s": 10.088,
+     "windows": 3
+    },
+    {
+     "decode_s": 0.029,
+     "model_s": 10.007,
+     "status": "transcribed",
+     "text_sha256": "e308104633c1c4e4",
+     "wall_s": 10.094,
+     "windows": 3
+    },
+    {
+     "decode_s": 0.028,
+     "model_s": 9.976,
+     "status": "transcribed",
+     "text_sha256": "e308104633c1c4e4",
+     "wall_s": 10.059,
+     "windows": 3
+    }
+   ]
+  }
+ },
+ "load_s": 1.801,
+ "memory_limit": "1800m",
+ "metrics": {
+  "counters": {
+   "abstained": 0,
+   "busy": 0,
+   "errors": 0,
+   "refused": 0,
+   "requests": 12,
+   "timeouts": 0,
+   "transcribed": 12
+  },
+  "status": "ready"
+ },
+ "model_subdir": "openai/whisper-small/973afd24965f72e36ca33b3055d56a652f456b4d",
+ "peak_mem_mib": 1303.6,
+ "readiness_transitions": [
+  [
+   0.02,
+   "down",
+   "ConnectionResetError"
+  ],
+  [
+   0.52,
+   503,
+   "loading"
+  ],
+  [
+   5.69,
+   503,
+   "warming"
+  ],
+  [
+   7.2,
+   200,
+   "ready"
+  ]
+ ],
+ "ready_after_s": 7.32,
+ "tmp_entries_after": "1",
+ "warm_s": 1.517
+}

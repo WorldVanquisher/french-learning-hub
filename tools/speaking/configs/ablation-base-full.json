@@ -1,0 +1,21 @@
+{
+ "schema": "flh_speaking_train_config_v1",
+ "note": "Ablation: whisper-base full fine-tune (encoder and decoder) with the pilot's data, seed and schedule. Expected to adopt MLS's lower-case, unpunctuated style (criterion A5); run only if CPU time allows.",
+ "base_model": "whisper-base",
+ "seed": 20261117,
+ "train_ids": "split:train",
+ "dev_ids": "split:dev",
+ "max_steps": 180,
+ "batch_size": 2,
+ "grad_accum": 8,
+ "lr": 1e-05,
+ "warmup_steps": 18,
+ "weight_decay": 0.0,
+ "max_grad_norm": 1.0,
+ "freeze": "none",
+ "gradient_checkpointing": true,
+ "eval_every": 60,
+ "save_every": 5,
+ "keep_checkpoints": 2,
+ "threads": 4
+}

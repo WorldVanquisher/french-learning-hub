@@ -1,0 +1,297 @@
+--- a/cmd/server/main.go
++++ b/cmd/server/main.go
+@@ -207,7 +207,7 @@
+ 		return err
+ 	}
+ 	speakingSvc, err := application.NewSpeakingService(sqlite.NewSpeakingRepository(db), selectedTranscriber, selectedSpeaking, speaking.ExamplePrompts(),
+-		application.WithSpeakingDeadline(cfg.Speaking.OpenAITimeout+30*time.Second))
++		application.WithSpeakingDeadline(speakingDeadline(cfg.Speaking)))
+ 	if err != nil {
+ 		return err
+ 	}
+@@ -295,3 +295,13 @@
+ 		return srv.Shutdown(shutdownCtx)
+ 	}
+ }
++
++// speakingDeadline bounds a Speaking request row: the slowest configured
++// provider call plus 30 s. A local transcription service has its own timeout.
++func speakingDeadline(c config.SpeakingConfig) time.Duration {
++	d := c.OpenAITimeout
++	if c.Transcription == config.SpeakingLocal && c.TranscriptionTimeout > d {
++		d = c.TranscriptionTimeout
++	}
++	return d + 30*time.Second
++}
+--- a/cmd/server/speaking_deadline_test.go
++++ b/cmd/server/speaking_deadline_test.go
+@@ -0,0 +1,19 @@
++package main
++
++import (
++	"testing"
++	"time"
++
++	"french-learning-app/internal/config"
++)
++
++func TestSpeakingDeadlineCoversTheLocalTranscriptionTimeout(t *testing.T) {
++	base := config.SpeakingConfig{OpenAITimeout: 8 * time.Second, TranscriptionTimeout: 120 * time.Second}
++	if got := speakingDeadline(base); got != 38*time.Second {
++		t.Fatalf("openai/disabled deadline = %v", got)
++	}
++	base.Transcription = config.SpeakingLocal
++	if got := speakingDeadline(base); got != 150*time.Second {
++		t.Fatalf("local deadline = %v", got)
++	}
++}
+--- a/internal/config/config.go
++++ b/internal/config/config.go
+@@ -257,7 +257,8 @@
+ //	WRITING_PROVIDER    -> Writing.Provider, default disabled (reuses OPENAI_*)
+ //	SPEAKING_PROVIDER   -> Speaking.Feedback, default disabled (reuses OPENAI_*)
+ //	SPEAKING_TRANSCRIPTION_PROVIDER, SPEAKING_TRANSCRIPTION_MODEL ->
+-//	Speaking.Transcription, default disabled (reuses OPENAI_API_KEY/BASE_URL/TIMEOUT)
++//	Speaking.Transcription, default disabled (openai reuses OPENAI_API_KEY/BASE_URL/TIMEOUT;
++//	local uses SPEAKING_TRANSCRIPTION_BASE_URL and SPEAKING_TRANSCRIPTION_TIMEOUT, default 60 s)
+ //	LISTENING_PLAYLIST_SOURCE, LISTENING_AUTO_PREPARE, LISTENING_NOTIFY and their
+ //	settings -> ListeningDaily (see loadListeningDaily), all default disabled
+ //	EMBEDDING_PROVIDER -> Embedding.Provider, default disabled
+@@ -350,13 +351,15 @@
+ 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
+ 		},
+ 		Speaking: SpeakingConfig{
+-			Feedback:           SpeakingProvider(getenv("SPEAKING_PROVIDER", string(SpeakingDisabled))),
+-			Transcription:      SpeakingProvider(getenv("SPEAKING_TRANSCRIPTION_PROVIDER", string(SpeakingDisabled))),
+-			TranscriptionModel: strings.TrimSpace(src.get("SPEAKING_TRANSCRIPTION_MODEL")),
+-			OpenAIAPIKey:       src.get("OPENAI_API_KEY"),
+-			OpenAIModel:        strings.TrimSpace(src.get("OPENAI_MODEL")),
+-			OpenAIBaseURL:      getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
+-			OpenAITimeout:      getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
++			Feedback:             SpeakingProvider(getenv("SPEAKING_PROVIDER", string(SpeakingDisabled))),
++			Transcription:        SpeakingProvider(getenv("SPEAKING_TRANSCRIPTION_PROVIDER", string(SpeakingDisabled))),
++			TranscriptionModel:   strings.TrimSpace(src.get("SPEAKING_TRANSCRIPTION_MODEL")),
++			TranscriptionBaseURL: strings.TrimSpace(src.get("SPEAKING_TRANSCRIPTION_BASE_URL")),
++			TranscriptionTimeout: getdur("SPEAKING_TRANSCRIPTION_TIMEOUT", defaultSpeakingTranscriptionTimeout),
++			OpenAIAPIKey:         src.get("OPENAI_API_KEY"),
++			OpenAIModel:          strings.TrimSpace(src.get("OPENAI_MODEL")),
++			OpenAIBaseURL:        getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
++			OpenAITimeout:        getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
+ 		},
+ 		Embedding: EmbeddingConfig{
+ 			Provider: EmbeddingProvider(getenv("EMBEDDING_PROVIDER", string(EmbeddingDisabled))),
+--- a/internal/config/config_test.go
++++ b/internal/config/config_test.go
+@@ -12,7 +12,7 @@
+ func clearAIEnv(t *testing.T) {
+ 	t.Helper()
+ 	for _, k := range []string{
+-		"AI_PROVIDER", "SUGGESTION_PROVIDER", "LISTENING_PROVIDER", "READING_PROVIDER", "WRITING_PROVIDER", "SPEAKING_PROVIDER", "SPEAKING_TRANSCRIPTION_PROVIDER", "SPEAKING_TRANSCRIPTION_MODEL", "OPENAI_API_KEY", "OPENAI_MODEL",
++		"AI_PROVIDER", "SUGGESTION_PROVIDER", "LISTENING_PROVIDER", "READING_PROVIDER", "WRITING_PROVIDER", "SPEAKING_PROVIDER", "SPEAKING_TRANSCRIPTION_PROVIDER", "SPEAKING_TRANSCRIPTION_MODEL", "SPEAKING_TRANSCRIPTION_BASE_URL", "SPEAKING_TRANSCRIPTION_TIMEOUT", "OPENAI_API_KEY", "OPENAI_MODEL",
+ 		"OPENAI_BASE_URL", "OPENAI_TIMEOUT",
+ 		"EMBEDDING_PROVIDER", "EMBEDDING_API_KEY", "EMBEDDING_MODEL",
+ 		"EMBEDDING_BASE_URL", "EMBEDDING_TIMEOUT",
+--- a/internal/config/speaking.go
++++ b/internal/config/speaking.go
+@@ -2,6 +2,7 @@
+ 
+ import (
+ 	"fmt"
++	"net/url"
+ 	"strings"
+ 	"time"
+ )
+@@ -17,8 +18,16 @@
+ 	SpeakingDisabled SpeakingProvider = "disabled"
+ 	// SpeakingOpenAI selects the OpenAI-backed implementation (opt-in).
+ 	SpeakingOpenAI SpeakingProvider = "openai"
++	// SpeakingLocal selects a local transcription service that speaks the same
++	// multipart protocol (tools/speaking, flh_speaking_transcription_v1).
++	// Transcription only; it needs no API key and has its own base URL and
++	// timeout, so it can run beside OpenAI feedback.
++	SpeakingLocal SpeakingProvider = "local"
+ )
+ 
++// defaultSpeakingTranscriptionTimeout bounds one local transcription request.
++const defaultSpeakingTranscriptionTimeout = 60 * time.Second
++
+ // SpeakingConfig holds the Speaking v1 provider selections and the OpenAI
+ // settings they reuse (OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_TIMEOUT).
+ // Feedback uses OPENAI_MODEL; transcription needs its own explicit
+@@ -27,10 +36,14 @@
+ 	Feedback           SpeakingProvider // SPEAKING_PROVIDER
+ 	Transcription      SpeakingProvider // SPEAKING_TRANSCRIPTION_PROVIDER
+ 	TranscriptionModel string           // SPEAKING_TRANSCRIPTION_MODEL
+-	OpenAIAPIKey       string
+-	OpenAIModel        string
+-	OpenAIBaseURL      string
+-	OpenAITimeout      time.Duration
++	// TranscriptionBaseURL and TranscriptionTimeout apply to the local
++	// provider only (SPEAKING_TRANSCRIPTION_BASE_URL, SPEAKING_TRANSCRIPTION_TIMEOUT).
++	TranscriptionBaseURL string
++	TranscriptionTimeout time.Duration
++	OpenAIAPIKey         string
++	OpenAIModel          string
++	OpenAIBaseURL        string
++	OpenAITimeout        time.Duration
+ }
+ 
+ func (c *SpeakingConfig) validate() error {
+@@ -52,8 +65,19 @@
+ 		if c.TranscriptionModel == "" {
+ 			return fmt.Errorf("SPEAKING_TRANSCRIPTION_PROVIDER=openai requires SPEAKING_TRANSCRIPTION_MODEL to be set")
+ 		}
++	case SpeakingLocal:
++		if c.TranscriptionModel == "" {
++			return fmt.Errorf("SPEAKING_TRANSCRIPTION_PROVIDER=local requires SPEAKING_TRANSCRIPTION_MODEL (the service's deployment_id)")
++		}
++		u, err := url.Parse(c.TranscriptionBaseURL)
++		if c.TranscriptionBaseURL == "" || err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
++			return fmt.Errorf("SPEAKING_TRANSCRIPTION_PROVIDER=local requires SPEAKING_TRANSCRIPTION_BASE_URL (an http or https URL)")
++		}
++		if c.TranscriptionTimeout <= 0 {
++			return fmt.Errorf("SPEAKING_TRANSCRIPTION_TIMEOUT must be positive")
++		}
+ 	default:
+-		return fmt.Errorf("unknown SPEAKING_TRANSCRIPTION_PROVIDER %q (supported: disabled, openai)", string(c.Transcription))
++		return fmt.Errorf("unknown SPEAKING_TRANSCRIPTION_PROVIDER %q (supported: disabled, openai, local)", string(c.Transcription))
+ 	}
+ 	if needKey {
+ 		if strings.TrimSpace(c.OpenAIAPIKey) == "" {
+--- a/internal/config/speaking_config_test.go
++++ b/internal/config/speaking_config_test.go
+@@ -43,7 +43,10 @@
+ 		"feedback unknown":        {map[string]string{"SPEAKING_PROVIDER": "anthropic", "OPENAI_API_KEY": secret}, "SPEAKING_PROVIDER"},
+ 		"transcription no key":    {map[string]string{"SPEAKING_TRANSCRIPTION_PROVIDER": "openai", "SPEAKING_TRANSCRIPTION_MODEL": "m"}, "OPENAI_API_KEY"},
+ 		"transcription no model":  {map[string]string{"SPEAKING_TRANSCRIPTION_PROVIDER": "openai", "OPENAI_API_KEY": secret, "OPENAI_MODEL": "text-model"}, "SPEAKING_TRANSCRIPTION_MODEL"},
+-		"transcription unknown":   {map[string]string{"SPEAKING_TRANSCRIPTION_PROVIDER": "local", "OPENAI_API_KEY": secret}, "SPEAKING_TRANSCRIPTION_PROVIDER"},
++		"transcription unknown":   {map[string]string{"SPEAKING_TRANSCRIPTION_PROVIDER": "whisper", "OPENAI_API_KEY": secret}, "SPEAKING_TRANSCRIPTION_PROVIDER"},
++		"local no model":          {map[string]string{"SPEAKING_TRANSCRIPTION_PROVIDER": "local", "SPEAKING_TRANSCRIPTION_BASE_URL": "http://127.0.0.1:8765/v1"}, "SPEAKING_TRANSCRIPTION_MODEL"},
++		"local no base URL":       {map[string]string{"SPEAKING_TRANSCRIPTION_PROVIDER": "local", "SPEAKING_TRANSCRIPTION_MODEL": "m"}, "SPEAKING_TRANSCRIPTION_BASE_URL"},
++		"local bad base URL":      {map[string]string{"SPEAKING_TRANSCRIPTION_PROVIDER": "local", "SPEAKING_TRANSCRIPTION_MODEL": "m", "SPEAKING_TRANSCRIPTION_BASE_URL": "127.0.0.1:8765"}, "SPEAKING_TRANSCRIPTION_BASE_URL"},
+ 		"transcription empty URL": {map[string]string{"SPEAKING_TRANSCRIPTION_PROVIDER": "openai", "SPEAKING_TRANSCRIPTION_MODEL": "m", "OPENAI_API_KEY": secret, "OPENAI_BASE_URL": " "}, "OPENAI_BASE_URL"},
+ 	} {
+ 		t.Run(name, func(t *testing.T) {
+@@ -59,3 +62,29 @@
+ 		})
+ 	}
+ }
++
++func TestLoad_SpeakingLocalTranscriptionNeedsNoKeyAndRunsBesideOpenAIFeedback(t *testing.T) {
++	clearAIEnv(t)
++	t.Setenv("EXTRACTOR_PROVIDER", "disabled")
++	t.Setenv("SPEAKING_TRANSCRIPTION_PROVIDER", "local")
++	t.Setenv("SPEAKING_TRANSCRIPTION_MODEL", "whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/0123456789abcdef")
++	t.Setenv("SPEAKING_TRANSCRIPTION_BASE_URL", "http://127.0.0.1:8765/v1")
++	cfg, err := Load()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if cfg.Speaking.Transcription != SpeakingLocal || cfg.Speaking.TranscriptionTimeout != 60*time.Second || cfg.Speaking.TranscriptionBaseURL != "http://127.0.0.1:8765/v1" {
++		t.Fatalf("config = %+v", cfg.Speaking)
++	}
++	t.Setenv("SPEAKING_PROVIDER", "openai")
++	t.Setenv("OPENAI_API_KEY", "sk-speaking-secret")
++	t.Setenv("OPENAI_MODEL", "text-model")
++	t.Setenv("SPEAKING_TRANSCRIPTION_TIMEOUT", "90")
++	cfg, err = Load()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if cfg.Speaking.Feedback != SpeakingOpenAI || cfg.Speaking.OpenAIBaseURL == cfg.Speaking.TranscriptionBaseURL || cfg.Speaking.TranscriptionTimeout != 90*time.Second {
++		t.Fatalf("config = %+v", cfg.Speaking)
++	}
++}
+--- a/internal/speaking/factory.go
++++ b/internal/speaking/factory.go
+@@ -16,6 +16,8 @@
+ 	case config.SpeakingDisabled:
+ 	case config.SpeakingOpenAI:
+ 		tr = NewTranscriber(cfg.OpenAIAPIKey, cfg.TranscriptionModel, cfg.OpenAIBaseURL, cfg.OpenAITimeout)
++	case config.SpeakingLocal:
++		tr = NewLocalTranscriber(cfg.TranscriptionModel, cfg.TranscriptionBaseURL, cfg.TranscriptionTimeout)
+ 	default:
+ 		return nil, nil, fmt.Errorf("unsupported speaking transcription provider %q", string(cfg.Transcription))
+ 	}
+--- a/internal/speaking/openai.go
++++ b/internal/speaking/openai.go
+@@ -286,7 +286,9 @@
+ 		return nil, fmt.Errorf("%w: build request", domain.ErrProviderUnavailable)
+ 	}
+ 	httpReq.Header.Set("Content-Type", contentType)
+-	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
++	if apiKey != "" { // the local transcription service takes no key
++		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
++	}
+ 	resp, err := client.Do(httpReq)
+ 	if err != nil {
+ 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+--- a/internal/speaking/openai_test.go
++++ b/internal/speaking/openai_test.go
+@@ -183,3 +183,27 @@
+ 		}
+ 	}
+ }
++
++func TestLocalTranscriberSendsNoKeyAndNamesTheLocalModel(t *testing.T) {
++	var gotAuth, gotModel string
++	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		gotAuth = r.Header.Get("Authorization")
++		if err := r.ParseMultipartForm(1 << 20); err != nil {
++			t.Errorf("multipart: %v", err)
++		}
++		gotModel = r.FormValue("model")
++		_, _ = io.WriteString(w, `{"text":"Bonjour.","flh":{"status":"transcribed"}}`)
++	}))
++	defer srv.Close()
++	tr := speaking.NewLocalTranscriber("whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/0123456789abcdef", srv.URL+"/v1/", time.Second)
++	if tr.Name() != "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/0123456789abcdef:"+domain.SpeakingTranscriptionVersion {
++		t.Fatalf("name = %q", tr.Name())
++	}
++	got, err := tr.Transcribe(context.Background(), domain.SpeakingTranscriptionInput{Audio: synthWAV(), Format: wavFormat(t)})
++	if err != nil || got != "Bonjour." || gotAuth != "" || !strings.HasPrefix(gotModel, "whisper-base@") {
++		t.Fatalf("text %q err %v auth %q model %q", got, err, gotAuth, gotModel)
++	}
++	if speaking.NewTranscriber(key, "m", srv.URL, time.Second).Name() != "openai:m:"+domain.SpeakingTranscriptionVersion {
++		t.Fatal("openai provenance changed")
++	}
++}
+--- a/internal/speaking/transcribe.go
++++ b/internal/speaking/transcribe.go
+@@ -27,22 +27,30 @@
+ // else: no language field (its name differs between models) and no prompt,
+ // so the transcript is not nudged towards the expected answer.
+ type Transcriber struct {
+-	apiKey  string
+-	model   string
+-	baseURL string
+-	client  *http.Client
++	provider string // provenance prefix: "openai" or "local"
++	apiKey   string
++	model    string
++	baseURL  string
++	client   *http.Client
+ }
+ 
+ var _ domain.SpeakingTranscriber = (*Transcriber)(nil)
+ 
+ // NewTranscriber builds a transcriber. timeout bounds one request (0: context only).
+ func NewTranscriber(apiKey, model, baseURL string, timeout time.Duration) *Transcriber {
+-	return &Transcriber{apiKey: apiKey, model: model, baseURL: strings.TrimRight(baseURL, "/"), client: &http.Client{Timeout: timeout}}
++	return &Transcriber{provider: "openai", apiKey: apiKey, model: model, baseURL: strings.TrimRight(baseURL, "/"), client: &http.Client{Timeout: timeout}}
++}
++
++// NewLocalTranscriber builds a transcriber for a local service with the same
++// protocol (tools/speaking). It sends no API key; model is the service's
++// deployment_id, so the stored provenance names the exact local model.
++func NewLocalTranscriber(deploymentID, baseURL string, timeout time.Duration) *Transcriber {
++	return &Transcriber{provider: "local", model: deploymentID, baseURL: strings.TrimRight(baseURL, "/"), client: &http.Client{Timeout: timeout}}
+ }
+ 
+ // Name is the stored transcriber provenance.
+ func (t *Transcriber) Name() string {
+-	return fmt.Sprintf("openai:%s:%s", t.model, domain.SpeakingTranscriptionVersion)
++	return fmt.Sprintf("%s:%s:%s", t.provider, t.model, domain.SpeakingTranscriptionVersion)
+ }
+ 
+ // Transcribe sends one take's audio and returns the machine transcript. An
