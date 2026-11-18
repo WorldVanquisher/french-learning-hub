@@ -19,6 +19,13 @@ const catalog = JSON.parse(
 ) as { entries: Array<{ key: string; original_input: string; units: Array<{ key: string; canonical: string }> }>; concepts: Array<{ key: string; target: string; members: string[] }> };
 
 describe("guided examples match the demo catalog", () => {
+  it("quotes each example's question on its card exactly as the catalog stores it", () => {
+    for (const ex of DEMO_EXAMPLES) {
+      const entry = catalog.entries.find((e) => e.units.some((u) => u.canonical.toLocaleLowerCase("fr").includes(ex.seed)))!;
+      expect(ex.question, ex.key).toBe(entry.original_input);
+    }
+  });
+
   it("each seed names exactly one unit, of a different question written in French", () => {
     const entries = DEMO_EXAMPLES.map((ex) => {
       const hits = catalog.entries.flatMap((e) => e.units.filter((u) => u.canonical.toLocaleLowerCase("fr").includes(ex.seed)).map(() => e));
@@ -46,8 +53,8 @@ const unit = (id: number, entry: number, canonical: string, example: string | nu
   unit_id: id, kind: "grammar", canonical, statement: `Statement ${id}`, example, entry_id: entry,
   extraction_id: entry, extraction_version: 1, in_current_extraction: true, admission: "active",
 });
-const detail = (c: ReturnType<typeof concept>, units: ReturnType<typeof unit>[]) => ({
-  schema_version: "knowledge_library_concept_v1", concept: c, preferred_unit: units[0] ?? null, supporting_units: units,
+const detail = (c: ReturnType<typeof concept>, units: ReturnType<typeof unit>[], preferred = true) => ({
+  schema_version: "knowledge_library_concept_v1", concept: c, preferred_unit: preferred ? (units[0] ?? null) : null, supporting_units: units,
   non_supporting_members: [], current_relations: [], historical_units: [], history_event_count: units.length,
 });
 const QUESTION = "Dans « j'y vais » et « j'en veux », qu'est-ce que « y » et « en » remplacent ?";
@@ -86,10 +93,12 @@ function demoServer(fail: Record<string, number> = {}, realModel = false) {
     calls.push({ method: (init?.method ?? "GET").toUpperCase(), url: `${url.pathname}${url.search}` });
     const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
     if (fail[path]) return reply(fail[path], { error: "unavailable" });
-    const search = (results: Array<{ c: ReturnType<typeof concept>; n: number }>) =>
-      reply(200, { schema_version: "knowledge_library_search_v1", query: url.searchParams.get("q") ?? "", tokens: [], state: "all", limit: 20,
+    const search = (results: Array<{ c: ReturnType<typeof concept>; n: number }>, units = false) =>
+      reply(200, { schema_version: "knowledge_library_search_v1", query: url.searchParams.get("q") ?? "",
+        tokens: (url.searchParams.get("q") ?? "").split(" ").filter(Boolean), state: "all", limit: 20,
         total_matches: results.length, truncated: false,
-        results: results.map(({ c, n }) => ({ concept: c, match_tier: "identity", matched_fields: ["target"], current_member_count: n, supporting_unit_count: n })) });
+        results: results.map(({ c, n }) => ({ concept: c, match_tier: units ? "unit_evidence" : "identity", matched_fields: units ? ["unit_statement", "unit_example"] : ["target"],
+          current_member_count: n, supporting_unit_count: n })) });
     if (path === "/knowledge-library/demo") return reply(200, { ...info, artifact: { ...info.artifact, real_model: realModel } });
     if (path === "/knowledge-library/demo/semantic-search")
       return reply(200, { schema_version: "knowledge_library_semantic_search_v2", query: "doing something right now", query_representation: "q", state: "all", limit: 20,
@@ -100,12 +109,12 @@ function demoServer(fail: Record<string, number> = {}, realModel = false) {
     if (path === "/knowledge-library/concepts") {
       const q = url.searchParams.get("q");
       if (q === "pronouns") return search([{ c: concept(12, "the pronouns y and en"), n: 2 }]);
-      if (q === "viennes") return search([{ c: concept(1, "subjunctive after « il faut que »"), n: 2 }]);
+      if (q === "viennes") return search([{ c: concept(1, "subjunctive after « il faut que »"), n: 2 }], true);
       if (q === "action en cours") return search([]);
       return search([{ c: concept(12, "the pronouns y and en"), n: 2 }, { c: concept(1, "subjunctive after « il faut que »"), n: 2 }]);
     }
     if (path === "/knowledge-library/concepts/12") return reply(200, detail(concept(12, "the pronouns y and en"), [yLieu, enNom]));
-    if (path === "/knowledge-library/concepts/1") return reply(200, detail(concept(1, "subjunctive after « il faut que »"), [ilFautOld, ilFautVenir]));
+    if (path === "/knowledge-library/concepts/1") return reply(200, detail(concept(1, "subjunctive after « il faut que »"), [ilFautOld, ilFautVenir], false));
     if (path === "/knowledge-library/units/12/source") return reply(200, source(yLieu, 12, QUESTION));
     if (path === "/knowledge-library/units/13/source") return reply(200, source(enNom, 12, QUESTION));
     if (path === "/knowledge-library/units/14/source") return reply(200, source(ilFautVenir, 1, "Pourquoi « viennes » et pas « viens » ?"));
@@ -140,16 +149,16 @@ describe("Public demo guided path", () => {
   it("opens an example, follows it to the Concept and the evidence, and returns to the example and the start", async () => {
     const calls = demoServer();
     render(<StrictMode><PublicDemoApp /></StrictMode>);
-    expect(await screen.findByText(/Pick a French learner's question below/)).toBeInTheDocument();
+    expect(await screen.findByText(/Follow a French learner's question to the rules taken from it/)).toBeInTheDocument();
     expect(screen.getByText("Read-only")).toBeInTheDocument();
     expect(screen.getByText("Synthetic data")).toBeInTheDocument();
     expect(screen.getByText("Development build")).toBeInTheDocument();
     expect(screen.getByLabelText("Search learned material")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /One question, two pronouns/ }));
+    fireEvent.click(screen.getByRole("button", { name: /One question, two pronouns$/ }));
     const heading = await screen.findByRole("heading", { name: "One question, two pronouns" });
     await waitFor(() => expect(heading).toHaveFocus());
-    const question = await screen.findByText(QUESTION);
+    const question = await screen.findByText(QUESTION, { selector: "blockquote" });
     expect(question).toHaveAttribute("lang", "fr");
     expect(screen.getByRole("heading", { name: /What was extracted: 2 units/ })).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: /What was extracted/ })).getByText("y remplace à + lieu")).toBeInTheDocument();
@@ -165,15 +174,79 @@ describe("Public demo guided path", () => {
     const back = await screen.findByRole("button", { name: "← Back to the example “One question, two pronouns”" });
     fireEvent.click(screen.getAllByRole("button", { name: "View source record #9 for unit #12" })[0]);
     expect(await screen.findByRole("heading", { name: "Original learning record #9" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "← Back to concept #12" })).toBeInTheDocument();
+    // The way back names the Concept, not only its number.
+    expect(await screen.findByRole("button", { name: "← Back to concept #12: the pronouns y and en" })).toBeInTheDocument();
+    // The reason the record is shown, and the unit's current filing, name it too.
+    expect(screen.getAllByRole("button", { name: "concept #12, “the pronouns y and en”" })).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "← Back to the example “One question, two pronouns”" }));
     expect(await screen.findByRole("heading", { name: "One question, two pronouns" })).toBeInTheDocument();
     expect(back).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "← Back to examples and search" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns/ })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns$/ })).toHaveFocus());
     expect(calls.every((c) => c.method === "GET")).toBe(true);
     expect(calls.every((c) => /^\/api\/knowledge-library\/(concepts|units|demo)/.test(c.url))).toBe(true);
+  });
+
+  it("leads each example card with the learner's French question", async () => {
+    demoServer();
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    const cards = await screen.findAllByRole("button", { name: /(One question, two pronouns|New evidence for a known rule|One question, two Concepts)$/ });
+    expect(cards).toHaveLength(3);
+    DEMO_EXAMPLES.forEach((ex, i) => {
+      const question = within(cards[i]).getByText(ex.question);
+      expect(question).toHaveAttribute("lang", "fr");
+      expect(question).toHaveAttribute("dir", "auto");
+    });
+    // The question comes first, so the card is chosen by the French itself.
+    expect(cards[0].textContent).toMatch(/^Dans « j'y vais »/);
+  });
+
+  it("shows on the example that its Concept can now be found by keyword search", async () => {
+    demoServer();
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    fireEvent.click(await screen.findByRole("button", { name: /One question, two pronouns$/ }));
+    await screen.findByText(QUESTION, { selector: "blockquote" });
+    expect(screen.getByText(/The Concept can now be found by keyword search:/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Search “pronouns”" }));
+    const result = await screen.findByRole("button", { name: "the pronouns y and en" });
+    expect(window.location.hash).toBe("#q=pronouns");
+    expect(screen.getByLabelText("Search learned material")).toHaveValue("pronouns");
+    expect(result.closest("li")).toHaveTextContent("Found in title: pronouns.");
+    expect(result.closest("li")?.querySelector(".demo-match mark")).toHaveTextContent("pronouns");
+  });
+
+  it("names the matched words of a unit-wording match, from the search's own fields", async () => {
+    demoServer();
+    window.history.replaceState(null, "", "/#q=viennes");
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    const result = await screen.findByRole("button", { name: "subjunctive after « il faut que »" });
+    const line = result.closest("li")!.querySelector(".demo-match")!;
+    expect(line).toHaveTextContent(
+      "Found in the explanation of a unit filed here, the example of a unit filed here, not in the Concept's title: viennes. Open the Concept to read that wording and see whether the unit currently supports it.",
+    );
+    expect(line.querySelector("mark")).toHaveTextContent("viennes");
+  });
+
+  it("names the evidence's Concept by its number only when its title cannot be read", async () => {
+    demoServer({ "/knowledge-library/concepts/12": 503 });
+    window.history.replaceState(null, "", "/#concept=12&unit=12");
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    expect(await screen.findByRole("heading", { name: "Original learning record #9" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "← Back to concept #12" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "concept #12" })).toHaveLength(2);
+  });
+
+  it("leaves out the Best explanation section when no unit was chosen", async () => {
+    demoServer();
+    window.history.replaceState(null, "", "/#concept=1");
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    expect(await screen.findByRole("heading", { name: /Currently supporting this concept/ })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Best explanation (preferred unit)" })).toBeNull();
+    cleanup();
+    window.history.replaceState(null, "", "/#concept=12");
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    expect(await screen.findByRole("heading", { name: "Best explanation (preferred unit)" })).toBeInTheDocument();
   });
 
   it("opens a unit's source straight from the example and returns to that example", async () => {
@@ -206,14 +279,14 @@ describe("Public demo interactions", () => {
     demoServer();
     render(<StrictMode><PublicDemoApp /></StrictMode>);
     fireEvent.click(await screen.findByRole("button", { name: /One question, two pronouns/ }));
-    await screen.findByText(QUESTION);
+    await screen.findByText(QUESTION, { selector: "blockquote" });
     fireEvent.click(screen.getByRole("button", { name: "Open the Concept and its evidence" }));
     await screen.findByRole("heading", { level: 2, name: /the pronouns y and en/ });
 
     window.history.back();
-    expect(await screen.findByText(QUESTION)).toBeInTheDocument();
+    expect(await screen.findByText(QUESTION, { selector: "blockquote" })).toBeInTheDocument();
     window.history.back();
-    await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns/ })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns$/ })).toHaveFocus());
   });
 
   it("puts a mechanical-vector notice beside semantic scores, and none for a real-model build", async () => {
@@ -253,7 +326,7 @@ describe("Public demo interactions", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "View source record #9 for unit #12" })[0]);
     const entry = await screen.findByRole("heading", { level: 3, name: "Original learning record #9" });
-    const question = screen.getByText(QUESTION);
+    const question = screen.getByText(QUESTION, { selector: "blockquote" });
     // The learner's question comes before the unit taken from it.
     expect(question.compareDocumentPosition(screen.getByRole("heading", { level: 3, name: "The unit (#12)" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(entry).toBeInTheDocument();
@@ -262,6 +335,6 @@ describe("Public demo interactions", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Interpretation this extraction used: analysis v1" })).toBeVisible();
     const sourceNav = screen.getByRole("navigation", { name: "Return" });
     expect(within(sourceNav).getAllByRole("button")).toHaveLength(2);
-    expect(screen.getAllByRole("button", { name: "← Back to concept #12" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^← Back to concept #12/ })).toHaveLength(1);
   });
 });

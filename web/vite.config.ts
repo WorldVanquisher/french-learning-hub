@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import { DEMO_MESSAGE_NAMESPACES, pruneCatalog } from "./src/demo/catalogScope";
 
 // The Go backend is the source of data. In development the frontend talks to it
 // through a "/api" prefix that Vite proxies to the backend, so the browser makes
@@ -27,9 +28,37 @@ if (buildId !== "" && !/^[A-Za-z0-9._:+-]{1,80}$/.test(buildId)) {
   throw new Error(`VITE_FLH_BUILD_ID must be 1-80 characters of [A-Za-z0-9._:+-], got ${JSON.stringify(buildId)}`);
 }
 
-export default defineConfig({
+// Public demo builds only (VITE_FLH_PUBLIC_DEMO=1, as the app itself reads it).
+// The workbench build is unchanged.
+//  - main.tsx's import of the private workbench (./App) resolves to an empty
+//    component, so no workbench code or lazily loaded workbench file is built
+//    into, or served from, the public package. main.tsx renders PublicDemoApp
+//    in these builds, so the stub never renders.
+//  - The message catalogs keep only the namespaces the demo's code references
+//    (src/demo/catalogScope.ts; its test walks the same graph without ./App).
+const NO_WORKBENCH = "\0flh-demo-no-workbench";
+function demoScope(): Plugin {
+  return {
+    name: "flh-demo-scope",
+    enforce: "pre",
+    resolveId(source, importer) {
+      if (source === "./App" && importer && /[\\/]src[\\/]main\.tsx$/.test(importer)) return NO_WORKBENCH;
+      return null;
+    },
+    load(id) {
+      return id === NO_WORKBENCH ? "export default function App() { return null; }\n" : null;
+    },
+    transform(code, id) {
+      if (!/[\\/]src[\\/]i18n[\\/](en|zh-CN)\.ts$/.test(id)) return null;
+      return { code: pruneCatalog(code, DEMO_MESSAGE_NAMESPACES).code, map: null };
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
+    ...(loadEnv(mode, process.cwd(), "VITE_").VITE_FLH_PUBLIC_DEMO === "1" ? [demoScope()] : []),
     {
       name: "flh-build-identity",
       transformIndexHtml: () => [
@@ -60,4 +89,4 @@ export default defineConfig({
       ? { poolOptions: { forks: { execArgv: ["--no-experimental-webstorage"] } } }
       : {}),
   },
-});
+}));

@@ -176,7 +176,7 @@ else
   run_suite accept_matrix accept_matrix.mjs "$B/" "$WORK/browser/matrix" "$VECTORS"
   if [ "$SUITES" = all ]; then
     run_suite accept_paths accept_paths.mjs "$B/" "$WORK/browser/paths" "$VECTORS"
-    run_suite accept_guided accept_guided.mjs "$B/" "$WORK/browser/guided"
+    run_suite accept_guided accept_guided.mjs "$B/" "$WORK/browser/guided" "$VECTORS"
     run_suite accept_resilience accept_resilience.mjs "$B/" "$WORK/browser/resilience"
     run_suite accept_a11y accept_a11y.mjs "$B/" "$WORK/browser/a11y"
     run_suite flh076_accept "$REPO/scripts/demo/flh076/browser/accept.mjs" --url "$B" --out "$WORK/browser/flh076" \

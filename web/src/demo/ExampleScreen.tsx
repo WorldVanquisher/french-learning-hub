@@ -9,7 +9,10 @@ type Load = { status: "loading" } | { status: "error"; message: string } | { sta
 const exampleCardId = (key: string) => `demo-example-${key}`;
 
 // ExamplePicker is the public demo's first step: three authored French
-// questions, each opened as a guided example. Opening one records nothing.
+// questions, each opened as a guided example. A card leads with the learner's
+// question in French (the visitor picks by the French itself, in every
+// interface language), then says in the interface language what the example
+// shows. Opening one records nothing.
 export function ExamplePicker({ onOpen }: { onOpen: (key: string) => void }) {
   const { t } = useI18n();
   return (
@@ -21,8 +24,10 @@ export function ExamplePicker({ onOpen }: { onOpen: (key: string) => void }) {
         {DEMO_EXAMPLES.map((ex) => (
           <li key={ex.key}>
             <button type="button" className="demo-example-card" id={exampleCardId(ex.key)} onClick={() => onOpen(ex.key)}>
+              <span className="demo-example-question french" lang="fr" dir="auto">
+                {ex.question}
+              </span>
               <span className="demo-example-title">{t(ex.title)}</span>
-              <span className="demo-example-summary">{t(ex.summary)}</span>
               <span className="demo-example-open" aria-hidden="true">
                 {t("demo.examples.open")}
               </span>
@@ -95,7 +100,8 @@ export function ExampleScreen({
 }: {
   example: DemoExample;
   onBack: () => void;
-  // Runs the example's keyword query in the ordinary search (fallback only).
+  // Runs the example's keyword query in the ordinary search: step 3's "find it
+  // by search", and the fallback when this build lacks the example.
   onSearch: (q: string) => void;
   onOpenExample: (key: string) => void;
   onOpenConcept: (conceptId: number) => void;
@@ -243,6 +249,17 @@ export function ExampleScreen({
               {tp("demo.example.step.concepts", load.data.example.concepts.length)}
             </h3>
             <p className="hint">{t("demo.example.step.concepts.hint")}</p>
+            {/* The Concept is now searchable: the example's own keyword query
+                finds it, and the results mark the words that matched. */}
+            <p className="demo-find">
+              {tn("demo.example.findBySearch", {
+                query: (
+                  <button type="button" className="ghost" id={`demo-ex-find-${example.key}`} onClick={() => onSearch(example.query)}>
+                    {t("demo.example.findBySearch.button", { q: example.query })}
+                  </button>
+                ),
+              })}
+            </p>
             <ul className="demo-units">
               {load.data.example.concepts.map((c) => (
                 <li key={c.concept.id} className="demo-unit">
