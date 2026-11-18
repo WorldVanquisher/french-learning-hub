@@ -5,13 +5,15 @@
   prepare    --sources DIR --out DIR                         decode, split and seal the dataset
   prepare-non-french --sources DIR --out DIR                 English + Mandarin FLEURS clips for the not_french probe
   prepare-accent --sources DIR --out DIR                     SLR57 African-accented French test split (CA16)
+  prepare-punctuated --sources DIR --base-data DIR --out DIR FLEURS French train with case and punctuation (v2 experiment)
   evaluate   --model DIR --data DIR --split test --out FILE  transcribe a split and score it
   rescore    --eval FILE --data DIR [--out FILE]             re-apply abstention rules to stored raw outputs
   compare    --a FILE --b FILE --out FILE                    paired comparison of one split
   accept     --base DIR --cand DIR --data DIR --out FILE     acceptance rule (DIRs hold test.json, ood.json, probes.json)
   train      --config FILE --data DIR --base DIR --out DIR   fine-tune (resumable)
   probes     --model DIR --out FILE                          short, silent, noisy, invalid, non-French audio
-  serve      --model DIR [--host 127.0.0.1 --port 8765]      local transcription service
+  robustness --set short|language|noise --model DIR --data DIR --out FILE   model outputs for policy analysis (v2)
+  serve      --model DIR [--host 127.0.0.1 --port 8765 --inference-timeout S]   local transcription service
   manifest   --model DIR                                     deployment manifest (no model load)
 """
 
@@ -40,6 +42,12 @@ def main(argv: list[str] | None = None) -> int:
     pn = sub.add_parser("prepare-non-french")
     pn.add_argument("--sources", required=True)
     pn.add_argument("--out", required=True)
+    pp = sub.add_parser("prepare-punctuated")
+    pp.add_argument("--sources", required=True)
+    pp.add_argument("--base-data", required=True, help="the frozen v1 dataset (its held-out sentences and texts are excluded)")
+    pp.add_argument("--out", required=True)
+    pp.add_argument("--n", type=int, default=1440)
+    pp.add_argument("--n-dev", type=int, default=100)
     e = sub.add_parser("evaluate")
     e.add_argument("--model", required=True)
     e.add_argument("--data", required=True)
@@ -73,12 +81,22 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--data", help="prepared dataset (for noisy/short variants of real speech)")
     pr.add_argument("--out", required=True)
     pr.add_argument("--threads", type=int, default=4)
+    rb = sub.add_parser("robustness", help="short/language/noise sets: model outputs for later policy analysis")
+    rb.add_argument("--set", required=True, choices=("short", "language", "noise"))
+    rb.add_argument("--model", required=True)
+    rb.add_argument("--data", required=True)
+    rb.add_argument("--sources", help="pinned sources (the language set reads SLR57 and FLEURS archives)")
+    rb.add_argument("--out", required=True)
+    rb.add_argument("--batch", type=int, default=4)
+    rb.add_argument("--threads", type=int, default=4)
     s = sub.add_parser("serve")
     s.add_argument("--model", required=True)
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8765)
     s.add_argument("--threads", type=int, default=4)
     s.add_argument("--max-waiting", type=int, default=2)
+    s.add_argument("--inference-timeout", type=float, default=None,
+                   help="seconds from a request's arrival (queue wait included) before 504; default 50; keep it below FLH's SPEAKING_TRANSCRIPTION_TIMEOUT")
     m = sub.add_parser("manifest")
     m.add_argument("--model", required=True)
     a = ap.parse_args(argv)
@@ -148,9 +166,17 @@ def main(argv: list[str] | None = None) -> int:
         res = probes.run(a.model, a.out, data=a.data, threads=a.threads)
         print(json.dumps(res["summary"], indent=1))
         return 0
+    if a.cmd == "prepare-punctuated":
+        from . import prepare
+        print(json.dumps(prepare.prepare_punctuated(a.sources, a.base_data, a.out, n=a.n, n_dev=a.n_dev), indent=1, ensure_ascii=False))
+        return 0
+    if a.cmd == "robustness":
+        from . import robustness
+        print(json.dumps(robustness.run(a.set, a.model, a.data, a.out, sources=a.sources, batch=a.batch, threads=a.threads), indent=1))
+        return 0
     if a.cmd == "serve":
         from . import service
-        return service.serve(a.model, a.host, a.port, threads=a.threads, max_waiting=a.max_waiting)
+        return service.serve(a.model, a.host, a.port, threads=a.threads, max_waiting=a.max_waiting, inference_timeout=a.inference_timeout)
     if a.cmd == "manifest":
         from . import deployment
         print(json.dumps(deployment.manifest(a.model), indent=1, sort_keys=True))

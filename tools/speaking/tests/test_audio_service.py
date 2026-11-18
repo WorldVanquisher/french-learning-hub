@@ -283,6 +283,27 @@ class Service(unittest.TestCase):
         code, doc = self.call(url2, "/v1/audio/transcriptions", self.ok_fields())
         self.assertEqual((code, doc["error"]["type"]), (504, "timeout"))
 
+    def test_deadline_counts_from_arrival_and_is_published(self):
+        # A queued request's wait counts: it answers 504 when its time runs out
+        # waiting, without ever reaching the model.
+        fake = FakeTranscriber(delay=0.8)
+        url, st, loading = self.start(fake, limits={"inference_timeout_s": 0.4}, max_waiting=1)
+        loading.join()
+        self.assertEqual(st.manifest["limits"]["inference_timeout_s"], 0.4)  # /manifest shows the limit in force
+        results = []
+        ts = [threading.Thread(target=lambda: results.append(self.call(url, "/v1/audio/transcriptions", self.ok_fields()))) for _ in range(2)]
+        for t in ts:
+            t.start()
+            time.sleep(0.1)
+        for t in ts:
+            t.join()
+        self.assertEqual(sorted(c for c, _ in results), [200, 504])
+        self.assertEqual(fake.calls, 1)
+        self.assertEqual(next(d for c, d in results if c == 504)["error"]["type"], "timeout")
+        self.assertEqual(st.counters["timeouts"], 1)
+        with self.assertRaises(ValueError):
+            service.serve("unused", "127.0.0.1", 0, inference_timeout=0)
+
     def test_no_temporary_files_and_no_content_in_logs(self):
         with tempfile.TemporaryDirectory() as tmp:
             old = os.environ.get("TMPDIR")

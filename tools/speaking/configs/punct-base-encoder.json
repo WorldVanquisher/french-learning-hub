@@ -1,0 +1,21 @@
+{
+ "schema": "flh_speaking_train_config_v1",
+ "note": "Controlled experiment (v2): identical to pilot-base-encoder.json (same base model, seed, steps, batch, learning rate, frozen decoder, final step as candidate) except the training data: FLEURS French train with raw transcriptions (case and punctuation kept; prepare-punctuated, flh_fleurs_fr_punctuated_train_v1, 1440 utterances like the pilot) instead of MLS lower-case text without punctuation. Question: does the style regression (A5) disappear when the targets keep punctuation, without losing accuracy on the fixed holdout? Run with --data <prepare-punctuated output>.",
+ "base_model": "whisper-base",
+ "seed": 20261117,
+ "train_ids": "split:train",
+ "dev_ids": "split:dev",
+ "max_steps": 180,
+ "batch_size": 2,
+ "grad_accum": 8,
+ "lr": 1e-05,
+ "warmup_steps": 18,
+ "weight_decay": 0.0,
+ "max_grad_norm": 1.0,
+ "freeze": "decoder",
+ "gradient_checkpointing": true,
+ "eval_every": 60,
+ "save_every": 5,
+ "keep_checkpoints": 2,
+ "threads": 4
+}

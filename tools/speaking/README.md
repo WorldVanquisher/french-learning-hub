@@ -8,8 +8,12 @@ What it is **not**: a pronunciation or fluency scorer, a grader, a public
 service or an autostarted daemon. The transcript is a draft: Whisper tends to
 smooth over learner mistakes, so the learner's confirmation stays required.
 
-Evidence and decisions: [`docs/validation/SPEAKING-MODEL-V1.md`](../../docs/validation/SPEAKING-MODEL-V1.md).
+Evidence and decisions:
+- [`docs/validation/SPEAKING-MODEL-V1.md`](../../docs/validation/SPEAKING-MODEL-V1.md): research, baseline and pilot.
+- [`docs/validation/SPEAKING-LOCAL-PROVIDER.md`](../../docs/validation/SPEAKING-LOCAL-PROVIDER.md): the FLH provider, real inference, robustness and the punctuated experiment.
+
 Contract (service API, statuses, errors, retention): [`CONTRACT.md`](CONTRACT.md).
+Operations (build, deploy, check, roll back): [`RUNBOOK.md`](RUNBOOK.md).
 
 ## Layout
 
@@ -17,15 +21,18 @@ Contract (service API, statuses, errors, retention): [`CONTRACT.md`](CONTRACT.md
 |---|---|
 | `flh_speaking/pins.py` | pinned model revisions and dataset files (size + SHA-256 or git blob) |
 | `flh_speaking/fetch.py` | downloads and verifies pinned files (public, ungated, no credentials) |
-| `flh_speaking/mls.py`, `prepare.py` | speaker- and book-disjoint MLS French subset + FLEURS fr_fr dev; decoded once to 16 kHz mono PCM16; sealed manifest with leakage checks |
+| `flh_speaking/mls.py`, `prepare.py` | speaker- and book-disjoint MLS French subset + FLEURS fr_fr dev; decoded once to 16 kHz mono PCM16; sealed manifest with leakage checks; FLEURS fr_fr train with punctuation (`prepare-punctuated`) |
 | `flh_speaking/audio.py` | the one audio convention (PyAV/FFmpeg, in memory) and signal statistics |
 | `flh_speaking/model.py` | Whisper decoding policy `flh_speaking_transcribe_v1` with abstention rules |
 | `flh_speaking/textnorm.py`, `evaluate.py`, `compare.py`, `probes.py` | WER/CER, cluster bootstrap, breakdowns, paired comparison, acceptance rule, robustness probes |
+| `flh_speaking/robustness.py` | short-clip, language-policy and noise sets: model outputs under the current and the warning-only language policy |
 | `flh_speaking/train.py`, `sagemaker_entry.py` | resumable fine-tuning; SageMaker wrapper |
 | `flh_speaking/service.py`, `deployment.py` | local HTTP service and its deployment identity |
-| `configs/` | training configs (`smoke-tiny`, `pilot-base-encoder`, `ablation-base-full`) |
+| `configs/` | training configs (`smoke-tiny`, `pilot-base-encoder`, `ablation-base-full`, `punct-base-encoder` and its local smoke) |
+| `requirements*.txt`, `requirements-*.lock` | direct dependencies; full hash-locked sets for the CPU and GPU images |
 | `aws/` | SageMaker pilot template, IAM policy, bounded renderer, cost and launch commands (not launched) |
 | `fixtures/frontend/` | real backend responses from the local end-to-end run |
+| `scripts/` | end-to-end runs through FLH (`e2e_flh.py`, `verify_local_provider.py`) and the service benchmark |
 | `tests/` | standard-library tests (host) and image tests (audio, rules, service, training) |
 
 ## Build and run (offline)
@@ -61,8 +68,9 @@ docker run --rm --oom-score-adj 1000 -p 127.0.0.1:8765:8765 --memory 1536m --cpu
 (`0.0.0.0`, all interfaces) is accepted only inside a container, where the
 host's `-p 127.0.0.1:8765:8765` mapping is what keeps the service off the LAN;
 outside a container it is refused. `GET /manifest` gives
-the `deployment_id` to set as `SPEAKING_TRANSCRIPTION_MODEL`; `CONTRACT.md` §6
-has the FLH settings.
+the `deployment_id` to set as `SPEAKING_TRANSCRIPTION_MODEL` with
+`SPEAKING_TRANSCRIPTION_PROVIDER=local`; `CONTRACT.md` §6 has the FLH settings
+and `RUNBOOK.md` the deployment, check and rollback steps.
 
 ## Tests
 

@@ -289,3 +289,106 @@ def prepare_accent(sources: str, out_dir: str) -> dict:
         json.dump(man, fh, ensure_ascii=False, indent=1, sort_keys=True)
         fh.write("\n")
     return man
+
+
+PUNCT_RULE = "flh_fleurs_fr_punctuated_train_v1"
+
+
+def prepare_punctuated(sources: str, base_data: str, out_dir: str, n: int = 1440, n_dev: int = 100, max_seconds: float = 20.0, log=print) -> dict:
+    """Training data for the punctuated-target experiment (v2).
+
+    ``train``: ``n`` FLEURS French train utterances with their raw transcription
+    (case and punctuation kept), at most ``max_seconds`` long (seed 20261118). A sentence is excluded when its id is a FLEURS dev
+    sentence (the frozen ``ood`` holdout) or its normalized text equals any
+    held-out reference (MLS dev/test, FLEURS dev). FLEURS publishes no speaker
+    ids, so speaker overlap with FLEURS dev cannot be excluded: that set is
+    near-domain for this experiment, which is why SLR57 is evaluated as well.
+    Sentences are drawn one recording each; a second reader of a sentence is
+    used only once every train sentence has one (FLEURS has about 1,500
+    sentences).
+    ``dev``: ``n_dev`` further FLEURS train sentences (punctuated too), for the
+    logged dev loss only (the candidate is the final step, as in the pilot).
+    """
+    import random
+
+    for p in pins.FLEURS_FR_TRAIN["files"]:
+        bad = fetch.verify(_src(sources, pins.FLEURS_FR_TRAIN, p), *pins.FLEURS_FR_TRAIN["files"][p])
+        if bad:
+            raise ValueError(f"google/fleurs/{p}: {bad}")
+    with open(os.path.join(base_data, "manifest.jsonl"), encoding="utf-8") as fh:
+        base_rows = [json.loads(line) for line in fh]
+    held = [r for r in base_rows if r["split"] in ("dev", "test", "ood")]
+    held_norm = {textnorm.normalize_fr(r["text"]) for r in held}
+    held_sentences = {r["group"].split(":", 1)[1] for r in held if r["corpus"] == "fleurs_fr_fr"}
+    tsv = [line.split("\t") for line in _read(sources, pins.FLEURS_FR_TRAIN, "data/fr_fr/train.tsv").splitlines() if line.strip()]
+    excluded = {"dev_sentence": 0, "held_out_text": 0, "too_long": 0}
+    by_sentence: dict[str, list[list[str]]] = {}
+    for r in tsv:
+        if r[0] in held_sentences:
+            excluded["dev_sentence"] += 1
+        elif textnorm.normalize_fr(r[2]) in held_norm:
+            excluded["held_out_text"] += 1
+        elif int(r[5]) / audio.SAMPLE_RATE > max_seconds:
+            excluded["too_long"] += 1
+        else:
+            by_sentence.setdefault(r[0], []).append(r)
+    rng = random.Random(20261118)
+    sentences = sorted(by_sentence)
+    rng.shuffle(sentences)
+    # dev: the first n_dev sentences, one recording each. train: the other
+    # sentences, one recording each first, then further recordings (other
+    # readers of the same sentence) round-robin until n. Sentence-disjoint.
+    pools = {sent: sorted(by_sentence[sent], key=lambda r: r[1]) for sent in sentences}
+    for sent in sentences:
+        rng.shuffle(pools[sent])
+    dev_sents, train_sents = sentences[:n_dev], sentences[n_dev:]
+    if len(dev_sents) < n_dev or sum(len(pools[sent]) for sent in train_sents) < n:
+        raise ValueError(f"not enough eligible recordings for n={n} + n_dev={n_dev} ({len(sentences)} sentences)")
+    want = {pools[sent][0][1].rsplit(".", 1)[0]: ("dev", pools[sent][0]) for sent in dev_sents}
+    taken, depth = 0, 0
+    while taken < n:
+        for sent in train_sents:
+            if depth < len(pools[sent]) and taken < n:
+                r = pools[sent][depth]
+                want[r[1].rsplit(".", 1)[0]] = ("train", r)
+                taken += 1
+        depth += 1
+    rows = []
+    # Decoded and written as the archive streams by: one clip in memory at a time.
+    for stem, blob in _members(_src(sources, pins.FLEURS_FR_TRAIN, "data/fr_fr/audio/train.tar.gz"), set(want), re.compile(r"\d+\.wav")):
+        split, r = want.pop(stem, (None, None))
+        if r is None:  # a file name listed twice in the archive
+            continue
+        dec = audio.decode(blob, max_seconds=MAX_SOURCE_SECONDS, allowed=audio.DATA_FAMILIES)
+        uid = f"fleurs_fr_train_{stem}"
+        rel, sha = _write_audio(out_dir, split, uid, dec)
+        rows.append(_row(uid, split, "fleurs_fr_fr", None, f"sentence:{r[0]}", {"MALE": "M", "FEMALE": "F"}.get(r[6].strip(), "?"),
+                         r[2].strip(), f"fleurs:fr_fr/train/{r[1]}", rel, sha, dec))
+    if want:
+        raise ValueError(f"{len(want)} selected files are missing from the archive")
+    rows.sort(key=lambda r: (r["split"] != "train", r["id"]))
+    log(f"fleurs fr_fr (punctuated): {len(rows)} utterances, excluded {excluded}")
+    leak = sorted({textnorm.normalize_fr(r["text"]) for r in rows} & held_norm)
+    if leak:
+        raise ValueError(f"held-out text in training: {leak[:3]}")
+    train = [r for r in rows if r["split"] == "train"]
+    body = "".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in rows)
+    with open(os.path.join(out_dir, "manifest.jsonl"), "w", encoding="utf-8") as fh:
+        fh.write(body)
+    man = {"schema": SCHEMA, "selection_rule": PUNCT_RULE, "audio_convention": audio.CONVENTION, "text_normalization": textnorm.NORM_VERSION,
+           "sources": {"fleurs_fr_train": {k: pins.FLEURS_FR_TRAIN[k] for k in ("repo", "revision", "license", "config")},
+                       "held_out_from": {"manifest_jsonl_sha256": hashlib.sha256(open(os.path.join(base_data, "manifest.jsonl"), "rb").read()).hexdigest()}},
+           "attribution": "FLEURS (google/fleurs), CC BY 4.0. Audio is not redistributed in the repository.",
+           "excluded": excluded, "leakage": {"held_out_normalized_text_in_train": 0, "fleurs_dev_sentences_in_train": 0,
+                                             "speaker_overlap_with_fleurs_dev": "unknown (FLEURS publishes no speaker ids)"},
+           "splits": {"train": {"utterances": len(train), "hours": round(sum(r["seconds"] for r in train) / 3600, 3),
+                                "sentences": len({r["group"] for r in train}),
+                                "with_second_reader": len(train) - len({r["group"] for r in train}),
+                                "with_punctuation": round(sum(1 for r in train if re.search(r"[.,;:!?]", r["text"])) / len(train), 4),
+                                "with_uppercase": round(sum(1 for r in train if any(ch.isupper() for ch in r["text"])) / len(train), 4)},
+                      "dev": {"utterances": sum(1 for r in rows if r["split"] == "dev"), "sentences_shared_with_train": len({r["group"] for r in rows if r["split"] == "dev"} & {r["group"] for r in train})}},
+           "manifest_jsonl_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest()}
+    with open(os.path.join(out_dir, "dataset_manifest.json"), "w", encoding="utf-8") as fh:
+        json.dump(man, fh, ensure_ascii=False, indent=1, sort_keys=True)
+        fh.write("\n")
+    return man

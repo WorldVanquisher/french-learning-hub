@@ -13,8 +13,8 @@
 ```text
 browser (records; sends audio only on an explicit "Transcribe" click)
   └─ POST /speaking/takes/{id}/transcriptions   {audio_base64, audio_mime}   (existing FLH API)
-       └─ Go SpeakingService → speaking.Transcriber (existing OpenAI-style client)
-            └─ POST {OPENAI_BASE_URL}/audio/transcriptions   multipart: file, model, response_format=json
+       └─ Go SpeakingService → speaking.Transcriber (OpenAI-style client, provider local)
+            └─ POST {SPEAKING_TRANSCRIPTION_BASE_URL}/audio/transcriptions   multipart: file, model, response_format=json
                  └─ flh_speaking service (this contract), loopback or private address only
 ```
 
@@ -56,7 +56,8 @@ An `Authorization` header is accepted and ignored; it is never logged.
 }
 ```
 
-`text` is the only field FLH's Go client reads. `status`:
+FLH's Go client reads `text`, and checks that `flh.deployment_id` equals its
+configured `SPEAKING_TRANSCRIPTION_MODEL`. `status`:
 
 | `status` | `text` | Meaning | What FLH stores today |
 |---|---|---|---|
@@ -72,8 +73,8 @@ Known limits of v1, measured in the validation memo:
   may be asked to type a valid take (owner decision D3: warning-only in v2).
 - Strong background noise degrades the draft quickly.
 - Homophones (ces/ses, a/à, leur/leurs) are the model's guess.
-The proposed Go patch (`docs/validation/SPEAKING-MODEL-V1/go-local-provider.patch`)
-would surface `status` and provenance; see §6.
+FLH's `local` provider (§6) records the provenance; `status` and `warnings`
+are not stored yet.
 
 ## 4. Errors (never HTTP 200)
 
@@ -88,7 +89,7 @@ would surface `status` and provenance; see §6.
 | 422 | `empty_audio`, `undecodable_audio`, `no_audio_stream`, `audio_too_long` | the audio cannot be used; the duration bound is enforced while decoding |
 | 429 | `busy` | one inference runs and the wait queue (default 2) is full |
 | 503 | `not_ready` | model still loading or warming, or startup failed |
-| 504 | `timeout` | inference passed its deadline (90 s) |
+| 504 | `timeout` | the request passed its deadline: `limits.inference_timeout_s` in `GET /manifest` (default 50 s, `--inference-timeout`), counted from arrival with the queue wait included, so FLH (timeout 60 s) gets this definite answer before it gives up |
 
 FLH maps every non-200 answer to `unavailable` (a definite outcome, not
 "unknown"). A dropped connection after sending is FLH's existing "unknown
@@ -108,35 +109,47 @@ outcome" case.
   `Idempotency-Key` replays the stored result without a second call (verified
   end-to-end; `docs/validation/SPEAKING-MODEL-V1.md` §9).
 
-## 6. Provenance today, and the proposed Go change
-
-Pointing the existing client at this service needs no code change:
+## 6. Configuring FLH: `SPEAKING_TRANSCRIPTION_PROVIDER=local`
 
 ```sh
-SPEAKING_TRANSCRIPTION_PROVIDER=openai
+SPEAKING_TRANSCRIPTION_PROVIDER=local
 SPEAKING_TRANSCRIPTION_MODEL=<deployment_id from GET /manifest>
-OPENAI_BASE_URL=http://127.0.0.1:8765/v1
-OPENAI_API_KEY=local-not-a-secret          # required non-empty by config; ignored by the service
-OPENAI_TIMEOUT=60                          # default 8 s is too short for long takes on CPU
+SPEAKING_TRANSCRIPTION_BASE_URL=http://127.0.0.1:8765/v1   # as FLH's process reaches the service
+SPEAKING_TRANSCRIPTION_TIMEOUT=60                           # seconds (default 60)
 ```
 
-Three limits follow, and all are reasons for the proposed patch (owner decision):
+- FLH sends no API key, and the provider runs beside `SPEAKING_PROVIDER=openai`:
+  feedback keeps `OPENAI_*`, transcription uses only these four settings.
+- Timeouts nest: the service's `inference_timeout_s` (50 s, counted from
+  arrival) < `SPEAKING_TRANSCRIPTION_TIMEOUT` (60 s) < `HTTP_WRITE_TIMEOUT`
+  (the daily template's 75 s). FLH then always gets a definite answer, and the
+  browser always gets FLH's. The request deadline is the longer of
+  `OPENAI_TIMEOUT` and `SPEAKING_TRANSCRIPTION_TIMEOUT`, plus 30 s.
+- Stored provenance: `local:<deployment_id>:speaking_transcription_v1`, also
+  shown in `GET /speaking/prompts` (`providers.transcription.name`) and logged
+  at startup with the timeout and the request deadline. Every answer must name
+  the same `flh.deployment_id`: a service restarted with other weights cannot
+  store text under the old name.
+- In Docker Compose, `127.0.0.1` is the FLH container itself. Compose does not
+  forward the two new variables yet; the proposed change is
+  `docs/validation/SPEAKING-LOCAL-PROVIDER/release-lane-handoff.patch`.
 
-1. The stored provenance reads `openai:<deployment_id>:speaking_transcription_v1`:
-   the `deployment_id` identifies the local model exactly, but the `openai:`
-   prefix is misleading.
-2. `OPENAI_BASE_URL` is shared with Speaking feedback (and every other OpenAI
-   provider), so local transcription and OpenAI feedback cannot run in the same
-   server process.
-3. `OPENAI_TIMEOUT` (default 8 s) is shared too. It also sets FLH's request
-   deadline (timeout + 30 s).
+How each service answer is stored (`docs/validation/SPEAKING-LOCAL-PROVIDER.md`
+has the real-inference evidence):
 
-The patch adds `SPEAKING_TRANSCRIPTION_PROVIDER=local` with its own
-`SPEAKING_TRANSCRIPTION_BASE_URL` and `SPEAKING_TRANSCRIPTION_TIMEOUT`
-(default 60 s, also used for the request deadline). It stores
-`local:<deployment_id>:speaking_transcription_v1`, sends no API key, and
-reuses the same client code. It was tested end to end. It is not applied: `internal/config` and
-`internal/speaking` are shared files outside this lane.
+| Service answer | FLH `failure_code` | Outcome and next click |
+|---|---|---|
+| connection refused (not started) | `provider_unavailable` | failed; the next click is sent |
+| 503 `not_ready`, 429 `busy`, 400 `unknown_model`, 504 `timeout`, other 5xx | `provider_unavailable` | failed; the next click is sent |
+| connection closed without an answer (for example a restart) | `provider_unavailable` | failed: the service bills and keeps nothing |
+| 413, 415 or 422 (audio refused: too long, undecodable, empty) | `invalid_output` | failed; sending the same audio again cannot help |
+| 200 with `no_speech` or `not_french` (empty `text`) | `invalid_output` | failed; the learner types the transcript |
+| an answer naming another `deployment_id` | `provider_unavailable` | failed; nothing is stored as text |
+| no answer within `SPEAKING_TRANSCRIPTION_TIMEOUT` | `provider_timeout` | unknown: the next click needs `confirm_unknown_retry` |
+
+`SPEAKING_TRANSCRIPTION_PROVIDER=openai` with `OPENAI_BASE_URL` pointed at the
+service also works, but it stores `openai:` provenance and shares `OPENAI_*`
+with feedback. Use `local`.
 
 ## 7. Readiness and identity
 

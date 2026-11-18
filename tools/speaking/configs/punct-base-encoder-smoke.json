@@ -1,0 +1,21 @@
+{
+ "schema": "flh_speaking_train_config_v1",
+ "note": "Bounded local smoke of punct-base-encoder.json on this host (CPU, about 1.5 GB): the same settings for 24 steps, dev loss every 12, checkpoint every 4 (2 kept). Checks data, loss, checkpoint, resume and evaluation end to end; its candidate is not expected to pass the acceptance rule.",
+ "base_model": "whisper-base",
+ "seed": 20261117,
+ "train_ids": "split:train",
+ "dev_ids": "split:dev",
+ "max_steps": 24,
+ "batch_size": 2,
+ "grad_accum": 8,
+ "lr": 1e-05,
+ "warmup_steps": 3,
+ "weight_decay": 0.0,
+ "max_grad_norm": 1.0,
+ "freeze": "decoder",
+ "gradient_checkpointing": true,
+ "eval_every": 12,
+ "save_every": 4,
+ "keep_checkpoints": 2,
+ "threads": 4
+}
