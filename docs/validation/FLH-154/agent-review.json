@@ -1,0 +1,68 @@
+{
+ "schema": "flh154_agent_review_v1",
+ "reviewer": "coding agent (FLH-154), 2026-11-17",
+ "status": "AGENT READING, NOT A HUMAN VERDICT: the review packets' verdict fields stay empty and only the owner's verdicts count",
+ "agreement_values": {
+  "agree": "the reference (decision, unit count and units) stands as written",
+  "edit_suggested": "the decision and unit count are right; a unit's claim, focus or example should be edited",
+  "disagree": "the decision or the unit count is wrong"
+ },
+ "rubric_notes": [
+  "REVIEW_PACKET_V3's label list has no label for a statement that is inaccurate or over-general (a FALSE_CLAIM): FALSE_PREMISE covers only a statement that repeats the learner's or explanation's claim. A reviewer who finds an over-general rule can only pick OK + edit. Suggest adding FALSE_CLAIM before the owner reviews.",
+  "An EN statement and its statement_zh are one claim in two languages: their agreement never confirms the claim (see cp07)."
+ ],
+ "items": [
+  {"id": "ext-trn-i2-0070", "packet": "v2", "machine_label": "zero units", "agent_label": "OK", "agreement": "agree", "note": "Thanks naming a past topic; nothing asked or corrected."},
+  {"id": "ext-trn-i2-0072", "packet": "v2", "machine_label": "zero units", "agent_label": "OK", "agreement": "agree", "note": "Thanks about resources."},
+  {"id": "ext-trn-i2-0076", "packet": "v2", "machine_label": "zero units", "agent_label": "OK", "agreement": "agree", "note": "A file request written in correct French."},
+  {"id": "ext-evl-0173#rb", "packet": "v2", "machine_label": "zero units", "agent_label": "OK", "agreement": "agree", "note": "The sentence asked about is not shown; any rule would be a guess."},
+  {"id": "ext-evl-0191#rb", "packet": "v2", "machine_label": "1 unit: après + infinitif passé", "agent_label": "OK", "agreement": "agree", "note": "The learner's own question raises the objective; replacing the wrong explanation does not change it."},
+  {"id": "ext-evl-0002#rb", "packet": "v2", "machine_label": "1 unit: ne… que", "agent_label": "OK", "agreement": "agree", "note": "Chinese question naming « ne… que »; one objective."},
+  {"id": "ext-trn-i2-0001", "packet": "v2", "machine_label": "1 unit: pas de / pas d' après la négation", "agent_label": "OK", "agreement": "edit_suggested", "claim": "over-general", "note": "Decision right, premise corrected. The statement says every article becomes « de » after a negation; it does not after « être » (« ce n'est pas un problème »). Add the exception. The same unit is in ext-trn-00965."},
+  {"id": "ext-trn-i2-0008", "packet": "v2", "machine_label": "1 unit: inversion avec -t-", "agent_label": "OK", "agreement": "agree", "note": "Premise false; rule stated correctly."},
+  {"id": "ext-trn-i2-0017", "packet": "v2", "machine_label": "1 unit: futurs irréguliers", "agent_label": "OK", "agreement": "agree", "note": "Premise false; « j'irai » given."},
+  {"id": "ext-trn-i2-0019", "packet": "v2", "machine_label": "1 unit: conditionnel de politesse", "agent_label": "OK", "agreement": "agree", "note": "Premise false; register objective."},
+  {"id": "ext-trn-i2-0039", "packet": "v2", "machine_label": "1 unit: -ent muet", "agent_label": "OK", "agreement": "agree", "note": "Premise false; silent ending stated."},
+  {"id": "ext-trn-i2-0044", "packet": "v2", "machine_label": "1 unit: librairie / bibliothèque", "agent_label": "OK", "agreement": "agree", "note": "False friend corrected."},
+  {"id": "ext-trn-i2-0055", "packet": "v2", "machine_label": "1 unit: bien que + subjonctif", "agent_label": "OK", "agreement": "agree", "note": "The wrong explanation is not copied; standard rule."},
+  {"id": "ext-trn-i2-0056", "packet": "v2", "machine_label": "1 unit: voix passive être + participe", "agent_label": "OK", "agreement": "agree", "note": "Wrong explanation not copied. (The agent is sometimes introduced by « de »; not needed here.)"},
+  {"id": "ext-trn-i2-0057", "packet": "v2", "machine_label": "1 unit: futurs irréguliers", "agent_label": "OK", "agreement": "agree", "note": "Wrong explanation not copied."},
+  {"id": "ext-trn-i2-0153", "packet": "v2", "machine_label": "2 units: à + ville; à pied", "agent_label": "OK", "agreement": "agree", "note": "Two separate errors, two objectives."},
+  {"id": "ext-trn-i2-0154", "packet": "v2", "machine_label": "2 units: mon amie; la plage (genre)", "agent_label": "OK", "agreement": "agree", "note": "Two objectives; « près du plage » is the gender error surfacing as « du »."},
+  {"id": "ext-trn-i2-0155", "packet": "v2", "machine_label": "2 units: ne… rien; écrit", "agent_label": "OK", "agreement": "agree", "note": "Placement of « rien » and the participle are separate."},
+  {"id": "ext-trn-i2-0167", "packet": "v2", "machine_label": "1 unit: accord au féminin", "agent_label": "OK", "agreement": "agree", "note": "Two adjectives, one rule."},
+  {"id": "ext-trn-i2-0168", "packet": "v2", "machine_label": "1 unit: féminins irréguliers", "agent_label": "OK", "agreement": "agree", "note": "« vieille », « gentille »: one point."},
+  {"id": "ext-trn-i2-0139", "packet": "v2", "machine_label": "1 unit: aller présent", "agent_label": "OK", "agreement": "agree", "note": "Borderline: the paradigm is complete and correct, but the learner names the topic and asks; policy-consistent with bc-027 (zero units when the doubt is not named)."},
+  {"id": "ext-trn-00235", "packet": "v2", "machine_label": "1 unit: féminin en -euse / -trice", "agent_label": "UNDER_SPLIT", "agreement": "disagree", "note": "« Elle est une acteuse » → « C'est une actrice » corrects two things: the « -trice » feminine and « c'est » (not « elle est ») before a determiner + noun. Add a « c'est / il est » unit."},
+  {"id": "ext-trn-00094", "packet": "v2", "machine_label": "1 unit: conditionnel de politesse", "agent_label": "OK", "agreement": "agree", "note": "« s'il vous plaît » belongs to the same politeness objective."},
+  {"id": "ext-trn-i2-0177", "packet": "v2", "machine_label": "1 unit: ne… jamais", "agent_label": "OK", "agreement": "agree", "note": "Only the placement was corrected; the explanation's extra rule is rightly left out."},
+  {"id": "ext-trn-i2-0178", "packet": "v2", "machine_label": "1 unit: futurs irréguliers", "agent_label": "OK", "agreement": "agree", "note": "Only the future stem was asked."},
+  {"id": "ext-chl-0032", "packet": "v3", "machine_label": "1 unit: boire (heuristic family CUE_DEPENDENT)", "agent_label": "OK", "agreement": "agree", "note": "Right under all three cue sets."},
+  {"id": "ext-chl-0035", "packet": "v3", "machine_label": "1 unit: ouvrir — ouvert (CUE_DEPENDENT)", "agent_label": "OK", "agreement": "agree", "note": "Right under all three cue sets; « offrir, couvrir » are true analogues."},
+  {"id": "ext-chl-0065", "packet": "v3", "machine_label": "zero units (CUE_DEPENDENT)", "agent_label": "OK", "agreement": "agree", "note": "Scheduling in correct French; the conflicting cue's rule is not raised."},
+  {"id": "ext-chl-0068", "packet": "v3", "machine_label": "zero units (CUE_DEPENDENT)", "agent_label": "OK", "agreement": "agree", "note": "App question; zero under every cue."},
+  {"id": "ext-trn-00018", "packet": "v3", "machine_label": "1 unit: ne… plus (heuristic UNSUPPORTED)", "agent_label": "OK", "agreement": "agree", "note": "Heuristic false alarm: « How do I say not anymore » raises ne… plus although only the explanation spells it."},
+  {"id": "ext-trn-00044", "packet": "v3", "machine_label": "1 unit: COI lui, leur (UNSUPPORTED)", "agent_label": "OK", "agreement": "agree", "note": "The learner's sentence carries the error; heuristic false alarm."},
+  {"id": "ext-trn-00064", "packet": "v3", "machine_label": "1 unit: dont (UNSUPPORTED)", "agent_label": "OK", "agreement": "agree", "note": "The learner's sentence carries the error; heuristic false alarm."},
+  {"id": "ext-trn-i2-0061", "packet": "v3", "machine_label": "1 unit: ça fait … que + présent (FALSE_PREMISE)", "agent_label": "OK", "agreement": "agree", "note": "The wrong explanation is not repeated; the canonical's « il y a … que » was not raised but is the same construction."},
+  {"id": "ext-trn-i2-0065", "packet": "v3", "machine_label": "1 unit: comparatif … que (FALSE_PREMISE)", "agent_label": "OK", "agreement": "agree", "note": "The explanation's false claim is not repeated."},
+  {"id": "ext-trn-i2-0047", "packet": "v3", "machine_label": "1 unit: visiter / rendre visite à (FALSE_PREMISE)", "agent_label": "OK", "agreement": "edit_suggested", "claim": "over-absolute", "note": "The premise is not repeated, but « Visiter is for places » is absolute: « visiter un malade », a doctor « visite » patients. Suggest « In everyday French »."},
+  {"id": "ext-trn-00019", "packet": "v3", "machine_label": "1 unit: ne… plus (UNDER_SPLIT)", "agent_label": "OK", "agreement": "agree", "note": "Both forms are grammatical; one objective. Heuristic false alarm."},
+  {"id": "ext-trn-00051", "packet": "v3", "machine_label": "1 unit: y avec penser à (UNDER_SPLIT)", "agent_label": "OK", "agreement": "edit_suggested", "note": "One objective, but the canonical and example foreground the thing case (« y ») while the learner's error is the person case (« à lui »). Suggest canonical « penser à : y (chose) / à lui, à elle (personne) » and a person example."},
+  {"id": "ext-trn-00179", "packet": "v3", "machine_label": "1 unit: faire + infinitif (UNDER_SPLIT)", "agent_label": "OK", "agreement": "agree", "note": "One objective (causative)."},
+  {"id": "ext-trn-00875", "packet": "v3", "machine_label": "2 units: assister à / attendre; faire la queue (OVER_SPLIT)", "agent_label": "OK", "agreement": "agree", "note": "Two explicit questions, two objectives. The « attendre » contrast comes from the explanation; acceptable as the false friend of « attend »."},
+  {"id": "ext-trn-00768", "packet": "v3", "machine_label": "2 units: concordance; imparfait / passé composé (OVER_SPLIT)", "agent_label": "OK", "agreement": "agree", "note": "Two sentences, two rules."},
+  {"id": "ext-trn-00965", "packet": "v3", "machine_label": "3 units (OVER_SPLIT)", "agent_label": "OK", "agreement": "edit_suggested", "claim": "over-general", "note": "Three corrections, three objectives; the « pas de » unit has the same missing « être » exception as ext-trn-i2-0001."},
+  {"id": "ext-trn-00452", "packet": "v3", "machine_label": "1 unit: encore / toujours (BILINGUAL_DRIFT)", "agent_label": "OK", "agreement": "agree", "note": "ZH matches; « more » is only implied by 再."},
+  {"id": "ext-trn-00377", "packet": "v3", "machine_label": "1 unit: louer (deux sens) (BILINGUAL_DRIFT)", "agent_label": "UNSUPPORTED", "agreement": "edit_suggested", "note": "EN and ZH agree, but the unit teaches what the learner did not ask (the two senses of « louer »). The question is the false friend « location » (= rental; a place is « emplacement »). Suggest canonical « location (faux ami) / emplacement »."},
+  {"id": "ext-trn-00336", "packet": "v3", "machine_label": "1 unit: assister à / attendre (BILINGUAL_DRIFT)", "agent_label": "OK", "agreement": "agree", "note": "EN and ZH agree."}
+ ],
+ "held_out_units_read": {
+  "scope": "all 114 distinct reference units of the frozen evaluation, the challenge slice and the boundary set (EN and ZH)",
+  "result": "no false rule and no EN/ZH drift found",
+  "over_general_claims": [
+   {"canonical": "adjectifs de couleur invariables (marron, orange)", "sets": "frozen eval, challenge", "note": "« Colour words that come from nouns do not agree »: « rose, mauve, fauve, écarlate » come from nouns and agree. Suggest « most colour words ». Low impact: the example and the learner's error are « marron »."},
+   {"canonical": "lequel / laquelle après une préposition", "sets": "frozen eval, challenge", "note": "After « de » French uses « dont » (or « duquel » in compound prepositions); the statement reads as if every preposition takes « lequel ». Low impact: every item uses « sur », « avec » or similar."}
+  ]
+ }
+}

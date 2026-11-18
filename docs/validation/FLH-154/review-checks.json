@@ -1,0 +1,1564 @@
+{
+ "schema": "flh154_review_checks_v1",
+ "synthetic_only": true,
+ "real_runs_performed": 0,
+ "cp01_revisions": {
+  "status": "FINDING",
+  "base_sha_from_task": "198b23f14489c26cef6ea1c34f96714c843f00db (not verified with Git: agents run no Git)",
+  "frozen_eval": {
+   "path": "eval_candidates.jsonl",
+   "sha256": "99602feba1cd13f526ad9530888ab2d57d7807beadfd1692be7536b78ecfe32a",
+   "bytes": 307433,
+   "records": 200
+  },
+  "challenge_slice": {
+   "path": "challenge_candidates.jsonl",
+   "sha256": "b004f6ed1bc82e6f154206740c2fea11e7fb24588904334c76e39c5b739bb5f5",
+   "bytes": 166783,
+   "records": 96
+  },
+  "comparison_slice": {
+   "path": "comparison-slice.jsonl",
+   "sha256": "de4c61e570909483f888a2366d874692f8138fe4f3c8cd73e3a480523bce9f43",
+   "bytes": 800705,
+   "records": 472
+  },
+  "comparison_parts": {
+   "challenge_test": 72,
+   "frozen": 200,
+   "rb": 200
+  },
+  "scorer": {
+   "scoring_version": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd",
+   "files": {
+    "audit.py": "a02d2a788572d5ded2f3bbaae19ed42105972bd03ee35230cc30d39d1ea50cd0",
+    "challenge.py": "e5f6dbb0eee80274bef153099a236e9f64086327f7c8a1b74fa5b0a56beed643",
+    "comparison.py": "17c72b2a21e3e929ceccaf51b46897bfe9deaa34df134f376386ab1c10a219e7",
+    "controls.py": "bba23521900562fe14670f8c9196ccf2c86287dfbb5cc5df4db22d479a488196",
+    "evaluate.py": "b85c8e28e00a720b23e0ebd1061e43dac050cda09fcd6d68348ab6fce9792907",
+    "matrix.py": "49abb57bdbef72dfa992c6ea90e9c8fa6414a8a18f71f7e908e40af9c631ef2c",
+    "paired.py": "ff0003f4804aa54f913bb4b86f6be0f84fc1a2b10bd96fa2cb1aaa0aae95a48d",
+    "quality.py": "9ee1cb42f859f62c593a0157bc6c9f00661c960949cc697de6ecd0eb73aee51d",
+    "textnorm.py": "c0b4b209b437293de074b623a8fb2dce66bdbeb21a40f35bf1782dea73bd2cdf"
+   },
+   "validator_sources": {
+    "cmd/extraction-render/main.go": "d74af0aa9025f09c54b4d4bb3c5391075e0e2391e033b9650582bfb0fd51f6f8",
+    "internal/extractor/openai.go": "60eeceb072c339d4b25b4bf816108ecc2394ecd0d57724a08542db89e61e0281",
+    "internal/domain/knowledge.go": "0721f58ef3d52adb9ea90df768d6317ec5686e260f103be44ceac621fdedd6c9"
+   },
+   "validator_binary_sha256": "5569d4ec0407a735753aec9304f0a6bd4ee680879a84d07306e33c4f1f8095ba",
+   "go": "go version go1.27.3-X:nodwarf5 linux/amd64",
+   "note": "the binary hash depends on the Go toolchain; the matrix pins the validator SOURCES"
+  },
+  "authoring_sources": {
+   "bank_challenge_v1.py": "3e853165db69bf486a9af24aaeb9208f982f70539ad21e32e8c6f0bfc55dd90c",
+   "bank_eval.py": "3e797fdc5f1d33401dfa89552983ec1a20faef0c58f6be5dac541e74ca7abef9",
+   "bank_increment_v2.py": "bbcacb1b12b8f5b1a80ce0b25068224c0529b4c4d2fbdf7bee28f023779226fc",
+   "bank_tools.py": "3d29fb79441c34876b430dbe191db58b6eb43f3c5134131ffd86841e35c75473",
+   "bank_train_a.py": "bcafb9a331e7187fd9a5d017c2f1a2b563297ad27a45421c7da84c276dd5c0bc",
+   "bank_train_b.py": "75dbaf88f7685d4e87957a1139b954af01cc7e712115cf9f4d63b8f21e702f4b",
+   "bank_train_c.py": "0377af1fc2f238a0d547f9d12dbb975841a8031a7265163654b5bc464a3f6164",
+   "boundary_a.py": "3031bf865dc84ab8848c0721f3034be6523e7f394b8c76fd50d04e861de1fb6a",
+   "boundary_b.py": "78310b8df0e745d03c27be31858826bb32835af9f0e05c309dc8a0f62aeb7f07",
+   "build_boundary.py": "f91c175a2dcf0525c51ccc4c07603ec3a4a374cdfa77deb39163a39ee6ae2a50",
+   "build_review_queue.py": "1d90c990eed373ab0594a70b7dc392924fa37db6622a9ae9e89a69f941ef47c8",
+   "challenge_v1_rule_based.json": "b08e68833fc04898cfadbf03d4adbec436cc0c1c086d2b4f40fbebac043d01ac",
+   "common.py": "14e711838b06bfc89faaeab4da9ca62911ba9cb9b08e2723827df66a997c759a",
+   "generate_challenge.py": "b95623f3b489d06ba7554af0c2a78e3bba1351859f03122fd48a003ed9c3fc91",
+   "generate_eval.py": "de5f38cee5c19ed6429f65d3d5093101c497cc8473276055f4c4a0ebcb25f857",
+   "generate_increment.py": "36984efe36ef6a425aa6fa30dcab379ff48650cd8d2a3db385edf0fa3f09174f",
+   "generate_train.py": "1bca6fe4cca4fe373ec66e9358c795801a9d7f6e5e6a2d85feaa81641cc166bf",
+   "increment_v2_rule_based.json": "5c97318d93dd2fabe3b4efaea7de4951fa5bb31e5bb7669f3f3bc77c117ec824",
+   "zero_bank.py": "7a974d6b950ab60539922d4241f43c97f6136089f6950c5f5d27674564e88a50"
+  },
+  "pins_hold": {
+   "frozen_eval = experiment-manifest eval_frozen": true,
+   "challenge = experiment-manifest challenge_v1": true,
+   "comparison slice = matrix pin": true,
+   "scoring version = matrix pin": true,
+   "scoring version = experiment-manifest": true,
+   "scoring files = matrix pin (per file)": true,
+   "validator sources = matrix pin": true,
+   "matrix sha = experiment-manifest": true
+  },
+  "not_pinned_by_the_matrix": {
+   "flh_extraction/decision.py (decision criteria)": "2a744d02776b3b29fd5b34ee0ea901e81e3e5efa71c06dc647568125833e7d8f",
+   "flh_extraction/predict.py (decoding code)": "0bd15f397e6023cc5193d798ff8639d5953cd6f0fecaf9fb886a1fabf6005774",
+   "flh_extraction/records.py (JSONL loader used by compare)": "92992e561b5f2217667406b3d1e7b01a08de33ca0d4c0da241e0da51339d1ff4"
+  },
+  "finding": "compare checks the slice hash and the scoring-module hash but not validator_sources: a --render binary built from changed Go validation code is accepted silently; decision.py (the gates) is outside the scoring version, so a gate change does not alter the matrix hash"
+ },
+ "cp02_shortcut": {
+  "status": "PASS",
+  "cue_by_reference": {
+   "frozen": {
+    "category_other/ref_zero": 20,
+    "category_other/ref_units": 0,
+    "category_not_other/ref_zero": 0,
+    "category_not_other/ref_units": 180
+   },
+   "rb": {
+    "category_other/ref_zero": 0,
+    "category_other/ref_units": 0,
+    "category_not_other/ref_zero": 20,
+    "category_not_other/ref_units": 180
+   },
+   "swap": {
+    "category_other/ref_zero": 0,
+    "category_other/ref_units": 180,
+    "category_not_other/ref_zero": 20,
+    "category_not_other/ref_units": 0
+   },
+   "challenge_test": {
+    "category_other/ref_zero": 9,
+    "category_other/ref_units": 15,
+    "category_not_other/ref_zero": 18,
+    "category_not_other/ref_units": 30
+   }
+  },
+  "independent_category_only": {
+   "frozen": {
+    "records": 200,
+    "decisions_equal_reference": 200,
+    "false_extraction": 0,
+    "over_abstention": 0
+   },
+   "rb": {
+    "records": 200,
+    "decisions_equal_reference": 180,
+    "false_extraction": 20,
+    "over_abstention": 0
+   },
+   "swap": {
+    "records": 200,
+    "decisions_equal_reference": 0,
+    "false_extraction": 20,
+    "over_abstention": 180
+   },
+   "challenge_test": {
+    "records": 72,
+    "decisions_equal_reference": 39,
+    "false_extraction": 18,
+    "over_abstention": 15
+   }
+  },
+  "committed_shortcut_repro_equals_regenerated": true,
+  "regenerated_runs": {
+   "frozen/category_only": {
+    "false_extraction": 0,
+    "invalid_or_missing": 0,
+    "over_abstention": 0,
+    "true_abstain": 20,
+    "true_extraction": 180
+   },
+   "frozen/constant_empty": {
+    "false_extraction": 0,
+    "invalid_or_missing": 0,
+    "over_abstention": 180,
+    "true_abstain": 20,
+    "true_extraction": 0
+   },
+   "frozen/oracle": {
+    "false_extraction": 0,
+    "invalid_or_missing": 0,
+    "over_abstention": 0,
+    "true_abstain": 20,
+    "true_extraction": 180
+   },
+   "rb/category_only": {
+    "false_extraction": 20,
+    "invalid_or_missing": 0,
+    "over_abstention": 0,
+    "true_abstain": 0,
+    "true_extraction": 180
+   },
+   "rb/constant_empty": {
+    "false_extraction": 0,
+    "invalid_or_missing": 0,
+    "over_abstention": 180,
+    "true_abstain": 20,
+    "true_extraction": 0
+   },
+   "rb/oracle": {
+    "false_extraction": 0,
+    "invalid_or_missing": 0,
+    "over_abstention": 0,
+    "true_abstain": 20,
+    "true_extraction": 180
+   },
+   "swap/category_only": {
+    "false_extraction": 20,
+    "invalid_or_missing": 0,
+    "over_abstention": 180,
+    "true_abstain": 0,
+    "true_extraction": 0
+   },
+   "swap/constant_empty": {
+    "false_extraction": 0,
+    "invalid_or_missing": 0,
+    "over_abstention": 180,
+    "true_abstain": 20,
+    "true_extraction": 0
+   },
+   "swap/oracle": {
+    "false_extraction": 0,
+    "invalid_or_missing": 0,
+    "over_abstention": 0,
+    "true_abstain": 20,
+    "true_extraction": 180
+   }
+  },
+  "reading": "On the frozen evaluation the category cue separates zero-unit from unit references perfectly (every zero reference is `other`, no unit reference is), so a category-only system is indistinguishable from the oracle there; rb and the challenge break the cue."
+ },
+ "cp03_controls": {
+  "status": "PASS",
+  "slice_records": 472,
+  "systems": {
+   "oracle": {
+    "strict_validity": 1.0,
+    "frozen_abstention": 1.0,
+    "frozen_over_abstention": 0.0,
+    "rb_abstention": 1.0,
+    "rb_over_abstention": 0.0,
+    "rb_false_extraction": 0,
+    "paired_consistency": 1.0,
+    "paired_accuracy": 1.0,
+    "abstain_group_paired_accuracy": 1.0,
+    "extract_group_paired_accuracy": 1.0,
+    "frozen_heuristic_unit_f1": 1.0,
+    "gates_failed": [],
+    "eligible_on_exact_gates": true
+   },
+   "category_only": {
+    "strict_validity": 1.0,
+    "frozen_abstention": 1.0,
+    "frozen_over_abstention": 0.0,
+    "rb_abstention": 0.0,
+    "rb_over_abstention": 0.0,
+    "rb_false_extraction": 20,
+    "paired_consistency": 0.0,
+    "paired_accuracy": 0.0,
+    "abstain_group_paired_accuracy": 0.0,
+    "extract_group_paired_accuracy": 0.0,
+    "frozen_heuristic_unit_f1": 1.0,
+    "gates_failed": [
+     "abstention on rb probe >= 0.9",
+     "challenge paired consistency >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ],
+    "eligible_on_exact_gates": false
+   },
+   "constant_empty": {
+    "strict_validity": 1.0,
+    "frozen_abstention": 1.0,
+    "frozen_over_abstention": 1.0,
+    "rb_abstention": 1.0,
+    "rb_over_abstention": 1.0,
+    "rb_false_extraction": 0,
+    "paired_consistency": 1.0,
+    "paired_accuracy": 0.375,
+    "abstain_group_paired_accuracy": 1.0,
+    "extract_group_paired_accuracy": 0.0,
+    "frozen_heuristic_unit_f1": null,
+    "gates_failed": [
+     "over-abstention on frozen <= 0.1",
+     "over-abstention on rb probe <= 0.1"
+    ],
+    "eligible_on_exact_gates": false
+   }
+  },
+  "reading": "Through the same compare path as a real run (production validator, row accounting, the decision gates): the oracle passes every exact gate; category-only fails rb abstention and paired consistency while matching the oracle on the frozen evaluation; constant-empty is perfectly consistent but fails over-abstention."
+ },
+ "cp04_intent": {
+  "status": "PASS",
+  "challenge_groups": 32,
+  "problems": {
+   "abstain_group_cue_names_words_present_in_learner_text (read these)": [
+    [
+     "chl-g21",
+     [
+      "tout",
+      "j'ai tout relu"
+     ]
+    ],
+    [
+     "chl-g26",
+     [
+      "à Lyon"
+     ]
+    ],
+    [
+     "chl-g31",
+     [
+      "combien de"
+     ]
+    ]
+   ],
+   "unit_not_lexically_anchored_in_learner_text (heuristic)": [
+    [
+     "chl-g01",
+     "ne… que (restriction = seulement)"
+    ]
+   ]
+  },
+  "probe_units_whose_only_anchor_was_the_replaced_explanation": {
+   "rb": 10,
+   "swap": 10
+  },
+  "probe_units_detail": [
+   {
+    "id": "ext-evl-0004#rb",
+    "unit": "lequel / laquelle après une préposition",
+    "learner_text": "介词后面能用 « que » 吗？"
+   },
+   {
+    "id": "ext-evl-0005#rb",
+    "unit": "lequel / laquelle après une préposition",
+    "learner_text": "Le soir, nous avons préparé une soupe de légumes. La chaise sur que je suis assis est cassée. [?] Il faisait un peu frai"
+   },
+   {
+    "id": "ext-evl-0025#rb",
+    "unit": "tu devrais (conseil au conditionnel)",
+    "learner_text": "给朋友建议用 « tu dois » 会不会太强硬？"
+   },
+   {
+    "id": "ext-evl-0046#rb",
+    "unit": "pourtant (concession)",
+    "learner_text": "表示“然而”应该用哪个连接词？"
+   },
+   {
+    "id": "ext-evl-0056#rb",
+    "unit": "venir / tenir — présent (ils viennent)",
+    "learner_text": "Il faisait un peu frais, alors j'ai pris un pull. Ils venent ce soir. [?] J'ai enfin trouvé un appartement près du trava"
+   },
+   {
+    "id": "ext-evl-0121#rb",
+    "unit": "avoir l'air (+ adjectif)",
+    "learner_text": "“你看起来很累”怎么说？"
+   },
+   {
+    "id": "ext-evl-0127#rb",
+    "unit": "avoir raison / avoir tort",
+    "learner_text": "Mon cours de français commence à dix-huit heures. Tu es droit, c'est fermé. [?] J'ai enfin trouvé un appartement près du"
+   },
+   {
+    "id": "ext-evl-0128#rb",
+    "unit": "avoir raison / avoir tort",
+    "learner_text": "“你说得对”怎么说？"
+   },
+   {
+    "id": "ext-evl-0131#rb",
+    "unit": "faire attention à",
+    "learner_text": "“小心台阶”怎么说？"
+   },
+   {
+    "id": "ext-evl-0195#rb",
+    "unit": "avoir raison / avoir tort",
+    "learner_text": "En anglais 'to be right' c'est avec 'be'. En français ? Et en allemand, c'est quoi ?"
+   }
+  ],
+  "agent_reading": "Read all 32 groups (96 records) and the 10 rb/swap pairs listed: in every case the learner's text alone still raises (or does not raise) the objective, so the shared reference keeps its intent. The 10 probe rows are translation requests, sentences marked [?] in a longer text, or direct questions whose French answer only the replaced explanation spelled out: the reference stays right, but on rb a model must know the answer rather than copy it."
+ },
+ "cp05_review": {
+  "status": "FINDING",
+  "packet_items": 44,
+  "agent_read": 44,
+  "missing": [],
+  "extra": [],
+  "packet_verdict_fields_filled": [],
+  "agreement": {
+   "agree": 38,
+   "edit_suggested": 5,
+   "disagree": 1
+  },
+  "disagreements": [
+   {
+    "id": "ext-trn-i2-0001",
+    "packet": "v2",
+    "machine_label": "1 unit: pas de / pas d' après la négation",
+    "agent_label": "OK",
+    "note": "Decision right, premise corrected. The statement says every article becomes « de » after a negation; it does not after « être » (« ce n'est pas un problème »). Add the exception. The same unit is in ext-trn-00965."
+   },
+   {
+    "id": "ext-trn-00235",
+    "packet": "v2",
+    "machine_label": "1 unit: féminin en -euse / -trice",
+    "agent_label": "UNDER_SPLIT",
+    "note": "« Elle est une acteuse » → « C'est une actrice » corrects two things: the « -trice » feminine and « c'est » (not « elle est ») before a determiner + noun. Add a « c'est / il est » unit."
+   },
+   {
+    "id": "ext-trn-i2-0047",
+    "packet": "v3",
+    "machine_label": "1 unit: visiter / rendre visite à (FALSE_PREMISE)",
+    "agent_label": "OK",
+    "note": "The premise is not repeated, but « Visiter is for places » is absolute: « visiter un malade », a doctor « visite » patients. Suggest « In everyday French »."
+   },
+   {
+    "id": "ext-trn-00051",
+    "packet": "v3",
+    "machine_label": "1 unit: y avec penser à (UNDER_SPLIT)",
+    "agent_label": "OK",
+    "note": "One objective, but the canonical and example foreground the thing case (« y ») while the learner's error is the person case (« à lui »). Suggest canonical « penser à : y (chose) / à lui, à elle (personne) » and a person example."
+   },
+   {
+    "id": "ext-trn-00965",
+    "packet": "v3",
+    "machine_label": "3 units (OVER_SPLIT)",
+    "agent_label": "OK",
+    "note": "Three corrections, three objectives; the « pas de » unit has the same missing « être » exception as ext-trn-i2-0001."
+   },
+   {
+    "id": "ext-trn-00377",
+    "packet": "v3",
+    "machine_label": "1 unit: louer (deux sens) (BILINGUAL_DRIFT)",
+    "agent_label": "UNSUPPORTED",
+    "note": "EN and ZH agree, but the unit teaches what the learner did not ask (the two senses of « louer »). The question is the false friend « location » (= rental; a place is « emplacement »). Suggest canonical « location (faux ami) / emplacement »."
+   }
+  ],
+  "note": "An agent's reading is not a human verdict: the packets' verdict fields stay empty and the decision report keeps treating review as PENDING."
+ },
+ "cp06_false_premise": {
+  "status": "FINDING",
+  "records": {
+   "frozen_eval": 8,
+   "boundary": 8,
+   "train": 1,
+   "increment": 69,
+   "challenge": 0
+  },
+  "zero_unit_false_premise_references": {
+   "frozen_eval": [],
+   "boundary": [],
+   "train": [],
+   "increment": [],
+   "challenge": []
+  },
+  "echo_candidates_6gram": {
+   "frozen_eval": [],
+   "boundary": [],
+   "train": [],
+   "increment": [
+    {
+     "id": "ext-trn-i2-0028",
+     "unit": "en bus / à vélo / à pied"
+    },
+    {
+     "id": "ext-trn-i2-0061",
+     "unit": "il y a … que / ça fait … que + présent"
+    }
+   ],
+   "challenge": []
+  },
+  "echo_candidates_agent_reading": "each candidate shares a CORRECT phrase with the learner's text (« en bus, en train »; « ça fait deux ans que j'apprends »); no statement repeats the premise as true",
+  "frozen_eval_cases": [
+   {
+    "id": "ext-evl-0185",
+    "case": "false_premise",
+    "resolution": "accepted",
+    "unit": [
+     "si (réponse affirmative à une question négative)"
+    ]
+   },
+   {
+    "id": "ext-evl-0186",
+    "case": "false_premise",
+    "resolution": "accepted",
+    "unit": [
+     "adjectifs de couleur invariables (marron, orange)"
+    ]
+   },
+   {
+    "id": "ext-evl-0187",
+    "case": "false_premise",
+    "resolution": "accepted",
+    "unit": [
+     "peut-être / peut être"
+    ]
+   },
+   {
+    "id": "ext-evl-0188",
+    "case": "false_premise",
+    "resolution": "accepted",
+    "unit": [
+     "ne… que (restriction = seulement)"
+    ]
+   },
+   {
+    "id": "ext-evl-0189",
+    "case": "false_premise",
+    "resolution": "accepted",
+    "unit": [
+     "éventuellement (faux ami)"
+    ]
+   },
+   {
+    "id": "ext-evl-0190",
+    "case": "false_premise",
+    "resolution": "accepted",
+    "unit": [
+     "vous de politesse + adjectif au singulier"
+    ]
+   },
+   {
+    "id": "ext-evl-0191",
+    "case": "wrong_explanation",
+    "resolution": "unreviewed",
+    "unit": [
+     "après + infinitif passé"
+    ]
+   },
+   {
+    "id": "ext-evl-0192",
+    "case": "wrong_explanation",
+    "resolution": "unreviewed",
+    "unit": [
+     "venir / tenir — présent (ils viennent)"
+    ]
+   }
+  ],
+  "sensitivity_abstain_on_all_frozen_false_premises": {
+   "abstained_records": 8,
+   "frozen_over_abstention": 0.044,
+   "eligible_on_exact_gates": true,
+   "gates_failed": []
+  },
+  "agent_reading": "All 16 held-out false-premise / wrong-explanation references (8 frozen, 8 boundary) and all 70 training ones (1 train, 69 increment) carry a unit; none states the premise as true. Over-generalizations noted in agent-review.json (colour nouns, lequel after any preposition, pas de after any negation).",
+  "finding": "Unwarranted abstention on false premises is not gated: a system that is perfect except that it abstains on every frozen false-premise record stays eligible (over-abstention 0.044 <= 0.10). Report over-abstention by case type before trusting a winner."
+ },
+ "cp07_bilingual": {
+  "status": "FINDING",
+  "distinct_reference_units": {
+   "frozen_eval": 45,
+   "challenge": 23,
+   "boundary": 69,
+   "union": 114,
+   "challenge_units_identical_to_frozen_units": 23
+  },
+  "heuristic_bilingual_findings": {
+   "frozen_eval": [],
+   "challenge": [],
+   "boundary": []
+  },
+  "agent_reading": "Read every distinct held-out unit (EN statement against statement_zh): no meaning drift found. statement_zh is a translation of statement, so an EN/ZH pair is one claim: a wrong rule is wrong in both languages and their agreement confirms nothing.",
+  "frozen_eval_independence": {
+   "records": 200,
+   "unit_records": 180,
+   "distinct_objective_points": 45,
+   "objective_clusters_linked_by_shared_points": 20,
+   "records_per_point_max": 8,
+   "points_asked_in_more_than_one_learner_language": 25,
+   "quoted_french_sentences_reused_across_records": 38,
+   "reuse_examples": {
+    "la chaise sur laquelle je suis assis est cassée": [
+     "ext-evl-0006",
+     "ext-evl-0137",
+     "ext-evl-0145"
+    ],
+    "qu'est ce que": [
+     "ext-evl-0007",
+     "ext-evl-0009"
+    ],
+    "c'est ta valise ou la mienne": [
+     "ext-evl-0015",
+     "ext-evl-0145",
+     "ext-evl-0152"
+    ],
+    "je travaille tous les jours": [
+     "ext-evl-0018",
+     "ext-evl-0156"
+    ],
+    "je n'ai aucune idée": [
+     "ext-evl-0020",
+     "ext-evl-0155",
+     "ext-evl-0159"
+    ]
+   }
+  },
+  "finding": "decision.py counts human-judged EXAMPLES (>= 100), but the frozen evaluation's 180 unit records cover only 45 objectives; the same corrected sentence recurs in single and two-error records and many objectives are asked in French, Chinese and English. Translations and reused sentences are not independent evidence: report human F1 by objective (or with a cluster bootstrap) and never count the frozen and rb outputs of one learner text as two examples."
+ },
+ "cp08_leakage": {
+  "status": "PASS",
+  "dataset_check": {
+   "pass": true,
+   "counts": {
+    "boundary": 80,
+    "dev": 137,
+    "eval": 200,
+    "train": 1245
+   },
+   "near_pairs_eval_train": {
+    "examples": [],
+    "jaccard_ge_0.5": 0,
+    "jaccard_ge_0.8": 0
+   },
+   "points_in_train_and_eval": [],
+   "canonical_overlap_train_eval": [],
+   "headword_overlap_train_eval": [],
+   "exact_duplicate_groups": {
+    "across_train_eval": [],
+    "eval": [],
+    "train": []
+   },
+   "families_in_two_splits": []
+  },
+  "challenge_check": {
+   "pass": true,
+   "equals_committed": true,
+   "against": {
+    "boundary": {
+     "exact_duplicates": [],
+     "near_pairs_ge_0.5": 0,
+     "near_pairs_ge_0.8": 0
+    },
+    "eval": {
+     "exact_duplicates": [],
+     "near_pairs_ge_0.5": 0,
+     "near_pairs_ge_0.8": 0
+    },
+    "train_dev": {
+     "exact_duplicates": [],
+     "near_pairs_ge_0.5": 0,
+     "near_pairs_ge_0.8": 0
+    }
+   },
+   "objectives": {
+    "points_in_training": [],
+    "canonicals_in_training": [],
+    "headwords_in_training": []
+   }
+  },
+  "independent_held_out_vs_training": {
+   "frozen_eval": {
+    "records": 200,
+    "ids_in_training": 0,
+    "ids_in_sft_files": 0,
+    "exact_learner_text_in_training": 0,
+    "quoted_french_sentences_shared_with_training": [],
+    "learner_input_inside_an_sft_prompt": 0,
+    "reference_target_equals_an_sft_answer": 0
+   },
+   "rb": {
+    "records": 200,
+    "ids_in_training": 0,
+    "ids_in_sft_files": 0,
+    "exact_learner_text_in_training": 0,
+    "quoted_french_sentences_shared_with_training": [],
+    "learner_input_inside_an_sft_prompt": 0,
+    "reference_target_equals_an_sft_answer": 0
+   },
+   "swap": {
+    "records": 200,
+    "ids_in_training": 0,
+    "ids_in_sft_files": 0,
+    "exact_learner_text_in_training": 0,
+    "quoted_french_sentences_shared_with_training": [],
+    "learner_input_inside_an_sft_prompt": 0,
+    "reference_target_equals_an_sft_answer": 0
+   },
+   "challenge": {
+    "records": 96,
+    "ids_in_training": 0,
+    "ids_in_sft_files": 0,
+    "exact_learner_text_in_training": 0,
+    "quoted_french_sentences_shared_with_training": [],
+    "learner_input_inside_an_sft_prompt": 0,
+    "reference_target_equals_an_sft_answer": 0
+   },
+   "boundary": {
+    "records": 80,
+    "ids_in_training": 0,
+    "ids_in_sft_files": 0,
+    "exact_learner_text_in_training": 0,
+    "quoted_french_sentences_shared_with_training": [
+     "je vais manger"
+    ],
+    "learner_input_inside_an_sft_prompt": 0,
+    "reference_target_equals_an_sft_answer": 0
+   }
+  },
+  "notes": [
+   "boundary shares the generic quoted phrase ['je vais manger'] with training; the boundary set is not part of the comparison slice",
+   "cross-language duplicates: the lexical near-duplicate check cannot see a translation; the point, canonical and headword checks (0 overlap) and the shared-French-sentence check cover it, because a translated question keeps its French forms and objective"
+  ],
+  "minor_defect": {
+   "command": "python3 -m flh_extraction check ... (without --out)",
+   "exit": 1,
+   "error": "TypeError: argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'",
+   "impact": "usability only: argparse accepts the call, then dump(None) raises after the checks ran"
+  }
+ },
+ "cp09_regeneration": {
+  "status": "PASS",
+  "committed_vs_regenerated": [
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/comparison-matrix.json",
+    "sha256_committed": "cc59732ba134a3c010debf07f64aa6b8ea9cfaa9d5992c0eae465b7ad76fea75",
+    "sha256_regenerated": "cc59732ba134a3c010debf07f64aa6b8ea9cfaa9d5992c0eae465b7ad76fea75",
+    "result": "identical"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/comparison-matrix.md",
+    "sha256_committed": "3c5903d258aade91b9f50731ff04eceb0422635379416f0ee3a577dea99456d7",
+    "sha256_regenerated": "3c5903d258aade91b9f50731ff04eceb0422635379416f0ee3a577dea99456d7",
+    "result": "identical"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/experiment-manifest.json",
+    "sha256_committed": "752117345c29c5e81e585f236d7bba5adb1e1f4a706fe2f2940ca06933be0951",
+    "sha256_regenerated": "752117345c29c5e81e585f236d7bba5adb1e1f4a706fe2f2940ca06933be0951",
+    "result": "identical"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/input-manifest.json",
+    "sha256_committed": "34f52bef5f2dbd1138cdb9f92570012c47bf66973289a7d0c1b6414ea32437c3",
+    "sha256_regenerated": "34f52bef5f2dbd1138cdb9f92570012c47bf66973289a7d0c1b6414ea32437c3",
+    "result": "identical"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/readiness-checks.json",
+    "sha256_committed": "52c019f7a5c0e169a85940e017c9921aba203923ba7b1bb468513987101da65e",
+    "sha256_regenerated": "3b1f06ca5aa6025b50e92b6fb41f05c8f3cfd34f90b86144ec18e8041fb9dc9b",
+    "result": "identical_after_job_name_timestamp"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/rendered/sft-smoke.json",
+    "sha256_committed": "097137d624fc7e6ee48d397357362dd20418ce28a13c7ebf8c4c877ded6a9365",
+    "sha256_regenerated": "f8d06e1e3729543d0f92ced1d3166cee4863dfde9b59705d56af118acd816999",
+    "result": "identical_after_job_name_timestamp"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/rendered/sft-experiment.json",
+    "sha256_committed": "3640c6b242aa8821c54f754f11dda9285f6e3d003735868abeb64d9497903851",
+    "sha256_regenerated": "0198ed68e14c88fe6ad00b06952f47100ae325ca38aef2b87f7a6f22582c63aa",
+    "result": "identical_after_job_name_timestamp"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/rendered/predict-base-a.json",
+    "sha256_committed": "03d7da24eb8a755a6e6ddcd6a67e538e6a94209691ef443b920c1a6c5064deac",
+    "sha256_regenerated": "3ad5cb75c4778d2fcfe159d75db33d18710f7a1bf0d9b5b98e3d9f391d57dd6d",
+    "result": "identical_after_job_name_timestamp"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/rendered/predict-base-b.json",
+    "sha256_committed": "700ab7cf7a492f95bbcf0635eb08cc247bb0d32ebfcec5230cfd57d2192c35c7",
+    "sha256_regenerated": "c3bab65899957f524ad86713728242ee0274b7059d81983eac98e6fa5b41c2f5",
+    "result": "identical_after_job_name_timestamp"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/rendered/predict-eval-a.json",
+    "sha256_committed": "4d93c3fea8bc17e50b28f614e3e2614329e993cdae0f25a9bc55b2e3f872a468",
+    "sha256_regenerated": "e4d9d46846a039c6355dadccdbd68059d15a7283cc5ebb6aa09aeec14fbf2420",
+    "result": "identical_after_job_name_timestamp"
+   },
+   {
+    "committed": "deploy/aws/sagemaker-extractor/readiness/rendered/predict-eval-b.json",
+    "sha256_committed": "46d56881334ddc3126e0ef6e90b0a9babeeb0d6ab64e9ca452212b13332f6cbd",
+    "sha256_regenerated": "dec3bd931fadbc9f93b872f349b96945382db8a81523ece9ba1eaf7f6f50f5d7",
+    "result": "identical_after_job_name_timestamp"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/challenge-check.json",
+    "sha256_committed": "f8b619b981ca2b1061b34f393ec2a025d509d3842662a411c68006ea002dd3db",
+    "sha256_regenerated": "f8b619b981ca2b1061b34f393ec2a025d509d3842662a411c68006ea002dd3db",
+    "result": "identical"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/decision-fixture.json",
+    "sha256_committed": "03a6cb83ad1808a2b4896606b822c6560f65362b039590304df829eaa008df7a",
+    "sha256_regenerated": "16504d08c19f21722f9e8d987f545d410496a1d2155de92a8ed3db90cd4f6a10",
+    "result": "changed_as_intended_by_FLH-154_item_39 (incomplete run is PENDING)"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/decision-fixture.md",
+    "sha256_committed": "a1a20d6b9a52989921c4680b96238355ffa8f2ceabc4a137922885643e5383dc",
+    "sha256_regenerated": "cba37d64d039946e32ca60495ba5d8c85183589a61aaf24beaf9a154fbf1e0db",
+    "result": "changed_as_intended_by_FLH-154_item_39 (incomplete run is PENDING)"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/parsing-fixture-compare.json",
+    "sha256_committed": "8c168cdf92d48b582945497a0a418f3676567cc100453226f768dc97de2124e9",
+    "sha256_regenerated": "8c168cdf92d48b582945497a0a418f3676567cc100453226f768dc97de2124e9",
+    "result": "identical"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/parsing-fixture-compare.md",
+    "sha256_committed": "93f677d500844a322284ed1a4dce111513b8f1f36c8689134d2e18fb21d9a585",
+    "sha256_regenerated": "93f677d500844a322284ed1a4dce111513b8f1f36c8689134d2e18fb21d9a585",
+    "result": "identical"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/parsing-fixture-expect.json",
+    "sha256_committed": "08c1c0bbb1c90160981c3ba1be1d2e1ac4bde7df9f2e3042a784491402522dc4",
+    "sha256_regenerated": "08c1c0bbb1c90160981c3ba1be1d2e1ac4bde7df9f2e3042a784491402522dc4",
+    "result": "identical"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/shortcut-repro.json",
+    "sha256_committed": "cdabb8e8acb9868034eade4ec0422fb9e7f6e2fd8d9c24fac69a1f8a62ec4bdd",
+    "sha256_regenerated": "cdabb8e8acb9868034eade4ec0422fb9e7f6e2fd8d9c24fac69a1f8a62ec4bdd",
+    "result": "identical"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/shortcut-repro.md",
+    "sha256_committed": "3c8e4ccb7a2ebb6cb379f927d5e1ef430db880e785f7b20b2b488917face07d0",
+    "sha256_regenerated": "3c8e4ccb7a2ebb6cb379f927d5e1ef430db880e785f7b20b2b488917face07d0",
+    "result": "identical"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/paired-demo.json",
+    "sha256_committed": "c7be13647fc038e6b8fa76299d3ec0e100034dfe46c28e7fd3c0823b93dc8408",
+    "sha256_regenerated": "c7be13647fc038e6b8fa76299d3ec0e100034dfe46c28e7fd3c0823b93dc8408",
+    "result": "identical"
+   },
+   {
+    "committed": "docs/validation/EXTRACTOR-COMPARISON-V1/paired-demo.md",
+    "sha256_committed": "b233c0f6235c0c0b4f3eb370e2ce692ca24407742d77cb2cb034565c16c902a0",
+    "sha256_regenerated": "b233c0f6235c0c0b4f3eb370e2ce692ca24407742d77cb2cb034565c16c902a0",
+    "result": "identical"
+   },
+   {
+    "committed": "tools/extraction/review/review-packet-v2.jsonl",
+    "sha256_committed": "5bc3fc5374ffb99041ab6267d8fd725001021b5421d9cd72080f4c1e273b03e2",
+    "sha256_regenerated": "5bc3fc5374ffb99041ab6267d8fd725001021b5421d9cd72080f4c1e273b03e2",
+    "result": "identical"
+   },
+   {
+    "committed": "tools/extraction/review/REVIEW_PACKET_V2.md",
+    "sha256_committed": "d3cc550498578d57062eff1b4633a030fe3d19bde836d18f859dba6ba279cb75",
+    "sha256_regenerated": "d3cc550498578d57062eff1b4633a030fe3d19bde836d18f859dba6ba279cb75",
+    "result": "identical"
+   },
+   {
+    "committed": "tools/extraction/review/review-packet-v3.jsonl",
+    "sha256_committed": "094cb6b6487fc76b60fb3694e715f7182d3e3dbd549097df926a80bf8bcf44b1",
+    "sha256_regenerated": "094cb6b6487fc76b60fb3694e715f7182d3e3dbd549097df926a80bf8bcf44b1",
+    "result": "identical"
+   },
+   {
+    "committed": "tools/extraction/review/REVIEW_PACKET_V3.md",
+    "sha256_committed": "3b2bfc08d91fc17fcc483e5a5ff40e903db6c856c9320b50450d00bfa97e051f",
+    "sha256_regenerated": "3b2bfc08d91fc17fcc483e5a5ff40e903db6c856c9320b50450d00bfa97e051f",
+    "result": "identical"
+   },
+   {
+    "committed": "tools/extraction/review/review-sample-v1.jsonl",
+    "sha256_committed": "d49ff19e76b057858ce8debc88ed254727824d05ce79ca559e69be7fa239d1b7",
+    "sha256_regenerated": "d49ff19e76b057858ce8debc88ed254727824d05ce79ca559e69be7fa239d1b7",
+    "result": "identical"
+   },
+   {
+    "committed": "tools/extraction/review/REVIEW_SAMPLE_V1.md",
+    "sha256_committed": "f2b7bc3e08d1e32ccaceb42be3be910cb4231234f4ca1d5941f15a59160a7715",
+    "sha256_regenerated": "f2b7bc3e08d1e32ccaceb42be3be910cb4231234f4ca1d5941f15a59160a7715",
+    "result": "identical"
+   },
+   {
+    "committed": "tools/extraction/review/review-sample-v1-selection.json",
+    "sha256_committed": "9e59953c390e635bb46119303ac531c32246b0db069084f55aa9a27e34170d21",
+    "sha256_regenerated": "9e59953c390e635bb46119303ac531c32246b0db069084f55aa9a27e34170d21",
+    "result": "identical"
+   }
+  ],
+  "run1_vs_run2": {
+   "files_identical": 70,
+   "identical_after_job_name_timestamp": 7,
+   "differ": []
+  },
+  "intended_changes": [
+   "docs/validation/EXTRACTOR-COMPARISON-V1/decision-fixture.json",
+   "docs/validation/EXTRACTOR-COMPARISON-V1/decision-fixture.md"
+  ],
+  "not_compared": {
+   "docs/validation/EXTRACTOR-COMPARISON-V1/asset-check.json": "depends on which local directories are searched (see cp16), not on regeneration"
+  }
+ },
+ "cp10_isolation": {
+  "status": "PASS",
+  "prompts_checked": 944,
+  "leaks": {},
+  "distinct_system_messages": 1,
+  "uploaded_files": [
+   "predict-a/eval-prompts.jsonl",
+   "predict-b/eval-prompts.jsonl",
+   "sft-dev.jsonl",
+   "sft-train.jsonl"
+  ],
+  "never_uploaded": [
+   "eval_candidates.jsonl (references)",
+   "probe references",
+   "challenge references",
+   "comparison-slice.jsonl",
+   "boundary cases",
+   "learner data"
+  ],
+  "rendered_channels": {
+   "sft-smoke": [
+    "dev",
+    "model",
+    "train"
+   ],
+   "sft-experiment": [
+    "dev",
+    "model",
+    "train"
+   ],
+   "predict-base-a": [
+    "model",
+    "prompts"
+   ],
+   "predict-base-b": [
+    "model",
+    "prompts"
+   ],
+   "predict-eval-a": [
+    "adapter",
+    "model",
+    "prompts"
+   ],
+   "predict-eval-b": [
+    "adapter",
+    "model",
+    "prompts"
+   ]
+  },
+  "suspicious_channel_uris": [],
+  "method": "every reference's target JSON, statements (>= 25 chars) and examples not taken from the input were searched for in every prompt; reference field names in the user payload; the uploaded file list and the channel URIs of every rendered job"
+ },
+ "cp11_comparator": {
+  "status": "FINDING",
+  "rows_accounted": 472,
+  "references": 472,
+  "cases": [
+   {
+    "case": "empty string",
+    "id": "ext-evl-0161",
+    "status": "unparseable:empty",
+    "expected": "unparseable:empty",
+    "as_expected": true
+   },
+   {
+    "case": "whitespace around valid JSON",
+    "id": "ext-evl-0162",
+    "status": "valid_empty",
+    "expected": "valid_empty|valid_units",
+    "as_expected": true
+   },
+   {
+    "case": "leading prose",
+    "id": "ext-evl-0163",
+    "status": "unparseable:leading_text",
+    "expected": "unparseable:leading_text",
+    "as_expected": true
+   },
+   {
+    "case": "trailing prose",
+    "id": "ext-evl-0164",
+    "status": "unparseable:trailing_text",
+    "expected": "unparseable:trailing_text",
+    "as_expected": true
+   },
+   {
+    "case": "two JSON objects",
+    "id": "ext-evl-0165",
+    "status": "unparseable:trailing_text",
+    "expected": "unparseable:trailing_text",
+    "as_expected": true
+   },
+   {
+    "case": "markdown fence",
+    "id": "ext-evl-0166",
+    "status": "unparseable:code_fence",
+    "expected": "unparseable:code_fence",
+    "as_expected": true
+   },
+   {
+    "case": "UTF-8 BOM",
+    "id": "ext-evl-0167",
+    "status": "unparseable:leading_text",
+    "expected": "unparseable:*",
+    "as_expected": true
+   },
+   {
+    "case": "JSON array",
+    "id": "ext-evl-0168",
+    "status": "unparseable:parses",
+    "expected": "unparseable:*",
+    "as_expected": true
+   },
+   {
+    "case": "JSON string holding JSON",
+    "id": "ext-evl-0169",
+    "status": "unparseable:parses",
+    "expected": "unparseable:*",
+    "as_expected": true
+   },
+   {
+    "case": "NaN confidence",
+    "id": "ext-evl-0170",
+    "status": "unparseable:parses",
+    "expected": "unparseable:*",
+    "as_expected": true
+   },
+   {
+    "case": "confidence as a string",
+    "id": "ext-evl-0171",
+    "status": "unparseable:parses",
+    "expected": "unparseable:*|invalid_output",
+    "as_expected": true
+   },
+   {
+    "case": "unknown kind",
+    "id": "ext-evl-0172",
+    "status": "invalid_output",
+    "expected": "invalid_output",
+    "as_expected": true
+   },
+   {
+    "case": "top-level extra key",
+    "id": "ext-evl-0173",
+    "status": "valid_extra_keys",
+    "expected": "valid_extra_keys",
+    "as_expected": true
+   },
+   {
+    "case": "unit extra key",
+    "id": "ext-evl-0014",
+    "status": "valid_extra_keys",
+    "expected": "valid_extra_keys",
+    "as_expected": true
+   },
+   {
+    "case": "unit missing example key",
+    "id": "ext-evl-0015",
+    "status": "valid_extra_keys",
+    "expected": "valid_extra_keys",
+    "as_expected": true
+   },
+   {
+    "case": "unit missing statement_zh",
+    "id": "ext-evl-0016",
+    "status": "invalid_output",
+    "expected": "invalid_output",
+    "as_expected": true
+   },
+   {
+    "case": "literal null",
+    "id": "ext-evl-0177",
+    "status": "valid_empty",
+    "expected": "NOT valid_empty",
+    "as_expected": false
+   },
+   {
+    "case": "empty object",
+    "id": "ext-evl-0178",
+    "status": "valid_empty",
+    "expected": "NOT valid_empty",
+    "as_expected": false
+   },
+   {
+    "case": "units null",
+    "id": "ext-evl-0179",
+    "status": "valid_empty",
+    "expected": "NOT valid_empty",
+    "as_expected": false
+   },
+   {
+    "case": "truncated JSON",
+    "id": "ext-evl-0180",
+    "status": "unparseable:truncated_json",
+    "expected": "unparseable:*",
+    "as_expected": true
+   }
+  ],
+  "whole_file_failures": [
+   {
+    "case": "output_text is a JSON object, not a string",
+    "result": "comparison aborted: extraction-render validate exited 1"
+   },
+   {
+    "case": "output_text is a number",
+    "result": "comparison aborted: extraction-render validate exited 1"
+   },
+   {
+    "case": "a raw file with one row lacking output_text",
+    "result": "comparison aborted: qwen3.5-4b-untuned: a prediction file mixes raw outputs and production results"
+   },
+   {
+    "case": "prediction file whose last line was cut (job stopped mid-write)",
+    "result": "compare aborts while loading: Unterminated string starting at"
+   }
+  ],
+  "findings": [
+   "Degenerate outputs `null`, `{}` and `{\"units\": null}` are accepted by the production parser as zero units and counted valid_empty, i.e. as a correct abstention on a zero reference; the strict knowledge_extraction_v2 schema forbids them, and strict_schema_findings already reports them (top_level_not_object / units_not_list) but account() only demotes extra/missing-key findings.",
+   "A non-string output_text aborts the whole comparison (the Go validator refuses the line) instead of being one invalid row; a raw row without output_text and a cut last line also abort it. These fail loudly (no silent miscount) and predict.py writes neither, but a partial file from a stopped job needs its last line removed by hand."
+  ]
+ },
+ "cp12_denominators": {
+  "status": "FINDING",
+  "parsing_fixture": {
+   "status_counts": {
+    "duplicate_prediction": 6,
+    "invalid_output": 12,
+    "missing_prediction": 6,
+    "unparseable:code_fence": 7,
+    "unparseable:leading_text": 9,
+    "unparseable:think_block": 7,
+    "unparseable:trailing_text": 7,
+    "unparseable:truncated_at_max_new_tokens": 7,
+    "valid_empty": 57,
+    "valid_extra_keys": 6,
+    "valid_units": 348
+   },
+   "scorable": 405,
+   "references": 472
+  },
+  "confusion_rows_sum_to_slice_part": true,
+  "abstention_denominator_is_every_zero_reference": true,
+  "over_abstention_denominator_is_every_unit_reference": true,
+  "frozen": {
+   "zero_refs": 20,
+   "unit_refs": 180,
+   "confusion": {
+    "ref_zero": {
+     "empty": 17,
+     "units": 0,
+     "invalid": 3,
+     "missing": 0
+    },
+    "ref_units": {
+     "empty": 0,
+     "units": 155,
+     "invalid": 25,
+     "missing": 0
+    }
+   }
+  },
+  "rb": {
+   "zero_refs": 20,
+   "unit_refs": 180,
+   "confusion": {
+    "ref_zero": {
+     "empty": 17,
+     "units": 0,
+     "invalid": 3,
+     "missing": 0
+    },
+    "ref_units": {
+     "empty": 0,
+     "units": 154,
+     "invalid": 26,
+     "missing": 0
+    }
+   }
+  },
+  "challenge_groups_scored": {
+   "paired_consistency": 0.583,
+   "paired_accuracy": 0.583,
+   "cue_flip_rate": 0.0,
+   "heuristic_unit_f1": 1.0,
+   "abstention_rate": 0.852,
+   "over_abstention_rate": 0.0,
+   "structural_validity": 0.861,
+   "exact_unit_count_rate": 1.0
+  },
+  "paired_invalid_never_consistent": "paired.report: invalid or missing -> not consistent, not correct",
+  "f1_denominator_probe": {
+   "system": "oracle except 9 frozen references with the most units truncated at max_new_tokens",
+   "truncated_reference_units": 18,
+   "frozen_reference_units": 205,
+   "strict_validity": 0.981,
+   "eligible_on_exact_gates": true,
+   "frozen_heuristic_unit_f1": 1.0,
+   "oracle_frozen_heuristic_unit_f1": 1.0
+  },
+  "finding": "Structural validity, abstention, over-abstention and the paired metrics count every reference row (an invalid, truncated, extra-key or missing row counts against the system). Unit F1 does not: quality.report computes precision and recall over valid outputs only, so the reference units of truncated or malformed rows leave the recall denominator. The same holds for human F1 built with `quality --judgments`. The 0.98 validity gate bounds the effect (at most 9 of 472 rows), but those rows can be the hardest ones, and the 0.05 win margin is decided on that F1."
+ },
+ "cp13_shards": {
+  "status": "PASS",
+  "shard_a": {
+   "records": 272,
+   "sha256": "f75494750995c242a3414a716ff0fe4d6f447fbeceeb7f1686eb314a60e44678",
+   "order_equals_slice_order": true
+  },
+  "shard_b": {
+   "records": 200,
+   "sha256": "52b00b781bf1eea3631e8e25a33e6d5ce3e6dde87406d75c88109def760c390f",
+   "order_equals_slice_order": true
+  },
+  "overlap": 0,
+  "union_equals_slice": true,
+  "prompt_content_unchanged_by_sharding": true,
+  "challenge_groups_split_across_shards": [],
+  "identical_in_a_second_regeneration": true,
+  "jobs_bound_to_their_shard_hash": {
+   "predict-base-a": true,
+   "predict-base-b": true,
+   "predict-eval-a": true,
+   "predict-eval-b": true
+  },
+  "limit_parameters_in_prediction_jobs": {
+   "predict-base-a": {},
+   "predict-base-b": {},
+   "predict-eval-a": {},
+   "predict-eval-b": {}
+  },
+  "compare_independent_of_row_order": true
+ },
+ "cp14_pending": {
+  "status": "PASS",
+  "subsets_of_measured_runs": [
+   {
+    "measured": [],
+    "verdict": "PENDING",
+    "winner": null
+   },
+   {
+    "measured": [
+     "current_extractor"
+    ],
+    "verdict": "PENDING",
+    "winner": null
+   },
+   {
+    "measured": [
+     "qwen3.5-4b-untuned"
+    ],
+    "verdict": "PENDING",
+    "winner": null
+   },
+   {
+    "measured": [
+     "qwen3.5-4b-tuned"
+    ],
+    "verdict": "PENDING",
+    "winner": null
+   },
+   {
+    "measured": [
+     "current_extractor",
+     "qwen3.5-4b-untuned"
+    ],
+    "verdict": "PENDING",
+    "winner": null
+   },
+   {
+    "measured": [
+     "current_extractor",
+     "qwen3.5-4b-tuned"
+    ],
+    "verdict": "PENDING",
+    "winner": null
+   },
+   {
+    "measured": [
+     "qwen3.5-4b-untuned",
+     "qwen3.5-4b-tuned"
+    ],
+    "verdict": "PENDING",
+    "winner": null
+   },
+   {
+    "measured": [
+     "current_extractor",
+     "qwen3.5-4b-untuned",
+     "qwen3.5-4b-tuned"
+    ],
+    "verdict": "WINNER_FOR_OWNER_DECISION",
+    "winner": "current_extractor"
+   }
+  ],
+  "other_missing_inputs": {
+   "all measured, no human F1": "PENDING",
+   "all measured, human F1 from 99 examples": "PENDING",
+   "all measured, review verdicts missing": "PENDING",
+   "all measured, tuned losses missing": "PENDING",
+   "comparison refused": "REFUSED"
+  },
+  "note": "every synthetic system here is the oracle's metrics; only the presence of runs and inputs varies"
+ },
+ "cp15_weak_abstention": {
+  "status": "FINDING",
+  "cases": {
+   "rb abstention 0.90 (2 of 20 invented)": {
+    "tuned": {
+     "rb_abstention": 0.9,
+     "paired_consistency": 1.0,
+     "frozen_heuristic_unit_f1": 1.0,
+     "gates_failed": []
+    },
+    "tuned_human_f1": 0.95,
+    "others_human_f1": [
+     0.7,
+     0.55
+    ],
+    "verdict": "WINNER_FOR_OWNER_DECISION",
+    "winner": "qwen3.5-4b-tuned",
+    "tuned_eligible": true
+   },
+   "rb abstention 0.85 (3 of 20 invented)": {
+    "tuned": {
+     "rb_abstention": 0.85,
+     "paired_consistency": 1.0,
+     "frozen_heuristic_unit_f1": 1.0,
+     "gates_failed": [
+      "abstention on rb probe >= 0.9"
+     ]
+    },
+    "tuned_human_f1": 0.99,
+    "others_human_f1": [
+     0.7,
+     0.55
+    ],
+    "verdict": "WINNER_FOR_OWNER_DECISION",
+    "winner": "current_extractor",
+    "tuned_eligible": false
+   },
+   "paired consistency 0.875 (3 cue flips of 24 groups)": {
+    "tuned": {
+     "rb_abstention": 1.0,
+     "paired_consistency": 0.875,
+     "frozen_heuristic_unit_f1": 1.0,
+     "gates_failed": [
+      "challenge paired consistency >= 0.9"
+     ]
+    },
+    "tuned_human_f1": 0.99,
+    "others_human_f1": [
+     0.7,
+     0.55
+    ],
+    "verdict": "WINNER_FOR_OWNER_DECISION",
+    "winner": "current_extractor",
+    "tuned_eligible": false
+   },
+   "paired consistency 0.917 (2 cue flips)": {
+    "tuned": {
+     "rb_abstention": 1.0,
+     "paired_consistency": 0.917,
+     "frozen_heuristic_unit_f1": 1.0,
+     "gates_failed": []
+    },
+    "tuned_human_f1": 0.99,
+    "others_human_f1": [
+     0.7,
+     0.55
+    ],
+    "verdict": "WINNER_FOR_OWNER_DECISION",
+    "winner": "qwen3.5-4b-tuned",
+    "tuned_eligible": true
+   },
+   "category-only with the best human F1 by far": {
+    "frozen_heuristic_unit_f1": 1.0,
+    "gates_failed": [
+     "abstention on rb probe >= 0.9",
+     "challenge paired consistency >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ],
+    "verdict": "NO_WINNER",
+    "winner": null
+   }
+  },
+  "rounding_flips_at_current_denominators": [],
+  "win_margin_float_edge": {
+   "exact_0.050_leads_counted_below_the_margin": "494 of 951 (F1 on a 0.001 grid)",
+   "0.60 vs 0.55": "NO_WINNER",
+   "0.65 vs 0.60": "WINNER_FOR_OWNER_DECISION",
+   "finding": "decision.py compares `best - second < 0.05` in binary floating point: a lead of exactly 0.05 wins or loses depending on the values. Decide on rounded values (e.g. round(best - second, 3) < 0.05) before any real run."
+  },
+  "note": "the gates compare rates rounded to 3 decimals; at the pinned slice's denominators no gate can flip (listed above if any could). A different slice size needs this re-checked."
+ },
+ "cp16_assets": {
+  "status": "BLOCKED",
+  "exit": 3,
+  "searched_dirs": 1,
+  "pinned_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+  "by_status": {
+   "MISSING": [
+    "merges.txt",
+    "model.safetensors-00001-of-00002.safetensors",
+    "model.safetensors-00002-of-00002.safetensors",
+    "tokenizer.json",
+    "vocab.json"
+   ],
+   "PRESENT_OK": [
+    "chat_template.jinja",
+    "config.json",
+    "model.safetensors.index.json",
+    "tokenizer_config.json"
+   ]
+  },
+  "never_substituted": "no tokenizer or weights from another revision or model were used"
+ },
+ "cp17_packaging": {
+  "status": "BLOCKED",
+  "host_python_exit": 4,
+  "host_python": {
+   "verdict": "STALE_OR_INCOMPLETE: rebuild the image from requirements-train.txt; huggingface-hub absent != 2.4.0, peft absent != 0.21.2, safetensors absent != any version, tokenizers absent != 0.23.3, torch absent != 2.15.0, transformers absent != 5.21.1",
+   "transformers_knows_qwen3_5": null,
+   "packages": {
+    "torch": "None (pinned 2.15.0)",
+    "transformers": "None (pinned 5.21.1)",
+    "peft": "None (pinned 0.21.2)",
+    "tokenizers": "None (pinned 0.23.3)",
+    "huggingface-hub": "None (pinned 2.4.0)",
+    "safetensors": "None (pinned None)"
+   }
+  },
+  "local_image": {
+   "image": "flh-extractor-sft:smoke-cpu",
+   "image_id": "sha256:6f6b194284c7abc61f1bef23ba0cdde7376476bcfc74a35475e25d9a81d956b8",
+   "command": "docker run --rm --network none --read-only --entrypoint python3 -v tools/extraction:/code:ro -w /code flh-extractor-sft:smoke-cpu -B -m flh_extraction.packaging",
+   "exit": 4,
+   "report": {
+    "verdict": "STALE_OR_INCOMPLETE: rebuild the image from requirements-train.txt; huggingface-hub 0.36.2 != 2.4.0, tokenizers 0.22.2 != 0.23.3, transformers 4.57.6 != 5.21.1",
+    "transformers_knows_qwen3_5": false,
+    "packages": {
+     "torch": "2.15.0+cpu (pinned 2.15.0)",
+     "transformers": "4.57.6 (pinned 5.21.1)",
+     "peft": "0.21.2 (pinned 0.21.2)",
+     "tokenizers": "0.22.2 (pinned 0.23.3)",
+     "huggingface-hub": "0.36.2 (pinned 2.4.0)",
+     "safetensors": "0.8.0 (pinned None)"
+    }
+   },
+   "also_checked": {
+    "model_assets_in_image": "none (no tokenizer.json, merges.txt or *.safetensors anywhere in the image)",
+    "torch": "2.15.0+cpu, cuda False",
+    "unit_tests_in_image": "57/57 OK (network none, code read-only, TINY_SFT = first 40 records of the regenerated sft-train.jsonl)"
+   }
+  },
+  "missing_prerequisites": [
+   "GPU image built from requirements-train.txt (the local image is CPU-only and stale: transformers 4.57.6 cannot load qwen3_5; tokenizers and huggingface-hub are behind)",
+   "tokenizer.json, vocab.json, merges.txt at revision 851bf6e8 (token lengths and masking unmeasured)",
+   "both weight shards (9,319,737,856 bytes) at revision 851bf6e8",
+   "the image digest, execution role, bucket and adapter key (placeholders in values.example.json)",
+   "host Python has no torch/transformers/peft/tokenizers (expected: the stack lives in the image)"
+  ]
+ },
+ "cp18_render": {
+  "status": "PASS",
+  "jobs": {
+   "sft-smoke": {
+    "name": "flh-extractor-sft-smoke-20261112-051238",
+    "name_ok": true,
+    "max_runtime_s": 1800,
+    "bound_s": 1800,
+    "within_bound": true,
+    "instance": "1 x ml.g5.xlarge",
+    "network_isolation": true,
+    "image": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "role": "arn:aws:iam::000000000000:role/flh-extractor-exec",
+    "output": "s3://example-flh-extractor-private/extractor/output/"
+   },
+   "sft-experiment": {
+    "name": "flh-extractor-sft-experiment-20261112-051238",
+    "name_ok": true,
+    "max_runtime_s": 10800,
+    "bound_s": 10800,
+    "within_bound": true,
+    "instance": "1 x ml.g5.xlarge",
+    "network_isolation": true,
+    "image": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "role": "arn:aws:iam::000000000000:role/flh-extractor-exec",
+    "output": "s3://example-flh-extractor-private/extractor/output/"
+   },
+   "predict-base-a": {
+    "name": "flh-extractor-predict-base-a-20261112-051238",
+    "name_ok": true,
+    "max_runtime_s": 3600,
+    "bound_s": 3600,
+    "within_bound": true,
+    "instance": "1 x ml.g5.xlarge",
+    "network_isolation": true,
+    "image": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "role": "arn:aws:iam::000000000000:role/flh-extractor-exec",
+    "output": "s3://example-flh-extractor-private/extractor/output/"
+   },
+   "predict-base-b": {
+    "name": "flh-extractor-predict-base-b-20261112-051238",
+    "name_ok": true,
+    "max_runtime_s": 3600,
+    "bound_s": 3600,
+    "within_bound": true,
+    "instance": "1 x ml.g5.xlarge",
+    "network_isolation": true,
+    "image": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "role": "arn:aws:iam::000000000000:role/flh-extractor-exec",
+    "output": "s3://example-flh-extractor-private/extractor/output/"
+   },
+   "predict-eval-a": {
+    "name": "flh-extractor-predict-eval-a-20261112-051238",
+    "name_ok": true,
+    "max_runtime_s": 3600,
+    "bound_s": 3600,
+    "within_bound": true,
+    "instance": "1 x ml.g5.xlarge",
+    "network_isolation": true,
+    "image": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "role": "arn:aws:iam::000000000000:role/flh-extractor-exec",
+    "output": "s3://example-flh-extractor-private/extractor/output/"
+   },
+   "predict-eval-b": {
+    "name": "flh-extractor-predict-eval-b-20261112-051238",
+    "name_ok": true,
+    "max_runtime_s": 3600,
+    "bound_s": 3600,
+    "within_bound": true,
+    "instance": "1 x ml.g5.xlarge",
+    "network_isolation": true,
+    "image": "000000000000.dkr.ecr.us-east-1.amazonaws.com/flh-extractor-sft@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "role": "arn:aws:iam::000000000000:role/flh-extractor-exec",
+    "output": "s3://example-flh-extractor-private/extractor/output/"
+   }
+  },
+  "unique_names": true,
+  "account_ids_in_rendered_jobs": [
+   "000000000000"
+  ],
+  "secret_like_keys": [],
+  "key_like_values": [],
+  "environment_keys": {
+   "sft-smoke": [],
+   "sft-experiment": [],
+   "predict-base-a": [],
+   "predict-base-b": [],
+   "predict-eval-a": [],
+   "predict-eval-b": []
+  },
+  "renderer_refusals": {
+   "tag instead of digest": "refused: render: IMAGE_DIGEST must be sha256:<64 hex> (images are referenced by digest only)",
+   "missing role": "refused: render: missing value for ['EXEC_ROLE_ARN']",
+   "missing bucket": "refused: render: missing value for ['BUCKET']"
+  }
+ },
+ "cp19_cost": {
+  "status": "INFO",
+  "rate_usd_per_hour_assumed": 1.408,
+  "rate_source": "tools/extraction/TRAINING_RUNBOOK.md §10 (recorded earlier; not re-checked: no network)",
+  "max_runtime_s": {
+   "sft-smoke": 1800,
+   "predict-base-a": 3600,
+   "predict-base-b": 3600,
+   "sft-experiment": 10800,
+   "predict-eval-a": 3600,
+   "predict-eval-b": 3600
+  },
+  "worst_case_usd": {
+   "sft-smoke": 0.704,
+   "predict-base-a": 1.408,
+   "predict-base-b": 1.408,
+   "sft-experiment": 4.224,
+   "predict-eval-a": 1.408,
+   "predict-eval-b": 1.408
+  },
+  "worst_case_total_usd": 10.56,
+  "storage": "cents (weights 9,319,737,856 bytes + datasets); not priced here",
+  "paid_provider_baseline": {
+   "requests": 472,
+   "retries": 0,
+   "request_text_chars_total": 1146923,
+   "request_text_chars_max": 2648,
+   "pricing": "not estimated: the provider model is chosen at run time; the owner prices 472 requests of this size with that model's current rates"
+  }
+ }
+}

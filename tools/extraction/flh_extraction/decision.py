@@ -12,9 +12,15 @@ Verdicts (exit code):
   WINNER_FOR_OWNER_DECISION (0)  every run measured, every criterion decided,
                                   and exactly one eligible system leads on
                                   human unit F1 by at least WIN_MARGIN
-  PENDING (3)                     a run or a human judgment is missing: no winner
+  PENDING (3)                     a run or a human judgment is missing, or a
+                                  measured run is incomplete: no winner
   NO_WINNER (1)                   no eligible system, or the lead is too small
   REFUSED (1)                     the comparison itself was refused
+
+A measured run with missing or duplicated predictions (a shard that was not
+concatenated, a stopped job, ids changed on the way) counts as a run not
+fully performed: the verdict is PENDING and the report says so, instead of
+reading the absent rows as that system's abstention or validity failure.
 
 A system is eligible only when every exact gate passes. Weak abstention (on
 the frozen evaluation, the production-input probe or the challenge's abstain
@@ -35,6 +41,18 @@ ABSTAIN_GROUP_ACCURACY_MIN = 0.80
 HUMAN_EXAMPLES_MIN = 100
 WIN_MARGIN = 0.05
 REVIEW_MIN, REVIEW_REJECT_MAX = 25, 0.10
+INCOMPLETE_STATUSES = ("missing_prediction", "duplicate_prediction")
+
+
+def reviewed(r):
+    """A review row counts once it has a verdict; a row marked disputed
+    (review-sample-v1) counts only with accept / edit / reject and the position
+    the reviewer took, so a dispute is never resolved by default."""
+    if not r.get("verdict"):
+        return False
+    if (r.get("dispute") or {}).get("status") == "disputed":
+        return r["verdict"] in ("accept", "edit", "reject") and bool(((r.get("review") or {}).get("dispute_position") or "").strip())
+    return True
 
 
 def _g(name, basis, ok, evidence):
@@ -71,6 +89,14 @@ def decide(comparison, human=None, review=None, losses=None, run_manifest=None, 
         rep.update(verdict="REFUSED", reasons=list(comparison["refused"]))
         return rep
     missing = [s for s in SYSTEMS if comparison["systems"].get(s, {}).get("status") != "MEASURED"]
+    incomplete = {}
+    for s in SYSTEMS:
+        sr = comparison["systems"].get(s, {})
+        if sr.get("status") == "MEASURED":
+            sc = (sr.get("rows") or {}).get("status_counts") or {}
+            gap = {k: sc[k] for k in INCOMPLETE_STATUSES if sc.get(k)}
+            if gap:
+                incomplete[s] = gap
     for s in SYSTEMS:
         sr = comparison["systems"].get(s, {"status": "NOT_PERFORMED"})
         if sr.get("status") != "MEASURED":
@@ -86,6 +112,9 @@ def decide(comparison, human=None, review=None, losses=None, run_manifest=None, 
                                                                          or "consistency" in c["criterion"])]
         rep["systems"][s] = {"status": "MEASURED", "eligible": False if exact_fail else (None if hf is None else True),
                              "weak_abstention_or_cue_dependence": weak, "human_unit_f1": hf, "criteria": cs}
+        if s in incomplete:
+            # Absent rows are not this system's answers: no eligibility verdict, no abstention reading.
+            rep["systems"][s].update(eligible=None, incomplete_run=incomplete[s], weak_abstention_or_cue_dependence=[])
     tuned = rep["systems"]["qwen3.5-4b-tuned"]
     if tuned["status"] == "MEASURED":
         extra = []
@@ -108,12 +137,14 @@ def decide(comparison, human=None, review=None, losses=None, run_manifest=None, 
             tuned["eligible"] = False
         elif any(c["status"] == "PENDING" for c in extra) and tuned["eligible"]:
             tuned["eligible"] = None
-    done = [r for r in (review or []) if r.get("verdict")]
+    done = [r for r in (review or []) if reviewed(r)]
     rej = sum(r["verdict"] == "reject" for r in done)
     need = len(review or [])
     rev = _g(f"review packets: every item has a verdict (>= {REVIEW_MIN}), <= {REVIEW_REJECT_MAX:.0%} rejected", "human",
              None if not review or len(done) < max(REVIEW_MIN, need) else rej / len(done) <= REVIEW_REJECT_MAX,
-             {"items": need, "verdicts": len(done), "rejected": rej})
+             {"items": need, "verdicts": len(done), "rejected": rej,
+              "disputed_unresolved": sum(1 for r in (review or []) if (r.get("dispute") or {}).get("status") == "disputed"
+                                         and not reviewed(r))})
     rep["review"] = rev
     if missing:
         rep["verdict"] = "PENDING"
@@ -123,7 +154,13 @@ def decide(comparison, human=None, review=None, losses=None, run_manifest=None, 
     for s, v in rep["systems"].items():
         if v.get("weak_abstention_or_cue_dependence"):
             rep["reasons"].append(f"{s} ineligible: " + "; ".join(v["weak_abstention_or_cue_dependence"]))
+    for s, gap in incomplete.items():
+        rep["reasons"].append(f"incomplete run: {s} has " + ", ".join(f"{n} {k}" for k, n in gap.items())
+                              + " (a shard not concatenated, a stopped job or changed ids); fix or rerun before deciding")
     if missing:
+        return rep
+    if incomplete:
+        rep["verdict"] = "PENDING"
         return rep
     if rev["status"] == "PENDING" or undecided:
         rep["verdict"] = "PENDING"
@@ -153,7 +190,8 @@ def markdown(rep):
          f"Criteria: {rep['criteria_version']}. A winner is only proposed to the owner; nothing is routed to production.", ""]
     L += [f"- {r}" for r in rep["reasons"]] + [""]
     for s, v in rep["systems"].items():
-        L += [f"## {s}: {v['status']}" + ("" if v["status"] != "MEASURED" else f", eligible: {v['eligible']}"), ""]
+        L += [f"## {s}: {v['status']}" + ("" if v["status"] != "MEASURED" else f", eligible: {v['eligible']}")
+              + (f" — INCOMPLETE RUN `{json.dumps(v['incomplete_run'])}`" if v.get("incomplete_run") else ""), ""]
         if v["criteria"]:
             L += ["| Criterion | Basis | Status | Evidence |", "|---|---|---|---|"]
             L += [f"| {c['criterion']} | {c['basis']} | {c['status']} | `{json.dumps(c['evidence'], ensure_ascii=False)}` |"

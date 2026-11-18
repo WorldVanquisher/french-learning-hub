@@ -1,0 +1,408 @@
+{
+ "schema": "flh154_one_record_fixture_v1",
+ "status": "OFFLINE ONLY. Synthetic, machine-authored and unreviewed. Not a training, evaluation or comparison record: never part of the frozen evaluation, the review sample or the pinned comparison slice, and never a measure of a model.",
+ "record": {
+  "schema": "flh_extraction_candidate_v1",
+  "id": "p4-depuis",
+  "input": {
+   "entry_id": 0,
+   "original_input": "Ma correctrice a changé « J'habite à Lyon pendant trois ans » en « J'habite à Lyon depuis trois ans ». Pourquoi « depuis » ?",
+   "original_context": "Message à ma correspondante. J'habite toujours à Lyon.",
+   "effective_category": "grammar",
+   "effective_explanation": "« Depuis » with the present tense: the action began three years ago and is still going on.",
+   "resolution": "accepted"
+  },
+  "expected": {
+   "units": [
+    {
+     "kind": "grammar",
+     "canonical": "depuis + présent (action qui dure encore)",
+     "statement": "« Depuis » with the present tense describes an action that began in the past and is still going on: « j'habite à Lyon depuis trois ans ».",
+     "statement_zh": "« depuis » 与现在时连用，表示从过去开始、现在仍在继续的动作：« j'habite à Lyon depuis trois ans »。",
+     "example": "Elle apprend le français depuis septembre.",
+     "confidence": 0.9
+    }
+   ]
+  },
+  "meta": {
+   "authoring": "claude-code local authoring session 2026-11-17 (hand-written FLH-154 part-4 fixture; no provider call)",
+   "band": "A2",
+   "case_type": "single",
+   "confidence_policy": "authoring convention 0.9/0.75/0.6 (ANNOTATION_POLICY.md rule 14); not calibrated",
+   "family_id": "p4:depuis_present",
+   "generator": "flh154_one_record_fixture_v1",
+   "label_status": "machine_authored_unreviewed",
+   "origin": "synthetic",
+   "points": [
+    "p4.depuis_present"
+   ],
+   "rationale": "The learner asks why « depuis » replaces « pendant »; the objective is « depuis » + present for an action still going on.",
+   "review_status": "unreviewed",
+   "split_group": "eval",
+   "style": "one_record_fixture",
+   "topics": [
+    "duration"
+   ]
+  }
+ },
+ "follow_up": {
+  "schema": "flh_extraction_candidate_v1",
+  "id": "p4-depuis-thanks",
+  "input": {
+   "entry_id": 0,
+   "original_input": "Merci beaucoup pour ta réponse !",
+   "original_context": "Suite à ta correction de « J'habite à Lyon depuis trois ans ».",
+   "effective_category": "other",
+   "effective_explanation": "The learner thanks the tutor; no new question.",
+   "resolution": "accepted"
+  },
+  "expected": {
+   "units": []
+  },
+  "meta": {
+   "authoring": "claude-code local authoring session 2026-11-17 (hand-written FLH-154 part-4 fixture; no provider call)",
+   "band": "A2",
+   "case_type": "zero_thanks",
+   "confidence_policy": "authoring convention 0.9/0.75/0.6 (ANNOTATION_POLICY.md rule 14); not calibrated",
+   "family_id": "p4:depuis_present",
+   "generator": "flh154_one_record_fixture_v1",
+   "label_status": "machine_authored_unreviewed",
+   "origin": "synthetic",
+   "points": [
+    "p4.depuis_present"
+   ],
+   "rationale": "A thank-you (ANNOTATION_POLICY rule 3). The context only quotes the earlier record's sentence; this record raises no objective of its own.",
+   "review_status": "unreviewed",
+   "split_group": "eval",
+   "style": "one_record_fixture",
+   "topics": [
+    "duration"
+   ]
+  }
+ },
+ "follow_up_role": "The same learner's next message in the same thread. It is the zero-unit source of the legitimate abstention, and the wrong source that the wrong-source case links the record's unit to.",
+ "rule_based_analyses": {
+  "note": "extraction-render analyze (production default analyzer, offline) on the two inputs; recorded so the fixture builds without Go; part4_checks.py re-runs the analyzer and compares.",
+  "p4-depuis": {
+   "analyzer": "rule-based:v2:fr_l2_taxonomy_v1",
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  },
+  "p4-depuis-thanks": {
+   "analyzer": "rule-based:v2:fr_l2_taxonomy_v1",
+   "effective_category": "grammar",
+   "effective_explanation": "Local classification selected \"grammar\" because rule \"multi_token_fallback\" input is a multi-token phrase with no explicit cue (weak structural guess)."
+  }
+ },
+ "challenge": {
+  "note": "Paired cue variants (challenge.py rules): learner text, context and reference fixed; only the cues change. rb takes the recorded rule-based analysis with resolution unreviewed.",
+  "groups": [
+   {
+    "group_id": "p4-g-record",
+    "source": "record",
+    "intent": "extract",
+    "case_type": "challenge_extract",
+    "variants": {
+     "aligned": {
+      "effective_category": "grammar",
+      "effective_explanation": "« Depuis » with the present tense: the action began three years ago and is still going on.",
+      "resolution": "accepted"
+     },
+     "conflicting": {
+      "effective_category": "other",
+      "effective_explanation": "Imported question; no analysis summary was provided.",
+      "resolution": "accepted"
+     }
+    }
+   },
+   {
+    "group_id": "p4-g-follow-up",
+    "source": "follow_up",
+    "intent": "abstain",
+    "case_type": "challenge_abstain",
+    "variants": {
+     "aligned": {
+      "effective_category": "other",
+      "effective_explanation": "The learner thanks the tutor; no new question.",
+      "resolution": "accepted"
+     },
+     "conflicting": {
+      "effective_category": "grammar",
+      "effective_explanation": "« Depuis » with the present tense: the action began three years ago and is still going on.",
+      "resolution": "accepted"
+     }
+    }
+   }
+  ]
+ },
+ "cases": [
+  {
+   "case": "correct",
+   "system": "correct",
+   "source": "record",
+   "bad": false,
+   "output": {
+    "units": [
+     {
+      "kind": "grammar",
+      "canonical": "depuis + présent (action encore en cours)",
+      "statement": "Use « depuis » with the present tense for something that started in the past and is still true now: « j'habite à Lyon depuis trois ans ».",
+      "statement_zh": "« depuis » 加现在时，表示过去开始、现在仍然如此的情况：« j'habite à Lyon depuis trois ans »。",
+      "example": "Nous attendons le bus depuis dix minutes.",
+      "confidence": 0.9
+     }
+    ]
+   },
+   "reviewer": [
+    {
+     "source_raised": "yes",
+     "claim_true": "yes",
+     "zh_same": "yes"
+    }
+   ],
+   "why": "A paraphrase of the reference, linked to the record whose learner text asked about « depuis »."
+  },
+  {
+   "case": "wrong_source",
+   "system": "wrong_source",
+   "source": "follow_up",
+   "bad": true,
+   "output": {
+    "units": [
+     {
+      "kind": "grammar",
+      "canonical": "depuis + présent (action encore en cours)",
+      "statement": "Use « depuis » with the present tense for something that started in the past and is still true now: « j'habite à Lyon depuis trois ans ».",
+      "statement_zh": "« depuis » 加现在时，表示过去开始、现在仍然如此的情况：« j'habite à Lyon depuis trois ans »。",
+      "example": "Nous attendons le bus depuis dix minutes.",
+      "confidence": 0.9
+     }
+    ]
+   },
+   "reviewer": [
+    {
+     "source_raised": "no",
+     "claim_true": "yes",
+     "zh_same": "yes"
+    }
+   ],
+   "why": "The same plausible, true unit linked to the follow-up thank-you. The follow-up raised nothing; the wording comes from the earlier record its context quotes. In production it would add support from an entry that never asked."
+  },
+  {
+   "case": "unsupported_claim",
+   "system": "unsupported_claim",
+   "source": "record",
+   "bad": true,
+   "output": {
+    "units": [
+     {
+      "kind": "grammar",
+      "canonical": "depuis + présent (action qui dure encore)",
+      "statement": "After « depuis » only the present tense is possible; a past tense with « depuis » is always wrong: « j'habite à Lyon depuis trois ans ».",
+      "statement_zh": "« depuis » 后面只能用现在时，与 « depuis » 连用的过去时一律是错误的：« j'habite à Lyon depuis trois ans »。",
+      "example": "Elle apprend le français depuis septembre.",
+      "confidence": 0.9
+     }
+    ]
+   },
+   "reviewer": [
+    {
+     "source_raised": "yes",
+     "claim_true": "no",
+     "zh_same": "yes"
+    }
+   ],
+   "why": "Right objective, but the statement claims what neither the source nor standard French supports: past tenses do occur with « depuis » (« Je ne l'ai pas vu depuis trois ans », « J'habitais là depuis un an quand… »). FALSE_CLAIM; the Chinese repeats the same claim."
+  },
+  {
+   "case": "bilingual_drift",
+   "system": "bilingual_drift",
+   "source": "record",
+   "bad": true,
+   "output": {
+    "units": [
+     {
+      "kind": "grammar",
+      "canonical": "depuis + présent (action encore en cours)",
+      "statement": "Use « depuis » with the present tense for something that started in the past and is still true now: « j'habite à Lyon depuis trois ans ».",
+      "statement_zh": "« depuis » 加现在时，表示动作在过去已经结束、现在不再继续：« j'habite à Lyon depuis trois ans »。",
+      "example": "Nous attendons le bus depuis dix minutes.",
+      "confidence": 0.9
+     }
+    ]
+   },
+   "reviewer": [
+    {
+     "source_raised": "yes",
+     "claim_true": "yes",
+     "zh_same": "no"
+    }
+   ],
+   "why": "The English is correct; the Chinese says the action ended in the past and no longer continues, the opposite. Every quoted French form is kept, so string checks see nothing."
+  },
+  {
+   "case": "legitimate_abstention",
+   "system": "correct",
+   "source": "follow_up",
+   "bad": false,
+   "output": {
+    "units": []
+   },
+   "reviewer": [],
+   "why": "Zero units on a thank-you (rule 3), although the analyzer's cue says grammar and the context quotes a French sentence."
+  },
+  {
+   "case": "control_abstain_on_question",
+   "system": "abstain_everywhere",
+   "source": "record",
+   "bad": true,
+   "control": true,
+   "output": {
+    "units": []
+   },
+   "reviewer": [],
+   "why": "Control, not one of the five cases: the same empty answer on the record that asked a question is over-abstention."
+  }
+ ],
+ "systems": {
+  "note": "Each synthetic system answers every row derived from the record (frozen, rb, three cue variants) with one case and every row derived from the follow-up with another.",
+  "correct": {
+   "record": "correct",
+   "follow_up": "legitimate_abstention"
+  },
+  "wrong_source": {
+   "record": "correct",
+   "follow_up": "wrong_source"
+  },
+  "unsupported_claim": {
+   "record": "unsupported_claim",
+   "follow_up": "legitimate_abstention"
+  },
+  "bilingual_drift": {
+   "record": "bilingual_drift",
+   "follow_up": "legitimate_abstention"
+  },
+  "abstain_everywhere": {
+   "record": "control_abstain_on_question",
+   "follow_up": "legitimate_abstention"
+  }
+ },
+ "assumed_human_evidence": {
+  "label": "ASSUMED, SYNTHETIC. Aggregate human numbers as if a 150-unit sample of each system had been judged on a full run and the sample had not surfaced the fixture's failure (0 false, unsupported or mismatched units). They exist only to show what the per-unit reviewer evidence adds; no human produced them.",
+  "experimental": {
+   "correct": {
+    "unit_f1": 0.8,
+    "judged_examples": 120,
+    "judged_objectives": 45,
+    "false_claims": {
+     "judged_units": 150,
+     "false": 0
+    },
+    "unsupported_units": {
+     "judged_units": 150,
+     "unsupported": 0
+    },
+    "bilingual_mismatch": {
+     "judged_units": 150,
+     "mismatched": 0
+    }
+   },
+   "wrong_source": {
+    "unit_f1": 0.84,
+    "judged_examples": 120,
+    "judged_objectives": 45,
+    "false_claims": {
+     "judged_units": 150,
+     "false": 0
+    },
+    "unsupported_units": {
+     "judged_units": 150,
+     "unsupported": 0
+    },
+    "bilingual_mismatch": {
+     "judged_units": 150,
+     "mismatched": 0
+    }
+   },
+   "unsupported_claim": {
+    "unit_f1": 0.9,
+    "judged_examples": 120,
+    "judged_objectives": 45,
+    "false_claims": {
+     "judged_units": 150,
+     "false": 0
+    },
+    "unsupported_units": {
+     "judged_units": 150,
+     "unsupported": 0
+    },
+    "bilingual_mismatch": {
+     "judged_units": 150,
+     "mismatched": 0
+    }
+   },
+   "bilingual_drift": {
+    "unit_f1": 0.82,
+    "judged_examples": 120,
+    "judged_objectives": 45,
+    "false_claims": {
+     "judged_units": 150,
+     "false": 0
+    },
+    "unsupported_units": {
+     "judged_units": 150,
+     "unsupported": 0
+    },
+    "bilingual_mismatch": {
+     "judged_units": 150,
+     "mismatched": 0
+    }
+   },
+   "abstain_everywhere": {
+    "unavailable": {
+     "reason": "no units to judge"
+    }
+   }
+  },
+  "decision": {
+   "correct": {
+    "unit_f1": 0.8,
+    "judged_examples": 120,
+    "unsupported_or_false_claim_rate": 0.0
+   },
+   "wrong_source": {
+    "unit_f1": 0.84,
+    "judged_examples": 120,
+    "unsupported_or_false_claim_rate": 0.0
+   },
+   "unsupported_claim": {
+    "unit_f1": 0.9,
+    "judged_examples": 120,
+    "unsupported_or_false_claim_rate": 0.0
+   },
+   "bilingual_drift": {
+    "unit_f1": 0.82,
+    "judged_examples": 120,
+    "unsupported_or_false_claim_rate": 0.0
+   },
+   "abstain_everywhere": {
+    "unit_f1": 0.0,
+    "judged_examples": 120,
+    "unsupported_or_false_claim_rate": 0.0
+   }
+  }
+ },
+ "cli_scenarios": {
+  "note": "decision-report and the compare CLI know three system slots only; each scenario fills them with fixture systems.",
+  "A": {
+   "current_extractor": "correct",
+   "qwen3.5-4b-untuned": "unsupported_claim",
+   "qwen3.5-4b-tuned": "bilingual_drift"
+  },
+  "B": {
+   "current_extractor": "wrong_source",
+   "qwen3.5-4b-untuned": "abstain_everywhere",
+   "qwen3.5-4b-tuned": "correct"
+  }
+ }
+}

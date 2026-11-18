@@ -1,0 +1,231 @@
+{
+ "schema": "flh154_one_record_fixture_expected_v1",
+ "note": "Hand-written expectations: the outcome each case and scenario is designed to produce in each report (FLH-154 part 4). `one-record-fixture --check` compares them with actual.json; any difference exits 1.",
+ "expect": {
+  "cases": {
+   "correct": {
+    "evaluate (heuristic)": "accept",
+    "quality exact (abstention, unit count)": "accept",
+    "quality heuristic (matcher, grounding, bilingual)": "accept",
+    "paired consistency (exact, its cue group)": "accept",
+    "decision.gates (exact, its system)": "accept",
+    "experimental report without reviewer evidence (its system, E1)": "eligible",
+    "experimental report with reviewer evidence (its system, E5)": "eligible"
+   },
+   "wrong_source": {
+    "evaluate (heuristic)": "reject",
+    "quality exact (abstention, unit count)": "reject",
+    "quality heuristic (matcher, grounding, bilingual)": "reject",
+    "paired consistency (exact, its cue group)": "reject",
+    "decision.gates (exact, its system)": "reject",
+    "experimental report without reviewer evidence (its system, E1)": "excluded",
+    "experimental report with reviewer evidence (its system, E5)": "excluded"
+   },
+   "unsupported_claim": {
+    "evaluate (heuristic)": "accept",
+    "quality exact (abstention, unit count)": "accept",
+    "quality heuristic (matcher, grounding, bilingual)": "accept",
+    "paired consistency (exact, its cue group)": "accept",
+    "decision.gates (exact, its system)": "accept",
+    "experimental report without reviewer evidence (its system, E1)": "eligible",
+    "experimental report with reviewer evidence (its system, E5)": "excluded"
+   },
+   "bilingual_drift": {
+    "evaluate (heuristic)": "accept",
+    "quality exact (abstention, unit count)": "accept",
+    "quality heuristic (matcher, grounding, bilingual)": "accept",
+    "paired consistency (exact, its cue group)": "accept",
+    "decision.gates (exact, its system)": "accept",
+    "experimental report without reviewer evidence (its system, E1)": "eligible",
+    "experimental report with reviewer evidence (its system, E5)": "excluded"
+   },
+   "legitimate_abstention": {
+    "evaluate (heuristic)": "accept",
+    "quality exact (abstention, unit count)": "accept",
+    "quality heuristic (matcher, grounding, bilingual)": "accept",
+    "paired consistency (exact, its cue group)": "accept",
+    "decision.gates (exact, its system)": "accept",
+    "experimental report without reviewer evidence (its system, E1)": "eligible",
+    "experimental report with reviewer evidence (its system, E5)": "eligible"
+   },
+   "control_abstain_on_question": {
+    "evaluate (heuristic)": "reject",
+    "quality exact (abstention, unit count)": "reject",
+    "quality heuristic (matcher, grounding, bilingual)": "reject",
+    "paired consistency (exact, its cue group)": "reject",
+    "decision.gates (exact, its system)": "reject",
+    "experimental report without reviewer evidence (its system, E1)": "excluded",
+    "experimental report with reviewer evidence (its system, E5)": "excluded"
+   }
+  },
+  "experimental_scenarios": {
+   "E0 no human evidence, no reviewer queue": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": null,
+     "wrong_source": false,
+     "unsupported_claim": null,
+     "bilingual_drift": null,
+     "abstain_everywhere": false
+    }
+   },
+   "E1 assumed aggregates, no reviewer queue": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": null,
+     "wrong_source": false,
+     "unsupported_claim": null,
+     "bilingual_drift": null,
+     "abstain_everywhere": false
+    }
+   },
+   "E2 assumed aggregates, queue, no evidence file": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": null,
+     "wrong_source": false,
+     "unsupported_claim": null,
+     "bilingual_drift": null,
+     "abstain_everywhere": false
+    }
+   },
+   "E3 assumed aggregates, queue, blank template": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": null,
+     "wrong_source": false,
+     "unsupported_claim": null,
+     "bilingual_drift": null,
+     "abstain_everywhere": false
+    }
+   },
+   "E4 assumed aggregates, only the correct system reviewed": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": true,
+     "wrong_source": false,
+     "unsupported_claim": null,
+     "bilingual_drift": null,
+     "abstain_everywhere": false
+    }
+   },
+   "E5 assumed aggregates, every unit reviewed": {
+    "verdict": "EXPERIMENTAL_PREFERENCE",
+    "preference": "correct",
+    "production_go": false,
+    "eligible": {
+     "correct": true,
+     "wrong_source": false,
+     "unsupported_claim": false,
+     "bilingual_drift": false,
+     "abstain_everywhere": false
+    }
+   },
+   "E6 every unit reviewed, one review bound to another output (stale hash)": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": null,
+     "wrong_source": false,
+     "unsupported_claim": false,
+     "bilingual_drift": false,
+     "abstain_everywhere": false
+    }
+   },
+   "E7 every unit reviewed, the reviewer fails the correct system's unit": {
+    "verdict": "NO_PREFERENCE",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": false,
+     "wrong_source": false,
+     "unsupported_claim": false,
+     "bilingual_drift": false,
+     "abstain_everywhere": false
+    }
+   },
+   "E8 one explicit failure (bilingual_drift), everything else blank": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": null,
+     "wrong_source": false,
+     "unsupported_claim": null,
+     "bilingual_drift": false,
+     "abstain_everywhere": false
+    }
+   },
+   "E9 every unit reviewed, one unit reviewed twice": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": null,
+     "wrong_source": false,
+     "unsupported_claim": false,
+     "bilingual_drift": false,
+     "abstain_everywhere": false
+    }
+   },
+   "E10 every unit reviewed, queue built for another comparison": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": null,
+     "wrong_source": false,
+     "unsupported_claim": null,
+     "bilingual_drift": null,
+     "abstain_everywhere": false
+    }
+   },
+   "E11 every unit reviewed, failed reference review (6 of 30 rejected)": {
+    "verdict": "BLOCKED",
+    "preference": null,
+    "production_go": false,
+    "eligible": {
+     "correct": true,
+     "wrong_source": false,
+     "unsupported_claim": false,
+     "bilingual_drift": false,
+     "abstain_everywhere": false
+    }
+   },
+   "E12 an answer that is not yes, no or blank": {
+    "refused": true
+   }
+  },
+  "decision_scenarios": {
+   "A": {
+    "verdict": "WINNER_FOR_OWNER_DECISION",
+    "winner_system": "unsupported_claim",
+    "eligible": {
+     "correct": true,
+     "unsupported_claim": true,
+     "bilingual_drift": true
+    }
+   },
+   "B": {
+    "verdict": "WINNER_FOR_OWNER_DECISION",
+    "winner_system": "correct",
+    "eligible": {
+     "wrong_source": false,
+     "abstain_everywhere": false,
+     "correct": true
+    }
+   }
+  }
+ }
+}

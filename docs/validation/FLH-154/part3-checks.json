@@ -1,0 +1,1493 @@
+{
+ "schema": "flh154_part3_checks_v1",
+ "offline_only": true,
+ "synthetic_only": true,
+ "real_runs_performed": 0,
+ "p41_g5_trace": {
+  "status": "DONE",
+  "input": "parsing fixture (fixture-untuned.jsonl), frozen part (200 rows)",
+  "rows_by_category": {
+   "reference empty / non-scorable output": 3,
+   "reference empty / valid output": 17,
+   "reference has units / non-scorable output": 25,
+   "reference has units / valid output": 155
+  },
+  "false_matches_valid_rows": 0,
+  "unmatched_predicted_units_valid_rows": 0,
+  "unmatched_reference_units_valid_rows": 0,
+  "reference_units_of_non_scorable_rows": 28,
+  "quality": {
+   "unit_f1": 1.0,
+   "recall": 1.0,
+   "precision": 1.0,
+   "examples_in_f1": 172,
+   "unit_refs_answered_empty": 0,
+   "abstention_rate": 0.85
+  },
+  "evaluate": {
+   "unit_f1": 0.927,
+   "recall": 0.863,
+   "precision": 1.0,
+   "examples_in_f1": 200,
+   "unit_refs_answered_empty": 25,
+   "abstention_rate": 0.85
+  },
+  "reports_disagree_on": [
+   "unit_f1",
+   "recall",
+   "unit_refs_answered_empty"
+  ],
+  "disagreeing_rows": [
+   {
+    "id": "ext-evl-0007",
+    "status": "unparseable:truncated_at_max_new_tokens",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0014",
+    "status": "unparseable:leading_text",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0021",
+    "status": "unparseable:trailing_text",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0028",
+    "status": "unparseable:code_fence",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0035",
+    "status": "unparseable:think_block",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0042",
+    "status": "valid_extra_keys",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0049",
+    "status": "invalid_output",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0056",
+    "status": "invalid_output",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0063",
+    "status": "missing_prediction",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0070",
+    "status": "duplicate_prediction",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0077",
+    "status": "unparseable:truncated_at_max_new_tokens",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0084",
+    "status": "unparseable:leading_text",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0091",
+    "status": "unparseable:trailing_text",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0098",
+    "status": "unparseable:code_fence",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0105",
+    "status": "unparseable:think_block",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0112",
+    "status": "valid_extra_keys",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0119",
+    "status": "invalid_output",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0126",
+    "status": "invalid_output",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0133",
+    "status": "missing_prediction",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0140",
+    "status": "duplicate_prediction",
+    "reference_units": 2,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0147",
+    "status": "unparseable:truncated_at_max_new_tokens",
+    "reference_units": 2,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0154",
+    "status": "unparseable:leading_text",
+    "reference_units": 2,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0182",
+    "status": "valid_extra_keys",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0189",
+    "status": "invalid_output",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   },
+   {
+    "id": "ext-evl-0196",
+    "status": "invalid_output",
+    "reference_units": 1,
+    "evaluate": "reference units counted as missed; row counted as 'answered empty'",
+    "quality": "row left out of unit F1 and of 'answered empty'"
+   }
+  ],
+  "arithmetic": "quality: matched / reference units over valid rows = 177 / 177; evaluate adds the 28 reference units of the 25 non-scorable unit rows: 177 / 205 = 0.863 recall, F1 2·1·0.863 / 1.863 = 0.927"
+ },
+ "p42_categories": {
+  "status": "DONE",
+  "parsing_fixture": {
+   "rows_by_category": {
+    "reference empty / non-scorable output": 3,
+    "reference empty / valid output": 17,
+    "reference has units / non-scorable output": 25,
+    "reference has units / valid output": 155
+   },
+   "reports_disagree_on": [
+    "unit_f1",
+    "recall",
+    "unit_refs_answered_empty"
+   ]
+  },
+  "synthetic_systems": {
+   "oracle": {
+    "rows_by_category": {
+     "reference empty / valid output": 20,
+     "reference has units / valid output": 180
+    },
+    "false_matches_valid_rows": 0,
+    "unmatched_predicted_units_valid_rows": 0,
+    "unmatched_reference_units_valid_rows": 0,
+    "reference_units_of_non_scorable_rows": 0,
+    "quality": {
+     "unit_f1": 1.0,
+     "recall": 1.0,
+     "precision": 1.0,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "evaluate": {
+     "unit_f1": 1.0,
+     "recall": 1.0,
+     "precision": 1.0,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "reports_disagree_on": []
+   },
+   "over_abstain": {
+    "rows_by_category": {
+     "reference empty / valid output": 20,
+     "reference has units / valid output": 180
+    },
+    "false_matches_valid_rows": 0,
+    "unmatched_predicted_units_valid_rows": 0,
+    "unmatched_reference_units_valid_rows": 205,
+    "reference_units_of_non_scorable_rows": 0,
+    "quality": {
+     "unit_f1": null,
+     "recall": 0.0,
+     "precision": null,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 180,
+     "abstention_rate": 1.0
+    },
+    "evaluate": {
+     "unit_f1": null,
+     "recall": 0.0,
+     "precision": null,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 180,
+     "abstention_rate": 1.0
+    },
+    "reports_disagree_on": []
+   },
+   "unsupported_swap": {
+    "rows_by_category": {
+     "reference empty / valid output": 20,
+     "reference has units / valid output": 180
+    },
+    "false_matches_valid_rows": 0,
+    "unmatched_predicted_units_valid_rows": 155,
+    "unmatched_reference_units_valid_rows": 155,
+    "reference_units_of_non_scorable_rows": 0,
+    "quality": {
+     "unit_f1": 0.244,
+     "recall": 0.244,
+     "precision": 0.244,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "evaluate": {
+     "unit_f1": 0.244,
+     "recall": 0.244,
+     "precision": 0.244,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "reports_disagree_on": []
+   },
+   "over_split": {
+    "rows_by_category": {
+     "reference empty / valid output": 20,
+     "reference has units / valid output": 180
+    },
+    "false_matches_valid_rows": 0,
+    "unmatched_predicted_units_valid_rows": 180,
+    "unmatched_reference_units_valid_rows": 0,
+    "reference_units_of_non_scorable_rows": 0,
+    "quality": {
+     "unit_f1": 0.695,
+     "recall": 1.0,
+     "precision": 0.532,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "evaluate": {
+     "unit_f1": 0.695,
+     "recall": 1.0,
+     "precision": 0.532,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "reports_disagree_on": []
+   },
+   "merge": {
+    "rows_by_category": {
+     "reference empty / valid output": 20,
+     "reference has units / valid output": 180
+    },
+    "false_matches_valid_rows": 0,
+    "unmatched_predicted_units_valid_rows": 0,
+    "unmatched_reference_units_valid_rows": 25,
+    "reference_units_of_non_scorable_rows": 0,
+    "quality": {
+     "unit_f1": 0.935,
+     "recall": 0.878,
+     "precision": 1.0,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "evaluate": {
+     "unit_f1": 0.935,
+     "recall": 0.878,
+     "precision": 1.0,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "reports_disagree_on": []
+   },
+   "duplicate": {
+    "rows_by_category": {
+     "reference empty / valid output": 20,
+     "reference has units / valid output": 180
+    },
+    "false_matches_valid_rows": 0,
+    "unmatched_predicted_units_valid_rows": 180,
+    "unmatched_reference_units_valid_rows": 0,
+    "reference_units_of_non_scorable_rows": 0,
+    "quality": {
+     "unit_f1": 0.695,
+     "recall": 1.0,
+     "precision": 0.532,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "evaluate": {
+     "unit_f1": 0.695,
+     "recall": 1.0,
+     "precision": 0.532,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "reports_disagree_on": []
+   },
+   "hallucinate_on_zero": {
+    "rows_by_category": {
+     "reference empty / valid output": 20,
+     "reference has units / valid output": 180
+    },
+    "false_matches_valid_rows": 0,
+    "unmatched_predicted_units_valid_rows": 20,
+    "unmatched_reference_units_valid_rows": 0,
+    "reference_units_of_non_scorable_rows": 0,
+    "quality": {
+     "unit_f1": 0.953,
+     "recall": 1.0,
+     "precision": 0.911,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 0.0
+    },
+    "evaluate": {
+     "unit_f1": 0.953,
+     "recall": 1.0,
+     "precision": 0.911,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 0.0
+    },
+    "reports_disagree_on": []
+   },
+   "struct_truncated": {
+    "rows_by_category": {
+     "reference empty / non-scorable output": 20,
+     "reference has units / non-scorable output": 180
+    },
+    "false_matches_valid_rows": 0,
+    "unmatched_predicted_units_valid_rows": 0,
+    "unmatched_reference_units_valid_rows": 0,
+    "reference_units_of_non_scorable_rows": 205,
+    "quality": {
+     "unit_f1": null,
+     "recall": null,
+     "precision": null,
+     "examples_in_f1": 0,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 0.0
+    },
+    "evaluate": {
+     "unit_f1": null,
+     "recall": 0.0,
+     "precision": null,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 180,
+     "abstention_rate": 0.0
+    },
+    "reports_disagree_on": [
+     "recall",
+     "unit_refs_answered_empty"
+    ]
+   },
+   "unsupported_extra": {
+    "rows_by_category": {
+     "reference empty / valid output": 20,
+     "reference has units / valid output": 180
+    },
+    "false_matches_valid_rows": 0,
+    "unmatched_predicted_units_valid_rows": 180,
+    "unmatched_reference_units_valid_rows": 0,
+    "reference_units_of_non_scorable_rows": 0,
+    "quality": {
+     "unit_f1": 0.695,
+     "recall": 1.0,
+     "precision": 0.532,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "evaluate": {
+     "unit_f1": 0.695,
+     "recall": 1.0,
+     "precision": 0.532,
+     "examples_in_f1": 200,
+     "unit_refs_answered_empty": 0,
+     "abstention_rate": 1.0
+    },
+    "reports_disagree_on": []
+   }
+  },
+  "reading": "False matches, unmatched predicted units and unmatched reference units on valid rows are counted identically by both reports (one matcher, evaluate.judge_example). Rows whose reference is empty never cause G5: both count an invalid answer against abstention and neither counts it in F1. G5 comes only from non-scorable rows on unit references: evaluate counts their reference units as missed and the rows as answered empty."
+ },
+ "p43_minimal_fixture": {
+  "status": "DONE",
+  "smallest": {
+   "answered_empty": {
+    "rows": 1,
+    "case": [
+     "unit reference + invalid"
+    ],
+    "quality": 0,
+    "evaluate": 1
+   },
+   "unit_f1": {
+    "rows": 2,
+    "case": [
+     "unit reference + valid_same",
+     "unit reference + invalid"
+    ],
+    "quality": 1.0,
+    "evaluate": 0.667
+   }
+  },
+  "files": [
+   "FLH-154/fixtures/g5-minimal-refs.jsonl",
+   "FLH-154/fixtures/g5-minimal-results.jsonl"
+  ],
+  "search": "every multiset of 1 and 2 rows over {zero, unit reference} x {valid same, valid empty, valid with an extra unit, invalid}: one invalid unit row already splits 'answered empty' (0 vs 1); unit F1 needs two rows (one matched, one invalid), because with no valid unit both are null",
+  "regression": "tests/test_reporting.py CrossReportDenominators (expected failure until D1)"
+ },
+ "p45_g6": {
+  "status": "DONE",
+  "systems": {
+   "oracle": {
+    "gates_failed": [],
+    "frozen_heuristic": {
+     "unit_f1": 1.0,
+     "unsupported_units": 0,
+     "not_anchored_units": 1,
+     "bilingual_flagged_units": 0,
+     "over_split+merged+duplicate": 0,
+     "exact_unit_count_rate": 1.0
+    },
+    "unit_count_over_examples": 0
+   },
+   "unsupported_swap": {
+    "gates_failed": [],
+    "frozen_heuristic": {
+     "unit_f1": 0.244,
+     "unsupported_units": 154,
+     "not_anchored_units": 140,
+     "bilingual_flagged_units": 0,
+     "over_split+merged+duplicate": 1,
+     "exact_unit_count_rate": 1.0
+    },
+    "unit_count_over_examples": 0
+   },
+   "unsupported_extra": {
+    "gates_failed": [],
+    "frozen_heuristic": {
+     "unit_f1": 0.695,
+     "unsupported_units": 177,
+     "not_anchored_units": 161,
+     "bilingual_flagged_units": 0,
+     "over_split+merged+duplicate": 3,
+     "exact_unit_count_rate": 0.1
+    },
+    "unit_count_over_examples": 180
+   },
+   "bilingual_drift": {
+    "gates_failed": [],
+    "frozen_heuristic": {
+     "unit_f1": 1.0,
+     "unsupported_units": 0,
+     "not_anchored_units": 1,
+     "bilingual_flagged_units": 205,
+     "over_split+merged+duplicate": 0,
+     "exact_unit_count_rate": 1.0
+    },
+    "unit_count_over_examples": 0
+   },
+   "false_claim": {
+    "gates_failed": [],
+    "frozen_heuristic": {
+     "unit_f1": 1.0,
+     "unsupported_units": 0,
+     "not_anchored_units": 1,
+     "bilingual_flagged_units": 0,
+     "over_split+merged+duplicate": 0,
+     "exact_unit_count_rate": 1.0
+    },
+    "unit_count_over_examples": 0
+   }
+  },
+  "definitions": {
+   "unsupported_swap": "each single-unit reference answered with an unrelated objective (controls.py)",
+   "unsupported_extra": "each unit reference keeps its units and gains one unrelated unit",
+   "bilingual_drift": "every statement_zh replaced by a vague sentence (controls.py)",
+   "false_claim": "every statement turned into a false claim, canonical kept (controls.py)"
+  }
+ },
+ "p46_missing_evidence": {
+  "status": "DONE",
+  "by_system": {
+   "unsupported_swap": {
+    "passes_every_exact_gate": true,
+    "automatic_signals_that_moved (not gating)": {
+     "unit_f1": [
+      1.0,
+      0.244
+     ],
+     "unsupported_units": [
+      0,
+      154
+     ],
+     "not_anchored_units": [
+      1,
+      140
+     ],
+     "over_split+merged+duplicate": [
+      0,
+      1
+     ]
+    },
+    "unit_count_over_examples (exact, not gating)": 0,
+    "human_evidence_that_would_catch_it": [
+     "unsupported_units",
+     "unit_f1"
+    ]
+   },
+   "unsupported_extra": {
+    "passes_every_exact_gate": true,
+    "automatic_signals_that_moved (not gating)": {
+     "unit_f1": [
+      1.0,
+      0.695
+     ],
+     "unsupported_units": [
+      0,
+      177
+     ],
+     "not_anchored_units": [
+      1,
+      161
+     ],
+     "over_split+merged+duplicate": [
+      0,
+      3
+     ],
+     "exact_unit_count_rate": [
+      1.0,
+      0.1
+     ]
+    },
+    "unit_count_over_examples (exact, not gating)": 180,
+    "human_evidence_that_would_catch_it": [
+     "unsupported_units"
+    ]
+   },
+   "bilingual_drift": {
+    "passes_every_exact_gate": true,
+    "automatic_signals_that_moved (not gating)": {
+     "bilingual_flagged_units": [
+      0,
+      205
+     ]
+    },
+    "unit_count_over_examples (exact, not gating)": 0,
+    "human_evidence_that_would_catch_it": [
+     "bilingual_mismatch"
+    ]
+   },
+   "false_claim": {
+    "passes_every_exact_gate": true,
+    "automatic_signals_that_moved (not gating)": {},
+    "unit_count_over_examples (exact, not gating)": 0,
+    "human_evidence_that_would_catch_it": [
+     "false_claims"
+    ]
+   }
+  },
+  "reading": "Each bad system passes the exact gates because they only test structure, abstention and cue consistency. What it lacks is human evidence on content: whether a unit was raised by the learner (unsupported_units), whether its claim is true (false_claims), whether the Chinese says the same (bilingual_mismatch). The heuristics move for three of the four but do not gate; false_claim moves nothing automatic at all."
+ },
+ "p57_controls_through_draft": {
+  "status": "PASS",
+  "scenarios": {
+   "no human evidence": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "systems": {
+     "oracle": {
+      "eligible": null,
+      "excluded_by_exact_gates": [],
+      "excluded_by_human_evidence": [],
+      "reviewer": "PENDING",
+      "excluded_by_reviewer_evidence": 0
+     },
+     "constant_empty": {
+      "eligible": false,
+      "excluded_by_exact_gates": [
+       "over-abstention on frozen <= 0.1",
+       "over-abstention on rb probe <= 0.1"
+      ],
+      "excluded_by_human_evidence": [],
+      "reviewer": "PENDING",
+      "excluded_by_reviewer_evidence": 0
+     },
+     "unrelated_output": {
+      "eligible": null,
+      "excluded_by_exact_gates": [],
+      "excluded_by_human_evidence": [],
+      "reviewer": "PENDING",
+      "excluded_by_reviewer_evidence": 0
+     }
+    },
+    "reasons": [
+     "constant_empty excluded (exact, needs no human): over-abstention on frozen <= 0.1; over-abstention on rb probe <= 0.1",
+     "undecided: oracle, unrelated_output"
+    ]
+   },
+   "assumed human evidence (synthetic), no reviewer evidence (report v1)": {
+    "verdict": "PENDING",
+    "preference": null,
+    "production_go": false,
+    "systems": {
+     "oracle": {
+      "eligible": null,
+      "excluded_by_exact_gates": [],
+      "excluded_by_human_evidence": [],
+      "reviewer": "PENDING",
+      "excluded_by_reviewer_evidence": 0
+     },
+     "constant_empty": {
+      "eligible": false,
+      "excluded_by_exact_gates": [
+       "over-abstention on frozen <= 0.1",
+       "over-abstention on rb probe <= 0.1"
+      ],
+      "excluded_by_human_evidence": [],
+      "reviewer": "PENDING",
+      "excluded_by_reviewer_evidence": 0
+     },
+     "unrelated_output": {
+      "eligible": false,
+      "excluded_by_exact_gates": [],
+      "excluded_by_human_evidence": [
+       "human unsupported-unit rate <= 0.05"
+      ],
+      "reviewer": "PENDING",
+      "excluded_by_reviewer_evidence": 0
+     }
+    },
+    "reasons": [
+     "constant_empty excluded (exact, needs no human): over-abstention on frozen <= 0.1; over-abstention on rb probe <= 0.1",
+     "unrelated_output excluded (human evidence): human unsupported-unit rate <= 0.05",
+     "human review unavailable for constant_empty: no verdict is invented",
+     "undecided: oracle"
+    ]
+   },
+   "assumed human evidence (synthetic)": {
+    "verdict": "EXPERIMENTAL_PREFERENCE",
+    "preference": "oracle",
+    "production_go": false,
+    "systems": {
+     "oracle": {
+      "eligible": true,
+      "excluded_by_exact_gates": [],
+      "excluded_by_human_evidence": [],
+      "reviewer": "PASS",
+      "excluded_by_reviewer_evidence": 0
+     },
+     "constant_empty": {
+      "eligible": false,
+      "excluded_by_exact_gates": [
+       "over-abstention on frozen <= 0.1",
+       "over-abstention on rb probe <= 0.1"
+      ],
+      "excluded_by_human_evidence": [],
+      "reviewer": "PASS",
+      "excluded_by_reviewer_evidence": 0
+     },
+     "unrelated_output": {
+      "eligible": false,
+      "excluded_by_exact_gates": [],
+      "excluded_by_human_evidence": [
+       "human unsupported-unit rate <= 0.05"
+      ],
+      "reviewer": "FAIL",
+      "excluded_by_reviewer_evidence": 27
+     }
+    },
+    "reasons": [
+     "constant_empty excluded (exact, needs no human): over-abstention on frozen <= 0.1; over-abstention on rb probe <= 0.1",
+     "unrelated_output excluded (human evidence): human unsupported-unit rate <= 0.05",
+     "unrelated_output excluded (explicit reviewer failure): ext-evl-0012#0: source_raised; ext-evl-0014#0: source_raised; ext-evl-0020#0: source_raised; ext-evl-0040#0: source_raised; ext-evl-0043#0: source_raised; ext-evl-0051#0: source_raised; ext-evl-0068#0: source_raised; ext-evl-0070#0: source_raised; ext-evl-0073#0: source_raised; ext-evl-0077#0: source_raised; ext-evl-0085#0: source_raised; ext-evl-0088#0: source_raised; ext-evl-0091#0: source_raised; ext-evl-0095#0: source_raised; ext-evl-0100#0: source_raised; ext-evl-0105#0: source_raised; ext-evl-0106#0: source_raised; ext-evl-0118#0: source_raised; ext-evl-0124#0: source_raised; ext-evl-0131#0: source_raised; ext-evl-0135#0: source_raised; ext-evl-0137#0: source_raised; ext-evl-0137#1: source_raised; ext-evl-0185#0: source_raised; ext-evl-0191#0: source_raised; ext-evl-0046#rb#0: source_raised; ext-evl-0128#rb#0: source_raised",
+     "human review unavailable for constant_empty: no verdict is invented",
+     "oracle is the experimental preference (not a production GO)"
+    ]
+   },
+   "assumed human evidence, failed reference review (16 of 79 rejected)": {
+    "verdict": "BLOCKED",
+    "preference": null,
+    "production_go": false,
+    "systems": {
+     "oracle": {
+      "eligible": true,
+      "excluded_by_exact_gates": [],
+      "excluded_by_human_evidence": [],
+      "reviewer": "PASS",
+      "excluded_by_reviewer_evidence": 0
+     },
+     "constant_empty": {
+      "eligible": false,
+      "excluded_by_exact_gates": [
+       "over-abstention on frozen <= 0.1",
+       "over-abstention on rb probe <= 0.1"
+      ],
+      "excluded_by_human_evidence": [],
+      "reviewer": "PASS",
+      "excluded_by_reviewer_evidence": 0
+     },
+     "unrelated_output": {
+      "eligible": false,
+      "excluded_by_exact_gates": [],
+      "excluded_by_human_evidence": [
+       "human unsupported-unit rate <= 0.05"
+      ],
+      "reviewer": "FAIL",
+      "excluded_by_reviewer_evidence": 27
+     }
+    },
+    "reasons": [
+     "reference review failed: too many references rejected; no recommendation until they are fixed",
+     "constant_empty excluded (exact, needs no human): over-abstention on frozen <= 0.1; over-abstention on rb probe <= 0.1",
+     "unrelated_output excluded (human evidence): human unsupported-unit rate <= 0.05",
+     "unrelated_output excluded (explicit reviewer failure): ext-evl-0012#0: source_raised; ext-evl-0014#0: source_raised; ext-evl-0020#0: source_raised; ext-evl-0040#0: source_raised; ext-evl-0043#0: source_raised; ext-evl-0051#0: source_raised; ext-evl-0068#0: source_raised; ext-evl-0070#0: source_raised; ext-evl-0073#0: source_raised; ext-evl-0077#0: source_raised; ext-evl-0085#0: source_raised; ext-evl-0088#0: source_raised; ext-evl-0091#0: source_raised; ext-evl-0095#0: source_raised; ext-evl-0100#0: source_raised; ext-evl-0105#0: source_raised; ext-evl-0106#0: source_raised; ext-evl-0118#0: source_raised; ext-evl-0124#0: source_raised; ext-evl-0131#0: source_raised; ext-evl-0135#0: source_raised; ext-evl-0137#0: source_raised; ext-evl-0137#1: source_raised; ext-evl-0185#0: source_raised; ext-evl-0191#0: source_raised; ext-evl-0046#rb#0: source_raised; ext-evl-0128#rb#0: source_raised"
+    ]
+   }
+  },
+  "exact_gates_identical_to_decision_py": true,
+  "note": "assumed human evidence is synthetic and labelled so; with it the unrelated output is excluded on unsupported units although it passes every exact gate. Part 4 (report v1): the same scenario without per-unit reviewer evidence is PENDING; with synthetic reviewer evidence over the review-sample ids the unrelated output is also excluded on source_raised",
+  "reviewer_scope_units": {
+   "constant_empty": 0,
+   "oracle": 27,
+   "unrelated_output": 27
+  }
+ },
+ "p52_g7_exact": {
+  "status": "DONE",
+  "method": "exact binomial tails with rational arithmetic (fractions.Fraction); exact (Clopper-Pearson) one-sided 95% lower bounds by bisection on the exact tail",
+  "options": {
+   "A point >= 0.90 (current abstention and consistency gates)": {
+    "9": {
+     "size_meaning": "abstain groups in challenge_test",
+     "needs": "9 of 9",
+     "pass_probability": {
+      "0.75": 0.0751,
+      "0.80": 0.1342,
+      "0.85": 0.2316,
+      "0.90": 0.3874,
+      "0.95": 0.6302,
+      "0.99": 0.9135
+     },
+     "false_pass_at_0.85": 0.2316,
+     "false_pass_at_0.80": 0.1342,
+     "false_fail_at_0.95": 0.3698
+    },
+    "20": {
+     "size_meaning": "zero-unit references per part (frozen, rb)",
+     "needs": "18 of 20",
+     "pass_probability": {
+      "0.75": 0.0913,
+      "0.80": 0.2061,
+      "0.85": 0.4049,
+      "0.90": 0.6769,
+      "0.95": 0.9245,
+      "0.99": 0.999
+     },
+     "false_pass_at_0.85": 0.4049,
+     "false_pass_at_0.80": 0.2061,
+     "false_fail_at_0.95": 0.0755
+    },
+    "24": {
+     "size_meaning": "challenge_test groups",
+     "needs": "22 of 24",
+     "pass_probability": {
+      "0.75": 0.0398,
+      "0.80": 0.1145,
+      "0.85": 0.2798,
+      "0.90": 0.5643,
+      "0.95": 0.8841,
+      "0.99": 0.9983
+     },
+     "false_pass_at_0.85": 0.2798,
+     "false_pass_at_0.80": 0.1145,
+     "false_fail_at_0.95": 0.1159
+    },
+    "40": {
+     "size_meaning": "frozen + rb pooled (NOT independent: same learner texts)",
+     "needs": "36 of 40",
+     "pass_probability": {
+      "0.75": 0.016,
+      "0.80": 0.0759,
+      "0.85": 0.2633,
+      "0.90": 0.629,
+      "0.95": 0.952,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.2633,
+     "false_pass_at_0.80": 0.0759,
+     "false_fail_at_0.95": 0.048
+    },
+    "60": {
+     "size_meaning": "hypothetical new held-out set",
+     "needs": "54 of 60",
+     "pass_probability": {
+      "0.75": 0.0031,
+      "0.80": 0.0308,
+      "0.85": 0.1848,
+      "0.90": 0.6065,
+      "0.95": 0.9703,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.1848,
+     "false_pass_at_0.80": 0.0308,
+     "false_fail_at_0.95": 0.0297
+    },
+    "100": {
+     "size_meaning": "hypothetical",
+     "needs": "90 of 100",
+     "pass_probability": {
+      "0.75": 0.0001,
+      "0.80": 0.0057,
+      "0.85": 0.0994,
+      "0.90": 0.5832,
+      "0.95": 0.9885,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.0994,
+     "false_pass_at_0.80": 0.0057,
+     "false_fail_at_0.95": 0.0115
+    },
+    "200": {
+     "size_meaning": "hypothetical",
+     "needs": "180 of 200",
+     "pass_probability": {
+      "0.75": 0.0,
+      "0.80": 0.0001,
+      "0.85": 0.0255,
+      "0.90": 0.5592,
+      "0.95": 0.9988,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.0255,
+     "false_pass_at_0.80": 0.0001,
+     "false_fail_at_0.95": 0.0012
+    }
+   },
+   "A2 point >= 0.80 (current abstain-group accuracy gate)": {
+    "9": {
+     "size_meaning": "abstain groups in challenge_test",
+     "needs": "8 of 9",
+     "pass_probability": {
+      "0.75": 0.3003,
+      "0.80": 0.4362,
+      "0.85": 0.5995,
+      "0.90": 0.7748,
+      "0.95": 0.9288,
+      "0.99": 0.9966
+     },
+     "false_pass_at_0.85": 0.5995,
+     "false_pass_at_0.80": 0.4362,
+     "false_fail_at_0.95": 0.0712
+    },
+    "20": {
+     "size_meaning": "zero-unit references per part (frozen, rb)",
+     "needs": "16 of 20",
+     "pass_probability": {
+      "0.75": 0.4148,
+      "0.80": 0.6296,
+      "0.85": 0.8298,
+      "0.90": 0.9568,
+      "0.95": 0.9974,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.8298,
+     "false_pass_at_0.80": 0.6296,
+     "false_fail_at_0.95": 0.0026
+    },
+    "24": {
+     "size_meaning": "challenge_test groups",
+     "needs": "20 of 24",
+     "pass_probability": {
+      "0.75": 0.2466,
+      "0.80": 0.4599,
+      "0.85": 0.7134,
+      "0.90": 0.9149,
+      "0.95": 0.994,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.7134,
+     "false_pass_at_0.80": 0.4599,
+     "false_fail_at_0.95": 0.006
+    },
+    "40": {
+     "size_meaning": "frozen + rb pooled (NOT independent: same learner texts)",
+     "needs": "32 of 40",
+     "pass_probability": {
+      "0.75": 0.2998,
+      "0.80": 0.5931,
+      "0.85": 0.8646,
+      "0.90": 0.9845,
+      "0.95": 0.9999,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.8646,
+     "false_pass_at_0.80": 0.5931,
+     "false_fail_at_0.95": 0.0001
+    },
+    "60": {
+     "size_meaning": "hypothetical new held-out set",
+     "needs": "48 of 60",
+     "pass_probability": {
+      "0.75": 0.2316,
+      "0.80": 0.5764,
+      "0.85": 0.8938,
+      "0.90": 0.9943,
+      "0.95": 1.0,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.8938,
+     "false_pass_at_0.80": 0.5764,
+     "false_fail_at_0.95": 0.0
+    },
+    "100": {
+     "size_meaning": "hypothetical",
+     "needs": "80 of 100",
+     "pass_probability": {
+      "0.75": 0.1488,
+      "0.80": 0.5595,
+      "0.85": 0.9337,
+      "0.90": 0.9992,
+      "0.95": 1.0,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.9337,
+     "false_pass_at_0.80": 0.5595,
+     "false_fail_at_0.95": 0.0
+    },
+    "200": {
+     "size_meaning": "hypothetical",
+     "needs": "160 of 200",
+     "pass_probability": {
+      "0.75": 0.0578,
+      "0.80": 0.5422,
+      "0.85": 0.978,
+      "0.90": 1.0,
+      "0.95": 1.0,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.978,
+     "false_pass_at_0.80": 0.5422,
+     "false_fail_at_0.95": 0.0
+    }
+   },
+   "B point >= 0.95": {
+    "9": {
+     "size_meaning": "abstain groups in challenge_test",
+     "needs": "9 of 9",
+     "pass_probability": {
+      "0.75": 0.0751,
+      "0.80": 0.1342,
+      "0.85": 0.2316,
+      "0.90": 0.3874,
+      "0.95": 0.6302,
+      "0.99": 0.9135
+     },
+     "false_pass_at_0.85": 0.2316,
+     "false_pass_at_0.80": 0.1342,
+     "false_fail_at_0.95": 0.3698
+    },
+    "20": {
+     "size_meaning": "zero-unit references per part (frozen, rb)",
+     "needs": "19 of 20",
+     "pass_probability": {
+      "0.75": 0.0243,
+      "0.80": 0.0692,
+      "0.85": 0.1756,
+      "0.90": 0.3917,
+      "0.95": 0.7358,
+      "0.99": 0.9831
+     },
+     "false_pass_at_0.85": 0.1756,
+     "false_pass_at_0.80": 0.0692,
+     "false_fail_at_0.95": 0.2642
+    },
+    "24": {
+     "size_meaning": "challenge_test groups",
+     "needs": "23 of 24",
+     "pass_probability": {
+      "0.75": 0.009,
+      "0.80": 0.0331,
+      "0.85": 0.1059,
+      "0.90": 0.2925,
+      "0.95": 0.6608,
+      "0.99": 0.9761
+     },
+     "false_pass_at_0.85": 0.1059,
+     "false_pass_at_0.80": 0.0331,
+     "false_fail_at_0.95": 0.3392
+    },
+    "40": {
+     "size_meaning": "frozen + rb pooled (NOT independent: same learner texts)",
+     "needs": "38 of 40",
+     "pass_probability": {
+      "0.75": 0.001,
+      "0.80": 0.0079,
+      "0.85": 0.0486,
+      "0.90": 0.2228,
+      "0.95": 0.6767,
+      "0.99": 0.9925
+     },
+     "false_pass_at_0.85": 0.0486,
+     "false_pass_at_0.80": 0.0079,
+     "false_fail_at_0.95": 0.3233
+    },
+    "60": {
+     "size_meaning": "hypothetical new held-out set",
+     "needs": "57 of 60",
+     "pass_probability": {
+      "0.75": 0.0,
+      "0.80": 0.001,
+      "0.85": 0.0148,
+      "0.90": 0.1374,
+      "0.95": 0.6473,
+      "0.99": 0.9969
+     },
+     "false_pass_at_0.85": 0.0148,
+     "false_pass_at_0.80": 0.001,
+     "false_fail_at_0.95": 0.3527
+    },
+    "100": {
+     "size_meaning": "hypothetical",
+     "needs": "95 of 100",
+     "pass_probability": {
+      "0.75": 0.0,
+      "0.80": 0.0,
+      "0.85": 0.0016,
+      "0.90": 0.0576,
+      "0.95": 0.616,
+      "0.99": 0.9995
+     },
+     "false_pass_at_0.85": 0.0016,
+     "false_pass_at_0.80": 0.0,
+     "false_fail_at_0.95": 0.384
+    },
+    "200": {
+     "size_meaning": "hypothetical",
+     "needs": "190 of 200",
+     "pass_probability": {
+      "0.75": 0.0,
+      "0.80": 0.0,
+      "0.85": 0.0,
+      "0.90": 0.0081,
+      "0.95": 0.5831,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.0,
+     "false_pass_at_0.80": 0.0,
+     "false_fail_at_0.95": 0.4169
+    }
+   },
+   "C exact 95% lower bound >= 0.80": {
+    "9": {
+     "size_meaning": "abstain groups in challenge_test",
+     "needs": null,
+     "pass_probability": null,
+     "note": "cannot pass at this size"
+    },
+    "20": {
+     "size_meaning": "zero-unit references per part (frozen, rb)",
+     "needs": "20 of 20",
+     "pass_probability": {
+      "0.75": 0.0032,
+      "0.80": 0.0115,
+      "0.85": 0.0388,
+      "0.90": 0.1216,
+      "0.95": 0.3585,
+      "0.99": 0.8179
+     },
+     "false_pass_at_0.85": 0.0388,
+     "false_pass_at_0.80": 0.0115,
+     "false_fail_at_0.95": 0.6415
+    },
+    "24": {
+     "size_meaning": "challenge_test groups",
+     "needs": "23 of 24",
+     "pass_probability": {
+      "0.75": 0.009,
+      "0.80": 0.0331,
+      "0.85": 0.1059,
+      "0.90": 0.2925,
+      "0.95": 0.6608,
+      "0.99": 0.9761
+     },
+     "false_pass_at_0.85": 0.1059,
+     "false_pass_at_0.80": 0.0331,
+     "false_fail_at_0.95": 0.3392
+    },
+    "40": {
+     "size_meaning": "frozen + rb pooled (NOT independent: same learner texts)",
+     "needs": "37 of 40",
+     "pass_probability": {
+      "0.75": 0.0047,
+      "0.80": 0.0285,
+      "0.85": 0.1302,
+      "0.90": 0.4231,
+      "0.95": 0.8619,
+      "0.99": 0.9993
+     },
+     "false_pass_at_0.85": 0.1302,
+     "false_pass_at_0.80": 0.0285,
+     "false_fail_at_0.95": 0.1381
+    },
+    "60": {
+     "size_meaning": "hypothetical new held-out set",
+     "needs": "54 of 60",
+     "pass_probability": {
+      "0.75": 0.0031,
+      "0.80": 0.0308,
+      "0.85": 0.1848,
+      "0.90": 0.6065,
+      "0.95": 0.9703,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.1848,
+     "false_pass_at_0.80": 0.0308,
+     "false_fail_at_0.95": 0.0297
+    },
+    "100": {
+     "size_meaning": "hypothetical",
+     "needs": "87 of 100",
+     "pass_probability": {
+      "0.75": 0.0025,
+      "0.80": 0.0469,
+      "0.85": 0.3474,
+      "0.90": 0.8761,
+      "0.95": 0.9995,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.3474,
+     "false_pass_at_0.80": 0.0469,
+     "false_fail_at_0.95": 0.0005
+    },
+    "200": {
+     "size_meaning": "hypothetical",
+     "needs": "170 of 200",
+     "pass_probability": {
+      "0.75": 0.0004,
+      "0.80": 0.043,
+      "0.85": 0.5485,
+      "0.90": 0.9905,
+      "0.95": 1.0,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.5485,
+     "false_pass_at_0.80": 0.043,
+     "false_fail_at_0.95": 0.0
+    }
+   },
+   "D exact 95% lower bound >= 0.85": {
+    "9": {
+     "size_meaning": "abstain groups in challenge_test",
+     "needs": null,
+     "pass_probability": null,
+     "note": "cannot pass at this size"
+    },
+    "20": {
+     "size_meaning": "zero-unit references per part (frozen, rb)",
+     "needs": "20 of 20",
+     "pass_probability": {
+      "0.75": 0.0032,
+      "0.80": 0.0115,
+      "0.85": 0.0388,
+      "0.90": 0.1216,
+      "0.95": 0.3585,
+      "0.99": 0.8179
+     },
+     "false_pass_at_0.85": 0.0388,
+     "false_pass_at_0.80": 0.0115,
+     "false_fail_at_0.95": 0.6415
+    },
+    "24": {
+     "size_meaning": "challenge_test groups",
+     "needs": "24 of 24",
+     "pass_probability": {
+      "0.75": 0.001,
+      "0.80": 0.0047,
+      "0.85": 0.0202,
+      "0.90": 0.0798,
+      "0.95": 0.292,
+      "0.99": 0.7857
+     },
+     "false_pass_at_0.85": 0.0202,
+     "false_pass_at_0.80": 0.0047,
+     "false_fail_at_0.95": 0.708
+    },
+    "40": {
+     "size_meaning": "frozen + rb pooled (NOT independent: same learner texts)",
+     "needs": "38 of 40",
+     "pass_probability": {
+      "0.75": 0.001,
+      "0.80": 0.0079,
+      "0.85": 0.0486,
+      "0.90": 0.2228,
+      "0.95": 0.6767,
+      "0.99": 0.9925
+     },
+     "false_pass_at_0.85": 0.0486,
+     "false_pass_at_0.80": 0.0079,
+     "false_fail_at_0.95": 0.3233
+    },
+    "60": {
+     "size_meaning": "hypothetical new held-out set",
+     "needs": "56 of 60",
+     "pass_probability": {
+      "0.75": 0.0002,
+      "0.80": 0.0039,
+      "0.85": 0.0424,
+      "0.90": 0.271,
+      "0.95": 0.8197,
+      "0.99": 0.9997
+     },
+     "false_pass_at_0.85": 0.0424,
+     "false_pass_at_0.80": 0.0039,
+     "false_fail_at_0.95": 0.1803
+    },
+    "100": {
+     "size_meaning": "hypothetical",
+     "needs": "92 of 100",
+     "pass_probability": {
+      "0.75": 0.0,
+      "0.80": 0.0009,
+      "0.85": 0.0275,
+      "0.90": 0.3209,
+      "0.95": 0.9369,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.0275,
+     "false_pass_at_0.80": 0.0009,
+     "false_fail_at_0.95": 0.0631
+    },
+    "200": {
+     "size_meaning": "hypothetical",
+     "needs": "179 of 200",
+     "pass_probability": {
+      "0.75": 0.0,
+      "0.80": 0.0002,
+      "0.85": 0.0415,
+      "0.90": 0.6484,
+      "0.95": 0.9995,
+      "0.99": 1.0
+     },
+     "false_pass_at_0.85": 0.0415,
+     "false_pass_at_0.80": 0.0002,
+     "false_fail_at_0.95": 0.0005
+    }
+   }
+  },
+  "current_rule_on_both_frozen_and_rb_if_independent": {
+   "0.75": 0.0083,
+   "0.80": 0.0425,
+   "0.85": 0.1639,
+   "0.90": 0.4582,
+   "0.95": 0.8547,
+   "0.99": 0.998
+  }
+ },
+ "p53_assumptions": {
+  "status": "DONE",
+  "assumptions": [
+   "each row is an independent trial with one true rate (real rates vary by case type, so the spread is wider)",
+   "frozen and rb are the same 20 learner texts under two cue sets: they are not independent, so pooling them is not n = 40",
+   "the references are correct (they are machine-authored and unreviewed)",
+   "sizes above 24 need a new held-out set: the frozen evaluation and its digests stay as they are; a larger set is a new slice with its own matrix, never a re-pin of v1"
+  ],
+  "false_pass": "probability that a system whose true rate is 0.85 (or 0.80) passes",
+  "false_fail": "probability that one at 0.95 fails"
+ },
+ "p54_56_sheet": {
+  "status": "PASS",
+  "sample_fixed": true,
+  "sheet_equals_regenerated": true,
+  "open_disputes_labelled": {
+   "COUNTED": 0,
+   "OPEN DISPUTE": 0,
+   "NO VERDICT": 35
+  },
+  "scenarios": {
+   "blank sheet": {
+    "labels": {
+     "COUNTED": 0,
+     "OPEN DISPUTE": 0,
+     "NO VERDICT": 35
+    },
+    "decision_report": "PENDING",
+    "decision_review": "PENDING",
+    "experimental_review": "PENDING",
+    "agreement_unresolved_disputes": 8
+   },
+   "every item accepted, disputes without a position": {
+    "labels": {
+     "COUNTED": 27,
+     "OPEN DISPUTE": 8,
+     "NO VERDICT": 0
+    },
+    "decision_report": "PENDING",
+    "decision_review": "PENDING",
+    "experimental_review": "PENDING",
+    "agreement_unresolved_disputes": 8
+   },
+   "every item quarantined": {
+    "labels": {
+     "COUNTED": 27,
+     "OPEN DISPUTE": 8,
+     "NO VERDICT": 0
+    },
+    "decision_report": "PENDING",
+    "decision_review": "PENDING",
+    "experimental_review": "PENDING",
+    "agreement_unresolved_disputes": 8
+   },
+   "first item left blank": {
+    "labels": {
+     "COUNTED": 34,
+     "OPEN DISPUTE": 0,
+     "NO VERDICT": 1
+    },
+    "decision_report": "PENDING",
+    "decision_review": "PENDING",
+    "experimental_review": "PENDING",
+    "agreement_unresolved_disputes": 0
+   },
+   "every item accepted with positions": {
+    "labels": {
+     "COUNTED": 35,
+     "OPEN DISPUTE": 0,
+     "NO VERDICT": 0
+    },
+    "decision_report": "WINNER_FOR_OWNER_DECISION",
+    "decision_review": "PASS",
+    "experimental_review": "PASS",
+    "agreement_unresolved_disputes": 0
+   }
+  },
+  "refusals": {
+   "a fixed column edited": "refused: line 2: fixed column canonical was changed",
+   "a verdict with a blank answer": "refused: line 2: item ext-evl-0020 has verdict 'accept' but unanswered questions (a verdict is never imported with a guessed answ"
+  },
+  "silently_accepted": [],
+  "privacy_findings": {},
+  "privacy_files_scanned": [
+   "docs/validation/FLH-154-part3-memo.md",
+   "docs/validation/FLH-154/fixtures/g5-minimal-refs.jsonl",
+   "docs/validation/FLH-154/fixtures/g5-minimal-results.jsonl",
+   "docs/validation/FLH-154/part3-checks.json",
+   "docs/validation/FLH-154/part3-checks.md",
+   "docs/validation/FLH-154/part3_checks.py",
+   "docs/validation/FLH-154/repin-consequences.json",
+   "docs/validation/FLH-154/repin-proposal.patch",
+   "tools/extraction/review/REVIEW_SHEET_V1.csv",
+   "tools/extraction/review/REVIEW_SHEET_V1.md"
+  ]
+ },
+ "p58_unchanged": {
+  "status": "PASS",
+  "scoring_version": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd",
+  "scoring_version_equals_matrix_pin": true,
+  "matrix_sha256": "b3f66edaf76b0886a82a76a0bcafef5a472e406d4f0d811b01eda3ba182e7a66",
+  "experiment_manifest_sha256": "27a14f8b81fa6b1ffdb45479ada5ceed87c501f3d0a96483b27c5ffa0ac4a57a",
+  "file_sha256": {
+   "tools/extraction/flh_extraction/audit.py": "a02d2a788572d5ded2f3bbaae19ed42105972bd03ee35230cc30d39d1ea50cd0",
+   "tools/extraction/flh_extraction/challenge.py": "e5f6dbb0eee80274bef153099a236e9f64086327f7c8a1b74fa5b0a56beed643",
+   "tools/extraction/flh_extraction/comparison.py": "17c72b2a21e3e929ceccaf51b46897bfe9deaa34df134f376386ab1c10a219e7",
+   "tools/extraction/flh_extraction/controls.py": "bba23521900562fe14670f8c9196ccf2c86287dfbb5cc5df4db22d479a488196",
+   "tools/extraction/flh_extraction/evaluate.py": "b85c8e28e00a720b23e0ebd1061e43dac050cda09fcd6d68348ab6fce9792907",
+   "tools/extraction/flh_extraction/matrix.py": "49abb57bdbef72dfa992c6ea90e9c8fa6414a8a18f71f7e908e40af9c631ef2c",
+   "tools/extraction/flh_extraction/paired.py": "ff0003f4804aa54f913bb4b86f6be0f84fc1a2b10bd96fa2cb1aaa0aae95a48d",
+   "tools/extraction/flh_extraction/quality.py": "9ee1cb42f859f62c593a0157bc6c9f00661c960949cc697de6ecd0eb73aee51d",
+   "tools/extraction/flh_extraction/textnorm.py": "c0b4b209b437293de074b623a8fb2dce66bdbeb21a40f35bf1782dea73bd2cdf",
+   "tools/extraction/flh_extraction/decision.py": "2a744d02776b3b29fd5b34ee0ea901e81e3e5efa71c06dc647568125833e7d8f",
+   "tools/extraction/review/review-sample-v1.jsonl": "d49ff19e76b057858ce8debc88ed254727824d05ce79ca559e69be7fa239d1b7",
+   "tools/extraction/review/REVIEW_SAMPLE_V1.md": "f2b7bc3e08d1e32ccaceb42be3be910cb4231234f4ca1d5941f15a59160a7715",
+   "tools/extraction/review/review-sample-v1-selection.json": "9e59953c390e635bb46119303ac531c32246b0db069084f55aa9a27e34170d21",
+   "deploy/aws/sagemaker-extractor/readiness/comparison-matrix.json": "cc59732ba134a3c010debf07f64aa6b8ea9cfaa9d5992c0eae465b7ad76fea75",
+   "deploy/aws/sagemaker-extractor/readiness/experiment-manifest.json": "752117345c29c5e81e585f236d7bba5adb1e1f4a706fe2f2940ca06933be0951",
+   "deploy/aws/sagemaker-extractor/readiness/input-manifest.json": "34f52bef5f2dbd1138cdb9f92570012c47bf66973289a7d0c1b6414ea32437c3",
+   "deploy/aws/sagemaker-extractor/readiness/output-manifest.json": "58a014c0fddc6335e323eac71ca3f9a5a1cbd55d776468deccdebe0473716d0a",
+   "deploy/aws/sagemaker-extractor/readiness/readiness-checks.json": "52c019f7a5c0e169a85940e017c9921aba203923ba7b1bb468513987101da65e",
+   "deploy/aws/sagemaker-extractor/readiness/values.example.json": "bda42d55bba2a14ff7342d9e3589bff30ed8a7d6b9a56e6a744bbe0d5f3c0083"
+  },
+  "pipeline_vs_before": {
+   "identical": 77,
+   "changed": [],
+   "added": [
+    "evidence/review-sheet-v1.csv"
+   ]
+  },
+  "reading": "The draft report reads decision.gates and decision.reviewed and changes neither; the scoring modules, decision.py, the reviewer sample and every readiness digest are those of the sealed part-2 handoff (compared there by file hash)."
+ }
+}

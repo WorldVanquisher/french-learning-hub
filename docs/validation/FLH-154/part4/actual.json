@@ -1,0 +1,989 @@
+{
+ "cases": {
+  "bilingual_drift": {
+   "bad": true,
+   "decision.gates (exact, its system)": {
+    "failed": [],
+    "result": "accept"
+   },
+   "evaluate (heuristic)": {
+    "errors": {},
+    "result": "accept",
+    "unit_f1": 1.0
+   },
+   "experimental report with reviewer evidence (its system, E5)": {
+    "excluded_by_reviewer_evidence": [
+     "p4-depuis#0: zh_same",
+     "p4-depuis#rb#0: zh_same",
+     "p4-g-record-aligned#0: zh_same",
+     "p4-g-record-conflicting#0: zh_same",
+     "p4-g-record-rb#0: zh_same"
+    ],
+    "result": "excluded"
+   },
+   "experimental report without reviewer evidence (its system, E1)": {
+    "result": "eligible"
+   },
+   "paired consistency (exact, its cue group)": {
+    "decision_consistent": 1,
+    "paired_correct": 1,
+    "result": "accept"
+   },
+   "quality exact (abstention, unit count)": {
+    "correct_empty": "0/0",
+    "exact_unit_count_rate": 1.0,
+    "false_extraction_on_zero_refs": 0,
+    "result": "accept",
+    "unit_refs_answered_empty": 0
+   },
+   "quality heuristic (matcher, grounding, bilingual)": {
+    "anchored_in_learner_text": 5,
+    "bilingual_flagged_units": 0,
+    "matcher_errors": {},
+    "not_anchored": 0,
+    "result": "accept"
+   },
+   "rows": 5,
+   "source": "record",
+   "system": "bilingual_drift",
+   "why": "The English is correct; the Chinese says the action ended in the past and no longer continues, the opposite. Every quoted French form is kept, so string checks see nothing."
+  },
+  "control_abstain_on_question": {
+   "bad": true,
+   "decision.gates (exact, its system)": {
+    "failed": [
+     "over-abstention on frozen <= 0.1",
+     "over-abstention on rb probe <= 0.1"
+    ],
+    "result": "reject"
+   },
+   "evaluate (heuristic)": {
+    "errors": {
+     "MISSED": 5
+    },
+    "result": "reject",
+    "unit_f1": null
+   },
+   "experimental report with reviewer evidence (its system, E5)": {
+    "excluded_by_reviewer_evidence": [],
+    "result": "excluded"
+   },
+   "experimental report without reviewer evidence (its system, E1)": {
+    "result": "excluded"
+   },
+   "paired consistency (exact, its cue group)": {
+    "decision_consistent": 1,
+    "paired_correct": 0,
+    "result": "reject"
+   },
+   "quality exact (abstention, unit count)": {
+    "correct_empty": "0/0",
+    "exact_unit_count_rate": 0.0,
+    "false_extraction_on_zero_refs": 0,
+    "result": "reject",
+    "unit_refs_answered_empty": 5
+   },
+   "quality heuristic (matcher, grounding, bilingual)": {
+    "anchored_in_learner_text": 0,
+    "bilingual_flagged_units": 0,
+    "matcher_errors": {
+     "MISSED": 5
+    },
+    "not_anchored": 0,
+    "result": "reject"
+   },
+   "rows": 5,
+   "source": "record",
+   "system": "abstain_everywhere",
+   "why": "Control, not one of the five cases: the same empty answer on the record that asked a question is over-abstention."
+  },
+  "correct": {
+   "bad": false,
+   "decision.gates (exact, its system)": {
+    "failed": [],
+    "result": "accept"
+   },
+   "evaluate (heuristic)": {
+    "errors": {},
+    "result": "accept",
+    "unit_f1": 1.0
+   },
+   "experimental report with reviewer evidence (its system, E5)": {
+    "excluded_by_reviewer_evidence": [],
+    "result": "eligible"
+   },
+   "experimental report without reviewer evidence (its system, E1)": {
+    "result": "eligible"
+   },
+   "paired consistency (exact, its cue group)": {
+    "decision_consistent": 1,
+    "paired_correct": 1,
+    "result": "accept"
+   },
+   "quality exact (abstention, unit count)": {
+    "correct_empty": "0/0",
+    "exact_unit_count_rate": 1.0,
+    "false_extraction_on_zero_refs": 0,
+    "result": "accept",
+    "unit_refs_answered_empty": 0
+   },
+   "quality heuristic (matcher, grounding, bilingual)": {
+    "anchored_in_learner_text": 5,
+    "bilingual_flagged_units": 0,
+    "matcher_errors": {},
+    "not_anchored": 0,
+    "result": "accept"
+   },
+   "rows": 5,
+   "source": "record",
+   "system": "correct",
+   "why": "A paraphrase of the reference, linked to the record whose learner text asked about « depuis »."
+  },
+  "legitimate_abstention": {
+   "bad": false,
+   "decision.gates (exact, its system)": {
+    "failed": [],
+    "result": "accept"
+   },
+   "evaluate (heuristic)": {
+    "errors": {},
+    "result": "accept",
+    "unit_f1": null
+   },
+   "experimental report with reviewer evidence (its system, E5)": {
+    "excluded_by_reviewer_evidence": [],
+    "result": "eligible"
+   },
+   "experimental report without reviewer evidence (its system, E1)": {
+    "result": "eligible"
+   },
+   "paired consistency (exact, its cue group)": {
+    "decision_consistent": 1,
+    "paired_correct": 1,
+    "result": "accept"
+   },
+   "quality exact (abstention, unit count)": {
+    "correct_empty": "5/5",
+    "exact_unit_count_rate": 1.0,
+    "false_extraction_on_zero_refs": 0,
+    "result": "accept",
+    "unit_refs_answered_empty": 0
+   },
+   "quality heuristic (matcher, grounding, bilingual)": {
+    "anchored_in_learner_text": 0,
+    "bilingual_flagged_units": 0,
+    "matcher_errors": {},
+    "not_anchored": 0,
+    "result": "accept"
+   },
+   "rows": 5,
+   "source": "follow_up",
+   "system": "correct",
+   "why": "Zero units on a thank-you (rule 3), although the analyzer's cue says grammar and the context quotes a French sentence."
+  },
+  "unsupported_claim": {
+   "bad": true,
+   "decision.gates (exact, its system)": {
+    "failed": [],
+    "result": "accept"
+   },
+   "evaluate (heuristic)": {
+    "errors": {},
+    "result": "accept",
+    "unit_f1": 1.0
+   },
+   "experimental report with reviewer evidence (its system, E5)": {
+    "excluded_by_reviewer_evidence": [
+     "p4-depuis#0: claim_true",
+     "p4-depuis#rb#0: claim_true",
+     "p4-g-record-aligned#0: claim_true",
+     "p4-g-record-conflicting#0: claim_true",
+     "p4-g-record-rb#0: claim_true"
+    ],
+    "result": "excluded"
+   },
+   "experimental report without reviewer evidence (its system, E1)": {
+    "result": "eligible"
+   },
+   "paired consistency (exact, its cue group)": {
+    "decision_consistent": 1,
+    "paired_correct": 1,
+    "result": "accept"
+   },
+   "quality exact (abstention, unit count)": {
+    "correct_empty": "0/0",
+    "exact_unit_count_rate": 1.0,
+    "false_extraction_on_zero_refs": 0,
+    "result": "accept",
+    "unit_refs_answered_empty": 0
+   },
+   "quality heuristic (matcher, grounding, bilingual)": {
+    "anchored_in_learner_text": 5,
+    "bilingual_flagged_units": 0,
+    "matcher_errors": {},
+    "not_anchored": 0,
+    "result": "accept"
+   },
+   "rows": 5,
+   "source": "record",
+   "system": "unsupported_claim",
+   "why": "Right objective, but the statement claims what neither the source nor standard French supports: past tenses do occur with « depuis » (« Je ne l'ai pas vu depuis trois ans », « J'habitais là depuis un an quand… »). FALSE_CLAIM; the Chinese repeats the same claim."
+  },
+  "wrong_source": {
+   "bad": true,
+   "decision.gates (exact, its system)": {
+    "failed": [
+     "abstention on frozen >= 0.9",
+     "abstention on rb probe >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ],
+    "result": "reject"
+   },
+   "evaluate (heuristic)": {
+    "errors": {
+     "ABSTENTION_FAIL": 5,
+     "UNSUPPORTED": 5
+    },
+    "result": "reject",
+    "unit_f1": null
+   },
+   "experimental report with reviewer evidence (its system, E5)": {
+    "excluded_by_reviewer_evidence": [
+     "p4-depuis-thanks#0: source_raised",
+     "p4-depuis-thanks#rb#0: source_raised",
+     "p4-g-follow-up-aligned#0: source_raised",
+     "p4-g-follow-up-conflicting#0: source_raised",
+     "p4-g-follow-up-rb#0: source_raised"
+    ],
+    "result": "excluded"
+   },
+   "experimental report without reviewer evidence (its system, E1)": {
+    "result": "excluded"
+   },
+   "paired consistency (exact, its cue group)": {
+    "decision_consistent": 1,
+    "paired_correct": 0,
+    "result": "reject"
+   },
+   "quality exact (abstention, unit count)": {
+    "correct_empty": "0/5",
+    "exact_unit_count_rate": 0.0,
+    "false_extraction_on_zero_refs": 5,
+    "result": "reject",
+    "unit_refs_answered_empty": 0
+   },
+   "quality heuristic (matcher, grounding, bilingual)": {
+    "anchored_in_learner_text": 5,
+    "bilingual_flagged_units": 0,
+    "matcher_errors": {
+     "ABSTENTION_FAIL": 5,
+     "UNSUPPORTED": 5
+    },
+    "not_anchored": 0,
+    "result": "reject"
+   },
+   "rows": 5,
+   "source": "follow_up",
+   "system": "wrong_source",
+   "why": "The same plausible, true unit linked to the follow-up thank-you. The follow-up raised nothing; the wording comes from the earlier record its context quotes. In production it would add support from an entry that never asked."
+  }
+ },
+ "decision_scenarios": {
+  "A": {
+   "eligible": {
+    "bilingual_drift": true,
+    "correct": true,
+    "unsupported_claim": true
+   },
+   "reasons": [
+    "qwen3.5-4b-untuned is the only eligible system leading on human unit F1 by >= 0.05"
+   ],
+   "slots": {
+    "current_extractor": "correct",
+    "qwen3.5-4b-tuned": "bilingual_drift",
+    "qwen3.5-4b-untuned": "unsupported_claim"
+   },
+   "verdict": "WINNER_FOR_OWNER_DECISION",
+   "winner": "qwen3.5-4b-untuned",
+   "winner_system": "unsupported_claim"
+  },
+  "B": {
+   "eligible": {
+    "abstain_everywhere": false,
+    "correct": true,
+    "wrong_source": false
+   },
+   "reasons": [
+    "current_extractor ineligible: abstention on frozen >= 0.9; abstention on rb probe >= 0.9; challenge abstain-group paired accuracy >= 0.8",
+    "qwen3.5-4b-untuned ineligible: over-abstention on frozen <= 0.1; over-abstention on rb probe <= 0.1",
+    "qwen3.5-4b-tuned is the only eligible system leading on human unit F1 by >= 0.05"
+   ],
+   "slots": {
+    "current_extractor": "wrong_source",
+    "qwen3.5-4b-tuned": "correct",
+    "qwen3.5-4b-untuned": "abstain_everywhere"
+   },
+   "verdict": "WINNER_FOR_OWNER_DECISION",
+   "winner": "qwen3.5-4b-tuned",
+   "winner_system": "correct"
+  }
+ },
+ "experimental_scenarios": {
+  "E0 no human evidence, no reviewer queue": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "bilingual_drift": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "correct": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "unsupported_claim": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    }
+   },
+   "verdict": "PENDING"
+  },
+  "E1 assumed aggregates, no reviewer queue": {
+   "eligible_without_reviewer_criterion": {
+    "abstain_everywhere": false,
+    "bilingual_drift": true,
+    "correct": true,
+    "unsupported_claim": true,
+    "wrong_source": false
+   },
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "bilingual_drift": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "correct": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "unsupported_claim": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    }
+   },
+   "verdict": "PENDING"
+  },
+  "E10 every unit reviewed, queue built for another comparison": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "bilingual_drift": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "correct": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "unsupported_claim": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    }
+   },
+   "verdict": "PENDING"
+  },
+  "E11 every unit reviewed, failed reference review (6 of 30 rejected)": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "bilingual_drift": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: zh_same",
+      "p4-depuis#rb#0: zh_same",
+      "p4-g-record-aligned#0: zh_same",
+      "p4-g-record-conflicting#0: zh_same",
+      "p4-g-record-rb#0: zh_same"
+     ],
+     "reviewer": "FAIL"
+    },
+    "correct": {
+     "eligible": true,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "unsupported_claim": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: claim_true",
+      "p4-depuis#rb#0: claim_true",
+      "p4-g-record-aligned#0: claim_true",
+      "p4-g-record-conflicting#0: claim_true",
+      "p4-g-record-rb#0: claim_true"
+     ],
+     "reviewer": "FAIL"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis-thanks#0: source_raised",
+      "p4-depuis-thanks#rb#0: source_raised",
+      "p4-g-follow-up-aligned#0: source_raised",
+      "p4-g-follow-up-conflicting#0: source_raised",
+      "p4-g-follow-up-rb#0: source_raised"
+     ],
+     "reviewer": "FAIL"
+    }
+   },
+   "verdict": "BLOCKED"
+  },
+  "E12 an answer that is not yes, no or blank": {
+   "refused": "row 1: claim_true 'maybe' is not yes, no or blank (never read as a guess)"
+  },
+  "E2 assumed aggregates, queue, no evidence file": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "bilingual_drift": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "correct": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "unsupported_claim": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    }
+   },
+   "verdict": "PENDING"
+  },
+  "E3 assumed aggregates, queue, blank template": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "bilingual_drift": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "correct": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "unsupported_claim": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    }
+   },
+   "verdict": "PENDING"
+  },
+  "E4 assumed aggregates, only the correct system reviewed": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "bilingual_drift": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "correct": {
+     "eligible": true,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "unsupported_claim": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    }
+   },
+   "verdict": "PENDING"
+  },
+  "E5 assumed aggregates, every unit reviewed": {
+   "preference": "correct",
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "bilingual_drift": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: zh_same",
+      "p4-depuis#rb#0: zh_same",
+      "p4-g-record-aligned#0: zh_same",
+      "p4-g-record-conflicting#0: zh_same",
+      "p4-g-record-rb#0: zh_same"
+     ],
+     "reviewer": "FAIL"
+    },
+    "correct": {
+     "eligible": true,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "unsupported_claim": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: claim_true",
+      "p4-depuis#rb#0: claim_true",
+      "p4-g-record-aligned#0: claim_true",
+      "p4-g-record-conflicting#0: claim_true",
+      "p4-g-record-rb#0: claim_true"
+     ],
+     "reviewer": "FAIL"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis-thanks#0: source_raised",
+      "p4-depuis-thanks#rb#0: source_raised",
+      "p4-g-follow-up-aligned#0: source_raised",
+      "p4-g-follow-up-conflicting#0: source_raised",
+      "p4-g-follow-up-rb#0: source_raised"
+     ],
+     "reviewer": "FAIL"
+    }
+   },
+   "verdict": "EXPERIMENTAL_PREFERENCE"
+  },
+  "E6 every unit reviewed, one review bound to another output (stale hash)": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "bilingual_drift": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: zh_same",
+      "p4-depuis#rb#0: zh_same",
+      "p4-g-record-aligned#0: zh_same",
+      "p4-g-record-conflicting#0: zh_same",
+      "p4-g-record-rb#0: zh_same"
+     ],
+     "reviewer": "FAIL"
+    },
+    "correct": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "unsupported_claim": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: claim_true",
+      "p4-depuis#rb#0: claim_true",
+      "p4-g-record-aligned#0: claim_true",
+      "p4-g-record-conflicting#0: claim_true",
+      "p4-g-record-rb#0: claim_true"
+     ],
+     "reviewer": "FAIL"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis-thanks#0: source_raised",
+      "p4-depuis-thanks#rb#0: source_raised",
+      "p4-g-follow-up-aligned#0: source_raised",
+      "p4-g-follow-up-conflicting#0: source_raised",
+      "p4-g-follow-up-rb#0: source_raised"
+     ],
+     "reviewer": "FAIL"
+    }
+   },
+   "verdict": "PENDING"
+  },
+  "E7 every unit reviewed, the reviewer fails the correct system's unit": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "bilingual_drift": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: zh_same",
+      "p4-depuis#rb#0: zh_same",
+      "p4-g-record-aligned#0: zh_same",
+      "p4-g-record-conflicting#0: zh_same",
+      "p4-g-record-rb#0: zh_same"
+     ],
+     "reviewer": "FAIL"
+    },
+    "correct": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: claim_true"
+     ],
+     "reviewer": "FAIL"
+    },
+    "unsupported_claim": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: claim_true",
+      "p4-depuis#rb#0: claim_true",
+      "p4-g-record-aligned#0: claim_true",
+      "p4-g-record-conflicting#0: claim_true",
+      "p4-g-record-rb#0: claim_true"
+     ],
+     "reviewer": "FAIL"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis-thanks#0: source_raised",
+      "p4-depuis-thanks#rb#0: source_raised",
+      "p4-g-follow-up-aligned#0: source_raised",
+      "p4-g-follow-up-conflicting#0: source_raised",
+      "p4-g-follow-up-rb#0: source_raised"
+     ],
+     "reviewer": "FAIL"
+    }
+   },
+   "verdict": "NO_PREFERENCE"
+  },
+  "E8 one explicit failure (bilingual_drift), everything else blank": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "bilingual_drift": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: zh_same"
+     ],
+     "reviewer": "FAIL"
+    },
+    "correct": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "unsupported_claim": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    }
+   },
+   "verdict": "PENDING"
+  },
+  "E9 every unit reviewed, one unit reviewed twice": {
+   "preference": null,
+   "production_go": false,
+   "systems": {
+    "abstain_everywhere": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PASS"
+    },
+    "bilingual_drift": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: zh_same",
+      "p4-depuis#rb#0: zh_same",
+      "p4-g-record-aligned#0: zh_same",
+      "p4-g-record-conflicting#0: zh_same",
+      "p4-g-record-rb#0: zh_same"
+     ],
+     "reviewer": "FAIL"
+    },
+    "correct": {
+     "eligible": null,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [],
+     "reviewer": "PENDING"
+    },
+    "unsupported_claim": {
+     "eligible": false,
+     "excluded_by_exact_gates": false,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis#0: claim_true",
+      "p4-depuis#rb#0: claim_true",
+      "p4-g-record-aligned#0: claim_true",
+      "p4-g-record-conflicting#0: claim_true",
+      "p4-g-record-rb#0: claim_true"
+     ],
+     "reviewer": "FAIL"
+    },
+    "wrong_source": {
+     "eligible": false,
+     "excluded_by_exact_gates": true,
+     "excluded_by_human_evidence": false,
+     "excluded_by_reviewer_evidence": [
+      "p4-depuis-thanks#0: source_raised",
+      "p4-depuis-thanks#rb#0: source_raised",
+      "p4-g-follow-up-aligned#0: source_raised",
+      "p4-g-follow-up-conflicting#0: source_raised",
+      "p4-g-follow-up-rb#0: source_raised"
+     ],
+     "reviewer": "FAIL"
+    }
+   },
+   "verdict": "PENDING"
+  }
+ },
+ "reviewer_queue": {
+  "abstain_everywhere": {
+   "abstentions_in_scope": 10,
+   "accepted_by_every_automatic_check": 0,
+   "units_in_scope": 0
+  },
+  "bilingual_drift": {
+   "abstentions_in_scope": 5,
+   "accepted_by_every_automatic_check": 5,
+   "units_in_scope": 5
+  },
+  "correct": {
+   "abstentions_in_scope": 5,
+   "accepted_by_every_automatic_check": 5,
+   "units_in_scope": 5
+  },
+  "unsupported_claim": {
+   "abstentions_in_scope": 5,
+   "accepted_by_every_automatic_check": 5,
+   "units_in_scope": 5
+  },
+  "wrong_source": {
+   "abstentions_in_scope": 0,
+   "accepted_by_every_automatic_check": 5,
+   "units_in_scope": 10
+  }
+ },
+ "schema": "flh154_one_record_fixture_actual_v1",
+ "scoring_version": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd",
+ "slice": {
+  "challenge": [
+   "p4-g-record-aligned",
+   "p4-g-record-conflicting",
+   "p4-g-record-rb",
+   "p4-g-follow-up-aligned",
+   "p4-g-follow-up-conflicting",
+   "p4-g-follow-up-rb"
+  ],
+  "frozen": [
+   "p4-depuis",
+   "p4-depuis-thanks"
+  ],
+  "rb": [
+   "p4-depuis#rb",
+   "p4-depuis-thanks#rb"
+  ]
+ },
+ "status": "OFFLINE ONLY; synthetic fixture; library path (validator-shaped results)"
+}

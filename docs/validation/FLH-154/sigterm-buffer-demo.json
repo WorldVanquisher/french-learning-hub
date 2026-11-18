@@ -1,0 +1,44 @@
+{
+ "schema": "flh154_sigterm_buffer_demo_v1",
+ "question": "predict.py writes each prediction row with f.write(...) into a default-buffered text file and never flushes; what reaches disk when the process receives SIGTERM (what SageMaker sends at MaxRuntimeInSeconds)?",
+ "writer_script": "import json, sys, time, os\n# predict.py's pattern, plus an unbuffered side counter of rows handed to f.write().\nfd = os.open(sys.argv[2], os.O_WRONLY | os.O_CREAT | os.O_TRUNC)\nwith open(sys.argv[1], \"w\", encoding=\"utf-8\") as f:\n    for i in range(10**6):\n        f.write(json.dumps({\"id\": f\"ext-evl-{i:04d}\", \"output_text\": \"{\\\"units\\\": []}\" + \" \" * 180, \"generated_tokens\": 12, \"stopped\": \"eos\"}) + \"\\n\")\n        os.pwrite(fd, f\"{i+1:08d}\".encode(), 0)\n        time.sleep(0.002)\n",
+ "runs": {
+  "image flh-extractor-sft:smoke-cpu (Python 3.12.13, io.DEFAULT_BUFFER_SIZE 8192), --network none, tmpfs": [
+   {
+    "rows_written": 473,
+    "rows_on_disk": 450,
+    "lost": 23
+   },
+   {
+    "rows_written": 538,
+    "rows_on_disk": 510,
+    "lost": 28
+   },
+   {
+    "rows_written": 582,
+    "rows_on_disk": 570,
+    "lost": 12
+   }
+  ],
+  "host (Python 3.14.9, io.DEFAULT_BUFFER_SIZE 131072)": [
+   {
+    "rows_written": 517,
+    "rows_on_disk": 450,
+    "lost": 67
+   },
+   {
+    "rows_written": 569,
+    "rows_on_disk": 450,
+    "lost": 119
+   },
+   {
+    "rows_written": 615,
+    "rows_on_disk": 450,
+    "lost": 165
+   }
+  ]
+ },
+ "row_bytes": 279,
+ "every_file_ended_on_a_newline": true,
+ "reading": "Finished rows still in the write buffer are lost on SIGTERM (at most one buffer: about 8 KB in the image, i.e. a handful of real prediction rows); lines were never cut. Whether SageMaker uploads /opt/ml/model after a MaxRuntimeInSeconds stop was NOT verified (offline). A per-row flush in predict.py would remove the loss."
+}

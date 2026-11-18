@@ -1,0 +1,23 @@
+{
+ "image": "flh-extractor-sft:smoke-cpu",
+ "image_id": "sha256:6f6b194284c7abc61f1bef23ba0cdde7376476bcfc74a35475e25d9a81d956b8",
+ "command": "docker run --rm --network none --read-only --entrypoint python3 -v tools/extraction:/code:ro -w /code flh-extractor-sft:smoke-cpu -B -m flh_extraction.packaging",
+ "exit": 4,
+ "report": {
+  "verdict": "STALE_OR_INCOMPLETE: rebuild the image from requirements-train.txt; huggingface-hub 0.36.2 != 2.4.0, tokenizers 0.22.2 != 0.23.3, transformers 4.57.6 != 5.21.1",
+  "transformers_knows_qwen3_5": false,
+  "packages": {
+   "torch": "2.15.0+cpu (pinned 2.15.0)",
+   "transformers": "4.57.6 (pinned 5.21.1)",
+   "peft": "0.21.2 (pinned 0.21.2)",
+   "tokenizers": "0.22.2 (pinned 0.23.3)",
+   "huggingface-hub": "0.36.2 (pinned 2.4.0)",
+   "safetensors": "0.8.0 (pinned None)"
+  }
+ },
+ "also_checked": {
+  "model_assets_in_image": "none (no tokenizer.json, merges.txt or *.safetensors anywhere in the image)",
+  "torch": "2.15.0+cpu, cuda False",
+  "unit_tests_in_image": "57/57 OK (network none, code read-only, TINY_SFT = first 40 records of the regenerated sft-train.jsonl)"
+ }
+}

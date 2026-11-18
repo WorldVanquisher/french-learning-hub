@@ -31,6 +31,15 @@
   comparison-matrix --slice-dir DIR --rendered R --repo ROOT --out MATRIX.json   (pinned; every run NOT_PERFORMED)
   compare   --matrix M --slice S --render BIN [--predictions SYSTEM=FILE …] --out PREFIX   (missing systems stay NOT_PERFORMED)
   parsing-fixture --slice S --out P.jsonl --expect E.json   (raw outputs with known faults, for compare)
+  review-sample --slice S --challenge C --out PREFIX   (frozen reviewer sample of held-out references; offline only)
+  review-agreement --packet P.jsonl [--second P2.jsonl] --out PREFIX   (intent and wording agreement, disputes unresolved)
+  export-check FILE …   (exit 1 when a reviewer export carries a local path, address, private link or identifier)
+  review-sheet export|import --packet P [--sheet S.csv] --out F   (spreadsheet: intent, evidence, wording apart; offline only)
+  experimental-report --comparison C [--human-evidence H] [--review P …] [--reviewer-queue Q --reviewer-evidence E]
+            --out PREFIX   (DRAFT; never a production GO; per-unit reviewer evidence required for a preference)
+  reviewer-queue --matrix M --slice S --render BIN --predictions SYSTEM=FILE … [--scope-ids F | --scope-packet P]
+            --out PREFIX   (units to review per system, bound by hash; blank evidence template; offline only)
+  one-record-fixture --out DIR [--fixture DIR] [--check]   (FLH-154 part-4 fixture through every library report)
   decision-report --comparison R [--human H] [--review V …] [--losses L] [--run-manifest M] [--input-manifest M] --out PREFIX
             (WINNER_FOR_OWNER_DECISION / PENDING / NO_WINNER / REFUSED across the three systems)
 """
@@ -41,11 +50,28 @@ import sys
 from pathlib import Path
 
 from . import (audit, categories, challenge, comparison, controls, decision, evaluate, increment, manifest, matrix, paired, probe,
-               promotion, quality, records, review_packet, sft, splits)
+               experimental_report, fixture_one_record, promotion, quality, records, review_packet, review_sample, review_sheet,
+               reviewer_evidence, sft, splits)
 
 
 def dump(path, obj):
     Path(path).write_text(json.dumps(obj, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def load_results(path, refs=None, what="--results"):
+    """A results file for a standalone report: duplicated ids are refused (the
+    report would keep only the last row; `compare` counts them as
+    duplicate_prediction), ids absent from the references are noted."""
+    from collections import Counter
+    rows = records.load_jsonl(path)
+    dup = sorted(k for k, n in Counter(r["id"] for r in rows).items() if n > 1)
+    if dup:
+        raise SystemExit(f"{what}: {len(dup)} duplicated id(s), e.g. {dup[:3]}; refusing to keep only the last row")
+    if refs is not None:
+        extra = len({r["id"] for r in rows} - {r["id"] for r in refs})
+        if extra:
+            print(f"note: {extra} result id(s) are not in the references and are not scored", file=sys.stderr)
+    return rows
 
 
 def write_jsonl(path, rows):
@@ -119,10 +145,121 @@ def main(argv):
     pf = sub.add_parser("parsing-fixture")
     for k in ("--slice", "--out", "--expect"):
         pf.add_argument(k, required=True)
+    rs_ = sub.add_parser("review-sample"); rs_.add_argument("--slice", required=True); rs_.add_argument("--challenge", required=True)
+    rs_.add_argument("--out", required=True)
+    ra = sub.add_parser("review-agreement"); ra.add_argument("--packet", required=True); ra.add_argument("--second")
+    ra.add_argument("--out", required=True)
+    ec = sub.add_parser("export-check"); ec.add_argument("files", nargs="+")
+    rsh = sub.add_parser("review-sheet"); rsh.add_argument("action", choices=("export", "import"))
+    rsh.add_argument("--packet", required=True); rsh.add_argument("--sheet"); rsh.add_argument("--out", required=True)
+    xr = sub.add_parser("experimental-report"); xr.add_argument("--comparison", required=True); xr.add_argument("--human-evidence")
+    xr.add_argument("--review", nargs="*", default=[]); xr.add_argument("--reviewer-queue"); xr.add_argument("--reviewer-evidence")
+    xr.add_argument("--out", required=True)
+    rq = sub.add_parser("reviewer-queue")
+    for k in ("--matrix", "--slice", "--render", "--out"):
+        rq.add_argument(k, required=True)
+    rq.add_argument("--predictions", nargs="+", required=True); rq.add_argument("--scope-ids"); rq.add_argument("--scope-packet")
+    orf = sub.add_parser("one-record-fixture"); orf.add_argument("--out", required=True); orf.add_argument("--fixture")
+    orf.add_argument("--check", action="store_true")
     dr = sub.add_parser("decision-report"); dr.add_argument("--comparison", required=True); dr.add_argument("--human")
     dr.add_argument("--review", nargs="*", default=[]); dr.add_argument("--losses"); dr.add_argument("--run-manifest")
     dr.add_argument("--input-manifest"); dr.add_argument("--out", required=True)
     a = ap.parse_args(argv)
+    if a.cmd == "review-sample":
+        rows = review_sample.packet(review_sample.select(records.load_jsonl(a.slice), records.load_jsonl(a.challenge)))
+        sel = review_sample.selection_doc(rows, comparison.sha256_file(a.slice), comparison.sha256_file(a.challenge))
+        write_jsonl(a.out + ".jsonl", rows)
+        dump(a.out + "-selection.json", sel)
+        Path(a.out + ".md").write_text(review_sample.markdown(rows, sel) + "\n", encoding="utf-8")
+        print(json.dumps({k: sel[k] for k in ("items", "records", "by_stratum", "disputed", "objective_points_covered")},
+                         ensure_ascii=False))
+        return 0
+    if a.cmd == "review-agreement":
+        rep = review_sample.agreement(records.load_jsonl(a.packet), records.load_jsonl(a.second) if a.second else None)
+        dump(a.out + ".json", rep)
+        print(json.dumps({k: rep[k] for k in ("intent_agreement_with_reference", "disputed_unresolved")}, ensure_ascii=False))
+        return 0
+    if a.cmd == "review-sheet":
+        packet = records.load_jsonl(a.packet)
+        if a.action == "export":
+            Path(a.out).write_text(review_sheet.export(packet), encoding="utf-8")
+            print(json.dumps({"items": len(packet), "rows": sum(max(1, len(i["reference"]["units"])) for i in packet)}))
+            return 0
+        if not a.sheet:
+            raise SystemExit("review-sheet import needs --sheet")
+        try:
+            filled, rep = review_sheet.load(packet, Path(a.sheet).read_text(encoding="utf-8-sig"))
+        except ValueError as e:
+            print(json.dumps({"refused": str(e)}, ensure_ascii=False))
+            return 1
+        write_jsonl(a.out, filled)
+        print(json.dumps(rep, ensure_ascii=False))
+        return 0
+    if a.cmd == "experimental-report":
+        rd = lambda x: json.loads(Path(x).read_text(encoding="utf-8")) if x else None  # noqa: E731
+        try:
+            rows = reviewer_evidence.load_evidence(records.load_jsonl(a.reviewer_evidence)) if a.reviewer_evidence else None
+        except ValueError as e:
+            print(json.dumps({"refused": f"reviewer evidence: {e}"}, ensure_ascii=False))
+            return 1
+        rep = experimental_report.report(rd(a.comparison), rd(a.human_evidence),
+                                         [r for f in a.review for r in records.load_jsonl(f)] or None,
+                                         rd(a.reviewer_queue), rows)
+        dump(a.out + ".json", rep)
+        Path(a.out + ".md").write_text(experimental_report.markdown(rep), encoding="utf-8")
+        print(json.dumps({"verdict": rep["verdict"], "preference": rep["preference"], "production_go": rep["production_go"]}))
+        return experimental_report.EXIT[rep["verdict"]]
+    if a.cmd == "reviewer-queue":
+        m = json.loads(Path(a.matrix).read_text(encoding="utf-8"))
+        refs = records.load_jsonl(a.slice)
+        if comparison.sha256_file(a.slice) != m["slice"]["files"]["comparison-slice.jsonl"]["sha256"]:
+            raise SystemExit("slice hash differs from the matrix")
+        if a.scope_ids and a.scope_packet:
+            raise SystemExit("give --scope-ids or --scope-packet, not both")
+        if a.scope_ids:
+            scope = [x.strip() for x in Path(a.scope_ids).read_text(encoding="utf-8").splitlines() if x.strip()]
+            source = f"ids file {Path(a.scope_ids).name} ({comparison.sha256_file(a.scope_ids)[:12]})"
+        elif a.scope_packet:
+            ids = {r["id"] for r in refs}
+            scope = [i["id"] for i in records.load_jsonl(a.scope_packet) if i["id"] in ids]
+            source = f"review packet {Path(a.scope_packet).name} ({comparison.sha256_file(a.scope_packet)[:12]}), ids in the slice"
+        else:
+            scope, source = [r["id"] for r in refs], "every slice record"
+        validate = controls.render_validator(a.render, Path(a.out + ".work"))
+        ids, inputs, accounts = [r["id"] for r in refs], {r["id"]: r["input"] for r in refs}, {}
+        for x in a.predictions:
+            k, f = x.split("=", 1)
+            if k not in {s["system"] for s in m["systems"]}:
+                raise SystemExit(f"unknown system {k}")
+            rows = records.load_jsonl(f)
+            raw = [r for r in rows if "output_text" in r]
+            if raw and len(raw) != len(rows):
+                raise SystemExit(f"{k}: a prediction file mixes raw outputs and production results")
+            accounts[k] = comparison.account_with_validator(ids, inputs, raw, validate) if raw else matrix.account_results(ids, rows)
+        try:
+            q = reviewer_evidence.queue(refs, accounts, scope, m["matrix_sha256"], comparison.sha256_file(a.slice), source)
+        except ValueError as e:
+            raise SystemExit(str(e))
+        dump(a.out + ".json", q)
+        write_jsonl(a.out + ".evidence-template.jsonl", reviewer_evidence.template(q))
+        Path(a.out + ".md").write_text(reviewer_evidence.markdown(q), encoding="utf-8")
+        print(json.dumps({"scope_records": q["scope"]["records"], **{s: v["units_in_scope"] for s, v in q["systems"].items()}}))
+        return 0
+    if a.cmd == "one-record-fixture":
+        fx = fixture_one_record.load(a.fixture or fixture_one_record.FIXTURE_DIR)
+        doc = fixture_one_record.run(fx, a.out)
+        if not a.check:
+            print(json.dumps({"cases": len(doc["cases"]), "out": "actual.json"}))
+            return 0
+        exp = json.loads((Path(a.fixture or fixture_one_record.FIXTURE_DIR) / "expected.json").read_text(encoding="utf-8"))
+        problems = fixture_one_record.diff(exp["expect"], fixture_one_record.project(doc))
+        print(json.dumps({"matches_expected": not problems, "differences": problems}, ensure_ascii=False))
+        return 1 if problems else 0
+    if a.cmd == "export-check":
+        bad = {f: review_sample.export_findings(Path(f).read_text(encoding="utf-8")) for f in a.files}
+        bad = {f: v for f, v in bad.items() if v}
+        print(json.dumps({"files": len(a.files), "findings": bad}, ensure_ascii=False))
+        return 1 if bad else 0
     if a.cmd == "decision-report":
         rd = lambda x: json.loads(Path(x).read_text(encoding="utf-8")) if x else None  # noqa: E731
         rep = decision.decide(rd(a.comparison), rd(a.human), [r for f in a.review for r in records.load_jsonl(f)] or None,
@@ -168,7 +305,8 @@ def main(argv):
         print(json.dumps({"refused": rep["refused"], **{k: v["status"] for k, v in rep["systems"].items()}}))
         return 1 if rep["refused"] else 0
     if a.cmd == "paired-consistency":
-        rep = paired.report(records.load_jsonl(a.challenge), records.load_jsonl(a.results),
+        chl_refs = records.load_jsonl(a.challenge)
+        rep = paired.report(chl_refs, load_results(a.results, chl_refs),
                             records.load_jsonl(a.outputs) if a.outputs else None)
         dump(a.out + ".json", rep)
         Path(a.out + ".md").write_text(paired.markdown({"system": rep}), encoding="utf-8")
@@ -236,7 +374,8 @@ def main(argv):
         judg = {}
         for j in (records.load_jsonl(a.judgments) if a.judgments else []):
             judg.setdefault(j["id"], []).append(j)
-        rep = quality.report(records.load_jsonl(a.refs), records.load_jsonl(a.results), judg,
+        refs = records.load_jsonl(a.refs)
+        rep = quality.report(refs, load_results(a.results, refs), judg,
                              records.load_jsonl(a.outputs) if a.outputs else None)
         dump(a.out + ".json", rep)
         Path(a.out + ".md").write_text(quality.markdown(rep, a.title), encoding="utf-8")
@@ -246,7 +385,13 @@ def main(argv):
         A, B = (json.loads(Path(x).read_text(encoding="utf-8")) for x in (a.a, a.b))
         cmp_ = quality.compare(A, B)
         dump(a.out + ".json", cmp_)
-        lines = ["| Metric | A | B | Δ | Basis |", "|---|---|---|---|---|"]
+        lines = []
+        if A.get("examples") != B.get("examples"):
+            note = (f"WARNING: A covers {A.get('examples')} examples and B {B.get('examples')}: different populations, "
+                    "so the deltas are not like for like")
+            print(note, file=sys.stderr)
+            lines += [note, ""]
+        lines += ["| Metric | A | B | Δ | Basis |", "|---|---|---|---|---|"]
         lines += [f"| {k} | {v['a']} | {v['b']} | {v['delta']} | {v['basis']} |" for k, v in cmp_.items()]
         Path(a.out + ".md").write_text("\n".join(lines) + "\n", encoding="utf-8")
         print(json.dumps({k: v["delta"] for k, v in cmp_.items()}))
@@ -310,7 +455,7 @@ def main(argv):
         return 0
     if a.cmd == "evaluate":
         refs = records.load_jsonl(a.refs)
-        results = records.load_jsonl(a.results)
+        results = load_results(a.results, refs)
         judg = {}
         if a.judgments:
             for j in records.load_jsonl(a.judgments):
@@ -374,7 +519,8 @@ def main(argv):
         print(json.dumps({"attached": len(preds)}))
         return 0
     if a.cmd == "categories":
-        s = categories.summarize(records.load_jsonl(a.refs), records.load_jsonl(a.results),
+        refs = records.load_jsonl(a.refs)
+        s = categories.summarize(refs, load_results(a.results, refs),
                                  json.loads(Path(a.report).read_text(encoding="utf-8")))
         dump(a.out + ".json", s)
         Path(a.out + ".md").write_text(categories.markdown(s, a.title), encoding="utf-8")

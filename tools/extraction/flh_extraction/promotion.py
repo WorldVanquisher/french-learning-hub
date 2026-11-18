@@ -17,6 +17,11 @@ A criterion that needs human judgments is PENDING without them; heuristic
 metrics (split/merge, grounding, bilingual) are reported and never gate. The
 overall verdict is ELIGIBLE_FOR_OWNER_DECISION only when every criterion
 passes; any FAIL makes it NOT_ELIGIBLE; otherwise PENDING.
+
+Candidate and baseline must be scored on the same examples (same count of
+examples, zero-unit and unit references). When they are not, every
+baseline-relative criterion is PENDING and so is the verdict: a comparison
+across two populations decides nothing.
 """
 
 import json
@@ -40,9 +45,17 @@ def _c(name, basis, status, evidence):
     return {"criterion": name, "basis": basis, "status": status, "evidence": evidence}
 
 
+def population(rep):
+    return {"examples": rep.get("examples"), "zero_unit_refs": rep["abstention"]["zero_unit_refs"],
+            "unit_refs": rep["abstention"]["unit_refs"]}
+
+
 def check(cand_frozen, cand_probe, base_frozen, base_probe=None, losses=None, run_manifest=None,
           input_manifest=None, review=None):
-    out = []
+    pairs = [("frozen", cand_frozen, base_frozen)] + ([("probe", cand_probe, base_probe)] if base_probe is not None else [])
+    differ = {lab: {"candidate": population(a), "baseline": population(b)} for lab, a, b in pairs if population(a) != population(b)}
+    out = [_c("candidate and baseline reports cover the same examples", "exact", "PENDING" if differ else "PASS",
+              differ or {lab: population(a) for lab, a, _ in pairs})]
     for label, rep in (("frozen", cand_frozen), ("probe", cand_probe)):
         v = _h(rep, "structural_validity")
         out.append(_c(f"structural_validity_{label} >= {STRUCTURAL_MIN}", "exact",
@@ -96,6 +109,11 @@ def check(cand_frozen, cand_probe, base_frozen, base_probe=None, losses=None, ru
         st = "PENDING" if len(done) < REVIEW_MIN else "PASS" if rej / len(done) <= REVIEW_REJECT_MAX else "FAIL"
         out.append(_c(f"review packet: >= {REVIEW_MIN} verdicts, <= {REVIEW_REJECT_MAX:.0%} rejected", "human", st,
                       {"verdicts": len(done), "rejected": rej}))
+    if differ:
+        for c in out:
+            if "baseline" in c["criterion"] and c["status"] == "FAIL":
+                c["status"] = "PENDING"
+                c["evidence"] = {"not_comparable": "candidate and baseline cover different examples", "values": c["evidence"]}
     statuses = {c["status"] for c in out}
     verdict = "NOT_ELIGIBLE" if "FAIL" in statuses else "ELIGIBLE_FOR_OWNER_DECISION" if statuses == {"PASS"} else "PENDING"
     info = {"heuristic_reported_not_gating": {k: (_h(cand_frozen, k), _h(base_frozen, k)) for k in
