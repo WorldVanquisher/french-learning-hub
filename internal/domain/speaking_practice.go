@@ -46,29 +46,48 @@ const (
 	SpeakingFeedbackReady        = "feedback_ready"        // completed feedback on the latest confirmed version
 )
 
-// Practice queue reasons, in priority order (first = most urgent).
+// Practice queue reasons, in priority order (first = most urgent). Every
+// started exercise whose latest take is not complete has one, whatever the
+// providers' configuration: a reason follows from the take's state, never from
+// what happens to be enabled.
 const (
 	SpeakingQueueCheckUnknown      = "check_unknown_outcome"
 	SpeakingQueueRequestFailed     = "request_failed"
 	SpeakingQueueConfirmTranscript = "confirm_transcript"
 	SpeakingQueueAddTranscript     = "add_transcript"
 	SpeakingQueueRequestFeedback   = "request_feedback"
-	SpeakingQueueAnswerAgain       = "answer_again"
-	SpeakingQueueFirstTake         = "start_first_take"
+	// SpeakingQueueReviewWithoutFeedback: the checked transcript has no feedback
+	// and feedback is off, so the learner reviews it against the prompt and
+	// answers again.
+	SpeakingQueueReviewWithoutFeedback = "review_without_feedback"
+	SpeakingQueueAnswerAgain           = "answer_again"
+	SpeakingQueueFirstTake             = "start_first_take"
+	// SpeakingQueueRequestInProgress: a request is running (bounded by its
+	// deadline, after which it reads as unknown); check again in a moment.
+	SpeakingQueueRequestInProgress = "request_in_progress"
 	SpeakingQueueNotStarted        = "not_started"
 )
 
-// SpeakingQueuePriority orders the reasons; unknown reasons sort last.
+var speakingQueueOrder = []string{SpeakingQueueCheckUnknown, SpeakingQueueRequestFailed, SpeakingQueueConfirmTranscript,
+	SpeakingQueueAddTranscript, SpeakingQueueRequestFeedback, SpeakingQueueReviewWithoutFeedback, SpeakingQueueAnswerAgain,
+	SpeakingQueueFirstTake, SpeakingQueueRequestInProgress, SpeakingQueueNotStarted}
+
+// SpeakingQueuePriority orders the reasons (0 = most urgent); unknown reasons
+// sort last. The numbers are ordinal: compare them, do not store them.
 func SpeakingQueuePriority(reason string) int {
-	for i, r := range []string{SpeakingQueueCheckUnknown, SpeakingQueueRequestFailed, SpeakingQueueConfirmTranscript,
-		SpeakingQueueAddTranscript, SpeakingQueueRequestFeedback, SpeakingQueueAnswerAgain, SpeakingQueueFirstTake,
-		SpeakingQueueNotStarted} {
+	for i, r := range speakingQueueOrder {
 		if r == reason {
 			return i
 		}
 	}
 	return 99
 }
+
+// The provider request a queue step concerns.
+const (
+	SpeakingRequestTranscription = "transcription"
+	SpeakingRequestFeedback      = "feedback"
+)
 
 // SpeakingContentFingerprint identifies a prompt's content: SHA-256 of the
 // canonical JSON of the fields an exercise stores. The same function serves a

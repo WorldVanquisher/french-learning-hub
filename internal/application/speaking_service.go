@@ -82,6 +82,9 @@ type SpeakingExerciseView struct {
 	ExampleTranscript string
 	// PackStatus compares the stored prompt with the embedded set.
 	PackStatus string
+	// CurrentPrompt is the set's corrected wording, only when PackStatus is
+	// changed; the exercise and its takes keep the stored wording.
+	CurrentPrompt *domain.SpeakingPrompt
 	// TakeStates is each take's derived attempt state, by take ID.
 	TakeStates map[int64]string
 	Now        time.Time
@@ -160,6 +163,8 @@ func (s *SpeakingService) GetExercise(ctx context.Context, id int64) (*SpeakingE
 	v := &SpeakingExerciseView{Exercise: e, Now: s.now(), PackStatus: s.PackStatus(e)}
 	if p, ok := s.prompt(e.PromptID); ok && v.PackStatus == domain.SpeakingPackCurrent {
 		v.ExampleTranscript = p.ExampleTranscript
+	} else if ok && v.PackStatus == domain.SpeakingPackChanged {
+		v.CurrentPrompt = &p
 	}
 	if v.Takes, err = s.repo.ListTakes(ctx, id); err != nil {
 		return nil, err

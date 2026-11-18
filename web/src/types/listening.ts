@@ -279,8 +279,12 @@ export interface ListeningScriptLine {
 }
 
 export interface ListeningScriptLineChange {
-  line: string;
+  line: string; // in the next revision (in the stored one when removed)
   change: "changed" | "added" | "removed";
+  // The line's number on each side: a changed line that also moved (lines
+  // removed or added before it) names both. Optional for older servers.
+  before_line?: string | null;
+  after_line?: string | null;
   before: ListeningScriptLine | null;
   after: ListeningScriptLine | null;
 }
@@ -319,6 +323,8 @@ export interface ListeningScriptUpdatePreview {
   next_revision: number | null;
   changes: {
     lines: ListeningScriptLineChange[];
+    // Unchanged lines that only get a new number (lines are aligned by content).
+    lines_renumbered?: { before: string; after: string }[];
     questions: ListeningScriptQuestionChange[];
     annotations_changed: boolean;
   };

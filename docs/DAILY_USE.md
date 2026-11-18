@@ -600,6 +600,10 @@ provider, each once per click.
    - If you refuse the microphone, or the browser cannot record, the page says
      so. Choose **Upload an audio file** (webm, m4a/mp4, mp3 or wav, at most
      2 minutes and 8 MB) or **Type what you said instead**.
+   - If saving says "No answer arrived", choose **Check whether it was saved**
+     before saving again. Saving again is safe anyway: the same recording, or a
+     typed take while the last one is still empty, names the take already
+     saved.
 3. **Send audio of take 1 for transcription…** shows what will be sent (length,
    size, type, provider). **Send audio** sends it once. The audio is not stored;
    if you reload the page it is gone, and you can still type the transcript.
@@ -608,13 +612,22 @@ provider, each once per click.
    it. Saving the same audio twice keeps one take.
 4. Check the machine transcript. Correct what was misheard, but keep your own
    words, mistakes included. Then **Confirm as version 1**. A later correction
-   is a new version; confirmed versions never change.
+   is a new version; confirmed versions never change. If no answer arrives,
+   **Check whether it was saved** shows the saved version; confirming again also
+   finds it instead of saving a second one.
 5. **Request feedback on version 1**. The report says which take and version
    it is about, shows hints first, and never comments on pronunciation. If no
    answer arrives, the page looks the request up first; an unknown outcome needs
    an explicit **Request again (may be billed twice)**.
+   - **Feedback off** (`SPEAKING_PROVIDER` disabled): the take offers a
+     self-review instead. Tick the prompt's points your transcript covers (the
+     ticks stay on the page and are never saved) and check the length against
+     the target, then record the next take.
 6. Record **take 2** from the hints. **Compare** shows the word differences
-   between two confirmed transcripts.
+   between two confirmed transcripts and, for each point of the earlier
+   version's feedback, whether the later transcript contains the suggested
+   wording, still has the quoted words, or neither (a text check, not a
+   judgement).
 7. On an improvement, choose **Save this mistake…**, type how you would say it
    now, and **Save learning record**. The record names the exercise, take,
    transcript version and feedback, and links back with **← Back to Speaking**.
@@ -623,9 +636,19 @@ provider, each once per click.
    and unknown requests are counted apart. **Next steps** gives one suggestion
    per exercise with its reason (for example "the feedback suggests 2
    improvements. Answer again using them."), and **Open** goes to that take.
+   **Continue where you left off** opens the exercise you worked on last that
+   is not complete, at its take. An exercise never leaves the list because a
+   provider is off: a failed or unknown request still says so, with what you
+   can do instead (type the transcript, or review it yourself and answer
+   again).
    **Attempts** in an exercise lists every take with its state and the report
    that counts. **Download all attempts (NDJSON)** saves the metadata,
    transcripts and feedback; there is no audio in it and no import.
+9. **A corrected prompt.** When the prompt set corrects a prompt you already
+   started, the exercise keeps the wording you answered (shown with its
+   revision); **Show the corrected wording in the set** shows the new one and
+   what changed. Your takes stay with the wording you answered; practising the
+   corrected wording as a separate exercise is not available yet.
 
 **Limitations:**
 - Feedback reads text. It cannot hear pronunciation, intonation or fluency, and

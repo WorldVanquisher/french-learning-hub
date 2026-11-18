@@ -10,8 +10,8 @@ import App from "../App";
 import PublicDemoApp from "../PublicDemoApp";
 import { exampleTranscript, feedbackV1, machineTranscript, notice, prompts, transcriptV1, transcriptV2 } from "../test/speakingFixture";
 import { practiceFromWalk } from "../test/speakingPracticeFixture";
-import type { SpeakingExerciseView, SpeakingFeedback, SpeakingPractice, SpeakingRequest, SpeakingTranscript, SpeakingTranscription } from "../types/speaking";
-import { shownAsGrounded } from "./Speaking";
+import type { SpeakingExerciseView, SpeakingFeedback, SpeakingPractice, SpeakingQueueItem, SpeakingRequest, SpeakingTranscript, SpeakingTranscription } from "../types/speaking";
+import { followThrough, shownAsGrounded } from "./Speaking";
 import { canonicalAudioType, classifyRecordingError } from "./speakingRecorder";
 import { countWords } from "./Writing";
 
@@ -33,6 +33,10 @@ type Server = {
   ids: number;
   // The practice overview to answer; by default a minimal one built from the exercises.
   practice?: SpeakingPractice;
+  // Failure injection for the next POST whose path matches: `lose` handles it,
+  // then the answer never arrives; `drop` never reaches the server.
+  lose?: RegExp;
+  drop?: RegExp;
 };
 
 const newServer = (over: Partial<Server> = {}): Server => ({ exercises: [], savedSources: new Map(), transcription: "ok", feedback: "ok", calls: [], ids: 1000, ...over });
@@ -92,7 +96,7 @@ function serve(server: Server) {
   const byTake = (takeId: number) => server.exercises.find((v) => v.takes.some((k) => k.id === takeId))!;
   const byTranscript = (id: number) => server.exercises.find((v) => v.transcripts.some((s) => s.id === id))!;
   const byKey = new Map<string, unknown>();
-  globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+  const handle = async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input), "http://localhost");
     const method = (init?.method ?? "GET").toUpperCase();
     const body = String(init?.body ?? "");
@@ -123,7 +127,8 @@ function serve(server: Server) {
         summary: { prompts: prompts.length, started: server.exercises.length, takes, completed: 0, exercises_completed: 0, awaiting_transcript: takes, awaiting_feedback: 0, in_progress: 0, failed: 0, unknown: 0, last_completed_at: null },
         queue: prompts
           .filter((x) => !server.exercises.some((v) => v.exercise.prompt_id === x.id))
-          .map((x) => ({ reason: "not_started" as const, priority: 7, prompt_id: x.id, title: x.title, exercise_id: null, take_id: null, take_number: null, state: null, improvements: 0, since: null })),
+          .map((x) => ({ reason: "not_started" as const, priority: 9, prompt_id: x.id, title: x.title, exercise_id: null, take_id: null, take_number: null, state: null, improvements: 0, since: null, request: null, request_enabled: false, pack_status: null })),
+        resume: null,
         exercises: [],
         providers: providers(),
       };
@@ -138,6 +143,16 @@ function serve(server: Server) {
     if ((m = /^\/api\/speaking\/exercises\/(\d+)\/takes$/.exec(p)) && method === "POST") {
       const v = server.exercises.find((x) => x.exercise.id === Number(m![1]))!;
       const t = JSON.parse(body) as { audio_source: "recording" | "file" | "none"; audio_mime?: string; audio_bytes?: number; audio_sha256?: string; duration_ms?: number };
+      // The backend's replay rules: the same audio, or a typed save while the
+      // latest take is an empty typed take, names the existing take.
+      const last = v.takes.at(-1);
+      const same =
+        t.audio_source === "none"
+          ? last?.audio_source === "none" && !v.transcripts.some((s) => s.take_id === last.id)
+            ? last
+            : undefined
+          : v.takes.find((k) => k.audio_sha256 === t.audio_sha256);
+      if (same) return json(200, { ...view(v), take_id: same.id, replayed: true });
       v.takes.push({
         id: ++server.ids,
         number: v.takes.length + 1,
@@ -225,6 +240,20 @@ function serve(server: Server) {
     if (p === "/api/reviewable-units") return json(200, { reviewable_units: [] });
     if (p === "/api/learning-records") return json(200, { records: [], next_before_entry_id: null });
     return json(200, { concepts: [] });
+  };
+  globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const post = (init?.method ?? "GET").toUpperCase() === "POST";
+    const path = new URL(String(input), "http://localhost").pathname;
+    if (post && server.drop?.test(path)) {
+      server.drop = undefined;
+      throw new TypeError("Failed to fetch");
+    }
+    const res = await handle(input, init);
+    if (post && server.lose?.test(path)) {
+      server.lose = undefined;
+      throw new TypeError("Failed to fetch");
+    }
+    return res;
   }) as unknown as typeof fetch;
 }
 
@@ -510,6 +539,45 @@ describe("Speaking (private workbench)", () => {
     expect(speakingWrites(server)).toEqual([]);
   });
 
+  it("looks each point of the earlier feedback up in the later transcript, as a text check only", async () => {
+    installMedia("grant");
+    const v = withTypedTake(1, [transcriptV1]);
+    v.feedback.push({ id: 41, transcript_id: 21, status: "completed", failure_code: null, generator: GENERATOR, created_at: "t", content: feedbackV1 });
+    v.takes.push({ id: 12, number: 2, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t" });
+    // Take 2 uses two suggestions (one typed with a curly apostrophe) and keeps "très"; the last point
+    // ("je viendrai avec plaisir") is in neither transcript.
+    const later = transcriptV1
+      .replace("je suis arrivé vers midi et demi", "j’arriverai vers midi et demi")
+      .replace("Je vais amener un dessert", "Je vais apporter un dessert");
+    v.transcripts.push({ id: 31, take_id: 12, version: 1, text: later, word_count: countWords(later), origin: "typed", transcription_id: null, created_at: "t" });
+    const server = newServer({ exercises: [v] });
+    serve(server);
+    await openExercise(server);
+    const compare = screen.getByRole("region", { name: "Compare confirmed transcripts" });
+    const follow = within(compare).getByRole("region", { name: "Points from the feedback on Take 1 · v1, looked up in Take 2 · v1" });
+    expect(follow).toHaveTextContent("A text check only: whether Take 2 · v1 contains the suggested wording, or still contains the quoted words.");
+    const items = within(follow).getAllByRole("listitem");
+    expect(items.map((li) => li.getAttribute("data-follow"))).toEqual(["used", "used", "still", "gone"]);
+    expect(items[3]).toHaveTextContent("Neither appears: said differently, or left out.");
+    expect(items[0]).toHaveTextContent("The suggested wording appears.");
+    expect(items[2]).toHaveTextContent("The quoted words are still there.");
+    // Reversing the choice keeps the direction: the earlier version's feedback, the later text.
+    fireEvent.change(within(compare).getByLabelText("One"), { target: { value: "31" } });
+    fireEvent.change(within(compare).getByLabelText("Other"), { target: { value: "21" } });
+    expect(within(compare).getByRole("region", { name: "Points from the feedback on Take 1 · v1, looked up in Take 2 · v1" })).toBeInTheDocument();
+    expect(speakingWrites(server)).toEqual([]);
+  });
+
+  it("follow-through: suggestion first, then the quote, with apostrophes and spaces normalised", () => {
+    const k = (quote: string, suggestion: string) => ({ ...feedbackV1.improvements[0], quote, suggestion });
+    expect(followThrough([k("au pomme", "aux pommes"), k("très", "vraiment"), k("amener", "apporter"), k("c'est", "")], "une tarte  aux pommes, très bon, c’est")).toEqual([
+      "used",
+      "still",
+      "gone",
+      "still",
+    ]);
+  });
+
   it("works with both providers off: typed transcripts and comparison, no transcription or feedback button", async () => {
     installMedia("grant");
     const server = newServer({ exercises: [withTypedTake(1, [transcriptV1])], transcription: "disabled", feedback: "disabled" });
@@ -518,6 +586,15 @@ describe("Speaking (private workbench)", () => {
     const take = screen.getByRole("region", { name: "Take 1" });
     expect(within(take).getByText("Feedback is off (SPEAKING_PROVIDER). Recording, transcripts and comparison still work.")).toBeInTheDocument();
     expect(within(take).queryByRole("button", { name: /Request feedback/ })).toBeNull();
+    // The next step is a self-review against the wording this exercise keeps, on this page only.
+    const review = within(take).getByRole("group", { name: "Review take 1, version 1 yourself" });
+    const boxes = within(review).getAllByRole("checkbox");
+    expect(boxes).toHaveLength(invitation.requirements.length);
+    expect(review).toHaveTextContent(invitation.requirements[0]);
+    expect(review).toHaveTextContent("Then record take 2 at the top of this page, covering what is missing.");
+    fireEvent.click(boxes[0]);
+    expect(boxes[0]).toBeChecked();
+    expect(speakingWrites(server)).toEqual([]);
   });
 
   it("is never offered in the public demo", async () => {
@@ -529,6 +606,16 @@ describe("Speaking (private workbench)", () => {
     expect(screen.queryByText(/Record a take/)).toBeNull();
   });
 });
+
+// Queue steps as the backend sends them (speaking_practice_v1).
+const addTypedTranscript: SpeakingQueueItem = {
+  reason: "add_transcript", priority: 3, prompt_id: invitation.id, title: invitation.title, exercise_id: 1, take_id: 12, take_number: 2,
+  state: "awaiting_transcript", improvements: 0, since: "t", request: null, request_enabled: false, pack_status: "current",
+};
+const notStarted: SpeakingQueueItem = {
+  reason: "not_started", priority: 9, prompt_id: "sp-demande-renseignements", title: "Demander des renseignements", exercise_id: null, take_id: null,
+  take_number: null, state: null, improvements: 0, since: null, request: null, request_enabled: false, pack_status: null,
+};
 
 describe("Speaking practice overview and attempt history", () => {
   const sha = async (bytes: Uint8Array) =>
@@ -543,10 +630,8 @@ describe("Speaking practice overview and attempt history", () => {
       schema_version: "speaking_practice_v1",
       generated_at: "t",
       summary: { prompts: 3, started: 1, takes: 2, completed: 1, exercises_completed: 1, awaiting_transcript: 1, awaiting_feedback: 0, in_progress: 0, failed: 0, unknown: 0, last_completed_at: "2026-11-17T10:00:00Z" },
-      queue: [
-        { reason: "add_transcript", priority: 3, prompt_id: invitation.id, title: invitation.title, exercise_id: 1, take_id: 12, take_number: 2, state: "awaiting_transcript", improvements: 0, since: "t" },
-        { reason: "not_started", priority: 7, prompt_id: "sp-demande-renseignements", title: "Demander des renseignements", exercise_id: null, take_id: null, take_number: null, state: null, improvements: 0, since: null },
-      ],
+      queue: [addTypedTranscript, notStarted],
+      resume: addTypedTranscript,
       exercises: [],
       providers: { transcription: { enabled: true, name: TRANSCRIBER }, feedback: { enabled: true, name: GENERATOR } },
     };
@@ -559,7 +644,7 @@ describe("Speaking practice overview and attempt history", () => {
     expect(within(overview).getByText(/Only a take whose latest checked transcript has feedback counts as completed/)).toBeInTheDocument();
     const items = within(overview).getAllByRole("listitem").filter((li) => li.hasAttribute("data-reason"));
     expect(items.map((li) => li.getAttribute("data-reason"))).toEqual(["add_transcript", "not_started"]);
-    expect(items[0]).toHaveTextContent("Take 2: add its transcript, by transcription or by typing what you said.");
+    expect(items[0]).toHaveTextContent("Take 2: type what you said.");
     expect(within(items[1]).getByRole("button", { name: "Start" })).toBeInTheDocument();
     expect(within(overview).getByRole("link", { name: "Download all attempts (NDJSON)" })).toHaveAttribute("href", "/api/speaking/export");
     fireEvent.click(within(items[0]).getByRole("button", { name: "Open" }));
@@ -568,19 +653,61 @@ describe("Speaking practice overview and attempt history", () => {
     expect(speakingWrites(server)).toEqual([]);
   });
 
+  it("keeps every started exercise actionable when feedback or transcription is off, failed, unknown or running", async () => {
+    installMedia("grant");
+    const server = newServer({ exercises: [withTypedTake(1, [transcriptV1])] });
+    const item = (over: Partial<SpeakingQueueItem>): SpeakingQueueItem => ({ ...addTypedTranscript, ...over });
+    const review = item({ reason: "review_without_feedback", priority: 5, take_id: 11, take_number: 1, state: "awaiting_feedback", request: "feedback", pack_status: "changed" });
+    server.practice = {
+      schema_version: "speaking_practice_v1",
+      generated_at: "t",
+      summary: { prompts: 3, started: 3, takes: 4, completed: 0, exercises_completed: 0, awaiting_transcript: 0, awaiting_feedback: 1, in_progress: 1, failed: 1, unknown: 1, last_completed_at: null },
+      queue: [
+        item({ reason: "check_unknown_outcome", priority: 0, prompt_id: "p-b", title: "B", exercise_id: 2, take_id: 21, take_number: 1, state: "transcription_unknown", request: "transcription" }),
+        item({ reason: "request_failed", priority: 1, prompt_id: "p-c", title: "C", exercise_id: 3, take_id: 31, take_number: 2, state: "feedback_failed", request: "feedback" }),
+        review,
+        item({ reason: "request_in_progress", priority: 8, prompt_id: "p-d", title: "D", exercise_id: 4, take_id: 41, take_number: 1, state: "feedback_in_progress", request: "feedback", request_enabled: true }),
+      ],
+      resume: review,
+      exercises: [],
+      providers: { transcription: { enabled: false, name: null }, feedback: { enabled: false, name: null } },
+    };
+    serve(server);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Speaking" }));
+    const overview = await screen.findByRole("region", { name: "Speaking practice overview" });
+    const items = (await within(overview).findAllByRole("listitem")).filter((li) => li.hasAttribute("data-reason"));
+    expect(items.map((li) => li.getAttribute("data-reason"))).toEqual(["check_unknown_outcome", "request_failed", "review_without_feedback", "request_in_progress"]);
+    expect(items[0]).toHaveTextContent("Take 1: the outcome of its transcription request is unknown, and transcription is off now. Type what you said instead.");
+    expect(items[1]).toHaveTextContent("Take 2: its feedback request failed, and feedback is off now. Review your transcript against the prompt yourself, or answer again.");
+    expect(items[2]).toHaveTextContent("Take 1: your checked transcript has no feedback, and feedback is off. Review it against the prompt's requirements yourself, then answer again.");
+    expect(items[2]).toHaveTextContent("This exercise keeps the wording you answered; the prompt set has corrected it since.");
+    expect(items[3]).toHaveTextContent("Take 1: its feedback is still being prepared. Check again in a moment.");
+    for (const li of items) expect(within(li).getByRole("button", { name: "Open" })).toBeInTheDocument();
+    // "Continue where you left off" opens the most recent incomplete exercise at its take.
+    const resume = within(overview).getByRole("group", { name: "Continue where you left off" });
+    expect(resume).toHaveTextContent("Take 1: your checked transcript has no feedback, and feedback is off.");
+    fireEvent.click(within(resume).getByRole("button", { name: "Continue" }));
+    await screen.findByRole("heading", { name: invitation.title });
+    expect(within(screen.getByRole("group", { name: "Choose a take" })).getByRole("button", { name: "Take 1" })).toHaveAttribute("aria-pressed", "true");
+    // The take's section takes focus, so a phone lands on it rather than on the prompt.
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Take 1" })).toHaveFocus());
+    expect(speakingWrites(server)).toEqual([]);
+  });
+
   it("uses the plural for improvements and says when there is nothing to do", async () => {
     installMedia("grant");
     const server = newServer({ exercises: [withTypedTake(1, [transcriptV1])] });
     const base = { schema_version: "speaking_practice_v1" as const, generated_at: "t", exercises: [], providers: { transcription: { enabled: false, name: null }, feedback: { enabled: false, name: null } } };
     const summary = { prompts: 3, started: 1, takes: 1, completed: 1, exercises_completed: 1, awaiting_transcript: 0, awaiting_feedback: 0, in_progress: 0, failed: 0, unknown: 0, last_completed_at: null };
-    server.practice = { ...base, summary, queue: [{ reason: "answer_again", priority: 5, prompt_id: invitation.id, title: invitation.title, exercise_id: 1, take_id: 11, take_number: 1, state: "feedback_ready", improvements: 1, since: "t" }] };
+    server.practice = { ...base, summary, resume: null, queue: [{ ...addTypedTranscript, reason: "answer_again", priority: 6, take_id: 11, take_number: 1, state: "feedback_ready", improvements: 1 }] };
     serve(server);
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Speaking" }));
     const overview = await screen.findByRole("region", { name: "Speaking practice overview" });
     expect(await within(overview).findByText("Take 1: the feedback suggests 1 improvement. Answer again using it.")).toBeInTheDocument();
     cleanup();
-    server.practice = { ...base, summary: { ...summary, takes: 0, completed: 0, started: 0, exercises_completed: 0 }, queue: [] };
+    server.practice = { ...base, summary: { ...summary, takes: 0, completed: 0, started: 0, exercises_completed: 0 }, queue: [], resume: null };
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Speaking" }));
     const empty = await screen.findByRole("region", { name: "Speaking practice overview" });
@@ -596,10 +723,23 @@ describe("Speaking practice overview and attempt history", () => {
     v.takes.push({ id: 12, number: 2, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t", state: "awaiting_transcript" });
     v.exercise.pack_status = "changed";
     v.example_transcript = null;
+    const corrected = "Votre amie Léa organise un pique-nique dimanche prochain. Rappelez-la.";
+    v.current_prompt = { ...v.exercise, situation: corrected, content_fingerprint: "c".repeat(64) };
     const server = newServer({ exercises: [v] });
     serve(server);
     await openExercise(server);
-    expect(screen.getByRole("note")).toHaveTextContent("This prompt was corrected in the set after you started it.");
+    const note = screen.getByRole("note");
+    expect(note).toHaveTextContent("This prompt was corrected in the set after you started it.");
+    // The answered wording stays on top with its revision; the correction is beside it, read-only.
+    expect(screen.getByText("The wording you answered (revision ffffffff):")).toBeInTheDocument();
+    expect(screen.getByText(invitation.situation)).toBeInTheDocument();
+    fireEvent.click(within(note).getByText("Show the corrected wording in the set (revision cccccccc)"));
+    expect(within(note).getByText("Changed: situation.")).toBeInTheDocument();
+    expect(within(note).getByText(corrected)).toBeInTheDocument();
+    expect(within(note).getByText(/cannot be practised as a separate exercise yet/)).toBeInTheDocument();
+    // Each attempt names the wording it answered.
+    expect(screen.getByText("Every take here answered revision ffffffff: an exercise keeps the wording it was started with.")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Take 2" })).getByText(/Take 2 answered the wording at the top of this exercise \(revision ffffffff\)/)).toBeInTheDocument();
     const rows = within(screen.getByRole("list", { name: "Attempts" })).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent(`Content points partly covered; ${feedbackV1.improvements.length} improvements`);
@@ -628,6 +768,102 @@ describe("Speaking practice overview and attempt history", () => {
     fireEvent.change(input, { target: { files: [new File([audio], "take.wav", { type: "audio/wav" })] } });
     expect(await within(take).findByLabelText("Play back take 1")).toBeInTheDocument();
     expect(within(take).queryByText(/not in this browser any more/)).toBeNull();
+    expect(speakingWrites(server)).toEqual([]);
+  });
+});
+
+describe("Speaking: lost answers and retries never stack a second attempt", () => {
+  const typedTake = (v: SpeakingExerciseView) => {
+    v.takes.push({ id: 11, number: 1, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t", state: "awaiting_transcript" });
+    return v;
+  };
+
+  it("checks a typed take whose answer was lost, and a resend names the same take", async () => {
+    installMedia("grant");
+    const server = newServer({ exercises: [exerciseView(1)] });
+    serve(server);
+    const panel = await openExercise(server);
+    server.lose = /\/takes$/;
+    fireEvent.click(within(panel).getByRole("button", { name: "Type what you said instead" }));
+    const alert = await within(panel).findByRole("alert");
+    expect(alert).toHaveTextContent("No answer arrived, so the take may or may not have been saved. Check before saving it again.");
+    fireEvent.click(within(alert).getByRole("button", { name: "Check whether it was saved" }));
+    expect(await screen.findByRole("region", { name: "Take 1" })).toBeInTheDocument();
+    expect(server.exercises[0].takes).toHaveLength(1);
+    // Saving a typed take again while take 1 is still empty names take 1.
+    fireEvent.click(within(panel).getByRole("button", { name: "Type what you said instead" }));
+    await waitFor(() => expect(server.calls.filter((c) => c.method === "POST" && c.path.endsWith("/takes"))).toHaveLength(2));
+    expect(server.exercises[0].takes).toHaveLength(1);
+    expect(within(screen.getByRole("group", { name: "Choose a take" })).getAllByRole("button")).toHaveLength(1);
+  });
+
+  it("says a typed take was not saved when the request never arrived, and saves it once on the next try", async () => {
+    installMedia("grant");
+    const server = newServer({ exercises: [exerciseView(1)] });
+    serve(server);
+    const panel = await openExercise(server);
+    server.drop = /\/takes$/;
+    fireEvent.click(within(panel).getByRole("button", { name: "Type what you said instead" }));
+    fireEvent.click(within(await within(panel).findByRole("alert")).getByRole("button", { name: "Check whether it was saved" }));
+    expect(await within(panel).findByText("It was not saved. Choose “Type what you said instead” again to save it as take 1.")).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("button", { name: "Type what you said instead" }));
+    expect(await screen.findByRole("region", { name: "Take 1" })).toBeInTheDocument();
+    expect(server.exercises[0].takes).toHaveLength(1);
+  });
+
+  it("finds a confirmed transcript whose answer was lost, by checking or by confirming again", async () => {
+    installMedia("grant");
+    for (const how of ["check", "confirm again"] as const) {
+      const server = newServer({ exercises: [typedTake(exerciseView(1))] });
+      serve(server);
+      await openExercise(server);
+      const take = screen.getByRole("region", { name: "Take 1" });
+      fireEvent.change(within(take).getByLabelText("Transcript of take 1, version 1"), { target: { value: transcriptV1 } });
+      server.lose = /\/transcripts$/;
+      fireEvent.click(within(take).getByRole("button", { name: "Confirm as version 1" }));
+      const alert = await within(take).findByRole("alert");
+      expect(alert).toHaveTextContent("No answer arrived, so this version may or may not have been saved. Check before confirming it again.");
+      if (how === "check") fireEvent.click(within(alert).getByRole("button", { name: "Check whether it was saved" }));
+      else fireEvent.click(within(take).getByRole("button", { name: "Confirm as version 1" }));
+      expect(await within(screen.getByRole("region", { name: "Take 1" })).findByLabelText("Take 1, transcript version 1")).toHaveTextContent(transcriptV1);
+      expect(screen.queryByText(/nothing was saved/)).toBeNull();
+      expect(screen.getByRole("button", { name: "Confirm as version 2" })).toBeInTheDocument();
+      expect(server.exercises[0].transcripts).toHaveLength(1);
+      cleanup();
+    }
+  });
+
+  it("says a transcript was not saved when the request never arrived, and keeps the text for the next try", async () => {
+    installMedia("grant");
+    const server = newServer({ exercises: [typedTake(exerciseView(1))] });
+    serve(server);
+    await openExercise(server);
+    const take = screen.getByRole("region", { name: "Take 1" });
+    fireEvent.change(within(take).getByLabelText("Transcript of take 1, version 1"), { target: { value: transcriptV1 } });
+    server.drop = /\/transcripts$/;
+    fireEvent.click(within(take).getByRole("button", { name: "Confirm as version 1" }));
+    fireEvent.click(within(await within(take).findByRole("alert")).getByRole("button", { name: "Check whether it was saved" }));
+    expect(await within(take).findByText("It was not saved. Confirm it again to save it as version 1.")).toBeInTheDocument();
+    expect(within(take).getByLabelText("Transcript of take 1, version 1")).toHaveValue(transcriptV1);
+    fireEvent.click(within(take).getByRole("button", { name: "Confirm as version 1" }));
+    expect(await within(screen.getByRole("region", { name: "Take 1" })).findByLabelText("Take 1, transcript version 1")).toBeInTheDocument();
+    expect(server.exercises[0].transcripts).toHaveLength(1);
+  });
+
+  it("after a reload, says how to retry a failed transcription and keeps the typing path open", async () => {
+    installMedia("grant");
+    const v = exerciseView(1);
+    v.takes.push({ id: 11, number: 1, audio_source: "recording", audio_mime: "audio/webm", audio_bytes: WEBM.length, audio_sha256: "a".repeat(64), duration_ms: 1500, created_at: "t", state: "transcription_failed" });
+    v.transcriptions.push({ id: 31, take_id: 11, status: "failed", failure_code: "provider_unavailable", transcriber: TRANSCRIBER, text: null, created_at: "t" });
+    v.transcription_requests.push({ id: 32, operation_id: "k", take_id: 11, after_unknown: false, started_at: "t", deadline_at: "t", finished_at: "t", state: "failed", result_id: 31 });
+    const server = newServer({ exercises: [v] });
+    serve(server);
+    await openExercise(server);
+    const take = screen.getByRole("region", { name: "Take 1" });
+    expect(within(take).getByText(/The last transcription failed/)).toBeInTheDocument();
+    expect(within(take).getByText("To send this take for transcription, choose its audio file again above. You can also type what you said below.")).toBeInTheDocument();
+    expect(within(take).getByLabelText("Choose the same audio file again")).toBeInTheDocument();
+    expect(within(take).getByLabelText("Transcript of take 1, version 1")).toBeInTheDocument();
     expect(speakingWrites(server)).toEqual([]);
   });
 });

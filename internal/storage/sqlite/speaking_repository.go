@@ -165,6 +165,25 @@ func (r *SpeakingRepository) AddTake(ctx context.Context, exerciseID int64, t do
 			return domain.SpeakingTake{}, false, err
 		}
 	}
+	// A typed take holds nothing until its transcript is confirmed. While the
+	// exercise's latest take is such an empty typed take, another typed save (a
+	// lost answer resent, a double click, a second tab) names it instead of
+	// stacking a second empty attempt; decided here for the same reason.
+	if t.AudioSource == domain.SpeakingAudioNone {
+		latest, err := readSpeakingTake(ctx, tx, `exercise_id = ? ORDER BY take_number DESC LIMIT 1`, exerciseID)
+		switch {
+		case err == nil && latest.AudioSource == domain.SpeakingAudioNone:
+			var versions int
+			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM speaking_transcripts WHERE take_id = ?`, latest.ID).Scan(&versions); err != nil {
+				return domain.SpeakingTake{}, false, err
+			}
+			if versions == 0 {
+				return latest, true, tx.Commit()
+			}
+		case err != nil && !errors.Is(err, domain.ErrNotFound):
+			return domain.SpeakingTake{}, false, err
+		}
+	}
 	var n int
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(take_number), 0) FROM speaking_takes WHERE exercise_id = ?`, exerciseID).Scan(&n); err != nil {
 		return domain.SpeakingTake{}, false, err

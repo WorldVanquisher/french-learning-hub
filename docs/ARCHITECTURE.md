@@ -942,8 +942,12 @@ the learning workflow only through §4.1.
     the pack's content and title; otherwise `409 script_conflict`, naming the
     lesson (`material_id`, `current_revision`, `pack_status`), writes nothing.
   - **Preview, then confirm.** `GET /listening/materials/{id}/script-update`
-    lists what differs (lines by position; questions by item ID with the
-    changed fields; annotations) and the `pack_fingerprint`. Only `POST` of
+    lists what differs (lines aligned by content: a removed or added line is
+    listed once, unchanged lines it renumbers are `lines_renumbered`, a changed
+    line names `before_line` and `after_line`; questions by item ID with the
+    changed fields; annotations) and the `pack_fingerprint`. If the lesson was
+    already updated elsewhere, the workbench says so and keeps the page and its
+    unsaved answers until the learner shows the current lesson. Only `POST` of
     the same path with `{from_revision, pack_fingerprint}` writes: it appends
     revision *N+1* (the next transcript version and its authored exercise) in
     one transaction under the write lock, never changing an earlier revision.
@@ -1260,8 +1264,11 @@ through §4.1. Migration `018`.
     later) or `removed`. A changed or removed prompt keeps its exercise and
     takes unchanged, the set's example transcript is not shown beside the
     older wording, and starting the prompt again stays `409 prompt_conflict`.
-    Several exercises per prompt (prompt revisions) would need a migration and
-    are not implemented.
+    For a `changed` prompt the exercise view also returns the set's wording as
+    `current_prompt` (with its own `content_fingerprint`; null otherwise),
+    read-only, so the workbench can show both. Several exercises per prompt
+    (prompt revisions) would need a migration and are not implemented
+    (`docs/plans/SPEAKING-PROMPT-REVISIONS.md`).
 - **Take** (`speaking_takes`, numbered `1…20`): recorded with MediaRecorder,
   uploaded as a file, or typed (`audio_source` `recording`, `file` or `none`).
   - **Audio stays in the browser.** Recording and playback make no request.
@@ -1271,8 +1278,10 @@ through §4.1. Migration `018`.
     double click, a second tab) names the existing take (`200`,
     `Idempotency-Replayed`): decided in the write transaction, so concurrent
     saves of one recording make one take. The same SHA-256 with other
-    metadata is `409 take_conflict`. Typed takes carry no audio and are always
-    new.
+    metadata is `409 take_conflict`. A typed take (no audio) holds nothing until
+    its transcript is confirmed, so a typed save while the exercise's latest
+    take is a typed take with no transcript names that take too (`200`,
+    replayed); otherwise a typed save is a new take.
   - Accepted types are those both of the provider's pages list: `audio/webm`,
     `audio/mp4` (m4a), `audio/mpeg` (mp3) and `audio/wav`. The limits are
     8 MiB and 120 s. The server enforces the size and the declared duration,
@@ -1331,16 +1340,32 @@ through §4.1. Migration `018`.
     `transcript_to_confirm`, `awaiting_feedback`, `feedback_in_progress`,
     `feedback_failed`, `feedback_unknown` or `feedback_ready`. Only the latest
     confirmed version counts: a report on an earlier version is about other
-    words, so a new version is `awaiting_feedback` again.
+    words, so a new version is `awaiting_feedback` again. A completed report on
+    the latest version completes the take; a later request about the same
+    version (running, failed or unknown) does not undo that.
   - The summary counts takes by state. Only `feedback_ready` counts as
     completed; waiting, failed and unknown outcomes are counted apart, and the
     counts add up to the takes.
   - The queue gives one next step per exercise from its latest take (an
-    earlier, abandoned take is not a task), most urgent first:
-    `check_unknown_outcome`, `request_failed`, `confirm_transcript`,
-    `add_transcript`, `request_feedback` (only with feedback enabled),
-    `answer_again` (feedback with improvements, no later take),
-    `start_first_take`; then the prompts not started, in set order.
+    earlier, abandoned take is not a task). Every started exercise whose
+    latest take is not complete has a step whatever the providers'
+    configuration; only a complete take whose feedback raised nothing has
+    none. The reason follows from the take's state, most urgent first
+    (`priority` is ordinal): `check_unknown_outcome`, `request_failed`,
+    `confirm_transcript`, `add_transcript`, `request_feedback` (feedback on) or
+    `review_without_feedback` (a checked transcript while feedback is off:
+    review it against the prompt and answer again), `answer_again` (feedback
+    with improvements), `start_first_take`, `request_in_progress` (a request
+    is running; it reads as unknown after its deadline); then the prompts not
+    started, in set order.
+  - Each step says which request it concerns, `request` (`transcription`,
+    `feedback`, or null when none applies, e.g. a typed take awaiting its
+    transcript), and whether that provider is on now (`request_enabled`), so a
+    failed or unknown request is still reported as failed or unknown when its
+    provider is off, with what is still possible instead. Steps of started
+    exercises carry their `pack_status`.
+  - `resume` is the step of the most recently active exercise whose latest
+    take is not complete, or null.
   - The export is NDJSON, one line per take: the exercise reference (`id`,
     `prompt_id`, `prompt_set`, `content_fingerprint`, `pack_status`), the
     take's metadata and state, its transcriptions, confirmed versions and
@@ -1348,8 +1373,23 @@ through §4.1. Migration `018`.
     exported. There is no import: the format is a record of practice, not a
     backup (use the database backup, RELEASE.md).
 - **Workbench:**
-  - **Speaking practice** (the list) shows the summary, the queue with each
-    reason, and the export link.
+  - **Speaking practice** (the list) shows the summary, **Continue where you
+    left off** (`resume`), the queue with one sentence per reason, request and
+    availability (a corrected prompt is noted), and the export link. Opening
+    an exercise at a take moves focus to that take.
+  - A corrected prompt shows the wording answered with its revision (the
+    fingerprint's first 8 hex digits), the set's corrected wording behind a
+    disclosure with the changed fields, and on each take and in **Attempts**
+    the revision it answered.
+  - With feedback off, a take's checked version offers a self-review: the
+    prompt's requirements as ticks that stay in the page (never saved, sent
+    or scored) and the take's length against the target.
+  - A transcript confirmation or a typed take save whose answer was lost offers
+    **Check whether it was saved**; confirming again after a lost answer
+    recognises the version already saved instead of reporting "unchanged".
+  - **Compare** also looks each improvement of the earlier version's report up
+    in the later transcript (suggested wording appears / quoted words still
+    there / neither): a text check, not a judgement.
   - Takes (`aria-pressed`) and their confirmed versions; local playback while
     the audio is in memory, with an honest note once it is gone. After a
     reload or a restore, **Choose the same audio file again** keeps a file in
@@ -4092,7 +4132,7 @@ does not expose these routes.
 | `GET /listening/preparations/{key}` | `{preparation, exercise}` for an attempt (`exercise` without `content`, null while unfinished). `404` nothing recorded under the key (never proof it was not sent) |
 | `GET /listening/scripts` | `pack` (`flh_listening_script_pack_v1`) and `scripts`: `id`, `title`, `genre`, `style_level`, `source_pack`, `notice`, `lines`, `questions`, `imported_material_id`, `imported_revision` and `pack_status` (null when not imported). No line, choice or key. No provider call |
 | `POST /listening/scripts/{id}` | No body. Imports the authored script with its exercise (revision 1) in one transaction, no provider call. `201` lesson; `200` already imported and its current revision has the pack's content and title (`Idempotency-Replayed: true`, nothing written); `404` unknown script; `409` `{code: "script_conflict", material_id, current_revision, pack_status}` (nothing written; an update is the explicit route below) |
-| `GET /listening/materials/{id}/script-update` | Read-only preview: `material_id`, `script_id`, `current_revision`, `current_fingerprint`, `pack_status`, `pack_fingerprint`, `next_revision` (null unless `update_available`), `changes` (`lines` [`line`, `change` `changed`/`added`/`removed`, `before`, `after` {`id`, `speaker`, `text`} or null], `questions` [`item_id`, `change`, `before_position`, `after_position`, `fields` among `kind`, `question`, `choices`, `expected_answer`, `accepted_alternatives`, `wrong_answers`, `rationale`, `segments`, `evidence`, `position`; `before`, `after` items or null], `annotations_changed`). `404`; `409` `{code}` `not_authored_script` or `script_not_in_pack` |
+| `GET /listening/materials/{id}/script-update` | Read-only preview: `material_id`, `script_id`, `current_revision`, `current_fingerprint`, `pack_status`, `pack_fingerprint`, `next_revision` (null unless `update_available`), `changes` (`lines` [`line`, `change` `changed`/`added`/`removed`, `before_line`, `after_line`, `before`, `after` {`id`, `speaker`, `text`} or null; lines aligned by content], `lines_renumbered` [`before`, `after`]: unchanged lines that only get a new number, `questions` [`item_id`, `change`, `before_position`, `after_position`, `fields` among `kind`, `question`, `choices`, `expected_answer`, `accepted_alternatives`, `wrong_answers`, `rationale`, `segments`, `evidence`, `position`; `before`, `after` items or null], `annotations_changed`). `404`; `409` `{code}` `not_authored_script` or `script_not_in_pack` |
 | `POST /listening/materials/{id}/script-update` | Body `{"from_revision", "pack_fingerprint"}` from the preview (unknown fields refused). Appends the next revision in one transaction, no provider call. `201` `{revision, replayed: false, lesson}`; `200` the current revision already has the pack's content (`Idempotency-Replayed: true`, nothing written); `409` `{code: "stale_preview", preview}` (pack or lesson changed since the preview; nothing written), `not_authored_script`, `script_not_in_pack`, `script_title_changed`; `422` `from_revision` < 1 or a malformed fingerprint; `400`; `404` |
 | `GET /listening/materials/{id}/revisions/{n}` | One revision of an authored script: `material_id`, `revision`, `current_revision`, `fingerprint`, `transcript`, `exercise` (with `content`). `400` invalid revision; `404` unknown lesson or revision; `409 not_authored_script`. No provider call |
 
@@ -4181,14 +4221,14 @@ routes.
 | `GET /speaking/prompts` | `set`, `notice`, `prompts` (`id`, `format`, `style_level`, `title`, `situation`, `requirements`, `seconds_min`, `seconds_max`, `started_exercise_id`), `providers`, `limits`. No provider call; `started_pack_status` (`current`/`changed`/`removed`, null when not started) |
 | `POST /speaking/prompts/{prompt_id}` | Starts the exercise for an authored prompt. `201` new; `200` already started (`Idempotency-Replayed: true`); `404`; `409 prompt_conflict` |
 | `GET /speaking/exercises` | `exercises` (newest first: `exercise`, `takes`) and `providers` |
-| `GET /speaking/exercises/{id}` | `exercise`, `takes` (`id`, `number`, `audio_source`, `audio_mime`, `audio_bytes`, `audio_sha256`, `duration_ms`), `transcriptions` (`status`, `failure_code`, `transcriber`, `text`), `transcription_requests`, `transcripts` (`take_id`, `version`, `text`, `word_count`, `origin`, `transcription_id`), `feedback` (`transcript_id`, `status`, `failure_code`, `generator`, `content`), `feedback_requests`, `example_transcript`, `providers`, `limits`, `word_convention`. No provider call. `exercise` also has `prompt_set`, `content_fingerprint` and `pack_status`; each take has its derived `state`; `example_transcript` is null unless `pack_status` is `current` |
-| `POST /speaking/exercises/{id}/takes` | Body `{"audio_source": "recording"\|"file"\|"none", "audio_mime"?, "audio_bytes"?, "audio_sha256"?, "duration_ms"?}`: metadata only, never audio (`201`). `409 too_many_takes` (20); `422`; `404`. The response adds `take_id` and `replayed`: the same audio (SHA-256) for the same exercise returns the existing take (`200`, `Idempotency-Replayed: true`); the same SHA-256 with other metadata is `409 take_conflict` |
+| `GET /speaking/exercises/{id}` | `exercise`, `takes` (`id`, `number`, `audio_source`, `audio_mime`, `audio_bytes`, `audio_sha256`, `duration_ms`), `transcriptions` (`status`, `failure_code`, `transcriber`, `text`), `transcription_requests`, `transcripts` (`take_id`, `version`, `text`, `word_count`, `origin`, `transcription_id`), `feedback` (`transcript_id`, `status`, `failure_code`, `generator`, `content`), `feedback_requests`, `example_transcript`, `providers`, `limits`, `word_convention`. No provider call. `exercise` also has `prompt_set`, `content_fingerprint` and `pack_status`; each take has its derived `state`; `example_transcript` is null unless `pack_status` is `current`; `current_prompt` (`title`, `situation`, `requirements`, `seconds_min`, `seconds_max`, `content_fingerprint`) is the set's corrected wording when `pack_status` is `changed`, else null |
+| `POST /speaking/exercises/{id}/takes` | Body `{"audio_source": "recording"\|"file"\|"none", "audio_mime"?, "audio_bytes"?, "audio_sha256"?, "duration_ms"?}`: metadata only, never audio (`201`). `409 too_many_takes` (20); `422`; `404`. The response adds `take_id` and `replayed`: the same audio (SHA-256) for the same exercise returns the existing take (`200`, `Idempotency-Replayed: true`); the same SHA-256 with other metadata is `409 take_conflict`; a typed save while the latest take is a typed take with no transcript returns that take (`200`, replayed) |
 | `POST /speaking/takes/{id}/transcriptions` | Body `{"audio_base64", "audio_mime", "confirm_unknown_retry"?}` (at most 8 MiB of audio), optional UUID `Idempotency-Key`. One provider call; the audio is not stored. `201` `{request, transcription}`; `200` same-key replay; `502`/`504` stored failure or unknown outcome; `409` `{code}`: `request_in_progress`, `outcome_unknown`, `key_conflict`, `no_audio`; `413`; `422` refused before any call (type, size, magic bytes, not this take's audio); `503` disabled (before the body is read); `404` |
 | `GET /speaking/transcription-requests/{key}` | `{request, transcription}`; `404` nothing recorded under the key |
 | `POST /speaking/takes/{id}/transcripts` | Body `{"text", "transcription_id"?}`: the take's next confirmed version (`201`). `409` `{code}`: `unchanged`, `too_many_versions` (10); `422` (also a transcription that is not a completed transcription of this take); `404` |
 | `POST /speaking/transcripts/{id}/feedback` | Optional UUID `Idempotency-Key`, optional `{"confirm_unknown_retry": true}`. One provider call for that version. `201` `{request, feedback}` with grounded improvements; `200` replay; `502`/`504`; `409` `{code}`: `request_in_progress`, `outcome_unknown`, `key_conflict`; `503` disabled; `404` |
 | `GET /speaking/feedback-requests/{key}` | `{request, feedback}`; `404` nothing recorded under the key |
-| `GET /speaking/practice` | `speaking_practice_v1`: `summary` (`prompts`, `started`, `takes`, `completed`, `exercises_completed`, `awaiting_transcript`, `awaiting_feedback`, `in_progress`, `failed`, `unknown`, `last_completed_at`), `queue` (`reason`, `priority`, `prompt_id`, `title`, `exercise_id`, `take_id`, `take_number`, `state`, `improvements`, `since`), `exercises` (`exercise`, `takes`, `completed`, `latest` attempt, `last_activity_at`), `providers`. Read-only, no provider call |
+| `GET /speaking/practice` | `speaking_practice_v1`: `summary` (`prompts`, `started`, `takes`, `completed`, `exercises_completed`, `awaiting_transcript`, `awaiting_feedback`, `in_progress`, `failed`, `unknown`, `last_completed_at`), `queue` (`reason`, `priority` [ordinal], `prompt_id`, `title`, `exercise_id`, `take_id`, `take_number`, `state`, `improvements`, `since`, `request` [`transcription`/`feedback`/null], `request_enabled`, `pack_status` [null when not started]), `resume` (a queue item or null), `exercises` (`exercise`, `takes`, `completed`, `latest` attempt, `last_activity_at`), `providers`. Read-only, no provider call |
 | `GET /speaking/export` | NDJSON (`application/x-ndjson`), one `speaking_attempt_export_v1` line per take: `exercise` {`id`, `prompt_id`, `prompt_set`, `content_fingerprint`, `pack_status`, `title`}, `take` (with `state`), `transcriptions`, `transcripts`, `feedback`. Never audio. Read-only |
 
 A request has `id`, `operation_id`, `take_id` (transcription) or

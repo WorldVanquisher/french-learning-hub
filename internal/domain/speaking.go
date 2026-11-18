@@ -364,7 +364,9 @@ type SpeakingRepository interface {
 	ListExercises(ctx context.Context) ([]SpeakingExercise, error)
 	// AddTake saves the next take. The same audio (SHA-256) in the same
 	// exercise returns the existing take (true); the same audio with other
-	// metadata is ErrSpeakingTakeConflict. Takes without audio are always new.
+	// metadata is ErrSpeakingTakeConflict. A take without audio returns the
+	// exercise's latest take (true) while that is a typed take with no
+	// transcript yet; otherwise it is new.
 	AddTake(ctx context.Context, exerciseID int64, t SpeakingTake, now time.Time) (SpeakingTake, bool, error)
 	GetTake(ctx context.Context, id int64) (SpeakingTake, error)
 	ListTakes(ctx context.Context, exerciseID int64) ([]SpeakingTake, error)

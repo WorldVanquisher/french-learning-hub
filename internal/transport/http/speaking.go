@@ -230,8 +230,19 @@ func (h *Handler) toSpeakingView(v *application.SpeakingExerciseView) map[string
 	if v.ExampleTranscript != "" {
 		example = &v.ExampleTranscript
 	}
+	// The set's corrected wording, shown beside the stored one; null unless
+	// pack_status is changed. Read-only: the exercise keeps the stored wording.
+	var current any
+	if c := v.CurrentPrompt; c != nil {
+		reqs := c.Requirements
+		if reqs == nil {
+			reqs = []string{}
+		}
+		current = map[string]any{"title": c.Title, "situation": c.Situation, "requirements": reqs, "seconds_min": c.SecondsMin,
+			"seconds_max": c.SecondsMax, "content_fingerprint": c.Fingerprint()}
+	}
 	return map[string]any{"exercise": toSpeakingExercise(v.Exercise, v.PackStatus), "takes": takes, "transcriptions": trs, "transcription_requests": trReqs,
-		"transcripts": scripts, "feedback": fb, "feedback_requests": fbReqs, "example_transcript": example,
+		"transcripts": scripts, "feedback": fb, "feedback_requests": fbReqs, "example_transcript": example, "current_prompt": current,
 		"providers": h.speakingProviders(), "limits": speakingLimits(), "word_convention": WritingWordConvention}
 }
 

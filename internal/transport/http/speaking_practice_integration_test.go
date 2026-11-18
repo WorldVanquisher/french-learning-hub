@@ -220,20 +220,26 @@ func TestSpeakingPractice_UnknownOutcomeAndDisabledFeedback(t *testing.T) {
 		path(p, "summary", "unknown") != 1.0 {
 		t.Fatalf("unknown outcome: %v %v", queueReasons(p), p["summary"])
 	}
-	// Restart without providers: the records are unchanged, a typed version
-	// waits for feedback that cannot be requested, so no queue item asks for it.
+	// Restart without providers: the records are unchanged. A typed version
+	// waits for feedback that cannot be requested, so the exercise stays in
+	// the queue with a review step instead of a request (it used to vanish).
 	f.open(t, false, 0)
 	status, view := f.confirm(t, take, transcriptV1(t), nil)
 	if status != http.StatusCreated || takeState(view, take) != domain.SpeakingAwaitingFeedback {
 		t.Fatalf("typed version: %d %v", status, takeState(view, take))
 	}
 	p = f.practice(t)
+	q := p["queue"].([]any)[0]
+	if queueReasons(p)[0] != "review_without_feedback:sp-invitation-reponse" || path(q, "request") != "feedback" || path(q, "request_enabled") != false ||
+		path(q, "state") != domain.SpeakingAwaitingFeedback || path(p, "resume", "exercise_id") != float64(ex) {
+		t.Fatalf("feedback disabled: %v %v", queueReasons(p), q)
+	}
 	for _, r := range queueReasons(p) {
-		if strings.HasPrefix(r, "request_feedback") || strings.HasSuffix(r, ":sp-invitation-reponse") {
-			t.Fatalf("feedback disabled, yet queued: %v", queueReasons(p))
+		if strings.HasPrefix(r, "request_feedback") {
+			t.Fatalf("feedback disabled, yet requested: %v", queueReasons(p))
 		}
 	}
-	if path(p, "summary", "awaiting_feedback") != 1.0 || path(p, "providers", "feedback", "enabled") != false {
+	if path(p, "summary", "awaiting_feedback") != 1.0 || path(p, "summary", "completed") != 0.0 || path(p, "providers", "feedback", "enabled") != false {
 		t.Fatalf("disabled summary: %v", p["summary"])
 	}
 }
@@ -252,6 +258,10 @@ func TestSpeakingPractice_ChangedPromptKeepsTakesAndDropsTheNewExample(t *testin
 		t.Fatal(err)
 	}
 	after := f.view(t, ex)
+	if before["current_prompt"] != nil || path(after, "current_prompt", "situation") != path(before, "exercise", "situation") ||
+		path(after, "current_prompt", "content_fingerprint") != path(before, "exercise", "content_fingerprint") {
+		t.Fatalf("current prompt beside the stored one: %v → %v", before["current_prompt"], after["current_prompt"])
+	}
 	if path(after, "exercise", "pack_status") != "changed" || after["example_transcript"] != nil ||
 		path(after, "exercise", "content_fingerprint") == path(before, "exercise", "content_fingerprint") ||
 		takeState(after, take) != domain.SpeakingAwaitingTranscript || !strings.HasSuffix(path(after, "exercise", "situation").(string), "(ancienne version)") {

@@ -57,16 +57,11 @@ func (h *Handler) handleSpeakingPractice(w http.ResponseWriter, r *http.Request)
 	}
 	queue := make([]map[string]any, 0, len(p.Queue))
 	for _, q := range p.Queue {
-		item := map[string]any{"reason": q.Reason, "priority": domain.SpeakingQueuePriority(q.Reason), "prompt_id": q.PromptID,
-			"title": q.Title, "exercise_id": q.ExerciseID, "take_id": q.TakeID, "take_number": nil, "state": optString(q.State),
-			"improvements": q.Improvements, "since": nil}
-		if q.TakeID != nil {
-			item["take_number"] = q.TakeNumber
-		}
-		if q.Since != nil {
-			item["since"] = ts(*q.Since)
-		}
-		queue = append(queue, item)
+		queue = append(queue, toSpeakingQueueItem(q))
+	}
+	var resume any
+	if p.Resume != nil {
+		resume = toSpeakingQueueItem(*p.Resume)
 	}
 	exercises := make([]map[string]any, 0, len(p.Exercises))
 	for _, e := range p.Exercises {
@@ -89,9 +84,27 @@ func (h *Handler) handleSpeakingPractice(w http.ResponseWriter, r *http.Request)
 			"exercises_completed": s.ExercisesCompleted, "awaiting_transcript": s.AwaitingTranscript, "awaiting_feedback": s.AwaitingFeedback,
 			"in_progress": s.InProgress, "failed": s.Failed, "unknown": s.Unknown, "last_completed_at": last},
 		"queue":     queue,
+		"resume":    resume,
 		"exercises": exercises,
 		"providers": h.speakingProviders(),
 	})
+}
+
+// toSpeakingQueueItem is one queue step. request/request_enabled say which
+// provider request the step concerns and whether it can be sent now;
+// pack_status is the started exercise's (null for a prompt not started).
+func toSpeakingQueueItem(q application.SpeakingQueueItem) map[string]any {
+	item := map[string]any{"reason": q.Reason, "priority": domain.SpeakingQueuePriority(q.Reason), "prompt_id": q.PromptID,
+		"title": q.Title, "exercise_id": q.ExerciseID, "take_id": q.TakeID, "take_number": nil, "state": optString(q.State),
+		"improvements": q.Improvements, "since": nil, "request": optString(q.Request), "request_enabled": q.RequestEnabled,
+		"pack_status": optString(q.PackStatus)}
+	if q.TakeID != nil {
+		item["take_number"] = q.TakeNumber
+	}
+	if q.Since != nil {
+		item["since"] = ts(*q.Since)
+	}
+	return item
 }
 
 // handleSpeakingExport streams one JSON object per attempt (take), oldest
