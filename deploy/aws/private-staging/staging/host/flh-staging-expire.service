@@ -1,0 +1,9 @@
+# Powers the staging host off after its bounded runtime. With the instance's
+# shutdown behaviour "terminate", EC2 then terminates it; the data volume and
+# bucket remain until terraform destroy (AWS_STAGING_PLAN.md, teardown).
+[Unit]
+Description=FLH staging: bounded runtime (poweroff at the deadline)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl poweroff

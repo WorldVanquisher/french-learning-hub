@@ -1,0 +1,43 @@
+#!/bin/bash
+# Render the staging settings file from SSM Parameter Store (never from user
+# data, Terraform state or the repository).
+#   flh-staging-env REGION PARAM_DIR OUT_FILE
+# Every parameter under PARAM_DIR becomes NAME=value (NAME = the last path
+# element). SecureString values are decrypted with the host role. The file is
+# written 0600, root-owned, atomically. Values are never printed: only names
+# and set/empty. Local rehearsal: FLH_STAGING_PARAMS_JSON=FILE replaces the AWS
+# call with a JSON file of the same shape ({"Parameters":[{"Name","Value"}]}).
+set -euo pipefail
+REGION=${1:?region} PARAM_DIR=${2:?parameter path} OUT=${3:?output file}
+umask 077
+tmp=$(mktemp "$(dirname "$OUT")/.staging-env.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+if [ -n "${FLH_STAGING_PARAMS_JSON:-}" ]; then
+  src=$(cat "$FLH_STAGING_PARAMS_JSON")
+else
+  src=$(aws ssm get-parameters-by-path --region "$REGION" --path "$PARAM_DIR" --recursive --with-decryption --output json)
+fi
+python3 -I -c '
+import json, re, sys
+doc = json.loads(sys.stdin.read())
+names = set()
+out = open(sys.argv[1], "w")
+for p in doc.get("Parameters", []):
+    name = p["Name"].rsplit("/", 1)[-1]
+    if not re.fullmatch(r"[A-Z][A-Z0-9_]*", name):
+        sys.exit(f"refused parameter name {name!r}")
+    val = p["Value"]
+    if "\n" in val or "\x27" in val:
+        sys.exit(f"refused value for {name}: newline or single quote")
+    out.write(f"{name}=\x27{val}\x27\n")
+    names.add(name)
+    state = "set" if val else "empty"
+    print(f"  {name}: {state}")
+for need in ("FLH_DATA_DIR", "FLH_HOST_PORT", "FLH_UID", "FLH_GID"):
+    if need not in names:
+        sys.exit(f"missing required parameter {need}")
+' "$tmp" <<< "$src"
+chmod 600 "$tmp"
+mv "$tmp" "$OUT"
+trap - EXIT
+echo "wrote $OUT (0600)"
