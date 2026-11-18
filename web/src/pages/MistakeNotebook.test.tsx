@@ -106,7 +106,7 @@ const writingTask = (): WritingTaskView => ({
   word_convention: "w",
 });
 const speakingExercise = (): SpeakingExerciseView => ({
-  exercise: { id: 2, prompt_id: "sp-invitation-reponse", title: "Répondre à une invitation", situation: "Votre amie Léa…", requirements: ["Remerciez Léa."], seconds_min: 30, seconds_max: 90, created_at: "t" },
+  exercise: { id: 2, prompt_id: "sp-invitation-reponse", title: "Répondre à une invitation", situation: "Votre amie Léa…", requirements: ["Remerciez Léa."], seconds_min: 30, seconds_max: 90, created_at: "t", prompt_set: "flh_speaking_prompts_v1", content_fingerprint: "f".repeat(64), pack_status: "current" },
   takes: [
     { id: 3, number: 1, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t" },
     { id: 4, number: 2, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t" },

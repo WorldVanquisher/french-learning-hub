@@ -57,7 +57,9 @@ import type {
   SpeakingExerciseSummary,
   SpeakingExerciseView,
   SpeakingFeedbackResult,
+  SpeakingPractice,
   SpeakingPrompts,
+  SpeakingTakeSaved,
   SpeakingTranscriptionResult,
 } from "../types/speaking";
 import type { HybridSearch, LibraryConcept, LibraryQuery, LibrarySearch, LibrarySource, PublicDemoInfo, SemanticSearch } from "../types/library";
@@ -917,9 +919,20 @@ export function getSpeakingExercise(exerciseId: number, fetchImpl: typeof fetch 
 }
 
 // addSpeakingTake stores a take's metadata only (never its audio). No provider call.
-export function addSpeakingTake(exerciseId: number, take: NewSpeakingTake, fetchImpl: typeof fetch = fetch): Promise<SpeakingExerciseView> {
-  return request<SpeakingExerciseView>("POST", `/speaking/exercises/${exerciseId}/takes`, take, fetchImpl);
+// The same audio sent again names the existing take (replayed), so a resent
+// save never makes a second take.
+export function addSpeakingTake(exerciseId: number, take: NewSpeakingTake, fetchImpl: typeof fetch = fetch): Promise<SpeakingTakeSaved> {
+  return request<SpeakingTakeSaved>("POST", `/speaking/exercises/${exerciseId}/takes`, take, fetchImpl);
 }
+
+// getSpeakingPractice reads the practice overview: summary, queue and progress.
+export function getSpeakingPractice(fetchImpl: typeof fetch = fetch): Promise<SpeakingPractice> {
+  return request<SpeakingPractice>("GET", "/speaking/practice", undefined, fetchImpl);
+}
+
+// speakingExportUrl downloads every attempt as NDJSON (metadata, transcripts
+// and feedback; never audio).
+export const speakingExportUrl = `${BASE}/speaking/export`;
 
 // transcribeSpeakingTake is the one explicit transcription call: it sends this
 // take's audio (base64 in JSON) once, under the caller's key.

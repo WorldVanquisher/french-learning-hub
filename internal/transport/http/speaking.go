@@ -19,7 +19,9 @@ type SpeakingService interface {
 	StartPrompt(ctx context.Context, promptID string) (*application.SpeakingExerciseView, bool, error)
 	GetExercise(ctx context.Context, id int64) (*application.SpeakingExerciseView, error)
 	ListExercises(ctx context.Context) ([]application.SpeakingExerciseSummary, error)
-	AddTake(ctx context.Context, exerciseID int64, t domain.SpeakingTake) (*application.SpeakingExerciseView, error)
+	SaveTake(ctx context.Context, exerciseID int64, t domain.SpeakingTake) (*application.SpeakingExerciseView, domain.SpeakingTake, bool, error)
+	Practice(ctx context.Context) (*application.SpeakingPractice, error)
+	Export(ctx context.Context) ([]application.SpeakingAttemptExport, error)
 	AddTranscript(ctx context.Context, takeID int64, text string, transcriptionID *int64) (*application.SpeakingExerciseView, error)
 	Transcribe(ctx context.Context, in application.SpeakingTranscriptionInput) (*application.SpeakingTranscriptionResult, bool, error)
 	GetTranscriptionRequest(ctx context.Context, operationID string) (*application.SpeakingTranscriptionResult, error)
@@ -53,6 +55,8 @@ func (h *Handler) registerSpeakingRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /speaking/takes/{id}/transcripts", h.handleAddSpeakingTranscript)
 	mux.HandleFunc("POST /speaking/transcripts/{id}/feedback", h.handleRequestSpeakingFeedback)
 	mux.HandleFunc("GET /speaking/feedback-requests/{operation_id}", h.handleGetSpeakingFeedbackRequest)
+	mux.HandleFunc("GET /speaking/practice", h.handleSpeakingPractice)
+	mux.HandleFunc("GET /speaking/export", h.handleSpeakingExport)
 }
 
 type speakingExerciseJSON struct {
@@ -64,6 +68,11 @@ type speakingExerciseJSON struct {
 	SecondsMin   int      `json:"seconds_min"`
 	SecondsMax   int      `json:"seconds_max"`
 	CreatedAt    string   `json:"created_at"`
+	// The prompt's identity: the set, the fingerprint of the stored content,
+	// and whether the set still holds exactly that content.
+	PromptSet          string `json:"prompt_set"`
+	ContentFingerprint string `json:"content_fingerprint"`
+	PackStatus         string `json:"pack_status"`
 }
 
 type speakingTakeJSON struct {
@@ -75,6 +84,7 @@ type speakingTakeJSON struct {
 	AudioSHA256 *string `json:"audio_sha256"`
 	DurationMS  *int    `json:"duration_ms"`
 	CreatedAt   string  `json:"created_at"`
+	State       string  `json:"state,omitempty"` // derived attempt state
 }
 
 type speakingTranscriptionJSON struct {
@@ -121,13 +131,14 @@ type speakingRequestJSON struct {
 	ResultID     *int64  `json:"result_id"`
 }
 
-func toSpeakingExercise(e domain.SpeakingExercise) speakingExerciseJSON {
+func toSpeakingExercise(e domain.SpeakingExercise, packStatus string) speakingExerciseJSON {
 	reqs := e.Requirements
 	if reqs == nil {
 		reqs = []string{}
 	}
 	return speakingExerciseJSON{ID: e.ID, PromptID: e.PromptID, Title: e.Title, Situation: e.Situation, Requirements: reqs,
-		SecondsMin: e.SecondsMin, SecondsMax: e.SecondsMax, CreatedAt: ts(e.CreatedAt)}
+		SecondsMin: e.SecondsMin, SecondsMax: e.SecondsMax, CreatedAt: ts(e.CreatedAt),
+		PromptSet: domain.SpeakingPromptsID, ContentFingerprint: e.Fingerprint(), PackStatus: packStatus}
 }
 
 func toSpeakingTake(t domain.SpeakingTake) speakingTakeJSON {
@@ -191,7 +202,9 @@ func speakingLimits() map[string]any {
 func (h *Handler) toSpeakingView(v *application.SpeakingExerciseView) map[string]any {
 	takes := make([]speakingTakeJSON, 0, len(v.Takes))
 	for _, t := range v.Takes {
-		takes = append(takes, toSpeakingTake(t))
+		j := toSpeakingTake(t)
+		j.State = v.TakeStates[t.ID]
+		takes = append(takes, j)
 	}
 	trs := make([]speakingTranscriptionJSON, 0, len(v.Transcriptions))
 	for _, t := range v.Transcriptions {
@@ -213,8 +226,12 @@ func (h *Handler) toSpeakingView(v *application.SpeakingExerciseView) map[string
 	for _, r := range v.FeedbackRequests {
 		fbReqs = append(fbReqs, toSpeakingFeedbackRequest(r, v.Now))
 	}
-	return map[string]any{"exercise": toSpeakingExercise(v.Exercise), "takes": takes, "transcriptions": trs, "transcription_requests": trReqs,
-		"transcripts": scripts, "feedback": fb, "feedback_requests": fbReqs, "example_transcript": v.ExampleTranscript,
+	var example *string
+	if v.ExampleTranscript != "" {
+		example = &v.ExampleTranscript
+	}
+	return map[string]any{"exercise": toSpeakingExercise(v.Exercise, v.PackStatus), "takes": takes, "transcriptions": trs, "transcription_requests": trReqs,
+		"transcripts": scripts, "feedback": fb, "feedback_requests": fbReqs, "example_transcript": example,
 		"providers": h.speakingProviders(), "limits": speakingLimits(), "word_convention": WritingWordConvention}
 }
 
@@ -241,6 +258,8 @@ func writeSpeakingError(w http.ResponseWriter, err error, action string) {
 		conflict("too_many_versions")
 	case errors.Is(err, domain.ErrSpeakingPromptConflict):
 		conflict("prompt_conflict")
+	case errors.Is(err, domain.ErrSpeakingTakeConflict):
+		conflict("take_conflict")
 	case errors.Is(err, domain.ErrSpeakingNoAudio):
 		conflict("no_audio")
 	case errors.Is(err, domain.ErrValidation):
@@ -263,7 +282,7 @@ func (h *Handler) handleListSpeakingPrompts(w http.ResponseWriter, r *http.Reque
 	for _, p := range ps {
 		out = append(out, map[string]any{"id": p.Prompt.ID, "format": p.Prompt.Format, "style_level": p.Prompt.StyleLevel, "title": p.Prompt.Title,
 			"situation": p.Prompt.Situation, "requirements": p.Prompt.Requirements, "seconds_min": p.Prompt.SecondsMin, "seconds_max": p.Prompt.SecondsMax,
-			"started_exercise_id": p.StartedExerciseID})
+			"started_exercise_id": p.StartedExerciseID, "started_pack_status": optString(p.StartedPackStatus)})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"set": domain.SpeakingPromptsID,
 		"notice":  "Authored practice prompts: not official exam items; no score and no certified CEFR level. Feedback reads the confirmed transcript only and cannot judge pronunciation.",
@@ -299,7 +318,7 @@ func (h *Handler) handleListSpeakingExercises(w http.ResponseWriter, r *http.Req
 	}
 	out := make([]map[string]any, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, map[string]any{"exercise": toSpeakingExercise(row.Exercise), "takes": row.Takes})
+		out = append(out, map[string]any{"exercise": toSpeakingExercise(row.Exercise, row.PackStatus), "takes": row.Takes})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"exercises": out, "providers": h.speakingProviders()})
 }
@@ -328,7 +347,9 @@ type addSpeakingTakeRequest struct {
 	DurationMS  int    `json:"duration_ms"`
 }
 
-// handleAddSpeakingTake stores a take's metadata (201). No audio, no provider call.
+// handleAddSpeakingTake stores a take's metadata (201). No audio, no provider
+// call. The same audio sent again for the same exercise names the existing
+// take (200, Idempotency-Replayed); take_id always names the take saved.
 func (h *Handler) handleAddSpeakingTake(w http.ResponseWriter, r *http.Request) {
 	if h.speakingUnavailable(w) {
 		return
@@ -341,13 +362,20 @@ func (h *Handler) handleAddSpeakingTake(w http.ResponseWriter, r *http.Request) 
 	if !decodeListening(w, r, &req) {
 		return
 	}
-	v, err := h.speaking.AddTake(r.Context(), id, domain.SpeakingTake{AudioSource: req.AudioSource, AudioMIME: req.AudioMIME, AudioBytes: req.AudioBytes,
+	v, take, replay, err := h.speaking.SaveTake(r.Context(), id, domain.SpeakingTake{AudioSource: req.AudioSource, AudioMIME: req.AudioMIME, AudioBytes: req.AudioBytes,
 		AudioSHA256: req.AudioSHA256, DurationMS: req.DurationMS})
 	if err != nil {
 		writeSpeakingError(w, err, "save the take")
 		return
 	}
-	writeJSON(w, http.StatusCreated, h.toSpeakingView(v))
+	out := h.toSpeakingView(v)
+	out["take_id"], out["replayed"] = take.ID, replay
+	status := http.StatusCreated
+	if replay {
+		status = http.StatusOK
+		w.Header().Set("Idempotency-Replayed", "true")
+	}
+	writeJSON(w, status, out)
 }
 
 type addSpeakingTranscriptRequest struct {

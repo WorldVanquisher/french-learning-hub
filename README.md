@@ -110,7 +110,9 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   (`SPEAKING_TRANSCRIPTION_PROVIDER`) and give feedback on one transcript
   version you confirmed (`SPEAKING_PROVIDER`), based on the text only and never
   on pronunciation. Takes can be compared, and a mistake can be saved as a
-  normal learning record.
+  normal learning record. A practice overview counts only takes whose checked
+  transcript has feedback, suggests one next step per exercise with its
+  reason, and exports every attempt (never audio) as NDJSON.
 - Revisit saved misses from all four skills in one **Mistake Notebook**. Each
   item is a normal learning record linked to the exact exercise item, draft
   version or transcript version it came from. You can filter by skill, mark

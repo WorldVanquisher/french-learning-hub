@@ -142,21 +142,35 @@ func readSpeakingTake(ctx context.Context, q queryer, where string, args ...any)
 	return t, nil
 }
 
-func (r *SpeakingRepository) AddTake(ctx context.Context, exerciseID int64, t domain.SpeakingTake, now time.Time) (domain.SpeakingTake, error) {
+func (r *SpeakingRepository) AddTake(ctx context.Context, exerciseID int64, t domain.SpeakingTake, now time.Time) (domain.SpeakingTake, bool, error) {
 	tx, err := r.beginWrite(ctx, "speaking_takes")
 	if err != nil {
-		return domain.SpeakingTake{}, err
+		return domain.SpeakingTake{}, false, err
 	}
 	defer func() { _ = tx.Rollback() }()
 	if _, err := readSpeakingExercise(ctx, tx, `id = ?`, exerciseID); err != nil {
-		return domain.SpeakingTake{}, err
+		return domain.SpeakingTake{}, false, err
+	}
+	// A resent save (lost response, double submit, a second tab) of the same
+	// audio is the same attempt: decided inside the write transaction, so two
+	// concurrent saves of one recording cannot both create a take.
+	if t.AudioSource != domain.SpeakingAudioNone {
+		existing, err := readSpeakingTake(ctx, tx, `exercise_id = ? AND audio_sha256 = ? ORDER BY take_number LIMIT 1`, exerciseID, t.AudioSHA256)
+		switch {
+		case err == nil && domain.SameTakeMetadata(existing, t):
+			return existing, true, tx.Commit()
+		case err == nil:
+			return existing, false, domain.ErrSpeakingTakeConflict
+		case !errors.Is(err, domain.ErrNotFound):
+			return domain.SpeakingTake{}, false, err
+		}
 	}
 	var n int
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(take_number), 0) FROM speaking_takes WHERE exercise_id = ?`, exerciseID).Scan(&n); err != nil {
-		return domain.SpeakingTake{}, err
+		return domain.SpeakingTake{}, false, err
 	}
 	if n >= domain.MaxSpeakingTakes {
-		return domain.SpeakingTake{}, domain.ErrSpeakingTooManyTakes
+		return domain.SpeakingTake{}, false, domain.ErrSpeakingTooManyTakes
 	}
 	var mimeType, size, sha, duration any
 	if t.AudioSource != domain.SpeakingAudioNone {
@@ -165,17 +179,17 @@ func (r *SpeakingRepository) AddTake(ctx context.Context, exerciseID int64, t do
 	res, err := tx.ExecContext(ctx, `INSERT INTO speaking_takes (exercise_id, take_number, audio_source, audio_mime, audio_bytes, audio_sha256, duration_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		exerciseID, n+1, t.AudioSource, mimeType, size, sha, duration, fmtTime(now))
 	if err != nil {
-		return domain.SpeakingTake{}, fmt.Errorf("insert speaking take: %w", err)
+		return domain.SpeakingTake{}, false, fmt.Errorf("insert speaking take: %w", err)
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
-		return domain.SpeakingTake{}, err
+		return domain.SpeakingTake{}, false, err
 	}
 	saved, err := readSpeakingTake(ctx, tx, `id = ?`, id)
 	if err != nil {
-		return saved, err
+		return saved, false, err
 	}
-	return saved, tx.Commit()
+	return saved, false, tx.Commit()
 }
 
 func (r *SpeakingRepository) GetTake(ctx context.Context, id int64) (domain.SpeakingTake, error) {

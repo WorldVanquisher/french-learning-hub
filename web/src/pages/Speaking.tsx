@@ -4,11 +4,14 @@ import { ApiError, NetworkError } from "../api/client";
 import { StoredText } from "../components/ExplanationText";
 import { useI18n, type MessageKey } from "../i18n";
 import type {
+  SpeakingAttemptState,
   SpeakingExerciseSummary,
   SpeakingExerciseView,
   SpeakingFeedback,
   SpeakingImprovement,
+  SpeakingPractice,
   SpeakingPrompts,
+  SpeakingQueueItem,
   SpeakingRequest,
   SpeakingTake,
   SpeakingTranscript,
@@ -105,6 +108,27 @@ const originKey: Record<SpeakingTranscript["origin"], MessageKey> = {
   corrected: "speaking.origin.corrected",
   typed: "speaking.origin.typed",
 };
+const stateKey: Record<SpeakingAttemptState, MessageKey> = {
+  awaiting_transcript: "speaking.state.awaiting_transcript",
+  transcribing: "speaking.state.transcribing",
+  transcription_failed: "speaking.state.transcription_failed",
+  transcription_unknown: "speaking.state.transcription_unknown",
+  transcript_to_confirm: "speaking.state.transcript_to_confirm",
+  awaiting_feedback: "speaking.state.awaiting_feedback",
+  feedback_in_progress: "speaking.state.feedback_in_progress",
+  feedback_failed: "speaking.state.feedback_failed",
+  feedback_unknown: "speaking.state.feedback_unknown",
+  feedback_ready: "speaking.state.feedback_ready",
+};
+const sourceKey: Record<SpeakingTake["audio_source"], MessageKey> = {
+  recording: "speaking.history.source.recording",
+  file: "speaking.history.source.file",
+  none: "speaking.history.source.none",
+};
+const when = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+};
 
 export function Speaking({
   onOpenRecord,
@@ -123,11 +147,17 @@ export function Speaking({
   // Takes' audio lives here, in memory, while Speaking is mounted. It is never
   // written to the server or to browser storage.
   const [audio, setAudio] = useState<Map<number, LocalAudio>>(() => new Map());
-  const keep = (takeId: number, a: LocalAudio) => setAudio((m) => new Map(m).set(takeId, a));
+  // Keeping new audio for a take releases the object URL it replaces.
+  const keep = (takeId: number, a: LocalAudio) =>
+    setAudio((m) => {
+      const old = m.get(takeId);
+      if (old && old.url !== a.url) URL.revokeObjectURL(old.url);
+      return new Map(m).set(takeId, a);
+    });
   return (
     <main className="writing speaking">
       {screen.kind === "list" ? (
-        <ExerciseList epoch={epoch} onOpen={(id) => setScreen({ kind: "exercise", id })} />
+        <ExerciseList epoch={epoch} onOpen={(id, takeId) => setScreen({ kind: "exercise", id, takeId, nonce: Date.now() })} />
       ) : (
         <ExerciseScreen
           key={`${screen.id}-${screen.nonce ?? 0}`}
@@ -147,9 +177,106 @@ export function Speaking({
   );
 }
 
-function ExerciseList({ epoch, onOpen }: { epoch: number; onOpen: (id: number) => void }) {
+// PracticeOverview shows the backend's practice overview: what was actually
+// completed, what is waiting, and one next step per exercise with its reason.
+function PracticeOverview({ load, onRetry, onOpen, onStart, busy }: {
+  load: Load<SpeakingPractice>;
+  onRetry: () => void;
+  onOpen: (id: number, takeId?: number) => void;
+  onStart: (promptId: string) => void;
+  busy: boolean;
+}) {
+  const { t, tp } = useI18n();
+  const reason = (q: SpeakingQueueItem) => {
+    const n = q.take_number ?? 0;
+    switch (q.reason) {
+      case "answer_again":
+        return tp("speaking.queue.reason.answer_again", q.improvements, { n });
+      case "check_unknown_outcome":
+      case "request_failed":
+      case "confirm_transcript":
+      case "add_transcript":
+      case "request_feedback":
+        return t(`speaking.queue.reason.${q.reason}`, { n });
+      default:
+        return t(`speaking.queue.reason.${q.reason}`);
+    }
+  };
+  if (load.status !== "ready")
+    return (
+      <section className="panel" aria-label={t("speaking.practice.region")}>
+        <h2>{t("speaking.practice.heading")}</h2>
+        {load.status === "error" ? (
+          <div className="banner error" role="alert">
+            {t("speaking.practice.failed", { message: load.message })}{" "}
+            <button type="button" className="ghost" onClick={onRetry}>
+              {t("common.retry")}
+            </button>
+          </div>
+        ) : (
+          <p className="hint" role="status">{t("speaking.loading")}</p>
+        )}
+      </section>
+    );
+  const p = load.data;
+  const s = p.summary;
+  return (
+    <section className="panel" aria-label={t("speaking.practice.region")}>
+      <h2>{t("speaking.practice.heading")}</h2>
+      <ul className="speaking-summary">
+        <li>{t("speaking.practice.started", { started: s.started, prompts: s.prompts })}</li>
+        <li>{t("speaking.practice.completed", { completed: s.completed, takes: s.takes })}</li>
+        <li>
+          {t("speaking.practice.pending", {
+            transcript: s.awaiting_transcript,
+            feedback: s.awaiting_feedback,
+            progress: s.in_progress,
+            failed: s.failed,
+            unknown: s.unknown,
+          })}
+        </li>
+        {s.last_completed_at ? <li>{t("speaking.practice.lastCompleted", { date: when(s.last_completed_at) })}</li> : null}
+      </ul>
+      <p className="hint">{t("speaking.practice.countsNote")}</p>
+      <h3>{t("speaking.queue.heading")}</h3>
+      <p className="hint">{t("speaking.queue.hint")}</p>
+      {p.queue.length === 0 ? (
+        <p className="empty">{t("speaking.queue.empty")}</p>
+      ) : (
+        <ol className="listening-list speaking-queue">
+          {p.queue.map((q) => (
+            <li key={`${q.prompt_id}-${q.exercise_id ?? 0}`} data-reason={q.reason}>
+              <span className="reading-example-title">{q.title}</span>
+              <p>{reason(q)}</p>
+              {q.exercise_id !== null ? (
+                <button type="button" className="ghost" onClick={() => onOpen(q.exercise_id!, q.take_id ?? undefined)}>
+                  {t("speaking.queue.open")}
+                </button>
+              ) : (
+                <button type="button" disabled={busy} onClick={() => onStart(q.prompt_id)}>
+                  {t("speaking.queue.start")}
+                </button>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+      {s.takes > 0 ? (
+        <p className="hint">
+          <a href={api.speakingExportUrl} download>
+            {t("speaking.export.link")}
+          </a>{" "}
+          {t("speaking.export.hint")}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function ExerciseList({ epoch, onOpen }: { epoch: number; onOpen: (id: number, takeId?: number) => void }) {
   const { t, tp } = useI18n();
   const [retry, setRetry] = useState(0);
+  const practice = useLoad<SpeakingPractice>("practice", () => api.getSpeakingPractice(), epoch * 100 + retry);
   const prompts = useLoad<SpeakingPrompts>("prompts", () => api.listSpeakingPrompts(), epoch * 100 + retry);
   const exercises = useLoad<{ exercises: SpeakingExerciseSummary[] }>("exercises", () => api.listSpeakingExercises(), epoch * 100 + retry);
   const [busy, setBusy] = useState(false);
@@ -166,6 +293,7 @@ function ExerciseList({ epoch, onOpen }: { epoch: number; onOpen: (id: number) =
   };
   return (
     <>
+      <PracticeOverview load={practice} onRetry={() => setRetry((n) => n + 1)} onOpen={onOpen} onStart={start} busy={busy} />
       <section className="panel" aria-label={t("speaking.prompts.region")}>
         <h2>{t("speaking.prompts.heading")}</h2>
         <p className="hint">{t("speaking.prompts.hint")}</p>
@@ -176,9 +304,12 @@ function ExerciseList({ epoch, onOpen }: { epoch: number; onOpen: (id: number) =
                 <span className="reading-example-title">{p.title}</span>{" "}
                 <span className="hint">{t("speaking.prompts.meta", { format: p.format, min: p.seconds_min, max: p.seconds_max })}</span>{" "}
                 {p.started_exercise_id !== null ? (
-                  <button type="button" className="ghost" onClick={() => onOpen(p.started_exercise_id!)}>
-                    {t("speaking.prompts.open")}
-                  </button>
+                  <>
+                    <button type="button" className="ghost" onClick={() => onOpen(p.started_exercise_id!)}>
+                      {t("speaking.prompts.open")}
+                    </button>
+                    {p.started_pack_status === "changed" ? <p className="hint">{t("speaking.prompts.changed")}</p> : null}
+                  </>
                 ) : (
                   <button type="button" disabled={busy} onClick={() => start(p.id)}>
                     {t("speaking.prompts.start")}
@@ -301,6 +432,11 @@ function ExerciseScreen({
           ))}
         </ul>
         <p className="hint">{t("speaking.exercise.range", { min: v.exercise.seconds_min, max: v.exercise.seconds_max })}</p>
+        {v.exercise.pack_status !== "current" ? (
+          <div className="banner info" role="note">
+            {t(v.exercise.pack_status === "removed" ? "speaking.pack.removed" : "speaking.pack.changed")}
+          </div>
+        ) : null}
         <p className="hint">{t("speaking.practiceNotice")}</p>
       </section>
       <RecordPanel
@@ -323,6 +459,7 @@ function ExerciseScreen({
             take={take}
             initialVersion={take.id === initialTake ? initialVersion : undefined}
             local={audio.get(take.id) ?? null}
+            onReattach={(a) => keep(take.id, a)}
             onChanged={reload}
             onOpenRecord={onOpenRecord}
             onRetry={(points) => setRetry((prev) => ({ ...points, nonce: (prev?.nonce ?? 0) + 1 }))}
@@ -475,10 +612,11 @@ function RecordPanel({
         local && accepted
           ? { audio_source: local.source, audio_mime: local.mime, audio_bytes: local.blob.size, audio_sha256: local.sha256, duration_ms: local.durationMs }
           : { audio_source: "none" as const };
+      // take_id names the take saved: a resent save names the existing take.
       const res = await api.addSpeakingTake(view.exercise.id, body);
-      const saved = res.takes[res.takes.length - 1];
+      const saved = res.takes.find((k) => k.id === res.take_id) ?? res.takes[res.takes.length - 1];
       setAnnouncement(t("speaking.record.saved", { n: saved.number }));
-      onSaved(saved.id, local);
+      onSaved(res.take_id, local);
       setState({ status: "idle" });
     } catch (e) {
       // The recording stays: a failed save never costs the learner the take.
@@ -636,8 +774,17 @@ function RecordPanel({
   );
 }
 
+// attemptReport is the report that counts for a take: the newest completed
+// one on its latest confirmed version (the backend's feedback_ready rule).
+export function attemptReport(view: SpeakingExerciseView, take: SpeakingTake): SpeakingFeedback | null {
+  const versions = view.transcripts.filter((s) => s.take_id === take.id);
+  const latest = versions[versions.length - 1];
+  if (!latest) return null;
+  return view.feedback.find((f) => f.transcript_id === latest.id && f.status === "completed" && f.content) ?? null;
+}
+
 function TakesPanel({ view, take, onSelect }: { view: SpeakingExerciseView; take: SpeakingTake; onSelect: (id: number) => void }) {
-  const { t } = useI18n();
+  const { t, tp } = useI18n();
   return (
     <section className="panel" aria-label={t("speaking.takes.region")}>
       <h3>{t("speaking.takes.heading")}</h3>
@@ -648,7 +795,81 @@ function TakesPanel({ view, take, onSelect }: { view: SpeakingExerciseView; take
           </button>
         ))}
       </div>
+      {view.takes.length > 1 ? (
+        <>
+          <h4>{t("speaking.history.heading")}</h4>
+          <p className="hint">{t("speaking.history.hint")}</p>
+          <ol className="listening-list speaking-history" aria-label={t("speaking.history.heading")}>
+            {view.takes.map((k) => {
+              const versions = view.transcripts.filter((s) => s.take_id === k.id);
+              const latest = versions[versions.length - 1];
+              const report = attemptReport(view, k);
+              const rating = report?.content?.task_fulfilment.rating;
+              return (
+                <li key={k.id} aria-current={k.id === take.id ? "true" : undefined}>
+                  <button type="button" className="link-button" onClick={() => onSelect(k.id)}>
+                    {t("speaking.history.takeN", { n: k.number })}
+                  </button>{" "}
+                  {k.state ? <span className="tag">{t(stateKey[k.state])}</span> : null}
+                  <p className="hint">
+                    {t("speaking.history.line", {
+                      saved: when(k.created_at),
+                      audio: t(sourceKey[k.audio_source]),
+                      transcript: latest ? t("speaking.history.version", { version: latest.version, origin: t(originKey[latest.origin]) }) : t("speaking.history.none"),
+                      feedback:
+                        report && rating
+                          ? tp("speaking.history.feedbackReady", report.content!.improvements.length, { rating: t(ratingKey[rating]) })
+                          : t("speaking.history.none"),
+                    })}
+                  </p>
+                </li>
+              );
+            })}
+          </ol>
+        </>
+      ) : null}
     </section>
+  );
+}
+
+// Reattach lets the learner give the page a take's audio again after a reload
+// or a restore: only a file with the take's exact SHA-256 is kept, in memory.
+function Reattach({ take, onReattach }: { take: SpeakingTake; onReattach: (a: LocalAudio) => void }) {
+  const { t } = useI18n();
+  const [error, setError] = useState<string | null>(null);
+  const choose = async (file: File | undefined) => {
+    setError(null);
+    if (!file) return;
+    try {
+      const digest = await sha256Hex(file);
+      if (digest !== take.audio_sha256) {
+        setError(t("speaking.reattach.mismatch", { n: take.number }));
+        return;
+      }
+      onReattach({
+        blob: file,
+        url: URL.createObjectURL(file),
+        mime: take.audio_mime ?? file.type,
+        durationMs: take.duration_ms ?? 0,
+        sha256: digest,
+        source: take.audio_source === "recording" ? "recording" : "file",
+      });
+    } catch (e) {
+      setError(t("speaking.reattach.failed", { message: describe(e) }));
+    }
+  };
+  const id = `speaking-reattach-${take.id}`;
+  return (
+    <div className="speaking-reattach">
+      <label htmlFor={id}>{t("speaking.reattach.label")}</label>{" "}
+      <input id={id} type="file" accept={take.audio_mime ?? "audio/*"} onChange={(e) => void choose(e.target.files?.[0])} />
+      <p className="hint">{t("speaking.reattach.hint")}</p>
+      {error ? (
+        <div className="banner error" role="alert">
+          {error}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -664,6 +885,7 @@ function TakeDetail({
   take,
   initialVersion,
   local,
+  onReattach,
   onChanged,
   onOpenRecord,
   onRetry,
@@ -672,6 +894,7 @@ function TakeDetail({
   take: SpeakingTake;
   initialVersion?: number;
   local: LocalAudio | null;
+  onReattach: (a: LocalAudio) => void;
   onChanged: () => void;
   onOpenRecord?: (entryId: number) => void;
   onRetry?: (points: RetryPoints) => void;
@@ -701,7 +924,10 @@ function TakeDetail({
           {local ? (
             <audio controls src={local.url} aria-label={t("speaking.take.playback", { n: take.number })} />
           ) : (
-            <p className="hint">{t("speaking.take.audioGone")}</p>
+            <>
+              <p className="hint">{t("speaking.take.audioGone")}</p>
+              <Reattach take={take} onReattach={onReattach} />
+            </>
           )}
         </>
       )}
@@ -894,7 +1120,7 @@ function TranscriptEditor({
       </p>
       {!latest && !fromMachine && view.example_transcript ? (
         <div className="actions">
-          <button type="button" className="ghost" onClick={() => setText(view.example_transcript)}>
+          <button type="button" className="ghost" onClick={() => setText(view.example_transcript ?? "")}>
             {t("speaking.editor.useExample")}
           </button>
         </div>

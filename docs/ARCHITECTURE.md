@@ -1252,11 +1252,27 @@ through §4.1. Migration `018`.
   120 s) and an example transcript with deliberate mistakes. They are not
   official exam items and carry no certified CEFR level. Starting a prompt
   again returns the same exercise.
+  - The exercise stores the wording it was started with, and its takes belong
+    to that wording. Reads compare it with the set (`content_fingerprint`:
+    SHA-256 of Go's `encoding/json` encoding of `{title, situation,
+    requirements, seconds_min, seconds_max}` in that order, as stored):
+    `pack_status` is `current`, `changed` (the set was corrected
+    later) or `removed`. A changed or removed prompt keeps its exercise and
+    takes unchanged, the set's example transcript is not shown beside the
+    older wording, and starting the prompt again stays `409 prompt_conflict`.
+    Several exercises per prompt (prompt revisions) would need a migration and
+    are not implemented.
 - **Take** (`speaking_takes`, numbered `1…20`): recorded with MediaRecorder,
   uploaded as a file, or typed (`audio_source` `recording`, `file` or `none`).
   - **Audio stays in the browser.** Recording and playback make no request.
     **Use as take N** stores only metadata: the canonical type, size, SHA-256
     and browser-measured duration. No column can hold audio.
+  - The same audio saved again for the same exercise (a lost response, a
+    double click, a second tab) names the existing take (`200`,
+    `Idempotency-Replayed`): decided in the write transaction, so concurrent
+    saves of one recording make one take. The same SHA-256 with other
+    metadata is `409 take_conflict`. Typed takes carry no audio and are always
+    new.
   - Accepted types are those both of the provider's pages list: `audio/webm`,
     `audio/mp4` (m4a), `audio/mpeg` (mp3) and `audio/wav`. The limits are
     8 MiB and 120 s. The server enforces the size and the declared duration,
@@ -1307,9 +1323,40 @@ through §4.1. Migration `018`.
     CEFR level or exam result.
   - A report names its take and version and is never carried over to another
     version.
+- **Practice overview** (`GET /speaking/practice`, `speaking_practice_v1`)
+  and **export** (`GET /speaking/export`, `speaking_attempt_export_v1`):
+  read-only, derived from the records on every read, no provider call.
+  - Each take (attempt) has a derived `state`: `awaiting_transcript`,
+    `transcribing`, `transcription_failed`, `transcription_unknown`,
+    `transcript_to_confirm`, `awaiting_feedback`, `feedback_in_progress`,
+    `feedback_failed`, `feedback_unknown` or `feedback_ready`. Only the latest
+    confirmed version counts: a report on an earlier version is about other
+    words, so a new version is `awaiting_feedback` again.
+  - The summary counts takes by state. Only `feedback_ready` counts as
+    completed; waiting, failed and unknown outcomes are counted apart, and the
+    counts add up to the takes.
+  - The queue gives one next step per exercise from its latest take (an
+    earlier, abandoned take is not a task), most urgent first:
+    `check_unknown_outcome`, `request_failed`, `confirm_transcript`,
+    `add_transcript`, `request_feedback` (only with feedback enabled),
+    `answer_again` (feedback with improvements, no later take),
+    `start_first_take`; then the prompts not started, in set order.
+  - The export is NDJSON, one line per take: the exercise reference (`id`,
+    `prompt_id`, `prompt_set`, `content_fingerprint`, `pack_status`), the
+    take's metadata and state, its transcriptions, confirmed versions and
+    feedback with their provenance. Audio was never stored, so it is never
+    exported. There is no import: the format is a record of practice, not a
+    backup (use the database backup, RELEASE.md).
 - **Workbench:**
+  - **Speaking practice** (the list) shows the summary, the queue with each
+    reason, and the export link.
   - Takes (`aria-pressed`) and their confirmed versions; local playback while
-    the audio is in memory, with an honest note once it is gone.
+    the audio is in memory, with an honest note once it is gone. After a
+    reload or a restore, **Choose the same audio file again** keeps a file in
+    memory only when its SHA-256 is the take's, so it can be played and
+    transcribed again; any other file is refused.
+  - **Attempts** lists each take with its audio source, latest version,
+    the report that counts (rating and number of improvements) and its state.
   - Hints before **Show suggested wording**. **Show in version N** marks only a
     `located` quote.
   - **Compare** diffs any two confirmed transcripts, from earlier to later.
@@ -4131,16 +4178,18 @@ routes.
 
 | Endpoint (also under `/api`) | Behaviour |
 | --- | --- |
-| `GET /speaking/prompts` | `set`, `notice`, `prompts` (`id`, `format`, `style_level`, `title`, `situation`, `requirements`, `seconds_min`, `seconds_max`, `started_exercise_id`), `providers`, `limits`. No provider call |
+| `GET /speaking/prompts` | `set`, `notice`, `prompts` (`id`, `format`, `style_level`, `title`, `situation`, `requirements`, `seconds_min`, `seconds_max`, `started_exercise_id`), `providers`, `limits`. No provider call; `started_pack_status` (`current`/`changed`/`removed`, null when not started) |
 | `POST /speaking/prompts/{prompt_id}` | Starts the exercise for an authored prompt. `201` new; `200` already started (`Idempotency-Replayed: true`); `404`; `409 prompt_conflict` |
 | `GET /speaking/exercises` | `exercises` (newest first: `exercise`, `takes`) and `providers` |
-| `GET /speaking/exercises/{id}` | `exercise`, `takes` (`id`, `number`, `audio_source`, `audio_mime`, `audio_bytes`, `audio_sha256`, `duration_ms`), `transcriptions` (`status`, `failure_code`, `transcriber`, `text`), `transcription_requests`, `transcripts` (`take_id`, `version`, `text`, `word_count`, `origin`, `transcription_id`), `feedback` (`transcript_id`, `status`, `failure_code`, `generator`, `content`), `feedback_requests`, `example_transcript`, `providers`, `limits`, `word_convention`. No provider call |
-| `POST /speaking/exercises/{id}/takes` | Body `{"audio_source": "recording"\|"file"\|"none", "audio_mime"?, "audio_bytes"?, "audio_sha256"?, "duration_ms"?}`: metadata only, never audio (`201`). `409 too_many_takes` (20); `422`; `404` |
+| `GET /speaking/exercises/{id}` | `exercise`, `takes` (`id`, `number`, `audio_source`, `audio_mime`, `audio_bytes`, `audio_sha256`, `duration_ms`), `transcriptions` (`status`, `failure_code`, `transcriber`, `text`), `transcription_requests`, `transcripts` (`take_id`, `version`, `text`, `word_count`, `origin`, `transcription_id`), `feedback` (`transcript_id`, `status`, `failure_code`, `generator`, `content`), `feedback_requests`, `example_transcript`, `providers`, `limits`, `word_convention`. No provider call. `exercise` also has `prompt_set`, `content_fingerprint` and `pack_status`; each take has its derived `state`; `example_transcript` is null unless `pack_status` is `current` |
+| `POST /speaking/exercises/{id}/takes` | Body `{"audio_source": "recording"\|"file"\|"none", "audio_mime"?, "audio_bytes"?, "audio_sha256"?, "duration_ms"?}`: metadata only, never audio (`201`). `409 too_many_takes` (20); `422`; `404`. The response adds `take_id` and `replayed`: the same audio (SHA-256) for the same exercise returns the existing take (`200`, `Idempotency-Replayed: true`); the same SHA-256 with other metadata is `409 take_conflict` |
 | `POST /speaking/takes/{id}/transcriptions` | Body `{"audio_base64", "audio_mime", "confirm_unknown_retry"?}` (at most 8 MiB of audio), optional UUID `Idempotency-Key`. One provider call; the audio is not stored. `201` `{request, transcription}`; `200` same-key replay; `502`/`504` stored failure or unknown outcome; `409` `{code}`: `request_in_progress`, `outcome_unknown`, `key_conflict`, `no_audio`; `413`; `422` refused before any call (type, size, magic bytes, not this take's audio); `503` disabled (before the body is read); `404` |
 | `GET /speaking/transcription-requests/{key}` | `{request, transcription}`; `404` nothing recorded under the key |
 | `POST /speaking/takes/{id}/transcripts` | Body `{"text", "transcription_id"?}`: the take's next confirmed version (`201`). `409` `{code}`: `unchanged`, `too_many_versions` (10); `422` (also a transcription that is not a completed transcription of this take); `404` |
 | `POST /speaking/transcripts/{id}/feedback` | Optional UUID `Idempotency-Key`, optional `{"confirm_unknown_retry": true}`. One provider call for that version. `201` `{request, feedback}` with grounded improvements; `200` replay; `502`/`504`; `409` `{code}`: `request_in_progress`, `outcome_unknown`, `key_conflict`; `503` disabled; `404` |
 | `GET /speaking/feedback-requests/{key}` | `{request, feedback}`; `404` nothing recorded under the key |
+| `GET /speaking/practice` | `speaking_practice_v1`: `summary` (`prompts`, `started`, `takes`, `completed`, `exercises_completed`, `awaiting_transcript`, `awaiting_feedback`, `in_progress`, `failed`, `unknown`, `last_completed_at`), `queue` (`reason`, `priority`, `prompt_id`, `title`, `exercise_id`, `take_id`, `take_number`, `state`, `improvements`, `since`), `exercises` (`exercise`, `takes`, `completed`, `latest` attempt, `last_activity_at`), `providers`. Read-only, no provider call |
+| `GET /speaking/export` | NDJSON (`application/x-ndjson`), one `speaking_attempt_export_v1` line per take: `exercise` {`id`, `prompt_id`, `prompt_set`, `content_fingerprint`, `pack_status`, `title`}, `take` (with `state`), `transcriptions`, `transcripts`, `feedback`. Never audio. Read-only |
 
 A request has `id`, `operation_id`, `take_id` (transcription) or
 `transcript_id` (feedback), `after_unknown`, `started_at`, `deadline_at`,

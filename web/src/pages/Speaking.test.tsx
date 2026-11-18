@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import PublicDemoApp from "../PublicDemoApp";
 import { exampleTranscript, feedbackV1, machineTranscript, notice, prompts, transcriptV1, transcriptV2 } from "../test/speakingFixture";
-import type { SpeakingExerciseView, SpeakingFeedback, SpeakingRequest, SpeakingTranscript, SpeakingTranscription } from "../types/speaking";
+import { practiceFromWalk } from "../test/speakingPracticeFixture";
+import type { SpeakingExerciseView, SpeakingFeedback, SpeakingPractice, SpeakingRequest, SpeakingTranscript, SpeakingTranscription } from "../types/speaking";
 import { shownAsGrounded } from "./Speaking";
 import { canonicalAudioType, classifyRecordingError } from "./speakingRecorder";
 import { countWords } from "./Writing";
@@ -30,6 +31,8 @@ type Server = {
   feedback: Mode;
   calls: Call[];
   ids: number;
+  // The practice overview to answer; by default a minimal one built from the exercises.
+  practice?: SpeakingPractice;
 };
 
 const newServer = (over: Partial<Server> = {}): Server => ({ exercises: [], savedSources: new Map(), transcription: "ok", feedback: "ok", calls: [], ids: 1000, ...over });
@@ -54,6 +57,9 @@ function exerciseView(id: number): SpeakingExerciseView {
       seconds_min: invitation.seconds_min,
       seconds_max: invitation.seconds_max,
       created_at: "t",
+      prompt_set: "flh_speaking_prompts_v1",
+      content_fingerprint: "f".repeat(64),
+      pack_status: "current",
     },
     takes: [],
     transcriptions: [],
@@ -109,6 +115,20 @@ function serve(server: Server) {
       server.exercises.push(v);
       return json(201, view(v));
     }
+    if (method === "GET" && p === "/api/speaking/practice") {
+      const takes = server.exercises.reduce((n, v) => n + v.takes.length, 0);
+      const fallback: SpeakingPractice = {
+        schema_version: "speaking_practice_v1",
+        generated_at: "t",
+        summary: { prompts: prompts.length, started: server.exercises.length, takes, completed: 0, exercises_completed: 0, awaiting_transcript: takes, awaiting_feedback: 0, in_progress: 0, failed: 0, unknown: 0, last_completed_at: null },
+        queue: prompts
+          .filter((x) => !server.exercises.some((v) => v.exercise.prompt_id === x.id))
+          .map((x) => ({ reason: "not_started" as const, priority: 7, prompt_id: x.id, title: x.title, exercise_id: null, take_id: null, take_number: null, state: null, improvements: 0, since: null })),
+        exercises: [],
+        providers: providers(),
+      };
+      return json(200, server.practice ?? fallback);
+    }
     if (method === "GET" && p === "/api/speaking/exercises")
       return json(200, { providers: providers(), exercises: server.exercises.map((v) => ({ exercise: v.exercise, takes: v.takes.length })) });
     if ((m = /^\/api\/speaking\/exercises\/(\d+)$/.exec(p)) && method === "GET") {
@@ -128,7 +148,7 @@ function serve(server: Server) {
         duration_ms: t.duration_ms ?? null,
         created_at: "t",
       });
-      return json(201, view(v));
+      return json(201, { ...view(v), take_id: server.ids, replayed: false });
     }
     if ((m = /^\/api\/speaking\/takes\/(\d+)\/transcriptions$/.exec(p)) && method === "POST") {
       const takeId = Number(m[1]);
@@ -507,5 +527,125 @@ describe("Speaking (private workbench)", () => {
     await screen.findByText(/synthetic/i);
     expect(screen.queryByRole("button", { name: "Speaking" })).toBeNull();
     expect(screen.queryByText(/Record a take/)).toBeNull();
+  });
+});
+
+describe("Speaking practice overview and attempt history", () => {
+  const sha = async (bytes: Uint8Array) =>
+    Array.from(new Uint8Array(await webcrypto.subtle.digest("SHA-256", bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
+
+  it("counts only completed takes, explains each next step, and opens the exercise at the take concerned", async () => {
+    installMedia("grant");
+    const v = withTypedTake(1, [transcriptV1]);
+    v.takes.push({ id: 12, number: 2, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t" });
+    const server = newServer({ exercises: [v] });
+    server.practice = {
+      schema_version: "speaking_practice_v1",
+      generated_at: "t",
+      summary: { prompts: 3, started: 1, takes: 2, completed: 1, exercises_completed: 1, awaiting_transcript: 1, awaiting_feedback: 0, in_progress: 0, failed: 0, unknown: 0, last_completed_at: "2026-11-17T10:00:00Z" },
+      queue: [
+        { reason: "add_transcript", priority: 3, prompt_id: invitation.id, title: invitation.title, exercise_id: 1, take_id: 12, take_number: 2, state: "awaiting_transcript", improvements: 0, since: "t" },
+        { reason: "not_started", priority: 7, prompt_id: "sp-demande-renseignements", title: "Demander des renseignements", exercise_id: null, take_id: null, take_number: null, state: null, improvements: 0, since: null },
+      ],
+      exercises: [],
+      providers: { transcription: { enabled: true, name: TRANSCRIBER }, feedback: { enabled: true, name: GENERATOR } },
+    };
+    serve(server);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Speaking" }));
+    const overview = await screen.findByRole("region", { name: "Speaking practice overview" });
+    expect(await within(overview).findByText("Completed takes (feedback on the latest checked transcript): 1 of 2")).toBeInTheDocument();
+    expect(within(overview).getByText(/Waiting for a transcript: 1 · Waiting for feedback: 0/)).toBeInTheDocument();
+    expect(within(overview).getByText(/Only a take whose latest checked transcript has feedback counts as completed/)).toBeInTheDocument();
+    const items = within(overview).getAllByRole("listitem").filter((li) => li.hasAttribute("data-reason"));
+    expect(items.map((li) => li.getAttribute("data-reason"))).toEqual(["add_transcript", "not_started"]);
+    expect(items[0]).toHaveTextContent("Take 2: add its transcript, by transcription or by typing what you said.");
+    expect(within(items[1]).getByRole("button", { name: "Start" })).toBeInTheDocument();
+    expect(within(overview).getByRole("link", { name: "Download all attempts (NDJSON)" })).toHaveAttribute("href", "/api/speaking/export");
+    fireEvent.click(within(items[0]).getByRole("button", { name: "Open" }));
+    await screen.findByRole("heading", { name: invitation.title });
+    expect(within(screen.getByRole("group", { name: "Choose a take" })).getByRole("button", { name: "Take 2" })).toHaveAttribute("aria-pressed", "true");
+    expect(speakingWrites(server)).toEqual([]);
+  });
+
+  it("uses the plural for improvements and says when there is nothing to do", async () => {
+    installMedia("grant");
+    const server = newServer({ exercises: [withTypedTake(1, [transcriptV1])] });
+    const base = { schema_version: "speaking_practice_v1" as const, generated_at: "t", exercises: [], providers: { transcription: { enabled: false, name: null }, feedback: { enabled: false, name: null } } };
+    const summary = { prompts: 3, started: 1, takes: 1, completed: 1, exercises_completed: 1, awaiting_transcript: 0, awaiting_feedback: 0, in_progress: 0, failed: 0, unknown: 0, last_completed_at: null };
+    server.practice = { ...base, summary, queue: [{ reason: "answer_again", priority: 5, prompt_id: invitation.id, title: invitation.title, exercise_id: 1, take_id: 11, take_number: 1, state: "feedback_ready", improvements: 1, since: "t" }] };
+    serve(server);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Speaking" }));
+    const overview = await screen.findByRole("region", { name: "Speaking practice overview" });
+    expect(await within(overview).findByText("Take 1: the feedback suggests 1 improvement. Answer again using it.")).toBeInTheDocument();
+    cleanup();
+    server.practice = { ...base, summary: { ...summary, takes: 0, completed: 0, started: 0, exercises_completed: 0 }, queue: [] };
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Speaking" }));
+    const empty = await screen.findByRole("region", { name: "Speaking practice overview" });
+    expect(await within(empty).findByText("Nothing to do right now.")).toBeInTheDocument();
+    expect(within(empty).queryByRole("link", { name: /Download all attempts/ })).toBeNull();
+  });
+
+  it("lists each attempt with its state and the feedback that counts, and says when the prompt changed", async () => {
+    installMedia("grant");
+    const v = withTypedTake(1, [transcriptV1]);
+    v.takes[0].state = "feedback_ready";
+    v.feedback.push({ id: 41, transcript_id: 21, status: "completed", failure_code: null, generator: GENERATOR, created_at: "t", content: feedbackV1 });
+    v.takes.push({ id: 12, number: 2, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t", state: "awaiting_transcript" });
+    v.exercise.pack_status = "changed";
+    v.example_transcript = null;
+    const server = newServer({ exercises: [v] });
+    serve(server);
+    await openExercise(server);
+    expect(screen.getByRole("note")).toHaveTextContent("This prompt was corrected in the set after you started it.");
+    const rows = within(screen.getByRole("list", { name: "Attempts" })).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent(`Content points partly covered; ${feedbackV1.improvements.length} improvements`);
+    expect(rows[0]).toHaveTextContent("completed");
+    expect(rows[0]).toHaveTextContent("version 1, typed");
+    expect(rows[1]).toHaveTextContent("waiting for a transcript");
+    expect(rows[1]).toHaveTextContent("typed");
+    // Take 2 has no transcript: the set's example is not offered for an older wording.
+    expect(screen.queryByRole("button", { name: "Use the example transcript" })).toBeNull();
+  });
+
+  it("takes back a take's audio after a reload only from a file with the same SHA-256, and sends nothing", async () => {
+    installMedia("grant");
+    const audio = new Uint8Array([0x52, 0x49, 0x46, 0x46, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    const v = exerciseView(1);
+    v.takes.push({ id: 11, number: 1, audio_source: "file", audio_mime: "audio/wav", audio_bytes: audio.length, audio_sha256: await sha(audio), duration_ms: 1500, created_at: "t", state: "awaiting_transcript" });
+    const server = newServer({ exercises: [v] });
+    serve(server);
+    await openExercise(server);
+    const take = screen.getByRole("region", { name: "Take 1" });
+    expect(within(take).getByText(/not in this browser any more/)).toBeInTheDocument();
+    expect(within(take).queryByRole("button", { name: /Send audio/ })).toBeNull();
+    const input = within(take).getByLabelText("Choose the same audio file again");
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array([1, 2, 3])], "other.wav", { type: "audio/wav" })] } });
+    expect(await within(take).findByText("This file is not the audio of take 1 (its SHA-256 differs). Nothing was kept.")).toBeInTheDocument();
+    fireEvent.change(input, { target: { files: [new File([audio], "take.wav", { type: "audio/wav" })] } });
+    expect(await within(take).findByLabelText("Play back take 1")).toBeInTheDocument();
+    expect(within(take).queryByText(/not in this browser any more/)).toBeNull();
+    expect(speakingWrites(server)).toEqual([]);
+  });
+});
+
+describe("Speaking practice overview from the backend's own answer", () => {
+  it("renders the end-to-end walk's overview: honest counts, reasons in the backend's order", async () => {
+    installMedia("grant");
+    const server = newServer({ exercises: [withTypedTake(1, [transcriptV1])] });
+    server.practice = practiceFromWalk;
+    serve(server);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Speaking" }));
+    const overview = await screen.findByRole("region", { name: "Speaking practice overview" });
+    expect(await within(overview).findByText("Completed takes (feedback on the latest checked transcript): 1 of 3")).toBeInTheDocument();
+    expect(within(overview).getByText("Waiting for a transcript: 1 · Waiting for feedback: 1 · In progress: 0 · Failed: 0 · Outcome unknown: 0")).toBeInTheDocument();
+    const items = within(overview).getAllByRole("listitem").filter((li) => li.hasAttribute("data-reason"));
+    expect(items.map((li) => li.getAttribute("data-reason"))).toEqual(practiceFromWalk.queue.map((q) => q.reason));
+    expect(items[0]).toHaveTextContent("Take 3: a machine transcript is waiting for your check.");
+    expect(speakingWrites(server)).toEqual([]);
   });
 });

@@ -660,6 +660,14 @@ Speaking v1 (private workbench):
   and comments about pronunciation or scores are refused as `invalid_output`.
   A mistake is a capture (`source: manual`) on explicit confirmation only.
   Never in the public demo.
+- Practice overview (`GET /speaking/practice`) and NDJSON export (`GET
+  /speaking/export`) are read-only and derived on every read: a take's
+  `state`, one queue item per exercise from its latest take, and counts in
+  which only `feedback_ready` on the latest confirmed version is completed.
+  The export never holds audio and has no import. The same audio SHA-256 in
+  one exercise replays the existing take (`take_conflict` if its metadata
+  differs). An exercise keeps its started wording; `pack_status` reports a
+  corrected set. Contract: `docs/ARCHITECTURE.md` §4.7, A.19.
 
 Mistake Notebook v1 (private workbench):
 
