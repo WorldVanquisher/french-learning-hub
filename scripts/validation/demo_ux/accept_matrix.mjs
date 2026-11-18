@@ -245,6 +245,16 @@ for (const sz of SIZES) {
     await page.press("#library-query", "Enter");
     await settle(page, ".library-results .link-button");
     check(`${tag}: search: the address names it`, new URL(page.url()).hash === "#q=il+faut", page.url());
+    // FLH-153 follow-up: Search shows its result without the visitor scrolling, focus stays in the field.
+    const onScreen = () => page.evaluate(() => {
+      const r = document.querySelector(".library-results .library-result")?.getBoundingClientRect();
+      const f = document.activeElement?.getBoundingClientRect();
+      return { result: Boolean(r) && r.top >= 0 && r.top < innerHeight, field: document.activeElement?.id === "library-query" && Boolean(f) && f.top >= 0 && f.bottom <= innerHeight };
+    });
+    await page.waitForFunction(() => { const r = document.querySelector(".library-results .library-result")?.getBoundingClientRect(); return r && r.top >= 0 && r.top < innerHeight; }, null, { timeout: 3000 }).catch(() => {});
+    const seen = await onScreen();
+    check(`${tag}: search: the first result is on screen after Search`, seen.result, JSON.stringify(seen));
+    check(`${tag}: search: …and the search field keeps focus, in view`, seen.field, JSON.stringify(seen));
     await page.locator(".library-results .link-button").first().click();
     await settle(page, ".library-concept h2");
     const title = await visibleH2(page);
@@ -324,10 +334,29 @@ for (const sz of SIZES) {
         await settle(page, ".demo-not-found");
         check(`${tag}: links: ${hash}: Back returns to the link's screen`, (await page.locator(".demo-not-found").count()) === 1);
       }
+      // The way back to the start when nothing it remembers is on the page
+      // focuses a heading, never the page body (FLH-153).
+      const focusedId = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName || "none");
+      await fresh("#concept=999");
+      await settle(page, ".demo-not-found");
+      await page.locator(".demo-return button").first().focus();
+      await page.keyboard.press("Enter");
+      await settle(page, ".demo-example-card");
+      await page.waitForFunction(() => document.activeElement?.id === "demo-examples-heading", null, { timeout: 3000 }).catch(() => {});
+      check(`${tag}: links: back from a missing Concept focuses the examples heading`, (await focusedId()) === "demo-examples-heading", await focusedId());
       const linkErrors = errors.splice(errorsBefore);
       const unexpected = linkErrors.filter((e) => !/status of 404/.test(e));
       errors.push(...unexpected);
       check(`${tag}: links: the only console errors are the missing IDs' 404s`, unexpected.length === 0 && linkErrors.length > 0, linkErrors.length);
+      await fresh("#q=il+faut&concept=12");
+      await settle(page, ".library-concept h2");
+      await page.locator(".demo-return button").first().focus();
+      await page.keyboard.press("Enter");
+      await settle(page, '[id^="library-result-"]');
+      await page.waitForFunction(() => document.activeElement?.id === "demo-search-heading", null, { timeout: 3000 }).catch(() => {});
+      const listed = await page.evaluate(() => Boolean(document.getElementById("library-result-12")));
+      check(`${tag}: links: back to a search that does not list the link's Concept focuses the search heading`,
+        !listed && (await focusedId()) === "demo-search-heading" && (await focusVisible(page)), `${await focusedId()} listed=${listed}`);
       // Coming back focuses the control that left the screen (keyboard).
       await fresh("#example=y-en");
       await settle(page, ".demo-question");
@@ -441,6 +470,37 @@ for (const sz of SIZES) {
       check(`${tag}: long text: return bar stays in view after scrolling`, bar && bar.y >= -1 && bar.y < 10, JSON.stringify(bar));
       await shot("long-evidence", true, page);
       requestChecks(`${tag} long text`, requests, errors);
+      await ctx.close();
+    }
+
+    // 7b. Right-to-left learner text (injected in the browser): the question and
+    // context keep their own direction (FLH-153 follow-up); French stays left-to-right.
+    {
+      const { ctx, page } = await open(sz, locale);
+      const dirOf = (sel) => page.evaluate((sel) => { const e = document.querySelector(sel); return e ? getComputedStyle(e).direction : "missing"; }, sel);
+      await page.goto(`${base}#example=y-en`);
+      await settle(page, ".demo-question");
+      check(`${tag}: rtl: a French question stays left-to-right`, (await dirOf(".demo-question")) === "ltr");
+      await page.route(/\/knowledge-library\/units\/\d+\/source$/, async (route) => {
+        const r = await route.fetch();
+        const d = await r.json();
+        d.entry.original_input = "كيف أقول « j'y vais » بالعربية؟";
+        d.entry.original_context = "שאלה בעברית על « en » ועל « y ».";
+        await route.fulfill({ response: r, json: d });
+      });
+      await page.goto("about:blank");
+      await page.goto(`${base}#example=y-en`);
+      await settle(page, ".demo-question");
+      check(`${tag}: rtl: an Arabic question on the example is laid out right-to-left`, (await dirOf(".demo-question")) === "rtl");
+      await fits(page, sz, tag, "rtl example");
+      await page.goto("about:blank");
+      await page.goto(`${base}#example=y-en&concept=12&unit=12`);
+      await settle(page, "#src-entry");
+      check(`${tag}: rtl: on the evidence, the question and the Hebrew context are right-to-left`,
+        (await dirOf("#src-entry ~ .demo-question")) === "rtl" && (await dirOf(".unit-evidence dd bdi")) === "rtl",
+        `${await dirOf("#src-entry ~ .demo-question")} ${await dirOf(".unit-evidence dd bdi")}`);
+      await fits(page, sz, tag, "rtl evidence");
+      await shot("rtl-evidence", false, page);
       await ctx.close();
     }
 

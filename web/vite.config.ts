@@ -11,8 +11,33 @@ import react from "@vitejs/plugin-react";
 // Override the backend location with FRENCH_HUB_URL when it is not on :8080.
 const backend = process.env.FRENCH_HUB_URL ?? "http://localhost:8080";
 
+// Explicit build configuration for a release or staging candidate (all optional):
+//   VITE_FLH_API_BASE  the API prefix the page calls, default "/api". It must be a
+//                      same-origin path: the backend allows no cross-origin calls.
+//   VITE_FLH_BUILD_ID  the candidate's identity (for example a tree digest),
+//                      written into index.html as <meta name="flh-build">.
+// Either one, when invalid, stops the build instead of producing a page that
+// calls the wrong place or names the wrong candidate.
+const apiBase = process.env.VITE_FLH_API_BASE ?? "/api";
+if (!/^\/[A-Za-z0-9._~-]+(\/[A-Za-z0-9._~-]+)*$/.test(apiBase)) {
+  throw new Error(`VITE_FLH_API_BASE must be a same-origin path such as /api, got ${JSON.stringify(apiBase)}`);
+}
+const buildId = process.env.VITE_FLH_BUILD_ID ?? "";
+if (buildId !== "" && !/^[A-Za-z0-9._:+-]{1,80}$/.test(buildId)) {
+  throw new Error(`VITE_FLH_BUILD_ID must be 1-80 characters of [A-Za-z0-9._:+-], got ${JSON.stringify(buildId)}`);
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "flh-build-identity",
+      transformIndexHtml: () => [
+        { tag: "meta", attrs: { name: "flh-api-base", content: apiBase }, injectTo: "head" },
+        ...(buildId ? [{ tag: "meta", attrs: { name: "flh-build", content: buildId }, injectTo: "head" as const }] : []),
+      ],
+    },
+  ],
   server: {
     proxy: {
       "/api": {

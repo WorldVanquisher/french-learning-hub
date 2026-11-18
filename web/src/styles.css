@@ -971,6 +971,35 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 
 /* FLH sections v1: learning home, the learner's side of a notebook item, and
    an item opened from the notebook. */
+/* Continue where you left off (learning home). */
+.continue-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.continue-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.continue-item:first-child {
+  border-top: 0;
+}
+
+.continue-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.continue-item button {
+  margin-left: auto;
+}
+
 .home-sections { list-style: none; padding: 0; margin: 12px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .home-card { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 .home-card h3 { margin: 0; font-size: 16px; }
@@ -1000,3 +1029,112 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .exam-result.missed { border-left: 3px solid var(--invalid); padding-left: 8px; }
 .exam-result.correct { border-left: 3px solid var(--same); padding-left: 8px; }
 .exam-passage mark { background: #fff4c2; }
+
+/* Recent Knowledge Library searches (private workbench). */
+.library-recent {
+  margin-top: 8px;
+}
+
+.library-recent ul {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.library-recent li {
+  display: inline-flex;
+  align-items: center;
+}
+
+.library-recent .recent-remove {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* Words of a matched field that the search reached (libraryHighlight.tsx). */
+.library-result mark {
+  background: #fde68a;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.library-snippet {
+  margin: 2px 0;
+  font-size: 0.95em;
+  overflow-wrap: anywhere;
+}
+
+/* Speaking recorder: the input level while recording (a plain bar with a text
+   equivalent) and the microphone permission line. */
+.speaking-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.speaking-level meter {
+  width: min(240px, 60vw);
+  height: 12px;
+}
+
+.speaking-permission-denied {
+  color: var(--invalid);
+}
+
+/* Speaking: points kept in mind for the next take, and the comparison table. */
+.speaking-retry-points {
+  margin: 4px 0 8px;
+  padding-left: 1.2em;
+}
+
+.speaking-compare-evidence {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 0.95em;
+}
+
+.speaking-compare-evidence caption {
+  text-align: left;
+  caption-side: top;
+}
+
+.speaking-compare-evidence th,
+.speaking-compare-evidence td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.tag.warn {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+}
+
+/* Workbench navigation (demo-refresh frontend batch). The current section is
+   marked by more than colour: bold text and an underline bar. On a phone the
+   twelve sections form a compact two-column grid instead of twelve full-width
+   rows, so the section's content starts on the first screen. */
+:root:not([data-theme="endfield"]) nav.view-tabs button[aria-pressed="true"] {
+  font-weight: 600;
+  box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.9);
+}
+
+@media (max-width: 620px) {
+  nav.view-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  nav.view-tabs button {
+    min-height: 44px;
+    padding: 6px 8px;
+    font-size: 14px;
+    line-height: 1.2;
+  }
+}

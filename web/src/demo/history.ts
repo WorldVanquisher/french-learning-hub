@@ -15,7 +15,11 @@ import { hashForScreen, NO_SEARCH, urlForScreen, type LinkSearch } from "./deepL
 // - Opening a screen focuses its heading. Coming back to an entry (Back, an
 //   in-page back, Forward) focuses the control that left it when that control
 //   is on the page again, so a keyboard user continues where they were;
-//   otherwise the heading, as when opening.
+//   otherwise the heading, as when opening. On the start screen, when neither
+//   that control nor the result or example the visitor came back from is
+//   there (a link named a Concept this build or its search lacks, or the
+//   search failed meanwhile), the heading of what is shown: the search's when
+//   a search is shown, else the examples'.
 //
 // Each entry the demo writes keeps the trail of this visit's entries up to it
 // (their link keys), which is how an in-page back finds how far back to go,
@@ -73,10 +77,27 @@ function write<S extends Screen>(how: "push" | "replace", screen: S, search: Lin
 }
 
 // focusControl moves focus to a returned-to control and brings it to the middle
-// of the screen, clear of the demo's sticky return bar.
-export function focusControl(el: HTMLElement) {
+// of the screen, clear of the demo's sticky return bar. It reports whether focus
+// landed there (a control can be on the page yet not focusable), so the caller
+// can fall back to a heading instead of leaving focus on the page body.
+export function focusControl(el: HTMLElement): boolean {
   el.focus({ preventScroll: true });
+  if (document.activeElement !== el) return false;
   el.scrollIntoView?.({ block: "center" });
+  return true;
+}
+
+// focusFallback focuses a heading the visitor did not leave from and keeps it in
+// view. A Back or Forward restores the entry's scroll position after the
+// popstate handlers have run (where the control that left it was, not where
+// this heading is), so it is brought into view again on the next frame.
+export function focusFallback(el: HTMLElement) {
+  el.focus({ preventScroll: true });
+  const show = () => {
+    if (document.activeElement === el) el.scrollIntoView?.({ block: "start" });
+  };
+  show();
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(show);
 }
 
 // pushEntry adds an entry for a newly opened screen and returns its trail.

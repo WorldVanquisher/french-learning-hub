@@ -4,6 +4,7 @@ import { ApiError } from "./api/client";
 import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import type { PublicDemoInfo } from "./types/library";
 import { LanguageSelect, LocaleProvider, useI18n } from "./i18n";
+import { useNewerVersion, VersionNotice } from "./freshness";
 import "./demo/demo.css";
 
 // PublicDemoApp is the FLH-073 read-only public demo: a short introduction and
@@ -22,6 +23,7 @@ export default function PublicDemoApp() {
 
 function PublicDemo() {
   const { t, tn } = useI18n();
+  const newer = useNewerVersion();
   const [info, setInfo] = useState<{ status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: PublicDemoInfo }>({
     status: "loading",
   });
@@ -116,6 +118,7 @@ function PublicDemo() {
         </div>
         <LanguageSelect />
       </header>
+      <VersionNotice newer={newer} keepsDrafts={false} />
       {info.status === "loading" ? (
         <p className="empty" role="status">{t("demo.loading")}</p>
       ) : info.status === "error" ? (

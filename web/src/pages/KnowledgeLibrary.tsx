@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type MutableRefObject, type ReactNode } from "react";
+import { markMatches, matchedFeatures } from "./libraryHighlight";
+import { addRecent, clearRecent, readRecent, removeRecent, type RecentSearch } from "./recentSearches";
 import * as api from "../api/client";
 import { ApiError } from "../api/client";
 import type {
@@ -19,7 +21,7 @@ import { RecallPractice } from "./RecallPractice";
 import { DEMO_EXAMPLES } from "../demo/examples";
 import { ExamplePicker, ExampleScreen, focusExampleCard } from "../demo/ExampleScreen";
 import { linkFromHash, queryToSearch, sameSearch, searchToQuery, type LinkSearch } from "../demo/deepLink";
-import { adoptEntry, entryKey, focusControl, pushEntry, readEntry, replaceEntry, stepsBack } from "../demo/history";
+import { adoptEntry, entryKey, focusControl, focusFallback, pushEntry, readEntry, replaceEntry, stepsBack } from "../demo/history";
 import { NoMatchHelp, RecordedTime } from "../demo/DemoStates";
 
 // One search outcome per submitted query. Semantic and hybrid modes need a
@@ -92,10 +94,7 @@ function useFocusedHeading(status: string, returnFocus?: MutableRefObject<string
     if (id && status !== "loading") {
       returnFocus.current = null;
       const el = document.getElementById(id);
-      if (el && ref.current?.closest("main")?.contains(el)) {
-        focusControl(el);
-        return;
-      }
+      if (el && ref.current?.closest("main")?.contains(el) && focusControl(el)) return;
     }
     ref.current?.focus();
   }, [status]);
@@ -153,6 +152,8 @@ export function KnowledgeLibrary({
   guided = false,
   openRequest = null,
   onOpenRecord,
+  searchRequest = null,
+  onSearchChange,
 }: {
   demo?: PublicDemoInfo;
   // Public demo only: text shown above the search on the starting screen, and
@@ -166,6 +167,11 @@ export function KnowledgeLibrary({
   openRequest?: { conceptId: number; nonce: number } | null;
   // Opens a source record in Learning Records (private workbench only).
   onOpenRecord?: (entryId: number) => void;
+  // Private workbench: a keyword search the address names (sectionAddress.ts),
+  // applied at start and whenever its nonce changes; and every keyword search
+  // shown, reported so the address can name it.
+  searchRequest?: { q: string; state: LibraryStateFilter; nonce: number } | null;
+  onSearchChange?: (search: { q: string; state: LibraryStateFilter }) => void;
 } = {}) {
   const i18n = useI18n();
   const { t, tn } = i18n;
@@ -173,11 +179,13 @@ export function KnowledgeLibrary({
   // (demo/deepLink.ts); the workbench always starts on an empty search.
   const [link] = useState(() => (demo ? linkFromHash(window.location.hash, demo.presets.map((p) => p.id)) : null));
   const initial = link && demo ? searchToQuery(link.search, demo.presets) : null;
+  // The workbench starts on the search its address names, if any.
+  const [addressed] = useState<LibraryQuery | null>(() => (!demo && searchRequest ? { q: searchRequest.q, state: searchRequest.state } : null));
   const [draft, setDraft] = useState<LibraryQuery>(() =>
-    initial ? { q: initial.mode === "keyword" ? initial.query.q : "", state: initial.query.state } : { q: "", state: "all" },
+    initial ? { q: initial.mode === "keyword" ? initial.query.q : "", state: initial.query.state } : (addressed ?? { q: "", state: "all" }),
   );
   const [draftPreset, setDraftPreset] = useState<string>(initial?.query.preset ?? demo?.presets[0]?.id ?? "");
-  const [query, setQuery] = useState<LibraryQuery>(initial?.query ?? { q: "", state: "all" });
+  const [query, setQuery] = useState<LibraryQuery>(initial?.query ?? addressed ?? { q: "", state: "all" });
   const [draftMode, setDraftMode] = useState<LibrarySearchMode>(initial?.mode ?? "keyword");
   const [mode, setMode] = useState<LibrarySearchMode>(initial?.mode ?? "keyword");
   const [screen, setScreenState] = useState<Screen>(() => link?.screen ?? { kind: "results" });
@@ -194,11 +202,19 @@ export function KnowledgeLibrary({
   // (the one that left it; demo/history.ts), and whether the link that opened
   // the page matched nothing (shown on the start screen until the next move).
   const focusReturn = useRef<string | null>(null);
+  // Public demo: the visitor came back to the start or results screen (Back,
+  // Forward, an in-page back) and focus has not settled there yet.
+  const returning = useRef(false);
+  // Public demo: a search the visitor just submitted, whose first result (or
+  // what it found instead) is brought into view once it is shown.
+  const revealResults = useRef(false);
+  const searchFormRef = useRef<HTMLFormElement>(null);
   const [badLink, setBadLink] = useState(() => Boolean(link?.malformed));
   const setScreen = (next: Screen, search: LinkSearch = searchRef.current) => {
     if (demo) {
       trailRef.current = pushEntry(next, search, trailRef.current);
       focusReturn.current = null;
+      returning.current = false;
       setBadLink(false);
     }
     setScreenState(next);
@@ -214,6 +230,7 @@ export function KnowledgeLibrary({
       }
       trailRef.current = replaceEntry(target, searchRef.current, trailRef.current);
       focusReturn.current = null;
+      returning.current = target.kind === "results";
       setBadLink(false);
     }
     setScreenState(target);
@@ -228,6 +245,8 @@ export function KnowledgeLibrary({
       searchRef.current = next;
       trailRef.current = pushEntry({ kind: "results" }, next, trailRef.current);
       focusReturn.current = null;
+      returning.current = false;
+      revealResults.current = true;
       setBadLink(false);
     }
   };
@@ -247,7 +266,7 @@ export function KnowledgeLibrary({
   const practiceSession = useRef(0);
 
   const search = useLoad<SearchOutcome>(
-    `${mode}\u0000${query.state}\u0000${query.q}\u0000${query.preset ?? ""}`,
+    `${mode}\u0000${query.state}\u0000${query.q}\u0000${query.preset ?? ""}\u0000${query.limit ?? ""}`,
     async (): Promise<SearchOutcome> => {
       if (mode === "keyword") return { kind: "keyword", data: await api.searchLibrary(query) };
       if (!query.q) return { kind: "needs-query" };
@@ -282,6 +301,7 @@ export function KnowledgeLibrary({
         search = entry.flhSearch;
         trailRef.current = entry.flhTrail;
         focusReturn.current = entry.flhFocus ?? null;
+        returning.current = next.kind === "results";
         setBadLink(false);
       } else {
         // A fragment typed or pasted into the address bar has no saved state.
@@ -290,6 +310,7 @@ export function KnowledgeLibrary({
         search = linked.search;
         trailRef.current = adoptEntry(next, search, trailRef.current);
         focusReturn.current = null;
+        returning.current = false;
         setBadLink(linked.malformed);
       }
       const left = screenRef.current;
@@ -308,15 +329,16 @@ export function KnowledgeLibrary({
 
   // On return, focus the result the reader opened. Detail screens focus their own heading.
   // Public demo: the control that left this entry comes first (demo/history.ts),
-  // once the results it may be among are shown.
+  // once the results it may be among are shown; when nothing it names is on the
+  // page once the search has settled, the heading of what is shown.
   useEffect(() => {
     if (screen.kind !== "results") return;
     const back = focusReturn.current ? document.getElementById(focusReturn.current) : null;
-    if (back && !back.closest("[hidden]")) {
+    if (back && !back.closest("[hidden]") && focusControl(back)) {
       focusReturn.current = null;
       returnToExample.current = null;
       returnTo.current = null;
-      focusControl(back);
+      returning.current = false;
       return;
     }
     if (focusReturn.current && search.status !== "loading") focusReturn.current = null;
@@ -328,12 +350,34 @@ export function KnowledgeLibrary({
       document.getElementById(resultButtonId(returnTo.current))?.focus();
       returnTo.current = null;
     }
+    if (demo && returning.current && search.status !== "loading") {
+      returning.current = false;
+      returnTo.current = null;
+      const active = document.activeElement;
+      if (!(active instanceof HTMLElement) || !active.closest("main") || active.closest("[hidden]")) {
+        const searchShown = query.q !== "" || query.state !== "all" || mode !== "keyword";
+        const heading = document.getElementById(searchShown ? "demo-search-heading" : "demo-examples-heading");
+        if (heading) focusFallback(heading);
+      }
+    }
+  }, [screen, search.status]);
+
+  // Public demo: bring a submitted search's first result (or its no-match help,
+  // or its error) into view with the smallest scroll, leaving focus where it is.
+  // Without it a phone shows no change at all when Search is pressed.
+  useEffect(() => {
+    if (!revealResults.current || screen.kind !== "results" || search.status === "loading") return;
+    revealResults.current = false;
+    const area = searchFormRef.current?.nextElementSibling;
+    const target = area?.querySelector(".library-result, .demo-no-match, [role=alert]") ?? area;
+    if (target instanceof HTMLElement) target.scrollIntoView?.({ block: "nearest" });
   }, [screen, search.status]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const preset = demo && draftMode !== "keyword" ? demo.presets.find((p) => p.id === draftPreset) : undefined;
     runSearch(preset ? { q: preset.text, state: draft.state, preset: preset.id } : { q: draft.q.trim(), state: draft.state }, draftMode);
+    if (!demo && draftMode === "keyword" && draft.q.trim() && recent) keepRecent(addRecent(recent, { q: draft.q.trim(), state: draft.state }));
   };
   const backToResults = (conceptId: number) => {
     returnTo.current = conceptId;
@@ -362,14 +406,67 @@ export function KnowledgeLibrary({
     setMode("keyword");
     searchRef.current = queryToSearch(next, "keyword");
     setScreen({ kind: "results" }, searchRef.current);
+    if (demo) revealResults.current = true;
   };
   const requestedNonce = openRequest?.nonce ?? null;
   const requestedConcept = openRequest?.conceptId ?? null;
   useEffect(() => {
     if (requestedNonce !== null && requestedConcept !== null) setScreen({ kind: "concept", conceptId: requestedConcept });
   }, [requestedNonce, requestedConcept]);
+  // Workbench: a search the address asks for (Back/Forward, an edited address).
+  const requestedSearch = demo ? null : searchRequest;
+  const appliedSearch = useRef(requestedSearch?.nonce ?? null);
+  useEffect(() => {
+    if (!requestedSearch || appliedSearch.current === requestedSearch.nonce) return;
+    appliedSearch.current = requestedSearch.nonce;
+    const next = { q: requestedSearch.q, state: requestedSearch.state };
+    setDraft(next);
+    setDraftMode("keyword");
+    setQuery(next);
+    setMode("keyword");
+    setScreenState({ kind: "results" });
+  }, [requestedSearch]);
+  // Workbench: the address names the keyword search shown (semantic and hybrid
+  // searches are not part of it).
+  useEffect(() => {
+    if (demo || !onSearchChange) return;
+    onSearchChange(mode === "keyword" ? { q: query.q, state: query.state } : { q: "", state: "all" });
+  }, [demo, onSearchChange, mode, query.q, query.state]);
+  // Workbench: recent keyword searches, kept only in this browser (recentSearches.ts).
+  const [recent, setRecent] = useState<RecentSearch[] | null>(() => (demo ? [] : readRecent()));
+  const [recentUnsaved, setRecentUnsaved] = useState(false);
+  const keepRecent = (next: RecentSearch[] | null) => {
+    if (next === null) setRecentUnsaved(true);
+    else {
+      setRecent(next);
+      setRecentUnsaved(false);
+    }
+  };
+  const runRecent = (r: RecentSearch) => {
+    setDraft({ q: r.q, state: r.state });
+    setDraftMode("keyword");
+    runSearch({ q: r.q, state: r.state }, "keyword");
+    if (recent) keepRecent(addRecent(recent, r));
+  };
   const resultsLabel = query.q ? t(resultsLabelKey[mode], { q: query.q }) : t(modeSearchKey[mode]);
   const strong = (key: MessageKey) => <strong>{t(key)}</strong>;
+  // How search works. The workbench keeps it in the form; the public demo shows
+  // it after the results, so a submitted search's results follow the form
+  // directly instead of several screens of explanation on a phone.
+  const searchHelp = (
+    <>
+      <p className="hint">
+        {tn("library.terms", { concept: strong("library.term.concept"), unit: strong("library.term.unit") })}
+      </p>
+      <p className="hint">{t("library.searchScope")}</p>
+      {demo ? (
+        <p className="hint">{tn("library.semantic.demo", { semantic: strong("library.mode.semantic") })}</p>
+      ) : (
+        <p className="hint">{tn("library.semantic.full", { semantic: strong("library.mode.semantic") })}</p>
+      )}
+      <p className="hint">{tn("library.hybrid.explain", { hybrid: strong("library.mode.hybrid") })}</p>
+    </>
+  );
   // The practice session on screen, or kept mounted behind a source opened from it.
   const practice =
     screen.kind === "practice"
@@ -390,11 +487,11 @@ export function KnowledgeLibrary({
         {guided ? <ExamplePicker onOpen={openExample} /> : null}
         {about}
         {guided ? (
-          <h2 className="demo-section-heading" id="demo-search-heading">
+          <h2 className="demo-section-heading" id="demo-search-heading" tabIndex={-1}>
             {t("demo.search.heading")}
           </h2>
         ) : null}
-        <form className="panel library-search" role="search" onSubmit={submit}>
+        <form className="panel library-search" role="search" onSubmit={submit} ref={searchFormRef}>
           {demo && draftMode !== "keyword" ? (
             <label htmlFor="library-preset">{t("library.exampleQuery")}</label>
           ) : (
@@ -481,16 +578,16 @@ export function KnowledgeLibrary({
               {tn("library.demo.note", { label: strong("library.demo.label") })}
             </p>
           ) : null}
-          <p className="hint">
-            {tn("library.terms", { concept: strong("library.term.concept"), unit: strong("library.term.unit") })}
-          </p>
-          <p className="hint">{t("library.searchScope")}</p>
-          {demo ? (
-            <p className="hint">{tn("library.semantic.demo", { semantic: strong("library.mode.semantic") })}</p>
-          ) : (
-            <p className="hint">{tn("library.semantic.full", { semantic: strong("library.mode.semantic") })}</p>
+          {demo ? null : (
+            <RecentSearches
+              recent={recent}
+              unsaved={recentUnsaved}
+              onRun={runRecent}
+              onRemove={(r) => recent && keepRecent(removeRecent(recent, r))}
+              onClear={() => keepRecent(clearRecent())}
+            />
           )}
-          <p className="hint">{tn("library.hybrid.explain", { hybrid: strong("library.mode.hybrid") })}</p>
+          {demo ? null : searchHelp}
         </form>
         {search.status === "ready" && search.data.kind === "keyword" ? (
           <Results
@@ -498,6 +595,7 @@ export function KnowledgeLibrary({
             query={query}
             onOpen={openConcept}
             onRetry={() => setRetry((n) => n + 1)}
+            onShowMore={() => runSearch({ ...query, limit: MAX_LIBRARY_LIMIT }, "keyword")}
             demo={Boolean(demo)}
             noMatchHelp={
               guided ? (
@@ -526,6 +624,7 @@ export function KnowledgeLibrary({
             </button>
           </div>
         )}
+        {demo ? <div className="panel demo-search-help">{searchHelp}</div> : null}
       </div>
       {screen.kind === "example" && guided && fromExample(screen.example) ? (
         <ExampleScreen
@@ -608,15 +707,95 @@ export function KnowledgeLibrary({
 }
 
 // ResultMeta is the stored Concept type and scope (data) followed by the counts.
-function ResultMeta({ concept, members, supporting }: { concept: LibraryConcept["concept"]; members: number; supporting: number }) {
+function ResultMeta({
+  concept,
+  members,
+  supporting,
+  marks,
+}: {
+  concept: LibraryConcept["concept"];
+  members: number;
+  supporting: number;
+  // A keyword result: the search's tokens and the fields that matched, so the
+  // matching words of the type and scope are marked (libraryHighlight.tsx).
+  marks?: { tokens: readonly string[]; fields: readonly string[] };
+}) {
   const { tp } = useI18n();
+  const shown = (field: string, text: string) => (marks && marks.fields.includes(field) ? markMatches(text, marks.tokens) : text);
   return (
     <div className="hint">
-      {concept.pedagogical_intent}
-      {concept.scope ? ` · ${concept.scope}` : ""} · {tp("library.resultMeta", members, { supporting, id: concept.id })}
+      {shown("pedagogical_intent", concept.pedagogical_intent)}
+      {concept.scope ? <> · {shown("scope", concept.scope)}</> : ""} · {tp("library.resultMeta", members, { supporting, id: concept.id })}
     </div>
   );
 }
+
+// FeatureSnippet shows the identity details a keyword search matched, with the
+// matching words marked (libraryHighlight.tsx), in the Concept's own wording.
+function FeatureSnippet({ features, tokens }: { features: Record<string, unknown>; tokens: readonly string[] }) {
+  const shown = matchedFeatures(features, tokens);
+  if (shown.length === 0) return null;
+  return (
+    <div className="library-snippet" dir="auto">
+      {shown.map((node, i) => (
+        <span key={i}>
+          {i > 0 ? " · " : ""}
+          {node}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// RecentSearches lists the workbench's recent keyword searches and says where
+// they are kept. Nothing is shown before the first search; a browser that
+// refuses storage is told the list is not kept.
+function RecentSearches({
+  recent,
+  unsaved,
+  onRun,
+  onRemove,
+  onClear,
+}: {
+  recent: RecentSearch[] | null;
+  unsaved: boolean;
+  onRun: (r: RecentSearch) => void;
+  onRemove: (r: RecentSearch) => void;
+  onClear: () => void;
+}) {
+  const { t, status } = useI18n();
+  if (recent === null || unsaved) return <p className="hint">{t("library.recent.unavailable")}</p>;
+  if (recent.length === 0) return null;
+  const label = (r: RecentSearch) => (r.state === "all" ? r.q : t("library.recent.withState", { q: r.q, state: status(r.state) }));
+  return (
+    <div className="library-recent" role="group" aria-labelledby="library-recent-heading">
+      <span id="library-recent-heading" className="label">
+        {t("library.recent.heading")}
+      </span>{" "}
+      <ul>
+        {recent.map((r) => (
+          <li key={`${r.state}\u0000${r.q}`}>
+            <button type="button" className="ghost" onClick={() => onRun(r)}>
+              <span lang="fr" dir="auto">
+                {label(r)}
+              </span>
+            </button>
+            <button type="button" className="ghost recent-remove" aria-label={t("library.recent.remove", { q: label(r) })} onClick={() => onRemove(r)}>
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>{" "}
+      <button type="button" className="ghost" onClick={onClear}>
+        {t("library.recent.clear")}
+      </button>
+      <p className="hint">{t("library.recent.storage")}</p>
+    </div>
+  );
+}
+
+// The backend's largest page of keyword results (application.ParseLibrarySearchQuery).
+const MAX_LIBRARY_LIMIT = 50;
 
 function Results({
   search,
@@ -625,6 +804,7 @@ function Results({
   onRetry,
   demo = false,
   noMatchHelp,
+  onShowMore,
 }: {
   search: Load<LibrarySearch>;
   query: LibraryQuery;
@@ -634,6 +814,8 @@ function Results({
   // search or filter that finds nothing is followed by `noMatchHelp`.
   demo?: boolean;
   noMatchHelp?: ReactNode;
+  // A truncated search can ask for up to MAX_LIBRARY_LIMIT results (the backend's limit).
+  onShowMore?: () => void;
 }) {
   const i18n = useI18n();
   const { t, tp, status } = i18n;
@@ -678,15 +860,29 @@ function Results({
           : query.q
             ? tp("library.countMatching", data.total_matches, { q: query.q })
             : tp("library.count", data.total_matches)}
+        {data.truncated && onShowMore && data.limit < MAX_LIBRARY_LIMIT ? (
+          <>
+            {" "}
+            <button type="button" className="ghost" onClick={onShowMore}>
+              {t("library.showMore", { max: Math.min(MAX_LIBRARY_LIMIT, data.total_matches) })}
+            </button>
+          </>
+        ) : null}
       </p>
       <ol className="library-results">
         {data.results.map((r) => (
           <li key={r.concept.id} className="panel library-result">
             <button type="button" className="link-button" id={resultButtonId(r.concept.id)} onClick={() => onOpen(r.concept.id)}>
-              {r.concept.target}
+              {r.matched_fields.includes("target") ? markMatches(r.concept.target, data.tokens) : r.concept.target}
             </button>{" "}
             <StateTag state={r.concept.state} />
-            <ResultMeta concept={r.concept} members={r.current_member_count} supporting={r.supporting_unit_count} />
+            <ResultMeta
+              concept={r.concept}
+              members={r.current_member_count}
+              supporting={r.supporting_unit_count}
+              marks={r.match_tier !== "browse" ? { tokens: data.tokens, fields: r.matched_fields } : undefined}
+            />
+            {r.matched_fields.includes("identity_features") ? <FeatureSnippet features={r.concept.identity_features} tokens={data.tokens} /> : null}
             {r.match_tier !== "browse" ? (
               <div className="hint">
                 {t(r.match_tier === "unit_evidence" ? "library.foundInUnits" : "library.foundIn", {
@@ -1404,14 +1600,24 @@ function SourceScreen({
         <>
       <section className="panel library-section current" aria-labelledby="src-entry">
         <h3 id="src-entry">{t("library.source.entry", { id: s.entry.id })}</h3>
-        {demo ? <blockquote className="demo-question french">{s.entry.original_input}</blockquote> : null}
+        {demo ? (
+          <blockquote className="demo-question french" dir="auto">
+            {s.entry.original_input}
+          </blockquote>
+        ) : null}
         <dl className="unit-evidence">
           {demo ? null : (
             <Row label={t("library.source.wrote")}>
               <span className="french">{s.entry.original_input}</span>
             </Row>
           )}
-          <Row label={t("library.source.context")}>{s.entry.original_context || <em>{t("library.noneLower")}</em>}</Row>
+          <Row label={t("library.source.context")}>
+            {s.entry.original_context ? (
+              demo ? <bdi>{s.entry.original_context}</bdi> : s.entry.original_context
+            ) : (
+              <em>{t("library.noneLower")}</em>
+            )}
+          </Row>
           <Row label={t("library.source.recorded")}>
             <RecordedTime value={s.entry.created_at} locale={i18n.locale} />
           </Row>
@@ -1472,14 +1678,24 @@ function SourceScreen({
 
       <section className="panel library-section current" aria-labelledby="src-entry">
         <h3 id="src-entry">{t("library.source.entry", { id: s.entry.id })}</h3>
-        {demo ? <blockquote className="demo-question french">{s.entry.original_input}</blockquote> : null}
+        {demo ? (
+          <blockquote className="demo-question french" dir="auto">
+            {s.entry.original_input}
+          </blockquote>
+        ) : null}
         <dl className="unit-evidence">
           {demo ? null : (
             <Row label={t("library.source.wrote")}>
               <span className="french">{s.entry.original_input}</span>
             </Row>
           )}
-          <Row label={t("library.source.context")}>{s.entry.original_context || <em>{t("library.noneLower")}</em>}</Row>
+          <Row label={t("library.source.context")}>
+            {s.entry.original_context ? (
+              demo ? <bdi>{s.entry.original_context}</bdi> : s.entry.original_context
+            ) : (
+              <em>{t("library.noneLower")}</em>
+            )}
+          </Row>
           <Row label={t("library.source.recorded")}>{s.entry.created_at}</Row>
         </dl>
         {onOpenRecord ? (

@@ -138,6 +138,14 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - Try the opt-in **Endfield preview** theme in the private workbench (Theme →
   Endfield preview). The standard look stays the default; the choice is
   remembered in the browser and never changes the public demo.
+- Bookmark or reload a workbench section: each section has its own address
+  (`#/home`, `#/library`, `#/speaking`, …; a library search is kept in it as
+  `#/library?q=…`), and Back and Forward move between sections. A page left
+  open across an upgrade says when a newer version is on the server and offers
+  a reload.
+- Pick up where you left off from the learning home, which opens the newest
+  item you started in each section. The Knowledge Library marks the words that
+  matched and remembers your last five searches in this browser only.
 
 ## What it is not
 

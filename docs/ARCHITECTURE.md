@@ -3071,6 +3071,27 @@ leading, a 68-character measure, highlights as a highlighter stroke); cut
 corners are gradient corners, never `clip-path`, so focus rings are never
 clipped; `prefers-reduced-motion: reduce` turns every transition off.
 
+**Addresses, delivery and browser-local state (demo-refresh frontend batch).**
+- **Section addresses:** each workbench section has a fragment address,
+  `#/<view>` (`web/src/sectionAddress.ts`). The Knowledge Library's keyword
+  search adds `?q=…&state=…`.
+  - Choosing a section adds a history entry; a new search replaces it.
+  - An unknown fragment opens Concept Review and is corrected in place.
+  - The address names the section and the search only: drafts, recorded audio
+    and open items stay in memory.
+- **Continue where you left off:** the learning home reads the existing
+  Listening, Reading, Writing and Speaking lists, and opens the most recent
+  item the learner started in each section.
+- **Recent searches:** up to 5 submitted keyword searches (`q` and the status
+  filter) are kept in `localStorage` (`flh.library.recent.v1`). They are never
+  sent, and each can be removed or the list cleared. No audio, transcript or
+  answer is ever kept in browser storage.
+- **Caching:** content-hashed `/assets/*` are served `immutable`, and
+  `index.html` is `no-cache` (`NewWorkbenchHandler`).
+- **Newer version:** `web/src/freshness.tsx` compares the running entry script
+  with the one `GET /` names, when the tab is shown again or a lazy chunk fails
+  to load, and offers a reload. It never reloads by itself.
+
 ## 11. Persistence, migrations and recovery
 
 SQLite is embedded through the pure-Go `modernc.org/sqlite` driver; no SQLite

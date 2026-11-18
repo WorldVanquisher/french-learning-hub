@@ -65,16 +65,21 @@ for f in manifest.json demo.db vectors.json fixtures.json provenance.json; do
 done
 extra=$(cd "$ARTIFACT" && ls -A | grep -v -E '^(manifest|vectors|fixtures|provenance)\.json$|^demo\.db$' || true)
 [ -z "$extra" ] || { echo "refused: unexpected artifact files: $extra" >&2; exit 1; }
-(cd "$REPO/web" && VITE_FLH_PUBLIC_DEMO=1 ./node_modules/.bin/vite build --outDir "$STAGE/web" --emptyOutDir > "$TOOLS/web-build.log" 2>&1)
+# The page names its package (<meta name="flh-build">) and calls the API on its
+# own origin under /api, so a deployed page can be matched to its release.
+(cd "$REPO/web" && VITE_FLH_PUBLIC_DEMO=1 VITE_FLH_API_BASE=/api VITE_FLH_BUILD_ID="$NAME" \
+  ./node_modules/.bin/vite build --outDir "$STAGE/web" --emptyOutDir > "$TOOLS/web-build.log" 2>&1)
 cp "$REPO/scripts/demo/flh076/deploy/flh-public-demo.service.example" "$REPO/scripts/demo/flh076/deploy/nginx-flh-public-demo.conf.example" \
    "$REPO/scripts/demo/flh076/deploy/ctl.sh" "$STAGE/deploy/"
 cp "$REPO/scripts/demo/flh076/validate-release.sh" "$STAGE/validate-release.sh"
 cp "$REPO/scripts/demo/flh076/PACKAGE_README.md" "$STAGE/README.md"
 chmod 755 "$STAGE/validate-release.sh" "$STAGE/deploy/ctl.sh" "$STAGE"/bin/*/*
 
-python3 - "$STAGE" "$ARTIFACT" "$STATUS" "$LABEL" "$REVISION" "$(go version)" <<'PY'
-import datetime, hashlib, json, os, sys
-stage, artifact, status, label, revision, gover = sys.argv[1:]
+python3 - "$STAGE" "$ARTIFACT" "$STATUS" "$LABEL" "$REVISION" "$(go version)" "$NAME" <<'PY'
+import datetime, hashlib, json, os, re, sys
+stage, artifact, status, label, revision, gover, name = sys.argv[1:]
+index = open(os.path.join(stage, "web/index.html"), encoding="utf-8").read()
+entry = re.search(r'<script\b[^>]*\btype="module"[^>]*\bsrc="(/assets/[^"]+\.js)"', index)
 m = json.load(open(os.path.join(stage, "artifact/manifest.json")))
 prov_path = os.path.join(stage, "artifact/provenance.json")
 prov = json.load(open(prov_path)) if os.path.exists(prov_path) else None
@@ -83,6 +88,8 @@ release = {
   "source_revision_note": "supplied by the human owner; the packaging tool runs no Git",
   "built_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "go": gover,
   "targets": ["linux/amd64", "linux/arm64"], "release_status": status,
+  "web": {"build_id": name, "api_base": "/api", "entry": entry.group(1) if entry else None,
+          "index_sha256": hashlib.sha256(index.encode("utf-8")).hexdigest()},
   "artifact": {"version": m["artifact_version"], "manifest_sha256": hashlib.sha256(open(os.path.join(stage, "artifact/manifest.json"), "rb").read()).hexdigest(),
                "vector_source": m["vectors"]["source"], "real_model": m["vectors"]["real_model"], "model_id": m["vectors"]["model_id"],
                "dimensions": m["vectors"]["dimensions"], "release_status": m["release_status"], "domain_fingerprint": m["domain_fingerprint"]["sha256"],

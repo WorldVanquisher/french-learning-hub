@@ -14,7 +14,7 @@ export function ExamplePicker({ onOpen }: { onOpen: (key: string) => void }) {
   const { t } = useI18n();
   return (
     <section className="panel demo-examples" aria-labelledby="demo-examples-heading">
-      <h2 id="demo-examples-heading" className="library-title">
+      <h2 id="demo-examples-heading" className="library-title" tabIndex={-1}>
         {t("demo.examples.heading")}
       </h2>
       <ol className="demo-example-list">
@@ -128,10 +128,7 @@ export function ExampleScreen({
     if (id && load.status !== "loading") {
       returnFocus.current = null;
       const el = document.getElementById(id);
-      if (el && heading.current?.closest(".demo-example")?.contains(el)) {
-        focusControl(el);
-        return;
-      }
+      if (el && heading.current?.closest(".demo-example")?.contains(el) && focusControl(el)) return;
     }
     heading.current?.focus();
   }, [load.status]);
@@ -176,11 +173,15 @@ export function ExampleScreen({
               </span>
               {t("demo.example.step.question")}
             </h3>
-            <blockquote className="demo-question french" lang="fr">
+            {/* Learner text keeps its own direction (dir="auto"): a question that
+                starts in a right-to-left script reads in its own order. */}
+            <blockquote className="demo-question french" lang="fr" dir="auto">
               {load.data.example.source.entry.original_input}
             </blockquote>
             {load.data.example.source.entry.original_context ? (
-              <p className="hint">{load.data.example.source.entry.original_context}</p>
+              <p className="hint" dir="auto">
+                {load.data.example.source.entry.original_context}
+              </p>
             ) : null}
           </section>
 

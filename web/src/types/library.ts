@@ -8,6 +8,8 @@ export type LibraryStateFilter = "all" | "active" | "orphaned" | "retired";
 export interface LibraryQuery {
   q: string;
   state: LibraryStateFilter;
+  // Results per search: the backend's default (20) when absent, at most 50.
+  limit?: number;
   // FLH-073 public demo: semantic and hybrid run only preset queries; q then
   // holds the preset's exact text, for display.
   preset?: string;

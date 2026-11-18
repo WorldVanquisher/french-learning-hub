@@ -102,8 +102,9 @@ class RawJsonBody {
   constructor(readonly text: string) {}
 }
 
-// The base prefix. Overridable for tests; defaults to the proxied "/api".
-const BASE = "/api";
+// The base prefix: the proxied "/api" unless a build sets VITE_FLH_API_BASE (a
+// same-origin path, checked by vite.config.ts).
+const BASE = import.meta.env.VITE_FLH_API_BASE || "/api";
 
 // request performs a fetch and decodes JSON, translating non-2xx responses into a
 // typed ApiError whose message prefers the backend's {"error": "..."} field.
@@ -261,6 +262,7 @@ export function searchLibrary(query: LibraryQuery, fetchImpl: typeof fetch = fet
   const params = new URLSearchParams();
   if (query.q.trim()) params.set("q", query.q.trim());
   if (query.state !== "all") params.set("state", query.state);
+  if (query.limit !== undefined) params.set("limit", String(query.limit));
   const qs = params.toString();
   return request<LibrarySearch>("GET", `/knowledge-library/concepts${qs ? `?${qs}` : ""}`, undefined, fetchImpl);
 }

@@ -20,6 +20,9 @@ import {
   base64Of,
   canonicalAudioType,
   classifyRecordingError,
+  microphonePermission,
+  SILENT_PEAK,
+  type MicrophonePermission,
   formatBytes,
   formatDuration,
   measureDuration,
@@ -108,7 +111,7 @@ export function Speaking({
   openRequest,
 }: {
   onOpenRecord?: (entryId: number) => void;
-  openRequest?: { exerciseId: number; takeId: number; transcriptVersion: number; nonce: number } | null;
+  openRequest?: { exerciseId: number; takeId?: number; transcriptVersion?: number; nonce: number } | null;
 } = {}) {
   const [screen, setScreen] = useState<{ kind: "list" } | { kind: "exercise"; id: number; takeId?: number; version?: number; nonce?: number }>({ kind: "list" });
   // A Mistake Notebook link opens the exercise at the take and transcript version its improvement is about.
@@ -250,6 +253,7 @@ function ExerciseScreen({
   const [epoch, setEpoch] = useState(0);
   const view = useLoad<SpeakingExerciseView>(String(id), () => api.getSpeakingExercise(id), epoch);
   const [selectedTake, setSelectedTake] = useState<number | null>(initialTake ?? null);
+  const [retry, setRetry] = useState<(RetryPoints & { nonce: number }) | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => headingRef.current?.focus(), [view.status]);
   const back = (
@@ -301,9 +305,12 @@ function ExerciseScreen({
       </section>
       <RecordPanel
         view={v}
+        retry={retry}
+        onHideRetry={() => setRetry(null)}
         onSaved={(takeId, local) => {
           if (local) keep(takeId, local);
           setSelectedTake(takeId);
+          setRetry(null);
           reload();
         }}
       />
@@ -318,6 +325,7 @@ function ExerciseScreen({
             local={audio.get(take.id) ?? null}
             onChanged={reload}
             onOpenRecord={onOpenRecord}
+            onRetry={(points) => setRetry((prev) => ({ ...points, nonce: (prev?.nonce ?? 0) + 1 }))}
           />
           <ComparePanel view={v} />
         </>
@@ -326,19 +334,61 @@ function ExerciseScreen({
   );
 }
 
+// The points of one feedback report the learner chose to keep in mind for the
+// next take ("Record take N with these points in mind"); cleared once a take is
+// saved or the learner hides them. Page state only.
+export interface RetryPoints {
+  take: number;
+  version: number;
+  points: { quote: string; category: string }[];
+}
+
 type RecordState =
   | { status: "idle" }
   | { status: "asking" }
-  | { status: "recording"; elapsed: number }
-  | { status: "recorded"; local: LocalAudio }
+  // `heard`: some sound has reached the microphone during this recording, so a
+  // pause between words does not read as "no sound yet".
+  | { status: "recording"; elapsed: number; level: number | null; heard: boolean }
+  | { status: "recorded"; local: LocalAudio; silent: boolean }
   | { status: "saving"; local: LocalAudio | null }
   | { status: "refused"; kind: RecordingError }
-  | { status: "error"; message: string };
+  // A failed save keeps the recording (`local`); `unknown` means no answer
+  // arrived, so the take may or may not exist until it is checked.
+  | { status: "error"; message: string; local?: LocalAudio | null; unknown?: boolean; checking?: boolean };
 
-function RecordPanel({ view, onSaved }: { view: SpeakingExerciseView; onSaved: (takeId: number, local: LocalAudio | null) => void }) {
+const refusedKey: Record<RecordingError, MessageKey> = {
+  denied: "speaking.record.denied",
+  no_device: "speaking.record.noDevice",
+  busy: "speaking.record.busy",
+  failed: "speaking.record.failed",
+};
+
+const permissionKey: Record<Exclude<MicrophonePermission, "unknown">, MessageKey> = {
+  granted: "speaking.record.permission.granted",
+  prompt: "speaking.record.permission.prompt",
+  denied: "speaking.record.permission.denied",
+};
+
+function RecordPanel({
+  view,
+  onSaved,
+  retry = null,
+  onHideRetry,
+}: {
+  view: SpeakingExerciseView;
+  onSaved: (takeId: number, local: LocalAudio | null) => void;
+  // Points from a feedback report to keep in mind for this take.
+  retry?: (RetryPoints & { nonce: number }) | null;
+  onHideRetry?: () => void;
+}) {
   const { t } = useI18n();
+  const panelRef = useRef<HTMLElement>(null);
   const support = useMemo(() => recordingSupport(), []);
   const [state, setState] = useState<RecordState>({ status: "idle" });
+  // Discrete announcements for assistive technology (started, stopped, saved…);
+  // the running timer and level meter are visual only, so nothing chatters.
+  const [announcement, setAnnouncement] = useState("");
+  const [permission, setPermission] = useState<MicrophonePermission>("unknown");
   const active = useRef<ActiveRecording | null>(null);
   const limits = view.limits;
   const next = view.takes.length + 1;
@@ -348,24 +398,51 @@ function RecordPanel({ view, onSaved }: { view: SpeakingExerciseView; onSaved: (
     },
     [],
   );
+  // "Record take N with these points in mind": bring the recorder into view
+  // and put focus on its first action, with the points listed above it.
+  const retryNonce = retry?.nonce ?? null;
+  useEffect(() => {
+    if (retryNonce === null) return;
+    const panel = panelRef.current;
+    panel?.scrollIntoView({ block: "start" });
+    panel?.querySelector<HTMLElement>(".speaking-retry")?.focus();
+  }, [retryNonce]);
+  useEffect(() => {
+    if (support !== "supported") return;
+    let live = true;
+    void microphonePermission((p) => live && setPermission(p)).then((p) => live && setPermission(p));
+    return () => {
+      live = false;
+    };
+  }, [support]);
   const record = async () => {
     setState({ status: "asking" });
     let rec: ActiveRecording;
+    let heard = false;
     try {
-      rec = await startRecording(limits.max_duration_ms, (elapsed) => setState({ status: "recording", elapsed }));
+      rec = await startRecording(limits.max_duration_ms, (elapsed, level) => {
+        if (level !== null && level >= SILENT_PEAK) heard = true;
+        setState({ status: "recording", elapsed, level, heard });
+      });
     } catch (e) {
       setState({ status: "refused", kind: classifyRecordingError(e) });
+      void microphonePermission().then(setPermission);
       return;
     }
     active.current = rec;
-    setState({ status: "recording", elapsed: 0 });
+    setState({ status: "recording", elapsed: 0, level: null, heard: false });
+    setAnnouncement(t("speaking.record.started", { max: formatDuration(limits.max_duration_ms) }));
+    void microphonePermission().then(setPermission);
     try {
       const r = await rec.done;
       active.current = null;
+      const silent = r.peakLevel !== null && r.peakLevel < SILENT_PEAK;
       setState({
         status: "recorded",
         local: { blob: r.blob, url: URL.createObjectURL(r.blob), mime: r.mime, durationMs: r.durationMs, sha256: await sha256Hex(r.blob), source: "recording" },
+        silent,
       });
+      setAnnouncement(t(silent ? "speaking.record.stoppedSilent" : "speaking.record.stopped", { duration: formatDuration(r.durationMs) }));
     } catch (e) {
       active.current = null;
       setState({ status: "error", message: describe(e) });
@@ -387,10 +464,11 @@ function RecordPanel({ view, onSaved }: { view: SpeakingExerciseView; onSaved: (
       setState({ status: "error", message: ms === null ? t("speaking.record.fileNoDuration") : t("speaking.record.fileTooLong", { max: formatDuration(limits.max_duration_ms) }) });
       return;
     }
-    setState({ status: "recorded", local: { blob: file, url: URL.createObjectURL(file), mime: file.type, durationMs: ms, sha256: await sha256Hex(file), source: "file" } });
+    setState({ status: "recorded", local: { blob: file, url: URL.createObjectURL(file), mime: file.type, durationMs: ms, sha256: await sha256Hex(file), source: "file" }, silent: false });
   };
   const save = async (local: LocalAudio | null) => {
     setState({ status: "saving", local });
+    setAnnouncement(t("speaking.record.saving", { n: next }));
     try {
       const accepted = local ? canonicalAudioType(local.mime) : null;
       const body =
@@ -399,57 +477,139 @@ function RecordPanel({ view, onSaved }: { view: SpeakingExerciseView; onSaved: (
           : { audio_source: "none" as const };
       const res = await api.addSpeakingTake(view.exercise.id, body);
       const saved = res.takes[res.takes.length - 1];
+      setAnnouncement(t("speaking.record.saved", { n: saved.number }));
       onSaved(saved.id, local);
       setState({ status: "idle" });
     } catch (e) {
-      setState({ status: "error", message: e instanceof NetworkError ? t("speaking.record.saveUnknown") : t("speaking.record.saveFailed", { message: describe(e) }) });
+      // The recording stays: a failed save never costs the learner the take.
+      setState(
+        e instanceof NetworkError
+          ? { status: "error", message: t("speaking.record.saveUnknown"), local, unknown: true }
+          : { status: "error", message: t("speaking.record.saveFailed", { message: describe(e) }), local },
+      );
     }
   };
-  const discard = () => {
-    if (state.status === "recorded") URL.revokeObjectURL(state.local.url);
+  // After a save whose answer was lost: read the exercise again and look for a
+  // take with this recording's digest that was not there before.
+  const checkSaved = async (local: LocalAudio | null) => {
+    if (!local) return;
+    setState({ status: "error", message: t("speaking.record.saveUnknown"), local, unknown: true, checking: true });
+    const known = new Set(view.takes.map((k) => k.id));
+    try {
+      const fresh = await api.getSpeakingExercise(view.exercise.id);
+      const found = fresh.takes.find((k) => !known.has(k.id) && k.audio_sha256 === local.sha256);
+      if (found) {
+        setAnnouncement(t("speaking.record.saved", { n: found.number }));
+        onSaved(found.id, local);
+        setState({ status: "idle" });
+      } else {
+        setState({ status: "error", message: t("speaking.record.notSavedAfterCheck", { n: fresh.takes.length + 1 }), local });
+      }
+    } catch (e) {
+      setState({ status: "error", message: t("speaking.record.checkFailed", { message: describe(e) }), local, unknown: true });
+    }
+  };
+  const discard = (local: LocalAudio | null | undefined) => {
+    if (local) URL.revokeObjectURL(local.url);
     setState({ status: "idle" });
   };
-  const local = state.status === "recorded" ? state.local : null;
+  const local = state.status === "recorded" || state.status === "saving" ? state.local : state.status === "error" ? (state.local ?? null) : null;
+  const busy = state.status === "saving" || (state.status === "error" && state.checking === true);
   return (
-    <section className="panel" aria-label={t("speaking.record.region")}>
+    <section className="panel" aria-label={t("speaking.record.region")} ref={panelRef}>
       <h3>{t("speaking.record.heading", { n: next })}</h3>
+      {retry ? (
+        <div className="banner info speaking-retry" tabIndex={-1} role="group" aria-label={t("speaking.retry.region")}>
+          <p>{t("speaking.retry.heading", { n: retry.take, version: retry.version })}</p>
+          {retry.points.length > 0 ? (
+            <ul className="speaking-retry-points">
+              {retry.points.map((p, i) => (
+                <li key={i}>
+                  <span lang="fr" className="french">
+                    « {p.quote} »
+                  </span>{" "}
+                  <span className="tag">{t(`writing.category.${p.category}` as MessageKey)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="hint">{t("speaking.retry.none")}</p>
+          )}
+          <button type="button" className="ghost" onClick={onHideRetry}>
+            {t("speaking.retry.hide")}
+          </button>
+        </div>
+      ) : null}
       <p className="hint">{t("speaking.record.privacy")}</p>
+      <p className="visually-hidden speaking-announce" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </p>
       {support === "unsupported" ? (
         <div className="banner info" role="status">
           {t("speaking.record.unsupported")}
         </div>
+      ) : permission !== "unknown" && state.status !== "recording" ? (
+        <p className={`hint speaking-permission speaking-permission-${permission}`}>{t(permissionKey[permission])}</p>
       ) : null}
       {state.status === "refused" ? (
         <div className="banner error" role="alert">
-          {t(state.kind === "denied" ? "speaking.record.denied" : state.kind === "no_device" ? "speaking.record.noDevice" : "speaking.record.failed")}
+          {t(refusedKey[state.kind])}
         </div>
       ) : state.status === "error" ? (
         <div className="banner error" role="alert">
           {state.message}
+          {state.local ? ` ${t("speaking.record.keptAfterError")}` : ""}
         </div>
       ) : null}
       {state.status === "recording" ? (
-        <div className="actions">
-          <span className="tag" role="status">
-            {t("speaking.record.recording", { elapsed: formatDuration(state.elapsed), max: formatDuration(limits.max_duration_ms) })}
-          </span>
-          <button type="button" className="primary" onClick={() => active.current?.stop()}>
-            {t("speaking.record.stop")}
-          </button>
+        <div className="speaking-recording">
+          <div className="actions">
+            <span className="tag speaking-timer">
+              {t("speaking.record.recording", { elapsed: formatDuration(state.elapsed), max: formatDuration(limits.max_duration_ms) })}
+            </span>
+            <button type="button" className="primary" onClick={() => active.current?.stop()}>
+              {t("speaking.record.stop")}
+            </button>
+          </div>
+          {state.level !== null ? (
+            <div className="speaking-level">
+              <meter min={0} max={0.3} low={SILENT_PEAK} value={Math.min(0.3, state.level)} aria-label={t("speaking.record.level")} />{" "}
+              <span className="hint">{t(state.heard ? "speaking.record.hearing" : "speaking.record.quiet")}</span>
+            </div>
+          ) : null}
         </div>
       ) : local ? (
-        <div className="speaking-local" role="group" aria-label={t("speaking.record.previewRegion")}>
+        <div className="speaking-local" role="group" aria-label={t(state.status === "saving" ? "speaking.record.savingRegion" : "speaking.record.previewRegion")}>
+          <p>
+            <span className="tag warn speaking-unsaved">{t(state.status === "saving" ? "speaking.record.savingTag" : "speaking.record.unsavedTag")}</span>
+          </p>
           <audio controls src={local.url} aria-label={t("speaking.record.playback")} />
           <p className="hint">
             {t("speaking.record.previewMeta", { duration: formatDuration(local.durationMs), size: formatBytes(local.blob.size), type: local.mime || "?" })}
           </p>
+          {state.status === "recorded" && state.silent ? (
+            <div className="banner info" role="note">
+              {t("speaking.record.silent")}
+            </div>
+          ) : null}
           {!canonicalAudioType(local.mime) ? <p className="hint">{t("speaking.record.notTranscribable")}</p> : null}
-          <p className="hint">{t("speaking.record.notSent")}</p>
+          {state.status === "saving" ? (
+            <p className="hint speaking-saving">{t("speaking.record.saving", { n: next })}</p>
+          ) : state.status === "recorded" ? (
+            <p className="hint">{t("speaking.record.notSent")}</p>
+          ) : null}
+          <p className="hint">{t("speaking.record.retention")}</p>
           <div className="actions">
-            <button type="button" className="primary" onClick={() => save(local)}>
-              {t("speaking.record.use", { n: next })}
-            </button>
-            <button type="button" className="ghost" onClick={discard}>
+            {state.status === "error" && state.unknown ? (
+              <button type="button" className="primary" disabled={busy} onClick={() => checkSaved(local)}>
+                {state.checking ? t("speaking.record.checking") : t("speaking.record.checkSaved")}
+              </button>
+            ) : (
+              <button type="button" className="primary" disabled={busy} onClick={() => save(local)}>
+                {t("speaking.record.use", { n: next })}
+              </button>
+            )}
+            <button type="button" className="ghost" disabled={busy} onClick={() => discard(local)}>
               {t("speaking.record.discard")}
             </button>
           </div>
@@ -457,17 +617,18 @@ function RecordPanel({ view, onSaved }: { view: SpeakingExerciseView; onSaved: (
       ) : (
         <div className="actions">
           {support === "supported" ? (
-            <button type="button" className="primary" disabled={state.status === "asking" || state.status === "saving"} onClick={record}>
+            <button type="button" className="primary" disabled={state.status === "asking" || busy} onClick={record}>
               {state.status === "asking" ? t("speaking.record.asking") : t("speaking.record.start")}
             </button>
           ) : null}
           <label className="ghost speaking-file">
             {t("speaking.record.file")}{" "}
-            <input type="file" accept={limits.accepted_types.join(",")} disabled={state.status === "saving"} onChange={(e) => pickFile(e.target.files?.[0])} />
+            <input type="file" accept={limits.accepted_types.join(",")} disabled={busy} onChange={(e) => pickFile(e.target.files?.[0])} />
           </label>
-          <button type="button" className="ghost" disabled={state.status === "saving"} onClick={() => save(null)}>
+          <button type="button" className="ghost" disabled={busy} onClick={() => save(null)}>
             {t("speaking.record.typeInstead")}
           </button>
+          {state.status === "saving" ? <span className="hint speaking-saving">{t("speaking.record.saving", { n: next })}</span> : null}
         </div>
       )}
       <p className="hint">{t("speaking.record.limits", { max: formatDuration(limits.max_duration_ms), size: formatBytes(limits.max_audio_bytes) })}</p>
@@ -505,6 +666,7 @@ function TakeDetail({
   local,
   onChanged,
   onOpenRecord,
+  onRetry,
 }: {
   view: SpeakingExerciseView;
   take: SpeakingTake;
@@ -512,6 +674,7 @@ function TakeDetail({
   local: LocalAudio | null;
   onChanged: () => void;
   onOpenRecord?: (entryId: number) => void;
+  onRetry?: (points: RetryPoints) => void;
 }) {
   const { t } = useI18n();
   const versions = view.transcripts.filter((s) => s.take_id === take.id);
@@ -565,7 +728,7 @@ function TakeDetail({
             )}
           </pre>
           <p className="hint">{t("speaking.versions.words", { words: shown.word_count })}</p>
-          <FeedbackSection view={view} take={take} transcript={shown} onChanged={onChanged} onHighlight={setHighlight} onOpenRecord={onOpenRecord} />
+          <FeedbackSection view={view} take={take} transcript={shown} onChanged={onChanged} onHighlight={setHighlight} onOpenRecord={onOpenRecord} onRetry={onRetry} />
         </>
       ) : null}
       <TranscriptEditor key={`${take.id}-${latest?.id ?? 0}-${machine?.id ?? 0}`} view={view} take={take} latest={latest} machine={machine} onSaved={(n) => { setSelected(n); setHighlight(null); onChanged(); }} />
@@ -762,6 +925,7 @@ function FeedbackSection({
   onChanged,
   onHighlight,
   onOpenRecord,
+  onRetry,
 }: {
   view: SpeakingExerciseView;
   take: SpeakingTake;
@@ -769,6 +933,7 @@ function FeedbackSection({
   onChanged: () => void;
   onHighlight: (quote: string | null) => void;
   onOpenRecord?: (entryId: number) => void;
+  onRetry?: (points: RetryPoints) => void;
 }) {
   const { t } = useI18n();
   const [state, setState] = useState<RequestState>({ status: "idle" });
@@ -860,7 +1025,7 @@ function FeedbackSection({
           {state.message}
         </div>
       ) : null}
-      {completed ? <Report view={view} take={take} transcript={transcript} report={completed} onHighlight={onHighlight} onOpenRecord={onOpenRecord} /> : null}
+      {completed ? <Report view={view} take={take} transcript={transcript} report={completed} onHighlight={onHighlight} onOpenRecord={onOpenRecord} onRetry={onRetry} /> : null}
     </section>
   );
 }
@@ -872,6 +1037,7 @@ function Report({
   report,
   onHighlight,
   onOpenRecord,
+  onRetry,
 }: {
   view: SpeakingExerciseView;
   take: SpeakingTake;
@@ -879,6 +1045,7 @@ function Report({
   report: SpeakingFeedback;
   onHighlight: (quote: string | null) => void;
   onOpenRecord?: (entryId: number) => void;
+  onRetry?: (points: RetryPoints) => void;
 }) {
   const { t, tn } = useI18n();
   const c = report.content!;
@@ -920,6 +1087,16 @@ function Report({
             ))}
           </ul>
         </section>
+      ) : null}
+      {onRetry && view.takes.length < view.limits.max_takes ? (
+        <div className="actions">
+          <button
+            type="button"
+            onClick={() => onRetry({ take: take.number, version: transcript.version, points: grounded.map(({ k }) => ({ quote: k.quote, category: k.category })) })}
+          >
+            {t("speaking.retry.button", { n: view.takes.length + 1 })}
+          </button>
+        </div>
       ) : null}
     </div>
   );
@@ -1109,6 +1286,70 @@ function CaptureMistake({
   );
 }
 
+// CompareEvidence sets the two transcripts side by side on what is recorded
+// about them: the take's recorded length (measured by the browser), the word
+// count, and the latest completed feedback on that exact version (its task
+// rating and how many points it raised). Nothing is computed into a score.
+function CompareEvidence({
+  view,
+  older,
+  newer,
+  label,
+}: {
+  view: SpeakingExerciseView;
+  older: SpeakingTranscript;
+  newer: SpeakingTranscript;
+  label: (s: SpeakingTranscript) => string;
+}) {
+  const { t, tp } = useI18n();
+  if (older.id === newer.id) return null;
+  const row = (s: SpeakingTranscript) => {
+    const take = view.takes.find((k) => k.id === s.take_id);
+    const fb = view.feedback.find((f) => f.transcript_id === s.id && f.status === "completed" && f.content);
+    return {
+      length: take?.duration_ms ? formatDuration(take.duration_ms) : t("speaking.compare.noAudio"),
+      words: tp("speaking.compare.words", s.word_count),
+      rating: fb?.content ? t(ratingKey[fb.content.task_fulfilment.rating]) : t("speaking.compare.noFeedback"),
+      points: fb?.content ? tp("speaking.compare.points", fb.content.improvements.length) : "—",
+    };
+  };
+  const [a, b] = [row(older), row(newer)];
+  return (
+    <table className="speaking-compare-evidence">
+      <caption className="hint">{t("speaking.compare.evidenceCaption")}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{t("speaking.compare.evidenceWhat")}</th>
+          <th scope="col">{label(older)}</th>
+          <th scope="col">{label(newer)}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">{t("speaking.compare.length")}</th>
+          <td>{a.length}</td>
+          <td>{b.length}</td>
+        </tr>
+        <tr>
+          <th scope="row">{t("speaking.compare.wordCount")}</th>
+          <td>{a.words}</td>
+          <td>{b.words}</td>
+        </tr>
+        <tr>
+          <th scope="row">{t("speaking.report.task")}</th>
+          <td>{a.rating}</td>
+          <td>{b.rating}</td>
+        </tr>
+        <tr>
+          <th scope="row">{t("speaking.compare.pointsRaised")}</th>
+          <td>{a.points}</td>
+          <td>{b.points}</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
 function ComparePanel({ view }: { view: SpeakingExerciseView }) {
   const { t } = useI18n();
   const number = (s: SpeakingTranscript) => view.takes.find((k) => k.id === s.take_id)?.number ?? 0;
@@ -1148,6 +1389,7 @@ function ComparePanel({ view }: { view: SpeakingExerciseView }) {
           </option>
         ))}
       </select>
+      <CompareEvidence view={view} older={older} newer={newer} label={label} />
       <p className="hint">{t("speaking.compare.legend")}</p>
       {older.id === newer.id ? (
         <p className="hint">{t("speaking.compare.same")}</p>

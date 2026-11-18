@@ -47,21 +47,50 @@ export function preferredRecordingType(): string | undefined {
   return undefined;
 }
 
-export type RecordingError = "denied" | "no_device" | "failed";
+export type RecordingError = "denied" | "no_device" | "busy" | "failed";
 
-// classifyRecordingError separates a refused permission from a missing device
-// and anything else, so each gets an honest message.
+// classifyRecordingError separates a refused permission from a missing device,
+// a microphone another application holds (MDN: NotReadableError, a hardware or
+// OS-level failure after permission was granted) and anything else, so each
+// gets an honest message.
 export function classifyRecordingError(e: unknown): RecordingError {
   const name = e && typeof e === "object" && "name" in e ? String((e as { name: unknown }).name) : "";
   if (name === "NotAllowedError" || name === "SecurityError" || name === "PermissionDeniedError") return "denied";
   if (name === "NotFoundError" || name === "DevicesNotFoundError" || name === "OverconstrainedError") return "no_device";
+  if (name === "NotReadableError" || name === "TrackStartError" || name === "AbortError") return "busy";
   return "failed";
 }
+
+export type MicrophonePermission = "granted" | "prompt" | "denied" | "unknown";
+
+// microphonePermission reads the browser's current microphone permission for
+// this page without asking for it (Permissions API). Browsers that cannot say
+// report "unknown", and nothing is shown for them. onChange follows a change
+// made in the site settings while the page is open.
+export async function microphonePermission(onChange?: (p: MicrophonePermission) => void): Promise<MicrophonePermission> {
+  try {
+    const perms = (navigator as { permissions?: Permissions }).permissions;
+    if (!perms?.query) return "unknown";
+    const status = await perms.query({ name: "microphone" as PermissionName });
+    const read = (): MicrophonePermission => (status.state === "granted" || status.state === "prompt" || status.state === "denied" ? status.state : "unknown");
+    if (onChange) status.onchange = () => onChange(read());
+    return read();
+  } catch {
+    return "unknown";
+  }
+}
+
+// A take whose loudest moment stays below this RMS level is reported as
+// silent (after Common Voice's TOO_QUIET check). The take can still be used.
+export const SILENT_PEAK = 0.01;
 
 export interface RecordedAudio {
   blob: Blob;
   mime: string; // as reported by the recorder or the file
   durationMs: number;
+  // The loudest input level heard while recording (RMS, 0–1), or null when the
+  // browser offers no audio analysis (Web Audio).
+  peakLevel: number | null;
 }
 
 export interface ActiveRecording {
@@ -69,14 +98,43 @@ export interface ActiveRecording {
   done: Promise<RecordedAudio>;
 }
 
+// levelMeter follows the input level of a stream (RMS over the latest frame,
+// 0–1) through Web Audio, the way Common Voice's recorder drives its volume
+// meter. It is null where Web Audio is missing; analysis stays in the browser.
+function levelMeter(stream: MediaStream): { read: () => number; close: () => void } | null {
+  const AC = (window as { AudioContext?: typeof AudioContext }).AudioContext;
+  if (typeof AC !== "function") return null;
+  try {
+    const ctx = new AC();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    ctx.createMediaStreamSource(stream).connect(analyser);
+    const buf = new Float32Array(analyser.fftSize);
+    return {
+      read: () => {
+        analyser.getFloatTimeDomainData(buf);
+        let sum = 0;
+        for (const x of buf) sum += x * x;
+        return Math.min(1, Math.sqrt(sum / buf.length));
+      },
+      close: () => void ctx.close().catch(() => {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // startRecording asks for the microphone and records until stop() or maxMs.
-// It rejects with the getUserMedia error (see classifyRecordingError).
-export async function startRecording(maxMs: number, onTick?: (elapsedMs: number) => void): Promise<ActiveRecording> {
+// It rejects with the getUserMedia error (see classifyRecordingError). onTick
+// reports the elapsed time and the current input level (null without Web Audio).
+export async function startRecording(maxMs: number, onTick?: (elapsedMs: number, level: number | null) => void): Promise<ActiveRecording> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const type = preferredRecordingType();
   const recorder = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream);
   const chunks: Blob[] = [];
   const started = performance.now();
+  const meter = levelMeter(stream);
+  let peak = 0;
   let timer: ReturnType<typeof setInterval> | undefined;
   const done = new Promise<RecordedAudio>((resolve, reject) => {
     recorder.ondataavailable = (ev: BlobEvent) => {
@@ -85,16 +143,20 @@ export async function startRecording(maxMs: number, onTick?: (elapsedMs: number)
     recorder.onerror = () => reject(new Error("recording failed"));
     recorder.onstop = () => {
       if (timer) clearInterval(timer);
+      if (meter) peak = Math.max(peak, meter.read());
+      meter?.close();
       stream.getTracks().forEach((t) => t.stop());
       const mime = recorder.mimeType || type || chunks[0]?.type || "audio/webm";
       const durationMs = Math.min(Math.max(1, Math.round(performance.now() - started)), maxMs);
-      resolve({ blob: new Blob(chunks, { type: mime }), mime, durationMs });
+      resolve({ blob: new Blob(chunks, { type: mime }), mime, durationMs, peakLevel: meter ? peak : null });
     };
   });
   recorder.start(250);
   timer = setInterval(() => {
     const elapsed = performance.now() - started;
-    onTick?.(Math.min(elapsed, maxMs));
+    const level = meter ? meter.read() : null;
+    if (level !== null) peak = Math.max(peak, level);
+    onTick?.(Math.min(elapsed, maxMs), level);
     if (elapsed >= maxMs && recorder.state === "recording") recorder.stop();
   }, 200);
   return {

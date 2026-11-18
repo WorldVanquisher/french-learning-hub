@@ -5,10 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- No favicon file is shipped: an empty inline icon stops the browser requesting /favicon.ico (FLH-076). -->
     <link rel="icon" href="data:," />
-    <title>Concept Review — French Learning Hub</title>
+    <title>French Learning Hub</title>
+    <!-- Startup placeholder, replaced as soon as the application renders. If the
+         application cannot load, the second line appears after a few seconds
+         and says what to do. Plain HTML and CSS: it works without JavaScript. -->
+    <style>
+      body { margin: 0; background: #f5f6f8; }
+      .flh-boot { max-width: 40rem; margin: 0 auto; padding: 2.5rem 1rem; color: #475467;
+        font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .flh-boot p { margin: 0 0 0.75rem; }
+      .flh-boot-late { visibility: hidden; animation: flh-boot-late 0s linear 8s forwards; }
+      @keyframes flh-boot-late { to { visibility: visible; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="flh-boot" role="status">
+      <p><span lang="en">Loading French Learning Hub…</span> · <span lang="zh-CN">正在加载…</span></p>
+      <p class="flh-boot-late"><span lang="en">Still not loaded? The page could not reach the server or its files. Check the connection, then reload.</span>
+        <span lang="zh-CN">仍未加载？页面无法连接服务器或载入文件。请检查网络后刷新。</span></p>
+    </div></div>
+    <noscript><p lang="en">This page needs JavaScript.</p><p lang="zh-CN">此页面需要启用 JavaScript。</p></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
