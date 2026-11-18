@@ -1,0 +1,29 @@
+# Private staging: local operator state that must never reach Git.
+# Terraform working data, state and its backups (local state, no remote backend).
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+# Local variables: the filled-in copy holds the AMI, expiry and run choices.
+# The reviewed template terraform.tfvars.example stays tracked.
+terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# Saved plans and their JSON rendering (account ID, ARNs, user data).
+*.tfplan
+*.tfplan.json
+*.plan.json
+plan.out
+# IAM policies with the account ID and AMI filled in (render_policies.py
+# refuses to write inside the repository; this is a second guard).
+staging/iam/local/
+# Bundles and their transfer files, if one is ever built here by mistake.
+flh-staging-*.tar
+flh-staging-*.tar.sha256

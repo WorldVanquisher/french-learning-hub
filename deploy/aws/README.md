@@ -15,6 +15,7 @@ cost: [docs/plans/FLH-084-aws-demo-deployment.md](../../docs/plans/FLH-084-aws-d
 | `terraform/public_https.tf` | FLH-088, off by default (`public_https_enabled`): Elastic IP, its association, inbound TCP 80/443. The application port stays closed and the instance is not replaced. |
 | `host/flh-public-https` | FLH-088, installed over SSM (not by cloud-init): nginx + Let's Encrypt (certbot webroot) in front of the loopback demo, `HTTP_ALLOWED_HOSTS` drop-in; `preflight`, `enable [--staging]`, `status`, `disable`. |
 | `host/cloud-config.yaml.tftpl` | The instance user data (cloud-config), rendered by `main.tf` and sent gzipped. |
+| `private-staging/` | A separate, owner-run staging target for the **private workbench** (not the demo): its own Terraform root and state, bundle tool and runbook. Start at [private-staging/RUNBOOK.md](private-staging/RUNBOOK.md). |
 | `terraform/.terraform.lock.hcl` | Pins hashicorp/aws 6.69.1 with checksums for linux/darwin amd64+arm64 and windows amd64. Commit it; `.terraform/`, `terraform.tfvars`, plans and state stay untracked. |
 
 Local checks without AWS: `python3 -B scripts/validation/flh084/static_checks.py`,

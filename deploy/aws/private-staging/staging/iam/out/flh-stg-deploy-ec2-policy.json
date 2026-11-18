@@ -156,8 +156,7 @@
             "CreateVpcEndpoint",
             "AuthorizeSecurityGroupEgress",
             "RunInstances",
-            "AllocateAddress",
-            "AuthorizeSecurityGroupIngress"
+            "CreateVolume"
           ]
         }
       }

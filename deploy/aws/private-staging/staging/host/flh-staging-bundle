@@ -1,0 +1,663 @@
+#!/usr/bin/env python3
+"""Verify, install, roll back and identify staging bundles on the staging host.
+
+  flh-staging-bundle verify BUNDLE.tar --sha256 HEX [--scratch DIR]
+  flh-staging-bundle verify --dir BUNDLE_DIR
+  flh-staging-bundle install BUNDLE.tar --sha256 HEX [--no-backup]
+  flh-staging-bundle rollback
+  flh-staging-bundle status
+  flh-staging-bundle identity
+
+Installed by cloud-init as /usr/local/bin/flh-staging-bundle (python3 >= 3.9,
+standard library only). It also runs on the operator's machine for `verify`.
+
+verify refuses, before anything is loaded or switched: a transfer file whose
+SHA-256 is not the one the operator supplied; unsafe tar members (absolute,
+"..", links, devices, anything outside one flh-staging-<tree12>/ directory);
+a file missing from, added to or altered against SHA256SUMS; a MANIFEST.json
+whose name, image tag, labels or file list disagree with the tree ID and the
+files present; a BUILD.json that does not match MANIFEST.json or image.tar;
+and an image.tar whose config or layer blobs do not hash to their names, whose
+tag differs, or whose labels do not carry the pinned revision.
+
+install = verify, unpack under ROOT/bundles/<name> (a partial directory until
+verified), docker load (image ID must equal BUILD.json), refuse a bundle that
+knows fewer migrations than the database already has, take a backup with the
+current bundle's flh-daily.sh when a service with data is running, switch the
+ROOT/current symlink (the old one becomes ROOT/previous), run flh-daily.sh up
+and check identity: the running container's image ID, revision labels and
+/app/server SHA-256 equal the bundle's, and /readyz answers 200. On any
+failure after the switch it switches back, starts the previous bundle and
+checks ITS identity. Nothing before the switch touches the running service.
+
+rollback = verify ROOT/previous again from its files, refuse if the database
+has more migrations than it knows (restore the pre-install backup named in
+ROOT/deploy.log first), swap current and previous, up, check identity; on
+failure swap back.
+
+Settings (environment): FLH_STAGING_ROOT (default /srv/flh-staging),
+FLH_STAGING_ENV (default ROOT/staging.env, rendered by flh-staging-env),
+FLH_STAGING_PROJECT (default flh-staging; never french-learning-hub).
+Values from the settings file are never printed. Exit: 0 ok, 1 failed or
+refused, 2 usage, 3 failed AND the previous bundle could not be restored.
+"""
+import argparse
+import datetime
+import fcntl
+import hashlib
+import json
+import os
+import re
+import shutil
+import signal
+import sqlite3
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+import urllib.error
+import urllib.request
+
+FORMAT = "flh-staging-bundle/v2"
+LABEL_REVISION = "org.opencontainers.image.revision"
+LABEL_TREE = "org.flh.staging.tree-id"
+NAME_RE = re.compile(r"^flh-staging-[0-9a-f]{12}$")
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+OVERRIDE = ("# Staging bundle override: run the bundle's image, never build on the host.\n"
+            "services:\n  app:\n    image: {tag}\n    build: !reset null\n")
+REQUIRED = ("repo/compose.yaml", "repo/scripts/daily/flh-daily.sh", "repo/scripts/release/restore_write_check.py",
+            "staging.override.yaml")
+DAILY_PROJECT = "french-learning-hub"
+
+ROOT = os.path.realpath(os.environ.get("FLH_STAGING_ROOT", "/srv/flh-staging"))
+ENV_FILE = os.environ.get("FLH_STAGING_ENV", os.path.join(ROOT, "staging.env"))
+PROJECT = os.environ.get("FLH_STAGING_PROJECT", "flh-staging")
+BUNDLES = os.path.join(ROOT, "bundles")
+CURRENT = os.path.join(ROOT, "current")
+PREVIOUS = os.path.join(ROOT, "previous")
+LOG = os.path.join(ROOT, "deploy.log")
+
+
+class Refused(Exception):
+    pass
+
+
+def say(text):
+    """Print, but never let a closed terminal (a dropped SSM session) stop the work."""
+    try:
+        print(text, flush=True)
+    except (OSError, ValueError):
+        sys.stdout = open(os.devnull, "w")  # later prints and the exit flush must not fail either
+
+
+def out(msg):
+    say(f"flh-staging-bundle: {msg}")
+
+
+def detach_from_terminal_hangup():
+    """install and rollback keep going when the SSM session drops: SIGHUP is ignored
+    here and by the wrapper and docker compose they start (inherited); deploy.log
+    keeps the record. Ctrl-C still interrupts (then: status, and rollback or install)."""
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
+
+def log(event, detail=""):
+    line = f"{datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}\t{event}\t{detail}\n"
+    with open(LOG, "a") as fh:
+        fh.write(line)
+
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def sha256_stream(fh):
+    h = hashlib.sha256()
+    for block in iter(lambda: fh.read(1 << 20), b""):
+        h.update(block)
+    return h.hexdigest()
+
+
+def force_rmtree(path):
+    if not os.path.lexists(path):
+        return
+    for dp, dns, _ in os.walk(path):
+        for d in dns:
+            try:
+                os.chmod(os.path.join(dp, d), 0o700)
+            except OSError:
+                pass
+    try:
+        os.chmod(path, 0o700)
+    except OSError:
+        pass
+    shutil.rmtree(path)
+
+
+# --- verification (no Docker, no service) ---------------------------------------------------
+def verify_image_tar(path, tag, image_id, labels):
+    problems = []
+    try:
+        tf = tarfile.open(path)
+    except (tarfile.TarError, OSError) as e:
+        return [f"image.tar is not a readable tar ({e})"]
+    with tf:
+        members = {m.name.lstrip("./"): m for m in tf.getmembers()}
+        man_m = members.get("manifest.json")
+        if man_m is None or not man_m.isfile():
+            return ["image.tar has no manifest.json"]
+        try:
+            man = json.load(tf.extractfile(man_m))
+        except ValueError:
+            return ["image.tar manifest.json is not JSON"]
+        if not isinstance(man, list) or len(man) != 1:
+            return ["image.tar must hold exactly one image"]
+        man = man[0]
+        if man.get("RepoTags") != [tag]:
+            problems.append(f"image.tar tag {man.get('RepoTags')} is not [{tag}]")
+        cfg_name = man.get("Config", "")
+        m = re.match(r"^blobs/sha256/([0-9a-f]{64})$", cfg_name) or re.match(r"^([0-9a-f]{64})\.json$", cfg_name)
+        if not m:
+            return problems + [f"image.tar config reference {cfg_name!r} is not a digest"]
+        if f"sha256:{m.group(1)}" != image_id:
+            problems.append(f"image.tar config sha256:{m.group(1)[:12]} is not BUILD.json image_id {image_id[:19]}")
+        cfg_m = members.get(cfg_name)
+        if cfg_m is None or not cfg_m.isfile():
+            return problems + ["image.tar config blob missing"]
+        cfg_bytes = tf.extractfile(cfg_m).read()
+        if hashlib.sha256(cfg_bytes).hexdigest() != m.group(1):
+            problems.append("image.tar config blob does not hash to its name (altered)")
+        try:
+            cfg = json.loads(cfg_bytes)
+        except ValueError:
+            return problems + ["image.tar config is not JSON"]
+        if cfg.get("os") != "linux" or cfg.get("architecture") != "amd64":
+            problems.append(f"image platform {cfg.get('os')}/{cfg.get('architecture')} is not linux/amd64")
+        got = (cfg.get("config") or {}).get("Labels") or {}
+        for k, v in labels.items():
+            if got.get(k) != v:
+                problems.append(f"image label {k}={got.get(k)!r}, manifest says {v!r}")
+        layers = man.get("Layers") or []
+        if not layers:
+            problems.append("image.tar lists no layers")
+        for layer in layers:
+            lm = members.get(layer)
+            lmatch = re.search(r"([0-9a-f]{64})", layer)
+            if lm is None or not lm.isfile():
+                problems.append(f"image.tar layer missing: {layer}")
+            elif lmatch and layer.startswith("blobs/sha256/") and sha256_stream(tf.extractfile(lm)) != lmatch.group(1):
+                problems.append(f"image.tar layer does not hash to its name (altered): {layer}")
+    return problems
+
+
+def verify_dir(d):
+    """Return (manifest, build) or raise Refused with every problem found."""
+    d = os.path.realpath(d)
+    name = os.path.basename(d)
+    problems = []
+    if not NAME_RE.match(name):
+        raise Refused(f"bundle directory name {name!r} is not flh-staging-<tree12>")
+    files = set()
+    for dp, dns, fns in os.walk(d):
+        for f in fns + dns:
+            full = os.path.join(dp, f)
+            rel = os.path.relpath(full, d)
+            if os.path.islink(full):
+                problems.append(f"symlink in bundle: {rel}")
+            elif os.path.isfile(full):
+                files.add(rel)
+            elif not os.path.isdir(full):
+                problems.append(f"special file in bundle: {rel}")
+    sums_path = os.path.join(d, "SHA256SUMS")
+    if not os.path.isfile(sums_path):
+        raise Refused("SHA256SUMS missing")
+    listed = {}
+    for line in open(sums_path, encoding="utf-8"):
+        line = line.rstrip("\n")
+        if not line:
+            continue
+        mm = re.match(r"^([0-9a-f]{64}) [ *](.+)$", line)
+        if not mm:
+            problems.append(f"malformed SHA256SUMS line: {line[:80]}")
+            continue
+        listed[os.path.normpath(mm.group(2))] = mm.group(1)
+    present = files - {"SHA256SUMS"}
+    for p in sorted(set(listed) - present):
+        problems.append(f"missing file: {p}")
+    for p in sorted(present - set(listed)):
+        problems.append(f"file not in SHA256SUMS (added): {p}")
+    for p in sorted(set(listed) & present):
+        if sha256_file(os.path.join(d, p)) != listed[p]:
+            problems.append(f"altered file (SHA-256 differs from SHA256SUMS): {p}")
+    for p in REQUIRED + ("MANIFEST.json", "BUILD.json", "image.tar"):
+        if p not in present:
+            problems.append(f"required file missing: {p}")
+    if problems:
+        raise Refused("; ".join(problems))
+    try:
+        manifest = json.load(open(os.path.join(d, "MANIFEST.json")))
+        build = json.load(open(os.path.join(d, "BUILD.json")))
+    except ValueError as e:
+        raise Refused(f"MANIFEST.json or BUILD.json is not JSON ({e})")
+    rev = manifest.get("revision") or {}
+    tid = rev.get("tree_id") or ""
+    commit = rev.get("commit")
+    img = manifest.get("image") or {}
+    if manifest.get("format") != FORMAT:
+        problems.append(f"MANIFEST format {manifest.get('format')!r} is not {FORMAT}")
+    if not re.match(r"^[0-9a-f]{40}$", tid):
+        problems.append("MANIFEST revision.tree_id is not a 40-hex Git tree ID")
+    if commit is not None and not re.match(r"^[0-9a-f]{40}$", str(commit)):
+        problems.append("MANIFEST revision.commit is neither null nor a 40-hex commit")
+    if manifest.get("name") != name or name != f"flh-staging-{tid[:12]}":
+        problems.append(f"identity mismatch: directory {name}, MANIFEST name {manifest.get('name')}, tree {tid[:12]}")
+    tag = f"flh-staging:{tid[:12]}"
+    if img.get("tag") != tag:
+        problems.append(f"MANIFEST image tag {img.get('tag')} is not {tag}")
+    want_labels = {LABEL_REVISION: commit or "", LABEL_TREE: tid}
+    if img.get("labels") != want_labels:
+        problems.append("MANIFEST image labels do not carry this revision")
+    if img.get("platform") != "linux/amd64":
+        problems.append("MANIFEST platform is not linux/amd64")
+    for k in ("server_sha256", "web_files_sha256"):
+        if not HEX64.match(str(manifest.get(k, ""))):
+            problems.append(f"MANIFEST {k} missing")
+    mig = manifest.get("migrations") or {}
+    if not isinstance(mig.get("count"), int) or mig.get("count") < 1:
+        problems.append("MANIFEST migrations.count missing")
+    pinned = manifest.get("files") or {}
+    actual = {p: listed[p] for p in present if p == "staging.override.yaml" or p.startswith("repo/")}
+    if pinned != actual:
+        diff = sorted(set(pinned.items()) ^ set(actual.items()))
+        problems.append(f"MANIFEST files differ from the bundle: {[p for p, _ in diff][:5]}")
+    with open(os.path.join(d, "staging.override.yaml"), encoding="utf-8") as fh:
+        if fh.read() != OVERRIDE.format(tag=tag):
+            problems.append("staging.override.yaml is not the override for this bundle's image")
+    if build.get("manifest_sha256") != listed.get("MANIFEST.json"):
+        problems.append("BUILD.json manifest_sha256 does not match MANIFEST.json")
+    if build.get("image_tar_sha256") != listed.get("image.tar"):
+        problems.append("BUILD.json image_tar_sha256 does not match image.tar")
+    image_id = str(build.get("image_id", ""))
+    if not re.match(r"^sha256:[0-9a-f]{64}$", image_id):
+        problems.append("BUILD.json image_id missing")
+    if problems:
+        raise Refused("; ".join(problems))
+    problems = verify_image_tar(os.path.join(d, "image.tar"), tag, image_id, want_labels)
+    if problems:
+        raise Refused("; ".join(problems))
+    return manifest, build
+
+
+def safe_members(tf, stem):
+    members = []
+    for m in tf.getmembers():
+        n = m.name
+        parts = n.split("/")
+        if n.startswith("/") or ".." in parts or parts[0] != stem:
+            raise Refused(f"unsafe tar member {n!r} (must stay under {stem}/)")
+        if not (m.isfile() or m.isdir()):
+            raise Refused(f"tar member {n!r} is not a regular file or directory")
+        members.append(m)
+    if not members:
+        raise Refused("empty tar")
+    return members
+
+
+def verify_tar(tar, sha, scratch_parent, keep=False):
+    """Check the transfer file and unpack it under a new directory in scratch_parent.
+    Returns (unpacked bundle dir, its partial parent, manifest, build)."""
+    if not HEX64.match(sha or ""):
+        raise Refused("--sha256 must be the 64-hex SHA-256 the operator recorded at build time")
+    stem = os.path.basename(tar)
+    if not stem.endswith(".tar") or not NAME_RE.match(stem[:-4]):
+        raise Refused(f"transfer file name {stem!r} is not flh-staging-<tree12>.tar")
+    stem = stem[:-4]
+    got = sha256_file(tar)
+    if got != sha:
+        raise Refused(f"transfer file SHA-256 {got[:16]}… is not the expected {sha[:16]}… (altered or wrong file)")
+    partial = tempfile.mkdtemp(prefix=f".partial-{stem}-", dir=scratch_parent)
+    try:
+        with tarfile.open(tar) as tf:
+            members = safe_members(tf, stem)
+            kw = {"filter": "data"} if hasattr(tarfile, "data_filter") else {}
+            tf.extractall(partial, members=members, **kw)
+        manifest, build = verify_dir(os.path.join(partial, stem))
+    except BaseException:
+        force_rmtree(partial)
+        raise
+    if not keep:
+        force_rmtree(partial)
+    return os.path.join(partial, stem), partial, manifest, build
+
+
+# --- host state ---------------------------------------------------------------------------
+def settings():
+    vals = {}
+    with open(ENV_FILE, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            if len(v) >= 2 and v[0] == v[-1] and v[0] in "'\"":
+                v = v[1:-1]
+            vals[k.strip()] = v
+    return vals
+
+
+def link_target(link):
+    return os.path.realpath(link) if os.path.islink(link) else None
+
+
+def set_link(link, target):
+    if target is None:
+        if os.path.islink(link):
+            os.unlink(link)
+        return
+    tmp = f"{link}.new-{os.getpid()}"
+    if os.path.lexists(tmp):
+        os.unlink(tmp)
+    os.symlink(target, tmp)
+    os.replace(tmp, link)
+
+
+def db_ledger(s):
+    db = os.path.join(s.get("FLH_DATA_DIR", ""), "app.db")
+    if not s.get("FLH_DATA_DIR") or not os.path.exists(db):
+        return 0
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
+    try:
+        return con.execute("SELECT count(*) FROM schema_migrations").fetchone()[0]
+    except sqlite3.OperationalError:
+        return 0
+    finally:
+        con.close()
+
+
+def wrapper(bundle, *args):
+    env = {k: v for k, v in os.environ.items() if not k.startswith("COMPOSE_")}
+    env.update(FLH_DAILY_ENV=ENV_FILE, FLH_COMPOSE_PROJECT=PROJECT,
+               FLH_COMPOSE_OVERRIDE=os.path.join(bundle, "staging.override.yaml"))
+    r = subprocess.run(["bash", os.path.join(bundle, "repo", "scripts", "daily", "flh-daily.sh"), *args],
+                       env=env, capture_output=True, text=True)
+    text = (r.stdout + r.stderr).strip()
+    for line in text.splitlines()[-6:]:
+        say(f"    {line}")
+    return r.returncode, text
+
+
+def docker(*args):
+    return subprocess.run(["docker", *args], capture_output=True, text=True)
+
+
+def running_container():
+    r = docker("ps", "-q", "--filter", f"label=com.docker.compose.project={PROJECT}",
+               "--filter", "label=com.docker.compose.service=app")
+    ids = r.stdout.split()
+    return ids[0] if ids else None
+
+
+def readyz(port):
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/readyz", timeout=5) as r:
+            return r.status, json.loads(r.read() or b"{}").get("status")
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except (urllib.error.URLError, OSError, ValueError):
+        return None, None
+
+
+def identity(bundle):
+    """Compare the running service with a verified bundle. Returns (ok, facts)."""
+    manifest = json.load(open(os.path.join(bundle, "MANIFEST.json")))
+    build = json.load(open(os.path.join(bundle, "BUILD.json")))
+    facts = {"bundle": os.path.basename(bundle), "commit": manifest["revision"]["commit"],
+             "tree": manifest["revision"]["tree_id"]}
+    cid = running_container()
+    facts["container"] = cid[:12] if cid else None
+    if not cid:
+        return False, facts
+    img = docker("inspect", "-f", "{{.Image}}", cid).stdout.strip()
+    labels = json.loads(docker("inspect", "-f", "{{json .Config.Labels}}", cid).stdout or "{}") or {}
+    srv = docker("exec", cid, "sha256sum", "/app/server").stdout.split()
+    port = settings().get("FLH_HOST_PORT", "8080")
+    status, ready = readyz(port)
+    facts.update(image_matches=img == build["image_id"],
+                 labels_match=all(labels.get(k) == v for k, v in manifest["image"]["labels"].items()),
+                 server_matches=bool(srv) and srv[0] == manifest["server_sha256"],
+                 readyz=status, ready=ready)
+    ok = facts["image_matches"] and facts["labels_match"] and facts["server_matches"] and status == 200
+    return ok, facts
+
+
+def show_identity(ok, facts, label):
+    out(f"{label}: {'IDENTITY OK' if ok else 'IDENTITY MISMATCH'} " + json.dumps(facts, sort_keys=True))
+
+
+def ensure_image(bundle, build, manifest):
+    tag = manifest["image"]["tag"]
+    have = docker("image", "inspect", "-f", "{{.Id}}", tag).stdout.strip()
+    if have == build["image_id"]:
+        return
+    r = docker("load", "-q", "-i", os.path.join(bundle, "image.tar"))
+    have = docker("image", "inspect", "-f", "{{.Id}}", tag).stdout.strip()
+    if r.returncode != 0 or have != build["image_id"]:
+        raise Refused(f"docker load did not give image {build['image_id'][:19]} (got {have[:19] or 'nothing'})")
+
+
+def check_ledger(manifest, what):
+    led = db_ledger(settings())
+    know = manifest["migrations"]["count"]
+    if led > know:
+        raise Refused(f"the database has {led} migrations but {what} knows only {know}: it would not start. "
+                      "Restore the backup taken before the newer bundle was installed (see deploy.log) with "
+                      "flh-daily.sh restore, then try again")
+    return led
+
+
+def lock():
+    os.makedirs(BUNDLES, exist_ok=True)
+    fh = open(os.path.join(ROOT, ".flh-staging-bundle.lock"), "w")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        raise Refused("another flh-staging-bundle run holds the lock")
+    for n in os.listdir(BUNDLES):
+        if n.startswith(".partial-"):
+            force_rmtree(os.path.join(BUNDLES, n))
+            log("cleanup", f"removed an interrupted unpack {n}")
+    return fh
+
+
+def switch_and_start(new, old_cur, old_prev, why):
+    """Point current at new (previous at old_cur), start it, check identity; on failure go back."""
+    set_link(PREVIOUS, old_cur)
+    set_link(CURRENT, new)
+    log("switch", f"{why}: current={os.path.basename(new)} previous={os.path.basename(old_cur) if old_cur else '-'}")
+    t0 = time.time()
+    rc, _ = wrapper(new, "up")
+    ok, facts = identity(new) if rc == 0 else (False, {"up_exit": rc})
+    show_identity(ok, facts, os.path.basename(new))
+    if ok:
+        log("ok", f"{why}: {os.path.basename(new)} running, identity checked in {time.time() - t0:.1f} s")
+        return True, time.time() - t0
+    log("failed", f"{why}: {os.path.basename(new)} did not pass ({json.dumps(facts, sort_keys=True)})")
+    if not old_cur:
+        out("FAILED and there is no previous bundle to go back to; the service is not verified")
+        return False, None
+    out(f"FAILED: switching back to {os.path.basename(old_cur)}")
+    set_link(CURRENT, old_cur)
+    set_link(PREVIOUS, old_prev)
+    try:
+        check_ledger(json.load(open(os.path.join(old_cur, "MANIFEST.json"))), os.path.basename(old_cur))
+    except Refused as e:
+        out(str(e))
+        log("restore-failed", str(e))
+        sys.exit(3)
+    rc, _ = wrapper(old_cur, "up")
+    ok2, facts2 = identity(old_cur) if rc == 0 else (False, {"up_exit": rc})
+    show_identity(ok2, facts2, os.path.basename(old_cur))
+    log("restored" if ok2 else "restore-failed", f"{os.path.basename(old_cur)} {json.dumps(facts2, sort_keys=True)}")
+    if not ok2:
+        sys.exit(3)
+    return False, None
+
+
+# --- commands -----------------------------------------------------------------------------------
+def cmd_verify(a):
+    if a.dir:
+        manifest, build = verify_dir(a.dir)
+    else:
+        if not a.tar:
+            raise Refused("give BUNDLE.tar --sha256 HEX, or --dir BUNDLE_DIR")
+        scratch = a.scratch or os.path.dirname(os.path.realpath(a.tar))
+        _, _, manifest, build = verify_tar(a.tar, a.sha256, scratch)
+    out(f"VERIFIED {manifest['name']}: commit {manifest['revision']['commit'] or 'none (tree-only rehearsal)'}, "
+        f"tree {manifest['revision']['tree_id']}, image {build['image_id'][:19]}, "
+        f"server {manifest['server_sha256'][:12]}, web {manifest['web_files_sha256'][:12]}, "
+        f"migrations {manifest['migrations']['count']}")
+
+
+def cmd_install(a):
+    detach_from_terminal_hangup()
+    if not os.path.isfile(ENV_FILE):
+        raise Refused(f"settings file missing: {ENV_FILE} (run flh-staging-env first)")
+    fh = lock()
+    try:
+        stem = os.path.basename(a.tar)[:-4] if a.tar.endswith(".tar") else ""
+        final = os.path.join(BUNDLES, stem)
+        t0 = time.time()
+        bundle, partial, manifest, build = verify_tar(a.tar, a.sha256, BUNDLES, keep=True)
+        if os.path.exists(final):
+            same = (open(os.path.join(final, "MANIFEST.json"), "rb").read() == open(os.path.join(bundle, "MANIFEST.json"), "rb").read()
+                    and open(os.path.join(final, "BUILD.json"), "rb").read() == open(os.path.join(bundle, "BUILD.json"), "rb").read())
+            force_rmtree(partial)
+            if not same:
+                raise Refused(f"{final} exists with different content; remove it only if it is not current or previous")
+            verify_dir(final)
+        else:
+            os.rename(bundle, final)
+            force_rmtree(partial)
+        log("verified", f"{stem} commit={manifest['revision']['commit']} tree={manifest['revision']['tree_id']} "
+                        f"image={build['image_id']} in {time.time() - t0:.1f} s")
+        out(f"verified and unpacked {stem}")
+        ensure_image(final, build, manifest)
+        out(f"image {build['image_id'][:19]} loaded")
+        check_ledger(manifest, stem)
+        cur, prev = link_target(CURRENT), link_target(PREVIOUS)
+        if cur == final:
+            ok, facts = identity(final)
+            show_identity(ok, facts, stem)
+            if ok:
+                out(f"{stem} is already current and running")
+                return 0
+        if cur and not a.no_backup and running_container() and db_ledger(settings()) > 0:
+            rc, text = wrapper(cur, "backup")
+            if rc != 0:
+                raise Refused("the pre-install backup failed; nothing was switched (see the wrapper's message above)")
+            m = re.search(r"backup written to (\S+)", text)
+            log("backup", f"before installing {stem}: {m.group(1) if m else '?'}")
+        ok, secs = switch_and_start(final, cur, prev, "install")
+        if ok:
+            out(f"INSTALLED {stem} (switch to verified identity {secs:.1f} s)")
+            return 0
+        return 1
+    finally:
+        fh.close()
+
+
+def cmd_rollback(a):
+    detach_from_terminal_hangup()
+    fh = lock()
+    try:
+        cur, prev = link_target(CURRENT), link_target(PREVIOUS)
+        if not prev:
+            raise Refused("no previous bundle recorded (ROOT/previous); nothing to roll back to")
+        t0 = time.time()
+        manifest, build = verify_dir(prev)
+        out(f"previous bundle {os.path.basename(prev)} verified again from its files")
+        ensure_image(prev, build, manifest)
+        check_ledger(manifest, os.path.basename(prev))
+        ok, secs = switch_and_start(prev, cur, None, "rollback")
+        if ok:
+            out(f"ROLLED BACK to {os.path.basename(prev)} in {time.time() - t0:.1f} s (verify + switch + identity)")
+            return 0
+        if cur:  # switch_and_start restored cur; keep prev as the rollback target
+            set_link(PREVIOUS, prev)
+        return 1
+    finally:
+        fh.close()
+
+
+def cmd_status(a, strict=False):
+    cur, prev = link_target(CURRENT), link_target(PREVIOUS)
+    out(f"root {ROOT}, project {PROJECT}")
+    out(f"current:  {os.path.basename(cur) if cur else '-'}")
+    out(f"previous: {os.path.basename(prev) if prev else '-'}")
+    if os.path.isdir(BUNDLES):
+        partials = [n for n in os.listdir(BUNDLES) if n.startswith(".partial-")]
+        if partials:
+            out(f"interrupted unpack(s) present (removed by the next install): {partials}")
+    if not cur:
+        out("no bundle installed yet")
+        return 1 if strict else 0
+    ok, facts = identity(cur)
+    show_identity(ok, facts, "running vs current")
+    if not ok and prev:
+        ok_prev, facts_prev = identity(prev)
+        if ok_prev:
+            out("the service still runs the PREVIOUS bundle (an install stopped before its start): "
+                "run `flh-staging-bundle rollback` to make that official, or install again")
+    return 0 if ok or not strict else 1
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    v = sub.add_parser("verify")
+    v.add_argument("tar", nargs="?")
+    v.add_argument("--sha256")
+    v.add_argument("--dir")
+    v.add_argument("--scratch")
+    i = sub.add_parser("install")
+    i.add_argument("tar")
+    i.add_argument("--sha256", required=True)
+    i.add_argument("--no-backup", action="store_true")
+    sub.add_parser("rollback")
+    sub.add_parser("status")
+    sub.add_parser("identity")
+    a = ap.parse_args()
+    if PROJECT == DAILY_PROJECT:
+        print("flh-staging-bundle: FLH_STAGING_PROJECT must not be the daily project", file=sys.stderr)
+        return 2
+    try:
+        if a.cmd == "verify":
+            cmd_verify(a)
+            return 0
+        if a.cmd == "install":
+            return cmd_install(a)
+        if a.cmd == "rollback":
+            return cmd_rollback(a)
+        if a.cmd == "status":
+            return cmd_status(a)
+        return cmd_status(a, strict=True)
+    except Refused as e:
+        try:
+            print(f"flh-staging-bundle: REFUSED: {e}", file=sys.stderr)
+        except OSError:
+            pass
+        if a.cmd in ("install", "rollback") and os.path.isdir(ROOT):
+            try:
+                log("refused", str(e))
+            except OSError:
+                pass
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

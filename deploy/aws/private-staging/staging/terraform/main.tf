@@ -1,4 +1,4 @@
-# PROPOSED isolated staging target for the private workbench (batch 5).
+# PROPOSED isolated staging target for the private workbench (batch 5; RUNBOOK.md).
 # Mirrors deploy/aws/terraform (the demo) where it can: dedicated VPC, one
 # public subnet with no inbound rule (egress 443 only), free S3 gateway
 # endpoint, Session Manager instead of SSH, IMDSv2, encrypted gp3, a host role
@@ -27,7 +27,8 @@ locals {
     compose_version   = var.compose_plugin_version
     compose_sha256    = var.compose_plugin_sha256
     render_env        = file("${path.module}/../host/flh-staging-env")
-    unit              = file("${path.module}/../host/flh-staging.service")
+    bundle_tool       = file("${path.module}/../host/flh-staging-bundle")
+    expire_unit       = file("${path.module}/../host/flh-staging-expire.service")
   })
 }
 

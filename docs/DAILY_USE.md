@@ -234,10 +234,12 @@ bash scripts/daily/flh-daily.sh restore <FLH_DATA_DIR>.backups/flh-<UTC time>
 ```
 
 **What it does:**
-1. Stops the service and verifies `SHA256SUMS`.
+1. Verifies `SHA256SUMS` and that the filesystem beside `<FLH_DATA_DIR>` has
+   room for the copy.
 2. Copies the backup into a staging directory and checks its integrity.
-3. Renames the current data directory to `<FLH_DATA_DIR>.before-restore-<time>`.
-   That copy is kept, never deleted.
+   The service keeps running during steps 1–2.
+3. Stops the service, then renames the current data directory to
+   `<FLH_DATA_DIR>.before-restore-<time>`. That copy is kept, never deleted.
 4. Moves the staged copy into place.
 5. Checks that the service can write the restored files
    (`scripts/release/restore_write_check.py`). `/readyz` alone passes on a
@@ -245,11 +247,19 @@ bash scripts/daily/flh-daily.sh restore <FLH_DATA_DIR>.backups/flh-<UTC time>
    read-only.
 6. Recreates the container **with the same settings file**.
 
-A checksum or integrity failure changes no data, but the service stays stopped
-until you run `start`. When the write check fails, the restored data is
-already in place (the previous data kept aside) and the service stays
-stopped: make the files writable as the message says (for example `chmod 600`
-on `<FLH_DATA_DIR>/app.db*`), run the printed check again, then `start`.
+**If it fails:**
+- **Steps 1–2** (a checksum mismatch, not enough space, a full disk or a
+  read-only destination during the copy, an integrity failure) change no data
+  and **do not stop the service**. A partial staging copy is removed; an
+  integrity failure keeps it for inspection. The message names the cause; fix
+  it and run `restore` again.
+- **Step 4:** if the move fails, the original directory is put back and the
+  service stays stopped until you run `start`.
+- **Step 5:** when the write check fails, the restored data is already in
+  place (the previous data kept aside) and the service stays stopped. Make the
+  files writable as the message says (for example `chmod 600` on
+  `<FLH_DATA_DIR>/app.db*`), run the printed check again, then `start`.
+
 After a restore, check the records you expect.
 
 ### Health check [NAS]

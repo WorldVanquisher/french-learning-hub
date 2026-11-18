@@ -1,0 +1,44 @@
+{
+ "format": "flh-staging-expected/v1",
+ "comment": "Every address the staging root may plan. INVENTORY.md explains owner, purpose and the stop rule; tools/plan_check.py enforces it on an owner-supplied `terraform show -json` plan.",
+ "provider": "registry.terraform.io/hashicorp/aws",
+ "required_tags": {"Project": "flh", "Component": "workbench-staging"},
+ "required_tag_keys": ["ExpiresAt", "Run", "ManagedBy"],
+ "managed": {
+  "aws_vpc.stg": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_internet_gateway.stg": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_subnet.public": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_route_table.public": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_route_table_association.public": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_vpc_endpoint.s3": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_security_group.host": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_vpc_security_group_egress_rule.https": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_s3_bucket.staging": {"owner": "terraform (staging root); objects under releases/ and backups/ are the operator's", "holds_data": true},
+  "aws_s3_bucket_public_access_block.staging": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_s3_bucket_ownership_controls.staging": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_s3_bucket_server_side_encryption_configuration.staging": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_s3_bucket_versioning.staging": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_s3_bucket_lifecycle_configuration.staging": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_s3_bucket_policy.staging": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_iam_role.host": {"owner": "terraform (staging root), under the administrator's flh-stg-host-boundary", "holds_data": false},
+  "aws_iam_role_policy.host": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_iam_instance_profile.host": {"owner": "terraform (staging root)", "holds_data": false},
+  "aws_instance.host": {"owner": "terraform (staging root); runtime state on it belongs to flh-staging-bundle", "holds_data": false, "replace_needs_flag": true},
+  "aws_ebs_volume.data": {"owner": "terraform (staging root); its contents (FLH_DATA_DIR, backups) are the operator's", "holds_data": true},
+  "aws_volume_attachment.data": {"owner": "terraform (staging root)", "holds_data": false, "replace_needs_flag": true}
+ },
+ "data": [
+  "data.aws_ec2_instance_type.selected",
+  "data.aws_iam_policy.host_boundary",
+  "data.aws_caller_identity.current",
+  "data.aws_iam_policy_document.bucket",
+  "data.aws_iam_policy_document.ec2_assume",
+  "data.aws_iam_policy_document.host"
+ ],
+ "public_path_types": [
+  "aws_eip", "aws_eip_association", "aws_lb", "aws_alb", "aws_lb_listener", "aws_alb_listener",
+  "aws_route53_record", "aws_cloudfront_distribution", "aws_api_gateway_rest_api", "aws_apigatewayv2_api",
+  "aws_vpc_security_group_ingress_rule", "aws_security_group_rule", "aws_network_interface_sg_attachment",
+  "aws_s3_bucket_acl", "aws_s3_bucket_website_configuration", "aws_lightsail_instance", "aws_instance_public_dns"
+ ]
+}

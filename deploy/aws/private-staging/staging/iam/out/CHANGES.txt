@@ -1,0 +1,10 @@
+deploy-ec2: removed Ec2AllocateTaggedElasticIp, Ec2CreateIngressRuleTagged, Ec2AssociateAddressWithInstanceInterface (no public path)
+deploy-ec2: Ec2ManageStackTaggedResources: dropped ['ec2:AssociateAddress', 'ec2:AuthorizeSecurityGroupIngress', 'ec2:DisassociateAddress', 'ec2:ReleaseAddress']
+deploy-ec2: Ec2RunOnlyTheReviewedInstanceShape: also requires ExpiresAt and Run tags
+deploy-ec2: Ec2TagOnCreateOnly: CreateAction dropped ['AllocateAddress', 'AuthorizeSecurityGroupIngress'] (no public path), added CreateVolume (the tagged data volume; release lane IAM review 20261118)
+deploy-ec2: AMI resource -> image/__STAGING_AMI_ID__ (reviewed AL2023 x86_64)
+deploy-ec2: added Ec2CreateEncryptedTaggedDataVolume, Ec2AttachDetachDeleteStackVolume
+deploy: names flh-demo-* -> flh-stg-* (role, profile, bucket prefix, guarded policy names)
+host-boundary: added ReadWriteStagingBackups, ReadStagingParameters, DecryptOnlyThroughSsm
+operate: S3UploadReleases -> S3UploadReleasesAndBackups (final NAS backup upload)
+operate: added S3ReadBackups, ManageStagingParameters

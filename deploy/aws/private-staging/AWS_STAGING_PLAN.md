@@ -1,16 +1,18 @@
 # NAS → AWS staging: migration plan with exact resource changes (batch 5, items 17–24)
 
-Release lane, run 20261117T042813Z. **Nothing here was run against AWS.** The
+Release lane, run 20261117T042813Z; paths and commands updated for the first
+owner run (release lane, 20261118). **Nothing here was run against AWS.** The
 repository forbids agents any AWS or Terraform command (AGENTS.md, FLH-084).
 No staging budget, spend limit or runtime has been authorized (items 21, 25).
-This is the reviewable plan: Terraform, IAM, a host bundle, the commands the
-owner would run, and costs. The same procedure was rehearsed locally on a
-stand-in target (`STANDIN-REHEARSAL.md`, items 26–31).
+This is the reviewable plan: Terraform, IAM, a host bundle and costs. **The
+commands live in one place: [RUNBOOK.md](RUNBOOK.md)**. The resource list and
+the stop rule are in [INVENTORY.md](INVENTORY.md). The same procedure was
+rehearsed locally on a stand-in target ([STANDIN-REHEARSAL.md](STANDIN-REHEARSAL.md)).
 
-Builds on, and does not repeat, the demo-refresh lane's sealed pilot
-(`lanes/demo-refresh/pilot5-final/pilot5/migration/`): `RUNTIME-INVENTORY.md`,
-`MIGRATION-REHEARSAL.md` (29/0/3 on its worktree image) and
-`CUTOVER-RUNBOOK.md`. Its decisions are kept:
+Builds on, and does not repeat, the demo-refresh lane's sealed pilot records
+`RUNTIME-INVENTORY.md`, `MIGRATION-REHEARSAL.md` (29/0/3 on its worktree image)
+and `CUTOVER-RUNBOOK.md`. They are kept in that lane's handoff area, not in Git.
+Its decisions are kept:
 - a separate host, never the public-demo instance;
 - a durable data volume;
 - private access only (the workbench has no authentication);
@@ -35,14 +37,14 @@ read-only commands in "Billable-resource check" below.
 
 | Dependency (NAS today) | Staging target (this plan) | Notes |
 | --- | --- | --- |
-| One Docker image (Go server + workbench), Compose project `french-learning-hub`, `scripts/daily/flh-daily.sh` | **The same image, byte for byte** (`docker save` of the tested candidate, `image.tar` in the bundle), Docker + pinned Compose plugin on Amazon Linux 2023 x86_64, `flh-daily.sh` in isolated mode (`flh-staging` project, bundle override, no build on the host) | x86_64 (t3.small) because no arm64 image can be built here (no buildx/QEMU); t4g.small is ~20% cheaper once an arm64 image is built and tested |
+| One Docker image (Go server + workbench), Compose project `french-learning-hub`, `scripts/daily/flh-daily.sh` | **The same image, byte for byte** (`docker save` of the pinned revision, `image.tar` in the bundle), Docker + pinned Compose plugin + sqlite on Amazon Linux 2023 x86_64, `flh-daily.sh` in isolated mode (`flh-staging` project, bundle override, no build on the host), installed and identity-checked by `flh-staging-bundle` | x86_64 (t3.small) because no arm64 image can be built here (no buildx/QEMU); t4g.small is ~20% cheaper once an arm64 image is built and tested |
 | SQLite `app.db` + WAL in `FLH_DATA_DIR`, 21 migrations checked at start | Separate encrypted gp3 EBS volume mounted at `/srv/flh-staging/data` | Never the root volume (deleted on termination) |
 | Backups: `flh-daily.sh backup` / `restore` | Same commands on the host; copies off-host to `s3://<bucket>/backups/` (SSE-S3, 14-day lifecycle for staging) | The restore runs `restore_write_check.py` (PR 5) and refuses a database the service cannot write |
-| Settings `~/.config/flh/daily.env` (0600) with `OPENAI_API_KEY` etc. | SSM Parameter Store under `/flh/staging/` (String; SecureString for keys), rendered to `/etc/flh/staging.env` (0600, root) by `flh-staging-env` | Values never in user data, Terraform state, logs or the repository. **Staging keeps every provider disabled** |
+| Settings `~/.config/flh/daily.env` (0600) with `OPENAI_API_KEY` etc. | SSM Parameter Store under `/flh/staging/` (String; SecureString for keys), rendered to `/srv/flh-staging/staging.env` (0600, `ec2-user` = uid 1000, the container's `FLH_UID`) by `flh-staging-env` | Values never in user data, Terraform state, logs or the repository. **Staging keeps every provider disabled** |
 | Providers (OpenAI analyzer/extractor, optional others) | Disabled | No paid call; matches the batch's rules |
 | Optional Qdrant, E5 on the owner's laptop | Not deployed | Semantic search stays off; the index is rebuilt from SQLite, never copied |
 | Daily Listening timer (optional) | Not installed | Only after a cutover, and never on two hosts |
-| Health: Compose healthcheck `/readyz`, `/healthz` | Same; plus `flh-daily.sh status` over SSM | `/readyz` does not yet detect a read-only database (finding, items 41–44) |
+| Health: Compose healthcheck `/readyz`, `/healthz` | Same; plus `flh-staging-bundle status` (identity) and `flh-daily.sh status` over SSM | `/readyz` includes a write probe: a read-only database answers 503 `storage_read_only` |
 | Access: loopback port over SSH tunnel | Loopback port over **SSM port forwarding**; no inbound rule, no EIP, no DNS name | Public DNS stays untouched |
 | Logs: `flh-daily.sh logs`, journald | Same (Docker json-file, journald) | No CloudWatch Logs (cost) |
 
@@ -50,9 +52,9 @@ read-only commands in "Billable-resource check" below.
 
 | Item | Size now | Staging allocation |
 | --- | --- | --- |
-| Application image | 46.3 MB (`flh-staging:80e4e125b55b`, linux/amd64) | root volume 16 GiB gp3 (OS, Docker, image) |
+| Application image | 46.4 MB (`flh-staging:<tree12>`, linux/amd64); a bundle with its image is ~47 MB | root volume 16 GiB gp3 (OS, Docker, two bundles for rollback) |
 | SQLite database | Synthetic fixtures: 0.65–0.67 MB (`app.db`); the real NAS size is **unknown** (the daily data is not read by agents) | data volume 8 GiB gp3: room for the database, 2 restore copies and ~10 backups at up to ~500 MB |
-| Backups | one `app.db` copy + WAL/SHM + `SHA256SUMS` per backup | on the data volume, and in `s3://…/backups/` |
+| Backups | one `app.db` copy + WAL/SHM + `SHA256SUMS` per backup | on the data volume (`/srv/flh-staging/data/app.backups/`), and in `s3://…/backups/` |
 | Audio | **none**: Speaking stores metadata only (no column, file or log for audio, ARCHITECTURE §4.7) | none |
 | Model artifacts | none on the host (embedding/E5 disabled) | none |
 | Search index | Qdrant optional and rebuildable; off | none |
@@ -65,7 +67,8 @@ Staging needs only the synthetic fixtures.
 `staging/iam/make_policies.py` derives four policies from the reviewed demo
 policies (FLH-086/088): the same guards, names `flh-stg-*`, tag
 `Component=workbench-staging`. Output is in `staging/iam/out/`. Every change is
-listed in `CHANGES.txt`:
+listed in `staging/iam/out/CHANGES.txt`. `staging/iam/render_policies.py` fills
+the account ID and AMI into a directory outside the repository:
 
 | Policy | Statements | Size (limit 6,144) | Change against the demo |
 | --- | --- | --- | --- |
@@ -76,6 +79,8 @@ listed in `CHANGES.txt`:
 
 These are **untested until used against AWS**, as the demo policies were. An
 `AccessDenied` names the missing action. Add only that action, and record it.
+The offline review of these templates against the Terraform (missing and broad
+permissions) is in RUNBOOK.md §2.1.
 
 ## 21. Region, budget, lifecycle
 
@@ -90,10 +95,13 @@ These are **untested until used against AWS**, as the demo policies were. An
 
 ## 22. Reproducible build and artifact checksums
 
-`staging/build_bundle.sh TREE OUT --repro` builds the deployable bundle from
-the integration tree (never a worktree), then rebuilds without cache and
-compares. Result for v6: `bundle-v6/VERSION.json` and `bundle-v6/SHA256SUMS`
-(summarised in `STANDIN-REHEARSAL.md`).
+`staging/build_bundle.sh --git . <commit> OUT_PARENT --repro` exports one
+pinned revision with `git archive`, checks its Git tree, builds the image
+labelled with the commit and tree, and writes `flh-staging-<tree12>/`
+(`MANIFEST.json` = the stable identity, `BUILD.json` = this build), the
+transfer file `flh-staging-<tree12>.tar` and its `.sha256`. It then verifies
+the result with the host tool. `--repro` rebuilds without cache and compares.
+Which hashes are stable across builds: RUNBOOK.md §1.2.
 
 ## 23. Staging configuration with secret references
 
@@ -101,13 +109,14 @@ compares. Result for v6: `bundle-v6/VERSION.json` and `bundle-v6/SHA256SUMS`
   wrapper's settings: `FLH_DATA_DIR`, `FLH_HOST_PORT`, `FLH_UID`, `FLH_GID`, every
   `*_PROVIDER=disabled`, and the `LISTENING_*` switches. A key, if ever needed,
   is a SecureString.
-- **Renderer:** `staging/host/flh-staging-env REGION /flh/staging /etc/flh/staging.env`
-  writes `NAME='value'` lines atomically with mode 0600.
+- **Renderer:** `flh-staging-env "$REGION" "$PARAM_DIR" /srv/flh-staging/staging.env`
+  (installed from `staging/host/flh-staging-env`, run as `ec2-user`) writes
+  `NAME='value'` lines atomically with mode 0600.
   - It refuses unexpected names and quotes.
   - It prints names with set/empty only.
   - It requires the four `FLH_*` values.
 - **Wrapper:** `flh-daily.sh` reads the rendered file as its settings file, the
-  same path as on the NAS.
+  same mechanism as on the NAS (`FLH_DAILY_ENV`).
 - **Where secrets never appear:** in user data (it carries only the region,
   bucket, parameter path and port), in Terraform state, in the bundle or in the
   repository.
@@ -151,7 +160,8 @@ Outside Terraform:
 
 The Terraform is **unvalidated**: agents may not run `terraform fmt`, `init` or
 `validate`. FLH-085's authorization was for that task only. The owner's first
-step is `terraform fmt -check && terraform init -backend=false && terraform validate`.
+steps are `staging/tools/preflight.py` (offline) and then
+`terraform fmt -check && terraform init && terraform validate` (RUNBOOK.md §3).
 
 ## Cost estimate (us-east-1 list prices; verify in the calculator before approval)
 
@@ -168,47 +178,9 @@ step is `terraform fmt -check && terraform init -backend=false && terraform vali
 The 4-hour power-off makes "forgotten for a month" impossible for compute. The
 volume and bucket still cost cents until `terraform destroy`.
 
-## Owner commands (in order; nothing here was run)
+## Owner commands
 
-```bash
-# 0. Decide: region (us-east-1), cap ($5), runtime (4 h), window. Then, read-only lookups:
-aws ssm get-parameter --region us-east-1 --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 --query Parameter.Value --output text
-curl -fsSL https://github.com/docker/compose/releases/download/v2.29.7/checksums.txt | grep ' \*\?docker-compose-linux-x86_64$'
-# 1. Administrator: create flh-stg-host-boundary, flh-stg-deploy, flh-stg-deploy-ec2, flh-stg-operate from
-#    staging/iam/out/ (substitute __AWS_ACCOUNT_ID__ and __STAGING_AMI_ID__ locally), attach the last three to flh-experiment.
-# 2. Plan and apply (operator, separate directory and state):
-cd staging/terraform && cp terraform.tfvars.example terraform.tfvars   # fill ami_id, compose_plugin_sha256, expires_at
-terraform fmt -check && terraform init && terraform validate && terraform plan -out stg.tfplan   # expect 21 to add
-terraform apply stg.tfplan
-# 3. Parameters (no value is ever printed back):
-for kv in FLH_DATA_DIR=/srv/flh-staging/data/app FLH_HOST_PORT=8080 FLH_UID=1000 FLH_GID=1000 AI_PROVIDER=rule-based \
-  EXTRACTOR_PROVIDER=disabled SUGGESTION_PROVIDER=disabled LISTENING_PROVIDER=disabled READING_PROVIDER=disabled \
-  WRITING_PROVIDER=disabled SPEAKING_TRANSCRIPTION_PROVIDER=disabled SPEAKING_PROVIDER=disabled HTTP_WRITE_TIMEOUT=75 \
-  LISTENING_PLAYLIST_SOURCE=disabled LISTENING_AUTO_PREPARE=disabled LISTENING_NOTIFY=disabled; do
-  aws ssm put-parameter --region us-east-1 --type String --overwrite --name "/flh/staging/${kv%%=*}" --value "${kv#*=}" > /dev/null; done
-# 4. Upload the bundle (from the handoff area):
-B=$(terraform output -raw bucket); cd ~/flh-handoff/release-20261117T042813Z/batch5/aws
-tar -cf bundle-v6.tar bundle-v6 && sha256sum bundle-v6.tar > bundle-v6.tar.sha256
-aws s3 cp bundle-v6.tar "s3://$B/releases/" && aws s3 cp bundle-v6.tar.sha256 "s3://$B/releases/"
-# 5. On the host (aws ssm start-session --target <instance_id>), as root:
-. /etc/flh/staging.conf; cd /srv/flh-staging/bundles
-aws s3 cp "s3://$BUCKET/releases/bundle-v6.tar" . && aws s3 cp "s3://$BUCKET/releases/bundle-v6.tar.sha256" . && sha256sum -c bundle-v6.tar.sha256
-tar -xf bundle-v6.tar && cd bundle-v6 && sha256sum -c --quiet SHA256SUMS && docker load -i image.tar
-docker image inspect -f '{{.Id}}' "$(python3 -c 'import json;print(json.load(open("VERSION.json"))["image_tag"])')"   # == VERSION.json image_id
-flh-staging-env "$REGION" "$PARAM_DIR" /etc/flh/staging.env
-export FLH_DAILY_ENV=/etc/flh/staging.env FLH_COMPOSE_PROJECT=flh-staging FLH_COMPOSE_OVERRIDE=$PWD/staging.override.yaml
-bash repo/scripts/daily/flh-daily.sh check && bash repo/scripts/daily/flh-daily.sh up
-# 6. Restore a synthetic NAS-shaped backup (uploaded to backups/ the same way, checksum first):
-bash repo/scripts/daily/flh-daily.sh restore /srv/flh-staging/transfer/<backup dir>
-# 7. Checks: the stand-in rehearsal's steps 28-31 (STANDIN-REHEARSAL.md), via the port forward:
-aws ssm start-session --region us-east-1 --target <instance_id> --document-name AWS-StartPortForwardingSession --parameters portNumber=8080,localPortNumber=18080
-# 8. Teardown and billable check:
-terraform destroy
-aws ec2 describe-instances --region us-east-1 --filters Name=tag:Component,Values=workbench-staging Name=instance-state-name,Values=pending,running,stopping,stopped --query 'Reservations[].Instances[].InstanceId'
-aws ec2 describe-volumes --region us-east-1 --filters Name=tag:Component,Values=workbench-staging --query 'Volumes[].VolumeId'
-aws s3api list-buckets --query "Buckets[?starts_with(Name, 'flh-stg-')].Name"
-aws ssm get-parameters-by-path --region us-east-1 --path /flh/staging --query 'Parameters[].Name'   # delete with aws ssm delete-parameters when done
-```
-
-All four listings must come back empty. The last one costs nothing, but it is
-tidy.
+Moved to [RUNBOOK.md](RUNBOOK.md), the single copy-paste runbook. The earlier
+block here named a v6 bundle, handoff-area paths and a root settings file that
+the host no longer uses. Teardown and the billable-resource check are in
+RUNBOOK.md §9.

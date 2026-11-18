@@ -265,6 +265,43 @@ run "a read-only backup is restored but the service is not started" 2 "could not
 grep -q "up -d --force-recreate" "$WORK/shim.log" && fail "the service was started on a read-only restore" || pass "no start after a failed write check"
 chmod 600 "$DATA"/app.db*
 
+# A restore that cannot succeed must not take the running service down: the
+# checksums, the free space, the staging copy and its integrity are checked
+# before the stop (staging host rehearsal, item 15). Nothing is changed.
+restore_refused() { # NAME PATTERN SETTINGS BACKUP [ulimit KiB]
+  local name=$1 pattern=$2 env=$3 b=$4 lim=${5:-} out rc d before
+  d=$(sed -n 's/^FLH_DATA_DIR=//p' "$env")
+  before=$(sqlite3 -readonly "$d/app.db" 'SELECT v FROM t')
+  sleep 1; touch "$WORK/state/running"; : > "$WORK/shim.log"
+  if [ -n "$lim" ]; then
+    out=$( (ulimit -c 0 && ulimit -f "$lim" && FLH_DAILY_ENV="$env" bash "$W" restore "$b") 2>&1); rc=$?
+  else
+    out=$(FLH_DAILY_ENV="$env" bash "$W" restore "$b" 2>&1); rc=$?
+  fi
+  echo "$out" >> "$WORK/outputs.log"
+  if [ $rc != 0 ] && grep -qE -- "$pattern" <<< "$out" && grep -q "the service was not stopped" <<< "$out" \
+    && ! grep -qE " stop( |$)" "$WORK/shim.log" && [ -f "$WORK/state/running" ] \
+    && [ "$(sqlite3 -readonly "$d/app.db" 'SELECT v FROM t')" = "$before" ] && ! ls -d "$d".restore-* > /dev/null 2>&1; then
+    pass "$name"
+  else fail "$name :: rc=$rc stage=$(ls -d "$d".restore-* 2> /dev/null) :: $out"; fi
+}
+restore_refused "a checksum mismatch is refused without stopping the service" "checksums do not match" "$WORK/daily.env" "$WORK/tampered"
+big="$WORK/big-backup"; cp -a "$backup" "$big"; chmod 600 "$big"/*
+sqlite3 "$big/app.db" "CREATE TABLE pad(b BLOB); INSERT INTO pad VALUES (zeroblob(65536));"
+(cd "$big" && sha256sum app.db* > SHA256SUMS)
+restore_refused "a disk that fills during the staging copy: refused, partial copy removed, service not stopped" "restore FAILED .* while preparing the copy" "$WORK/daily.env" "$big" 16
+rodest="$WORK/rodest"; mkdir -m 700 "$rodest" "$rodest/data"; cp -a "$DATA/app.db" "$rodest/data/"
+sed "s#^FLH_DATA_DIR=.*#FLH_DATA_DIR=$rodest/data#" "$WORK/daily.env" > "$WORK/rodest.env"; chmod 600 "$WORK/rodest.env"
+chmod 555 "$rodest"
+restore_refused "a read-only restore destination: refused, service not stopped" "restore FAILED .* while preparing the copy" "$WORK/rodest.env" "$backup"
+chmod 700 "$rodest"
+mkdir -p "$WORK/dfbin"; printf '#!/bin/sh\necho "Filesystem 1-blocks Used Available Capacity Mounted"\necho "fake 100 99 1 99%% /"\n' > "$WORK/dfbin/df"; chmod 755 "$WORK/dfbin/df"
+PATH="$WORK/dfbin:$PATH" restore_refused "not enough free space for the copy: refused before anything, service not stopped" "not enough free space" "$WORK/daily.env" "$backup"
+: > "$WORK/shim.log"; sleep 1
+run "restore still swaps and starts after these refusals" 0 "previous data is kept" "$WORK/daily.env" restore "$backup"
+grep -qE " stop( |$)" "$WORK/shim.log" && grep -q "up -d --force-recreate" "$WORK/shim.log" \
+  && pass "a successful restore stops only for the swap and recreates the container" || fail "restore stop/start after refusals"
+
 # ---- v1.0 rehearsal: opt-in isolated project (FLH_COMPOSE_PROJECT + FLH_COMPOSE_OVERRIDE). ----
 grep -q "^docker compose -p\|^docker compose -f" "$WORK/shim.log" && fail "normal mode passes no -p/-f" || pass "normal mode passes no -p/-f (invocation unchanged)"
 printf 'services:\n  app:\n    image: flh-rehearsal-test:app\n' > "$WORK/iso.yaml"
