@@ -1,0 +1,48 @@
+#cloud-config
+# FLH staging host (proposed, batch 5). Installs Docker and the pinned Compose
+# plugin, mounts the data volume, installs the settings renderer and the
+# bounded-runtime timer. It downloads no release and starts no service: the
+# operator installs a bundle over SSM (AWS_STAGING_PLAN.md, steps 5-7).
+package_update: false
+packages:
+  - docker
+  - python3
+  - tar
+write_files:
+  - path: /usr/local/sbin/flh-staging-env
+    permissions: "0755"
+    content: |
+      ${indent(6, render_env)}
+  - path: /etc/systemd/system/flh-staging-expire.service
+    permissions: "0644"
+    content: |
+      ${indent(6, unit)}
+  - path: /etc/systemd/system/flh-staging-expire.timer
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=FLH staging: power off ${max_runtime_hours} h after boot
+      [Timer]
+      OnBootSec=${max_runtime_hours}h
+      AccuracySec=1min
+      [Install]
+      WantedBy=timers.target
+  - path: /etc/flh/staging.conf
+    permissions: "0644"
+    content: |
+      REGION=${region}
+      BUCKET=${bucket}
+      PARAM_DIR=${param_dir}
+      ROOT=${root}
+      PORT=${port}
+runcmd:
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, --now, flh-staging-expire.timer]
+  - [systemctl, enable, --now, docker]
+  - [mkdir, -p, /usr/local/lib/docker/cli-plugins]
+  - [curl, -fsSL, -o, /usr/local/lib/docker/cli-plugins/docker-compose, "https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-x86_64"]
+  - [sh, -c, "echo '${compose_sha256}  /usr/local/lib/docker/cli-plugins/docker-compose' | sha256sum -c - || { rm -f /usr/local/lib/docker/cli-plugins/docker-compose; exit 1; }"]
+  - [chmod, "0755", /usr/local/lib/docker/cli-plugins/docker-compose]
+  # Data volume: the attached EBS volume (not the root disk). Formatted only if blank.
+  - [sh, -c, "for i in $(seq 1 60); do d=$(lsblk -dnpo NAME,SERIAL | awk '$2 ~ /^vol/ {print $1}' | while read n; do [ \"$n\" = \"$(findmnt -no SOURCE / | sed 's/p[0-9]*$//')\" ] || echo $n; done | head -1); [ -n \"$d\" ] && break; sleep 5; done; [ -n \"$d\" ] || exit 1; blkid \"$d\" || mkfs.xfs -L flh-data \"$d\"; mkdir -p ${root}/data; echo \"LABEL=flh-data ${root}/data xfs defaults,nofail 0 2\" >> /etc/fstab; mount ${root}/data"]
+  - [sh, -c, "mkdir -p ${root}/bundles ${root}/data/app ${root}/data/backups && chown 1000:1000 ${root}/data/app && chmod 0700 ${root}/data/app"]
