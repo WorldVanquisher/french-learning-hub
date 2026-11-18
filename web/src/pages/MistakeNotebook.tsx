@@ -94,13 +94,19 @@ export function MistakeNotebook({
   );
 }
 
-// sourceLine names the exact stored item, from its link.
+// A listening item from a workbook script: its transcript version is the
+// script's revision, named "Revision N" as in the Listening lesson.
+export const isScriptItem = (item: NotebookItem) => item.skill === "listening" && item.reference_origin === "authored";
+
+// sourceLine names the exact stored item, from its link. It names no answer,
+// so it is shown before reveal too (retry cards).
 export function SourceLine({ item }: { item: NotebookItem }) {
   const { t } = useI18n();
   const l = item.link;
   const n = item.source.item;
-  const text =
-    item.skill === "listening"
+  const text = isScriptItem(item)
+    ? t("notebook.source.script", { revision: l.listening_transcript_version ?? 0, n })
+    : item.skill === "listening"
       ? t("notebook.source.listening", { exercise: l.listening_exercise_id ?? 0, transcript: l.listening_transcript_version ?? 0, n })
       : item.skill === "reading"
         ? t("notebook.source.reading", { lesson: l.reading_lesson_id ?? 0, version: l.reading_passage_version ?? 0, exercise: l.reading_exercise_id ?? 0, n })
@@ -299,7 +305,9 @@ function NotebookEntry({
       </div>
       {shown ? <Reference item={item} /> : null}
       <SourceLine item={item} />
-      {item.latest_version ? <p className="hint">{t("sections.source.newer", { version: item.latest_version })}</p> : null}
+      {item.latest_version ? (
+        <p className="hint">{t(isScriptItem(item) ? "sections.source.newerRevision" : "sections.source.newer", { version: item.latest_version })}</p>
+      ) : null}
       <div className="actions">
         {!shown ? (
           <button type="button" onClick={() => setShown(true)}>
@@ -423,6 +431,9 @@ function RetrySession({ onOpenSource }: { onOpenSource?: (o: SourceOpen) => void
         <p>
           <span className="tag">{t(skillKey[it.skill])}</span> <strong>{it.title}</strong>
         </p>
+        {/* Which saved item (and, for a script, which revision) this card is: two
+            cards for the same question from two revisions differ here before reveal. */}
+        <SourceLine item={it} />
         <p>
           <span className="label">{t("notebook.item.prompt")}</span>{" "}
           <span lang="fr" className="french">

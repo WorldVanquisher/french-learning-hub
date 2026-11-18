@@ -21,18 +21,21 @@ export function NotebookOrigin({
   target,
   shownExerciseId,
   currentVersion,
+  script = false,
 }: {
   skill: "listening" | "reading";
   target: NotebookTarget;
   shownExerciseId: number | null;
   currentVersion: number | null;
+  // A workbook script: its versions are named revisions, as in the lesson.
+  script?: boolean;
 }) {
   const { t } = useI18n();
   const shown = shownExerciseId === target.exerciseId;
   useEffect(() => {
     if (shown) document.getElementById(notebookItemDomId(skill, target.exerciseId, target.item))?.scrollIntoView?.({ block: "center" });
   }, [shown, skill, target.exerciseId, target.item]);
-  const where = t(skill === "reading" ? "sections.origin.reading" : "sections.origin.listening", {
+  const where = t(skill === "reading" ? "sections.origin.reading" : script ? "sections.origin.script" : "sections.origin.listening", {
     n: target.item,
     exercise: target.exerciseId,
     version: target.version,
@@ -40,7 +43,7 @@ export function NotebookOrigin({
   const state = shown
     ? t("sections.origin.shown", { n: target.item })
     : currentVersion !== null && currentVersion !== target.version
-      ? t("sections.origin.newer", { version: currentVersion })
+      ? t(script ? "sections.origin.newerRevision" : "sections.origin.newer", { version: currentVersion })
       : t("sections.origin.elsewhere");
   return (
     <div className="banner notebook-origin" role="status">

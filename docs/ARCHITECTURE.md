@@ -926,10 +926,14 @@ the learning workflow only through §4.1.
   (the lines, no timestamps) with the authored exercise stored on it; import
   creates revision 1, and the lesson shows the current (latest) revision. No
   migration: revisions use the existing transcript and exercise tables. A
-  revision's `fingerprint` is `sha256:` over its lines and its exercise, each
-  as canonical JSON (decoded and re-encoded with sorted keys), joined by a
-  newline; it is the same equality the import comparison uses. When a later
-  pack corrects a script (for example the 2026-11-11 evidence audit):
+  revision's `fingerprint` is `sha256:` over its lines and its exercise as the
+  workbench reads them (decoded into the domain types, re-encoded, then as
+  canonical JSON with sorted keys), joined by a newline; it is the same
+  equality the import comparison uses. Stored JSON that the types do not carry
+  (a key another build wrote, an empty list the encoder omits) therefore never
+  makes an unchanged script look updated, previews as an empty change, or
+  appends a revision. When a later pack corrects a script (for example the
+  2026-11-11 evidence audit):
   - **Nothing changes silently.** The lesson keeps its stored wording, stays
     listed as imported and keeps opening. Reads compare it with the pack:
     `script_revision.pack_status` is `up_to_date`, `update_available`,

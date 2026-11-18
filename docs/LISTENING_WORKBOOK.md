@@ -69,17 +69,29 @@ the 18:30 class.", a class time the dialogue never says.
 3. **Review the changes** lists what differs without showing answers:
    **Question 4 changed:** *explanation*, *cited lines*, *cited words*. **Show
    the exact before and after** shows the old and new wording, including the
-   reference answers, so open it after you have practised. One sentence says
-   what happens to your earlier practice: it stays with revision 1.
+   reference answers and every other field the list names (options, cited
+   lines and words, why the other options are wrong), so open it after you
+   have practised. A question moved to another place is named by both
+   numbers (**Question 4 of revision 1 is now question 3.**); questions that
+   only moved up because another was removed are counted in one line, and
+   **Show the new numbers** lists them in order. One sentence says what
+   happens to your earlier practice: it stays with revision 1. If you have
+   answered questions on the page without saving them, the preview also says
+   that updating clears those answers (they are never stored); **Not now**
+   keeps them.
 4. **Update this lesson to revision 2**. The page says **This lesson now
    shows revision 2. Items you saved from revision 1 stay in the Mistake
    Notebook exactly as you saved them.** The new explanation rests on the
    dialogue only (« Je finis le travail à 17 h 30 » and « cours du soir »).
 5. **Mistake Notebook → Show reference** on your question-4 item still shows
-   the explanation and your answer as saved, with **The source now has
-   version 2. This item is shown as it was saved.** **Open source** opens **Revision 1: the version you saved from**,
-   with question 4 marked at the top; the lesson below it shows revision 2.
-6. Saving question 4 again from revision 2 makes a new, separate item.
+   the explanation and your answer as saved. It is labelled **Workbook
+   script, revision 1, question 4**, with **This script now has revision 2.
+   This item is shown as it was saved.** **Open source** opens **Revision 1:
+   the version you saved from**, with question 4 marked at the top; the
+   lesson below it shows revision 2.
+6. Saving question 4 again from revision 2 makes a new, separate item,
+   labelled **revision 2**; in a retry session each card shows its revision
+   before you reveal anything.
 
 If the connection drops after you confirm, **Confirm the update again** is
 safe: the server never adds a second revision. If the lesson or the app's

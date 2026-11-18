@@ -84,6 +84,8 @@ type Server = {
   loseNextUpdate?: boolean;
   staleNextUpdate?: boolean;
   notebook?: NotebookItem[];
+  // The preview's change list, when a case needs another one.
+  changes?: ListeningScriptUpdatePreview["changes"];
 };
 
 const fingerprint = (revision: number) => (revision === 1 ? FP1 : FP2);
@@ -118,7 +120,9 @@ const previewOf = (server: Server): ListeningScriptUpdatePreview => {
     pack_status: available ? "update_available" : "up_to_date",
     pack_fingerprint: server.packFingerprint,
     next_revision: available ? server.revision + 1 : null,
-    changes: available
+    changes: available && server.changes
+      ? server.changes
+      : available
       ? {
           lines: [{ line: "s2", change: "changed", before: { id: "s2", speaker: "Agent", text: lines(1)[1].text }, after: { id: "s2", speaker: "Agent", text: lines(2)[1].text } }],
           questions: [{ item_id: "u05-l04", change: "changed", before_position: 2, after_position: 2, fields: ["rationale", "evidence"], before: item(1), after: item(2) }],
@@ -270,6 +274,218 @@ describe("Workbook script revisions (private workbench)", () => {
     expect(screen.getByText("Revision 2")).toBeInTheDocument();
   });
 
+  it("'Not now' writes nothing and gives focus back to 'Review the changes'; after the update its outcome takes focus", async () => {
+    const server: Server = { revision: 1, calls: [], packFingerprint: FP2 };
+    serve(server);
+    const scripts = await openLesson();
+    fireEvent.click(await within(scripts).findByRole("button", { name: `Open ${TITLE}` }));
+    const notice = await screen.findByRole("region", { name: "Script update" });
+    fireEvent.click(within(notice).getByRole("button", { name: "Review the changes" }));
+    fireEvent.click(await within(notice).findByRole("button", { name: "Not now" }));
+    await waitFor(() => expect(within(notice).getByRole("button", { name: "Review the changes" })).toHaveFocus());
+    expect(within(notice).queryByRole("heading", { name: /What the update changes/ })).toBeNull();
+    expect(writes(server)).toEqual([]);
+    fireEvent.click(within(notice).getByRole("button", { name: "Review the changes" }));
+    fireEvent.click(await within(notice).findByRole("button", { name: "Update this lesson to revision 2" }));
+    // The lesson reloads after the update (a phone is back at the top of the page): the outcome takes focus.
+    const outcome = await screen.findByText("This lesson now shows revision 2. Items you saved from revision 1 stay in the Mistake Notebook exactly as you saved them.");
+    await waitFor(() => expect(outcome).toHaveFocus());
+    expect(outcome).toHaveAttribute("role", "status");
+  });
+
+  it("names a moved question by both numbers and a removed one by its old number; the details show every changed field", async () => {
+    const moved: ListeningItem = { ...item(1), id: "u05-l03", question: "Quels jours a-t-elle cours ?", segments: [2], evidence: [{ segment: 2, excerpt: "le lundi et le mercredi" }] };
+    const reordered = (choices: string[]): ListeningItem => ({ ...item(2), choices, wrong_answers: [{ answer: "Elle étudie le matin.", why_wrong_en: "Not said.", why_wrong_zh: "没有说。" }] });
+    const server: Server = {
+      revision: 1,
+      calls: [],
+      packFingerprint: FP2,
+      changes: {
+        lines: [],
+        questions: [
+          {
+            item_id: "u05-l04",
+            change: "changed",
+            before_position: 3,
+            after_position: 2,
+            fields: ["choices", "evidence", "position"],
+            before: { ...reordered(["Elle travaille la journée.", "Elle étudie le matin."]), evidence: [{ segment: 1, excerpt: "cours du soir" }] },
+            after: { ...reordered(["Elle étudie le matin.", "Elle travaille la journée."]), evidence: [{ segment: 1, excerpt: "je voudrais m'inscrire" }] },
+          },
+          { item_id: "u05-l03", change: "changed", before_position: 4, after_position: 3, fields: ["position"], before: moved, after: moved },
+          { item_id: "u05-l02", change: "removed", before_position: 2, after_position: null, fields: [], before: item(1), after: null },
+        ],
+        annotations_changed: false,
+      },
+    };
+    serve(server);
+    const scripts = await openLesson();
+    fireEvent.click(await within(scripts).findByRole("button", { name: `Open ${TITLE}` }));
+    const notice = await screen.findByRole("region", { name: "Script update" });
+    fireEvent.click(within(notice).getByRole("button", { name: "Review the changes" }));
+    await within(notice).findByRole("heading", { name: "What the update changes: revision 1 → 2" });
+    const list = notice.querySelector("ul.listening-revision-changes")!;
+    const entries = [...list.querySelectorAll(":scope > li")];
+    expect(entries.slice(0, 2).map((li) => li.textContent)).toEqual([
+      "Question 2 (question 3 of revision 1) changed: options cited words",
+      "Question 2 of revision 1 is removed.",
+    ]);
+    // Question 4 only moved up because question 2 was removed: an ordinary shift.
+    expect(entries[2].firstChild!.textContent).toBe("1 other question is renumbered; nothing else in it changes.");
+    expect([...entries[2].querySelectorAll("details.listening-revision-shifts li")].map((li) => li.textContent)).toEqual(["Question 4 of revision 1 is now question 3."]);
+    const details = notice.querySelector("details.listening-revision-details")!;
+    expect(details).toHaveTextContent("Question 2 (question 3 of revision 1)");
+    expect(details).not.toHaveTextContent("question 4 of revision 1");
+    expect(details).toHaveTextContent("Question 2 of revision 1");
+    // The options and the cited words, before and after: what the list says changed.
+    const options = [...details.querySelectorAll("ol.listening-revision-options")].map((ol) => [...ol.querySelectorAll("li")].map((li) => li.textContent));
+    expect(options).toEqual([
+      ["Elle travaille la journée.", "Elle étudie le matin."],
+      ["Elle étudie le matin.", "Elle travaille la journée."],
+    ]);
+    expect(details).toHaveTextContent("Exact words in line 1: « cours du soir »");
+    expect(details).toHaveTextContent("Exact words in line 1: « je voudrais m'inscrire »");
+    expect(writes(server)).toEqual([]);
+  });
+
+  it("shows each retry card's revision before reveal; old and new cards resolve to their own revisions", async () => {
+    const marked = (it: NotebookItem): NotebookItem => ({ ...it, retry: { marked: true, since: "t" } });
+    const newMistake: NotebookItem = {
+      ...oldMistake,
+      entry_id: 42,
+      capture_id: "listening-7-901-2",
+      source: { ...oldMistake.source, record_id: 901 },
+      explanation_en: NEW_WHY,
+      explanation_zh: "新解释",
+      latest_version: null,
+      link: { listening_material_id: 7, listening_exercise_id: 901, listening_transcript_version: 2 },
+    };
+    const startRetry = async () => {
+      const server: Server = { revision: 2, calls: [], packFingerprint: FP2, notebook: [marked(oldMistake), marked(newMistake)] };
+      serve(server);
+      render(
+        <StrictMode>
+          <App />
+        </StrictMode>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Mistake Notebook" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Retry session" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Start retry session" }));
+      return server;
+    };
+    const server = await startRetry();
+    // Same title, prompt and answer: before reveal only the revision tells them apart, and no answer shows.
+    let card = await screen.findByRole("group", { name: "Retry item 1" });
+    expect(card).toHaveTextContent("Workbook script, revision 1, question 2");
+    expect(card).not.toHaveTextContent(item(1).expected_answer);
+    expect(card).not.toHaveTextContent(OLD_WHY);
+    fireEvent.click(within(card).getByRole("button", { name: "Reveal reference" }));
+    expect(card).toHaveTextContent(OLD_WHY);
+    fireEvent.click(screen.getByRole("button", { name: "Next item" }));
+    card = await screen.findByRole("group", { name: "Retry item 2" });
+    expect(card).toHaveTextContent("Workbook script, revision 2, question 2");
+    expect(card).not.toHaveTextContent(NEW_WHY);
+    fireEvent.click(within(card).getByRole("button", { name: "Reveal reference" }));
+    expect(card).toHaveTextContent(NEW_WHY);
+    expect(card).not.toHaveTextContent(OLD_WHY);
+    // The revision-2 card opens the lesson's current revision, its question marked.
+    fireEvent.click(within(card).getByRole("button", { name: "Open source" }));
+    await screen.findByRole("heading", { name: TITLE });
+    await waitFor(() => expect(document.querySelector("#listening-item-901-2")).toHaveClass("notebook-target"));
+    expect(screen.queryByRole("region", { name: "The revision you saved from" })).toBeNull();
+    expect(document.querySelector(".notebook-origin")).toHaveTextContent("question 2 of revision 2. Question 2 is marked below.");
+    expect(writes(server)).toEqual([]);
+    cleanup();
+    // The revision-1 card opens revision 1.
+    await startRetry();
+    card = await screen.findByRole("group", { name: "Retry item 1" });
+    fireEvent.click(within(card).getByRole("button", { name: "Open source" }));
+    const earlier = await screen.findByRole("region", { name: "The revision you saved from" });
+    expect(within(earlier).getByRole("heading", { name: "Revision 1: the version you saved from" })).toBeInTheDocument();
+    expect(earlier.querySelector("#listening-item-900-2")).toHaveClass("notebook-target");
+  });
+
+  it("warns that unsaved answers reset on update; Not now and a stale refusal keep them", async () => {
+    const server: Server = { revision: 1, calls: [], packFingerprint: FP2, staleNextUpdate: true };
+    serve(server);
+    const scripts = await openLesson();
+    fireEvent.click(await within(scripts).findByRole("button", { name: `Open ${TITLE}` }));
+    const notice = await screen.findByRole("region", { name: "Script update" });
+    // Nothing answered: no warning.
+    fireEvent.click(within(notice).getByRole("button", { name: "Review the changes" }));
+    await within(notice).findByRole("heading", { name: "What the update changes: revision 1 → 2" });
+    expect(within(notice).queryByRole("note")).toBeNull();
+    fireEvent.click(within(notice).getByRole("button", { name: "Not now" }));
+    const a1 = screen.getByLabelText("Your answer to question 1") as HTMLInputElement;
+    const a2 = screen.getByLabelText("Your answer to question 2") as HTMLInputElement;
+    fireEvent.change(a1, { target: { value: "S'inscrire." } });
+    fireEvent.change(a2, { target: { value: "Elle travaille." } });
+    const warning = "You have answered 2 questions on this page. Answers are not stored, so updating clears your answers: save any missed points you want to keep first.";
+    fireEvent.click(within(notice).getByRole("button", { name: "Review the changes" }));
+    await within(notice).findByRole("heading", { name: "What the update changes: revision 1 → 2" });
+    expect(within(notice).getByRole("note")).toHaveTextContent(warning);
+    fireEvent.click(within(notice).getByRole("button", { name: "Not now" }));
+    expect([a1.value, a2.value]).toEqual(["S'inscrire.", "Elle travaille."]);
+    fireEvent.click(within(notice).getByRole("button", { name: "Review the changes" }));
+    fireEvent.click(await within(notice).findByRole("button", { name: "Update this lesson to revision 2" }));
+    expect(await within(notice).findByText(/changed after you opened these changes, so nothing was updated/)).toBeInTheDocument();
+    expect([a1.value, a2.value]).toEqual(["S'inscrire.", "Elle travaille."]);
+    expect(within(notice).getByRole("note")).toHaveTextContent(warning);
+    fireEvent.click(within(notice).getByRole("button", { name: "Update this lesson to revision 2" }));
+    expect(await screen.findByText(/This lesson now shows revision 2\./)).toBeInTheDocument();
+    await waitFor(() => expect((screen.getByLabelText("Your answer to question 1") as HTMLInputElement).value).toBe(""));
+  });
+
+  it("collapses the renumbering a deletion causes, lists a true reordering one by one, and tells them apart in a mix", async () => {
+    const q = (id: string): ListeningItem => ({ ...item(1), id, question: `Question ${id} ?` });
+    const moveOnly = (id: string, before: number, after: number) => ({
+      item_id: id,
+      change: "changed" as const,
+      before_position: before,
+      after_position: after,
+      fields: ["position" as const],
+      before: q(id),
+      after: q(id),
+    });
+    const removed = (id: string, before: number) => ({ item_id: id, change: "removed" as const, before_position: before, after_position: null, fields: [], before: q(id), after: null });
+    const preview = async (questions: NonNullable<Server["changes"]>["questions"]) => {
+      cleanup();
+      serve({ revision: 1, calls: [], packFingerprint: FP2, changes: { lines: [], questions, annotations_changed: false } });
+      const scripts = await openLesson();
+      fireEvent.click(await within(scripts).findByRole("button", { name: `Open ${TITLE}` }));
+      const notice = await screen.findByRole("region", { name: "Script update" });
+      fireEvent.click(within(notice).getByRole("button", { name: "Review the changes" }));
+      await within(notice).findByRole("heading", { name: "What the update changes: revision 1 → 2" });
+      const entries = [...notice.querySelectorAll("ul.listening-revision-changes > li")];
+      return {
+        top: entries.map((li) => li.firstChild!.textContent),
+        shifts: [...notice.querySelectorAll("details.listening-revision-shifts li")].map((li) => li.textContent),
+        pairs: [...notice.querySelectorAll("details.listening-revision-details .listening-revision-pair > p.label")].map((p) => p.textContent),
+      };
+    };
+    // A deletion: the later questions only move up. One summary line; the numbers in order on expansion.
+    let r = await preview([removed("u05-l02", 2), moveOnly("u05-l05", 5, 4), moveOnly("u05-l03", 3, 2), moveOnly("u05-l04", 4, 3)]);
+    expect(r.top).toEqual(["Question 2 of revision 1 is removed.", "3 other questions are renumbered; nothing else in them changes."]);
+    expect(r.shifts).toEqual([
+      "Question 3 of revision 1 is now question 2.",
+      "Question 4 of revision 1 is now question 3.",
+      "Question 5 of revision 1 is now question 4.",
+    ]);
+    expect(r.pairs).toEqual(["Question 2 of revision 1"]);
+    // A true reordering (two questions swap): each listed, no summary.
+    r = await preview([moveOnly("u05-l04", 4, 3), moveOnly("u05-l03", 3, 4)]);
+    expect(r.top).toEqual(["Question 4 of revision 1 is now question 3.", "Question 3 of revision 1 is now question 4."]);
+    expect(r.shifts).toEqual([]);
+    // Both: question 5 moved ahead of question 4 after question 2 was removed.
+    r = await preview([moveOnly("u05-l03", 3, 2), moveOnly("u05-l05", 5, 3), removed("u05-l02", 2)]);
+    expect(r.top).toEqual([
+      "Question 5 of revision 1 is now question 3.",
+      "Question 2 of revision 1 is removed.",
+      "1 other question is renumbered; nothing else in it changes.",
+    ]);
+    expect(r.shifts).toEqual(["Question 3 of revision 1 is now question 2."]);
+  });
+
   it("replaces a stale preview with a fresh one and updates only on the second confirmation", async () => {
     const server: Server = { revision: 1, calls: [], packFingerprint: FP2, staleNextUpdate: true };
     serve(server);
@@ -319,7 +535,7 @@ describe("Workbook script revisions (private workbench)", () => {
     const marked = earlier.querySelector("#listening-item-900-2")!;
     expect(marked).toHaveClass("notebook-target");
     expect(marked).toHaveTextContent(item(1).question);
-    expect(document.querySelector(".notebook-origin")).toHaveTextContent("(transcript version 1). Question 2 is marked below.");
+    expect(document.querySelector(".notebook-origin")).toHaveTextContent("Opened from the Mistake Notebook for question 2 of revision 1. Question 2 is marked below.");
     // The current revision is still the lesson's exercise below it.
     expect(document.querySelector("#listening-item-901-2")).not.toBeNull();
     expect(server.calls.some((c) => c.path === "/api/listening/materials/7/revisions/1")).toBe(true);

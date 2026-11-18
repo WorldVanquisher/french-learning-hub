@@ -208,6 +208,58 @@ func TestListeningScriptRevisions_UnchangedImportReplaysAndOffersNoUpdate(t *tes
 	}
 }
 
+// A stored revision whose JSON differs from the pack only in what the
+// workbench never reads (a key another build wrote, an empty list the encoder
+// omits) is the same revision: no update is offered, the preview lists
+// nothing, a confirmation and a re-import replay, and nothing is appended.
+func TestListeningScriptRevisions_StoredJSONOnlyDifferenceIsNotAnUpdate(t *testing.T) {
+	pack := embeddedScripts(t)
+	srv, db := buildRevisionServer(t, filepath.Join(t.TempDir(), "rev.db"), pack)
+	status, lesson, _ := postScript(t, srv, "ls-wb1-u05")
+	if status != http.StatusCreated {
+		t.Fatalf("import: %d", status)
+	}
+	id := materialOf(t, lesson)
+	exerciseID := int64(lesson["current_exercise_id"].(float64))
+	var raw string
+	if err := db.QueryRow(`SELECT content FROM listening_exercises WHERE id = ?`, exerciseID).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(raw), &doc); err != nil {
+		t.Fatal(err)
+	}
+	first := doc["items"].([]any)[0].(map[string]any)
+	first["note_fr"] = nil
+	first["accepted_alternatives"] = []any{}
+	edited, _ := json.Marshal(doc)
+	if _, err := db.Exec(`UPDATE listening_exercises SET content = ? WHERE id = ?`, string(edited), exerciseID); err != nil {
+		t.Fatal(err)
+	}
+	before := listeningCounts(t, db)
+
+	_, read := doJSON(t, http.MethodGet, srv.URL+"/listening/materials/"+id, "")
+	if st := read["script_revision"].(map[string]any); st["revision"] != 1.0 || st["pack_status"] != domain.ListeningScriptUpToDate {
+		t.Fatalf("lesson read: %v", st)
+	}
+	status, preview := doJSON(t, http.MethodGet, srv.URL+"/listening/materials/"+id+"/script-update", "")
+	changes := preview["changes"].(map[string]any)
+	if status != http.StatusOK || preview["pack_status"] != domain.ListeningScriptUpToDate || preview["next_revision"] != nil ||
+		len(changes["lines"].([]any)) != 0 || len(changes["questions"].([]any)) != 0 || changes["annotations_changed"] != false {
+		t.Fatalf("preview: %d %v", status, preview)
+	}
+	if status, body, replayed := postUpdate(t, srv, id, confirmBody(1, preview["pack_fingerprint"])); status != http.StatusOK ||
+		replayed != "true" || body["revision"] != 1.0 {
+		t.Fatalf("confirmation: %d %q %v", status, replayed, body)
+	}
+	if status, _, replayed := postScript(t, srv, "ls-wb1-u05"); status != http.StatusOK || replayed != "true" {
+		t.Fatalf("re-import: %d %q", status, replayed)
+	}
+	if after := listeningCounts(t, db); after != before {
+		t.Fatalf("rows written: %s -> %s", before, after)
+	}
+}
+
 // The whole contract on one database: a lesson imported before a pack
 // correction, with saved mistakes, opened by a server with the corrected
 // pack. Nothing changes until the learner confirms the preview; the update

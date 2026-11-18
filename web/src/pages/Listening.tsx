@@ -281,6 +281,9 @@ function LessonScreen({
   // lesson reload that follows it.
   const [updated, setUpdated] = useState<{ from: number; to: number; replayed: boolean } | null>(null);
   const [earlierShown, setEarlierShown] = useState(false);
+  // How many questions of the shown exercise have an answer or a self-check on
+  // this page: never stored, so an update (which reloads the lesson) clears them.
+  const [answered, setAnswered] = useState(0);
   // Focus the lesson heading when it loads. When the Mistake Notebook asked for
   // a question that this lesson shows, focus must not scroll the page back to
   // the heading: the question is brought to the top of the screen instead (this
@@ -292,6 +295,14 @@ function LessonScreen({
     headingRef.current?.focus({ preventScroll: item !== null });
     item?.scrollIntoView?.({ block: "start" });
   }, [lesson.status, target]);
+  // An explicit script update reloads the lesson, which drops a phone back to
+  // the top of the page: bring its outcome on screen and give it focus.
+  const outcomeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (lesson.status !== "ready" || !updated) return;
+    outcomeRef.current?.focus({ preventScroll: true });
+    outcomeRef.current?.scrollIntoView?.({ block: "center" });
+  }, [lesson.status, updated]);
   const back = (
     <button type="button" className="ghost" onClick={onBack}>
       {t("listening.back")}
@@ -366,7 +377,7 @@ function LessonScreen({
       </section>
 
       {updated ? (
-        <div className="banner success" role="status">
+        <div className="banner success" role="status" ref={outcomeRef} tabIndex={-1}>
           {updated.replayed ? t("listening.revision.already", { to: updated.to }) : t("listening.revision.updated", { from: updated.from, to: updated.to })}
         </div>
       ) : null}
@@ -375,6 +386,7 @@ function LessonScreen({
           key={`${lesson.data.script_revision.revision}-${lesson.data.script_revision.pack_fingerprint ?? ""}`}
           materialId={id}
           state={lesson.data.script_revision}
+          answered={answered}
           onUpdated={(from, to, replayed) => {
             setUpdated({ from, to, replayed });
             setEpoch((n) => n + 1);
@@ -388,6 +400,7 @@ function LessonScreen({
           target={target}
           shownExerciseId={earlierShown ? target.exerciseId : (current?.id ?? null)}
           currentVersion={transcript?.version ?? null}
+          script={isScript(material)}
         />
       ) : null}
       {target && transcript && current && isScript(material) && target.exerciseId !== current.id && target.version < transcript.version &&
@@ -417,6 +430,7 @@ function LessonScreen({
               exercise={current}
               onOpenRecord={onOpenRecord}
               targetItem={target && target.exerciseId === current.id ? target.item : null}
+              onAnswered={setAnswered}
             />
           ) : (
             <PrepareSection
@@ -470,18 +484,29 @@ function ScriptUpdate({
   state,
   onUpdated,
   onReload,
+  answered = 0,
 }: {
   materialId: number;
   state: ListeningScriptRevisionState;
   onUpdated: (from: number, to: number, replayed: boolean) => void;
   onReload: () => void;
+  answered?: number;
 }) {
-  const { t } = useI18n();
+  const { t, tp } = useI18n();
   const [flow, setFlow] = useState<UpdateFlow>({ step: "closed" });
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (flow.step === "preview" && !flow.sending) headingRef.current?.focus();
   }, [flow.step, flow.step === "preview" && flow.stale]);
+  // "Not now" removes the button that had focus: give it back to "Review the changes".
+  const reviewRef = useRef<HTMLButtonElement>(null);
+  const cancelled = useRef(false);
+  useEffect(() => {
+    if (flow.step === "closed" && cancelled.current) {
+      cancelled.current = false;
+      reviewRef.current?.focus();
+    }
+  }, [flow.step]);
   if (state.pack_status === "title_changed" || state.pack_status === "not_in_pack")
     return <p className="hint">{t("listening.revision.cannotUpdate")}</p>;
   if (state.pack_status !== "update_available") return null;
@@ -520,7 +545,7 @@ function ScriptUpdate({
       {flow.step !== "preview" ? (
         <div className="banner info" role="note">
           {t("listening.revision.available", { revision: state.revision })}{" "}
-          <button type="button" className="ghost" disabled={flow.step === "loading"} onClick={open}>
+          <button type="button" className="ghost" ref={reviewRef} disabled={flow.step === "loading"} onClick={open}>
             {flow.step === "loading" ? t("listening.revision.loading") : t("listening.revision.review")}
           </button>
         </div>
@@ -541,6 +566,11 @@ function ScriptUpdate({
             </div>
           ) : null}
           <p>{t("listening.revision.previous", { from: flow.preview.current_revision, to: flow.preview.next_revision ?? flow.preview.current_revision + 1 })}</p>
+          {answered > 0 ? (
+            <div className="banner info" role="note">
+              {tp("listening.revision.unsaved", answered)}
+            </div>
+          ) : null}
           <ScriptChanges preview={flow.preview} />
           {flow.unknown ? (
             <div className="banner info" role="alert">
@@ -565,7 +595,15 @@ function ScriptUpdate({
                 {t("listening.revision.check")}
               </button>
             ) : (
-              <button type="button" className="ghost" disabled={flow.sending} onClick={() => setFlow({ step: "closed" })}>
+              <button
+                type="button"
+                className="ghost"
+                disabled={flow.sending}
+                onClick={() => {
+                  cancelled.current = true;
+                  setFlow({ step: "closed" });
+                }}
+              >
                 {t("listening.revision.cancel")}
               </button>
             )}
@@ -579,26 +617,67 @@ function ScriptUpdate({
 // ScriptChanges lists what an update changes without showing the script or a
 // key; the exact before and after (lines and reference answers) are behind an
 // explicit disclosure, since the lesson hides them until reveal.
+type QuestionChange = ListeningScriptUpdatePreview["changes"]["questions"][number];
+
 function ScriptChanges({ preview }: { preview: ListeningScriptUpdatePreview }) {
-  const { t } = useI18n();
+  const { t, tp } = useI18n();
   const { lines, questions, annotations_changed } = preview.changes;
   const lineKey = { changed: "listening.revision.lineChanged", added: "listening.revision.lineAdded", removed: "listening.revision.lineRemoved" } as const;
-  const where = (q: ListeningScriptUpdatePreview["changes"]["questions"][number]) => q.after_position ?? q.before_position ?? 0;
+  const from = preview.current_revision;
+  const where = (q: QuestionChange) => q.after_position ?? q.before_position ?? 0;
+  // A question that moved is named by both numbers, and a removed one by its
+  // old number in the old revision, so no number names two questions.
+  const moved = (q: QuestionChange) =>
+    q.change === "changed" && q.before_position != null && q.after_position != null && q.before_position !== q.after_position;
+  const tags = (q: QuestionChange) => (moved(q) ? q.fields.filter((f) => f !== "position") : q.fields);
+  const summary = (q: QuestionChange) =>
+    q.change === "added"
+      ? t("listening.revision.questionAdded", { n: where(q) })
+      : q.change === "removed"
+        ? t("listening.revision.questionRemoved", { n: where(q), from })
+        : moved(q)
+          ? t(tags(q).length === 0 ? "listening.revision.questionMoved" : "listening.revision.questionMovedChanged", {
+              before: q.before_position ?? 0,
+              after: q.after_position ?? 0,
+              from,
+            })
+          : t("listening.revision.questionChanged", { n: where(q) });
+  const label = (q: QuestionChange) =>
+    q.change === "removed"
+      ? t("listening.revision.questionLabelRemoved", { before: q.before_position ?? 0, from })
+      : moved(q)
+        ? t("listening.revision.questionLabelMoved", { before: q.before_position ?? 0, after: q.after_position ?? 0, from })
+        : t("listening.revision.questionLabel", { n: where(q) });
+  // A question whose only change is a new number that the questions removed or
+  // added before it explain (a deletion moves every later question up one) is an
+  // ordinary shift: one summary line, its numbers behind a disclosure, in order.
+  // A question moved any other way (a true reordering) keeps its own entry.
+  const removedBefore = (b: number) => questions.filter((x) => x.change === "removed" && (x.before_position ?? 0) < b).length;
+  const addedBefore = (a: number) => questions.filter((x) => x.change === "added" && (x.after_position ?? 0) < a).length;
+  const shifted = (q: QuestionChange) =>
+    moved(q) &&
+    tags(q).length === 0 &&
+    q.after_position === (q.before_position ?? 0) - removedBefore(q.before_position ?? 0) + addedBefore(q.after_position ?? 0);
+  const listed = questions.filter((q) => !shifted(q));
+  const shifts = questions.filter(shifted).sort((a, b) => (a.after_position ?? 0) - (b.after_position ?? 0));
+  // The details show content; a question that only moved has none to compare.
+  const compared = questions.filter((q) => !(moved(q) && tags(q).length === 0));
+  // The details always show the question, its reference and explanation; any
+  // other changed field is shown too, so "the exact before and after" shows
+  // what the change list names.
+  const extra = (q: QuestionChange) =>
+    q.change === "changed" ? q.fields.filter((f) => !["question", "expected_answer", "rationale", "position"].includes(f)) : [];
   return (
     <>
       <ul className="listening-revision-changes">
         {lines.map((l) => (
           <li key={l.line}>{t(lineKey[l.change], { line: l.line })}</li>
         ))}
-        {questions.map((q) => (
+        {listed.map((q) => (
           <li key={`${q.item_id}-${q.change}`}>
-            {q.change === "added"
-              ? t("listening.revision.questionAdded", { n: where(q) })
-              : q.change === "removed"
-                ? t("listening.revision.questionRemoved", { n: where(q), from: preview.current_revision })
-                : t("listening.revision.questionChanged", { n: where(q) })}
+            {summary(q)}
             {q.change === "changed"
-              ? q.fields.map((f) => (
+              ? tags(q).map((f) => (
                   <span key={f}>
                     {" "}
                     <span className="tag">{t(fieldKey[f])}</span>
@@ -607,6 +686,19 @@ function ScriptChanges({ preview }: { preview: ListeningScriptUpdatePreview }) {
               : null}
           </li>
         ))}
+        {shifts.length > 0 ? (
+          <li>
+            {tp("listening.revision.shifted", shifts.length)}
+            <details className="listening-revision-shifts">
+              <summary>{t("listening.revision.shiftedShow")}</summary>
+              <ul>
+                {shifts.map((q) => (
+                  <li key={q.item_id}>{summary(q)}</li>
+                ))}
+              </ul>
+            </details>
+          </li>
+        ) : null}
         {annotations_changed ? <li>{t("listening.revision.notesChanged")}</li> : null}
       </ul>
       <details className="listening-revision-details">
@@ -627,9 +719,9 @@ function ScriptChanges({ preview }: { preview: ListeningScriptUpdatePreview }) {
             )}
           </div>
         ))}
-        {questions.map((q) => (
+        {compared.map((q) => (
           <div key={`${q.item_id}-${q.change}`} className="listening-revision-pair">
-            <p className="label">{t("listening.revision.questionLabel", { n: where(q) })}</p>
+            <p className="label">{label(q)}</p>
             {(["before", "after"] as const).map((side) => {
               const it = q[side];
               return it ? (
@@ -647,6 +739,9 @@ function ScriptChanges({ preview }: { preview: ListeningScriptUpdatePreview }) {
                     </span>
                   </p>
                   <StoredText primary={it.rationale_en} variants={{ en: it.rationale_en, zh: it.rationale_zh }} kind="explanation" />
+                  {extra(q).map((f) => (
+                    <RevisionField key={f} field={f} item={it} />
+                  ))}
                 </div>
               ) : null;
             })}
@@ -655,6 +750,66 @@ function ScriptChanges({ preview }: { preview: ListeningScriptUpdatePreview }) {
       </details>
     </>
   );
+}
+
+// RevisionField shows one changed field of one side of a question in the
+// preview's details, as the reveal shows it.
+function RevisionField({ field, item }: { field: string; item: ListeningItem }) {
+  const { t } = useI18n();
+  switch (field) {
+    case "kind":
+      return <p>{t("listening.revision.show.kind", { kind: t(kindKey[item.kind]) })}</p>;
+    case "choices":
+      return (
+        <>
+          <p className="label">{t("listening.revision.show.choices")}</p>
+          <ol className="listening-revision-options">
+            {(item.choices ?? []).map((c, k) => (
+              <li key={k} lang="fr" className="french">
+                {c}
+              </li>
+            ))}
+          </ol>
+        </>
+      );
+    case "accepted_alternatives":
+      return (
+        <p>
+          <span className="label">{t("listening.reveal.alsoAccepted")}</span>{" "}
+          <span lang="fr" className="french">
+            {(item.accepted_alternatives ?? []).join(" · ")}
+          </span>
+        </p>
+      );
+    case "wrong_answers":
+      return (
+        <ul className="listening-wrong">
+          {(item.wrong_answers ?? []).map((w, k) => (
+            <li key={k}>
+              <span className="label">{t("listening.reveal.whyNot", { answer: w.answer })}</span>{" "}
+              <StoredText primary={w.why_wrong_en} variants={{ en: w.why_wrong_en, zh: w.why_wrong_zh }} kind="explanation" />
+            </li>
+          ))}
+        </ul>
+      );
+    case "segments":
+      return <p>{t("listening.revision.show.segments", { lines: item.segments.map((n) => `s${n}`).join(", ") })}</p>;
+    case "evidence":
+      return (
+        <ul className="listening-evidence">
+          {(item.evidence ?? []).map((e, k) => (
+            <li key={k}>
+              <span className="label">{t("listening.reveal.quote", { n: e.segment })}</span>{" "}
+              <span lang="fr" className="french">
+                « {e.excerpt} »
+              </span>
+            </li>
+          ))}
+        </ul>
+      );
+    default:
+      return null;
+  }
 }
 
 // EarlierRevision shows the revision a Mistake Notebook item was saved from,
@@ -863,18 +1018,24 @@ function ExerciseView({
   exercise,
   onOpenRecord,
   targetItem = null,
+  onAnswered,
 }: {
   material: ListeningMaterial;
   transcript: ListeningTranscript;
   exercise: ListeningExercise;
   onOpenRecord?: (entryId: number) => void;
   targetItem?: number | null;
+  onAnswered?: (n: number) => void;
 }) {
   const { t, tn } = useI18n();
   const content = exercise.content!;
   const [answers, setAnswers] = useState<string[]>(() => content.items.map(() => ""));
   const [revealed, setRevealed] = useState(false);
   const [checks, setChecks] = useState<Record<number, SelfCheck>>({});
+  const answeredCount = content.items.filter((_, i) => answers[i].trim() !== "" || checks[i] !== undefined).length;
+  useEffect(() => {
+    onAnswered?.(answeredCount);
+  }, [answeredCount, onAnswered]);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showForReader, setShowForReader] = useState(false);
   const readerToggle = useRef<HTMLButtonElement>(null);
