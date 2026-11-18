@@ -739,9 +739,100 @@ demo" state with a working example.
 (focus on the control used), Forward, and Back out of the demo, at 390 and
 1280 px (`docs/validation/FLH-153-routes-part3.md`).
 
+## First visit, search evidence and a smaller bundle (demo refresh, 2026-11-18)
+
+A fresh-browser walk of the packaged demo (390 and 1280 px) found these
+points of friction, and the changes below address them. Evidence:
+[validation](validation/demo-refresh-public-demo-20261118.md).
+
+**Starting screen:**
+- Each example card leads with the learner's question in French (`lang="fr"`,
+  unchanged in every interface language), then says what the example shows.
+  Before, the cards led with labels such as "One question, two pronouns", and
+  the French appeared only in a summary.
+- The lead is one sentence.
+- `web/src/demo/examples.ts` holds each question verbatim.
+  `GuidedExample.test.tsx` fails if it differs from the catalog's
+  `original_input`. An opened example still reads everything from the
+  server.
+
+**The example shows that the Concept is now searchable.** Step 3 offers
+"Search “pronouns”" (the example's own keyword query). It opens the results
+as a new history entry, with the Concept listed and the matched words marked.
+
+**Results say what matched.** In the demo, a keyword result names the matched
+words next to where they matched, from the search's own `tokens` and
+`matched_fields`:
+- "Found in title: pronouns."
+- For a match in a filed unit's wording: "Found in the explanation of a unit
+  filed here, …, not in the Concept's title: viennes. Open the Concept …".
+
+The result carries no unit text, so none is shown or guessed.
+
+**The evidence screen names its Concept.** The way back and the "why this
+record" line read "concept #12: the pronouns y and en". The title comes from
+one allowlisted Concept read. While that read loads, or if it fails, the
+labels show the number only, as before.
+
+**Smaller changes:**
+- **Empty curation:** the Concept screen leaves out "Best explanation" when
+  no unit was chosen, like the other empty curation sections.
+- **Bad links:** the notice for a link that matches nothing now also has
+  "Open the example “One question, two pronouns”", which opens as a new
+  entry.
+- **Narrow phones:** at 480 px and below, an evidence row's label sits above
+  its value. Before, at 320 px, the learner's context and the explanation
+  wrapped two or three words to a line beside a 110 px label column. A
+  Concept named inside a sentence stays inline.
+
+The private workbench's Knowledge Library is unchanged by all of this: each
+change is behind the demo mode.
+
+**What a demo build contains** (`vite.config.ts`, demo builds only; the
+workbench build is unchanged):
+- **No workbench:** `main.tsx`'s import of the private workbench (`./App`)
+  resolves to an empty component. The package therefore no longer contains
+  or serves workbench code. Before, it served
+  `/assets/MockExam-….js` and `/assets/ExperimentDashboard-….js`, and its
+  script named private routes such as `POST /captures`.
+- **Message catalogs:** they keep only the namespaces the demo's code
+  references (`src/demo/catalogScope.ts`):
+  `app common demo effective explanationLanguage explanationText inspector
+  language library practice status`. That is 443 of 2,144 keys.
+- **Guards:** `CatalogScope.test.ts` walks the demo's import graph and fails
+  when the list misses a namespace the graph uses, or names one it no longer
+  uses. It also fails if the pruner meets a catalog format it does not
+  understand.
+- **Effect**, on packaged builds with the same artifact:
+
+  | Measure | Before | After |
+  |---|---|---|
+  | Entry script, raw | 547,523 bytes | 287,580 bytes |
+  | Entry script, as sent (server gzip) | 150,131 bytes | 85,647 bytes |
+  | First visit to the start, all responses | 172,696 bytes | 108,298 bytes |
+  | Start rendered | 1.27 s | 0.96 s |
+  | First example card on screen | 1.84 s | 1.66 s |
+
+  Times are on a slow phone profile, as medians of 7 interleaved cold runs.
+  The page, script, style and both reads count toward the first-visit bytes.
+  The validation record has the method.
+
+**Packaged gate fix:** `check_package.sh` now passes the vectors kind to
+`accept_guided.mjs`, as its README already said. Before, a CANDIDATE
+package failed the guided suite because it expected the mechanical notice.
+
 ## Real-E5 candidate (owner only)
 
-**Not performed by any agent.** It sends the 23 synthetic catalog texts (14
+**Reusing a completed work directory (no embedding call).** If a work
+directory for the current plan already exists, skip steps 2 and 3. Whether
+one exists depends on two things: step 1's `plan_sha256` equals its
+`plan.json`, and `prepare status -work DIR` reports every position
+completed. In that case `import` (step 4) builds a new artifact for this
+tree's migration ledger and sends nothing. Copy the work directory first,
+read-only, and import from the copy. The 2026-11-18 rebuild used the
+2026-11-12 work directory this way (23 of 23 receipts, plan `536021a4…`).
+
+**The embedding step (2) is not performed by any agent.** It sends the 23 synthetic catalog texts (14
 Concept documents and 9 preset queries) to the owner's E5 service. Nothing in
 it uploads, deploys or changes DNS; deployment stays a separate owner
 decision ([AWS_DEMO.md](AWS_DEMO.md)).
