@@ -1,5 +1,11 @@
 # Staging candidate and hosting instructions (items 9–16, updated for the final candidate, items 54–62)
 
+> **Scope and evidence.** This is the demo-refresh lane's record for the
+> **public demo** package, a different target from the private workbench
+> staging in this directory (RUNBOOK.md). The evidence it names (`evidence/…`,
+> the screenshots, `packages.sha256`) and its local stand-in tool
+> `tools/staging_local.sh` are kept in that lane's handoff area, not in Git.
+
 **Final candidate:** `flh-public-demo-fe6-BLOCKED`, tarball SHA-256
 `1c6d798e55f8078daf7ca8927df25b2fdf6c146fd3f694c5f1ef3990a156c8dd`;
 `RELEASE.json` `web`: build_id `flh-public-demo-fe6-BLOCKED`, api_base `/api`,
@@ -118,10 +124,13 @@ aws resourcegroupstaggingapi get-resources --tag-filters Key=Stage,Values=stagin
 names. With `name_prefix = "flh-demo"`, none is expected from the policies as
 written.
 
-## Local stand-in commands (reproducible on any Linux host with Docker)
+## Local stand-in commands (from the demo-refresh lane's handoff area, not in Git)
+
+`H` below is that lane's handoff directory; `tools/staging_local.sh` and the
+packages live there.
 
 ```bash
-H=~/flh-handoff/demo-refresh-frontend-20261117T042813Z
+H=<demo-refresh handoff directory>
 bash $H/tools/staging_local.sh start $H/.work/packages/flh-public-demo-fe6-BLOCKED   # server 127.0.0.1:18621 + nginx TLS 127.0.0.1:18643
 curl --resolve staging.flh.test:18643:127.0.0.1 --cacert $H/.work/staging/certs/fullchain.pem https://staging.flh.test:18643/readyz
 bash $H/tools/staging_local.sh swap $H/.work/packages/flh-public-demo-fe5-BLOCKED    # rollback to the previous package (same port)
