@@ -110,7 +110,9 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   (`SPEAKING_TRANSCRIPTION_PROVIDER`) and give feedback on one transcript
   version you confirmed (`SPEAKING_PROVIDER`), based on the text only and never
   on pronunciation. Takes can be compared, and a mistake can be saved as a
-  normal learning record.
+  normal learning record. A practice overview counts only takes whose checked
+  transcript has feedback, suggests one next step per exercise with its
+  reason, and exports every attempt (never audio) as NDJSON.
 - Revisit saved misses from all four skills in one **Mistake Notebook**. Each
   item is a normal learning record linked to the exact exercise item, draft
   version or transcript version it came from. You can filter by skill, mark
@@ -138,6 +140,14 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - Try the opt-in **Endfield preview** theme in the private workbench (Theme →
   Endfield preview). The standard look stays the default; the choice is
   remembered in the browser and never changes the public demo.
+- Bookmark or reload a workbench section: each section has its own address
+  (`#/home`, `#/library`, `#/speaking`, …; a library search is kept in it as
+  `#/library?q=…`), and Back and Forward move between sections. A page left
+  open across an upgrade says when a newer version is on the server and offers
+  a reload.
+- Pick up where you left off from the learning home, which opens the newest
+  item you started in each section. The Knowledge Library marks the words that
+  matched and remembers your last five searches in this browser only.
 
 ## What it is not
 

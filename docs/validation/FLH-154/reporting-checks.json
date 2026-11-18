@@ -1,0 +1,1343 @@
+{
+ "schema": "flh154_reporting_checks_v1",
+ "offline_only": true,
+ "synthetic_only": true,
+ "real_runs_performed": 0,
+ "r21_inventory": {
+  "status": "PASS",
+  "datasets": {
+   "train (base, train+dev)": {
+    "records": 1200,
+    "origin": {
+     "synthetic": 1200
+    },
+    "label_status": {
+     "machine_authored_unreviewed": 1200
+    },
+    "review_status": {
+     "unreviewed": 1200
+    },
+    "entry_id_nonzero": 0,
+    "role": "training data",
+    "can_support_a_demo_claim": "never: training data is not evidence about held-out quality"
+   },
+   "increment v2 (train+dev)": {
+    "records": 182,
+    "origin": {
+     "synthetic": 182
+    },
+    "label_status": {
+     "machine_authored_unreviewed": 182
+    },
+    "review_status": {
+     "unreviewed": 182
+    },
+    "entry_id_nonzero": 0,
+    "role": "training data",
+    "can_support_a_demo_claim": "never"
+   },
+   "frozen evaluation": {
+    "records": 200,
+    "origin": {
+     "synthetic": 200
+    },
+    "label_status": {
+     "machine_authored_unreviewed": 200
+    },
+    "review_status": {
+     "unreviewed": 200
+    },
+    "entry_id_nonzero": 0,
+    "role": "held-out references (the only candidate evidence)",
+    "can_support_a_demo_claim": "only after (1) a person accepts the reference and (2) a real model output exists for it"
+   },
+   "rb probe": {
+    "records": 200,
+    "origin": {
+     "synthetic": 200
+    },
+    "label_status": {
+     "machine_authored_unreviewed": 200
+    },
+    "review_status": {
+     "unreviewed": 200
+    },
+    "entry_id_nonzero": 0,
+    "role": "synthetic control: the same learner texts under the production analyzer's cues",
+    "can_support_a_demo_claim": "never as extra examples; only for a claim about cue robustness, paired with its frozen record"
+   },
+   "swap probe": {
+    "records": 200,
+    "origin": {
+     "synthetic": 200
+    },
+    "label_status": {
+     "machine_authored_unreviewed": 200
+    },
+    "review_status": {
+     "unreviewed": 200
+    },
+    "entry_id_nonzero": 0,
+    "role": "synthetic stress control: cues swapped against the reference",
+    "can_support_a_demo_claim": "never"
+   },
+   "challenge (dev + test)": {
+    "records": 96,
+    "origin": {
+     "synthetic": 96
+    },
+    "label_status": {
+     "machine_authored_unreviewed": 96
+    },
+    "review_status": {
+     "unreviewed": 96
+    },
+    "entry_id_nonzero": 0,
+    "role": "synthetic control: cue-dependence pairs; its 23 units are frozen units reused",
+    "can_support_a_demo_claim": "only for a claim about consistency across cues, counted per group, never per record"
+   },
+   "boundary cases": {
+    "records": 80,
+    "origin": {
+     "synthetic": 80
+    },
+    "label_status": {
+     "machine_authored_unreviewed": 80
+    },
+    "review_status": {
+     "unreviewed": 80
+    },
+    "entry_id_nonzero": 0,
+    "role": "policy documentation (annotation boundaries); not scored",
+    "can_support_a_demo_claim": "never for quality; it illustrates the policy"
+   }
+  },
+  "synthetic_controls": {
+   "parsing fixture (fixture-untuned.jsonl)": "synthetic faults: accounting control only",
+   "oracle / category-only / constant-empty outputs": "synthetic systems: show what the harness catches",
+   "control-matrix controls (14)": "synthetic single-fault outputs: which metric catches which failure",
+   "decision fixtures (FLH-154 cp14/cp15)": "synthetic metric sets: decision-rule behaviour only"
+  },
+  "comparison_slice_classification": {
+   "candidate evidence (frozen; needs review + real output)": 200,
+   "control: rb view of a frozen text": 200,
+   "control: challenge pair (counted per group)": 72
+  },
+  "examples_that_support_a_demo_claim_today": 0,
+  "why": "every record is synthetic and machine-authored (0 human-reviewed), and no real model output exists; no document or demo page in the repository claims extraction quality, and the public demo's units come from a local stub extractor",
+  "after_owner_steps": "frozen records whose reference a person accepted (review-sample-v1 starts with 35 items covering 25 of 45 objectives) AND that have a real model output"
+ },
+ "r26_order": {
+  "status": "PASS",
+  "prediction_row_order (compare)": true,
+  "unit_order_inside_each_output (compare)": true,
+  "reference_order (_metrics)": true,
+  "reference_order (quality.report)": true,
+  "variant_and_group_order (paired.report)": true,
+  "reference_order (evaluate)": true,
+  "system_order (decision)": true,
+  "note": "compare refuses a reordered slice FILE (its hash is pinned), so reference order was varied at the scoring functions; evaluate's per-row list follows the input order by design"
+ },
+ "r27_duplicates": {
+  "status": "PASS",
+  "case": "ext-evl-0001: first row = the reference, second row = empty (contradicting)",
+  "compare_raw_outputs": "duplicate_prediction",
+  "compare_production_results": "duplicate_prediction",
+  "quality.report_counts_it_as": "empty answer (last row wins)",
+  "evaluate_counts_it_as": "empty answer (last row wins)",
+  "paired.report_counts_it_as": "last row wins",
+  "standalone_cli": {
+   "quality": {
+    "exit": 1,
+    "stderr_tail": "--results: 1 duplicated id(s), e.g. ['ext-evl-0001']; refusing to keep only the last row"
+   },
+   "evaluate": {
+    "exit": 1,
+    "stderr_tail": "--results: 1 duplicated id(s), e.g. ['ext-evl-0001']; refusing to keep only the last row"
+   }
+  },
+  "reading": "compare never scores a duplicated id (duplicate_prediction, non-scorable). The standalone quality, evaluate and paired-consistency functions index results by id, so the last of two contradicting rows wins; their CLIs (and categories) now refuse such a file (FLH-154 item 39; they accepted it before)."
+ },
+ "r28_missing_extra": {
+  "status": "PASS",
+  "missing_shard_b_of_the_tuned_model": {
+   "status_counts": {
+    "missing_prediction": 200,
+    "valid_empty": 47,
+    "valid_units": 225
+   },
+   "decision_verdict": "PENDING",
+   "decision_winner": null,
+   "tuned_eligible": null,
+   "decision_reasons": [
+    "incomplete run: qwen3.5-4b-tuned has 200 missing_prediction (a shard not concatenated, a stopped job or changed ids); fix or rerun before deciding"
+   ]
+  },
+  "extra_ids": {
+   "unknown_ids": [
+    "not-in-slice-0",
+    "not-in-slice-1",
+    "not-in-slice-2",
+    "not-in-slice-3",
+    "not-in-slice-4"
+   ],
+   "metrics_identical_to_the_clean_run": true
+  },
+  "rb_ids_stripped_of_their_suffix": {
+   "duplicate_prediction": 200,
+   "missing_prediction": 200,
+   "valid_empty": 27,
+   "valid_units": 45
+  },
+  "promotion_check_50_vs_200_examples": {
+   "verdict": "PENDING",
+   "population_criterion": {
+    "criterion": "candidate and baseline reports cover the same examples",
+    "basis": "exact",
+    "status": "PENDING",
+    "evidence": {
+     "frozen": {
+      "candidate": {
+       "examples": 50,
+       "zero_unit_refs": 0,
+       "unit_refs": 50
+      },
+      "baseline": {
+       "examples": 200,
+       "zero_unit_refs": 20,
+       "unit_refs": 180
+      }
+     }
+    }
+   }
+  },
+  "quality_compare_50_vs_200_examples": {
+   "examples": [
+    50,
+    200
+   ],
+   "deltas_computed": 9,
+   "cli_warning": "WARNING: A covers 50 examples and B 200: different populations, so the deltas are not like for like"
+  },
+  "reading": "compare accounts for every id: missing rows are missing_prediction (non-scorable), extra ids are listed and never scored, mangled ids become duplicates plus missing rows. Before FLH-154 item 39 a forgotten shard was read as the tuned model's weak rb abstention and the current extractor was proposed as the winner; decision-report now answers PENDING and names the incomplete run. promotion-check is PENDING across different example sets, and quality-compare warns."
+ },
+ "r29_denominators": {
+  "status": "FINDING",
+  "summary_equals_detail_within_compare": true,
+  "recomputed_from_rows": {
+   "frozen": {
+    "abstention": [
+     0.85,
+     0.85
+    ],
+    "over_abstention": [
+     0.0,
+     0.0
+    ],
+    "structural_validity": [
+     0.86,
+     0.86
+    ]
+   },
+   "rb": {
+    "abstention": [
+     0.85,
+     0.85
+    ],
+    "over_abstention": [
+     0.0,
+     0.0
+    ],
+    "structural_validity": [
+     0.855,
+     0.855
+    ]
+   }
+  },
+  "markdown_row_equals_json": true,
+  "evaluate_vs_quality_same_inputs": {
+   "unit_f1": {
+    "quality": 1.0,
+    "evaluate": 0.927
+   },
+   "unit_refs_answered_empty": {
+    "quality": 0,
+    "evaluate": 25
+   },
+   "abstention_rate": {
+    "quality": 0.85,
+    "evaluate": 0.85
+   },
+   "structural_validity": {
+    "quality": 0.86,
+    "evaluate": 0.86
+   },
+   "invalid_rows_on_unit_references": 25
+  },
+  "denominator_by_metric": {
+   "structural validity / strict validity": "every reference row (invalid, missing and duplicate rows count against)",
+   "abstention rate": "every zero-unit reference (invalid rows count against)",
+   "over-abstention rate (quality, compare)": "every unit reference; only VALID empty answers count",
+   "nonzero_refs_answered_empty (evaluate)": "every unit reference; INVALID answers count as empty",
+   "exact unit count rate (quality)": "VALID rows only",
+   "unit F1 (quality, compare, human F1 via quality --judgments)": "VALID rows only",
+   "unit F1 (evaluate)": "every row (an invalid row's reference units are missed)",
+   "paired consistency / accuracy": "every challenge_test group (invalid or missing never consistent)"
+  },
+  "reading": "Inside compare every summary number equals its recount from the rows, and the Markdown equals the JSON. Across reports, evaluate and quality give different unit F1 and different 'unit references answered empty' for the same results, because they treat invalid rows differently; TRAINING_RUNBOOK §9 runs both."
+ },
+ "r30_error_categories": {
+  "status": "PASS",
+  "systems": 14,
+  "by_system_and_part": {
+   "oracle": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 1,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 11,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "category_shortcut": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 1,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 20,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 20,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 20,
+     "not_anchored_heuristic": 31,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "over_abstain": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 180,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 180,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 0,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 180,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 180,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 0,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "struct_code_fence": {
+    "frozen": {
+     "invalid_by_status": {
+      "unparseable:code_fence": 200
+     },
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 0,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {
+      "unparseable:code_fence": 200
+     },
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 0,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "struct_think_block": {
+    "frozen": {
+     "invalid_by_status": {
+      "unparseable:think_block": 200
+     },
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 0,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {
+      "unparseable:think_block": 200
+     },
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 0,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "struct_truncated": {
+    "frozen": {
+     "invalid_by_status": {
+      "unparseable:truncated_json": 200
+     },
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 0,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {
+      "unparseable:truncated_json": 200
+     },
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 0,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "count_drop": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 25,
+     "split_merge_duplicate_heuristic": 1,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 1,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 25,
+     "split_merge_duplicate_heuristic": 1,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 11,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "over_split": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 180,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 180,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 4,
+     "bilingual_flagged_heuristic": 145,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 180,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 180,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 30,
+     "bilingual_flagged_heuristic": 145,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "merge": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 25,
+     "split_merge_duplicate_heuristic": 25,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 1,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 25,
+     "split_merge_duplicate_heuristic": 25,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 11,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "duplicate": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 180,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 180,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 2,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 180,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 180,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 22,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "hallucinate_on_zero": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 20,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 20,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 20,
+     "not_anchored_heuristic": 21,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 20,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 20,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 20,
+     "not_anchored_heuristic": 31,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "unsupported_swap": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 1,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 154,
+     "not_anchored_heuristic": 140,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 155,
+     "not_anchored_heuristic": 138,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "bilingual_drift": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 1,
+     "bilingual_flagged_heuristic": 205,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 11,
+     "bilingual_flagged_heuristic": 205,
+     "false_claim": "not measured automatically"
+    }
+   },
+   "false_claim": {
+    "frozen": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 1,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    },
+    "rb": {
+     "invalid_by_status": {},
+     "unit_count_over": 0,
+     "unit_count_under": 0,
+     "split_merge_duplicate_heuristic": 0,
+     "abstention_false_extraction": 0,
+     "abstention_over_abstention": 0,
+     "unsupported_heuristic": 0,
+     "not_anchored_heuristic": 11,
+     "bilingual_flagged_heuristic": 0,
+     "false_claim": "not measured automatically"
+    }
+   }
+  },
+  "note": "counts are exact except where marked heuristic; false claims need human judgment"
+ },
+ "r31_determinism": {
+  "status": "PASS",
+  "files_compared": 9,
+  "differ": [],
+  "method": "compare, decision-report, review-sample and paired-demo run twice with PYTHONHASHSEED 0 and 4242 (different set and dict-of-set iteration); outputs compared byte for byte"
+ },
+ "r32_shortcut": {
+  "status": "PASS",
+  "table": {
+   "without the shortcut (oracle)": {
+    "frozen_only_view": {
+     "abstention": 1.0,
+     "false_extraction": 0,
+     "heuristic_unit_f1": 1.0
+    },
+    "full_slice_view": {
+     "rb_abstention": 1.0,
+     "rb_false_extraction": 0,
+     "paired_consistency": 1.0,
+     "abstain_group_paired_accuracy": 1.0,
+     "gates_failed": []
+    }
+   },
+   "shortcut on 25% of inputs": {
+    "frozen_only_view": {
+     "abstention": 1.0,
+     "false_extraction": 0,
+     "heuristic_unit_f1": 1.0
+    },
+    "full_slice_view": {
+     "rb_abstention": 0.65,
+     "rb_false_extraction": 7,
+     "paired_consistency": 0.625,
+     "abstain_group_paired_accuracy": 0.333,
+     "gates_failed": [
+      "abstention on rb probe >= 0.9",
+      "challenge paired consistency >= 0.9",
+      "challenge abstain-group paired accuracy >= 0.8"
+     ]
+    }
+   },
+   "shortcut on 50% of inputs": {
+    "frozen_only_view": {
+     "abstention": 1.0,
+     "false_extraction": 0,
+     "heuristic_unit_f1": 1.0
+    },
+    "full_slice_view": {
+     "rb_abstention": 0.45,
+     "rb_false_extraction": 11,
+     "paired_consistency": 0.375,
+     "abstain_group_paired_accuracy": 0.333,
+     "gates_failed": [
+      "abstention on rb probe >= 0.9",
+      "challenge paired consistency >= 0.9",
+      "challenge abstain-group paired accuracy >= 0.8"
+     ]
+    }
+   },
+   "full category-only shortcut": {
+    "frozen_only_view": {
+     "abstention": 1.0,
+     "false_extraction": 0,
+     "heuristic_unit_f1": 1.0
+    },
+    "full_slice_view": {
+     "rb_abstention": 0.0,
+     "rb_false_extraction": 20,
+     "paired_consistency": 0.0,
+     "abstain_group_paired_accuracy": 0.0,
+     "gates_failed": [
+      "abstention on rb probe >= 0.9",
+      "challenge paired consistency >= 0.9",
+      "challenge abstain-group paired accuracy >= 0.8"
+     ]
+    }
+   }
+  },
+  "reading": "The frozen-only view cannot tell any of these systems apart (every row reads like the oracle). The full slice separates them, and even a shortcut on a quarter of the inputs can fail a gate. Partial systems apply the shortcut to a fixed, hash-chosen subset."
+ },
+ "r33_gate_vs_aggregate": {
+  "status": "FINDING",
+  "systems": {
+   "oracle": {
+    "frozen_heuristic_unit_f1": 1.0,
+    "gates_failed": [],
+    "eligible_on_exact_gates": true
+   },
+   "category_shortcut": {
+    "frozen_heuristic_unit_f1": 1.0,
+    "gates_failed": [
+     "abstention on rb probe >= 0.9",
+     "challenge paired consistency >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ],
+    "eligible_on_exact_gates": false
+   },
+   "over_abstain": {
+    "frozen_heuristic_unit_f1": null,
+    "gates_failed": [
+     "over-abstention on frozen <= 0.1",
+     "over-abstention on rb probe <= 0.1"
+    ],
+    "eligible_on_exact_gates": false
+   },
+   "struct_code_fence": {
+    "frozen_heuristic_unit_f1": null,
+    "gates_failed": [
+     "strict structural validity >= 0.98 (scorable rows / slice rows)",
+     "abstention on frozen >= 0.9",
+     "abstention on rb probe >= 0.9",
+     "challenge paired consistency >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ],
+    "eligible_on_exact_gates": false
+   },
+   "struct_think_block": {
+    "frozen_heuristic_unit_f1": null,
+    "gates_failed": [
+     "strict structural validity >= 0.98 (scorable rows / slice rows)",
+     "abstention on frozen >= 0.9",
+     "abstention on rb probe >= 0.9",
+     "challenge paired consistency >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ],
+    "eligible_on_exact_gates": false
+   },
+   "struct_truncated": {
+    "frozen_heuristic_unit_f1": null,
+    "gates_failed": [
+     "strict structural validity >= 0.98 (scorable rows / slice rows)",
+     "abstention on frozen >= 0.9",
+     "abstention on rb probe >= 0.9",
+     "challenge paired consistency >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ],
+    "eligible_on_exact_gates": false
+   },
+   "count_drop": {
+    "frozen_heuristic_unit_f1": 0.935,
+    "gates_failed": [],
+    "eligible_on_exact_gates": true
+   },
+   "over_split": {
+    "frozen_heuristic_unit_f1": 0.695,
+    "gates_failed": [],
+    "eligible_on_exact_gates": true
+   },
+   "merge": {
+    "frozen_heuristic_unit_f1": 0.935,
+    "gates_failed": [],
+    "eligible_on_exact_gates": true
+   },
+   "duplicate": {
+    "frozen_heuristic_unit_f1": 0.695,
+    "gates_failed": [],
+    "eligible_on_exact_gates": true
+   },
+   "hallucinate_on_zero": {
+    "frozen_heuristic_unit_f1": 0.953,
+    "gates_failed": [
+     "abstention on frozen >= 0.9",
+     "abstention on rb probe >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ],
+    "eligible_on_exact_gates": false
+   },
+   "unsupported_swap": {
+    "frozen_heuristic_unit_f1": 0.244,
+    "gates_failed": [],
+    "eligible_on_exact_gates": true
+   },
+   "bilingual_drift": {
+    "frozen_heuristic_unit_f1": 1.0,
+    "gates_failed": [],
+    "eligible_on_exact_gates": true
+   },
+   "false_claim": {
+    "frozen_heuristic_unit_f1": 1.0,
+    "gates_failed": [],
+    "eligible_on_exact_gates": true
+   }
+  },
+  "disagreements": [
+   {
+    "system": "category_shortcut",
+    "kind": "aggregate looks good, gate fails",
+    "f1": 1.0,
+    "gates_failed": [
+     "abstention on rb probe >= 0.9",
+     "challenge paired consistency >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ]
+   },
+   {
+    "system": "count_drop",
+    "kind": "gate passes, aggregate is clearly worse",
+    "f1": 0.935
+   },
+   {
+    "system": "over_split",
+    "kind": "gate passes, aggregate is clearly worse",
+    "f1": 0.695
+   },
+   {
+    "system": "merge",
+    "kind": "gate passes, aggregate is clearly worse",
+    "f1": 0.935
+   },
+   {
+    "system": "duplicate",
+    "kind": "gate passes, aggregate is clearly worse",
+    "f1": 0.695
+   },
+   {
+    "system": "hallucinate_on_zero",
+    "kind": "aggregate looks good, gate fails",
+    "f1": 0.953,
+    "gates_failed": [
+     "abstention on frozen >= 0.9",
+     "abstention on rb probe >= 0.9",
+     "challenge abstain-group paired accuracy >= 0.8"
+    ]
+   },
+   {
+    "system": "unsupported_swap",
+    "kind": "gate passes, aggregate is clearly worse",
+    "f1": 0.244
+   }
+  ],
+  "eligible_on_exact_gates_although_broken": [
+   "count_drop",
+   "over_split",
+   "merge",
+   "duplicate",
+   "unsupported_swap",
+   "bilingual_drift",
+   "false_claim"
+  ],
+  "reading": "A gate failure with an oracle-level F1 is the shortcut's signature. An eligible system with a clearly worse F1 shows a failure no exact gate covers: it then rests on human F1 and the 0.05 margin. bilingual_drift and false_claim pass every gate at F1 1.0. decision.py documents a human `unsupported_or_false_claim_rate` input but never uses it."
+ },
+ "r34_uncertainty": {
+  "status": "INFO",
+  "synthetic_results_with_wilson95": {
+   "oracle": {
+    "frozen_abstention": {
+     "k": 20,
+     "n": 20,
+     "rate": 1.0,
+     "wilson95": [
+      0.839,
+      1.0
+     ]
+    },
+    "frozen_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "rb_abstention": {
+     "k": 20,
+     "n": 20,
+     "rate": 1.0,
+     "wilson95": [
+      0.839,
+      1.0
+     ]
+    },
+    "rb_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "paired_consistency": {
+     "k": 24,
+     "n": 24,
+     "rate": 1.0,
+     "wilson95": [
+      0.862,
+      1.0
+     ]
+    },
+    "strict_validity": {
+     "k": 472,
+     "n": 472,
+     "rate": 1.0,
+     "wilson95": [
+      0.992,
+      1.0
+     ]
+    }
+   },
+   "category_shortcut": {
+    "frozen_abstention": {
+     "k": 20,
+     "n": 20,
+     "rate": 1.0,
+     "wilson95": [
+      0.839,
+      1.0
+     ]
+    },
+    "frozen_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "rb_abstention": {
+     "k": 0,
+     "n": 20,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.161
+     ]
+    },
+    "rb_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "paired_consistency": {
+     "k": 0,
+     "n": 24,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.138
+     ]
+    },
+    "strict_validity": {
+     "k": 472,
+     "n": 472,
+     "rate": 1.0,
+     "wilson95": [
+      0.992,
+      1.0
+     ]
+    }
+   },
+   "over_abstain": {
+    "frozen_abstention": {
+     "k": 20,
+     "n": 20,
+     "rate": 1.0,
+     "wilson95": [
+      0.839,
+      1.0
+     ]
+    },
+    "frozen_over_abstention": {
+     "k": 180,
+     "n": 180,
+     "rate": 1.0,
+     "wilson95": [
+      0.979,
+      1.0
+     ]
+    },
+    "rb_abstention": {
+     "k": 20,
+     "n": 20,
+     "rate": 1.0,
+     "wilson95": [
+      0.839,
+      1.0
+     ]
+    },
+    "rb_over_abstention": {
+     "k": 180,
+     "n": 180,
+     "rate": 1.0,
+     "wilson95": [
+      0.979,
+      1.0
+     ]
+    },
+    "paired_consistency": {
+     "k": 24,
+     "n": 24,
+     "rate": 1.0,
+     "wilson95": [
+      0.862,
+      1.0
+     ]
+    },
+    "strict_validity": {
+     "k": 472,
+     "n": 472,
+     "rate": 1.0,
+     "wilson95": [
+      0.992,
+      1.0
+     ]
+    }
+   },
+   "hallucinate_on_zero": {
+    "frozen_abstention": {
+     "k": 0,
+     "n": 20,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.161
+     ]
+    },
+    "frozen_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "rb_abstention": {
+     "k": 0,
+     "n": 20,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.161
+     ]
+    },
+    "rb_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "paired_consistency": {
+     "k": 24,
+     "n": 24,
+     "rate": 1.0,
+     "wilson95": [
+      0.862,
+      1.0
+     ]
+    },
+    "strict_validity": {
+     "k": 472,
+     "n": 472,
+     "rate": 1.0,
+     "wilson95": [
+      0.992,
+      1.0
+     ]
+    }
+   },
+   "struct_truncated": {
+    "frozen_abstention": {
+     "k": 0,
+     "n": 20,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.161
+     ]
+    },
+    "frozen_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "rb_abstention": {
+     "k": 0,
+     "n": 20,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.161
+     ]
+    },
+    "rb_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "paired_consistency": {
+     "k": 0,
+     "n": 24,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.138
+     ]
+    },
+    "strict_validity": {
+     "k": 0,
+     "n": 472,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.008
+     ]
+    }
+   },
+   "unsupported_swap": {
+    "frozen_abstention": {
+     "k": 20,
+     "n": 20,
+     "rate": 1.0,
+     "wilson95": [
+      0.839,
+      1.0
+     ]
+    },
+    "frozen_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "rb_abstention": {
+     "k": 20,
+     "n": 20,
+     "rate": 1.0,
+     "wilson95": [
+      0.839,
+      1.0
+     ]
+    },
+    "rb_over_abstention": {
+     "k": 0,
+     "n": 180,
+     "rate": 0.0,
+     "wilson95": [
+      0.0,
+      0.021
+     ]
+    },
+    "paired_consistency": {
+     "k": 24,
+     "n": 24,
+     "rate": 1.0,
+     "wilson95": [
+      0.862,
+      1.0
+     ]
+    },
+    "strict_validity": {
+     "k": 472,
+     "n": 472,
+     "rate": 1.0,
+     "wilson95": [
+      0.992,
+      1.0
+     ]
+    }
+   }
+  },
+  "probability_a_system_passes_a_gate": {
+   "abstention >= 0.90 (n = 20 zero references, needs >= 18)": {
+    "true rate 0.8": 0.206,
+    "true rate 0.85": 0.405,
+    "true rate 0.9": 0.677,
+    "true rate 0.95": 0.925,
+    "true rate 0.99": 0.999
+   },
+   "paired consistency >= 0.90 (n = 24 groups, needs >= 22)": {
+    "true rate 0.8": 0.115,
+    "true rate 0.85": 0.28,
+    "true rate 0.9": 0.564,
+    "true rate 0.95": 0.884,
+    "true rate 0.99": 0.998
+   },
+   "abstain-group paired accuracy >= 0.80 (n = 9 groups, needs >= 8)": {
+    "true rate 0.8": 0.436,
+    "true rate 0.85": 0.599,
+    "true rate 0.9": 0.775,
+    "true rate 0.95": 0.929,
+    "true rate 0.99": 0.997
+   }
+  },
+  "probability_of_passing_abstention_on_both_frozen_and_rb_(independent_parts)": {
+   "true rate 0.85": 0.164,
+   "true rate 0.9": 0.458,
+   "true rate 0.95": 0.856
+  },
+  "caveats": [
+   "synthetic systems: the oracle IS the reference, so its 1.0 rates say nothing about any model",
+   "zero-unit references are 20 per part: a system whose true abstention is 0.90 passes one 0.90 gate with probability ~0.68 and both with ~0.46; one whose true rate is 0.85 still passes one with ~0.40",
+   "paired consistency rests on 24 groups and abstain-group accuracy on 9",
+   "frozen and rb share every learner text, so their rates are not independent; the 'both' probability above assumes independence and is optimistic about separation",
+   "heuristic F1 and anchoring are provisional; false claims are not measured"
+  ]
+ },
+ "r35_render_offline": {
+  "status": "PASS",
+  "build_readiness_with_empty_environment": {
+   "exit": 0,
+   "env_keys": [
+    "HOME",
+    "LANG",
+    "PATH"
+   ],
+   "rendered": [
+    "predict-base-a.json",
+    "predict-base-b.json",
+    "predict-eval-a.json",
+    "predict-eval-b.json",
+    "sft-experiment.json",
+    "sft-smoke.json"
+   ]
+  },
+  "network_or_aws_references_in_render_code": {
+   "deploy/aws/sagemaker-extractor/build_readiness.py": [],
+   "deploy/aws/sagemaker-extractor/render_job.py": [],
+   "tools/extraction/flh_extraction/manifest.py": []
+  },
+  "prompt_rendering_uses_an_in_process_fake_server_and_placeholder_key": true,
+  "note": "run inside a network namespace with loopback only; HOME pointed at an empty directory, so no AWS config or credential file could be read"
+ },
+ "r36_export_privacy": {
+  "status": "PASS",
+  "files_scanned": [
+   "tools/extraction/review/REVIEW_PACKET_V2.md",
+   "tools/extraction/review/REVIEW_PACKET_V3.md",
+   "tools/extraction/review/REVIEW_SAMPLE_V1.md",
+   "tools/extraction/review/review-packet-v2.jsonl",
+   "tools/extraction/review/review-packet-v3.jsonl",
+   "tools/extraction/review/review-sample-v1-selection.json",
+   "tools/extraction/review/review-sample-v1.jsonl",
+   "docs/validation/FLH-154/agent-review.json",
+   "docs/validation/FLH-154/image-packaging-smoke-cpu.json",
+   "docs/validation/FLH-154/review-checks.json",
+   "docs/validation/FLH-154/sigterm-buffer-demo.json",
+   "docs/validation/FLH-154/review-checks.md",
+   "docs/validation/FLH-154-decision-memo.md",
+   "docs/validation/FLH-154-extraction-eval-review.md"
+  ],
+  "findings": {},
+  "planted_values_detected": [
+   "aws_account",
+   "email",
+   "entry_id_nonzero",
+   "local_path",
+   "private_link",
+   "secret_like"
+  ]
+ }
+}

@@ -114,7 +114,7 @@ const failureKey: Record<"provider_timeout" | "provider_unavailable" | "invalid_
 export function Writing({
   onOpenRecord,
   openRequest,
-}: { onOpenRecord?: (entryId: number) => void; openRequest?: { taskId: number; draftVersion: number; nonce: number } | null } = {}) {
+}: { onOpenRecord?: (entryId: number) => void; openRequest?: { taskId: number; draftVersion?: number; nonce: number } | null } = {}) {
   const [screen, setScreen] = useState<{ kind: "list" } | { kind: "task"; id: number; version?: number; nonce?: number }>({ kind: "list" });
   // A Mistake Notebook link opens the task at the draft version its correction is about.
   useEffect(() => {

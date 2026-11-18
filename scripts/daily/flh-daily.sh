@@ -262,13 +262,39 @@ case "$CMD" in
     backup="$backups/flh-$(date -u +%Y%m%dT%H%M%SZ)"
     was_running=0
     if running; then was_running=1; fi
+    # A failure between the stop and a verified copy (for example a full disk
+    # during the copy) leaves the service stopped, as documented (DAILY_USE.md
+    # section 6), but never silently and never with a copy that looks
+    # complete. It says so, names the command to start again, and renames the
+    # copy this run created to .incomplete (restore refuses it anyway: no
+    # SHA256SUMS). A failed integrity check keeps its own message (below).
+    backup_state=copying
+    backup_created=0
+    backup_failed() {
+      local rc=$?
+      [ "$backup_state" = copying ] || return 0
+      echo "flh-daily: backup FAILED (exit $rc) before a verified copy existed (for example a full disk); no backup was written" >&2
+      # Only a directory this run created; never an earlier backup of the same name.
+      if [ "$backup_created" = 1 ] && mv "$backup" "$backup.incomplete" 2> /dev/null; then
+        echo "flh-daily: the partial copy is kept at $backup.incomplete for inspection; restore refuses it, delete it to free space" >&2
+      fi
+      if [ "$was_running" = 1 ]; then
+        echo "flh-daily: the service is stopped (it was running before the backup). Fix the cause (free space), then run: bash scripts/daily/flh-daily.sh start" >&2
+      fi
+    }
+    trap backup_failed EXIT
     compose stop
     mkdir -p "$backups"
     chmod 700 "$backups"
     mkdir -m 700 "$backup"
+    backup_created=1
     copy_db "$active" "$backup"
+    backup_state=checking
     integrity_ok "$backup" || die "backup integrity check failed; the service is left stopped. Inspect $backup"
+    backup_state=copying
     (cd "$backup" && sha256sum app.db* > SHA256SUMS)
+    backup_state=done
+    trap - EXIT
     echo "flh-daily: backup written to $backup (copy it off this machine too)"
     if [ "$was_running" = 1 ]; then compose start; wait_healthy; fi
     ;;
@@ -285,6 +311,7 @@ case "$CMD" in
     stage="$active.restore-$stamp"
     old="$active.before-restore-$stamp"
     [ ! -e "$stage" ] && [ ! -e "$old" ] || die "restore staging paths already exist"
+    owner=$(stat -c %u:%g "$active") # validated: owned by FLH_UID
     compose stop
     (cd "$backup" && sha256sum --quiet -c SHA256SUMS) || die "backup checksums do not match; nothing was changed (the service is stopped)"
     mkdir -m 700 "$stage"
@@ -293,6 +320,10 @@ case "$CMD" in
     mv "$active" "$old"
     mv "$stage" "$active" || { mv "$old" "$active"; die "could not move the restored copy into place; the original was put back"; }
     echo "flh-daily: restored $backup into $active; the previous data is kept at $old"
+    # /readyz cannot tell that the service may not write the restored files (a
+    # read-only or foreign-owned backup restores that way): check before starting.
+    python3 -I "$REPO/scripts/release/restore_write_check.py" --uid "${owner%:*}" --gid "${owner#*:}" "$active" \
+      || die "the service could not write the restored database, so it was not started. Make $active and its app.db files writable by uid ${owner%:*} (for example chmod 600 and chown), check again with: python3 -I $REPO/scripts/release/restore_write_check.py --uid ${owner%:*} --gid ${owner#*:} $active, then run: flh-daily.sh start"
     compose up -d --force-recreate
     wait_healthy
     ;;

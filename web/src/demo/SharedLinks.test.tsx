@@ -193,4 +193,76 @@ describe("coming back focuses the control that left the screen", () => {
     const heading = await conceptHeading();
     await waitFor(() => expect(heading).toHaveFocus());
   });
+
+  it("focuses the Concept heading when the control the entry remembers is not on the page", async () => {
+    await renderDemo("/#concept=12");
+    await conceptHeading();
+    press("View source record #9 for unit #12");
+    await sourceHeading();
+    window.history.back();
+    await conceptHeading();
+    await waitFor(() => expect(screen.getByRole("button", { name: "View source record #9 for unit #12" })).toHaveFocus());
+    // An entry from an older build remembers a control id this build does not have.
+    window.history.replaceState({ ...window.history.state, flhFocus: "library-source-gone-12" }, "");
+    window.history.forward();
+    await sourceHeading();
+    window.history.back();
+    const heading = await conceptHeading();
+    await waitFor(() => expect(heading).toHaveFocus());
+  });
+});
+
+// The start screen has no single heading of its own: when the way back leads
+// there and neither the control that left it nor the result or example the
+// visitor came back from is on the page, focus goes to the heading of what is
+// shown instead of the page body (FLH-153).
+describe("when the way back leads to the start and its control is gone, a heading takes focus", () => {
+  const examplesHeading = () => screen.getByRole("heading", { level: 2, name: "Start with an example" });
+  const searchHeading = () => screen.getByRole("heading", { level: 2, name: "Or search the library" });
+
+  it("focuses the examples heading after leaving a Concept this build lacks", async () => {
+    await renderDemo("/#concept=999");
+    await screen.findByText(/This link names Concept #999/);
+    press(/^← Back to/);
+    await firstCard();
+    await waitFor(() => expect(examplesHeading()).toHaveFocus());
+    expect(window.location.hash).toBe("");
+  });
+
+  it("focuses the search heading when the link's search does not list its Concept", async () => {
+    await renderDemo("/#q=il+faut&concept=12");
+    await conceptHeading();
+    press(/^← Back to/);
+    await screen.findByRole("button", { name: "subjunctive after « il faut que »" });
+    expect(screen.queryByRole("button", { name: "the pronouns y and en" })).toBeNull();
+    await waitFor(() => expect(searchHeading()).toHaveFocus());
+    expect(window.location.hash).toBe("#q=il+faut");
+  });
+
+  it("focuses the search heading when the search failed while the visitor was away", async () => {
+    await renderDemo();
+    await firstCard();
+    const field = screen.getByLabelText("Search learned material");
+    fireEvent.change(field, { target: { value: "il faut" } });
+    fireEvent.submit(field.closest("form")!);
+    await screen.findByRole("button", { name: "subjunctive after « il faut que »" });
+    press("subjunctive after « il faut que »");
+    await conceptHeading(/subjunctive after « il faut que »/);
+    // A reload of the Concept while the search fails; its entry and trail are kept.
+    cleanup();
+    demoServer({ fail: { "/knowledge-library/concepts": 503 } });
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    await conceptHeading(/subjunctive after « il faut que »/);
+    press(/^← Back to/);
+    expect(await screen.findByRole("alert")).toHaveTextContent("(503)");
+    await waitFor(() => expect(searchHeading()).toHaveFocus());
+    expect(window.location.hash).toBe("#q=il+faut");
+  });
+
+  it("still focuses the result the visitor came back from when it is listed", async () => {
+    await renderDemo("/#q=il+faut&concept=1");
+    await conceptHeading(/subjunctive after « il faut que »/);
+    press(/^← Back to/);
+    await waitFor(() => expect(screen.getByRole("button", { name: "subjunctive after « il faut que »" })).toHaveFocus());
+  });
 });

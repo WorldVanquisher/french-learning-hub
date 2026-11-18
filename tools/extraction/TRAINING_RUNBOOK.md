@@ -168,7 +168,7 @@ the steps below:
 
 ```sh
 cd tools/extraction
-python3 -B -m unittest discover -s tests -t tests                      # standard-library tests (57, 7 skipped)
+python3 -B -m unittest discover -s tests -t tests                      # standard-library tests (98, 7 skipped, 1 expected failure)
 TINY_SFT=OUT/sft-sample.jsonl python3 -B -m unittest discover -s tests -t tests   # + backend tests (needs requirements-train.txt)
 python3 -B scripts/check_tokenizer.py qwen3.5-4b-851bf6e8 OUT/sft-train.jsonl --profile qwen3.5-4b --max-length 1280
 # Profile vs the checkpoint's own small files (template, masking text, LoRA targets on the real weight names);

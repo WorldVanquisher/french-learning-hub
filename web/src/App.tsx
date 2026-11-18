@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { AnnotationInspector } from "./pages/AnnotationInspector";
-import { ExperimentDashboard } from "./pages/ExperimentDashboard";
+import { lazy, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import { Listening } from "./pages/Listening";
 import { Reading } from "./pages/Reading";
@@ -8,7 +6,8 @@ import { Writing } from "./pages/Writing";
 import { Speaking } from "./pages/Speaking";
 import { MistakeNotebook, type NotebookMode } from "./pages/MistakeNotebook";
 import { HOME_SECTIONS, LearningHome, type HomeSection, type HomeTarget } from "./pages/LearningHome";
-import { MockExam } from "./pages/MockExam";
+import { LazySection } from "./LazySection";
+import { AnnotationInspector } from "./pages/AnnotationInspector";
 import type { SourceOpen } from "./types/notebook";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
 import { ReviewQueue, type ReviewResume } from "./pages/ReviewQueue";
@@ -19,6 +18,16 @@ import { LanguageSelect, LocaleProvider, useI18n } from "./i18n";
 import { ExplanationLanguageProvider, ExplanationLanguageSelect } from "./explanationLanguage";
 import { ThemeSelect } from "./theme";
 import { isKeptView, ORIGIN_TRAIL, trailVars, VIEW_COPY, VIEWS, type KeptView, type Origin, type View } from "./workbenchViews";
+import { addressFor, DEFAULT_VIEW, NO_LIBRARY_SEARCH, parseAddress, sameLibrarySearch, sectionHash, type Address, type LibraryAddress } from "./sectionAddress";
+import { useNewerVersion, VersionNotice } from "./freshness";
+import { ContinueLearning, type ContinueItem } from "./pages/ContinueLearning";
+
+// Optional sections load on first use (their own files), so the first visit
+// downloads and runs less: the Mock Exam and the Experiment Dashboard. (The
+// Annotation Inspector stays in the main file: a unit inspection opened from a
+// record uses part of it.)
+const MockExam = lazy(() => import("./pages/MockExam").then((m) => ({ default: m.MockExam })));
+const ExperimentDashboard = lazy(() => import("./pages/ExperimentDashboard").then((m) => ({ default: m.ExperimentDashboard })));
 
 // The learning home lists the seven sections, then the Mock Exam.
 const HOME_WITH_EXAM: { target: HomeTarget | "exam"; title: HomeSection["title"]; body: HomeSection["body"]; action: HomeSection["action"] }[] = [
@@ -61,14 +70,30 @@ export default function App() {
 
 function Workbench() {
   const { t } = useI18n();
-  const [view, setView] = useState<View>("review");
+  const newer = useNewerVersion();
+  // The section comes from the address (sectionAddress.ts), so a reload
+  // reopens it; an empty or unknown fragment opens the default section.
+  const [initialAddress] = useState<Address>(() => {
+    const a = parseAddress(window.location.hash);
+    return a === "unknown" ? { view: DEFAULT_VIEW } : a;
+  });
+  const initialView = initialAddress.view;
+  const [view, setView] = useState<View>(initialView);
+  // The library's keyword search as the address shows it, and a search the
+  // address asked the library to show (at start, or after Back/Forward or an
+  // edited address); the nonce makes a repeated request apply again.
+  const [librarySearch, setLibrarySearch] = useState<LibraryAddress>(() => initialAddress.library ?? NO_LIBRARY_SEARCH);
+  const [librarySearchRequest, setLibrarySearchRequest] = useState<(LibraryAddress & { nonce: number }) | null>(() =>
+    initialAddress.library && !sameLibrarySearch(initialAddress.library, NO_LIBRARY_SEARCH) ? { ...initialAddress.library, nonce: 0 } : null,
+  );
+  const keepLibrarySearch = useCallback((next: LibraryAddress) => setLibrarySearch((prev) => (sameLibrarySearch(prev, next) ? prev : next)), []);
   // Views kept mounted once opened (KEPT_VIEWS): Learning Records keeps its
   // record, filters and drafts; the library its query and open Concept;
   // Listening and Reading a lesson's typed answers and reveal (never stored);
   // Writing an unsaved revision and an open mistake form; Speaking its takes'
   // audio (memory only); the Mistake Notebook its filter and retry session;
   // Mock Exam a running exam's choices and countdown.
-  const [mounted, setMounted] = useState<ReadonlySet<KeptView>>(() => new Set());
+  const [mounted, setMounted] = useState<ReadonlySet<KeptView>>(() => new Set(isKeptView(initialView) ? [initialView] : []));
   const keep = (v: View) => {
     if (isKeptView(v)) setMounted((prev) => (prev.has(v) ? prev : new Set(prev).add(v)));
   };
@@ -77,8 +102,8 @@ function Workbench() {
   const [readingOpen, setReadingOpen] = useState<{ lessonId: number; nonce: number; target?: { exerciseId: number; item: number; version: number } } | null>(null);
   // The learning home opens the notebook directly at Grammar or Vocabulary.
   const [notebookMode, setNotebookMode] = useState<{ mode: NotebookMode; nonce: number } | null>(null);
-  const [writingOpen, setWritingOpen] = useState<{ taskId: number; draftVersion: number; nonce: number } | null>(null);
-  const [speakingOpen, setSpeakingOpen] = useState<{ exerciseId: number; takeId: number; transcriptVersion: number; nonce: number } | null>(null);
+  const [writingOpen, setWritingOpen] = useState<{ taskId: number; draftVersion?: number; nonce: number } | null>(null);
+  const [speakingOpen, setSpeakingOpen] = useState<{ exerciseId: number; takeId?: number; transcriptVersion?: number; nonce: number } | null>(null);
   // The unit opened from a record, or null for the ordinary tab views.
   const [focus, setFocus] = useState<UnitTarget | null>(null);
   // Bumped on return so the record re-reads what may have changed elsewhere.
@@ -107,9 +132,11 @@ function Workbench() {
       ? { title: t("app.unitInspection.title"), subtitle: t("app.unitInspection.subtitle") }
       : { title: t(VIEW_COPY[view].title), subtitle: t(VIEW_COPY[view].subtitle) };
 
+  // The page title names the section, so history entries and bookmarks are
+  // readable.
   useEffect(() => {
-    document.title = t("app.documentTitle");
-  }, [t]);
+    document.title = t("app.documentTitleSection", { section: t(VIEW_COPY[view].tab) });
+  }, [t, view]);
 
   const show = (next: View) => {
     setFocus(null);
@@ -171,6 +198,16 @@ function Workbench() {
       show(target);
     }
   };
+  // continueWith opens the item "Continue where you left off" names, in its
+  // section, as that section's own list would.
+  const continueWith = (item: ContinueItem) => {
+    const n = ++nonce.current;
+    if (item.skill === "listening") setListeningOpen({ materialId: item.id, nonce: n });
+    else if (item.skill === "reading") setReadingOpen({ lessonId: item.id, nonce: n });
+    else if (item.skill === "writing") setWritingOpen({ taskId: item.id, nonce: n });
+    else setSpeakingOpen({ exerciseId: item.id, nonce: n });
+    show(item.skill);
+  };
   // goBack returns to the view a cross-view link left (ORIGIN_TRAIL), which
   // stayed mounted; a record also re-reads and gets keyboard focus back.
   const goBack = (from: Origin) => {
@@ -195,6 +232,52 @@ function Workbench() {
     setReturnEpoch((n) => n + 1);
   };
 
+  // The address follows the section (sectionAddress.ts). Another section adds a
+  // history entry; a new library search replaces the current one; an unknown
+  // fragment at start is corrected in place; an empty fragment already names the
+  // default section and stays empty.
+  const address = addressFor(view, librarySearch);
+  const addressedView = useRef<View | null>(null);
+  useEffect(() => {
+    const previous = addressedView.current;
+    addressedView.current = view;
+    const shown = parseAddress(window.location.hash);
+    if (shown !== "unknown" && shown.view === view && (view !== "library" || sameLibrarySearch(shown.library, librarySearch))) return;
+    if (previous === null || previous === view) window.history.replaceState(window.history.state, "", address);
+    else window.history.pushState(null, "", address);
+  }, [address, view, librarySearch]);
+  // Back and Forward reopen the section in the address. Returning to the view a
+  // cross-view link or a unit opened from a record left behaves like that
+  // view's own "Back" control (the record re-reads and gets focus back).
+  useEffect(() => {
+    const onPop = () => {
+      const parsed = parseAddress(window.location.hash);
+      const next = parsed === "unknown" ? DEFAULT_VIEW : parsed.view;
+      if (parsed === "unknown") window.history.replaceState(window.history.state, "", sectionHash(next));
+      if (parsed !== "unknown" && parsed.library && !sameLibrarySearch(parsed.library, librarySearch)) {
+        setLibrarySearch(parsed.library);
+        setLibrarySearchRequest({ ...parsed.library, nonce: ++nonce.current });
+      }
+      if (next === view) return;
+      if (origin && origin.on === view && ORIGIN_TRAIL[origin.from.kind].view === next) goBack(origin.from);
+      else if (focus && next === "records") backToRecord();
+      else {
+        show(next);
+        setTitleFocus((n) => n + 1);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  });
+
+  // After Back or Forward to another section, keyboard focus goes to the
+  // section's title, so the next Tab starts from the top of what is shown.
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const [titleFocus, setTitleFocus] = useState(0);
+  useEffect(() => {
+    if (titleFocus > 0) titleRef.current?.focus();
+  }, [titleFocus]);
+
   // Put keyboard focus back on the unit the reader left from, or the record.
   useEffect(() => {
     if (view !== "records" || !returnFocus) return;
@@ -209,13 +292,16 @@ function Workbench() {
     <div className="app">
       <header className="app-header">
         <div>
-          <h1>{copy.title}</h1>
+          <h1 ref={titleRef} tabIndex={-1}>
+            {copy.title}
+          </h1>
           <p className="subtitle">{copy.subtitle}</p>
         </div>
         <LanguageSelect />
         <ExplanationLanguageSelect />
         <ThemeSelect />
       </header>
+      <VersionNotice newer={newer} keepsDrafts />
       <nav className="view-tabs" aria-label={t("nav.label")}>
         {VIEWS.map((v) => (
           <button key={v} type="button" aria-pressed={view === v} onClick={() => show(v)}>
@@ -234,7 +320,12 @@ function Workbench() {
         />
       </Kept>
       <Kept view="library" shown={view} mounted={mounted}>
-        <KnowledgeLibrary openRequest={libraryOpen} onOpenRecord={(entryId) => openRecord(entryId, { kind: "library" })} />
+        <KnowledgeLibrary
+          openRequest={libraryOpen}
+          onOpenRecord={(entryId) => openRecord(entryId, { kind: "library" })}
+          searchRequest={librarySearchRequest}
+          onSearchChange={keepLibrarySearch}
+        />
       </Kept>
       <Kept view="listening" shown={view} mounted={mounted}>
         <Listening onOpenRecord={(entryId) => openRecord(entryId, { kind: "listening" })} openRequest={listeningOpen} />
@@ -248,9 +339,11 @@ function Workbench() {
       <Kept view="speaking" shown={view} mounted={mounted}>
         <Speaking onOpenRecord={(entryId) => openRecord(entryId, { kind: "speaking" })} openRequest={speakingOpen} />
       </Kept>
-      {view === "home" ? <LearningHome<HomeTarget | "exam"> sections={HOME_WITH_EXAM} onOpen={openHome} /> : null}
+      {view === "home" ? <LearningHome<HomeTarget | "exam"> sections={HOME_WITH_EXAM} onOpen={openHome} lead={<ContinueLearning onContinue={continueWith} />} /> : null}
       <Kept view="exam" shown={view} mounted={mounted}>
-        <MockExam onOpenRecord={(entryId) => openRecord(entryId, { kind: "exam" })} />
+        <LazySection>
+          <MockExam onOpenRecord={(entryId) => openRecord(entryId, { kind: "exam" })} />
+        </LazySection>
       </Kept>
       <Kept view="notebook" shown={view} mounted={mounted}>
         <MistakeNotebook
@@ -305,14 +398,14 @@ function Workbench() {
           <AnnotationInspector />
         )
       ) : view === "experiments" ? (
-        <ExperimentDashboard />
+        <LazySection>
+          <ExperimentDashboard />
+        </LazySection>
       ) : null}
     </div>
   );
 }
 
-
-// stayed mounted, so it shows its state as it was left.
 // Kept renders a KEPT_VIEWS view once it has been opened and hides it while
 // another view is shown, so its state survives the visit.
 function Kept({ view, shown, mounted, children }: { view: KeptView; shown: View; mounted: ReadonlySet<KeptView>; children: ReactNode }) {

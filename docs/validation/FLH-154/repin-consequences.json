@@ -1,0 +1,97 @@
+{
+ "schema": "flh154_repin_consequences_v1",
+ "prototype": "applied in a scratch copy only; the worktree keeps the pinned scorer",
+ "patch": "FLH-154/repin-proposal.patch (P1 D1/G5 quality+evaluate; P2 D2 degenerate outputs; P3 F5 validator sources)",
+ "digests": {
+  "scoring_version": [
+   "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd",
+   "aad51429669979843db83a6c81d463c68e5029e8c36b0b0940a9d6f0fbf0d6c2"
+  ],
+  "matrix_sha256": [
+   "b3f66edaf76b0886a82a76a0bcafef5a472e406d4f0d811b01eda3ba182e7a66",
+   "6643536f6f6d682ead1293df6b8ca2a8cff4913fa705b96910d8624f5bec5c1a"
+  ],
+  "experiment_manifest.manifest_sha256": [
+   "27a14f8b81fa6b1ffdb45479ada5ceed87c501f3d0a96483b27c5ffa0ac4a57a",
+   "27a14f8b81fa6b1ffdb45479ada5ceed87c501f3d0a96483b27c5ffa0ac4a57a"
+  ],
+  "experiment_manifest file fields that change": [
+   "comparison_matrix_sha256",
+   "scoring_version_sha256"
+  ],
+  "slice / inputs / prompts / shards / input-manifest": "unchanged"
+ },
+ "pipeline_outputs": {
+  "identical": 70,
+  "changed": [
+   "evidence/paired/paired-demo.json",
+   "evidence/parsing-fixture-compare.json",
+   "evidence/parsing-fixture-compare.md",
+   "evidence/shortcut/shortcut-repro.json",
+   "evidence/shortcut/shortcut-repro.md",
+   "experiment-manifest.json",
+   "slice/comparison-matrix.json",
+   "slice/comparison-matrix.md"
+  ]
+ },
+ "committed_files": {
+  "deploy/aws/sagemaker-extractor/readiness/comparison-matrix.json": {
+   "sha256_now": "cc59732ba134a3c010debf07f64aa6b8ea9cfaa9d5992c0eae465b7ad76fea75",
+   "sha256_after": "f5936f04cb7ed86dcd6f48b729decc664559a0899843a72dd9951080c0659da6",
+   "changes": true
+  },
+  "deploy/aws/sagemaker-extractor/readiness/comparison-matrix.md": {
+   "sha256_now": "3c5903d258aade91b9f50731ff04eceb0422635379416f0ee3a577dea99456d7",
+   "sha256_after": "6ed0f48b43407747b5a73e4277977bd30102a5d98047de8ff1f0be65c1314a0b",
+   "changes": true
+  },
+  "deploy/aws/sagemaker-extractor/readiness/experiment-manifest.json": {
+   "sha256_now": "752117345c29c5e81e585f236d7bba5adb1e1f4a706fe2f2940ca06933be0951",
+   "sha256_after": "e9d3aa7564edf2082f58f270e68b1b60d6143e706a817755bb72e87bf21dc51e",
+   "changes": true
+  },
+  "deploy/aws/sagemaker-extractor/readiness/input-manifest.json": {
+   "sha256_now": "34f52bef5f2dbd1138cdb9f92570012c47bf66973289a7d0c1b6414ea32437c3",
+   "sha256_after": "34f52bef5f2dbd1138cdb9f92570012c47bf66973289a7d0c1b6414ea32437c3",
+   "changes": false
+  },
+  "tools/extraction/review/review-sample-v1.jsonl": {
+   "sha256_now": "d49ff19e76b057858ce8debc88ed254727824d05ce79ca559e69be7fa239d1b7",
+   "sha256_after": "d49ff19e76b057858ce8debc88ed254727824d05ce79ca559e69be7fa239d1b7",
+   "changes": false
+  },
+  "tools/extraction/review/REVIEW_SHEET_V1.csv": {
+   "sha256_now": "b2bac68f67c7cbf82b31889ac1f5b2af3084290f288f8adbd3cd9c80dc80ac92",
+   "sha256_after": "b2bac68f67c7cbf82b31889ac1f5b2af3084290f288f8adbd3cd9c80dc80ac92",
+   "changes": false
+  }
+ },
+ "old_matrix_under_new_code": [
+  "scoring version aad514296699 differs from the matrix e5b4e012c563"
+ ],
+ "parsing_fixture_metric_shift": {
+  "frozen": {
+   "unit_f1": [
+    1.0,
+    0.927
+   ]
+  },
+  "rb": {
+   "unit_f1": [
+    1.0,
+    0.921
+   ]
+  },
+  "challenge_test": {
+   "heuristic_unit_f1": [
+    1.0,
+    0.931
+   ]
+  }
+ },
+ "degenerate_outputs_status_after": {
+  "null": "valid_nonconforming",
+  "{}": "valid_nonconforming",
+  "{\"units\": null}": "valid_nonconforming"
+ }
+}

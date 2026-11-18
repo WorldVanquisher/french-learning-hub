@@ -44,7 +44,9 @@ checked offline; **no real run has been performed**. Evidence:
   missing locally).
 - Inference rate and memory on `ml.g5.xlarge`, and whether 272 prompts fit in an hour.
 - The challenge, increment and probe references. All are machine-authored and
-  unreviewed; review packets v2 (25 items) and v3 (19 items) are open.
+  unreviewed; review packets v2 (25 items) and v3 (19 items) are open, and so is the
+  reviewer sample of the held-out references (`review/REVIEW_SAMPLE_V1.md`, 35 items,
+  8 disputed).
 - Human-judged unit F1 and false-claim rates. The decision needs ≥ 100 judged
   examples per system.
 
@@ -57,7 +59,11 @@ B=OUT/bin/extraction-render   # built by the pipeline
 bash scripts/comparison_pipeline.sh OUT
 # 1. Tokenizer files, then token lengths and masking (commands in OUT/evidence/asset-check.json).
 python3 -B scripts/check_model_assets.py --sums configs/qwen3.5-4b-851bf6e8.sha256 --dir "$D" --out OUT/assets.json
-# 2. Fill review/review-packet-v2.jsonl and review/review-packet-v3.jsonl (verdict, and for v3 decision_ok and label).
+# 2. Fill review/review-packet-v2.jsonl and review/review-packet-v3.jsonl (verdict, and for v3 decision_ok and label),
+#    and the reviewer sample through its sheet (review/REVIEW_SHEET_V1.md: intent, evidence and wording apart), then:
+python3 -B -m flh_extraction review-sheet import --packet review/review-sample-v1.jsonl --sheet OUT/my-review.csv \
+  --out OUT/review-sample-v1.filled.jsonl
+python3 -B -m flh_extraction review-agreement --packet OUT/review-sample-v1.filled.jsonl --out OUT/review-agreement
 # 3-8. AWS: deploy/aws/sagemaker-extractor/readiness/README.md (smoke, untuned shards, experiment, adapter shards).
 # 9. Current extractor, one paid request per input (owner decision; the provider model is recorded at run time):
 EXTRACTOR_PROVIDER=openai "$B" run -in OUT/slice/comparison-inputs.jsonl -out OUT/current-results.jsonl -max-requests 472 -confirm-paid-calls
@@ -68,10 +74,30 @@ python3 -B -m flh_extraction compare --matrix ../../deploy/aws/sagemaker-extract
   --slice OUT/slice/comparison-slice.jsonl --render "$B" --out OUT/compare --predictions \
   current_extractor=OUT/current-results.jsonl qwen3.5-4b-untuned=OUT/untuned.jsonl qwen3.5-4b-tuned=OUT/tuned.jsonl
 python3 -B -m flh_extraction decision-report --comparison OUT/compare.json --human OUT/human.json \
-  --review review/review-packet-v2.jsonl review/review-packet-v3.jsonl --losses exp/losses.jsonl \
+  --review review/review-packet-v2.jsonl review/review-packet-v3.jsonl OUT/review-sample-v1.filled.jsonl --losses exp/losses.jsonl \
   --run-manifest exp/run_manifest.json --input-manifest ../../deploy/aws/sagemaker-extractor/readiness/input-manifest.json \
   --out OUT/decision
 ```
+
+Before it, the DRAFT `experimental-report` (`--comparison OUT/compare.json --human-evidence OUT/human-evidence.json
+--review …`) gives an experimental preference at most, never a production GO. It needs per-system human
+`false_claims`, `unsupported_units` and `bilingual_mismatch` counts beside unit F1; missing evidence is
+PENDING (`docs/validation/FLH-154-part3-memo.md`). Since report v1 it also needs per-unit reviewer evidence
+(`fixtures/one_record_v1/CONTRACT.md`): build the queue from the same matrix, slice and predictions as `compare`,
+fill the template (source raised, claim true, Chinese the same) and pass both:
+
+```sh
+python3 -B -m flh_extraction reviewer-queue --matrix ../../deploy/aws/sagemaker-extractor/readiness/comparison-matrix.json \
+  --slice OUT/slice/comparison-slice.jsonl --render "$B" --scope-packet review/review-sample-v1.jsonl --out OUT/reviewer-queue --predictions \
+  current_extractor=OUT/current-results.jsonl qwen3.5-4b-untuned=OUT/untuned.jsonl qwen3.5-4b-tuned=OUT/tuned.jsonl
+# fill a copy of OUT/reviewer-queue.evidence-template.jsonl (yes / no per question, reviewer, date), then:
+python3 -B -m flh_extraction experimental-report --comparison OUT/compare.json --human-evidence OUT/human-evidence.json \
+  --review OUT/review-sample-v1.filled.jsonl --reviewer-queue OUT/reviewer-queue.json --reviewer-evidence OUT/reviewer-evidence.jsonl --out OUT/experimental
+```
+
+A unit without a complete review keeps the report PENDING; an explicit `no` excludes that system whatever
+its F1 or sample rates. The scope (here the review sample's ids in the slice) is an owner decision
+(`docs/validation/FLH-154-part4-memo.md`). `decision-report` is unchanged and does not read this evidence.
 
 `compare` refuses a slice or scoring code that differs from the matrix. If the
 scoring code changes deliberately, rebuild the matrix (`comparison-matrix`) and
@@ -84,7 +110,7 @@ section `semantic.human`).
 
 | Verdict | When |
 |---|---|
-| PENDING (exit 3) | a run is not performed, a human criterion is missing, or a review item has no verdict |
+| PENDING (exit 3) | a run is not performed or is incomplete (missing or duplicated predictions), a human criterion is missing, a review item has no verdict, or a disputed item has no stated position |
 | NO_WINNER (exit 1) | no system passes every exact gate, review rejects > 10 %, or the leader's human F1 lead is < 0.05 |
 | WINNER_FOR_OWNER_DECISION (exit 0) | exactly one eligible system leads on human unit F1 by ≥ 0.05 |
 | REFUSED (exit 1) | the comparison was refused (slice or scoring version differs) |

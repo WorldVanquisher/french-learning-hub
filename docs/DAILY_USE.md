@@ -239,10 +239,18 @@ bash scripts/daily/flh-daily.sh restore <FLH_DATA_DIR>.backups/flh-<UTC time>
 3. Renames the current data directory to `<FLH_DATA_DIR>.before-restore-<time>`.
    That copy is kept, never deleted.
 4. Moves the staged copy into place.
-5. Recreates the container **with the same settings file**.
+5. Checks that the service can write the restored files
+   (`scripts/release/restore_write_check.py`). `/readyz` alone passes on a
+   database the service may not write, and a backup kept read-only restores
+   read-only.
+6. Recreates the container **with the same settings file**.
 
 A checksum or integrity failure changes no data, but the service stays stopped
-until you run `start`. After a restore, check the records you expect.
+until you run `start`. When the write check fails, the restored data is
+already in place (the previous data kept aside) and the service stays
+stopped: make the files writable as the message says (for example `chmod 600`
+on `<FLH_DATA_DIR>/app.db*`), run the printed check again, then `start`.
+After a restore, check the records you expect.
 
 ### Health check [NAS]
 
@@ -585,6 +593,9 @@ provider, each once per click.
 3. **Send audio of take 1 for transcription…** shows what will be sent (length,
    size, type, provider). **Send audio** sends it once. The audio is not stored;
    if you reload the page it is gone, and you can still type the transcript.
+   If you still have the file, **Choose the same audio file again** takes it
+   back (only a file with the take's SHA-256) so you can play and transcribe
+   it. Saving the same audio twice keeps one take.
 4. Check the machine transcript. Correct what was misheard, but keep your own
    words, mistakes included. Then **Confirm as version 1**. A later correction
    is a new version; confirmed versions never change.
@@ -597,6 +608,14 @@ provider, each once per click.
 7. On an improvement, choose **Save this mistake…**, type how you would say it
    now, and **Save learning record**. The record names the exercise, take,
    transcript version and feedback, and links back with **← Back to Speaking**.
+8. Back on **Speaking**, **Speaking practice** counts your takes: only a take
+   whose latest checked transcript has feedback is completed; waiting, failed
+   and unknown requests are counted apart. **Next steps** gives one suggestion
+   per exercise with its reason (for example "the feedback suggests 2
+   improvements. Answer again using them."), and **Open** goes to that take.
+   **Attempts** in an exercise lists every take with its state and the report
+   that counts. **Download all attempts (NDJSON)** saves the metadata,
+   transcripts and feedback; there is no audio in it and no import.
 
 **Limitations:**
 - Feedback reads text. It cannot hear pronunciation, intonation or fluency, and

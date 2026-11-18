@@ -217,6 +217,34 @@ if [ -n "$backup" ] && (cd "$backup" && sha256sum --quiet -c SHA256SUMS) && [ "$
   && [ "$(stat -c %a "$backup")" = 700 ]; then pass "the backup has the data, a valid SHA256SUMS and mode 700"; else fail "backup contents"; fi
 grep -qE "compose --env-file .* stop" "$WORK/shim.log" && grep -qE "compose --env-file .* start" "$WORK/shim.log" \
   && pass "backup stops the running service and starts it again" || fail "backup stop/start"
+# A backup that fails partway: a 4 KiB file-size limit stops `cp` as a full disk
+# would. The service stays stopped (documented), but the wrapper must say so,
+# name the command to start again and keep the copy only as .incomplete.
+sleep 1 # backup directories are named by the second
+touch "$WORK/state/running"; : > "$WORK/shim.log"
+out=$( (cd "$WORK" && ulimit -c 0 && ulimit -f 4 && FLH_DAILY_ENV="$WORK/daily.env" bash "$W" backup) 2>&1); rc=$?
+echo "$out" >> "$WORK/outputs.log"
+inc=$(ls -d "$DATA.backups"/flh-*.incomplete 2> /dev/null | head -1)
+if [ $rc != 0 ] && grep -q "backup FAILED" <<< "$out" && grep -q "the service is stopped.*flh-daily.sh start" <<< "$out" && [ ! -f "$WORK/state/running" ] \
+  && [ -n "$inc" ] && [ ! -e "$inc/SHA256SUMS" ] && [ "$(ls -d "$DATA.backups"/flh-* | grep -vc incomplete)" = 1 ]; then
+  pass "a backup that fails partway says so, names the start command and keeps the copy only as .incomplete"
+else fail "failed backup :: rc=$rc inc=$inc :: $out"; fi
+rm -rf "$inc"
+# Two backups in the same second: the later one fails at its directory and must
+# not touch the earlier one. Valid backups are placed under the next seconds' names.
+now=$(date -u +%s); taken=()
+for i in 0 1 2 3; do
+  d="$DATA.backups/flh-$(date -u -d "@$((now + i))" +%Y%m%dT%H%M%SZ)"
+  [ -e "$d" ] || { cp -a "$backup" "$d"; taken+=("$d"); }
+done
+out=$(FLH_DAILY_ENV="$WORK/daily.env" bash "$W" backup 2>&1); rc=$?
+echo "$out" >> "$WORK/outputs.log"
+ok=1
+for d in "${taken[@]}"; do (cd "$d" && sha256sum --quiet -c SHA256SUMS) && [ ! -e "$d.incomplete" ] || ok=0; done
+[ $rc != 0 ] && [ $ok = 1 ] && grep -q "backup FAILED" <<< "$out" \
+  && pass "a backup that collides with an earlier one fails and leaves the earlier one untouched" \
+  || fail "same-second backup :: rc=$rc :: $out"
+rm -rf "${taken[@]}"
 sqlite3 "$DATA/app.db" "UPDATE t SET v = 'après';"
 cp -a "$backup" "$WORK/tampered"; echo x >> "$WORK/tampered/app.db"
 run "a backup whose checksum does not match is refused" 2 "checksums do not match" "$WORK/daily.env" restore "$WORK/tampered"
@@ -228,6 +256,14 @@ old=$(ls -d "$DATA".before-restore-* 2> /dev/null | head -1)
   && pass "restored data is active and the previous data is preserved" || fail "restore result"
 grep -q "^docker compose --env-file $WORK/daily.env up -d --force-recreate" "$WORK/shim.log" \
   && pass "restore recreates the container with the same settings file" || fail "restore recreate command"
+# A backup made read-only is restored read-only (cp -a): /readyz would pass and the
+# first write fail, so the service must not be started on it (FLH-152).
+cp -a "$backup" "$WORK/ro-backup"; chmod 444 "$WORK/ro-backup"/app.db*
+sleep 1 # restore paths carry a per-second timestamp
+: > "$WORK/shim.log"
+run "a read-only backup is restored but the service is not started" 2 "could not write the restored database" "$WORK/daily.env" restore "$WORK/ro-backup"
+grep -q "up -d --force-recreate" "$WORK/shim.log" && fail "the service was started on a read-only restore" || pass "no start after a failed write check"
+chmod 600 "$DATA"/app.db*
 
 # ---- v1.0 rehearsal: opt-in isolated project (FLH_COMPOSE_PROJECT + FLH_COMPOSE_OVERRIDE). ----
 grep -q "^docker compose -p\|^docker compose -f" "$WORK/shim.log" && fail "normal mode passes no -p/-f" || pass "normal mode passes no -p/-f (invocation unchanged)"

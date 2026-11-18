@@ -77,20 +77,30 @@ type SpeakingExerciseView struct {
 	Transcripts           []domain.SpeakingTranscript           // by take, then version
 	Feedback              []domain.SpeakingFeedback             // newest first
 	FeedbackRequests      []domain.SpeakingFeedbackRequest      // newest first
-	ExampleTranscript     string
-	Now                   time.Time
+	// ExampleTranscript is the set's example for this prompt, only while the
+	// stored prompt is the set's current one (PackStatus current).
+	ExampleTranscript string
+	// PackStatus compares the stored prompt with the embedded set.
+	PackStatus string
+	// TakeStates is each take's derived attempt state, by take ID.
+	TakeStates map[int64]string
+	Now        time.Time
 }
 
 // SpeakingExerciseSummary is a list row.
 type SpeakingExerciseSummary struct {
-	Exercise domain.SpeakingExercise
-	Takes    int
+	Exercise   domain.SpeakingExercise
+	PackStatus string
+	Takes      int
 }
 
 // SpeakingPromptView is one authored prompt and the exercise started from it, if any.
 type SpeakingPromptView struct {
 	Prompt            domain.SpeakingPrompt
 	StartedExerciseID *int64
+	// StartedPackStatus is the started exercise's PackStatus: changed when the
+	// learner answered an earlier wording of this prompt.
+	StartedPackStatus string
 }
 
 func (s *SpeakingService) prompt(id string) (domain.SpeakingPrompt, bool) {
@@ -108,15 +118,17 @@ func (s *SpeakingService) ListPrompts(ctx context.Context) ([]SpeakingPromptView
 	if err != nil {
 		return nil, err
 	}
-	started := map[string]int64{}
+	started := map[string]domain.SpeakingExercise{}
 	for _, e := range es {
-		started[e.PromptID] = e.ID
+		started[e.PromptID] = e
 	}
 	out := make([]SpeakingPromptView, 0, len(s.prompts.Prompts))
 	for _, p := range s.prompts.Prompts {
 		v := SpeakingPromptView{Prompt: p}
-		if id, ok := started[p.ID]; ok {
+		if e, ok := started[p.ID]; ok {
+			id := e.ID
 			v.StartedExerciseID = &id
+			v.StartedPackStatus = s.PackStatus(e)
 		}
 		out = append(out, v)
 	}
@@ -145,8 +157,8 @@ func (s *SpeakingService) GetExercise(ctx context.Context, id int64) (*SpeakingE
 	if err != nil {
 		return nil, err
 	}
-	v := &SpeakingExerciseView{Exercise: e, Now: s.now()}
-	if p, ok := s.prompt(e.PromptID); ok {
+	v := &SpeakingExerciseView{Exercise: e, Now: s.now(), PackStatus: s.PackStatus(e)}
+	if p, ok := s.prompt(e.PromptID); ok && v.PackStatus == domain.SpeakingPackCurrent {
 		v.ExampleTranscript = p.ExampleTranscript
 	}
 	if v.Takes, err = s.repo.ListTakes(ctx, id); err != nil {
@@ -167,6 +179,10 @@ func (s *SpeakingService) GetExercise(ctx context.Context, id int64) (*SpeakingE
 	if v.FeedbackRequests, err = s.repo.ListFeedbackRequests(ctx, id); err != nil {
 		return nil, err
 	}
+	v.TakeStates = make(map[int64]string, len(v.Takes))
+	for _, t := range v.Takes {
+		v.TakeStates[t.ID] = v.attempt(t).State
+	}
 	return v, nil
 }
 
@@ -182,21 +198,42 @@ func (s *SpeakingService) ListExercises(ctx context.Context) ([]SpeakingExercise
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, SpeakingExerciseSummary{Exercise: e, Takes: len(takes)})
+		out = append(out, SpeakingExerciseSummary{Exercise: e, PackStatus: s.PackStatus(e), Takes: len(takes)})
 	}
 	return out, nil
 }
 
 // AddTake stores a new take's metadata (never its audio). No provider call.
 func (s *SpeakingService) AddTake(ctx context.Context, exerciseID int64, t domain.SpeakingTake) (*SpeakingExerciseView, error) {
+	v, _, _, err := s.SaveTake(ctx, exerciseID, t)
+	return v, err
+}
+
+// SaveTake is AddTake that also names the take: the new one, or the existing
+// take with the same audio (true) when a save is sent again.
+func (s *SpeakingService) SaveTake(ctx context.Context, exerciseID int64, t domain.SpeakingTake) (*SpeakingExerciseView, domain.SpeakingTake, bool, error) {
 	t, err := domain.NormalizeSpeakingTake(t)
 	if err != nil {
-		return nil, err
+		return nil, t, false, err
 	}
-	if _, err := s.repo.AddTake(ctx, exerciseID, t, s.now()); err != nil {
-		return nil, err
+	saved, replay, err := s.repo.AddTake(ctx, exerciseID, t, s.now())
+	if err != nil {
+		return nil, saved, false, err
 	}
-	return s.GetExercise(ctx, exerciseID)
+	v, err := s.GetExercise(ctx, exerciseID)
+	return v, saved, replay, err
+}
+
+// PackStatus compares a stored prompt with the embedded set.
+func (s *SpeakingService) PackStatus(e domain.SpeakingExercise) string {
+	p, ok := s.prompt(e.PromptID)
+	switch {
+	case !ok:
+		return domain.SpeakingPackRemoved
+	case p.Fingerprint() != e.Fingerprint():
+		return domain.SpeakingPackChanged
+	}
+	return domain.SpeakingPackCurrent
 }
 
 // AddTranscript saves the learner's confirmed transcript as the take's next

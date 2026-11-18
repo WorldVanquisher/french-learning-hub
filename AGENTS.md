@@ -331,7 +331,12 @@ v1.0 personal-use release packaging:
 - `cmd/server -web-dir <dir>` serves the workbench at `/` and `/assets/`, the API
   under `/api` with the prefix stripped, and every root API route unchanged.
   Without the flag the server is API-only. There is no SPA fallback.
-- `/healthz` is liveness only; `/readyz` is bounded SQLite readiness.
+- `/healthz` is liveness only; `/readyz` is bounded SQLite readiness: ping plus a
+  write probe that writes nothing (`DELETE … WHERE 0` inside `BEGIN IMMEDIATE`/
+  `ROLLBACK`); a read-only
+  database is `503 not_ready` with `reason: storage_read_only` (public demo:
+  ping only). Every 5xx logs one `request failed:` line (route pattern, status,
+  `X-Request-Id`; never content).
 - Compose binds `127.0.0.1` only, fixes container `PORT`/`DB_PATH`, forwards only
   listed provider variables with existing defaults, and mounts `FLH_DATA_DIR`
   (default `data/release`). `docs/RELEASE.md` owns start/stop, backup/restore,
@@ -346,6 +351,12 @@ v1.0 personal-use release packaging:
 - `scripts/release/disk_preflight.sh` runs before the smoke and the packaged
   browser check: exit 3 (BLOCKED) when the work directory, `TMPDIR` or Docker's
   root lacks room. It writes only its own probe file and never cleans others'.
+- `python3 -I scripts/release/restore_write_check.py DATA_DIR [--uid N --gid N]`
+  runs after a restore and before the service starts (RELEASE.md Restore and
+  independent backup check, `flh-daily.sh restore`): `/readyz` passes on an
+  `app.db` the service may not write, while the first write fails. It writes
+  only inside a rolled-back transaction; run as another user it judges mode
+  bits and skips that probe.
 - Publishable metadata (commit messages, PR bodies, squash messages) carries no
   Claude/Anthropic co-author trailer or identity and no private `claude.ai` link;
   check it with `scripts/release/publish_metadata_check.py`.
@@ -649,6 +660,14 @@ Speaking v1 (private workbench):
   and comments about pronunciation or scores are refused as `invalid_output`.
   A mistake is a capture (`source: manual`) on explicit confirmation only.
   Never in the public demo.
+- Practice overview (`GET /speaking/practice`) and NDJSON export (`GET
+  /speaking/export`) are read-only and derived on every read: a take's
+  `state`, one queue item per exercise from its latest take, and counts in
+  which only `feedback_ready` on the latest confirmed version is completed.
+  The export never holds audio and has no import. The same audio SHA-256 in
+  one exercise replays the existing take (`take_conflict` if its metadata
+  differs). An exercise keeps its started wording; `pack_status` reports a
+  corrected set. Contract: `docs/ARCHITECTURE.md` §4.7, A.19.
 
 Mistake Notebook v1 (private workbench):
 

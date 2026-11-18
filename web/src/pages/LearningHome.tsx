@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useI18n, type MessageKey } from "../i18n";
 
 // Learning home (FLH sections v1): one page that names the seven learning
@@ -27,13 +28,17 @@ export const HOME_SECTIONS: HomeSection[] = [
 export function LearningHome<T extends string = HomeTarget>({
   sections = HOME_SECTIONS as unknown as { target: T; title: MessageKey; body: MessageKey; action: MessageKey }[],
   onOpen,
+  lead,
 }: {
   sections?: { target: T; title: MessageKey; body: MessageKey; action: MessageKey }[];
   onOpen: (target: T) => void;
+  // Shown before the sections (the workbench's "Continue where you left off").
+  lead?: ReactNode;
 }) {
   const { t } = useI18n();
   return (
     <main className="learning-home">
+      {lead}
       <section className="panel" aria-labelledby="learning-home-heading">
         <h2 id="learning-home-heading">{t("home.heading")}</h2>
         <p className="hint">{t("home.intro")}</p>

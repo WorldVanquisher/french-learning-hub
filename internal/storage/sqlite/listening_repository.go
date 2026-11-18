@@ -249,10 +249,12 @@ func (r *ListeningRepository) ReviseAuthoredScript(ctx context.Context, material
 
 // readScriptRevision reads revision n of a script (0: the latest transcript
 // version) with the newest completed authored exercise on it, and fingerprints
-// the stored JSON exactly as the import comparison reads it.
+// it as decoded (domain.ListeningRevisionFingerprint), the way the preview's
+// diff and the workbench read it: stored JSON the types do not carry cannot
+// make an unchanged script look updated.
 func readScriptRevision(ctx context.Context, q queryer, materialID int64, revision int) (domain.ListeningScriptRevision, error) {
 	var out domain.ListeningScriptRevision
-	query := `SELECT t.id, t.segments, e.id, e.content FROM listening_transcripts t
+	query := `SELECT t.id, e.id FROM listening_transcripts t
 		JOIN listening_exercises e ON e.transcript_id = t.id AND e.material_id = t.material_id
 		WHERE t.material_id = ? AND e.generator = ? AND e.status = ? AND t.version = `
 	args := []any{materialID, domain.ListeningAuthoredGenerator, domain.ListeningExerciseCompleted}
@@ -264,21 +266,23 @@ func readScriptRevision(ctx context.Context, q queryer, materialID int64, revisi
 		args = append(args, revision)
 	}
 	var transcriptID, exerciseID int64
-	var rawSegments, rawContent string
-	err := q.QueryRowContext(ctx, query+` ORDER BY e.id DESC LIMIT 1`, args...).Scan(&transcriptID, &rawSegments, &exerciseID, &rawContent)
+	err := q.QueryRowContext(ctx, query+` ORDER BY e.id DESC LIMIT 1`, args...).Scan(&transcriptID, &exerciseID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return out, fmt.Errorf("%w: listening script revision", domain.ErrNotFound)
 	}
 	if err != nil {
 		return out, fmt.Errorf("read script revision: %w", err)
 	}
-	if out.Fingerprint, err = domain.ListeningScriptFingerprint([]byte(rawSegments), []byte(rawContent)); err != nil {
-		return out, err
-	}
 	if out.Transcript, err = readTranscript(ctx, q, `id = ?`, transcriptID); err != nil {
 		return out, err
 	}
 	if out.Exercise, err = readExercise(ctx, q, `id = ?`, exerciseID); err != nil {
+		return out, err
+	}
+	if out.Exercise.Content == nil {
+		return out, fmt.Errorf("read script revision: exercise %d has no content", exerciseID)
+	}
+	if out.Fingerprint, err = domain.ListeningRevisionFingerprint(out.Transcript.Segments, *out.Exercise.Content); err != nil {
 		return out, err
 	}
 	out.Revision = out.Transcript.Version

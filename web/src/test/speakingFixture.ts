@@ -24,7 +24,8 @@ export const prompts: SpeakingPrompt[] = [
     ],
     "seconds_min": 30,
     "seconds_max": 90,
-    "started_exercise_id": null
+    "started_exercise_id": null,
+    "started_pack_status": null
   },
   {
     "id": "sp-demande-renseignements",
@@ -40,7 +41,8 @@ export const prompts: SpeakingPrompt[] = [
     ],
     "seconds_min": 30,
     "seconds_max": 90,
-    "started_exercise_id": null
+    "started_exercise_id": null,
+    "started_pack_status": null
   },
   {
     "id": "sp-changement-programme",
@@ -56,7 +58,8 @@ export const prompts: SpeakingPrompt[] = [
     ],
     "seconds_min": 30,
     "seconds_max": 90,
-    "started_exercise_id": null
+    "started_exercise_id": null,
+    "started_pack_status": null
   }
 ];
 

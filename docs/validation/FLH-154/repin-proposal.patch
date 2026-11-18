@@ -1,0 +1,76 @@
+diff -ru a/tools/extraction/flh_extraction/comparison.py b/tools/extraction/flh_extraction/comparison.py
+--- a/tools/extraction/flh_extraction/comparison.py
++++ b/tools/extraction/flh_extraction/comparison.py
+@@ -112,8 +112,12 @@
+                 row["status"] = "missing_prediction"
+                 row["detail"] = "prediction not validated"
+             elif v.get("valid"):
+-                extra = [f for f in strict_schema_findings(p.get("output_text")) if "extra_key" in f or "missing_key" in f]
+-                if extra:
++                found = strict_schema_findings(p.get("output_text"))
++                extra = [f for f in found if "extra_key" in f or "missing_key" in f]
++                degenerate = [f for f in found if f in ("top_level_not_object", "units_not_list")]
++                if degenerate:                                   # proposal D2: null, {}, {"units": null}
++                    row["status"], row["detail"] = "valid_nonconforming", degenerate
++                elif extra:
+                     row["status"], row["detail"] = "valid_extra_keys", extra
+                 else:
+                     row["status"] = "valid_units" if v["units"] else "valid_empty"
+diff -ru a/tools/extraction/flh_extraction/evaluate.py b/tools/extraction/flh_extraction/evaluate.py
+--- a/tools/extraction/flh_extraction/evaluate.py
++++ b/tools/extraction/flh_extraction/evaluate.py
+@@ -180,7 +180,7 @@
+             zero_ok += int(not pred_units and out is not None and out["valid"])
+         else:
+             nonzero_refs += 1
+-            abstained_wrongly += int(not pred_units)
++            abstained_wrongly += int(not pred_units and out is not None and out["valid"])   # proposal D1: valid empty only
+         ok = out is not None and out["valid"] and not errs and len(pred_units) == len(ref_units)
+         perfect += int(ok)
+         tot.update(errs)
+diff -ru a/tools/extraction/flh_extraction/matrix.py b/tools/extraction/flh_extraction/matrix.py
+--- a/tools/extraction/flh_extraction/matrix.py
++++ b/tools/extraction/flh_extraction/matrix.py
+@@ -121,6 +121,10 @@
+     rep = {"schema": "flh_extractor_comparison_report_v1", "matrix_sha256": matrix["matrix_sha256"], "systems": {}, "refused": []}
+     if comparison.sha256_file(slice_path) != matrix["slice"]["files"]["comparison-slice.jsonl"]["sha256"]:
+         rep["refused"].append("slice hash differs from the matrix")
++    root = Path(__file__).resolve().parents[3]                      # proposal F5: the validator sources are pinned too
++    if all((root / p).is_file() for p in VALIDATOR_SOURCES) and \
++            {p: comparison.sha256_file(root / p) for p in VALIDATOR_SOURCES} != matrix.get("validator_sources"):
++        rep["refused"].append("validator sources differ from the matrix")
+     sv = comparison.scoring_version()["sha256"]
+     if sv != matrix["scoring_version"]["sha256"]:
+         rep["refused"].append(f"scoring version {sv[:12]} differs from the matrix {matrix['scoring_version']['sha256'][:12]}")
+diff -ru a/tools/extraction/flh_extraction/quality.py b/tools/extraction/flh_extraction/quality.py
+--- a/tools/extraction/flh_extraction/quality.py
++++ b/tools/extraction/flh_extraction/quality.py
+@@ -144,10 +144,12 @@
+     # Split / merge / duplicate and the semantic summary (heuristic or human, never summed).
+     sem = {"heuristic": Counter(), "human": Counter()}
+     counts = {"heuristic": Counter(), "human": Counter()}
++    invalid_ref_units = 0
+     for r in refs:
+         v = res.get(r["id"])
+         pred = v["units"] if v and v.get("valid") else []
+         if not (v and v.get("valid")):
++            invalid_ref_units += len(r["expected"]["units"])   # proposal D1: missed, not left out
+             continue
+         human = judgments.get(r["id"])
+         basis = "human" if human else "heuristic"
+@@ -160,10 +162,14 @@
+     rep["semantic"] = {}
+     for b in ("heuristic", "human"):
+         c = counts[b]
++        extra = invalid_ref_units if c["examples"] else 0
+         p = c["matched"] / c["pred_units"] if c["pred_units"] else None
+-        rc = c["matched"] / c["ref_units"] if c["ref_units"] else None
++        rv = c["matched"] / c["ref_units"] if c["ref_units"] else None
++        rc = c["matched"] / (c["ref_units"] + extra) if c["ref_units"] + extra else None
+         rep["semantic"][b] = {"basis": b, "examples": c["examples"], "unit_precision": _r(p), "unit_recall": _r(rc),
+                               "unit_f1": _r(2 * p * rc / (p + rc)) if p and rc else None,
++                              "reference_units_of_non_scorable_rows": extra,
++                              "unit_recall_valid_rows": _r(rv), "unit_f1_valid_rows": _r(2 * p * rv / (p + rv)) if p and rv else None,
+                               "errors": dict(sorted((k, v) for k, v in sem[b].items()))}
+ 
+     # Grounding (heuristic; human "supported" judgments separately).

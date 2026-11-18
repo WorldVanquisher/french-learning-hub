@@ -113,6 +113,22 @@ safeguard, not a reason to keep links.
 filesystem-level aliases created by someone with write access to the
 directory. Keep the release directory read-only.
 
+### Caching, page identity and newer versions (demo-refresh frontend batch)
+
+| What | Behaviour |
+| --- | --- |
+| `index.html` | `Cache-Control: no-cache` (revalidated on every visit) |
+| `/assets/name-XXXXXXXX.ext` (Vite's content-hashed names) | `Cache-Control: public, max-age=31536000, immutable`; a rebuild changes the name |
+| Any other `/assets/…` file | `no-cache` |
+| A missing asset | `404` with no caching header (never cached) |
+| Page identity | `package.sh` builds with `VITE_FLH_BUILD_ID=<package name>` and `VITE_FLH_API_BASE=/api`: `<meta name="flh-build">`, `<html data-flh-build>` and `RELEASE.json` `web` (`build_id`, `api_base`, `entry`, `index_sha256`) name the same package |
+| Startup | `index.html` shows a "Loading…" line until the page renders, and after 8 seconds says to check the connection and reload (plain HTML and CSS, no JavaScript) |
+| A tab left open across an upgrade | When the tab is shown again (or a lazily loaded part fails to load), the page compares its entry script with the one `GET /` now names. If they differ, it shows "A newer version … Reload". It never reloads by itself |
+
+`VITE_FLH_API_BASE` must be a same-origin path; anything else (a scheme, a
+host, `//`) stops the build. The server has no cross-origin access, and the
+page never calls another origin.
+
 ## Domain fingerprint (v3)
 
 The manifest's `domain_fingerprint` (`version: flh076_domain_fingerprint_v3`)
@@ -248,10 +264,12 @@ refused, with or without copied provenance.
 artifact from the catalog of that time: 20 positions in 3 POSTs. Its work directory has now used both of its
 readiness probes, so running `embed` again there is refused. A new artifact,
 for example for another deployment id, needs a new work directory and its own
-budget decision. Run it from the repository root:
+budget decision. Run it from the repository root, with `E5` set to your E5
+service's `/v1` base URL (a loopback or private address; it is not recorded
+here):
 
 ```sh
-go build -o /tmp/flh-prepare ./scripts/demo/flh073/prepare && DEP='multilingual-e5-base@d128750597153bb5987e10b1c3493a34e5a4502a/flh_e5_role_prefix_v1/float16/singleton_v1/5a3e23f28a05baff' && /tmp/flh-prepare embed -work "$HOME/flh076/e5-work" -base-url http://100.118.109.6:8765/v1 -deployment "$DEP" -dimensions 768 -allow-live && /tmp/flh-prepare import -work "$HOME/flh076/e5-work" -out "$HOME/flh076/artifact-e5" && bash scripts/demo/flh076/package.sh --artifact "$HOME/flh076/artifact-e5" --revision "<YOUR-REVISION-LABEL>" --label rc2 --out "$HOME/flh076/packages" --expected-deployment "$DEP"
+go build -o /tmp/flh-prepare ./scripts/demo/flh073/prepare && DEP='multilingual-e5-base@d128750597153bb5987e10b1c3493a34e5a4502a/flh_e5_role_prefix_v1/float16/singleton_v1/5a3e23f28a05baff' && /tmp/flh-prepare embed -work "$HOME/flh076/e5-work" -base-url "$E5" -deployment "$DEP" -dimensions 768 -allow-live && /tmp/flh-prepare import -work "$HOME/flh076/e5-work" -out "$HOME/flh076/artifact-e5" && bash scripts/demo/flh076/package.sh --artifact "$HOME/flh076/artifact-e5" --revision "<YOUR-REVISION-LABEL>" --label rc2 --out "$HOME/flh076/packages" --expected-deployment "$DEP"
 ```
 
 If the service reports another deployment id (for example after a library
@@ -636,6 +654,15 @@ Direct links and accessibility:
   the control's id (`flhFocus`) when it is left.
 - Otherwise, for example after a direct link or in a browser that does not
   focus a clicked button, the heading is focused, as when opening.
+- The start screen has no heading of its own. Coming back to it when neither
+  the control that left it nor the result or example the visitor came back
+  from is on the page focuses the heading of what is shown: "Or search the
+  library" when a search is shown, otherwise "Start with an example". This
+  covers three cases: a missing Concept's back, a link whose search does not
+  list its Concept (`#q=il+faut&concept=12`), and a search that failed while
+  the visitor was away. Before FLH-153, focus was left on the page body in
+  all three. A remembered control that is on the page but cannot take focus
+  also falls back to the heading.
 - **Before:** the evidence → Concept and Concept → example returns focused the
   heading, and Back past a search left focus on the page body.
 
@@ -653,6 +680,64 @@ tools: `validate-release.sh`, `smoke_package.sh`, `deploy/ctl.sh`, the
 write probe and the browser suites. `negative_controls.sh` proves that a
 wrong identity, an accepted write and a build that mishandles a malformed
 link are detected. See `scripts/validation/demo_candidate/README.md`.
+
+## Searching first, and the learner's own direction (FLH-153 follow-up)
+
+- **Results follow the search form.** In the demo, the paragraphs on how
+  search works (terms, scope, semantic and hybrid) come after the results
+  instead of inside the form. The "Public demo" note stays next to the
+  modes. Before, 700 px of explanation separated the Search button from the
+  first result on a 390 px phone.
+- **A submitted search shows what it found.** Right after a submitted
+  search, the page scrolls just far enough to bring the first result into
+  view, or the no-match help, or the error. Focus stays in the form. The
+  same happens for a search started from the no-match suggestions. A search
+  opened by a link, a reload, Back or Forward does not scroll. Before, Search
+  changed nothing on screen in any configuration, desktop included.
+- **The learner's text keeps its own direction.** On the example and the
+  evidence, the original question is shown with `dir="auto"`, and so is the
+  context (an isolating `<bdi>` in the evidence's context row). A question
+  that starts in a right-to-left script then reads in its own order.
+  French, English and Chinese are unchanged.
+- **The private workbench is unchanged.**
+- **Checks:** `scripts/validation/demo_ux/accept_matrix.mjs` ("search: the
+  first result is on screen after Search", "rtl: …").
+
+## Supported addresses (FLH-153 part 3)
+
+**The page is `/`.** The server serves no other page (there is no SPA
+fallback), and the demo boundary refuses every other path with 404. Every
+screen is named by the URL fragment, which the browser never sends to the
+server. `web/src/demo/deepLink.ts` is the parser.
+
+| Address | Screen |
+|---|---|
+| `/` | the start: examples, then the search with every Concept listed |
+| `/#q=<words>` (optionally `&state=active\|orphaned\|retired`) | the start with that keyword search |
+| `/#mode=semantic\|hybrid&preset=<id>` (optionally `&state=…`) | the start with a preset search; `<id>` must be one of the build's presets |
+| `/#example=<key>` | a guided example (`y-en`, `il-faut-venir`, `en-train-de`) |
+| `/#concept=<id>` | a Concept |
+| `/#concept=<id>&unit=<id>` | a unit's source evidence, reached from that Concept |
+| any search before a Concept or evidence (`/#q=il+faut&concept=1`) | the same screen; its back action returns to that search |
+| `example=<key>` before a Concept or evidence (`/#example=y-en&concept=12&unit=12`) | the same screen; its back actions return to that example |
+
+**Rules:**
+- **IDs:** 1–9 digits, no leading zero.
+- **Queries:** at most 200 characters. Percent-encoded and raw Unicode are the
+  same query.
+- **Duplicates:** the first value of a repeated parameter wins.
+- **Canonical address:** on opening, the address is rewritten to the
+  screen's own link.
+
+**Anything else** opens the start with "That link does not match anything in
+this demo". That covers an unknown key or preset, a malformed or over-long
+ID, an over-long query, `unit` without `concept`, and a link cut short. A
+well-formed link to an ID this build lacks opens that screen's "not in this
+demo" state with a working example.
+
+**Behaviour checked for every row:** direct open, reload, a move, Back
+(focus on the control used), Forward, and Back out of the demo, at 390 and
+1280 px (`docs/validation/FLH-153-routes-part3.md`).
 
 ## Real-E5 candidate (owner only)
 

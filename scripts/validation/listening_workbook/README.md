@@ -90,3 +90,67 @@ Recorded on 2026-11-12 (Chromium 131.0.6778.33, Playwright 1.49.1): this tree
 notice, re-import `409 script_conflict`, the old wording after reveal). Not
 covered: Safari, Firefox, a real phone (Chromium phone emulation only), and
 the old part in Chinese.
+
+## Upgrade rehearsal: a pre-revision database through the revision build
+
+`upgrade_rehearsal.py` (FLH-152) rehearses the upgrade on disposable synthetic
+databases, through the real HTTP API, and writes everything into one new
+work directory outside the repository:
+
+1. A fresh database from the OLD and from the NEW build: same migration
+   ledger and schema (the revision build adds no migration).
+2. **seed**: the OLD server (pack before the 2026-11-11 corrections, e.g.
+   `c53b42c`) imports every script, saves mistakes on `u05` questions 4 and 2,
+   and prepares a YouTube lesson through a loopback fake Responses endpoint
+   (fake key) with a mistake on it.
+3. **snapshot**: the RELEASE.md Backup block; the backup is made read-only and
+   described in `evidence/snapshot-manifest.json` (checksums, row counts, ids).
+4. **run-a**: a copy is upgraded and exercised; each check is numbered by
+   FLH-152 item: nothing written on start; preview and confirm; the old
+   mistake keeps revision 1's question and evidence; a new mistake links
+   revision 2; resent and simultaneous confirmations add one revision;
+   stale previews (same build, and after a real pack change) write nothing;
+   unchanged-catalog replay; question ids and Notebook links after a
+   reordering of options; the YouTube lesson and its preparation unchanged.
+5. **restore**: the RELEASE.md Restore block from the snapshot; **run-b**
+   repeats the flow and must equal run A; the snapshot still verifies.
+
+The changed pack comes from a VARIANT build: this tree with one question's
+options rotated in every script and one line of `ls-wb1-u03` extended, built
+from a copy of the sources inside the work directory (`-buildvcs=false`), or
+passed with `--variant-server`.
+
+```sh
+python3 -I scripts/validation/listening_workbook/upgrade_rehearsal.py \
+  --old-server $OLD/server --new-server $NEW/server /abs/scratch/rehearsal
+# -> summary.tsv (one line per stage), evidence/{binaries,seed-facts,snapshot-manifest,
+#    checks-run-a,checks-run-b,observations-run-*}.json, logs/, backups/<snapshot>/, bin/variant-server
+```
+
+The Restore block copies with `cp -a`, so a restored database keeps the
+backup's mode. The harness makes the restored files writable (0600) and says
+so: a read-only `app.db` passes `/readyz` and every read, but each write
+answers 500 and nothing is logged.
+
+`upgrade_walk.py` + `upgrade_walk.mjs` then walk the same upgrade at phone
+width (390×844, touch) in English and Simplified Chinese, each on a writable
+copy of that snapshot served by the NEW build: list → notice (no update
+button) → preview → **Not now** (focus back on **Review the changes**,
+nothing written) → preview → update (the outcome on screen and focused) →
+reload → the old mistake opens revision 1. Then two previews are left open,
+the harness swaps the server to the VARIANT build on the same port, another
+client updates one lesson: confirming the other shows the stale-preview
+error and the new pack's changes, confirming the first shows the "already"
+message. The revision copy must appear character for character.
+
+```sh
+python3 -I scripts/validation/listening_workbook/upgrade_walk.py \
+  /abs/scratch/rehearsal/backups/flh-<stamp> $NEW/server \
+  /abs/scratch/rehearsal/bin/variant-server $NEW/web-dist /abs/scratch/walk mytag
+# -> walk/results-mytag.json, walk/shots-mytag/phone-{en,zh}-A2…S5.png
+```
+
+Recorded on 2026-11-17 (Chromium 131.0.6778.33): rehearsal 67/67 checks in
+both runs; walk 63/63 with this tree's workbench, 55/63 with the `198b23f`
+workbench (the outcome off-screen after an update, focus lost after **Not
+now**). Synthetic databases only: no real backup was used.

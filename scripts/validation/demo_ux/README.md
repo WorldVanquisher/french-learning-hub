@@ -27,6 +27,8 @@ evidence ("Step 4 of 4"). Then the navigation contract:
 
 **Search**
 - The address names the search.
+- Right after Search, the first result is on screen and the search field
+  keeps focus, in view.
 - A reload on a Concept keeps that Concept and the way back to the search.
 - Going back shows the results with the query, and focus returns to the
   Concept that was opened.
@@ -42,6 +44,10 @@ evidence ("Step 4 of 4"). Then the navigation contract:
 - Coming back focuses the control that left a screen: the source button used,
   after the in-page back from the evidence; “Open the Concept”, after the
   browser's Back to the example.
+- When that control is gone, the way back to the start focuses a heading,
+  never the page body: “Start with an example” after a missing Concept's
+  back; “Or search the library” after `#q=il+faut&concept=12`'s back to a
+  search that does not list Concept 12.
 - A language change keeps the screen, the address and the history length.
 
 **Keyboard only**
@@ -60,6 +66,11 @@ evidence ("Step 4 of 4"). Then the navigation contract:
   explanations, a long French question and a nanosecond timestamp.
 - They are injected in the browser; the server never changes.
 - They are checked through the walkthrough, with the return bar kept in view.
+
+**Right-to-left learner text** (injected in the browser)
+- A French question stays left-to-right.
+- An Arabic question and a Hebrew context are laid out right-to-left on the
+  example and the evidence, and both screens still fit.
 
 **States**
 - Unavailable demo: the status and a retry that recovers without a reload.

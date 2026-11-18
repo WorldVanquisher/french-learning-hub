@@ -529,8 +529,11 @@ func (h *Handler) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleReady is readiness: the database answers within a bounded time. A
-// failure reports 503 without the underlying error, which may name paths.
+// handleReady is readiness: the readiness check (for the private service, the
+// database answers and can start a write) passes within a bounded time. A
+// failure reports 503 without the underlying error, which may name paths. An
+// error that carries a fixed reason code (ReadinessReason) adds it as "reason",
+// e.g. "storage_read_only".
 func (h *Handler) handleReady(w http.ResponseWriter, r *http.Request) {
 	if h.readiness == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
@@ -539,7 +542,12 @@ func (h *Handler) handleReady(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), h.readinessTimeout)
 	defer cancel()
 	if err := h.readiness(ctx); err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready"})
+		body := map[string]string{"status": "not_ready"}
+		var reasoner interface{ ReadinessReason() string }
+		if errors.As(err, &reasoner) {
+			body["reason"] = reasoner.ReadinessReason()
+		}
+		writeJSON(w, http.StatusServiceUnavailable, body)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})

@@ -75,17 +75,27 @@ func ListeningScriptFingerprint(rawSegments, rawContent []byte) (string, error) 
 	return "sha256:" + hex.EncodeToString(h.Sum(nil)), nil
 }
 
+// ListeningRevisionFingerprint fingerprints a revision as the workbench reads
+// it: its decoded lines and exercise, re-encoded. A stored revision is compared
+// through it, so a difference in the stored JSON that these types do not carry
+// (a key another build wrote, another encoding of the same value) is never
+// reported as an update, previewed as an empty change, or appended as a
+// revision.
+func ListeningRevisionFingerprint(segments []TranscriptSegment, content ListeningExerciseContent) (string, error) {
+	rawSegments, err := json.Marshal(segments)
+	if err != nil {
+		return "", err
+	}
+	rawContent, err := json.Marshal(content)
+	if err != nil {
+		return "", err
+	}
+	return ListeningScriptFingerprint(rawSegments, rawContent)
+}
+
 // Fingerprint is the fingerprint the script's content would have once stored.
 func (s ListeningScript) Fingerprint() (string, error) {
-	segments, err := json.Marshal(s.Segments())
-	if err != nil {
-		return "", err
-	}
-	content, err := json.Marshal(s.Content())
-	if err != nil {
-		return "", err
-	}
-	return ListeningScriptFingerprint(segments, content)
+	return ListeningRevisionFingerprint(s.Segments(), s.Content())
 }
 
 // ListeningScriptRevision is one stored revision of an imported script.

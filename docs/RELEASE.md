@@ -10,7 +10,8 @@ network you do not trust.
 
 - Docker with the Compose plugin (verified with Docker 29.7 and Compose 5.5).
 - Host `sqlite3` and GNU `sha256sum` for integrity and checksum checks; Bash
-  for the fail-fast recovery blocks below.
+  for the fail-fast recovery blocks below; Python 3 for the restore write
+  check.
 - The repository checkout. Nothing is pulled from a private registry and no
   image is published.
 
@@ -37,14 +38,25 @@ The server starts as `/app/server -web-dir /app/web`:
 | `/api/...`           | the API, with `/api` stripped (what the workbench calls)   |
 | every other path     | the API unchanged (`/entries`, `/captures`, ... and 404s)  |
 | `GET /healthz`       | liveness: the process serves HTTP; no database access      |
-| `GET /readyz`        | readiness: SQLite ping bounded to 2 s; `503 not_ready` on failure |
+| `GET /readyz`        | readiness, bounded to 2 s: SQLite answers and accepts a write statement (`DELETE … WHERE 0` inside `BEGIN IMMEDIATE`/`ROLLBACK`: no row, nothing written); `503 not_ready` on failure, with `"reason":"storage_read_only"` when the database opened read-only |
 
 The workbench never changes the URL path, so there is no SPA fallback. Without
 `-web-dir` the server is API-only, exactly as `make run`.
 
 The container healthcheck polls `/readyz` every 15 s (1 s during a 20 s start
 period, 3 s timeout, 3 retries). `docker compose ps` shows `healthy` once SQLite
-answers.
+answers and can write. A restored copy that kept read-only permissions, or a
+filesystem remounted read-only, now shows `unhealthy` and
+`{"status":"not_ready","reason":"storage_read_only"}` instead of `ready`
+followed by a 500 on every write.
+
+**Failed requests in the log.** Every response with status 500 or more writes
+one line: `request failed: status=500 method=POST route="POST /captures"
+duration_ms=3 request_id=<16 hex>`. The line holds the route pattern, never
+path values, the query, a body, a header, audio or a provider message. The
+same `request_id` is sent on every response as `X-Request-Id`, so a failure
+seen in the browser can be found in the log. Read it with
+`bash scripts/daily/flh-daily.sh logs` or `docker compose logs app`.
 
 ## Configuration
 
@@ -287,21 +299,36 @@ integrity=$(sqlite3 -readonly "$stage/app.db" 'PRAGMA integrity_check;')
 # Both directories must be owned by the configured FLH_UID:FLH_GID.
 mv "$active" "$old"
 mv "$stage" "$active"
+# /readyz cannot tell that the service may not write the restored files (a
+# backup made read-only, or owned by another user, restores that way).
+python3 -I scripts/release/restore_write_check.py --uid "${FLH_UID:-1000}" --gid "${FLH_GID:-1000}" "$active"
 docker compose up -d --force-recreate
 ```
 
 If the second rename fails, leave the service stopped and move `old` back to
-`active` before retrying. On earlier errors, the original active directory is
-untouched; inspect the failed staging directory before removing it. Preserve
-`old` for review. Check `/readyz` and expected records after starting.
+`active` before retrying. If the write check fails, the restored files are in
+`active` and the service is still stopped: make `active`, `app.db` and any
+`app.db-wal`/`app.db-shm` writable by the service user (for example
+`chmod 600 "$active"/app.db*` and `chown FLH_UID:FLH_GID`), run the check
+again, then `docker compose up -d --force-recreate`. On earlier errors, the
+original active directory is untouched; inspect the failed staging directory
+before removing it. Preserve `old` for review. The backup itself is only read.
+Check `/readyz` and expected records after starting; `/readyz` shows that
+SQLite answers, not that it can write, which is what the write check is for.
+It runs as you: when the service user differs, it judges mode bits for that
+uid and skips its write probe (see the script's header).
 
 For an independent backup check, copy into another private directory, validate
 it as above, then use a separate project and port. This is a test instance,
-not the durable restore procedure:
+not the durable restore procedure. A copy of a read-only backup is read-only
+too (`cp -a` keeps the modes): its instance answers `/readyz` but fails its
+first write, so the write check runs first and `up` only after it passes. If
+it fails, run `chmod 600 "$check_dir"/app.db*` and the block again:
 
 ```bash
 : "${check_dir:?Set check_dir to the separately copied and validated directory}"
-FLH_DATA_DIR="$check_dir" FLH_HOST_PORT=18081 docker compose -p flh-restore-check up -d
+python3 -I scripts/release/restore_write_check.py --uid "${FLH_UID:-1000}" --gid "${FLH_GID:-1000}" "$check_dir" &&
+FLH_DATA_DIR="$check_dir" FLH_HOST_PORT=18081 docker compose -p flh-restore-check up -d &&
 curl --fail http://127.0.0.1:18081/readyz
 docker compose -p flh-restore-check down
 ```
@@ -444,7 +471,10 @@ The project, its network and the image are always removed at the end
 (`--keep-image` keeps the image), and the daily project's containers are
 fingerprinted with `docker inspect` before and after; a change fails the run.
 `--inject-failure readiness|persistence|demo` proves that a failed run still
-tears down. The demo stage uses the private workbench bundle only to exercise
+tears down. An interrupted run (Ctrl-C, `SIGTERM`, a timeout) also tears down
+and ends with an `incomplete` FAIL line and exit 1: only a run whose every stage
+ran and passed is a PASS. The build leaves its intermediate stage images as
+Docker build cache; the smoke never prunes them. The demo stage uses the private workbench bundle only to exercise
 the static and `/api` paths; the real demo bundle is checked by
 [PUBLIC_DEMO.md](PUBLIC_DEMO.md).
 
@@ -471,9 +501,13 @@ bash scripts/release/disk_preflight.sh work=/abs/work:1024 tmp="${TMPDIR:-/tmp}"
 
 `scripts/release/publish_metadata_check.py` checks commit messages and PR
 bodies before they are published. It rejects a `Co-authored-by:` trailer or an
-author/committer identity naming Claude or Anthropic, a `Claude-Session:`
+author/committer identity naming the assistant (an `anthropic.com` address, a
+name containing "Anthropic", or "Claude" alone or with a model or product name
+such as "Claude Opus 5.5", "Claude Code" or `claude[bot]`), a `Claude-Session:`
 trailer, and private `claude.ai` session, chat, project or share links. It keeps
-prose about using AI and co-author trailers for people. Findings are printed
+prose about using AI and co-author trailers for people, including people called
+Claude ("Claude Monet", "Jean-Claude Martin"); write a person's full name, since
+a bare "Claude" counts as the assistant. Findings are printed
 with private links redacted (`--redact` filters any text the same way). Check a
 merged commit with:
 

@@ -1,0 +1,378 @@
+{
+ "c1_library_expected_vs_actual": {
+  "actual_sha256": "067555ea60ad2b6a39d16bf7eb3719d52dc8dafe6d822b8905d62cfc7d208192",
+  "differences": [],
+  "expected_sha256": "09ad882cd83867875a82627462d6145204f523450b73ee2c87ebb01afb69264a",
+  "status": "PASS"
+ },
+ "c2_fixture_slice": {
+  "fixture_matrix_sha256": "92b6a08631e04e9a6b7dee1560ca740e90a049e9b98d69051c712f63cbe80be0",
+  "fixture_scoring_version_equals_pinned_matrix": true,
+  "note": "a fixture-only matrix; the pinned comparison matrix is only read",
+  "parts": {
+   "challenge_test": 6,
+   "frozen": 2,
+   "rb": 2
+  },
+  "rb_probe_byte_equal": true,
+  "recorded_analyses_equal_fresh_analyzer_run": true,
+  "status": "PASS"
+ },
+ "c3_cli_scenarios": {
+  "every_fixture_output_accepted_by_the_production_validator": true,
+  "scenarios": {
+   "A": {
+    "decision_report": {
+     "eligible": {
+      "bilingual_drift": true,
+      "correct": true,
+      "unsupported_claim": true
+     },
+     "exit": 0,
+     "verdict": "WINNER_FOR_OWNER_DECISION",
+     "winner": "qwen3.5-4b-untuned",
+     "winner_system": "unsupported_claim"
+    },
+    "experimental_report": {
+     "blank": {
+      "eligible": {
+       "bilingual_drift": null,
+       "correct": null,
+       "unsupported_claim": null
+      },
+      "exit": 3,
+      "reviewer": {
+       "bilingual_drift": "PENDING",
+       "correct": "PENDING",
+       "unsupported_claim": "PENDING"
+      },
+      "stdout": {
+       "preference": null,
+       "production_go": false,
+       "verdict": "PENDING"
+      }
+     },
+     "fails_correct": {
+      "eligible": {
+       "bilingual_drift": false,
+       "correct": false,
+       "unsupported_claim": false
+      },
+      "exit": 1,
+      "reviewer": {
+       "bilingual_drift": "FAIL",
+       "correct": "FAIL",
+       "unsupported_claim": "FAIL"
+      },
+      "stdout": {
+       "preference": null,
+       "production_go": false,
+       "verdict": "NO_PREFERENCE"
+      }
+     },
+     "full": {
+      "eligible": {
+       "bilingual_drift": false,
+       "correct": true,
+       "unsupported_claim": false
+      },
+      "exit": 0,
+      "reviewer": {
+       "bilingual_drift": "FAIL",
+       "correct": "PASS",
+       "unsupported_claim": "FAIL"
+      },
+      "stdout": {
+       "preference": "current_extractor",
+       "production_go": false,
+       "verdict": "EXPERIMENTAL_PREFERENCE"
+      }
+     },
+     "invalid": {
+      "exit": 1,
+      "stdout": {
+       "refused": "reviewer evidence: row 1: claim_true 'maybe' is not yes, no or blank (never read as a guess)"
+      }
+     },
+     "none": {
+      "eligible": {
+       "bilingual_drift": null,
+       "correct": null,
+       "unsupported_claim": null
+      },
+      "exit": 3,
+      "reviewer": {
+       "bilingual_drift": "PENDING",
+       "correct": "PENDING",
+       "unsupported_claim": "PENDING"
+      },
+      "stdout": {
+       "preference": null,
+       "production_go": false,
+       "verdict": "PENDING"
+      }
+     }
+    },
+    "queue_items_equal_library_hashes": true,
+    "slots": {
+     "current_extractor": "correct",
+     "qwen3.5-4b-tuned": "bilingual_drift",
+     "qwen3.5-4b-untuned": "unsupported_claim"
+    },
+    "units_in_scope": {
+     "current_extractor": 5,
+     "qwen3.5-4b-tuned": 5,
+     "qwen3.5-4b-untuned": 5
+    },
+    "validator_status_counts": {
+     "current_extractor": {
+      "valid_empty": 5,
+      "valid_units": 5
+     },
+     "qwen3.5-4b-tuned": {
+      "valid_empty": 5,
+      "valid_units": 5
+     },
+     "qwen3.5-4b-untuned": {
+      "valid_empty": 5,
+      "valid_units": 5
+     }
+    }
+   },
+   "B": {
+    "decision_report": {
+     "eligible": {
+      "abstain_everywhere": false,
+      "correct": true,
+      "wrong_source": false
+     },
+     "exit": 0,
+     "verdict": "WINNER_FOR_OWNER_DECISION",
+     "winner": "qwen3.5-4b-tuned",
+     "winner_system": "correct"
+    },
+    "experimental_report": {
+     "blank": {
+      "eligible": {
+       "abstain_everywhere": false,
+       "correct": null,
+       "wrong_source": false
+      },
+      "exit": 3,
+      "reviewer": {
+       "abstain_everywhere": "PASS",
+       "correct": "PENDING",
+       "wrong_source": "PENDING"
+      },
+      "stdout": {
+       "preference": null,
+       "production_go": false,
+       "verdict": "PENDING"
+      }
+     },
+     "fails_correct": {
+      "eligible": {
+       "abstain_everywhere": false,
+       "correct": false,
+       "wrong_source": false
+      },
+      "exit": 1,
+      "reviewer": {
+       "abstain_everywhere": "PASS",
+       "correct": "FAIL",
+       "wrong_source": "FAIL"
+      },
+      "stdout": {
+       "preference": null,
+       "production_go": false,
+       "verdict": "NO_PREFERENCE"
+      }
+     },
+     "full": {
+      "eligible": {
+       "abstain_everywhere": false,
+       "correct": true,
+       "wrong_source": false
+      },
+      "exit": 0,
+      "reviewer": {
+       "abstain_everywhere": "PASS",
+       "correct": "PASS",
+       "wrong_source": "FAIL"
+      },
+      "stdout": {
+       "preference": "qwen3.5-4b-tuned",
+       "production_go": false,
+       "verdict": "EXPERIMENTAL_PREFERENCE"
+      }
+     },
+     "invalid": {
+      "exit": 1,
+      "stdout": {
+       "refused": "reviewer evidence: row 1: claim_true 'maybe' is not yes, no or blank (never read as a guess)"
+      }
+     },
+     "none": {
+      "eligible": {
+       "abstain_everywhere": false,
+       "correct": null,
+       "wrong_source": false
+      },
+      "exit": 3,
+      "reviewer": {
+       "abstain_everywhere": "PENDING",
+       "correct": "PENDING",
+       "wrong_source": "PENDING"
+      },
+      "stdout": {
+       "preference": null,
+       "production_go": false,
+       "verdict": "PENDING"
+      }
+     }
+    },
+    "queue_items_equal_library_hashes": true,
+    "slots": {
+     "current_extractor": "wrong_source",
+     "qwen3.5-4b-tuned": "correct",
+     "qwen3.5-4b-untuned": "abstain_everywhere"
+    },
+    "units_in_scope": {
+     "current_extractor": 10,
+     "qwen3.5-4b-tuned": 5,
+     "qwen3.5-4b-untuned": 0
+    },
+    "validator_status_counts": {
+     "current_extractor": {
+      "valid_units": 10
+     },
+     "qwen3.5-4b-tuned": {
+      "valid_empty": 5,
+      "valid_units": 5
+     },
+     "qwen3.5-4b-untuned": {
+      "valid_empty": 10
+     }
+    }
+   }
+  },
+  "status": "PASS"
+ },
+ "c4_before_after": {
+  "reading": "With the same assumed aggregate evidence (clean samples), the part-3 draft prefers the false-claim system; v1 waits for per-unit reviewer evidence and, with it, excludes the false-claim and drifted systems and prefers the correct one.",
+  "runs": {
+   "no reviewer evidence": {
+    "preference": null,
+    "schema": "flh_extractor_experimental_report_v1",
+    "verdict": "PENDING"
+   },
+   "part-3 draft (v0), same aggregates": {
+    "preference": "unsupported_claim",
+    "schema": "flh_extractor_experimental_report_v0",
+    "source_sha256": "0555b789607e155fe6e044e45645fba6c97e3805201b532dfaaabb7663420e13",
+    "verdict": "EXPERIMENTAL_PREFERENCE"
+   },
+   "with reviewer evidence": {
+    "preference": "correct",
+    "schema": "flh_extractor_experimental_report_v1",
+    "verdict": "EXPERIMENTAL_PREFERENCE"
+   }
+  },
+  "status": "PASS"
+ },
+ "c5_release_scoring_intact": {
+  "decision_py_sha256": "2a744d02776b3b29fd5b34ee0ea901e81e3e5efa71c06dc647568125833e7d8f",
+  "decision_version": "flh_extractor_decision_v1 (pre-registered 2026-11-12)",
+  "new_modules_not_scoring_sources": [
+   "reviewer_evidence.py",
+   "fixture_one_record.py",
+   "experimental_report.py"
+  ],
+  "pinned_files": {
+   "changed": [],
+   "checked": 27
+  },
+  "pinned_matrix_scoring_version": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd",
+  "pinned_matrix_sha256": "b3f66edaf76b0886a82a76a0bcafef5a472e406d4f0d811b01eda3ba182e7a66",
+  "scoring_version": "e5b4e012c563860ae220bd1f7d06763ea0362e0b5697d86c8e4290d83b76cedd",
+  "status": "PASS"
+ },
+ "c6_cli_output_digests": {
+  "files": 68,
+  "sha256": {
+   "analyses.jsonl": "90371212f44aedb64f01b6d1187adfe9bc3fcbc0a107f2dda687d8e66ac0b245",
+   "challenge-rendered.jsonl": "e053ef0edd5ba1859b56406e13674d45294d69432a76fc0a3dc7517999e4a697",
+   "frozen-rendered.jsonl": "d5858d97b096cb8625b93e670bd5cbcf253173f9b414bc40d11390c7103a4386",
+   "matrix.json": "4d9d6560fb2a01d055dc5083a5f68a52e94d7861165ec4ffbebc134f7e8600ef",
+   "matrix.md": "f70d2d1f1ad7018bfd59b9287e11f1f0399c13f29afa7662383af5ad4c795bef",
+   "probe-rb.jsonl": "8a06d68ae182d12fb588c1a9d94012130fd47dcc0e32cfdc37ada7869f0eecf4",
+   "rb-rendered.jsonl": "b3182e1352b90bb51ba8d499822cf03f321777bc9a0522b89b9d92e1501356cb",
+   "scenario-A/compare.json": "95c752c7a60a925722a8c79f2bd66df57f6da442e1bb71a994121d3f751a9ac4",
+   "scenario-A/compare.md": "cda091e05af6d5f3d25ea90b3ace14f67c6992e7f46b65d7bb27ad7499378d42",
+   "scenario-A/compare.work/outputs.jsonl": "45bbdfeaad6bde55238b3110a9357586b92259afd775c4d2b8ecbc541f0ff36a",
+   "scenario-A/compare.work/validated.jsonl": "bddc812cbb1b342bb07c1eea892955aa670cbadac7da138cfb26e2a0d8cf705a",
+   "scenario-A/decision-human.json": "f19db598f9e842a57fc476e3fd76ce829040ac692494def6ea3080fefd91e333",
+   "scenario-A/decision.json": "fef4fac7c146b41eb1be8879aebbea4d60d171e1b7bab371d258f1d2c1ee7dc8",
+   "scenario-A/decision.md": "daa6571d390d54f6b0cd485618bc78d6ddd252a182f640dbdf9dfc1666bcee28",
+   "scenario-A/evidence-blank.jsonl": "6510a973483e750f9660efce16ebdf59526227b5347b492274bad09983832f50",
+   "scenario-A/evidence-fails_correct.jsonl": "b36ef344b18edba87bb46b3be023dbe990df6ef559916b2d807af387a1fbd858",
+   "scenario-A/evidence-full.jsonl": "8dd173014e73da328834e49d0e036376d9c6567fd18f8f1f4f470e58c703db99",
+   "scenario-A/evidence-invalid.jsonl": "f86cf7d4e2f9a17259e75fd0db2cf26ee325cf0e7ef10ebc8742a4f02c5d93e6",
+   "scenario-A/human.json": "3e2f907bbfa6e7c8da3ebb8016943ce6e2ac9925f1841a00fbb589e2ccde838f",
+   "scenario-A/input-manifest.json": "9392d212bc60b1920a2048894afbab113f679f310e90368c746c89595b333412",
+   "scenario-A/losses.jsonl": "5bbc134cb22d0cdcb5b4500e9f3fb540b13114a725509b9c348e26c0bede0ea0",
+   "scenario-A/queue.evidence-template.jsonl": "d6708fcaecb59729c7c9eb218929c9815d9147b40f45ec2b1219b591443d307b",
+   "scenario-A/queue.json": "ad4d6d45158490eb8c8d2d7160b391ed90742a5f299a890654e20c769b87fcf6",
+   "scenario-A/queue.md": "69e188a0086e7f71b15ff44c1bb9ab758334324b3fbb492b817e22fec040780c",
+   "scenario-A/queue.work/outputs.jsonl": "45bbdfeaad6bde55238b3110a9357586b92259afd775c4d2b8ecbc541f0ff36a",
+   "scenario-A/queue.work/validated.jsonl": "bddc812cbb1b342bb07c1eea892955aa670cbadac7da138cfb26e2a0d8cf705a",
+   "scenario-A/review-ok.jsonl": "201b79880db45526d2e5d4b8a30c0a1ab0c73186c39ba275f70f7660938c282e",
+   "scenario-A/run-manifest.json": "f72049b2cc880bca1a61fbe0cc298e7ee0ed6c81419c3ed8f2404321a89d8c1b",
+   "scenario-A/xr-blank.json": "3ab0a681cbe7efe5bd0fac499886c59463d0716fcac8a43f33912c3acc06951b",
+   "scenario-A/xr-blank.md": "41b5b40b5102252da17491fd4b1918d4bc9433ca825e11ce2fdc9297fd2042fd",
+   "scenario-A/xr-fails_correct.json": "b76244cff28c896ec04703f12699fb530358944c84b1be28cb0cd726c3fd8174",
+   "scenario-A/xr-fails_correct.md": "198589a5f2a9330ef34dd7ab0385384fe17fcad26d0b24154032c529f37fd0e1",
+   "scenario-A/xr-full.json": "235ccebd45153f0f96087bb0466d3ef18ef371f6f883aab7f1e4c28b26eb591a",
+   "scenario-A/xr-full.md": "689d81aead3946bbaef5332202a8cf6191c58bc048a0b5f095d5e4872e7e2240",
+   "scenario-A/xr-none.json": "28b0fe3abe9048c3b91487e2b54651d6de587af973859d5f2b6cf3c065393d83",
+   "scenario-A/xr-none.md": "b7432bc60a8dfc1698167dd314b19db77c025e5cec80e8307bf9b7683cc28ba5",
+   "scenario-B/compare.json": "e762cfacb6f2550a268641b2f2995ed3d7b30c379f2da339dd74411ff26945cd",
+   "scenario-B/compare.md": "a818b24285eadf40dd8789baaa19e0aaacd66ee91e464bb554a5b9773631d386",
+   "scenario-B/compare.work/outputs.jsonl": "dcd77b6fb772018a91d7604b702dc967078c79e2db4dc726efc566f1041979c3",
+   "scenario-B/compare.work/validated.jsonl": "18eb647e48d775706ef73477ae84aa499867de2cd791a241d69742810fac460b",
+   "scenario-B/decision-human.json": "b6603aecb84ee12d01259e325eecfb45b800e12041a8030f5b663b44060d9989",
+   "scenario-B/decision.json": "e567530315a7f6411a980fa82adc02a2358643bf07ae93cadb26746221198998",
+   "scenario-B/decision.md": "4dfe0bb7ae955a672077c7046d36845aedaabfb8bd528909a4c348acfddd260d",
+   "scenario-B/evidence-blank.jsonl": "928da954d16f32728940bbb1e8568bff9eed9ac2af903f020cdc6509aa411d8a",
+   "scenario-B/evidence-fails_correct.jsonl": "0044aa5ad580b93f4aa3c3255590e61aad31fdeaef49c03e09a87df7789cd952",
+   "scenario-B/evidence-full.jsonl": "d3d5b7e45fcce2ec4f13e8ff7ca834e92b2dfee97757d3f927b6b09adaf5746a",
+   "scenario-B/evidence-invalid.jsonl": "08e94aaaa60e42ed13779e0bb18f89421a50ba48b29543eda0e3789db9137d17",
+   "scenario-B/human.json": "17bbc37a4efa14af774b490d36e67b91a78e8ef0fe8cf6e3db0e47d37b079a9e",
+   "scenario-B/input-manifest.json": "9392d212bc60b1920a2048894afbab113f679f310e90368c746c89595b333412",
+   "scenario-B/losses.jsonl": "5bbc134cb22d0cdcb5b4500e9f3fb540b13114a725509b9c348e26c0bede0ea0",
+   "scenario-B/queue.evidence-template.jsonl": "68c76d7e267a4f1b48065da1cd2eb58db6769a05b139f2f9ba05c101d04c74bd",
+   "scenario-B/queue.json": "601b407660aee20ce61b20e646a7ad43cff672bb1c4efedf1747086fa41acfc4",
+   "scenario-B/queue.md": "adf15782356a84e337c2e234bbdbdf2c648574b5a34f160405666994596c12fe",
+   "scenario-B/queue.work/outputs.jsonl": "dcd77b6fb772018a91d7604b702dc967078c79e2db4dc726efc566f1041979c3",
+   "scenario-B/queue.work/validated.jsonl": "18eb647e48d775706ef73477ae84aa499867de2cd791a241d69742810fac460b",
+   "scenario-B/review-ok.jsonl": "201b79880db45526d2e5d4b8a30c0a1ab0c73186c39ba275f70f7660938c282e",
+   "scenario-B/run-manifest.json": "f72049b2cc880bca1a61fbe0cc298e7ee0ed6c81419c3ed8f2404321a89d8c1b",
+   "scenario-B/xr-blank.json": "74965a1b41dd3f4ab7fd94bbe12a091676f856a7dfbe260158dde8f9417572ea",
+   "scenario-B/xr-blank.md": "526a35a17f6c93f1ea2a8ae2e9bc2b2cc0513498a12667f23be4e372117a6e41",
+   "scenario-B/xr-fails_correct.json": "a3d215bcdb5ac2496a2c392f4c825c0846ab130cc3dd5359b160bcfa747211bd",
+   "scenario-B/xr-fails_correct.md": "c04cd369d405efbac28362d5abc10508c5e8c196be44d743bb4451c1b8ab2ea8",
+   "scenario-B/xr-full.json": "4235b25336e3a9b72f71c6a31a9a3a66f0045dc0d6cb932cc99eb0c1f80808a4",
+   "scenario-B/xr-full.md": "6108167f2d16f9c527d862f8905c3ed8cbf39e3cc754163fbbc15fdae153383f",
+   "scenario-B/xr-none.json": "7d8f35e01e7b401df141583d66abe3902761591898f39c3f1fcf53591ec6f5b5",
+   "scenario-B/xr-none.md": "cd8facb0df7647655a36cd83b05cbe7385b087a0795f73eb52a254586c3db1e3",
+   "slice/comparison-inputs.jsonl": "640b01c7f20d8de3f44e8c3eb0a7788f610d41b34bc82f15ee84eceae5406d43",
+   "slice/comparison-prompts.jsonl": "cb246d128a8731938f9d304eaf005c109be4a1b3d70a18d32dabea95df7e187e",
+   "slice/comparison-slice.jsonl": "589061c66886ade34874dbc130a9bfe14935f52a44f485db3c5eae29305003e4"
+  },
+  "status": "DONE"
+ },
+ "offline_only": true,
+ "real_runs_performed": 0,
+ "schema": "flh154_part4_checks_v1",
+ "synthetic_only": true
+}

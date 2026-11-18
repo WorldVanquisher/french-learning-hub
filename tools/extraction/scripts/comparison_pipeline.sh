@@ -60,6 +60,12 @@ run python3 -B -m flh_extraction comparison-slice --eval "$OUT/eval/eval_candida
   "$OUT/challenge_candidates-rendered.jsonl" --out "$OUT/slice"
 run python3 -B -m flh_extraction comparison-matrix --slice-dir "$OUT/slice" --rendered "$OUT/eval_candidates-rendered.jsonl" \
   --repo ../.. --out "$OUT/slice/comparison-matrix.json"
+log "22 frozen reviewer sample of the held-out references (offline only)"
+run python3 -B -m flh_extraction review-sample --slice "$OUT/slice/comparison-slice.jsonl" --challenge "$OUT/chl/challenge_candidates.jsonl" \
+  --out "$OUT/evidence/review-sample-v1"
+run python3 -B -m flh_extraction review-sheet export --packet "$OUT/evidence/review-sample-v1.jsonl" --out "$OUT/evidence/review-sheet-v1.csv"
+run python3 -B -m flh_extraction export-check "$OUT/evidence/review-sample-v1.jsonl" "$OUT/evidence/review-sample-v1.md" \
+  "$OUT/evidence/review-sample-v1-selection.json" "$OUT/evidence/review-sheet-v1.csv"
 log "8 parsing fixture through compare"
 run python3 -B -m flh_extraction parsing-fixture --slice "$OUT/slice/comparison-slice.jsonl" --out "$OUT/fixture-untuned.jsonl" \
   --expect "$OUT/evidence/parsing-fixture-expect.json"
