@@ -633,6 +633,22 @@ FLEURS = {
     }
 }
 
+# FLEURS French train: raw transcriptions keep case and punctuation (the
+# punctuated-target training experiment, v2). Same repository, revision and
+# licence as FLEURS; fetched only on request (``fetch --what fleurs-fr-train``).
+# Hashes from the Hub's tree API at that revision (LFS sha256, git blob).
+FLEURS_FR_TRAIN = {
+    "repo": "google/fleurs",
+    "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+    "license": "CC-BY-4.0",
+    "config": "fr_fr",
+    "files": {
+        "data/fr_fr/train.tsv": (2064047, ("gitblob", "d5b1e63cc0f59127ebfb2555b43458bbb2509252")),
+        "data/fr_fr/audio/train.tar.gz": (1730529959, ("sha256", "39b5bad1f61d3ae4ef64c2eb16f9524ffb21d8568965dd71b09702befdbd7f95")),
+    },
+}
+
+
 # OpenSLR SLR57 publishes no checksum: size, ETag and Last-Modified were read from
 # the server and the SHA-256 computed after the first download (trust on first use).
 SLR57 = {

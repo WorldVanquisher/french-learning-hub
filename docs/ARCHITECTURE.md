@@ -1291,6 +1291,17 @@ through §4.1. Migration `018`.
   `SPEAKING_TRANSCRIPTION_PROVIDER=openai` with an explicit
   `SPEAKING_TRANSCRIPTION_MODEL`. It reuses `OPENAI_API_KEY`, `OPENAI_BASE_URL`
   and `OPENAI_TIMEOUT`.
+  - `SPEAKING_TRANSCRIPTION_PROVIDER=local` uses the same adapter against the
+    local transcription service (`tools/speaking`, contract
+    `tools/speaking/CONTRACT.md`) at `SPEAKING_TRANSCRIPTION_BASE_URL`, with its
+    own `SPEAKING_TRANSCRIPTION_TIMEOUT` (default 60 s) and no API key, so it
+    runs beside `SPEAKING_PROVIDER=openai`. `SPEAKING_TRANSCRIPTION_MODEL` is
+    the service's `deployment_id`; an answer naming another deployment is
+    refused (`provider_unavailable`), and audio the service refuses (HTTP
+    413/415/422) is `invalid_output`. A connection closed without an answer is
+    a definite `provider_unavailable` (the service bills and keeps nothing, so
+    a new click is safe); a timeout stays `unknown`. The request deadline is
+    the longer of the two timeouts plus 30 s.
   - One `POST /speaking/takes/{id}/transcriptions` per click, after a panel
     that names the take, its length, size and type, and the provider.
   - The audio travels as base64 inside JSON: the HTTP boundary accepts browser
@@ -1306,7 +1317,8 @@ through §4.1. Migration `018`.
   - Requests follow §4.4's attempt-first rules: one in progress per exercise;
     an `unknown` outcome for that take needs `confirm_unknown_retry`; a same-key
     resend with other audio is `key_conflict`. A machine transcript is
-    `openai:<model>:speaking_transcription_v1`.
+    `openai:<model>:speaking_transcription_v1` or
+    `local:<deployment_id>:speaking_transcription_v1`.
 - **Confirmed transcript** (`speaking_transcripts`, versions `1…10` per take):
   the learner checks the text and confirms it.
   - The origin is decided by the server: `transcription` (the machine
@@ -3046,8 +3058,10 @@ empty values behave as unset. Defaults work out of the box:
 | `READING_PROVIDER`   | `disabled`                  | Reading exercise generator ([§4.5](#45-exam-reading-v1)): `disabled` or `openai`; reuses `OPENAI_*`; authored examples work without it |
 | `WRITING_PROVIDER`   | `disabled`                  | Writing feedback generator ([§4.6](#46-exam-writing-v1)): `disabled` or `openai`; reuses `OPENAI_*`; tasks and drafts work without it |
 | `SPEAKING_PROVIDER`  | `disabled`                  | Speaking feedback generator ([§4.7](#47-speaking-v1)): `disabled` or `openai`; reuses `OPENAI_*`; recording and typed transcripts work without it |
-| `SPEAKING_TRANSCRIPTION_PROVIDER` | `disabled`     | Speaking transcription ([§4.7](#47-speaking-v1)): `disabled` or `openai`; reuses `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_TIMEOUT`; sends one take's audio per explicit request, never stores it |
-| `SPEAKING_TRANSCRIPTION_MODEL` | _(none)_          | Required for `openai` transcription: the operator's transcription model (e.g. `gpt-transcribe`) |
+| `SPEAKING_TRANSCRIPTION_PROVIDER` | `disabled`     | Speaking transcription ([§4.7](#47-speaking-v1)): `disabled`, `openai` (reuses `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_TIMEOUT`) or `local` (the local service, `tools/speaking`; no key); sends one take's audio per explicit request, never stores it |
+| `SPEAKING_TRANSCRIPTION_MODEL` | _(none)_          | Required for `openai` transcription (the operator's transcription model, e.g. `gpt-transcribe`) and for `local` (the service's `deployment_id` from `GET /manifest`) |
+| `SPEAKING_TRANSCRIPTION_BASE_URL` | _(none)_       | Required for `local`: the service's http(s) base URL, e.g. `http://127.0.0.1:8765/v1` (loopback or a private address) |
+| `SPEAKING_TRANSCRIPTION_TIMEOUT` | `60`            | `local` only: seconds for one transcription request; keep it below `HTTP_WRITE_TIMEOUT` |
 | `LISTENING_PLAYLIST_SOURCE` | `disabled`           | Daily Listening playlist ([§4.4](#44-daily-listening-pull-prepare-notify)): `disabled` or `youtube` |
 | `LISTENING_PLAYLIST_ID` | _(none)_                 | Required for `youtube`: the playlist ID |
 | `YOUTUBE_API_KEY`    | _(none)_                    | Required for `youtube`; sent only in the `X-Goog-Api-Key` header; never logged |

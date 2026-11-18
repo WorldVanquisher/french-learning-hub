@@ -107,7 +107,8 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - Practise **Speaking** on authored prompts: record a take and play it back in
   the browser (nothing is sent, the audio is never stored), or upload a file
   or type what you said. Opt-in requests transcribe one take you choose
-  (`SPEAKING_TRANSCRIPTION_PROVIDER`) and give feedback on one transcript
+  (`SPEAKING_TRANSCRIPTION_PROVIDER`: OpenAI, or `local`, a Whisper service on
+  your own machine, `tools/speaking`) and give feedback on one transcript
   version you confirmed (`SPEAKING_PROVIDER`), based on the text only and never
   on pronunciation. Takes can be compared, and a mistake can be saved as a
   normal learning record. A practice overview counts only takes whose checked

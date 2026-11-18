@@ -655,6 +655,13 @@ Speaking v1 (private workbench):
 - `SPEAKING_TRANSCRIPTION_PROVIDER=openai` (+ `SPEAKING_TRANSCRIPTION_MODEL`)
   and `SPEAKING_PROVIDER=openai` are opt-in, independent and default
   `disabled`. No language field, no prompt to the transcriber.
+- `SPEAKING_TRANSCRIPTION_PROVIDER=local` sends the take to the local Whisper
+  service (`tools/speaking`, `tools/speaking/CONTRACT.md`) at
+  `SPEAKING_TRANSCRIPTION_BASE_URL` with its own
+  `SPEAKING_TRANSCRIPTION_TIMEOUT` and no key, so it runs beside OpenAI
+  feedback. `SPEAKING_TRANSCRIPTION_MODEL` is the service's `deployment_id`,
+  stored as `local:<deployment_id>:speaking_transcription_v1`; an answer naming
+  another deployment is refused. Agents never run AWS commands for it.
 - Feedback reads the confirmed text only. The server grounds quotes against
   that version. Categories exclude spelling, punctuation and pronunciation,
   and comments about pronunciation or scores are refused as `invalid_output`.

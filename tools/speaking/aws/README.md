@@ -111,3 +111,50 @@ aws resourcegroupstaggingapi get-resources --region $REGION --tag-filters Key=Pr
 Training jobs stop billing on completion; no endpoint, notebook or instance is
 created. Only S3 objects, the ECR image and CloudWatch logs remain until
 deleted.
+
+## 6. Next job: the punctuated-target experiment (v2), prepared, NOT launched
+
+The v1 pilot lost punctuation and case: its MLS targets have none, and the
+encoder learned to steer the frozen decoder towards them. The next job repeats
+it with one change, the training data: FLEURS French train with raw
+transcriptions. Config: `configs/punct-base-encoder.json`, identical to
+`pilot-base-encoder.json` except the note. The local CPU smoke of the same
+settings ran 24 steps (validation memo, items 17-18). The full 180 steps need
+the GPU: about 100 min of CPU time for the pilot, beside the NAS services.
+
+| Input | Value |
+|---|---|
+| Dataset | `prepare-punctuated` output: 1,440 train utterances (4.65 h, 1,382 FLoRes sentences, 99.9 % punctuated) + 100 dev sentences; `manifest_jsonl_sha256` **`920b74a02c33ff8482573d31971af05de709554570a4a869bfdcf63420a5379b`**; 551 MB; FLEURS CC BY 4.0, no learner data |
+| Base model | whisper-base `e37978b90ca9030d5170a5c07aadb050351a65bb` (as the pilot) |
+| Image | the GPU image built from `requirements-gpu.lock`, referenced by digest |
+| Bounds | as §2: 1 × `ml.g5.xlarge`, Spot, 1 h runtime cap, 2 h wait cap, network isolation, one retry |
+| Expected runtime | 180 steps × batch 16 on an A10G: well under 15 min, plus 5-10 min startup and image pull |
+
+Cost (us-east-1 prices from §1, which the owner should re-check):
+
+| Item | Estimate |
+|---|---|
+| Training compute | **≤ $1.41** (1 h cap); expected ≈ $0.35-0.50 on demand, less on Spot |
+| S3 | ≈ $0.06/month (dataset 0.55 GB + model 0.29 GB + output ≈ 1.6 GB) |
+| ECR | ≈ $0.70/month (GPU image ≈ 7 GB), shared with the pilot |
+| **Total** | **≈ $1.5 worst case + ≈ $0.76/month until cleanup (§5)** |
+
+Owner commands: §4 with three changes.
+
+```sh
+DATA_SHA=920b74a02c33ff8482573d31971af05de709554570a4a869bfdcf63420a5379b
+python3 -m flh_speaking fetch --dest $W/sources --what fleurs-fr-train          # pinned, verified
+docker run --rm --network none -v $W/sources:/sources:ro -v $W/data-v1:/base:ro -v $W/data-punct:/out \
+    flh-speaking:cpu prepare-punctuated --sources /sources --base-data /base --out /out
+python3 -c "import json;print(json.load(open('$W/data-punct/dataset_manifest.json'))['manifest_jsonl_sha256'])"   # must print $DATA_SHA
+aws s3 sync $W/data-punct s3://$BUCKET/speaking/datasets/$DATA_SHA/ --exclude '*.tmp'
+# values.json: DATA_SHA256=$DATA_SHA, RUN=punct (the job is named flh-speaking-punct-<time>, tag Run=punct)
+JOB=$(python3 aws/render.py $W/values.json configs/punct-base-encoder.json $W/rendered)
+aws sagemaker create-training-job --region $REGION --cli-input-json file://$JOB
+```
+
+Evaluate the result exactly like the smoke candidate: `evaluate` on data-v1
+`test` and `ood`, then data-accent `accent`, then `probes`, then
+`accept --data $W/data-punct`. Promote only under `flh_speaking_acceptance_v1`.
+For this candidate, FLEURS dev is near-domain, so read A2 with SLR57 accent
+beside it.

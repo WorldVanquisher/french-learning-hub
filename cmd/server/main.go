@@ -147,6 +147,11 @@ func run() error {
 	log.Printf("reading provider: %s", cfg.Reading.Provider)
 	log.Printf("writing provider: %s", cfg.Writing.Provider)
 	log.Printf("speaking providers: transcription %s, feedback %s", cfg.Speaking.Transcription, cfg.Speaking.Feedback)
+	if cfg.Speaking.Transcription == config.SpeakingLocal {
+		// The operator can check this identity against the service's GET /manifest.
+		log.Printf("speaking transcription: local deployment %s, timeout %s, request deadline %s",
+			cfg.Speaking.TranscriptionModel, cfg.Speaking.TranscriptionTimeout, speakingDeadline(cfg.Speaking))
+	}
 	log.Printf("daily listening: playlist %s, automatic preparation %s, notify %s (timezone %s)",
 		cfg.ListeningDaily.Source, onOff(cfg.ListeningDaily.AutoPrepare), cfg.ListeningDaily.Notify, cfg.ListeningDaily.Location)
 	log.Printf("embedding provider: %s", cfg.Embedding.Provider)
@@ -209,7 +214,7 @@ func run() error {
 		return err
 	}
 	speakingSvc, err := application.NewSpeakingService(sqlite.NewSpeakingRepository(db), selectedTranscriber, selectedSpeaking, speaking.ExamplePrompts(),
-		application.WithSpeakingDeadline(cfg.Speaking.OpenAITimeout+30*time.Second))
+		application.WithSpeakingDeadline(speakingDeadline(cfg.Speaking)))
 	if err != nil {
 		return err
 	}
@@ -299,4 +304,14 @@ func serve(cfg config.Config, routes http.Handler, label string) error {
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)
 	}
+}
+
+// speakingDeadline bounds a Speaking request row: the slowest configured
+// provider call plus 30 s. A local transcription service has its own timeout.
+func speakingDeadline(c config.SpeakingConfig) time.Duration {
+	d := c.OpenAITimeout
+	if c.Transcription == config.SpeakingLocal && c.TranscriptionTimeout > d {
+		d = c.TranscriptionTimeout
+	}
+	return d + 30*time.Second
 }

@@ -1,0 +1,61 @@
+{
+ "deployment_id": "whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b",
+ "note": "Run 1 (before the fix): after `docker restart`, Docker's port proxy accepted the connection and reset it; FLH recorded an unknown outcome, so the next clicks needed confirm_unknown_retry (409 outcome_unknown). Fixed by treating a lost answer from the local service as a definite failure (run 2).",
+ "restart_and_recovery": {
+  "after_ready": {
+   "http": 409,
+   "state": "unknown",
+   "status": null,
+   "transcriber": null
+  },
+  "other_weights": {
+   "failure_code": null,
+   "http": 409,
+   "state": "unknown",
+   "text": null
+  },
+  "other_weights_deployment": "whisper-small@973afd24965f/flh_speaking_transcribe_v1/cpu-fp32/d20b5c67adbff447",
+  "readiness_after_restart": [
+   [
+    0.0,
+    "down",
+    "ConnectionResetError"
+   ],
+   [
+    0.74,
+    503,
+    "loading"
+   ],
+   [
+    4.98,
+    503,
+    "warming"
+   ],
+   [
+    5.38,
+    200,
+    "ready"
+   ]
+  ],
+  "recovered_default_deadline": {
+   "http": 201,
+   "seconds": 4.781,
+   "state": "completed",
+   "status": "completed"
+  },
+  "right_after_restart": {
+   "failure_code": "provider_unavailable",
+   "http": 502,
+   "state": "unknown"
+  },
+  "same_deployment_after_restart": true,
+  "service_deadline_1s_long_clip": {
+   "failure_code": "provider_unavailable",
+   "http": 502,
+   "seconds": 3.074,
+   "state": "failed"
+  },
+  "service_deadline_limits": 1.0,
+  "service_timeouts_counter": 1
+ }
+}

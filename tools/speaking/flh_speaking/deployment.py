@@ -27,7 +27,10 @@ LIMITS = {
     "accepted_containers": list(audio.SERVICE_FAMILIES),
     "concurrent_inferences": 1,
     "read_timeout_s": 30.0,
-    "inference_timeout_s": 90.0,
+    # Counted from the request's arrival, queue wait included, so a client whose
+    # own timeout is longer (FLH: SPEAKING_TRANSCRIPTION_TIMEOUT, default 60 s)
+    # always receives a definite answer (504) instead of giving up first.
+    "inference_timeout_s": 50.0,
 }
 
 

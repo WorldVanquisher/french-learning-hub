@@ -1,0 +1,544 @@
+{
+ "clips": {
+  "a.m4a": {
+   "bytes": 103044,
+   "mime": "audio/mp4",
+   "reference": "la nuit suivante appela sa soeur quand il en fut temps si vous ne dormez pas ma soeur lui dit-elle je vous prie en attendant le jour qui paraîtra bientôt de continuer le conte du pêcheur",
+   "seconds": 12.66,
+   "sha256": "289835ff889876aa847f9a9ada1217ecb8892a61fe09a91932a4b868d944c00d",
+   "source_ids": [
+    "1406_1028_000002"
+   ]
+  },
+  "a.mp3": {
+   "bytes": 101790,
+   "mime": "audio/mpeg",
+   "reference": "la nuit suivante appela sa soeur quand il en fut temps si vous ne dormez pas ma soeur lui dit-elle je vous prie en attendant le jour qui paraîtra bientôt de continuer le conte du pêcheur",
+   "seconds": 12.66,
+   "sha256": "d29d415277ae1c33994cc49d11022c2d15996228ff53c89ba0b47aa61f68944f",
+   "source_ids": [
+    "1406_1028_000002"
+   ]
+  },
+  "a.ogg": {
+   "bytes": 110965,
+   "mime": "audio/ogg",
+   "reference": "la nuit suivante appela sa soeur quand il en fut temps si vous ne dormez pas ma soeur lui dit-elle je vous prie en attendant le jour qui paraîtra bientôt de continuer le conte du pêcheur",
+   "seconds": 12.66,
+   "sha256": "be57db3e944beb476e6975fb9e9bcf89eb3e8ce241e3bd83b5258ffcf5ef9724",
+   "source_ids": [
+    "1406_1028_000002"
+   ]
+  },
+  "a.wav": {
+   "bytes": 405198,
+   "mime": "audio/wav",
+   "reference": "la nuit suivante appela sa soeur quand il en fut temps si vous ne dormez pas ma soeur lui dit-elle je vous prie en attendant le jour qui paraîtra bientôt de continuer le conte du pêcheur",
+   "seconds": 12.66,
+   "sha256": "c1671e4d1105156f2822a8bb5328efb0be25dd16555b577b9635e2f8c046a262",
+   "source_ids": [
+    "1406_1028_000002"
+   ]
+  },
+  "a.webm": {
+   "bytes": 114643,
+   "mime": "audio/webm",
+   "reference": "la nuit suivante appela sa soeur quand il en fut temps si vous ne dormez pas ma soeur lui dit-elle je vous prie en attendant le jour qui paraîtra bientôt de continuer le conte du pêcheur",
+   "seconds": 12.66,
+   "sha256": "c685616415e2684b03e592ffd5ad0b4c1a2faaab56ee7b7fe7df72d0c73a2e9b",
+   "source_ids": [
+    "1406_1028_000002"
+   ]
+  },
+  "garbage.webm": {
+   "bytes": 20004,
+   "mime": "audio/webm",
+   "reference": "",
+   "seconds": 2.0,
+   "sha256": "92530a27c5e743d8e49933c0d012336ca655d2aedf2635be2a6286f117e8eca5",
+   "source_ids": []
+  },
+  "limit.wav": {
+   "bytes": 8256078,
+   "mime": "audio/wav",
+   "reference": "",
+   "seconds": 43.0,
+   "sha256": "790b44b3cb81c1b09ad37fef40e1f3feabe16cccf9b6abab22e621f2f31f6618",
+   "source_ids": [
+    "1406_1028_000000",
+    "1406_1028_000001",
+    "1406_1028_000002"
+   ]
+  },
+  "long.webm": {
+   "bytes": 840397,
+   "mime": "audio/webm",
+   "reference": "pendant le second siècle je fis serment d'ouvrir tous les trésors de la terre à quiconque me mettrait en liberté mais je ne fus pas plus heureux dans le troisième je promis de faire puissant monarque mon libérateur d'être toujours près de lui en esprit non ta mort est certaine dit le génie choisis seulement de quelle sorte tu veux que je te fasse mourir le pêcheur le voyant dans la résolution de le tuer en eut une douleur extrême non pas tant pour l'amour de lui qu'à cause de ses trois enfants dont il plaignait la misère où ils allaient être réduits par sa mort la nuit suivante appela sa soeur quand il en fut temps si vous ne dormez pas ma soeur lui dit-elle je vous prie en attendant le jour qui paraîtra bientôt de continuer le conte du pêcheur à l'aspect d'un monstre d'une grandeur si démesurée le pêcheur voulut prendre la fuite mais il se trouva si troublé et si effrayé qu'il ne put marcher salomon le sultan qui n'avait pas moins d'envie que dinarzade d'entendre la fin de ce conte différa encore la mort de la sultane fin de la dixième nuit cet enregistrement fait partie du domaine public s'écria d'abord le génie salomon grand prophète de dieu pardon pardon jamais je ne m'opposerai à vos volontés j'obéirai à tous vos commandements scheherazade apercevant le jour interrompit là son conte",
+   "seconds": 93.19,
+   "sha256": "15cbb2b360e477401da87f5fad8224a1400c486b0e0b20e977ce9dfa59e68352",
+   "source_ids": [
+    "1406_1028_000000",
+    "1406_1028_000001",
+    "1406_1028_000002",
+    "1406_1028_000003",
+    "1406_1028_000004",
+    "1406_1028_000005"
+   ]
+  },
+  "over8mib.wav": {
+   "bytes": 8448078,
+   "mime": "audio/wav",
+   "reference": "",
+   "seconds": 44.0,
+   "sha256": "2e93c2142858ca11b51ae4f87936176b6ea7b841a61ae7fedfcd497e77e7203c",
+   "source_ids": [
+    "1406_1028_000000",
+    "1406_1028_000001",
+    "1406_1028_000002"
+   ]
+  },
+  "overlong.webm": {
+   "bytes": 1165195,
+   "mime": "audio/webm",
+   "reference": "",
+   "seconds": 127.27,
+   "sha256": "254fdae7b31734489eac14e1c39514833bc36715333b7d222b623d08ef4150bb",
+   "source_ids": [
+    "1406_1028_000000",
+    "1406_1028_000001",
+    "1406_1028_000002",
+    "1406_1028_000003",
+    "1406_1028_000004",
+    "1406_1028_000005",
+    "1406_1028_000006",
+    "1406_1028_000007"
+   ]
+  },
+  "silence.webm": {
+   "bytes": 1874,
+   "mime": "audio/webm",
+   "reference": "",
+   "seconds": 3.0,
+   "sha256": "5de0af8af9fc57007d459e1a766e4bfb8aaa8fb76b8e759a1f3438e11c61fea4",
+   "source_ids": []
+  }
+ },
+ "deployment_id_offline": "whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b",
+ "deployment_id_served": "whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b",
+ "flh_startup_log": [
+  "speaking providers: transcription local, feedback openai",
+  "speaking transcription: local deployment whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b, timeout 1m0s, request deadline 1m30s"
+ ],
+ "flh_startup_log_short_timeout": [
+  "speaking providers: transcription local, feedback openai",
+  "speaking transcription: local deployment whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b, timeout 2s, request deadline 38s"
+ ],
+ "note": "Real inference: pretrained whisper-base served by tools/speaking (CPU, 4 threads), FLH server built from this tree, local transcription + OpenAI-style feedback against a synthetic local stub. Audio: MLS French test split (CC BY 4.0) and synthetic silence/garbage. Produced by tools/speaking/scripts/verify_local_provider.py run (run 2, after the lost-answer fix).",
+ "scenarios": {
+  "cleanup": {
+   "audio_fragments_in_database": [],
+   "authorization_in_service_logs": false,
+   "flh_work_files": [
+    "flh-server-0.log",
+    "flh-server-1.log",
+    "flh-server-2.log",
+    "flh-server-3.log",
+    "flh.db",
+    "flh.db-shm",
+    "flh.db-wal",
+    "manifest-offline.json",
+    "manifest-served.json",
+    "run.err",
+    "run.out"
+   ],
+   "service_container_changes": [
+    "C /tmp",
+    "A /tmp/torchinductor_uid_1000",
+    "A /sources"
+   ],
+   "transcript_words_in_flh_logs": [],
+   "transcript_words_in_service_logs": []
+  },
+  "client_went_away": {
+   "client": "TimeoutError",
+   "lookup_http": 200,
+   "seconds_until_stored": 4.02,
+   "service_requests_delta": 1,
+   "state": "completed",
+   "status": "completed"
+  },
+  "concurrent": {
+   "first_long": {
+    "http": 201,
+    "seconds": 4.599,
+    "state": "completed",
+    "status": "completed",
+    "wer": 0.1992
+   },
+   "same_key_while_running": {
+    "http": 200,
+    "replayed": "true",
+    "state": "in_progress",
+    "status": null
+   },
+   "second_click_other_take": {
+    "code": "request_in_progress",
+    "http": 409
+   },
+   "service_requests_delta": 1
+  },
+  "confirmation": {
+   "confirm_corrected_http": 201,
+   "confirm_unchanged_http": 201,
+   "stored_transcriptions": [
+    [
+     "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b:speaking_transcription_v1",
+     "completed"
+    ],
+    [
+     "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b:speaking_transcription_v1",
+     "failed"
+    ]
+   ],
+   "transcripts_before_confirm": 0,
+   "versions_after_restart": [
+    {
+     "origin": "transcription",
+     "transcription_id": 3,
+     "version": 1
+    },
+    {
+     "origin": "corrected",
+     "transcription_id": 3,
+     "version": 2
+    }
+   ]
+  },
+  "during_loading": {
+   "after_unknown": false,
+   "code": null,
+   "deadline_s": 90.0,
+   "error": "the transcription provider is unavailable; your take and transcripts are kept",
+   "failure_code": "provider_unavailable",
+   "http": 502,
+   "key": "96d4232f-d385-4c9b-b9f7-ed8f3d41cb2e",
+   "replayed": null,
+   "seconds": 0.006,
+   "service_status_when_sent": "loading",
+   "state": "failed",
+   "status": "failed",
+   "text": null,
+   "transcriber": "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b:speaking_transcription_v1",
+   "transcription_id": 2
+  },
+  "feedback_beside": {
+   "generator": "openai:stub-feedback-model:speaking_feedback_v1",
+   "http": 201,
+   "seconds": 0.007,
+   "service_requests_delta": 0,
+   "status": "completed",
+   "stub_authorized": true,
+   "stub_calls": 1,
+   "stub_model": "stub-feedback-model",
+   "stub_saw_confirmed_text": true
+  },
+  "final_container_failures": {
+   "garbage.webm": "invalid_output",
+   "overlong.webm": "invalid_output",
+   "silence.webm": "invalid_output"
+  },
+  "flh_timeout_shorter_than_inference": {
+   "acknowledged_retry_timeout_60": {
+    "after_unknown": true,
+    "deadline_s": 90.0,
+    "http": 201,
+    "state": "completed",
+    "status": "completed"
+   },
+   "first": {
+    "deadline_s": 38.0,
+    "failure_code": "provider_timeout",
+    "http": 504,
+    "seconds": 2.012,
+    "state": "unknown"
+   },
+   "new_click_without_ack": {
+    "code": "outcome_unknown",
+    "http": 409
+   },
+   "timeout_s": 2
+  },
+  "formats": {
+   "a.m4a as audio/mp4": {
+    "failure_code": null,
+    "http": 201,
+    "seconds": 1.087,
+    "status": "completed",
+    "take_refused": null,
+    "text": "Dénarça, la nuit suivante, à place à sœur, quand il en fut tant. Si vous ne dormez pas à ma sœur, lui dit-elle, je vous prie en attendant le jour qui paraît très bientôt de continuer le compte du pêcheur.",
+    "wer": 0.2432
+   },
+   "a.m4a as audio/x-m4a": {
+    "failure_code": null,
+    "http": 201,
+    "seconds": 1.081,
+    "status": "completed",
+    "take_refused": null,
+    "text": "Dénarça, la nuit suivante, à place à sœur, quand il en fut tant. Si vous ne dormez pas à ma sœur, lui dit-elle, je vous prie en attendant le jour qui paraît très bientôt de continuer le compte du pêcheur.",
+    "wer": 0.2432
+   },
+   "a.mp3 as audio/mpeg": {
+    "failure_code": null,
+    "http": 201,
+    "seconds": 1.094,
+    "status": "completed",
+    "take_refused": null,
+    "text": "Dénarçade, la nuit suivante, à place à sœur, quand il en fut temps. Si vous ne dormez pas ma sœur, lui dit-elle, je vous prie en attendant le jour qui paraîtra bientôt de continuer le compte du pêcheur.",
+    "wer": 0.1351
+   },
+   "a.ogg as audio/ogg": {
+    "error": "validation error: audio type \"audio/ogg\" is not accepted (webm, mp4/m4a, mpeg/mp3 or wav)",
+    "take_http": 422
+   },
+   "a.wav as audio/wav": {
+    "failure_code": null,
+    "http": 201,
+    "seconds": 1.2,
+    "status": "completed",
+    "take_refused": null,
+    "text": "Dénarça de la nuit suivante, à place à sœur, quand il en fut temps. Si vous ne dormez pas ma sœur, lui dit-elle, je vous prie en attendant le jour qui paraîtra bientôt de continuer le compte du pêcheur.",
+    "wer": 0.1622
+   },
+   "a.webm as audio/webm;codecs=opus": {
+    "failure_code": null,
+    "http": 201,
+    "seconds": 1.163,
+    "status": "completed",
+    "take_refused": null,
+    "text": "Dénarçade, la nuit suivante, à place à sœur, cantillant futant. Si vous ne dormez pas à ma sœur, lui dit-elle, je vous prie en attendant le jour qui paraîtra bientôt de continuer le compte du pêcheur.",
+    "wer": 0.2973
+   }
+  },
+  "provider_identity": {
+   "api_feedback_name": "openai:stub-feedback-model:speaking_feedback_v1",
+   "api_transcription_name": "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b:speaking_transcription_v1",
+   "consistent": true,
+   "offline_deployment_id": "whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b",
+   "request_deadline_s": 90.0,
+   "served_deployment_id": "whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b",
+   "stored_transcriber": "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b:speaking_transcription_v1"
+  },
+  "readiness_transitions": [
+   [
+    0.0,
+    "down",
+    "ConnectionResetError"
+   ],
+   [
+    0.51,
+    503,
+    "loading"
+   ],
+   [
+    4.36,
+    503,
+    "warming"
+   ],
+   [
+    4.87,
+    200,
+    "ready"
+   ]
+  ],
+  "real_transcription": {
+   "after_unknown": false,
+   "code": null,
+   "deadline_s": 90.0,
+   "error": null,
+   "failure_code": null,
+   "http": 201,
+   "key": "7d0dbec3-b0a2-485c-849a-7682785f515f",
+   "replayed": null,
+   "seconds": 1.096,
+   "service_requests_delta": 1,
+   "state": "completed",
+   "status": "completed",
+   "text": "Dénarçade, la nuit suivante, à place à sœur, cantillant futant. Si vous ne dormez pas à ma sœur, lui dit-elle, je vous prie en attendant le jour qui paraîtra bientôt de continuer le compte du pêcheur.",
+   "transcriber": "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b:speaking_transcription_v1",
+   "transcription_id": 3,
+   "wer": 0.2973
+  },
+  "refused_inputs": {
+   "audio_longer_than_120s_declared_119s": {
+    "failure_code": "invalid_output",
+    "http": 502,
+    "seconds": 0.366,
+    "state": "failed"
+   },
+   "body_over_8MiB": {
+    "error": "the audio is larger than this server accepts",
+    "http": 413
+   },
+   "empty_audio_body": {
+    "error": "validation error: audio is empty",
+    "http": 422
+   },
+   "service_requests_delta_before_any_call": 0,
+   "silence": {
+    "failure_code": "invalid_output",
+    "http": 502,
+    "seconds": 0.055,
+    "state": "failed"
+   },
+   "take_declared_125s": {
+    "error": "validation error: duration_ms must be between 1 and 120000",
+    "http": 422
+   },
+   "take_over_8MiB": {
+    "error": "validation error: audio_bytes must be between 1 and 8388608",
+    "http": 422
+   },
+   "take_with_zero_bytes": {
+    "error": "validation error: audio_bytes must be between 1 and 8388608",
+    "http": 422
+   },
+   "undecodable_webm": {
+    "failure_code": "invalid_output",
+    "http": 502,
+    "state": "failed"
+   },
+   "wav_just_under_8MiB": {
+    "bytes": 8256078,
+    "http": 201,
+    "seconds": 3.122,
+    "state": "completed",
+    "status": "completed"
+   },
+   "wav_sent_as_webm": {
+    "error": "validation error: audio content does not look like audio/webm",
+    "http": 422
+   }
+  },
+  "replay_same_key": {
+   "http": 200,
+   "replayed": "true",
+   "same_text": true,
+   "service_requests_delta": 0,
+   "state": "completed",
+   "text": "Dénarçade, la nuit suivante, à place à sœur, cantillant futant. Si vous ne dormez pas à ma sœur, lui dit-elle, je vous prie en attendant le jour qui paraîtra bientôt de continuer le compte du pêcheur."
+  },
+  "restart_and_recovery": {
+   "after_ready": {
+    "http": 201,
+    "state": "completed",
+    "status": "completed",
+    "transcriber": "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b:speaking_transcription_v1"
+   },
+   "other_weights": {
+    "failure_code": "provider_unavailable",
+    "http": 502,
+    "state": "failed",
+    "text": null
+   },
+   "other_weights_deployment": "whisper-small@973afd24965f/flh_speaking_transcribe_v1/cpu-fp32/d20b5c67adbff447",
+   "readiness_after_restart": [
+    [
+     0.0,
+     "down",
+     "ConnectionResetError"
+    ],
+    [
+     0.6,
+     "down",
+     "RemoteDisconnected"
+    ],
+    [
+     0.81,
+     "down",
+     "ConnectionResetError"
+    ],
+    [
+     1.02,
+     503,
+     "loading"
+    ],
+    [
+     9.18,
+     503,
+     "warming"
+    ],
+    [
+     9.79,
+     200,
+     "ready"
+    ]
+   ],
+   "recovered_default_deadline": {
+    "http": 201,
+    "seconds": 13.264,
+    "state": "completed",
+    "status": "completed"
+   },
+   "right_after_restart": {
+    "failure_code": "provider_unavailable",
+    "http": 502,
+    "state": "failed"
+   },
+   "same_deployment_after_restart": true,
+   "service_deadline_1s_long_clip": {
+    "failure_code": "provider_unavailable",
+    "http": 502,
+    "seconds": 3.375,
+    "state": "failed"
+   },
+   "service_deadline_limits": 1.0,
+   "service_timeouts_counter": 1
+  },
+  "service_not_started": {
+   "after_unknown": false,
+   "code": null,
+   "deadline_s": 90.0,
+   "error": "the transcription provider is unavailable; your take and transcripts are kept",
+   "failure_code": "provider_unavailable",
+   "http": 502,
+   "key": "02093332-0008-4585-bc82-3b73e5bb48f0",
+   "replayed": null,
+   "seconds": 0.005,
+   "state": "failed",
+   "status": "failed",
+   "text": null,
+   "transcriber": "local:whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b:speaking_transcription_v1",
+   "transcription_id": 1
+  }
+ },
+ "schema": "flh_speaking_local_provider_verification_v1",
+ "service_limits": {
+  "accepted_containers": [
+   "webm",
+   "mp4",
+   "mp3",
+   "wav"
+  ],
+  "concurrent_inferences": 1,
+  "inference_timeout_s": 50.0,
+  "max_audio_bytes": 8388608,
+  "max_audio_seconds": 120.0,
+  "max_request_bytes": 8454144,
+  "read_timeout_s": 30.0
+ },
+ "service_metrics_final": {
+  "abstained": 1,
+  "busy": 0,
+  "errors": 0,
+  "refused": 2,
+  "requests": 4,
+  "timeouts": 0,
+  "transcribed": 1
+ },
+ "service_peak_memory_mib": {
+  "flh-speaking-verify-08d941a3": 910.7,
+  "flh-speaking-verify-340b0270": 1415.3,
+  "flh-speaking-verify-42a7d4db": 720.0,
+  "flh-speaking-verify-86217bc0": 899.5
+ }
+}

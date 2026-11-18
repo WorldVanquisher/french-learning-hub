@@ -3,7 +3,9 @@
 // server on loopback that records what it received (model, fields, filename,
 // part type, audio size and SHA-256, never the audio itself beyond the call)
 // and can be told to fail, hang, return unusable output or drop the
-// connection after reading the request (a lost response).
+// connection after reading the request (a lost response). NewLocal stands in
+// for the local transcription service instead (tools/speaking): it accepts no
+// key and names its deployment in every answer.
 package speakingfake
 
 import (
@@ -44,6 +46,8 @@ type Received struct {
 type Transcriptions struct {
 	mu       sync.Mutex
 	key      string
+	local    bool
+	deployed string // local: the deployment_id the answers name
 	text     string
 	mode     string
 	status   int
@@ -59,6 +63,23 @@ func New(t testing.TB, key, text string) *Transcriptions {
 	f.Server = httptest.NewServer(http.HandlerFunc(f.handle))
 	t.Cleanup(f.Server.Close)
 	return f
+}
+
+// NewLocal starts a stand-in for the local transcription service: requests
+// must carry no Authorization header, and answers carry
+// flh.deployment_id = deploymentID (flh_speaking_transcription_v1).
+func NewLocal(t testing.TB, deploymentID, text string) *Transcriptions {
+	f := New(t, "", text)
+	f.local, f.deployed = true, deploymentID
+	return f
+}
+
+// SetDeployment changes the deployment_id a local stand-in names (a restarted
+// service with other weights).
+func (f *Transcriptions) SetDeployment(id string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.deployed = id
 }
 
 // URL is the base URL (the client appends /audio/transcriptions).
@@ -113,7 +134,7 @@ func (f *Transcriptions) handle(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.Copy(io.Discard, r.Body)
 	f.mu.Lock()
 	f.received = append(f.received, rec)
-	mode, status, delay, text := f.mode, f.status, f.delay, f.text
+	mode, status, delay, text, deployed := f.mode, f.status, f.delay, f.text, f.deployed
 	f.mu.Unlock()
 	select {
 	case f.Arrived <- struct{}{}:
@@ -148,10 +169,19 @@ func (f *Transcriptions) handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	if rec.Auth != "Bearer "+f.key {
+	if (f.local && rec.Auth != "") || (!f.local && rec.Auth != "Bearer "+f.key) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if f.local {
+		status := "transcribed"
+		if text == "" {
+			status = "no_speech"
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"text": text, "flh": map[string]any{
+			"schema": "flh_speaking_transcription_v1", "status": status, "warnings": []string{}, "deployment_id": deployed}})
+		return
+	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"text": text, "usage": map[string]any{"type": "duration", "seconds": 3}})
 }

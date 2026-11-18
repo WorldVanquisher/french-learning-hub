@@ -1,7 +1,10 @@
-"""Render the Speaking training pilot job locally and refuse anything outside
-the reviewed bounds. No AWS call. Prints the rendered file's path.
+"""Render a Speaking training job locally and refuse anything outside the
+reviewed bounds. No AWS call. Prints the rendered file's path.
 
   python3 render.py VALUES.json CONFIG.json OUT_DIR
+
+VALUES may name the run (``RUN``, default ``pilot``; for example ``punct`` for
+the punctuated-target experiment): it names the job and its ``Run`` tag.
 """
 
 import json
@@ -41,8 +44,11 @@ def render(values: dict, config: dict, out_dir: str, now=None) -> Path:
         raise SystemExit("render: DATA_SHA256 and BASE_REVISION must be full hashes")
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v.get("DELETE_AFTER", "")):
         raise SystemExit("render: DELETE_AFTER must be YYYY-MM-DD")
+    v.setdefault("RUN", "pilot")
+    if not re.fullmatch(r"[a-z][a-z0-9-]{0,15}", v["RUN"]):
+        raise SystemExit("render: RUN must be 1-16 characters: a-z, 0-9 and -")
     stamp = (now or datetime.now(timezone.utc)).strftime("%Y%m%d-%H%M%S")
-    v["JOB_NAME"] = f"flh-speaking-pilot-{stamp}"
+    v["JOB_NAME"] = f"flh-speaking-{v['RUN']}-{stamp}"
     v["IMAGE_URI_BY_DIGEST"] = f"{v['REGISTRY']}/flh-speaking@{v['IMAGE_DIGEST']}"
     v["CONFIG_JSON"] = json.dumps(config, sort_keys=True, separators=(",", ":"))
     job = fill(json.loads((HERE / "train-pilot.json.tmpl").read_text()), v)

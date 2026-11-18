@@ -72,7 +72,7 @@ def fetch_one(dest: str, source: dict, path: str, dataset: bool, log=print) -> s
 
 
 def fetch(dest: str, what: list[str], log=print) -> dict:
-    """what: model names (whisper-tiny, ...), 'mls' and/or 'fleurs'. Returns {key: local dir}."""
+    """what: model names (whisper-tiny, ...), 'mls', 'fleurs', 'slr57' and/or 'fleurs-fr-train'. Returns {key: local dir}."""
     out = {}
     for w in what:
         if w in pins.MODELS:
@@ -83,6 +83,8 @@ def fetch(dest: str, what: list[str], log=print) -> dict:
             src, dataset = pins.FLEURS, True
         elif w == "slr57":
             src, dataset = pins.SLR57, True
+        elif w == "fleurs-fr-train":
+            src, dataset = pins.FLEURS_FR_TRAIN, True
         else:
             raise ValueError(f"unknown source {w!r}")
         for path in sorted(src["files"]):
@@ -95,7 +97,7 @@ def check(dest: str, what: list[str]) -> list[str]:
     """Problems with already fetched files (empty when every pinned file matches)."""
     problems = []
     for w in what:
-        src = pins.MODELS.get(w) or {"mls": pins.MLS, "fleurs": pins.FLEURS, "slr57": pins.SLR57}[w]
+        src = pins.MODELS.get(w) or {"mls": pins.MLS, "fleurs": pins.FLEURS, "slr57": pins.SLR57, "fleurs-fr-train": pins.FLEURS_FR_TRAIN}[w]
         for path, (size, digest) in sorted(src["files"].items()):
             bad = verify(local_path(dest, src, path), size, digest)
             if bad:

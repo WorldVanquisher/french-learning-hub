@@ -257,7 +257,8 @@ const (
 //	WRITING_PROVIDER    -> Writing.Provider, default disabled (reuses OPENAI_*)
 //	SPEAKING_PROVIDER   -> Speaking.Feedback, default disabled (reuses OPENAI_*)
 //	SPEAKING_TRANSCRIPTION_PROVIDER, SPEAKING_TRANSCRIPTION_MODEL ->
-//	Speaking.Transcription, default disabled (reuses OPENAI_API_KEY/BASE_URL/TIMEOUT)
+//	Speaking.Transcription, default disabled (openai reuses OPENAI_API_KEY/BASE_URL/TIMEOUT;
+//	local uses SPEAKING_TRANSCRIPTION_BASE_URL and SPEAKING_TRANSCRIPTION_TIMEOUT, default 60 s)
 //	LISTENING_PLAYLIST_SOURCE, LISTENING_AUTO_PREPARE, LISTENING_NOTIFY and their
 //	settings -> ListeningDaily (see loadListeningDaily), all default disabled
 //	EMBEDDING_PROVIDER -> Embedding.Provider, default disabled
@@ -350,13 +351,15 @@ func load(src source) (Config, error) {
 			OpenAITimeout: getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
 		Speaking: SpeakingConfig{
-			Feedback:           SpeakingProvider(getenv("SPEAKING_PROVIDER", string(SpeakingDisabled))),
-			Transcription:      SpeakingProvider(getenv("SPEAKING_TRANSCRIPTION_PROVIDER", string(SpeakingDisabled))),
-			TranscriptionModel: strings.TrimSpace(src.get("SPEAKING_TRANSCRIPTION_MODEL")),
-			OpenAIAPIKey:       src.get("OPENAI_API_KEY"),
-			OpenAIModel:        strings.TrimSpace(src.get("OPENAI_MODEL")),
-			OpenAIBaseURL:      getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
-			OpenAITimeout:      getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
+			Feedback:             SpeakingProvider(getenv("SPEAKING_PROVIDER", string(SpeakingDisabled))),
+			Transcription:        SpeakingProvider(getenv("SPEAKING_TRANSCRIPTION_PROVIDER", string(SpeakingDisabled))),
+			TranscriptionModel:   strings.TrimSpace(src.get("SPEAKING_TRANSCRIPTION_MODEL")),
+			TranscriptionBaseURL: strings.TrimSpace(src.get("SPEAKING_TRANSCRIPTION_BASE_URL")),
+			TranscriptionTimeout: getdur("SPEAKING_TRANSCRIPTION_TIMEOUT", defaultSpeakingTranscriptionTimeout),
+			OpenAIAPIKey:         src.get("OPENAI_API_KEY"),
+			OpenAIModel:          strings.TrimSpace(src.get("OPENAI_MODEL")),
+			OpenAIBaseURL:        getenv("OPENAI_BASE_URL", defaultOpenAIBaseURL),
+			OpenAITimeout:        getdur("OPENAI_TIMEOUT", defaultOpenAITimeout),
 		},
 		Embedding: EmbeddingConfig{
 			Provider: EmbeddingProvider(getenv("EMBEDDING_PROVIDER", string(EmbeddingDisabled))),

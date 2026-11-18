@@ -1,0 +1,703 @@
+{
+ "base": {
+  "accent_v1_by_duration": {
+   "0-1.5s": {
+    "abstained_pct": 2.4,
+    "n": 123,
+    "no_speech": 0,
+    "not_french": 3,
+    "not_french_pct": 2.4,
+    "transcribed": 120,
+    "wer_if_not_refused": 0.4132,
+    "wer_served": 0.4222
+   },
+   "1.5-2s": {
+    "abstained_pct": 2.3,
+    "n": 133,
+    "no_speech": 0,
+    "not_french": 3,
+    "not_french_pct": 2.3,
+    "transcribed": 130,
+    "wer_if_not_refused": 0.3489,
+    "wer_served": 0.3578
+   },
+   "2-3s": {
+    "abstained_pct": 4.1,
+    "n": 171,
+    "no_speech": 0,
+    "not_french": 7,
+    "not_french_pct": 4.1,
+    "transcribed": 164,
+    "wer_if_not_refused": 0.3648,
+    "wer_served": 0.3903
+   },
+   "3-5s": {
+    "abstained_pct": 13.2,
+    "n": 76,
+    "no_speech": 0,
+    "not_french": 10,
+    "not_french_pct": 13.2,
+    "transcribed": 66,
+    "wer_if_not_refused": 0.2947,
+    "wer_served": 0.3527
+   },
+   ">=5s": {
+    "abstained_pct": 8.3,
+    "n": 12,
+    "no_speech": 0,
+    "not_french": 1,
+    "not_french_pct": 8.3,
+    "transcribed": 11,
+    "wer_if_not_refused": 0.2814,
+    "wer_served": 0.3114
+   }
+  },
+  "accent_v1_not_french_examples": [
+   {
+    "id": "gabon_f_026_048",
+    "model_text": "Juste quand il me dit oui.",
+    "p_fr": 0.0142,
+    "reference": "Jusqu’à midi, oui.",
+    "seconds": 0.872,
+    "top": "en"
+   },
+   {
+    "id": "gabon_m_060_003",
+    "model_text": "Nous sommes Canadiens",
+    "p_fr": 0.0013,
+    "reference": "Nous sommes Canadiens.",
+    "seconds": 1.168,
+    "top": "id"
+   },
+   {
+    "id": "gabon_m_058_005",
+    "model_text": "Nous sommes Canadiens.",
+    "p_fr": 0.0015,
+    "reference": "Nous sommes Canadiens.",
+    "seconds": 1.313,
+    "top": "pt"
+   },
+   {
+    "id": "gabon_m_060_011",
+    "model_text": "Merci bien de votre assistance.",
+    "p_fr": 0.0507,
+    "reference": "Merci bien de votre assistance.",
+    "seconds": 1.675,
+    "top": "pt"
+   },
+   {
+    "id": "chad_m_001_010",
+    "model_text": "à droite, quoi, gauche.",
+    "p_fr": 0.0014,
+    "reference": "A droite ou à gauche?",
+    "seconds": 1.75,
+    "top": "ru"
+   },
+   {
+    "id": "gabon_m_003_032",
+    "model_text": "Vix Iliana Ynna !",
+    "p_fr": 0.0026,
+    "reference": "Oui, il y en a une.",
+    "seconds": 1.75,
+    "top": "fi"
+   },
+   {
+    "id": "chad_m_001_002",
+    "model_text": "Mon camarade est malade.",
+    "p_fr": 0.0174,
+    "reference": "Mon camarade est malade.",
+    "seconds": 2.0,
+    "top": "tl"
+   },
+   {
+    "id": "chad_m_001_011",
+    "model_text": "si bien de votre assistance.",
+    "p_fr": 0.0978,
+    "reference": "Merci bien de votre assistance.",
+    "seconds": 2.0,
+    "top": "es"
+   },
+   {
+    "id": "gabon_m_074_027",
+    "model_text": "Elle monte la Premidie et tombe la nuit.",
+    "p_fr": 0.0016,
+    "reference": "Elle monte l'après-midi et tombe la nuit.",
+    "seconds": 2.205,
+    "top": "it"
+   },
+   {
+    "id": "gabon_m_074_070",
+    "model_text": "chaque famille doit avoir un thermomètre.",
+    "p_fr": 0.0134,
+    "reference": "Chaque famille doit avoir un thermomètre.",
+    "seconds": 2.378,
+    "top": "ar"
+   },
+   {
+    "id": "gabon_m_072_008",
+    "model_text": "La formation est aussi médisseur.",
+    "p_fr": 0.0424,
+    "reference": "La pharmacienne est aussi médecin.",
+    "seconds": 2.533,
+    "top": "de"
+   },
+   {
+    "id": "chad_m_001_020",
+    "model_text": "Bonjour Monsieur !",
+    "p_fr": 0.0327,
+    "reference": "Bonjour monsieur.",
+    "seconds": 2.75,
+    "top": "tr"
+   }
+  ],
+  "by_group_and_length": {
+   "fleurs_ood/cut_1.0": {
+    "abstained_pct": 1.6,
+    "median_seconds": 0.975,
+    "n": 64,
+    "no_speech": 1,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 63
+   },
+   "fleurs_ood/cut_1.5": {
+    "abstained_pct": 1.6,
+    "median_seconds": 1.535,
+    "n": 64,
+    "no_speech": 1,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 63
+   },
+   "fleurs_ood/cut_2.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 2.035,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "fleurs_ood/cut_3.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 3.08,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "fleurs_ood/cut_5.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 5.035,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "fleurs_ood/full": {
+    "abstained_pct": 0.0,
+    "median_seconds": 8.94,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64,
+    "wer_raw": 0.2745,
+    "wer_served": 0.2745
+   },
+   "fleurs_ood_natural_short/full": {
+    "abstained_pct": 0.0,
+    "median_seconds": 4.62,
+    "n": 11,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 11,
+    "wer_raw": 0.3716,
+    "wer_served": 0.3716
+   },
+   "mls_test/cut_1.0": {
+    "abstained_pct": 9.4,
+    "median_seconds": 1.065,
+    "n": 64,
+    "no_speech": 2,
+    "not_french": 4,
+    "not_french_pct": 6.2,
+    "transcribed": 58
+   },
+   "mls_test/cut_1.5": {
+    "abstained_pct": 3.1,
+    "median_seconds": 1.49,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 2,
+    "not_french_pct": 3.1,
+    "transcribed": 62
+   },
+   "mls_test/cut_2.0": {
+    "abstained_pct": 1.6,
+    "median_seconds": 2.065,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 1,
+    "not_french_pct": 1.6,
+    "transcribed": 63
+   },
+   "mls_test/cut_3.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 3.02,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "mls_test/cut_5.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 5.02,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "mls_test/full": {
+    "abstained_pct": 0.0,
+    "median_seconds": 16.26,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64,
+    "wer_raw": 0.2711,
+    "wer_served": 0.2711
+   }
+  },
+  "no_speech_on_speech_examples": [
+   {
+    "id": "2085_1565_000005@1.0",
+    "model_text": "...",
+    "p_fr": 0.0164,
+    "p_top": 0.4789,
+    "reference": null,
+    "seconds": 0.96,
+    "top": "en"
+   },
+   {
+    "id": "2154_1167_000003@1.0",
+    "model_text": null,
+    "p_fr": null,
+    "p_top": null,
+    "reference": null,
+    "seconds": 0.84,
+    "top": null
+   },
+   {
+    "id": "fleurs_fr_dev_5832476106767976342@1.0",
+    "model_text": "...",
+    "p_fr": 0.0198,
+    "p_top": 0.3834,
+    "reference": null,
+    "seconds": 1.09,
+    "top": "en"
+   },
+   {
+    "id": "fleurs_fr_dev_5832476106767976342@1.5",
+    "model_text": "T'es",
+    "p_fr": 0.0292,
+    "p_top": 0.3492,
+    "reference": null,
+    "seconds": 1.28,
+    "top": "en"
+   }
+  ],
+  "not_french_examples": [
+   {
+    "id": "2114_1656_000002@1.0",
+    "model_text": "et c'est juste simple.",
+    "p_fr": 0.0269,
+    "p_top": 0.9356,
+    "reference": null,
+    "seconds": 0.85,
+    "top": "pt"
+   },
+   {
+    "id": "2154_1167_000001@1.0",
+    "model_text": "Comme elle dit ça !",
+    "p_fr": 0.0522,
+    "p_top": 0.8251,
+    "reference": null,
+    "seconds": 1.05,
+    "top": "es"
+   },
+   {
+    "id": "2154_1167_000007@1.0",
+    "model_text": "elle batit.",
+    "p_fr": 0.1062,
+    "p_top": 0.7655,
+    "reference": null,
+    "seconds": 0.77,
+    "top": "es"
+   },
+   {
+    "id": "4482_3103_000000@1.0",
+    "model_text": "et compose",
+    "p_fr": 0.0166,
+    "p_top": 0.9645,
+    "reference": null,
+    "seconds": 1.2,
+    "top": "pt"
+   },
+   {
+    "id": "4482_3103_000000@1.5",
+    "model_text": "et compose",
+    "p_fr": 0.0166,
+    "p_top": 0.9645,
+    "reference": null,
+    "seconds": 1.26,
+    "top": "pt"
+   },
+   {
+    "id": "7762_8734_000001@1.5",
+    "model_text": "Maintenant, c'est d'un lui-en.",
+    "p_fr": 0.1245,
+    "p_top": 0.7175,
+    "reference": null,
+    "seconds": 1.73,
+    "top": "es"
+   },
+   {
+    "id": "7762_8734_000001@2.0",
+    "model_text": "Maintenant, c'est dans le lien de tel.",
+    "p_fr": 0.0255,
+    "p_top": 0.855,
+    "reference": null,
+    "seconds": 2.04,
+    "top": "es"
+   }
+  ]
+ },
+ "small": {
+  "accent_v1_by_duration": {
+   "0-1.5s": {
+    "abstained_pct": 1.6,
+    "n": 123,
+    "no_speech": 0,
+    "not_french": 2,
+    "not_french_pct": 1.6,
+    "transcribed": 121,
+    "wer_if_not_refused": 0.1807,
+    "wer_served": 0.2004
+   },
+   "1.5-2s": {
+    "abstained_pct": 2.3,
+    "n": 133,
+    "no_speech": 0,
+    "not_french": 3,
+    "not_french_pct": 2.3,
+    "transcribed": 130,
+    "wer_if_not_refused": 0.1833,
+    "wer_served": 0.2035
+   },
+   "2-3s": {
+    "abstained_pct": 0.6,
+    "n": 171,
+    "no_speech": 0,
+    "not_french": 1,
+    "not_french_pct": 0.6,
+    "transcribed": 170,
+    "wer_if_not_refused": 0.1718,
+    "wer_served": 0.1735
+   },
+   "3-5s": {
+    "abstained_pct": 2.6,
+    "n": 76,
+    "no_speech": 0,
+    "not_french": 2,
+    "not_french_pct": 2.6,
+    "transcribed": 74,
+    "wer_if_not_refused": 0.1337,
+    "wer_served": 0.1498
+   },
+   ">=5s": {
+    "abstained_pct": 0.0,
+    "n": 12,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 12,
+    "wer_if_not_refused": 0.1198,
+    "wer_served": 0.1198
+   }
+  },
+  "accent_v1_not_french_examples": [
+   {
+    "id": "gabon_m_058_005",
+    "model_text": "Nous sommes canadiens.",
+    "p_fr": 0.1569,
+    "reference": "Nous sommes Canadiens.",
+    "seconds": 1.313,
+    "top": "pt"
+   },
+   {
+    "id": "gabon_m_060_022",
+    "model_text": "Est-ce qu'ils sont tous des soldats ?",
+    "p_fr": 0.0913,
+    "reference": "Est-ce qu’ils sont tous des soldats?",
+    "seconds": 1.495,
+    "top": "es"
+   },
+   {
+    "id": "gabon_m_060_019",
+    "model_text": "Oui, si c'est possible.",
+    "p_fr": 0.1447,
+    "reference": "Oui, si c’est possible.",
+    "seconds": 1.541,
+    "top": "pt"
+   },
+   {
+    "id": "gabon_m_058_025",
+    "model_text": "Bonjour madame, bonjour monsieur.",
+    "p_fr": 0.1053,
+    "reference": "Bonjour madame.  Bonjour monsieur.",
+    "seconds": 1.656,
+    "top": "pt"
+   },
+   {
+    "id": "gabon_f_026_067",
+    "model_text": "Qu'est-ce qu'ils sont tous des soldats ?",
+    "p_fr": 0.0145,
+    "reference": "Est-ce qu’ils sont tous des soldats?",
+    "seconds": 1.822,
+    "top": "es"
+   },
+   {
+    "id": "chad_m_001_020",
+    "model_text": "Bonjour monsieur.",
+    "p_fr": 0.0362,
+    "reference": "Bonjour monsieur.",
+    "seconds": 2.75,
+    "top": "tr"
+   },
+   {
+    "id": "cameroon_m_006_003",
+    "model_text": "Oui, qu'est ce que tu voulais ?",
+    "p_fr": 0.073,
+    "reference": "Oui, qu'est-ce, qu'est-ce que vous voulez?",
+    "seconds": 3.25,
+    "top": "pt"
+   },
+   {
+    "id": "congo_m_013_013",
+    "model_text": "Oui, on a du transport.",
+    "p_fr": 0.0715,
+    "reference": "Oui, on a du transport.",
+    "seconds": 4.0,
+    "top": "yo"
+   }
+  ],
+  "by_group_and_length": {
+   "fleurs_ood/cut_1.0": {
+    "abstained_pct": 1.6,
+    "median_seconds": 0.975,
+    "n": 64,
+    "no_speech": 1,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 63
+   },
+   "fleurs_ood/cut_1.5": {
+    "abstained_pct": 3.1,
+    "median_seconds": 1.535,
+    "n": 64,
+    "no_speech": 1,
+    "not_french": 1,
+    "not_french_pct": 1.6,
+    "transcribed": 62
+   },
+   "fleurs_ood/cut_2.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 2.035,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "fleurs_ood/cut_3.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 3.08,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "fleurs_ood/cut_5.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 5.035,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "fleurs_ood/full": {
+    "abstained_pct": 0.0,
+    "median_seconds": 8.94,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64,
+    "wer_raw": 0.1226,
+    "wer_served": 0.1226
+   },
+   "fleurs_ood_natural_short/full": {
+    "abstained_pct": 0.0,
+    "median_seconds": 4.62,
+    "n": 11,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 11,
+    "wer_raw": 0.1689,
+    "wer_served": 0.1689
+   },
+   "mls_test/cut_1.0": {
+    "abstained_pct": 7.8,
+    "median_seconds": 1.065,
+    "n": 64,
+    "no_speech": 2,
+    "not_french": 3,
+    "not_french_pct": 4.7,
+    "transcribed": 59
+   },
+   "mls_test/cut_1.5": {
+    "abstained_pct": 0.0,
+    "median_seconds": 1.49,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "mls_test/cut_2.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 2.065,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "mls_test/cut_3.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 3.02,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "mls_test/cut_5.0": {
+    "abstained_pct": 0.0,
+    "median_seconds": 5.02,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64
+   },
+   "mls_test/full": {
+    "abstained_pct": 0.0,
+    "median_seconds": 16.26,
+    "n": 64,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 64,
+    "wer_raw": 0.1498,
+    "wer_served": 0.1498
+   }
+  },
+  "no_speech_on_speech_examples": [
+   {
+    "id": "2085_1565_000005@1.0",
+    "model_text": "Sous-titres réalisés par la communauté d'Amara.org",
+    "p_fr": 0.024,
+    "p_top": 0.2791,
+    "reference": null,
+    "seconds": 0.96,
+    "top": "en"
+   },
+   {
+    "id": "2154_1167_000003@1.0",
+    "model_text": null,
+    "p_fr": null,
+    "p_top": null,
+    "reference": null,
+    "seconds": 0.84,
+    "top": null
+   },
+   {
+    "id": "fleurs_fr_dev_5832476106767976342@1.0",
+    "model_text": "...",
+    "p_fr": 0.0294,
+    "p_top": 0.3002,
+    "reference": null,
+    "seconds": 1.09,
+    "top": "ko"
+   },
+   {
+    "id": "fleurs_fr_dev_5832476106767976342@1.5",
+    "model_text": "...",
+    "p_fr": 0.0665,
+    "p_top": 0.4296,
+    "reference": null,
+    "seconds": 1.28,
+    "top": "ko"
+   }
+  ],
+  "not_french_examples": [
+   {
+    "id": "2114_1656_000002@1.0",
+    "model_text": "et s'agit de tout simplement",
+    "p_fr": 0.1752,
+    "p_top": 0.6775,
+    "reference": null,
+    "seconds": 0.85,
+    "top": "pt"
+   },
+   {
+    "id": "296_486_000000@1.0",
+    "model_text": "Filias Fogg et...",
+    "p_fr": 0.0042,
+    "p_top": 0.8748,
+    "reference": null,
+    "seconds": 1.08,
+    "top": "sv"
+   },
+   {
+    "id": "4482_3103_000003@1.0",
+    "model_text": "Swat ?",
+    "p_fr": 0.0123,
+    "p_top": 0.6494,
+    "reference": null,
+    "seconds": 0.81,
+    "top": "en"
+   },
+   {
+    "id": "fleurs_fr_dev_6822012988359222189@1.5",
+    "model_text": "Je vais aller voir si je peux faire ça.",
+    "p_fr": 0.0037,
+    "p_top": 0.9441,
+    "reference": null,
+    "seconds": 1.67,
+    "top": "ar"
+   }
+  ]
+ }
+}

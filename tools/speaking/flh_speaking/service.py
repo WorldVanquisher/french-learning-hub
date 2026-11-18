@@ -10,7 +10,8 @@ It answers FLH's existing Go transcription client unchanged
   after a warm-up inference through the real model succeeded.
 * Limits: request bytes, audio bytes and seconds, accepted containers, one
   inference at a time with a bounded wait queue (429 when full), a read
-  timeout and an inference deadline (504).
+  timeout and a deadline counted from the request's arrival, queue wait
+  included (504; ``--inference-timeout``).
 * Audio is decoded in memory and dropped after the response; nothing is
   written to disk, cached or logged. Logs carry status, sizes and timings only.
 * No retries and no de-duplication: a repeated request re-runs inference and,
@@ -64,7 +65,9 @@ class State:
     def load(self):
         try:
             self.status = "loading"
-            self.manifest = self.manifest_fn(self.model_dir)
+            # The served manifest publishes the limits in force (not hashed:
+            # limits never change a transcript).
+            self.manifest = {**self.manifest_fn(self.model_dir), "limits": dict(self.limits)}
             t0 = time.monotonic()
             self.tr = self.loader(self.model_dir, self.threads)
             self.load_s = round(time.monotonic() - t0, 3)
@@ -100,8 +103,12 @@ def parse_multipart(content_type: str, body: bytes) -> dict[str, bytes]:
     return out
 
 
-def transcribe_request(state: State, fields: dict[str, bytes]) -> dict:
+def transcribe_request(state: State, fields: dict[str, bytes], deadline: float | None = None) -> dict:
+    """Decode and transcribe one request. ``deadline`` (monotonic) is fixed at
+    the request's arrival; without one it starts now."""
     lim = state.limits
+    if deadline is None:
+        deadline = time.monotonic() + lim["inference_timeout_s"]
     if "file" not in fields:
         raise ServiceError(400, "invalid_request", "missing form field 'file'")
     want = fields.get("model", b"").decode("utf-8", "replace")
@@ -123,7 +130,6 @@ def transcribe_request(state: State, fields: dict[str, bytes]) -> dict:
     sha = hashlib.sha256(data).hexdigest()
     del data, fields["file"]
     decode_s = time.monotonic() - t0
-    deadline = time.monotonic() + lim["inference_timeout_s"]
     try:
         res = state.tr.transcribe(dec.samples, deadline=deadline)
     except TimeoutError:
@@ -220,12 +226,17 @@ class Handler(BaseHTTPRequestHandler):
             fields = parse_multipart(ctype, body)
             del body
             st.counters["requests"] += 1
+            deadline = time.monotonic() + st.limits["inference_timeout_s"]
             if not st.slots.acquire(blocking=False):
                 st.counters["busy"] += 1
                 raise ServiceError(429, "busy", "too many transcriptions in progress; try again later")
             try:
-                with st.lock:
-                    doc = transcribe_request(st, fields)
+                if not st.lock.acquire(timeout=max(0.0, deadline - time.monotonic())):
+                    raise ServiceError(504, "timeout", "transcription exceeded the service's time limit while waiting")
+                try:
+                    doc = transcribe_request(st, fields, deadline)
+                finally:
+                    st.lock.release()
             finally:
                 st.slots.release()
             extra = {"result": doc["flh"]["status"], "audio_s": doc["flh"]["duration_s"], "model_s": doc["flh"]["timing"]["model_s"]}
@@ -270,8 +281,13 @@ def make_server(model_dir: str, host: str, port: int, *, threads: int = 4, max_w
     return srv, state
 
 
-def serve(model_dir: str, host: str, port: int, *, threads: int = 4, max_waiting: int = 2) -> int:
-    srv, state = make_server(model_dir, host, port, threads=threads, max_waiting=max_waiting)
+def serve(model_dir: str, host: str, port: int, *, threads: int = 4, max_waiting: int = 2, inference_timeout: float | None = None) -> int:
+    limits = dict(deployment.LIMITS)
+    if inference_timeout is not None:
+        if not 1 <= inference_timeout <= 600:
+            raise ValueError("--inference-timeout must be between 1 and 600 seconds")
+        limits["inference_timeout_s"] = float(inference_timeout)
+    srv, state = make_server(model_dir, host, port, threads=threads, max_waiting=max_waiting, limits=limits)
     threading.Thread(target=state.load, daemon=True).start()
     print(json.dumps({"event": "listening", "host": host, "port": srv.server_address[1]}), file=sys.stderr, flush=True)
     try:
