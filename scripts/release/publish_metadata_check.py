@@ -7,18 +7,21 @@
 Findings (exit 1; each printed as `LABEL:LINE: RULE: excerpt`, with private
 links redacted):
 
-  ai-coauthor-trailer   a `Co-authored-by:` line naming Claude or Anthropic
-                        (name containing "Claude" or "Anthropic", or an
-                        anthropic.com address)
+  ai-coauthor-trailer   a `Co-authored-by:` line naming the assistant: an
+                        anthropic.com address, a name containing "Anthropic",
+                        or the name "Claude" alone or with a model or product
+                        word ("Claude Opus 5.5", "Claude Code", "claude[bot]")
   session-trailer       a `Claude-Session:` line, whatever its value
   private-session-link  a claude.ai conversation, Claude Code session, project
                         or share URL
   ai-identity           (--kind commit) an `Author:` or `Committer:` header
-                        naming Claude or Anthropic
+                        naming the assistant (same rule)
 
 Not findings: prose about using AI ("drafted with Claude Code"), the public
 "Generated with [Claude Code](https://claude.com/claude-code)" line, and
-`Co-authored-by:` trailers for people. Exit 0 when nothing is found, 2 on bad
+`Co-authored-by:` trailers and identities for people, including people called
+Claude ("Claude Monet", "Jean-Claude Martin"). A bare "Claude" is treated as
+the assistant; write a person's full name. Exit 0 when nothing is found, 2 on bad
 usage or an unreadable file.
 
 `--redact` copies stdin to stdout with every private link replaced, so error
@@ -33,15 +36,21 @@ import argparse
 import re
 import sys
 
-AI_NAME = re.compile(r"\b(claude|anthropic)\b", re.I)
-AI_EMAIL = re.compile(r"@(?:[a-z0-9-]+\.)*anthropic\.com\b", re.I)
+ANTHROPIC = re.compile(r"\banthropic\b", re.I)
+AI_EMAIL = re.compile(r"@(?:[a-z0-9-]+\.)*anthropic\.com\b|\bclaude\[bot\]@", re.I)
+# "Claude" alone, or followed by a model/product word or a version number. A
+# person called Claude ("Claude Monet") or Jean-Claude does not match.
+AI_CLAUDE_NAME = re.compile(
+    r"^claude(?:\[bot\])?(?:[\s-]+(?:opus|sonnet|haiku|fable|instant|code|ai|assistant|agent|bot|by\s+anthropic|\d[\w.]*)\b.*)?$",
+    re.I,
+)
 COAUTHOR = re.compile(r"^\s*co-authored-by\s*:\s*(?P<value>.*)$", re.I)
 SESSION_TRAILER = re.compile(r"^\s*claude-session\s*:", re.I)
 IDENTITY = re.compile(r"^(?:author|committer)\s*:\s*(?P<value>.*)$", re.I)
 # claude.ai links that point at a private conversation, Claude Code session,
 # project or share; the identifier is what gets redacted.
 PRIVATE_LINK = re.compile(
-    r"(?P<prefix>https?://(?:www\.)?claude\.ai/(?:code/(?:session[_/-]?|sessions/)|chat/|project/|share/))"
+    r"(?P<prefix>https?://(?:www\.)?claude\.ai/(?:code/(?:sessions/|session[_/-]?)|chat/|project/|share/))"
     r"(?P<id>[A-Za-z0-9][A-Za-z0-9_-]*)",
     re.I,
 )
@@ -52,7 +61,8 @@ def redact(text):
 
 
 def is_ai_identity(value):
-    return bool(AI_NAME.search(value) or AI_EMAIL.search(value))
+    name = value.split("<", 1)[0].strip().strip('"').strip()
+    return bool(AI_EMAIL.search(value) or ANTHROPIC.search(name) or AI_CLAUDE_NAME.match(name))
 
 
 def findings(text, kind):

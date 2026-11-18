@@ -108,6 +108,26 @@ class MetadataCheck(unittest.TestCase):
             self.assertEqual(r.returncode, 1, trailer)
             self.assertIn("ai-coauthor-trailer", r.stdout)
 
+    def test_assistant_names_without_an_anthropic_address_fail(self):
+        for trailer in ("Co-authored-by: Claude Code <assistant@example.invalid>",
+                        "Co-authored-by: Claude 3.5 Sonnet <x@example.invalid>",
+                        "Co-authored-by: claude[bot] <209825114+claude[bot]@users.noreply.github.com>",
+                        "Co-authored-by: Anthropic Assistant <x@example.invalid>"):
+            r = self.check(f"fix: x\n\n{trailer}\n", "commit")
+            self.assertEqual(r.returncode, 1, trailer)
+            self.assertIn("ai-coauthor-trailer", r.stdout)
+
+    def test_people_called_claude_pass(self):
+        text = ("Author: Claude Dupont <claude.dupont@example.fr>\n"
+                "Committer: Claude Dupont <claude.dupont@example.fr>\n\n"
+                "feat: add listening pack\n\nReviewed with Claude Code; recorded by Claude Monet.\n\n"
+                "Co-authored-by: Jean-Claude Martin <jc.martin@example.fr>\n"
+                "Co-authored-by: Claude Monet <claude.monet@example.org>\n"
+                "Co-authored-by: Claude-Henri Rocquet <chr@example.fr>\n")
+        r = self.check(text, "commit")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertEqual(r.stdout, "")
+
     def test_session_trailer_and_private_links_fail_and_are_redacted(self):
         text = (f"fix: x\n\nClaude-Session: {SESSION}\nSee {SESSION} and {HOST}chat/0f1e2d3c-aaaa-bbbb\n"
                 f"Shared: {HOST}share/1234abcd-ef\n")
@@ -118,6 +138,15 @@ class MetadataCheck(unittest.TestCase):
         self.assertNotIn("01FAKEFAKE", r.stdout)
         self.assertNotIn("0f1e2d3c", r.stdout)
         self.assertIn(HOST + "code/session_[REDACTED]", r.stdout)
+
+    def test_sessions_path_is_fully_redacted(self):
+        # "sessions/" must be tried before "session[_/-]?", or the prefix stops
+        # at "session" and the "s/<id>" part is printed unredacted.
+        link = HOST + "code/" + "sessions/" + "0f1e2d3cFAKE"
+        r = self.check(f"See {link}\n", "pr-body")
+        self.assertEqual(r.returncode, 1)
+        self.assertNotIn("0f1e2d3cFAKE", r.stdout)
+        self.assertIn(HOST + "code/sessions/[REDACTED]", r.stdout)
 
     def test_ai_author_identity_only_for_commits(self):
         text = "Author: Claude <noreply@anthropic.com>\nCommitter: Owner <owner@example.com>\n\nfeat: x\n"

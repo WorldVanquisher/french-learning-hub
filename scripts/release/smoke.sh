@@ -33,7 +33,8 @@
 # default 512, with a probe write) and Docker's root directory when readable
 # (FLH_SMOKE_MIN_DOCKER_MB, default 4096). It cleans nothing.
 #
-# Exit: 0 PASS; 1 FAIL (a check or the teardown); 2 refused (usage, unsafe
+# Exit: 0 PASS (every stage ran and passed); 1 FAIL (a check, the teardown, or
+# an interrupted run); 2 refused (usage, unsafe
 # environment); 3 BLOCKED (no reachable Docker daemon or no disk room, so nothing ran).
 set -uo pipefail
 
@@ -218,14 +219,22 @@ teardown() {
     stage daily-untouched FAIL "daily project fingerprint changed $DAILY_BEFORE -> $after"
   fi
 }
+# PASS needs every stage to have run: an interrupted run (Ctrl-C, SIGTERM, a
+# timeout) or any other early exit is a FAIL, never a PASS.
+COMPLETED=0
+SIGNAL=""
 finish() {
+  if [ "$COMPLETED" != 1 ] && [ "$FAILED" = 0 ]; then
+    stage incomplete FAIL "${SIGNAL:+interrupted by SIG$SIGNAL; }stopped before the last stage, so this is not a PASS"
+  fi
   teardown
   if [ "$FAILED" = 0 ]; then echo "SMOKE PASS ($PROJECT)"; exit 0; fi
   echo "SMOKE FAIL ($PROJECT): see $SUM and $WORK/logs" >&2
   exit 1
 }
 trap finish EXIT
-trap 'exit 1' INT TERM
+trap 'SIGNAL=INT; exit 1' INT
+trap 'SIGNAL=TERM; exit 1' TERM
 
 # status METHOD URL [curl args...] -> HTTP status; body in $WORK/http/last.body
 status() {
@@ -418,3 +427,4 @@ stage_config
 stage_build
 stage_private
 stage_demo
+COMPLETED=1

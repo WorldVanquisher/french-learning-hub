@@ -2918,8 +2918,21 @@ route keeps its root path, so curl and the capture CLI are unchanged. Without
 `-web-dir` the server is API-only.
 
 `/healthz` is liveness only and does not touch the database. `/readyz` is
-readiness: it pings SQLite with a 2-second bound and answers `200` or
-`503 {"status":"not_ready"}` without error details.
+readiness, bounded to 2 seconds. For the private service it checks that SQLite
+answers and accepts a write statement: `DELETE FROM schema_migrations WHERE 0`
+(no row) inside `BEGIN IMMEDIATE` … `ROLLBACK`, on a connection with no busy
+wait. Nothing is written, and a lock held by another writer counts as writable.
+`BEGIN IMMEDIATE` alone is not enough, because in WAL mode it succeeds on a
+read-only database. It answers `200` or
+`503 {"status":"not_ready"}` without error details, adding the fixed
+`"reason":"storage_read_only"` when the database opened read-only. The public
+demo keeps a ping of its immutable artifact database.
+
+Every response of the private service carries a random `X-Request-Id`. A
+response with status 500 or more also writes one log line:
+`request failed: status=… method=… route="<pattern>" duration_ms=… request_id=…`.
+It names the route pattern, never path values, the query, a body or a header
+(`internal/transport/http/request_log.go`).
 
 ### 10.2 Configuration
 

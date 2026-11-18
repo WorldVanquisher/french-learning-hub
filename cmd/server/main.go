@@ -162,7 +162,9 @@ func run() error {
 		// Mistake Notebook v1: read-only views plus explicit retry marks; its
 		// Grammar/Vocabulary views reuse the library search and support rules.
 		transporthttp.WithMistakeNotebook(application.NewMistakeNotebookService(sqlite.NewNotebookRepository(db), sourceResolver, entryRepo, libraryService)),
-		transporthttp.WithReadiness(db.PingContext),
+		// Readiness: the database answers and can start a write (no write is
+		// made), so a read-only restored copy reports not_ready, not ready.
+		transporthttp.WithReadiness(sqlite.Readiness(db)),
 		transporthttp.WithConceptSuggestions(application.NewConceptSuggestionService(
 			sqlite.NewConceptSuggestionRepository(db), selectedSuggester)),
 	}
@@ -241,7 +243,10 @@ func run() error {
 		options...,
 	)
 
-	routes := handler.Routes()
+	// Every 5xx response gets one log line (route pattern, status, request ID;
+	// never content). Wrapped before the workbench so /api requests keep their
+	// route pattern.
+	routes := transporthttp.LogFailedRequests(handler.Routes(), log.Printf)
 	if *webDir != "" {
 		routes, err = transporthttp.NewWorkbenchHandler(routes, *webDir)
 		if err != nil {

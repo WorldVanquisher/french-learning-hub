@@ -331,7 +331,12 @@ v1.0 personal-use release packaging:
 - `cmd/server -web-dir <dir>` serves the workbench at `/` and `/assets/`, the API
   under `/api` with the prefix stripped, and every root API route unchanged.
   Without the flag the server is API-only. There is no SPA fallback.
-- `/healthz` is liveness only; `/readyz` is bounded SQLite readiness.
+- `/healthz` is liveness only; `/readyz` is bounded SQLite readiness: ping plus a
+  write probe that writes nothing (`DELETE … WHERE 0` inside `BEGIN IMMEDIATE`/
+  `ROLLBACK`); a read-only
+  database is `503 not_ready` with `reason: storage_read_only` (public demo:
+  ping only). Every 5xx logs one `request failed:` line (route pattern, status,
+  `X-Request-Id`; never content).
 - Compose binds `127.0.0.1` only, fixes container `PORT`/`DB_PATH`, forwards only
   listed provider variables with existing defaults, and mounts `FLH_DATA_DIR`
   (default `data/release`). `docs/RELEASE.md` owns start/stop, backup/restore,

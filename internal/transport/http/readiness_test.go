@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -38,6 +39,25 @@ func TestReadiness_FailureHidesDetail(t *testing.T) {
 		WithReadiness(func(context.Context) error { return errNotReady })).Routes()
 	code, raw, body := readyz(t, h)
 	if code != http.StatusServiceUnavailable || body["status"] != "not_ready" {
+		t.Fatalf("got %d %v", code, body)
+	}
+	if strings.Contains(raw, "secret") {
+		t.Fatalf("readiness leaked error detail: %s", raw)
+	}
+}
+
+type reasonedErr struct{}
+
+func (reasonedErr) Error() string           { return "database is read-only at /secret/path.db" }
+func (reasonedErr) ReadinessReason() string { return "storage_read_only" }
+
+// TestReadiness_ReasonCode: a check error with a fixed reason code reports it,
+// still without the error text (which may name paths).
+func TestReadiness_ReasonCode(t *testing.T) {
+	h := NewHandler(&fakeService{}, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		WithReadiness(func(context.Context) error { return fmt.Errorf("readiness: %w", reasonedErr{}) })).Routes()
+	code, raw, body := readyz(t, h)
+	if code != http.StatusServiceUnavailable || body["status"] != "not_ready" || body["reason"] != "storage_read_only" {
 		t.Fatalf("got %d %v", code, body)
 	}
 	if strings.Contains(raw, "secret") {

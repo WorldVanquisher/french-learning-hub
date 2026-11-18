@@ -262,13 +262,39 @@ case "$CMD" in
     backup="$backups/flh-$(date -u +%Y%m%dT%H%M%SZ)"
     was_running=0
     if running; then was_running=1; fi
+    # A failure between the stop and a verified copy (for example a full disk
+    # during the copy) leaves the service stopped, as documented (DAILY_USE.md
+    # section 6), but never silently and never with a copy that looks
+    # complete. It says so, names the command to start again, and renames the
+    # copy this run created to .incomplete (restore refuses it anyway: no
+    # SHA256SUMS). A failed integrity check keeps its own message (below).
+    backup_state=copying
+    backup_created=0
+    backup_failed() {
+      local rc=$?
+      [ "$backup_state" = copying ] || return 0
+      echo "flh-daily: backup FAILED (exit $rc) before a verified copy existed (for example a full disk); no backup was written" >&2
+      # Only a directory this run created; never an earlier backup of the same name.
+      if [ "$backup_created" = 1 ] && mv "$backup" "$backup.incomplete" 2> /dev/null; then
+        echo "flh-daily: the partial copy is kept at $backup.incomplete for inspection; restore refuses it, delete it to free space" >&2
+      fi
+      if [ "$was_running" = 1 ]; then
+        echo "flh-daily: the service is stopped (it was running before the backup). Fix the cause (free space), then run: bash scripts/daily/flh-daily.sh start" >&2
+      fi
+    }
+    trap backup_failed EXIT
     compose stop
     mkdir -p "$backups"
     chmod 700 "$backups"
     mkdir -m 700 "$backup"
+    backup_created=1
     copy_db "$active" "$backup"
+    backup_state=checking
     integrity_ok "$backup" || die "backup integrity check failed; the service is left stopped. Inspect $backup"
+    backup_state=copying
     (cd "$backup" && sha256sum app.db* > SHA256SUMS)
+    backup_state=done
+    trap - EXIT
     echo "flh-daily: backup written to $backup (copy it off this machine too)"
     if [ "$was_running" = 1 ]; then compose start; wait_healthy; fi
     ;;
