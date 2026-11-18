@@ -1,0 +1,49 @@
+== phase a
+loss check: library 0.513549 manual 0.513549 over 135 tokens
+{"step": 1, "loss": 0.530693, "grad_norm": 3.6011, "lr": 6.666666666666667e-06, "seconds": 28.22}
+{"step": 2, "loss": 0.671156, "grad_norm": 3.7661, "lr": 1e-05, "seconds": 27.97}
+{"step": 3, "loss": 0.786537, "grad_norm": 4.7769, "lr": 1e-05, "seconds": 27.6}
+{"step": 4, "loss": 0.866791, "grad_norm": 3.761, "lr": 9.523809523809525e-06, "seconds": 27.91}
+{"step": 5, "loss": 0.600083, "grad_norm": 4.4757, "lr": 9.047619047619049e-06, "seconds": 27.12}
+{"step": 6, "loss": 0.582153, "grad_norm": 3.7743, "lr": 8.571428571428571e-06, "seconds": 27.3}
+{"step": 7, "loss": 0.508106, "grad_norm": 4.1537, "lr": 8.095238095238097e-06, "seconds": 27.24}
+{"step": 8, "loss": 0.685525, "grad_norm": 3.6423, "lr": 7.61904761904762e-06, "seconds": 28.07}
+{"step": 9, "loss": 0.733506, "grad_norm": 4.1535, "lr": 7.1428571428571436e-06, "seconds": 28.44}
+{"step": 10, "loss": 0.612703, "grad_norm": 4.2592, "lr": 6.666666666666667e-06, "seconds": 27.2}
+{
+ "status": "interrupted",
+ "step": 10,
+ "latest": "step-000010"
+}
+== phase b
+resumed from step-000010 at step 10
+{"step": 11, "loss": 0.505782, "grad_norm": 2.9778, "lr": 6.1904761904761914e-06, "seconds": 28.52}
+{"step": 12, "loss": 0.888327, "grad_norm": 4.2304, "lr": 5.7142857142857145e-06, "seconds": 27.43, "dev_loss": 0.750105}
+{"step": 13, "loss": 0.455102, "grad_norm": 3.6308, "lr": 5.2380952380952384e-06, "seconds": 27.36}
+{"step": 14, "loss": 0.589881, "grad_norm": 3.7434, "lr": 4.761904761904762e-06, "seconds": 28.14}
+{"step": 15, "loss": 0.632226, "grad_norm": 3.6667, "lr": 4.2857142857142855e-06, "seconds": 27.98}
+{"step": 16, "loss": 0.552766, "grad_norm": 4.3309, "lr": 3.80952380952381e-06, "seconds": 29.18}
+{"step": 17, "loss": 0.729691, "grad_norm": 3.8869, "lr": 3.3333333333333333e-06, "seconds": 27.44}
+{"step": 18, "loss": 0.448551, "grad_norm": 2.8962, "lr": 2.8571428571428573e-06, "seconds": 27.41}
+== phase c1
+resumed from step-000016 at step 16
+{"step": 17, "loss": 0.729691, "grad_norm": 3.8869, "lr": 3.3333333333333333e-06, "seconds": 30.26}
+{"step": 18, "loss": 0.448551, "grad_norm": 2.8962, "lr": 2.8571428571428573e-06, "seconds": 29.57}
+{"step": 19, "loss": 0.493034, "grad_norm": 3.8797, "lr": 2.380952380952381e-06, "seconds": 28.63}
+{"step": 20, "loss": 0.489532, "grad_norm": 3.4175, "lr": 1.904761904761905e-06, "seconds": 34.66}
+{"step": 21, "loss": 0.5521, "grad_norm": 3.4167, "lr": 1.4285714285714286e-06, "seconds": 34.72}
+{"step": 22, "loss": 0.638048, "grad_norm": 4.3618, "lr": 9.523809523809525e-07, "seconds": 28.14}
+{"step": 23, "loss": 0.516419, "grad_norm": 3.5086, "lr": 4.7619047619047623e-07, "seconds": 28.76}
+{"step": 24, "loss": 0.57538, "grad_norm": 3.282, "lr": 0.0, "seconds": 27.63, "dev_loss": 0.743972}
+{
+ "status": "completed",
+ "step": 24,
+ "checkpoint": "/out/run/checkpoints/step-000024",
+ "trainable_params": 20590592,
+ "total_params": 72593920,
+ "device": "cpu",
+ "final_loss": 0.57538,
+ "dev_loss": 0.743972,
+ "model_sha256": "7e6ac1809b0156c879c2ba42c199efa3340458de1734aa33c07596704d0331bb",
+ "transformers": "5.21.1"
+}

@@ -1,0 +1,43 @@
+{
+ "attribution": "FLEURS (google/fleurs), CC BY 4.0. Audio is not redistributed in the repository.",
+ "audio_convention": "pcm_f32le/16000Hz/mono/ffmpeg-swr-v1",
+ "excluded": {
+  "dev_sentence": 0,
+  "held_out_text": 0,
+  "too_long": 58
+ },
+ "leakage": {
+  "fleurs_dev_sentences_in_train": 0,
+  "held_out_normalized_text_in_train": 0,
+  "speaker_overlap_with_fleurs_dev": "unknown (FLEURS publishes no speaker ids)"
+ },
+ "manifest_jsonl_sha256": "920b74a02c33ff8482573d31971af05de709554570a4a869bfdcf63420a5379b",
+ "schema": "flh_speaking_dataset_manifest_v1",
+ "selection_rule": "flh_fleurs_fr_punctuated_train_v1",
+ "sources": {
+  "fleurs_fr_train": {
+   "config": "fr_fr",
+   "license": "CC-BY-4.0",
+   "repo": "google/fleurs",
+   "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd"
+  },
+  "held_out_from": {
+   "manifest_jsonl_sha256": "4b1c067e76ab1e097af4c08ae5e08aebcf32e169bcf6ceb0e14b1bb4221dc9eb"
+  }
+ },
+ "splits": {
+  "dev": {
+   "sentences_shared_with_train": 0,
+   "utterances": 100
+  },
+  "train": {
+   "hours": 4.647,
+   "sentences": 1382,
+   "utterances": 1440,
+   "with_punctuation": 0.9986,
+   "with_second_reader": 58,
+   "with_uppercase": 0.9993
+  }
+ },
+ "text_normalization": "flh_fr_asr_norm_v1"
+}

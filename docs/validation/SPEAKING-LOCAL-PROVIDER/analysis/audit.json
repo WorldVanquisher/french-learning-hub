@@ -1,0 +1,95 @@
+{
+ "outputs": {
+  "base/accent": {
+   "n": 491,
+   "wer": 0.3769,
+   "with_punctuation": 0.9491,
+   "with_uppercase": 0.7312
+  },
+  "base/ood": {
+   "n": 289,
+   "wer": 0.2752,
+   "with_punctuation": 1.0,
+   "with_uppercase": 0.9965
+  },
+  "base/test": {
+   "n": 240,
+   "wer": 0.2712,
+   "with_punctuation": 1.0,
+   "with_uppercase": 0.9875
+  },
+  "candidate/accent": {
+   "n": 493,
+   "wer": 0.3609,
+   "with_punctuation": 0.1339,
+   "with_uppercase": 0.1359
+  },
+  "candidate/ood": {
+   "n": 289,
+   "wer": 0.285,
+   "with_punctuation": 0.0657,
+   "with_uppercase": 0.1592
+  },
+  "candidate/test": {
+   "n": 240,
+   "wer": 0.2664,
+   "with_punctuation": 0.0667,
+   "with_uppercase": 0.0875
+  }
+ },
+ "pilot_log": [
+  {
+   "loss": 0.79129,
+   "step": 1
+  },
+  {
+   "loss": 0.711096,
+   "step": 30
+  },
+  {
+   "dev_loss": 0.493961,
+   "loss": 0.747377,
+   "step": 60
+  },
+  {
+   "loss": 1.078292,
+   "step": 90
+  },
+  {
+   "dev_loss": 0.483128,
+   "loss": 0.747224,
+   "step": 120
+  },
+  {
+   "loss": 0.935005,
+   "step": 150
+  },
+  {
+   "dev_loss": 0.480263,
+   "loss": 0.697634,
+   "step": 180
+  }
+ ],
+ "training_targets": {
+  "data-v1/dev": {
+   "n": 100,
+   "with_punctuation": 0.0,
+   "with_uppercase": 0.0
+  },
+  "data-v1/ood": {
+   "n": 289,
+   "with_punctuation": 1.0,
+   "with_uppercase": 1.0
+  },
+  "data-v1/test": {
+   "n": 240,
+   "with_punctuation": 0.0,
+   "with_uppercase": 0.0
+  },
+  "data-v1/train": {
+   "n": 1440,
+   "with_punctuation": 0.0,
+   "with_uppercase": 0.0
+  }
+ }
+}

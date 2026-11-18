@@ -1,0 +1,94 @@
+diff -ruN a/compose.yaml b/compose.yaml
+--- a/compose.yaml
++++ b/compose.yaml
+@@ -34,6 +34,10 @@
+       SPEAKING_PROVIDER: ${SPEAKING_PROVIDER:-disabled}
+       SPEAKING_TRANSCRIPTION_PROVIDER: ${SPEAKING_TRANSCRIPTION_PROVIDER:-disabled}
+       SPEAKING_TRANSCRIPTION_MODEL: ${SPEAKING_TRANSCRIPTION_MODEL:-}
++      # local only: the transcription service's URL as seen from this container
++      # (not 127.0.0.1, which is the container itself) and its timeout.
++      SPEAKING_TRANSCRIPTION_BASE_URL: ${SPEAKING_TRANSCRIPTION_BASE_URL:-}
++      SPEAKING_TRANSCRIPTION_TIMEOUT: ${SPEAKING_TRANSCRIPTION_TIMEOUT:-}
+       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-disabled}
+       # Empty means unset: the server applies its own defaults.
+       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+diff -ruN a/scripts/daily/daily.env.example b/scripts/daily/daily.env.example
+--- a/scripts/daily/daily.env.example
++++ b/scripts/daily/daily.env.example
+@@ -57,10 +57,16 @@
+ # - SPEAKING_TRANSCRIPTION_PROVIDER=openai: "Send audio for transcription"
+ #   sends one take's audio per click (possibly billed) to the transcription
+ #   model you set in SPEAKING_TRANSCRIPTION_MODEL. The audio is never stored.
++# - SPEAKING_TRANSCRIPTION_PROVIDER=local: the same click sends it to your own
++#   transcription service (tools/speaking) instead: nothing is billed. Set
++#   SPEAKING_TRANSCRIPTION_MODEL to its deployment_id (GET /manifest) and
++#   SPEAKING_TRANSCRIPTION_BASE_URL to its address as seen from the container.
+ # - SPEAKING_PROVIDER=openai: "Request feedback" on one confirmed transcript
+ #   version, one explicit, possibly billed request per click (uses OPENAI_MODEL).
+ SPEAKING_TRANSCRIPTION_PROVIDER=disabled
+ # SPEAKING_TRANSCRIPTION_MODEL=replace-with-your-transcription-model
++# SPEAKING_TRANSCRIPTION_BASE_URL=http://replace-with-the-service-address:8765/v1
++# SPEAKING_TRANSCRIPTION_TIMEOUT=60
+ SPEAKING_PROVIDER=disabled
+ 
+ # Your own choices. Both are required when either provider is openai.
+diff -ruN a/scripts/daily/flh-daily.sh b/scripts/daily/flh-daily.sh
+--- a/scripts/daily/flh-daily.sh
++++ b/scripts/daily/flh-daily.sh
+@@ -114,9 +114,13 @@
+ sp = envr.get("SPEAKING_PROVIDER", "") or "disabled"
+ if sp not in ("openai", "disabled"): problems.append("SPEAKING_PROVIDER must be openai or disabled")
+ stt = envr.get("SPEAKING_TRANSCRIPTION_PROVIDER", "") or "disabled"
+-if stt not in ("openai", "disabled"): problems.append("SPEAKING_TRANSCRIPTION_PROVIDER must be openai or disabled")
++if stt not in ("openai", "local", "disabled"): problems.append("SPEAKING_TRANSCRIPTION_PROVIDER must be openai, local or disabled")
+ if stt == "openai" and not envr.get("SPEAKING_TRANSCRIPTION_MODEL"):
+     problems.append("SPEAKING_TRANSCRIPTION_MODEL must be set to the transcription model you chose")
++if stt == "local" and not envr.get("SPEAKING_TRANSCRIPTION_MODEL"):
++    problems.append("SPEAKING_TRANSCRIPTION_MODEL must be set to the deployment_id of the local service (GET /manifest)")
++if stt == "local" and not (envr.get("SPEAKING_TRANSCRIPTION_BASE_URL") or "").startswith(("http://", "https://")):
++    problems.append("SPEAKING_TRANSCRIPTION_BASE_URL must be the http(s) URL of the local service as seen from the container")
+ text_model = "openai" in (ai, ex, sg, ls, rd, wr, sp)
+ real = text_model or stt == "openai"
+ if real:
+@@ -132,6 +136,9 @@
+ pt, wt = secs("OPENAI_TIMEOUT", 8), secs("HTTP_WRITE_TIMEOUT", 10)
+ if real and pt >= wt:
+     problems.append(f"OPENAI_TIMEOUT ({pt}s) must be below HTTP_WRITE_TIMEOUT ({wt}s), or a stored result can look like a lost response")
++st_ = secs("SPEAKING_TRANSCRIPTION_TIMEOUT", 60)
++if stt == "local" and st_ >= wt:
++    problems.append(f"SPEAKING_TRANSCRIPTION_TIMEOUT ({st_}s) must be below HTTP_WRITE_TIMEOUT ({wt}s), or a stored result can look like a lost response")
+ # Daily Listening: every part off unless stated; the server re-checks all of it.
+ src = envr.get("LISTENING_PLAYLIST_SOURCE", "") or "disabled"
+ auto = envr.get("LISTENING_AUTO_PREPARE", "") or "disabled"
+@@ -185,7 +192,8 @@
+     print(f"listening:  {ls}" + (" — explicit requests call the provider and may be billed" if ls == "openai" else " — off"))
+     print(f"reading:    {rd}" + (" — explicit requests call the provider and may be billed" if rd == "openai" else " — off (authored examples still work)"))
+     print(f"writing:    {wr}" + (" — explicit feedback requests call the provider and may be billed" if wr == "openai" else " — off (drafting and revising still work)"))
+-    print(f"speaking transcription: {stt}" + (" — each explicit click sends the audio of one take to the provider (never stored) and may be billed" if stt == "openai" else " — off (type the transcript)"))
++    print(f"speaking transcription: {stt}" + (" — each explicit click sends the audio of one take to the provider (never stored) and may be billed" if stt == "openai"
++          else " — each explicit click sends the audio of one take to your local service (never stored, not billed)" if stt == "local" else " — off (type the transcript)"))
+     print(f"speaking feedback: {sp}" + (" — explicit feedback requests call the provider and may be billed" if sp == "openai" else " — off (recording and transcripts still work)"))
+     if src == "disabled" and auto == "disabled":
+         print("daily listening: off")
+diff -ruN a/scripts/validation/flh094/test_wrapper.sh b/scripts/validation/flh094/test_wrapper.sh
+--- a/scripts/validation/flh094/test_wrapper.sh
++++ b/scripts/validation/flh094/test_wrapper.sh
+@@ -144,8 +144,16 @@
+ # Speaking v1: two independent providers; transcription needs its own model.
+ good "$WORK/badspeak.env"; echo "SPEAKING_PROVIDER=anthropic" >> "$WORK/badspeak.env"
+ run "an unknown speaking feedback provider is refused" 2 "SPEAKING_PROVIDER must be openai or disabled" "$WORK/badspeak.env" check
+-good "$WORK/badstt.env"; echo "SPEAKING_TRANSCRIPTION_PROVIDER=local" >> "$WORK/badstt.env"
+-run "an unknown transcription provider is refused" 2 "SPEAKING_TRANSCRIPTION_PROVIDER must be openai or disabled" "$WORK/badstt.env" check
++good "$WORK/badstt.env"; echo "SPEAKING_TRANSCRIPTION_PROVIDER=whisper" >> "$WORK/badstt.env"
++run "an unknown transcription provider is refused" 2 "SPEAKING_TRANSCRIPTION_PROVIDER must be openai, local or disabled" "$WORK/badstt.env" check
++good "$WORK/sttlocalnourl.env"; { echo "SPEAKING_TRANSCRIPTION_PROVIDER=local"; echo "SPEAKING_TRANSCRIPTION_MODEL=whisper-base@x/flh_speaking_transcribe_v1/cpu-fp32/0"; } >> "$WORK/sttlocalnourl.env"
++run "local transcription requires the service URL" 2 "SPEAKING_TRANSCRIPTION_BASE_URL must be" "$WORK/sttlocalnourl.env" check
++good "$WORK/sttlocal.env"
++sed -i 's/^AI_PROVIDER=.*/AI_PROVIDER=rule-based/; s/^EXTRACTOR_PROVIDER=.*/EXTRACTOR_PROVIDER=disabled/; /^OPENAI_API_KEY=/d; /^OPENAI_MODEL=/d' "$WORK/sttlocal.env"
++{ echo "SPEAKING_TRANSCRIPTION_PROVIDER=local"; echo "SPEAKING_TRANSCRIPTION_MODEL=whisper-base@x/flh_speaking_transcribe_v1/cpu-fp32/0"; echo "SPEAKING_TRANSCRIPTION_BASE_URL=http://172.17.0.1:8765/v1"; } >> "$WORK/sttlocal.env"
++run "local transcription needs no key and is labelled as not billed" 0 "speaking transcription: local — each explicit click sends the audio of one take to your local service" "$WORK/sttlocal.env" check
++echo "SPEAKING_TRANSCRIPTION_TIMEOUT=90" >> "$WORK/sttlocal.env"
++run "a local transcription timeout not below the write timeout is refused" 2 "SPEAKING_TRANSCRIPTION_TIMEOUT \\(90s\\) must be below HTTP_WRITE_TIMEOUT" "$WORK/sttlocal.env" check
+ good "$WORK/sttnomodel.env"; echo "SPEAKING_TRANSCRIPTION_PROVIDER=openai" >> "$WORK/sttnomodel.env"
+ run "openai transcription requires its own model" 2 "SPEAKING_TRANSCRIPTION_MODEL must be set" "$WORK/sttnomodel.env" check
+ good "$WORK/sttnokey.env"

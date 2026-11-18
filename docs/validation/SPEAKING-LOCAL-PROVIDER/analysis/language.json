@@ -1,0 +1,690 @@
+{
+ "base": {
+  "accented_fr_niger/full": {
+   "current": {
+    "abstained_pct": 4.3,
+    "n": 300,
+    "no_speech": 1,
+    "not_french": 12,
+    "not_french_pct": 4.0,
+    "transcribed": 287
+   },
+   "examples_changed": [
+    {
+     "id": "slr57_dev/niger_sys3_2_182",
+     "model_text": "La paraît apprécié.",
+     "p_fr": 0.0041,
+     "p_top": 0.7256,
+     "reference": "l' appareil est à apprécier",
+     "seconds": 1.75,
+     "top": "es",
+     "warning_only_text": "La paraît apprécié."
+    },
+    {
+     "id": "slr57_dev/niger_sys3_3_195",
+     "model_text": "Il s'agit d'entraductor qui va nous aider à communiquer.",
+     "p_fr": 0.0077,
+     "p_top": 0.9535,
+     "reference": "il s' agit d' un traducteur qui va nous aider à communiquer",
+     "seconds": 3.75,
+     "top": "pt",
+     "warning_only_text": "Il s'agit d'entraductor qui va nous aider à communiquer."
+    },
+    {
+     "id": "slr57_dev/niger_sys3_4_248",
+     "model_text": "C'est pas dur, mais je suis...",
+     "p_fr": 0.0003,
+     "p_top": 0.9082,
+     "reference": "bonjour monsieur",
+     "seconds": 1.75,
+     "top": "tr",
+     "warning_only_text": "C'est pas dur, mais je suis..."
+    },
+    {
+     "id": "slr57_dev/niger_sys1_7_465",
+     "model_text": "Normalement, cela fonctionne bien.",
+     "p_fr": 0.0175,
+     "p_top": 0.731,
+     "reference": "normalement cela fonctionne bien",
+     "seconds": 2.0,
+     "top": "ar",
+     "warning_only_text": "Normalement, cela fonctionne bien."
+    },
+    {
+     "id": "slr57_dev/niger_sys3_4_287",
+     "model_text": "Pige-voi là blessu !",
+     "p_fr": 0.0145,
+     "p_top": 0.6379,
+     "reference": "puis-je voir la blessure",
+     "seconds": 2.25,
+     "top": "ru",
+     "warning_only_text": "Pige-voi là blessu !"
+    },
+    {
+     "id": "slr57_dev/niger_sys1_4_221",
+     "model_text": "à droite sur ce chemi là-bas.",
+     "p_fr": 0.0116,
+     "p_top": 0.8261,
+     "reference": "r à droite sur ce chemin là-bas",
+     "seconds": 2.75,
+     "top": "ar",
+     "warning_only_text": "à droite sur ce chemi là-bas."
+    }
+   ],
+   "n": 300,
+   "refused_now_transcribed_with_warning": 12,
+   "warning_only": {
+    "abstained_pct": 0.3,
+    "n": 300,
+    "no_speech": 1,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 299
+   },
+   "warning_only_flagged_possibly_not_french": 170,
+   "wer_current": 0.4371,
+   "wer_of_rescued": 0.5181,
+   "wer_warning_only": 0.4207
+  },
+  "native_fr_mls_dev/cut_1.5": {
+   "current": {
+    "abstained_pct": 3.0,
+    "n": 100,
+    "no_speech": 1,
+    "not_french": 2,
+    "not_french_pct": 2.0,
+    "transcribed": 97
+   },
+   "examples_changed": [
+    {
+     "id": "579_2548_000003@1.5",
+     "model_text": "Neulogisme.",
+     "p_fr": 0.0276,
+     "p_top": 0.9012,
+     "reference": null,
+     "seconds": 1.7,
+     "top": "pl",
+     "warning_only_text": "Neulogisme."
+    },
+    {
+     "id": "6318_2432_000000@1.5",
+     "model_text": "Il est fâché, c'est expected.",
+     "p_fr": 0.013,
+     "p_top": 0.7937,
+     "reference": null,
+     "seconds": 1.34,
+     "top": "en",
+     "warning_only_text": "Il est fâché, c'est expected."
+    }
+   ],
+   "n": 100,
+   "refused_now_transcribed_with_warning": 2,
+   "warning_only": {
+    "abstained_pct": 1.0,
+    "n": 100,
+    "no_speech": 1,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 99
+   },
+   "warning_only_flagged_possibly_not_french": 23
+  },
+  "native_fr_mls_dev/cut_2.0": {
+   "current": {
+    "abstained_pct": 2.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 2,
+    "not_french_pct": 2.0,
+    "transcribed": 98
+   },
+   "examples_changed": [
+    {
+     "id": "10087_11650_000014@2.0",
+     "model_text": "Il les cherche à.",
+     "p_fr": 0.0409,
+     "p_top": 0.713,
+     "reference": null,
+     "seconds": 1.82,
+     "top": "he",
+     "warning_only_text": "Il les cherche à."
+    },
+    {
+     "id": "579_2548_000003@2.0",
+     "model_text": "Neulogisme.",
+     "p_fr": 0.0276,
+     "p_top": 0.9025,
+     "reference": null,
+     "seconds": 1.76,
+     "top": "pl",
+     "warning_only_text": "Neulogisme."
+    }
+   ],
+   "n": 100,
+   "refused_now_transcribed_with_warning": 2,
+   "warning_only": {
+    "abstained_pct": 0.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 100
+   },
+   "warning_only_flagged_possibly_not_french": 17
+  },
+  "native_fr_mls_dev/full": {
+   "current": {
+    "abstained_pct": 0.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 100
+   },
+   "examples_changed": [],
+   "n": 100,
+   "refused_now_transcribed_with_warning": 0,
+   "warning_only": {
+    "abstained_pct": 0.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 100
+   },
+   "warning_only_flagged_possibly_not_french": 0,
+   "wer_current": 0.2197,
+   "wer_of_rescued": null,
+   "wer_warning_only": 0.2197
+  },
+  "other_cmn_hans_cn/full": {
+   "current": {
+    "abstained_pct": 100.0,
+    "n": 40,
+    "no_speech": 0,
+    "not_french": 40,
+    "not_french_pct": 100.0,
+    "transcribed": 0
+   },
+   "examples_changed": [
+    {
+     "id": "cmn_hans_cn_1047549298509247995",
+     "model_text": "Le boulot est très bon.",
+     "p_fr": 0.0001,
+     "p_top": 0.9946,
+     "reference": null,
+     "seconds": 13.92,
+     "top": "zh",
+     "warning_only_text": "Le boulot est très bon."
+    },
+    {
+     "id": "cmn_hans_cn_10519077850963840950",
+     "model_text": "Ta-chun, ta-ch-z",
+     "p_fr": 0.0,
+     "p_top": 0.9787,
+     "reference": null,
+     "seconds": 5.58,
+     "top": "zh",
+     "warning_only_text": "Ta-chun, ta-ch-z"
+    },
+    {
+     "id": "cmn_hans_cn_10564317445815190288",
+     "model_text": "Je pense que ce n'est pas un peu plus possible.",
+     "p_fr": 0.0001,
+     "p_top": 0.9967,
+     "reference": null,
+     "seconds": 10.14,
+     "top": "zh",
+     "warning_only_text": "Je pense que ce n'est pas un peu plus possible."
+    },
+    {
+     "id": "cmn_hans_cn_107165528601558926",
+     "model_text": "D'où on peut être plus loin de la partie de l'élection, mais de l'élection",
+     "p_fr": 0.0001,
+     "p_top": 0.998,
+     "reference": null,
+     "seconds": 16.76,
+     "top": "zh",
+     "warning_only_text": "D'où on peut être plus loin de la partie de l'élection, mais de l'élection"
+    },
+    {
+     "id": "cmn_hans_cn_10738707770629373903",
+     "model_text": "«",
+     "p_fr": 0.0009,
+     "p_top": 0.9873,
+     "reference": null,
+     "seconds": 16.98,
+     "top": "zh",
+     "warning_only_text": "«"
+    },
+    {
+     "id": "cmn_hans_cn_10739282392287047444",
+     "model_text": "Poudaïa, un peu plus de la chambre, a été fait par la chambre de",
+     "p_fr": 0.0001,
+     "p_top": 0.9918,
+     "reference": null,
+     "seconds": 12.3,
+     "top": "zh",
+     "warning_only_text": "Poudaïa, un peu plus de la chambre, a été fait par la chambre de"
+    }
+   ],
+   "n": 40,
+   "refused_now_transcribed_with_warning": 40,
+   "warning_only": {
+    "abstained_pct": 0.0,
+    "n": 40,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 40
+   },
+   "warning_only_flagged_possibly_not_french": 40
+  },
+  "other_en_us/full": {
+   "current": {
+    "abstained_pct": 100.0,
+    "n": 40,
+    "no_speech": 0,
+    "not_french": 40,
+    "not_french_pct": 100.0,
+    "transcribed": 0
+   },
+   "examples_changed": [
+    {
+     "id": "en_us_10354232920158081925",
+     "model_text": "As soon as you get out of the current, swimming back is no more difficult than normally.",
+     "p_fr": 0.0002,
+     "p_top": 0.9893,
+     "reference": null,
+     "seconds": 7.32,
+     "top": "en",
+     "warning_only_text": "As soon as you get out of the current, swimming back is no more difficult than normally."
+    },
+    {
+     "id": "en_us_10408474834696432538",
+     "model_text": "Les autorités locales sont des résonnements dans le plan de la ville de Stéendor, de tourner les conditions et de ne pas de drink de la tape.",
+     "p_fr": 0.0001,
+     "p_top": 0.9936,
+     "reference": null,
+     "seconds": 8.16,
+     "top": "en",
+     "warning_only_text": "Les autorités locales sont des résonnements dans le plan de la ville de Stéendor, de tourner les conditions et de ne pas de drink de la tape."
+    },
+    {
+     "id": "en_us_10416083819753348102",
+     "model_text": "Encore, les signes sont édicées par le Codolin, car c'est établié par la 1e l'anglais.",
+     "p_fr": 0.0007,
+     "p_top": 0.9668,
+     "reference": null,
+     "seconds": 7.08,
+     "top": "en",
+     "warning_only_text": "Encore, les signes sont édicées par le Codolin, car c'est établié par la 1e l'anglais."
+    },
+    {
+     "id": "en_us_10461636001046553742",
+     "model_text": "Aux-ci, les gens étaient dans la maison quand le car impactait. Pas de gens étaient en train de faire.",
+     "p_fr": 0.0001,
+     "p_top": 0.9877,
+     "reference": null,
+     "seconds": 7.54,
+     "top": "en",
+     "warning_only_text": "Aux-ci, les gens étaient dans la maison quand le car impactait. Pas de gens étaient en train de faire."
+    },
+    {
+     "id": "en_us_10486393012874569877",
+     "model_text": "Ceci qui suggest que les gens ont besoin de ces gens et des désirs, qui ont été internalisés, comme ils ont créé une adulthood.",
+     "p_fr": 0.0003,
+     "p_top": 0.9835,
+     "reference": null,
+     "seconds": 10.06,
+     "top": "en",
+     "warning_only_text": "Ceci qui suggest que les gens ont besoin de ces gens et des désirs, qui ont été internalisés, comme ils ont créé une adulthood."
+    },
+    {
+     "id": "en_us_10493474598526206030",
+     "model_text": "Elle vient de cette conclusion, pour que la multitude de positifs et encouragements s'assurerait de ses deux femmes et des individus, en fait, que la contraception de la médication, soit considérée de la médicale de la nécessité.",
+     "p_fr": 0.0008,
+     "p_top": 0.9849,
+     "reference": null,
+     "seconds": 17.54,
+     "top": "en",
+     "warning_only_text": "Elle vient de cette conclusion, pour que la multitude de positifs et encouragements s'assurerait de ses deux femmes et des individus, en fait, que la contraception de la médication, soit considérée de la médicale de la nécessité."
+    }
+   ],
+   "n": 40,
+   "refused_now_transcribed_with_warning": 40,
+   "warning_only": {
+    "abstained_pct": 0.0,
+    "n": 40,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 40
+   },
+   "warning_only_flagged_possibly_not_french": 40
+  }
+ },
+ "small": {
+  "accented_fr_niger/full": {
+   "current": {
+    "abstained_pct": 5.0,
+    "n": 300,
+    "no_speech": 4,
+    "not_french": 11,
+    "not_french_pct": 3.7,
+    "transcribed": 285
+   },
+   "examples_changed": [
+    {
+     "id": "slr57_dev/niger_sys2_1_035",
+     "model_text": "Bonjour messieurs.",
+     "p_fr": 0.0077,
+     "p_top": 0.9219,
+     "reference": "bonjour monsieur",
+     "seconds": 1.5,
+     "top": "tr",
+     "warning_only_text": "Bonjour messieurs."
+    },
+    {
+     "id": "slr57_dev/niger_sys3_7_467",
+     "model_text": "C'est tout le monde.",
+     "p_fr": 0.0394,
+     "p_top": 0.692,
+     "reference": "quand s' est-elle blessée",
+     "seconds": 3.0,
+     "top": "ar",
+     "warning_only_text": "C'est tout le monde."
+    },
+    {
+     "id": "slr57_dev/niger_sys2_2_146",
+     "model_text": "C'est vrai, vous avez besoin d'un médicin.",
+     "p_fr": 0.0327,
+     "p_top": 0.9179,
+     "reference": "c' est vrai vous avez besoin d' un médecin",
+     "seconds": 3.25,
+     "top": "pt",
+     "warning_only_text": "C'est vrai, vous avez besoin d'un médicin."
+    },
+    {
+     "id": "slr57_dev/niger_sys1_4_221",
+     "model_text": "à droite sur ce chemin là-bas.",
+     "p_fr": 0.0843,
+     "p_top": 0.8245,
+     "reference": "r à droite sur ce chemin là-bas",
+     "seconds": 2.75,
+     "top": "ar",
+     "warning_only_text": "à droite sur ce chemin là-bas."
+    },
+    {
+     "id": "slr57_dev/niger_sys2_9_696",
+     "model_text": "Oui, il y a une route à l'ouest de la C.",
+     "p_fr": 0.0624,
+     "p_top": 0.9117,
+     "reference": "oui il y a une route à l' ouest d' ici",
+     "seconds": 4.5,
+     "top": "ar",
+     "warning_only_text": "Oui, il y a une route à l'ouest de la C."
+    },
+    {
+     "id": "slr57_dev/niger_sys1_6_337",
+     "model_text": "qui tiendent plus local.",
+     "p_fr": 0.0122,
+     "p_top": 0.8168,
+     "reference": "vienne d' un puits local",
+     "seconds": 1.5,
+     "top": "es",
+     "warning_only_text": "qui tiendent plus local."
+    }
+   ],
+   "n": 300,
+   "refused_now_transcribed_with_warning": 11,
+   "warning_only": {
+    "abstained_pct": 1.3,
+    "n": 300,
+    "no_speech": 4,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 296
+   },
+   "warning_only_flagged_possibly_not_french": 69,
+   "wer_current": 0.222,
+   "wer_of_rescued": 0.4815,
+   "wer_warning_only": 0.2048
+  },
+  "native_fr_mls_dev/cut_1.5": {
+   "current": {
+    "abstained_pct": 0.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 100
+   },
+   "examples_changed": [],
+   "n": 100,
+   "refused_now_transcribed_with_warning": 0,
+   "warning_only": {
+    "abstained_pct": 0.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 100
+   },
+   "warning_only_flagged_possibly_not_french": 8
+  },
+  "native_fr_mls_dev/cut_2.0": {
+   "current": {
+    "abstained_pct": 0.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 100
+   },
+   "examples_changed": [],
+   "n": 100,
+   "refused_now_transcribed_with_warning": 0,
+   "warning_only": {
+    "abstained_pct": 0.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 100
+   },
+   "warning_only_flagged_possibly_not_french": 2
+  },
+  "native_fr_mls_dev/full": {
+   "current": {
+    "abstained_pct": 0.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 100
+   },
+   "examples_changed": [],
+   "n": 100,
+   "refused_now_transcribed_with_warning": 0,
+   "warning_only": {
+    "abstained_pct": 0.0,
+    "n": 100,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 100
+   },
+   "warning_only_flagged_possibly_not_french": 0,
+   "wer_current": 0.1359,
+   "wer_of_rescued": null,
+   "wer_warning_only": 0.1359
+  },
+  "other_cmn_hans_cn/full": {
+   "current": {
+    "abstained_pct": 100.0,
+    "n": 40,
+    "no_speech": 0,
+    "not_french": 40,
+    "not_french_pct": 100.0,
+    "transcribed": 0
+   },
+   "examples_changed": [
+    {
+     "id": "cmn_hans_cn_1047549298509247995",
+     "model_text": "En bas, le sol est très petit.",
+     "p_fr": 0.0001,
+     "p_top": 0.9969,
+     "reference": null,
+     "seconds": 13.92,
+     "top": "zh",
+     "warning_only_text": "En bas, le sol est très petit."
+    },
+    {
+     "id": "cmn_hans_cn_10519077850963840950",
+     "model_text": "Il s'appelle, il a créé une Wi-Fi de l'Ontario.",
+     "p_fr": 0.0,
+     "p_top": 0.9904,
+     "reference": null,
+     "seconds": 5.58,
+     "top": "zh",
+     "warning_only_text": "Il s'appelle, il a créé une Wi-Fi de l'Ontario."
+    },
+    {
+     "id": "cmn_hans_cn_10564317445815190288",
+     "model_text": "Je pense que ce n'est pas le cas.",
+     "p_fr": 0.0,
+     "p_top": 0.997,
+     "reference": null,
+     "seconds": 10.14,
+     "top": "zh",
+     "warning_only_text": "Je pense que ce n'est pas le cas."
+    },
+    {
+     "id": "cmn_hans_cn_107165528601558926",
+     "model_text": "Ce temps de la nuit peut être plus lourd que le temps de la nuit. La température est très peu de l'église. Mais quand la température et la température se sont ensemble, on peut sentir que la température de la nuit est plus lente que la température de la nuit.",
+     "p_fr": 0.0001,
+     "p_top": 0.9965,
+     "reference": null,
+     "seconds": 16.76,
+     "top": "zh",
+     "warning_only_text": "Ce temps de la nuit peut être plus lourd que le temps de la nuit. La température est très peu de l'église. Mais quand la température et la température se sont ensemble, on peut sentir que la température de la nuit est plus lente que la température de la nuit."
+    },
+    {
+     "id": "cmn_hans_cn_10738707770629373903",
+     "model_text": "1.",
+     "p_fr": 0.0006,
+     "p_top": 0.9745,
+     "reference": null,
+     "seconds": 16.98,
+     "top": "zh",
+     "warning_only_text": "1."
+    },
+    {
+     "id": "cmn_hans_cn_10739282392287047444",
+     "model_text": "le plus grand,",
+     "p_fr": 0.0001,
+     "p_top": 0.9929,
+     "reference": null,
+     "seconds": 12.3,
+     "top": "zh",
+     "warning_only_text": "le plus grand,"
+    }
+   ],
+   "n": 40,
+   "refused_now_transcribed_with_warning": 40,
+   "warning_only": {
+    "abstained_pct": 0.0,
+    "n": 40,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 40
+   },
+   "warning_only_flagged_possibly_not_french": 40
+  },
+  "other_en_us/full": {
+   "current": {
+    "abstained_pct": 100.0,
+    "n": 40,
+    "no_speech": 0,
+    "not_french": 40,
+    "not_french_pct": 100.0,
+    "transcribed": 0
+   },
+   "examples_changed": [
+    {
+     "id": "en_us_10354232920158081925",
+     "model_text": "Encore plus tard, la saison de la courante ne sera plus difficile que normalement.",
+     "p_fr": 0.0002,
+     "p_top": 0.9946,
+     "reference": null,
+     "seconds": 7.32,
+     "top": "en",
+     "warning_only_text": "Encore plus tard, la saison de la courante ne sera plus difficile que normalement."
+    },
+    {
+     "id": "en_us_10408474834696432538",
+     "model_text": "Les autorités locales sont réunis dans la ville de la plante pour rester en route, éliminer les conditions d'air et ne pas drinker du tapis.",
+     "p_fr": 0.0002,
+     "p_top": 0.9876,
+     "reference": null,
+     "seconds": 8.16,
+     "top": "en",
+     "warning_only_text": "Les autorités locales sont réunis dans la ville de la plante pour rester en route, éliminer les conditions d'air et ne pas drinker du tapis."
+    },
+    {
+     "id": "en_us_10416083819753348102",
+     "model_text": "Mais la plupart des signes sont indiqués seulement en Côte-Olonne parce que c'est établi par la loi comme la première langue officielle.",
+     "p_fr": 0.0003,
+     "p_top": 0.9693,
+     "reference": null,
+     "seconds": 7.08,
+     "top": "en",
+     "warning_only_text": "Mais la plupart des signes sont indiqués seulement en Côte-Olonne parce que c'est établi par la loi comme la première langue officielle."
+    },
+    {
+     "id": "en_us_10461636001046553742",
+     "model_text": "Mais les gens étaient dans la maison quand la voiture a impacté, les n'ont pas été malades.",
+     "p_fr": 0.0,
+     "p_top": 0.9958,
+     "reference": null,
+     "seconds": 7.54,
+     "top": "en",
+     "warning_only_text": "Mais les gens étaient dans la maison quand la voiture a impacté, les n'ont pas été malades."
+    },
+    {
+     "id": "en_us_10486393012874569877",
+     "model_text": "Ces théories suggests that people have certain needs and or desires which have been internalized as they matured to adulthood.",
+     "p_fr": 0.0001,
+     "p_top": 0.9943,
+     "reference": null,
+     "seconds": 10.06,
+     "top": "en",
+     "warning_only_text": "Ces théories suggests that people have certain needs and or desires which have been internalized as they matured to adulthood."
+    },
+    {
+     "id": "en_us_10493474598526206030",
+     "model_text": "Elle est arrivée à cette conclusion par la multitude de commentaires positifs et d'encouragées sentie par les hommes et les hommes femmes, pour que cette médecin de contraception soit considérée une nécessité médicale.",
+     "p_fr": 0.0004,
+     "p_top": 0.9858,
+     "reference": null,
+     "seconds": 17.54,
+     "top": "en",
+     "warning_only_text": "Elle est arrivée à cette conclusion par la multitude de commentaires positifs et d'encouragées sentie par les hommes et les hommes femmes, pour que cette médecin de contraception soit considérée une nécessité médicale."
+    }
+   ],
+   "n": 40,
+   "refused_now_transcribed_with_warning": 40,
+   "warning_only": {
+    "abstained_pct": 0.0,
+    "n": 40,
+    "no_speech": 0,
+    "not_french": 0,
+    "not_french_pct": 0.0,
+    "transcribed": 40
+   },
+   "warning_only_flagged_possibly_not_french": 40
+  }
+ }
+}
