@@ -312,13 +312,40 @@ case "$CMD" in
     old="$active.before-restore-$stamp"
     [ ! -e "$stage" ] && [ ! -e "$old" ] || die "restore staging paths already exist"
     owner=$(stat -c %u:%g "$active") # validated: owned by FLH_UID
-    compose stop
-    (cd "$backup" && sha256sum --quiet -c SHA256SUMS) || die "backup checksums do not match; nothing was changed (the service is stopped)"
+    # Everything that can fail because of the backup or the destination (checksums,
+    # free space, a read-only or full filesystem, the copy, its integrity) runs
+    # BEFORE the service is stopped, so a refused or failed restore never takes the
+    # running service down. Only the swap itself needs the stop.
+    (cd "$backup" && sha256sum --quiet -c SHA256SUMS) || die "backup checksums do not match; nothing was changed (the service was not stopped)"
+    need=$(stat -c %s "$backup"/app.db* | awk '{s += $1} END {print s + 0}')
+    avail=$(df -P -B1 "$(dirname "$active")" | awk 'NR==2 {print $4}')
+    [ -n "$avail" ] && [ "$avail" -gt "$need" ] \
+      || die "not enough free space beside $active for the restored copy (needs $need bytes, ${avail:-unknown} free); nothing was changed (the service was not stopped)"
+    restore_state=preparing
+    stage_created=0
+    restore_failed() {
+      local rc=$?
+      case "$restore_state" in
+        preparing)
+          # Only the staging directory this run created; never the active data.
+          if [ "$stage_created" = 1 ]; then rm -rf -- "$stage"; fi
+          echo "flh-daily: restore FAILED (exit $rc) while preparing the copy (for example a full disk or a read-only destination); nothing was changed and the service was not stopped. Fix the cause, then run restore again" >&2 ;;
+        stopped)
+          echo "flh-daily: restore FAILED (exit $rc) after the service was stopped; the active data is unchanged at $active. Start it again with: bash scripts/daily/flh-daily.sh start" >&2 ;;
+      esac
+    }
+    trap restore_failed EXIT
     mkdir -m 700 "$stage"
+    stage_created=1
     copy_db "$backup" "$stage"
-    integrity_ok "$stage" || die "restored copy failed the integrity check; nothing was changed. Inspect $stage"
+    restore_state=checking
+    integrity_ok "$stage" || die "restored copy failed the integrity check; nothing was changed and the service was not stopped. Inspect $stage"
+    restore_state=stopped
+    compose stop
     mv "$active" "$old"
     mv "$stage" "$active" || { mv "$old" "$active"; die "could not move the restored copy into place; the original was put back"; }
+    restore_state=done
+    trap - EXIT
     echo "flh-daily: restored $backup into $active; the previous data is kept at $old"
     # /readyz cannot tell that the service may not write the restored files (a
     # read-only or foreign-owned backup restores that way): check before starting.
