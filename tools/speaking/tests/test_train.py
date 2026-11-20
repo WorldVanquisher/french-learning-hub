@@ -128,6 +128,25 @@ class Training(unittest.TestCase):
         self.assertEqual((second["status"], second["step"]), ("completed", 4))
         self.assertEqual(second["model_sha256"], ref["model_sha256"])
 
+    def test_sigterm_finishes_the_step_saves_and_resumes_identically(self):
+        # Cancellation as SageMaker's StopTrainingJob delivers it: SIGTERM during step 1; the step finishes, a
+        # checkpoint is written, the run reports interrupted (exit 0 path), and a resume equals an uninterrupted run.
+        import signal
+        ref = self.run_train(os.path.join(self.tmp, "ref-sig"))
+        out = os.path.join(self.tmp, "sigterm")
+
+        def log(m):
+            if m.startswith('{"step": 1,'):
+                os.kill(os.getpid(), signal.SIGTERM)
+        before = signal.getsignal(signal.SIGTERM)
+        first = train.train(self.cfg, self.data, self.base, out, log=log)
+        self.assertEqual((first["status"], first["step"]), ("interrupted", 1))
+        self.assertEqual(Path(out, "checkpoints", "LATEST").read_text().strip(), "step-000001")
+        self.assertEqual(train.verify_checkpoint(os.path.join(out, "checkpoints", "step-000001")), [])
+        self.assertIs(signal.getsignal(signal.SIGTERM), before)  # the handler is restored
+        second = self.run_train(out)
+        self.assertEqual((second["status"], second["model_sha256"]), ("completed", ref["model_sha256"]))
+
     def test_resume_refuses_a_changed_config(self):
         out = os.path.join(self.tmp, "changed")
         self.run_train(out, stop_after=1)

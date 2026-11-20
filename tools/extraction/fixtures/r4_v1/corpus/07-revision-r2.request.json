@@ -1,0 +1,509 @@
+{
+ "body": {
+  "contract": "flh_extraction_service_v1",
+  "decisions": [
+   {
+    "action": "reject",
+    "based_on": {
+     "draft_id": "d-22ff0c49f9d7",
+     "item_hash": "757e1bfda44f2598820983b64c02e76e4376eb00f04a77b209c55855594cf14e",
+     "material_hash": "6d02b03871cd86dbe76b28f00f8cea7f69e365127d941d2c21c94b324114ce0e",
+     "source_revision": 1
+    },
+    "item_id": "k-5ca79503ae78",
+    "reason": "my friend corrected exactly this: « j'en vais » is wrong",
+    "schema": "flh_practice_decision_v1",
+    "seq": 1
+   },
+   {
+    "action": "approve",
+    "based_on": {
+     "draft_id": "d-22ff0c49f9d7",
+     "item_hash": "5d7b7f1fe92e2f83cddd2869e383d26c6f71c2e76da89d51e6126bebdf6e46fe",
+     "material_hash": "84614414c68a38db3ac5e7defe50e2ac899f3b8ff6bb306f94d6e20335f65db4",
+     "source_revision": 1
+    },
+    "batch": {
+     "batch_id": "b2-a948b31f0fb7",
+     "excepted": [],
+     "members": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "selected": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "size": 6
+    },
+    "item_id": "k-6c4760ebee9d",
+    "reason": "",
+    "schema": "flh_practice_decision_v1",
+    "seq": 2
+   },
+   {
+    "action": "approve",
+    "based_on": {
+     "draft_id": "d-22ff0c49f9d7",
+     "item_hash": "b13ebe90188d1591fcd2f19f407f93ecdbd914d5350a0962453f02c379006b76",
+     "material_hash": "a28ada0aeb474dc25b09db0ffd82c9d562353653e7737309c2b5cbfb38e8bac3",
+     "source_revision": 1
+    },
+    "batch": {
+     "batch_id": "b2-a948b31f0fb7",
+     "excepted": [],
+     "members": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "selected": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "size": 6
+    },
+    "item_id": "k-40cbe73ae3f5",
+    "reason": "",
+    "schema": "flh_practice_decision_v1",
+    "seq": 3
+   },
+   {
+    "action": "approve",
+    "based_on": {
+     "draft_id": "d-22ff0c49f9d7",
+     "item_hash": "c5c85275add7b2040fbab74ab898e2f02d97f8acd32af961c3eff6e0a84a4ab3",
+     "material_hash": "3752249d43df06564bb0c6edffe8be6e0597b82d61f8b738ec65a25549908877",
+     "source_revision": 1
+    },
+    "batch": {
+     "batch_id": "b2-a948b31f0fb7",
+     "excepted": [],
+     "members": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "selected": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "size": 6
+    },
+    "item_id": "k-0d3281b28da6",
+    "reason": "",
+    "schema": "flh_practice_decision_v1",
+    "seq": 4
+   },
+   {
+    "action": "approve",
+    "based_on": {
+     "draft_id": "d-22ff0c49f9d7",
+     "item_hash": "d86fd4b9a3f843da50ceeb888e05d6f1a6eb68021b0a000b87e8625e9e492ce2",
+     "material_hash": "5579380f8d61f06066aaf134a89b3bd5bd4d87b9025a5c09fea86fe71ed793de",
+     "source_revision": 1
+    },
+    "batch": {
+     "batch_id": "b2-a948b31f0fb7",
+     "excepted": [],
+     "members": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "selected": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "size": 6
+    },
+    "item_id": "k-232ca0f26098",
+    "reason": "",
+    "schema": "flh_practice_decision_v1",
+    "seq": 5
+   },
+   {
+    "action": "approve",
+    "based_on": {
+     "draft_id": "d-22ff0c49f9d7",
+     "item_hash": "22df1dec718285e517fae20bb91156ee2a9cbb638187aee8add034f9e92960df",
+     "material_hash": "e4a24771c81740f736f838f58c51c619550b2de3500e7b7db5b57c03ac5e59d1",
+     "source_revision": 1
+    },
+    "batch": {
+     "batch_id": "b2-a948b31f0fb7",
+     "excepted": [],
+     "members": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "selected": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "size": 6
+    },
+    "item_id": "k-d1c9732336a2",
+    "reason": "",
+    "schema": "flh_practice_decision_v1",
+    "seq": 6
+   },
+   {
+    "action": "approve",
+    "based_on": {
+     "draft_id": "d-22ff0c49f9d7",
+     "item_hash": "dc3a624e79bda0a1e61bb6692aba504d3ef55c4ff8946fda5104c28dcad532d3",
+     "material_hash": "9a4cf5dd1832c1a0ee7b7108145a504c6205c0dd71e30fec23f516c9e63ba178",
+     "source_revision": 1
+    },
+    "batch": {
+     "batch_id": "b2-a948b31f0fb7",
+     "excepted": [],
+     "members": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "selected": [
+      "k-6c4760ebee9d",
+      "k-40cbe73ae3f5",
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-d1c9732336a2",
+      "k-cb9627cc7213"
+     ],
+     "size": 6
+    },
+    "item_id": "k-cb9627cc7213",
+    "reason": "",
+    "schema": "flh_practice_decision_v1",
+    "seq": 7
+   }
+  ],
+  "schema": "flh_extraction_request_v1",
+  "sources": [
+   {
+    "capture": {
+     "analysis": {
+      "category": "grammar",
+      "explanation": "« y » replaces a place introduced by « à »; « en » replaces a place introduced by « de »."
+     },
+     "capture_id": "synthetic-y-en-001",
+     "original_context": "Mon amie m'a demandé : « Tu vas à la boulangerie ? » J'ai répondu : « Oui, j'en vais. » Elle m'a corrigée : « On dit : oui, j'y vais. » Plus tard, elle a dit : « Je viens de la boulangerie, j'en viens. »",
+     "original_input": "Pourquoi on dit « j'y vais » mais « j'en viens » ? Je confonds toujours « y » et « en ».",
+     "schema_version": "learning_capture_v1",
+     "source": "manual"
+    },
+    "learner_goal": "Choose between « y » and « en » when I answer a question about a place (A1/A2).",
+    "proposal": {
+     "items": [
+      {
+       "canonical": "y (à + lieu)",
+       "confidence": 0.8,
+       "kind": "grammar",
+       "quotes": [
+        "Tu vas à la boulangerie ?",
+        "On dit : oui, j'y vais."
+       ],
+       "ref": "y-a",
+       "statement": "« y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »",
+       "type": "claim"
+      },
+      {
+       "canonical": "en (de + lieu)",
+       "confidence": 0.8,
+       "kind": "grammar",
+       "quotes": [
+        "Je viens de la boulangerie, j'en viens."
+       ],
+       "ref": "en-de",
+       "statement": "« en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »",
+       "type": "claim"
+      },
+      {
+       "canonical": "en + verbe de mouvement",
+       "confidence": 0.4,
+       "kind": "grammar",
+       "quotes": [
+        "en goes with every verb of movement"
+       ],
+       "ref": "en-mouvement",
+       "statement": "« en » goes with every verb of movement, so « j'en vais » is also correct.",
+       "type": "claim"
+      },
+      {
+       "a": {
+        "form": "y",
+        "use": "à + a place: where you go or where you are"
+       },
+       "applies": [
+        "y-a",
+        "en-de"
+       ],
+       "b": {
+        "form": "en",
+        "use": "de + a place: where you come from"
+       },
+       "distinction": "Ask which preposition the place takes: « à » gives « y », « de » gives « en ».",
+       "quotes": [
+        "Tu vas à la boulangerie ?",
+        "Je viens de la boulangerie, j'en viens."
+       ],
+       "ref": "y-vs-en",
+       "type": "contrast"
+      },
+      {
+       "applies": [
+        "y-vs-en"
+       ],
+       "quotes": [
+        "Oui, j'en vais."
+       ],
+       "ref": "en-vais",
+       "right": "j'y vais",
+       "type": "common_error",
+       "why": "« aller à » takes « y »; « en » would mean « from there ».",
+       "wrong": "j'en vais"
+      },
+      {
+       "accepted": [
+        "Oui, nous y allons.",
+        "Oui, on y va.",
+        "Non, nous n'y allons pas.",
+        "Non, on n'y va pas."
+       ],
+       "answer": "Oui, nous y allons.",
+       "applies": [
+        "y-vs-en",
+        "y-a"
+       ],
+       "cloze": "Oui, nous __ allons.",
+       "explanation": "« aller à la piscine »: the place takes « à », so « y ».",
+       "generated": true,
+       "instruction": "Answer with « y » or « en ».",
+       "question": "Vous allez à la piscine ce soir ?",
+       "ref": "ex-piscine",
+       "target": "y",
+       "type": "worked_example",
+       "wrong": [
+        "Oui, nous en allons.",
+        "Oui, on en va."
+       ]
+      },
+      {
+       "accepted": [
+        "Oui, j'en reviens.",
+        "Oui, j'en reviens à l'instant.",
+        "Non, je n'en reviens pas."
+       ],
+       "answer": "Oui, j'en reviens.",
+       "applies": [
+        "y-vs-en",
+        "en-de"
+       ],
+       "cloze": "Oui, j'__ reviens.",
+       "explanation": "« revenir du marché » (de + le): the place takes « de », so « en ».",
+       "generated": true,
+       "instruction": "Answer with « y » or « en ».",
+       "question": "Tu reviens du marché ?",
+       "ref": "ex-marche",
+       "target": "en",
+       "type": "worked_example",
+       "wrong": [
+        "Oui, j'y reviens."
+       ]
+      }
+     ],
+     "proposer": "synthetic: hand-written fixture for the Extraction 2.0 prototype (no provider call); French needs a native-speaker check before learner use"
+    },
+    "revision": 1,
+    "schema": "flh_practice_source_v1",
+    "source_id": "y-en-demo"
+   },
+   {
+    "capture": {
+     "analysis": {
+      "category": "grammar",
+      "explanation": "« y » replaces a place introduced by « à »; « en » replaces a place introduced by « de »."
+     },
+     "capture_id": "synthetic-y-en-001",
+     "original_context": "Mon amie m'a demandé : « Tu vas à la boulangerie ? » J'ai répondu : « Oui, j'en vais. » Elle m'a corrigée : « On dit : oui, j'y vais. » Plus tard, elle a dit : « Je reviens de la boulangerie, j'en reviens. »",
+     "original_input": "Pourquoi on dit « j'y vais » mais « j'en viens » ? Je confonds toujours « y » et « en ».",
+     "schema_version": "learning_capture_v1",
+     "source": "manual"
+    },
+    "learner_goal": "Choose between « y » and « en » when I answer a question about a place (A1/A2).",
+    "proposal": {
+     "items": [
+      {
+       "canonical": "y (à + lieu)",
+       "confidence": 0.8,
+       "kind": "grammar",
+       "quotes": [
+        "Tu vas à la boulangerie ?",
+        "On dit : oui, j'y vais."
+       ],
+       "ref": "y-a",
+       "statement": "« y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »",
+       "type": "claim"
+      },
+      {
+       "canonical": "en (de + lieu)",
+       "confidence": 0.8,
+       "kind": "grammar",
+       "quotes": [
+        "Je viens de la boulangerie, j'en viens."
+       ],
+       "ref": "en-de",
+       "statement": "« en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »",
+       "type": "claim"
+      },
+      {
+       "canonical": "en + verbe de mouvement",
+       "confidence": 0.4,
+       "kind": "grammar",
+       "quotes": [
+        "en goes with every verb of movement"
+       ],
+       "ref": "en-mouvement",
+       "statement": "« en » goes with every verb of movement, so « j'en vais » is also correct.",
+       "type": "claim"
+      },
+      {
+       "a": {
+        "form": "y",
+        "use": "à + a place: where you go or where you are"
+       },
+       "applies": [
+        "y-a",
+        "en-de"
+       ],
+       "b": {
+        "form": "en",
+        "use": "de + a place: where you come from"
+       },
+       "distinction": "Ask which preposition the place takes: « à » gives « y », « de » gives « en ».",
+       "quotes": [
+        "Tu vas à la boulangerie ?",
+        "Je viens de la boulangerie, j'en viens."
+       ],
+       "ref": "y-vs-en",
+       "type": "contrast"
+      },
+      {
+       "applies": [
+        "y-vs-en"
+       ],
+       "quotes": [
+        "Oui, j'en vais."
+       ],
+       "ref": "en-vais",
+       "right": "j'y vais",
+       "type": "common_error",
+       "why": "« aller à » takes « y »; « en » would mean « from there ».",
+       "wrong": "j'en vais"
+      },
+      {
+       "accepted": [
+        "Oui, nous y allons.",
+        "Oui, on y va.",
+        "Non, nous n'y allons pas.",
+        "Non, on n'y va pas."
+       ],
+       "answer": "Oui, nous y allons.",
+       "applies": [
+        "y-vs-en",
+        "y-a"
+       ],
+       "cloze": "Oui, nous __ allons.",
+       "explanation": "« aller à la piscine »: the place takes « à », so « y ».",
+       "generated": true,
+       "instruction": "Answer with « y » or « en ».",
+       "question": "Vous allez à la piscine ce soir ?",
+       "ref": "ex-piscine",
+       "target": "y",
+       "type": "worked_example",
+       "wrong": [
+        "Oui, nous en allons.",
+        "Oui, on en va."
+       ]
+      },
+      {
+       "accepted": [
+        "Oui, j'en reviens.",
+        "Oui, j'en reviens à l'instant.",
+        "Non, je n'en reviens pas."
+       ],
+       "answer": "Oui, j'en reviens.",
+       "applies": [
+        "y-vs-en",
+        "en-de"
+       ],
+       "cloze": "Oui, j'__ reviens.",
+       "explanation": "« revenir du marché » (de + le): the place takes « de », so « en ».",
+       "generated": true,
+       "instruction": "Answer with « y » or « en ».",
+       "question": "Tu reviens du marché ?",
+       "ref": "ex-marche",
+       "target": "en",
+       "type": "worked_example",
+       "wrong": [
+        "Oui, j'y reviens."
+       ]
+      }
+     ],
+     "proposer": "synthetic: hand-written fixture for the Extraction 2.0 prototype (no provider call); French needs a native-speaker check before learner use"
+    },
+    "revision": 2,
+    "schema": "flh_practice_source_v1",
+    "source_id": "y-en-demo"
+   }
+  ]
+ },
+ "headers": {
+  "Content-Type": "application/json",
+  "X-FLH-Contract": "flh_extraction_service_v1"
+ },
+ "method": "POST",
+ "path": "/v1/review"
+}

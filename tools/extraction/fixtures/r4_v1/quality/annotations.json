@@ -1,0 +1,176 @@
+{
+ "acceptable": {
+  "absent": [
+   "unsupported"
+  ],
+  "contradicts": [
+   "review",
+   "unsupported"
+  ],
+  "supports+accent_variant": [
+   "review"
+  ],
+  "supports+case_variant": [
+   "review"
+  ],
+  "supports+paraphrase": [
+   "unsupported",
+   "review"
+  ],
+  "supports+verbatim": [
+   "supported"
+  ],
+  "unrelated": [
+   "review",
+   "unsupported"
+  ]
+ },
+ "items": [
+  {
+   "location": "verbatim",
+   "phenomenon": "control",
+   "rationale": "the teacher's correction states the rule with these words",
+   "ref": "n1",
+   "relation": "supports",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "rationale": "the quoted words say « en Japon » is NOT said; the claim asserts the opposite",
+   "ref": "n2",
+   "relation": "contradicts",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "rationale": "« n'a rien corrigé » negates the correcting, not the form: the sentence was right",
+   "ref": "n3",
+   "relation": "supports",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "rationale": "a negated claim with a negated quote: same polarity",
+   "ref": "n4",
+   "relation": "supports",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "rationale": "« ce n'est jamais « en » » excludes what the claim asserts",
+   "ref": "n5",
+   "relation": "contradicts",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "lexical_overlap",
+   "rationale": "the form was circled without comment: shared words, no evidence of an error",
+   "ref": "n6",
+   "relation": "unrelated",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "accent_error",
+   "rationale": "the correspondent's accented sentence; the learner's unaccented « je vais a Lyon » also exists",
+   "ref": "a1",
+   "relation": "supports",
+   "source_id": "r4-q-accents"
+  },
+  {
+   "location": "accent_variant",
+   "phenomenon": "accent_error",
+   "rationale": "the learner wrote « ecrit » without accent; the proposer's quote added it, so it is not the learner's exact words",
+   "ref": "a2",
+   "relation": "supports",
+   "source_id": "r4-q-accents"
+  },
+  {
+   "location": "case_variant",
+   "phenomenon": "accent_error",
+   "rationale": "the learner's text begins « Sans accent » with a capital; same words otherwise",
+   "ref": "a3",
+   "relation": "supports",
+   "source_id": "r4-q-accents"
+  },
+  {
+   "location": "accent_variant",
+   "phenomenon": "accent_error",
+   "rationale": "the text says « il a un chat » (verb avoir); « à » would be the error the claim calls correct",
+   "ref": "a4",
+   "relation": "contradicts",
+   "source_id": "r4-q-accents"
+  },
+  {
+   "location": "paraphrase",
+   "phenomenon": "paraphrase",
+   "rationale": "restates « Depuis, c'est pour une action qui continue encore » in other words",
+   "ref": "p1",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "control",
+   "rationale": "the colleague's words",
+   "ref": "p2",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "lexical_overlap",
+   "rationale": "« Depuis, » names the word under discussion; it says nothing about commas",
+   "ref": "p3",
+   "relation": "unrelated",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "control",
+   "rationale": "the colleague's answer to the learner's example sentence",
+   "ref": "p4",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "lexical_overlap",
+   "rationale": "the text uses « il y a » with « arrivé »; the claim swaps in « depuis »",
+   "ref": "p5",
+   "relation": "contradicts",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "rationale": "« ne sais jamais » is the learner's own statement of the confusion",
+   "ref": "p6",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "location": "paraphrase",
+   "phenomenon": "paraphrase",
+   "rationale": "restates « un moment fini dans le passé »",
+   "ref": "p7",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "location": "paraphrase",
+   "phenomenon": "paraphrase",
+   "rationale": "a paraphrase that reverses « qui continue encore »",
+   "ref": "p8",
+   "relation": "contradicts",
+   "source_id": "r4-q-paraphrase"
+  }
+ ],
+ "note": "Reference annotations written before any candidate check existed (R4). location: where the quoted words are in the learner's text (verbatim, case_variant, accent_variant, paraphrase, absent). relation: what the quoted words say about the claim (supports, contradicts, unrelated). A contradiction is not the same finding as unrelated evidence.",
+ "schema": "flh_grounding_reference_v1"
+}

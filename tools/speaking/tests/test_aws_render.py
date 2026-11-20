@@ -54,3 +54,42 @@ class Render(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PilotR4(unittest.TestCase):
+    """R4: the bounded owner-run job against its pre-registration, and the teardown order (no AWS call, no credentials)."""
+
+    @classmethod
+    def setUpClass(cls):
+        import sys
+        sys.path.insert(0, str(PKG / "aws"))
+        import pilot_r4
+        cls.p = pilot_r4
+        cls.v = json.loads((PKG / "aws" / "values.r4.example.json").read_text())
+        cls.now = datetime(2026, 11, 20, tzinfo=timezone.utc)
+
+    def test_render_is_deterministic_and_equals_the_committed_example(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = self.p.render_r4(self.v, tmp, self.now)
+            committed = PKG.parents[1] / "deploy" / "aws" / "model-runtime" / "speaking-r4" / out.name
+            self.assertEqual(out.read_bytes(), committed.read_bytes())
+            job = json.loads(out.read_text())
+        self.assertEqual((job["ResourceConfig"]["InstanceCount"], job["ResourceConfig"]["InstanceType"]), (1, "ml.g5.xlarge"))
+        self.assertEqual(job["StoppingCondition"], {"MaxRuntimeInSeconds": 3600, "MaxWaitTimeInSeconds": 7200})
+        self.assertIn(job["TrainingJobName"], job["CheckpointConfig"]["S3Uri"])
+        self.assertIsNone(self.p.SECRET.search(json.dumps(job)))
+
+    def test_values_that_disagree_with_the_preregistration_are_refused(self):
+        for kw in ({"DATA_SHA256": "a" * 64}, {"BASE_REVISION": "b" * 40}, {"RUN": "pilot"}, {"DELETE_AFTER": "2027-06-01"}):
+            with tempfile.TemporaryDirectory() as tmp, self.assertRaises(SystemExit):
+                self.p.render_r4({**self.v, **kw}, tmp, self.now)
+
+    def test_teardown_plan_order(self):
+        plan = json.loads((PKG / "aws" / "r4-teardown-plan.json").read_text())
+        self.assertEqual(self.p.teardown_check(plan), [])
+        s = plan["steps"]
+        bad = {"delete before copy": [s[1], s[6], s[2]] + s[3:6] + s[7:], "no evidence copy": s[:2] + s[3:],
+               "image not last": s[:6] + [s[9]] + s[6:9] + [s[10]], "bucket-wide delete": s[:6] + [{"action": "delete_s3_prefix", "target": "s3://b/"}] + s[6:],
+               "no final verification": s[:-1], "deletes evidence": s[:6] + [{"action": "delete_s3_prefix", "target": "s3://b/speaking/evidence/"}] + s[6:]}
+        for name, steps in bad.items():
+            self.assertTrue(self.p.teardown_check({"steps": steps}), name)

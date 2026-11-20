@@ -63,7 +63,7 @@ python3 -B -m flh_extraction.service smoke --url http://127.0.0.1:8090   # the s
 | 413 | `too_large` | body > 256 KiB, > 8 revisions, > 64 items per source, > 1,000 decisions, > 5,000 attempts |
 | 415 | `unsupported_media_type` | not `application/json` |
 | 422 | `invalid_source` | a source fails `flh_practice_source_v1` validation, or the revisions are not one source |
-| 422 | `invalid_decisions` | decisions or attempts are malformed, or name items, revisions or practice IDs not in the request |
+| 422 | `invalid_decisions` | decisions or attempts are malformed, or name items, revisions or practice IDs not in the request (an attempt may name a practice ID offered now, offered in `previous`, or withdrawn there) |
 | 422 | `invalid_return` | an agent return or packet cannot be read (unsupported format version, missing fields) |
 | 503 | `not_ready` | the self-check has not passed |
 | 503 | `busy` | 4 requests are already in flight; nothing was processed |
@@ -137,7 +137,34 @@ A deployment of the extraction service is accepted when:
 The model endpoint has its own acceptance (`docs/validation/EXTRACTION-3.md`, "Deployment
 acceptance").
 
-## 7. Not done here
+## 7. Runtime rehearsal and Release contract (R4)
+
+- `python3 -I -B scripts/runtime_rehearsal.py --image TAG --work NEW_DIR [--build-context DIR] [--server-bin FLH_SERVER]`
+  runs the container on loopback and checks:
+  - its identity and the 15-check smoke;
+  - the contract and size refusals;
+  - a deadline of 0.001 s (504);
+  - that logs carry no learner text;
+  - restart without state (no mount, an empty `docker diff`);
+  - FLH staying ready while the service is stopped, and the recovery order.
+
+  It removes every container it starts.
+- `python3 -I -B scripts/service_bench.py [--image TAG]` measures cold and warm latency and
+  peak memory on the R4 synthetic traffic.
+- For Release:
+  - environment, flags, ceilings, restart, outage recovery and teardown:
+    `deploy/aws/model-runtime/EXTRACTION-SERVICE-RUNTIME.md`;
+  - pin the `deployment_id`, not the image ID.
+
+## 7a. Stable and experimental (R4)
+
+| Stable: `flh_extraction_service_v1` (changes need a new contract version) | Experimental: may change without a version bump |
+|---|---|
+| routes, envelope (`flh_extraction_request_v1` / `flh_extraction_result_v1`), header, result codes, bounds, `deployment_id` format | the R4 contracts `flh_learning_loop_v1`, `flh_agent_context_v1`, `flh_agent_corrections_v1` (`LOOP.md`); none is served over HTTP |
+| the feed `flh_practice_review_feed_v1` with `flh_practice_feed_additions_v1`. `reason_code` is an open set: consumers keep unknown codes verbatim (`flh_extraction/feed_interop.py`) | the grounding checks `flh_grounding_checks_v2` (`grounding_quality.py`): not in the review or the service |
+| the sealed examples `fixtures/service_v1/01–09` (`scripts/service_examples.py --check`) | `review` response fields `text`, `cues[].detail` and `plan.effects`: human-readable, not for parsing |
+
+## 8. Not done here
 
 - **FLH calling this service** (an `EXTRACTOR_PROVIDER=http` or a practice API) changes shared
   configuration and HTTP contracts. It needs the owner and the Release lane: proposal in

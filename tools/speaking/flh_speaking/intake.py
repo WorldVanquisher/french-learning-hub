@@ -225,3 +225,123 @@ def render(rep: dict) -> str:
         L += [f"  {k:6} rows {v['rows']:5}  speakers {v['speakers']:3}  hours {v['hours']:7}  gender {v['gender']}  missing text {v['missing_text']}  "
               f"missing speaker {v['missing_speaker']}" for k, v in rep["balance"].items()]
     return "\n".join(L) + "\n"
+
+
+# ---- training intake (R4) ----
+
+TRAINING = "flh_speaking_training_intake_v1"
+TRAIN_LICENSES = {"CC-BY-4.0": "training allowed with attribution", "CC0-1.0": "training allowed", "Apache-2.0": "training allowed with the licence notice",
+                  "CC-BY-SA-4.0": "owner decision: share-alike may reach derived weights"}
+ROW_FIELDS = ("id", "source_id", "split", "locale", "seconds")
+SPLITS = ("train", "dev", "test")
+
+
+def _source_rows(s: dict) -> list[dict]:
+    rows = []
+
+    def row(i, ok, detail):
+        rows.append({"id": i, "status": "pass" if ok else "fail", "detail": detail})
+    lic = s.get("license")
+    row("license", lic in TRAIN_LICENSES and lic != "CC-BY-SA-4.0", f"{lic}: {TRAIN_LICENSES.get(lic, 'not on the training list (' + ', '.join(sorted(TRAIN_LICENSES)) + ')')}")
+    if s.get("kind") == "synthetic":
+        g = s.get("generator") or {}
+        row("generator_pinned", bool(g.get("name")) and bool(g.get("version")), f"generator {g.get('name')} {g.get('version')}")
+        row("generator_terms", bool(g.get("terms_allow_training")), "the generator's terms allow training on its output" if g.get("terms_allow_training")
+            else "no statement that the generator's terms allow training on its output")
+        row("voice_consent", bool((s.get("voice_consent_statement") or "").strip()), s.get("voice_consent_statement")
+            or "no statement of how the voices' speakers consented (synthetic voices come from recorded people)")
+        row("no_natural_person_recorded", s.get("natural_persons_recorded") is False, "no person was recorded for this source"
+            if s.get("natural_persons_recorded") is False else "natural_persons_recorded must be false for a synthetic source")
+    else:
+        row("pinned_revision", bool(s.get("repo")) and bool(s.get("revision")), f"{s.get('repo')} @ {s.get('revision')}")
+        row("attribution", bool((s.get("attribution") or "").strip()), s.get("attribution") or "missing")
+        row("speaker_provenance_and_consent", bool((s.get("speaker_provenance") or "").strip()) and bool((s.get("consent_statement") or "").strip()),
+            (s.get("speaker_provenance") or "no provenance") + "; " + (s.get("consent_statement") or "no consent statement"))
+    row("no_redistribution", s.get("audio_redistributed") is False, "audio stays outside the repository" if s.get("audio_redistributed") is False
+        else "the proposal would put audio in the repository")
+    personal = sorted(f for f in s.get("metadata_fields", []) if PERSONAL.search(f))
+    row("no_personal_data", not personal, f"personal fields: {personal}" if personal else "no personal metadata kept")
+    row("locales_declared", bool(s.get("locales")), "locales " + ", ".join(s.get("locales") or ["none"]))
+    return rows
+
+
+def training_intake(m: dict) -> dict:
+    """Training-data intake: per-source provenance, licence and consent; per-row metadata; speaker groups and locales;
+    train/evaluation leakage; actionable refusals; counts and hours without audio or transcripts."""
+    if m.get("schema") != TRAINING:
+        raise ValueError(f"a training intake manifest must be {TRAINING}")
+    sources = {s["source_id"]: s for s in m.get("sources", [])}
+    checks = {sid: _source_rows(s) for sid, s in sorted(sources.items())}
+    refusals = [f"source {sid}: {r['id']} — {r['detail']}" for sid, rs in checks.items() for r in rs if r["status"] == "fail"]
+    rows = m.get("rows", [])
+    seen_id, seen_pcm = {}, {}
+    for n, r in enumerate(rows, 1):
+        rid = r.get("id")
+        missing = [f for f in ROW_FIELDS if r.get(f) in (None, "")]
+        if missing:
+            refusals.append(f"row {rid}: missing {', '.join(missing)} — add them to the manifest or drop the row")
+        if r.get("source_id") not in sources:
+            refusals.append(f"row {rid}: source {r.get('source_id')!r} is not declared — declare it under sources (licence, consent) or drop the row")
+        if r.get("split") not in SPLITS:
+            refusals.append(f"row {rid}: split {r.get('split')!r} — use train, dev or test")
+        if rid in seen_id:
+            refusals.append(f"row {rid}: repeated ID (first at row {seen_id[rid]}) — keep one")
+        seen_id.setdefault(rid, n)
+        h = r.get("pcm_sha256")
+        if h and h in seen_pcm:
+            refusals.append(f"row {rid}: the same audio as row {seen_pcm[h]} (PCM SHA-256 {h[:12]}…) — keep one clip, in one split")
+        if h:
+            seen_pcm.setdefault(h, rid)
+        loc = r.get("locale")
+        src = sources.get(r.get("source_id")) or {}
+        if loc and src.get("locales") and loc not in src["locales"]:
+            refusals.append(f"row {rid}: locale {loc} is not declared by {r.get('source_id')} — declare it or correct the row")
+    # speakers are namespaced per source (source:speaker) below; a raw ID is never trusted across sources
+    named = [dict(r, corpus=r.get("source_id")) for r in rows]
+    train = [r for r in named if r.get("split") == "train"]
+    evals = {s: [r for r in named if r.get("split") == s] for s in ("dev", "test")}
+    leak = overlap_report(train, {k: v for k, v in evals.items() if v})
+    for name, v in leak["sets"].items():
+        for k in ("speakers_shared", "texts_shared", "audio_shared"):
+            if v[k]:
+                refusals.append(f"{name}: {v[k]} {k.split('_')[0]} shared with train — keep each on one side only (speaker-disjoint, text- and audio-disjoint splits)")
+    unknown_spk = {s: sum(1 for r in rs if r.get("speaker") in (None, "", "unknown")) for s, rs in (("train", train), *evals.items())}
+    summary = {}
+    for r in named:
+        g = summary.setdefault(r.get("split", "?"), {"clips": 0, "speaker_groups": set(), "seconds": 0.0, "locales": {}, "varieties": {}, "sources": {}})
+        g["clips"] += 1
+        if r.get("speaker") not in (None, "", "unknown"):
+            g["speaker_groups"].add(f"{r.get('source_id')}:{r['speaker']}")
+        g["seconds"] += float(r.get("seconds") or 0)
+        g["locales"][r.get("locale") or "missing"] = g["locales"].get(r.get("locale") or "missing", 0) + 1
+        g["sources"][r.get("source_id") or "missing"] = g["sources"].get(r.get("source_id") or "missing", 0) + 1
+        g["varieties"][r.get("variety") or "unspecified"] = g["varieties"].get(r.get("variety") or "unspecified", 0) + 1
+    for g in summary.values():
+        g["distinct_speakers"] = len(g.pop("speaker_groups"))
+        g["hours"] = round(g.pop("seconds") / 3600, 3)
+        g["locales"] = dict(sorted(g["locales"].items()))
+        g["sources"] = dict(sorted(g["sources"].items()))
+        g["varieties"] = dict(sorted(g["varieties"].items()))
+    notes = []
+    if unknown_spk.get("train"):
+        notes.append(f"{unknown_spk['train']} training rows carry no speaker ID: speaker overlap with evaluation cannot be checked for them; "
+                     "only text and audio overlap are checked (an unknown is never counted as disjoint)")
+    return {"schema": TRAINING + ".report", "proposal_id": m.get("proposal_id"), "sources": checks, "summary": dict(sorted(summary.items())),
+            "leakage": leak, "rows_without_speaker": unknown_spk, "notes": notes, "refusals": refusals,
+            "decision": "eligible for owner approval" if not refusals else f"refused: {len(refusals)} issue(s) to fix",
+            "note": "no audio is read and no transcript is reported; eligibility is not approval: fetching or training is the owner's decision"}
+
+
+def render_training(rep: dict) -> str:
+    L = [f"Training intake {rep['proposal_id']}: {rep['decision']}"]
+    for sid, rs in rep["sources"].items():
+        L.append(f"  source {sid}: " + ", ".join(f"{r['id']} {r['status']}" for r in rs))
+    for s, g in rep["summary"].items():
+        L.append(f"  {s:5} clips {g['clips']:4}  distinct speakers {g['distinct_speakers']:3}  hours {g['hours']:7}  locales {g['locales']}  varieties {g['varieties']}  sources {g['sources']}")
+    lk = rep["leakage"]
+    L.append(f"  leakage vs train: " + ("; ".join(f"{n} speakers {v['speakers_shared']} texts {v['texts_shared']} audio {v['audio_shared']}"
+                                              for n, v in lk["sets"].items()) or "no evaluation rows"))
+    L += [f"  note: {n}" for n in rep["notes"]]
+    L += [f"  REFUSED {x}" for x in rep["refusals"]]
+    L.append(f"  ({rep['note']})")
+    return "\n".join(L) + "\n"

@@ -1,0 +1,324 @@
+{
+ "body": {
+  "contract": "flh_extraction_service_v1",
+  "counts": {
+   "generated": 0,
+   "no_evidence": 0,
+   "supported": 5,
+   "uncertain": 0,
+   "unsupported": 3
+  },
+  "deployment_id": "flh-extraction-rules@b0bd175f5d97/flh_extraction_service_v1/flh_practice_drafter_v1",
+  "draft_id": "d-dda560500ebc",
+  "evidence": [
+   {
+    "end": 45,
+    "evidence_id": "ev-1ccf3d9675",
+    "excerpt": "Mon collègue m'a répondu : « [Oui, c'est juste]. Depuis, c'est pour une actio…",
+    "field": "original_context",
+    "quote": "Oui, c'est juste",
+    "source_id": "r4-q-paraphrase",
+    "source_revision": 1,
+    "start": 29,
+    "status": "located"
+   },
+   {
+    "end": 179,
+    "evidence_id": "ev-657e5873f4",
+    "excerpt": "…n moment fini dans le passé : [je suis arrivé il y a trois ans]. »",
+    "field": "original_context",
+    "quote": "je suis arrivé il y a trois ans",
+    "source_id": "r4-q-paraphrase",
+    "source_revision": 1,
+    "start": 148,
+    "status": "located"
+   },
+   {
+    "end": 145,
+    "evidence_id": "ev-77107e1dd4",
+    "excerpt": "…e action qui continue encore. [Il y a, c'est pour un moment fini dans le passé] : je suis arrivé il y a trois…",
+    "field": "original_context",
+    "quote": "Il y a, c'est pour un moment fini dans le passé",
+    "source_id": "r4-q-paraphrase",
+    "source_revision": 1,
+    "start": 98,
+    "status": "located"
+   },
+   {
+    "end": 52,
+    "evidence_id": "ev-81c39704dd",
+    "excerpt": "[Je ne sais jamais s'il faut « depuis » ou « il y a »]. Par exemple : j'habite ici d…",
+    "field": "original_input",
+    "quote": "Je ne sais jamais s'il faut « depuis » ou « il y a »",
+    "source_id": "r4-q-paraphrase",
+    "source_revision": 1,
+    "start": 0,
+    "status": "located"
+   },
+   {
+    "end": 76,
+    "evidence_id": "ev-8ecbb698b5",
+    "excerpt": "…répondu : « Oui, c'est juste. [Depuis, c'est pour une action] qui continue encore. Il y a, …",
+    "field": "original_context",
+    "quote": "Depuis, c'est pour une action",
+    "source_id": "r4-q-paraphrase",
+    "source_revision": 1,
+    "start": 47,
+    "status": "located"
+   }
+  ],
+  "items": [
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [],
+    "groundings": [
+     {
+      "quote": "depuis s'emploie pour une action qui dure encore",
+      "status": "not_found"
+     }
+    ],
+    "item_hash": "12f5d53496c168fb5643f3751e8501d7b17afbc0dc76201abe849e6177ff5559",
+    "item_id": "k-7de339ec451c",
+    "material_hash": "fa41319daab92a1f34cc58d7d05555b6622cce0fa17b1fa49ecbe055739e1020",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "unsupported",
+    "text": "« depuis » marks an action that is still going on.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-77107e1dd4"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-77107e1dd4",
+      "quote": "Il y a, c'est pour un moment fini dans le passé",
+      "status": "located"
+     }
+    ],
+    "item_hash": "90c0e0645e25d8438b4ff72f5dae592841dcc97d4444114984ab8494e9df1677",
+    "item_id": "k-421ce40ab83f",
+    "material_hash": "16c892323431ac5da0bd6ce77489f6c6add9b5b43987737138ff5f45a02d4b87",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« il y a » places a finished moment in the past.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-8ecbb698b5"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-8ecbb698b5",
+      "quote": "Depuis, c'est pour une action",
+      "status": "located"
+     }
+    ],
+    "item_hash": "f49e1117062536d23c24367e22c800350251c06968afb5b85986be767a1ad61c",
+    "item_id": "k-ff2376c32d1a",
+    "material_hash": "36deac521629b0a6a36c51bb2dd2a8d61fb606980d2e38e8a6a6c188253f623b",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« depuis » at the start of a sentence is followed by a comma.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-1ccf3d9675"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-1ccf3d9675",
+      "quote": "Oui, c'est juste",
+      "status": "located"
+     }
+    ],
+    "item_hash": "c52ec598a0b74936f70cdf7c1570a186e04566946aed3c065b2aaf9c6230f7af",
+    "item_id": "k-fa64af60d33e",
+    "material_hash": "0bdcd5faeabc7f5c199d65fcc79f394ebf035f1c99c4b542eac8a56287d12daf",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« J'habite ici depuis trois ans » is correct French.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-657e5873f4"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-657e5873f4",
+      "quote": "je suis arrivé il y a trois ans",
+      "status": "located"
+     }
+    ],
+    "item_hash": "1e77578f209458a4236f29a04aa08c1cc29d436ca578b2734fc3337566c4bcf2",
+    "item_id": "k-2dc2448ca205",
+    "material_hash": "1800e18be683ee51ef600e26af3fdf23163318e22b6e9ba771fcb27a3afe82bf",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« je suis arrivé depuis trois ans » is correct French.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-81c39704dd"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-81c39704dd",
+      "quote": "Je ne sais jamais s'il faut « depuis » ou « il y a »",
+      "status": "located"
+     }
+    ],
+    "item_hash": "d03ff1d0ee8e53968a559542457cb30a0157e240a2495473f82f4ff681df1d43",
+    "item_id": "k-64c7db427a41",
+    "material_hash": "802b85f6ebf3be557e8adb30017b2ca6a2e2c669cc4abcbe25763b9af7ba9afa",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "The learner mixes up « depuis » and « il y a ».",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [],
+    "groundings": [
+     {
+      "quote": "il y a sert pour un moment terminé",
+      "status": "not_found"
+     }
+    ],
+    "item_hash": "d6042aef4f30b7704d8b66854e8dc7426e3bdaa870c098ad2b14c157a14df23a",
+    "item_id": "k-8b1a587afd39",
+    "material_hash": "f9101a1d086d1545cf9e8d673068a07c94dd9e3b2bc72a78641f52c93ecfcc11",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "unsupported",
+    "text": "« il y a » is used for a moment that is over.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [],
+    "groundings": [
+     {
+      "quote": "depuis, c'est pour une action finie",
+      "status": "not_found"
+     }
+    ],
+    "item_hash": "d599237ccd3f13a429dbc90a83fe59ff875b9855a980896eda0a183ff9cbed53",
+    "item_id": "k-2d5c108e8bf0",
+    "material_hash": "75ff502f8b5bb7d442b3f1bc93bd83a9ebede09a7c9ab161524e8f71b96ec96a",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "unsupported",
+    "text": "« depuis » is for an action that has ended.",
+    "type": "claim"
+   }
+  ],
+  "moves": {},
+  "operation": "review",
+  "plan": {
+   "batch_id": "b2-c76872541f1b",
+   "effects": {
+    "decision_records": 5,
+    "evidence_links_added": [],
+    "knowledge_approved": 5,
+    "new_practice": [],
+    "practice_after": 0,
+    "practice_before": 0
+   },
+   "left_for_you": [
+    {
+     "item_id": "k-7de339ec451c",
+     "why": "UNSUPPORTED: « depuis s'emploie pour une action qui dure encore » is not in your question or context"
+    },
+    {
+     "item_id": "k-8b1a587afd39",
+     "why": "UNSUPPORTED: « il y a sert pour un moment terminé » is not in your question or context"
+    },
+    {
+     "item_id": "k-2d5c108e8bf0",
+     "why": "UNSUPPORTED: « depuis, c'est pour une action finie » is not in your question or context"
+    }
+   ],
+   "selected": [
+    "k-421ce40ab83f",
+    "k-ff2376c32d1a",
+    "k-fa64af60d33e",
+    "k-2dc2448ca205",
+    "k-64c7db427a41"
+   ]
+  },
+  "schema": "flh_extraction_result_v1",
+  "source": {
+   "capture_id": "synthetic-r4-q-paraphrase-001",
+   "proposer": "synthetic: hand-written R4 grounding-quality fixture (no provider call); French needs a native-speaker check before learner use",
+   "revision": 1,
+   "revision_sha256": "80e0134e1e833613bef11bea955edb201e95f7d601c0aff7d703bac559d9ec45",
+   "source_id": "r4-q-paraphrase"
+  },
+  "states": {
+   "approved": 0,
+   "corrected": 0,
+   "needs_review": 0,
+   "pending": 8,
+   "rejected": 0
+  },
+  "status": "ok",
+  "text": "Draft d-dda560500ebc  source r4-q-paraphrase revision 1 (80e0134e1e83)\nlines: QUOTE = your exact words, located in your text (evidence); PARAPHRASE = a restatement (never evidence); CUE = a word check that the quote may not support the claim (not a proof)\n\n[k-7de339ec451c] claim  support unsupported  state pending\n  says        « depuis » marks an action that is still going on.\n  QUOTE       -             not_found « depuis s'emploie pour une action qui dure encore »\n\n[k-421ce40ab83f] claim  support supported  state pending\n  says        « il y a » places a finished moment in the past.\n  QUOTE       ev-77107e1dd4 located   « Il y a, c'est pour un moment fini dans le passé »\n              …e action qui continue encore. [Il y a, c'est pour un moment fini dans le passé] : je suis arrivé il y a trois…\n\n[k-ff2376c32d1a] claim  support supported  state pending\n  says        « depuis » at the start of a sentence is followed by a comma.\n  QUOTE       ev-8ecbb698b5 located   « Depuis, c'est pour une action »\n              …répondu : « Oui, c'est juste. [Depuis, c'est pour une action] qui continue encore. Il y a, …\n\n[k-fa64af60d33e] claim  support supported  state pending\n  says        « J'habite ici depuis trois ans » is correct French.\n  QUOTE       ev-1ccf3d9675 located   « Oui, c'est juste »\n              Mon collègue m'a répondu : « [Oui, c'est juste]. Depuis, c'est pour une actio…\n\n[k-2dc2448ca205] claim  support supported  state pending\n  says        « je suis arrivé depuis trois ans » is correct French.\n  QUOTE       ev-657e5873f4 located   « je suis arrivé il y a trois ans »\n              …n moment fini dans le passé : [je suis arrivé il y a trois ans]. »\n\n[k-64c7db427a41] claim  support supported  state pending\n  says        The learner mixes up « depuis » and « il y a ».\n  QUOTE       ev-81c39704dd located   « Je ne sais jamais s'il faut « depuis » ou « il y a » »\n              [Je ne sais jamais s'il faut « depuis » ou « il y a »]. Par exemple : j'habite ici d…\n\n[k-8b1a587afd39] claim  support unsupported  state pending\n  says        « il y a » is used for a moment that is over.\n  QUOTE       -             not_found « il y a sert pour un moment terminé »\n\n[k-2d5c108e8bf0] claim  support unsupported  state pending\n  says        « depuis » is for an action that has ended.\n  QUOTE       -             not_found « depuis, c'est pour une action finie »\n\nstates: pending 8, approved 0, corrected 0, rejected 0, needs_review 0\n\nReview v2 of draft d-dda560500ebc (source r4-q-paraphrase revision 1)\n\nBatch b2-c76872541f1b: approve 5 of 5 batchable items together. Selected, explicitly:\n  [x] k-421ce40ab83f claim          evidence ev-77107e1dd4\n      « il y a » places a finished moment in the past.\n  [x] k-ff2376c32d1a claim          evidence ev-8ecbb698b5\n      « depuis » at the start of a sentence is followed by a comma.\n  [x] k-fa64af60d33e claim          evidence ev-1ccf3d9675\n      « J'habite ici depuis trois ans » is correct French.\n  [x] k-2dc2448ca205 claim          evidence ev-657e5873f4\n      « je suis arrivé depuis trois ans » is correct French.\n  [x] k-64c7db427a41 claim          evidence ev-81c39704dd\n      The learner mixes up « depuis » and « il y a ».\n  Effect: 5 items become approved knowledge (5 decision records, one each); practice 0 -> 0 exercises (new: none); nothing else changes.\n  -> practice2 decide --work W --approve-batch b2-c76872541f1b   (--select k-…,k-… to approve fewer; --except k-…)\n\nDecide yourself, one by one (3):\n  [k-7de339ec451c] claim          UNSUPPORTED: « depuis s'emploie pour une action qui dure encore » is not in your question or context\n      « depuis » marks an action that is still going on.\n  [k-8b1a587afd39] claim          UNSUPPORTED: « il y a sert pour un moment terminé » is not in your question or context\n      « il y a » is used for a moment that is over.\n  [k-2d5c108e8bf0] claim          UNSUPPORTED: « depuis, c'est pour une action finie » is not in your question or context\n      « depuis » is for an action that has ended.\n\nAlready decided: none\n"
+ },
+ "status": 200
+}

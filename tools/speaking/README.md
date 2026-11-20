@@ -365,6 +365,35 @@ speaker ID; `--balance` reports rows, speakers, gender, hours and missing labels
 `--overlap train=M[:split] --overlap name=M2[:split] …` counts shared speakers, normalised texts
 and audio between a training set and each evaluation set.
 
+**Training-data intake (R4)**, with no audio read and nothing fetched:
+
+```sh
+python3 -B -m flh_speaking lab training-intake --manifest M.json [--json OUT]   # exit 0 eligible, 1 refused, 2 not a manifest
+```
+
+A `flh_speaking_training_intake_v1` manifest declares its sources and rows. Each source gives
+its kind (public dataset, or synthetic with generator terms and voice consent), pinned revision,
+licence, attribution, speaker provenance and consent, and locales. Each row gives `id`,
+`source_id`, `split`, `speaker`, `locale`, `variety`, `seconds` and `pcm_sha256`.
+
+The report:
+- licence and consent per source;
+- clips, distinct speaker groups (`source:speaker`), hours, locales and varieties per split;
+- speaker, text and audio leakage between train and evaluation, where rows without a speaker ID
+  are counted and never assumed disjoint;
+- one actionable refusal per fault: repeated IDs or audio, missing or undeclared metadata.
+
+It never includes a transcript. Fixtures: `fixtures/intake_r4/` (synthetic).
+
+**R4 training pilot (prepared, owner-run).**
+- `aws/r4-pilot.prereg.json`: candidate, baseline, held-out split and thresholds, frozen before
+  any run.
+- `aws/pilot_r4.py render VALUES OUT_DIR`: the bounded job, checked against the pre-registration.
+- `aws/pilot_r4.py teardown-check aws/r4-teardown-plan.json`: the order of evidence copy and
+  deletions.
+
+Owner commands and cost: `deploy/aws/model-runtime/SPEAKING-PILOT-R4.md`.
+
 **Candidate bundles and identities.**
 
 ```sh

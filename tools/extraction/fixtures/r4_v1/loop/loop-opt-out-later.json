@@ -1,0 +1,94 @@
+{
+ "events": [
+  {
+   "answer": null,
+   "answer_withheld": "learner_opt_out",
+   "event": "recall",
+   "outcome": "self_check",
+   "retrieval": "unaided",
+   "seq": 1
+  },
+  {
+   "after_recall": true,
+   "event": "reveal",
+   "evidence": [
+    {
+     "end": 201,
+     "evidence_id": "ev-17c9dfcc08",
+     "excerpt": ". » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »",
+     "field": "original_context",
+     "quote": "Je viens de la boulangerie, j'en viens.",
+     "source_id": "y-en-demo",
+     "source_revision": 1,
+     "start": 162,
+     "verified": true
+    },
+    {
+     "end": 50,
+     "evidence_id": "ev-fd704f2740",
+     "excerpt": "Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en ",
+     "field": "original_context",
+     "quote": "Tu vas à la boulangerie ?",
+     "source_id": "y-en-demo",
+     "source_revision": 1,
+     "start": 25,
+     "verified": true
+    }
+   ],
+   "note": "the reference is what you approved; the evidence is your own text",
+   "reference": {
+    "accepted": [
+     "Oui, j'en reviens.",
+     "Oui, j'en reviens à l'instant.",
+     "Non, je n'en reviens pas."
+    ],
+    "answer": "Oui, j'en reviens.",
+    "explanation": "« revenir du marché » (de + le): the place takes « de », so « en »."
+   },
+   "seq": 2
+  },
+  {
+   "answers_removed": 1,
+   "event": "retention",
+   "retention": "discard",
+   "seq": 3
+  }
+ ],
+ "loop_id": "lp-35635a8697d0",
+ "pointer": {
+  "evidence": [
+   {
+    "end": 201,
+    "evidence_id": "ev-17c9dfcc08",
+    "field": "original_context",
+    "quote": "Je viens de la boulangerie, j'en viens.",
+    "source_id": "y-en-demo",
+    "source_revision": 1,
+    "start": 162
+   },
+   {
+    "end": 50,
+    "evidence_id": "ev-fd704f2740",
+    "field": "original_context",
+    "quote": "Tu vas à la boulangerie ?",
+    "source_id": "y-en-demo",
+    "source_revision": 1,
+    "start": 25
+   }
+  ],
+  "kind": "produce",
+  "practice_id": "p-664f7533a19d",
+  "source": {
+   "revision": 1,
+   "revision_sha256": "fd55a3600f1c2dd1ab69503dcba4c5cfb20562d845ece7f3f76e9fc0ba6eb0a5",
+   "source_id": "y-en-demo"
+  },
+  "unit_ids": [
+   "k-cb9627cc7213",
+   "k-0d3281b28da6"
+  ]
+ },
+ "retention": "discard",
+ "schema": "flh_learning_loop_v1",
+ "session": "learner-c"
+}

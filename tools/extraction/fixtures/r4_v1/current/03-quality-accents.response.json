@@ -1,0 +1,172 @@
+{
+ "body": {
+  "contract": "flh_extraction_service_v1",
+  "counts": {
+   "generated": 0,
+   "no_evidence": 0,
+   "supported": 1,
+   "uncertain": 0,
+   "unsupported": 3
+  },
+  "deployment_id": "flh-extraction-rules@e978b6c2bdb6/flh_extraction_service_v1/flh_practice_drafter_v1",
+  "draft_id": "d-28c680fa043c",
+  "evidence": [
+   {
+    "end": 104,
+    "evidence_id": "ev-9bd8a91841",
+    "excerpt": "…quand c'est une préposition : [je vais à Lyon]. Sans accent, a est le verbe …",
+    "field": "original_context",
+    "quote": "je vais à Lyon",
+    "source_id": "r4-q-accents",
+    "source_revision": 1,
+    "start": 90,
+    "status": "located"
+   }
+  ],
+  "items": [
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-9bd8a91841"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-9bd8a91841",
+      "quote": "je vais à Lyon",
+      "status": "located"
+     }
+    ],
+    "item_hash": "f6839cf98d027fc4d3a1e44ab40bc73a8123fd4bc6823a51dd572f7a84f08d25",
+    "item_id": "k-53358ff70b7c",
+    "material_hash": "cfc358983eb8588a8f940f3e6c8018a824e2dc9a74fe1244fd5e94c4ea58b960",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "Before a city, the preposition is written « à » with an accent.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [],
+    "groundings": [
+     {
+      "quote": "Hier j'ai écrit « je vais a Lyon »",
+      "status": "not_found"
+     }
+    ],
+    "item_hash": "9701a7e3d402f55a4299e6473f481f742b7bc8f5b474e7864a10cc14909e8217",
+    "item_id": "k-02a793abeb1a",
+    "material_hash": "b33410fc49cc8db12b6cff589e012dbfaa5d5e0c8c5a876af67a5d19df1fb700",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "unsupported",
+    "text": "the preposition « à » takes an accent; « a » is the verb avoir.",
+    "type": "common_error"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [],
+    "groundings": [
+     {
+      "quote": "sans accent, a est le verbe avoir",
+      "status": "not_found"
+     }
+    ],
+    "item_hash": "80aba8caca7aeba6311f08d8a33645713291b3f41ea82932985897d56f31bcfa",
+    "item_id": "k-5b08b418ca50",
+    "material_hash": "c1ace6913edb2ca2d6fdfd5dfcc708ebf987a4c37cf3bce18cf3f3cf5413459a",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "unsupported",
+    "text": "Without an accent, « a » is the verb avoir.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [],
+    "groundings": [
+     {
+      "quote": "il à un chat",
+      "status": "not_found"
+     }
+    ],
+    "item_hash": "96923a7536ea65a05f11d1f7a99659009dec2f571812b0daae1b860e89ccc197",
+    "item_id": "k-22057f83e117",
+    "material_hash": "8ff7cf22f66e363be91c472d74bad033561548546523ab19ad557b4edbca7369",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "unsupported",
+    "text": "« il à un chat » is correct French.",
+    "type": "claim"
+   }
+  ],
+  "moves": {},
+  "operation": "review",
+  "plan": {
+   "batch_id": "b2-af868cb84e1c",
+   "effects": {
+    "decision_records": 1,
+    "evidence_links_added": [],
+    "knowledge_approved": 1,
+    "new_practice": [],
+    "practice_after": 0,
+    "practice_before": 0
+   },
+   "left_for_you": [
+    {
+     "item_id": "k-02a793abeb1a",
+     "why": "UNSUPPORTED: « Hier j'ai écrit « je vais a Lyon » » is not in your question or context"
+    },
+    {
+     "item_id": "k-5b08b418ca50",
+     "why": "UNSUPPORTED: « sans accent, a est le verbe avoir » is not in your question or context"
+    },
+    {
+     "item_id": "k-22057f83e117",
+     "why": "UNSUPPORTED: « il à un chat » is not in your question or context"
+    }
+   ],
+   "selected": [
+    "k-53358ff70b7c"
+   ]
+  },
+  "schema": "flh_extraction_result_v1",
+  "source": {
+   "capture_id": "synthetic-r4-q-accents-001",
+   "proposer": "synthetic: hand-written R4 grounding-quality fixture (no provider call); French needs a native-speaker check before learner use",
+   "revision": 1,
+   "revision_sha256": "827169e48201fda6e0d68fbfdb3c43d9e90c80bb57c9e86565fc69466f7db4cb",
+   "source_id": "r4-q-accents"
+  },
+  "states": {
+   "approved": 0,
+   "corrected": 0,
+   "needs_review": 0,
+   "pending": 4,
+   "rejected": 0
+  },
+  "status": "ok",
+  "text": "Draft d-28c680fa043c  source r4-q-accents revision 1 (827169e48201)\nlines: QUOTE = your exact words, located in your text (evidence); PARAPHRASE = a restatement (never evidence); CUE = a word check that the quote may not support the claim (not a proof)\n\n[k-53358ff70b7c] claim  support supported  state pending\n  says        Before a city, the preposition is written « à » with an accent.\n  QUOTE       ev-9bd8a91841 located   « je vais à Lyon »\n              …quand c'est une préposition : [je vais à Lyon]. Sans accent, a est le verbe …\n\n[k-02a793abeb1a] common_error  support unsupported  state pending\n  says        not « je vais a Lyon » but « je vais à Lyon »\n  why         the preposition « à » takes an accent; « a » is the verb avoir.\n  QUOTE       -             not_found « Hier j'ai écrit « je vais a Lyon » »\n\n[k-5b08b418ca50] claim  support unsupported  state pending\n  says        Without an accent, « a » is the verb avoir.\n  QUOTE       -             not_found « sans accent, a est le verbe avoir »\n\n[k-22057f83e117] claim  support unsupported  state pending\n  says        « il à un chat » is correct French.\n  QUOTE       -             not_found « il à un chat »\n\nstates: pending 4, approved 0, corrected 0, rejected 0, needs_review 0\n\nReview v2 of draft d-28c680fa043c (source r4-q-accents revision 1)\n\nBatch b2-af868cb84e1c: approve 1 of 1 batchable items together. Selected, explicitly:\n  [x] k-53358ff70b7c claim          evidence ev-9bd8a91841\n      Before a city, the preposition is written « à » with an accent.\n  Effect: 1 items become approved knowledge (1 decision records, one each); practice 0 -> 0 exercises (new: none); nothing else changes.\n  -> practice2 decide --work W --approve-batch b2-af868cb84e1c   (--select k-…,k-… to approve fewer; --except k-…)\n\nDecide yourself, one by one (3):\n  [k-02a793abeb1a] common_error   UNSUPPORTED: « Hier j'ai écrit « je vais a Lyon » » is not in your question or context\n      the preposition « à » takes an accent; « a » is the verb avoir.\n  [k-5b08b418ca50] claim          UNSUPPORTED: « sans accent, a est le verbe avoir » is not in your question or context\n      Without an accent, « a » is the verb avoir.\n  [k-22057f83e117] claim          UNSUPPORTED: « il à un chat » is not in your question or context\n      « il à un chat » is correct French.\n\nAlready decided: none\n"
+ },
+ "status": 200
+}

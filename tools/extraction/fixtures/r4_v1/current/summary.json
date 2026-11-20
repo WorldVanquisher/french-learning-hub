@@ -1,0 +1,763 @@
+{
+ "deployment_id": "flh-extraction-rules@e978b6c2bdb6/flh_extraction_service_v1/flh_practice_drafter_v1",
+ "scenarios": [
+  {
+   "batch_selected": 5,
+   "draft_id": "d-22ff0c49f9d7",
+   "items": [
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "located"
+     ],
+     "item_id": "k-6c4760ebee9d",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-40cbe73ae3f5",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-5ca79503ae78",
+     "state": "pending",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "located"
+     ],
+     "item_id": "k-0d3281b28da6",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-232ca0f26098",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-d1c9732336a2",
+     "state": "pending",
+     "support": "generated"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-cb9627cc7213",
+     "state": "pending",
+     "support": "generated"
+    }
+   ],
+   "left_for_you": 2,
+   "name": "01-evidence-r1",
+   "revision": 1,
+   "route": "/v1/review",
+   "states": {
+    "approved": 0,
+    "corrected": 0,
+    "needs_review": 0,
+    "pending": 7,
+    "rejected": 0
+   },
+   "status": 200,
+   "support": {
+    "generated": 2,
+    "supported": 4,
+    "unsupported": 1
+   }
+  },
+  {
+   "batch_selected": 6,
+   "draft_id": "d-848b41cad9a9",
+   "items": [
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-7319a49a593b",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-5744bb392976",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-5f5e45db99e4",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-295ca73f0c83",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-0f17ef088279",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-c321dd2b2202",
+     "state": "pending",
+     "support": "supported"
+    }
+   ],
+   "left_for_you": 0,
+   "name": "02-quality-negation",
+   "revision": 1,
+   "route": "/v1/review",
+   "states": {
+    "approved": 0,
+    "corrected": 0,
+    "needs_review": 0,
+    "pending": 6,
+    "rejected": 0
+   },
+   "status": 200,
+   "support": {
+    "supported": 6
+   }
+  },
+  {
+   "batch_selected": 1,
+   "draft_id": "d-28c680fa043c",
+   "items": [
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-53358ff70b7c",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-02a793abeb1a",
+     "state": "pending",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-5b08b418ca50",
+     "state": "pending",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-22057f83e117",
+     "state": "pending",
+     "support": "unsupported"
+    }
+   ],
+   "left_for_you": 3,
+   "name": "03-quality-accents",
+   "revision": 1,
+   "route": "/v1/review",
+   "states": {
+    "approved": 0,
+    "corrected": 0,
+    "needs_review": 0,
+    "pending": 4,
+    "rejected": 0
+   },
+   "status": 200,
+   "support": {
+    "supported": 1,
+    "unsupported": 3
+   }
+  },
+  {
+   "batch_selected": 5,
+   "draft_id": "d-dda560500ebc",
+   "items": [
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-7de339ec451c",
+     "state": "pending",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-421ce40ab83f",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-ff2376c32d1a",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-fa64af60d33e",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-2dc2448ca205",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-64c7db427a41",
+     "state": "pending",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-8b1a587afd39",
+     "state": "pending",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-2d5c108e8bf0",
+     "state": "pending",
+     "support": "unsupported"
+    }
+   ],
+   "left_for_you": 3,
+   "name": "04-quality-paraphrase",
+   "revision": 1,
+   "route": "/v1/review",
+   "states": {
+    "approved": 0,
+    "corrected": 0,
+    "needs_review": 0,
+    "pending": 8,
+    "rejected": 0
+   },
+   "status": 200,
+   "support": {
+    "supported": 5,
+    "unsupported": 3
+   }
+  },
+  {
+   "batch_selected": 0,
+   "draft_id": "d-22ff0c49f9d7",
+   "items": [
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "located"
+     ],
+     "item_id": "k-6c4760ebee9d",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-40cbe73ae3f5",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-5ca79503ae78",
+     "state": "rejected",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "located"
+     ],
+     "item_id": "k-0d3281b28da6",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-232ca0f26098",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-d1c9732336a2",
+     "state": "approved",
+     "support": "generated"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-cb9627cc7213",
+     "state": "approved",
+     "support": "generated"
+    }
+   ],
+   "left_for_you": 0,
+   "name": "05-approved-r1",
+   "revision": 1,
+   "route": "/v1/review",
+   "states": {
+    "approved": 6,
+    "corrected": 0,
+    "needs_review": 0,
+    "pending": 0,
+    "rejected": 1
+   },
+   "status": 200,
+   "support": {
+    "generated": 2,
+    "supported": 4,
+    "unsupported": 1
+   }
+  },
+  {
+   "added": null,
+   "feed_id": "f-730c43d7ea2d",
+   "feed_seq": 1,
+   "items": 5,
+   "name": "06-feed-r1",
+   "outcomes": 3,
+   "restored": null,
+   "revision": 1,
+   "route": "/v1/feed",
+   "status": 200,
+   "withdrawn": []
+  },
+  {
+   "batch_selected": 0,
+   "draft_id": "d-eebcd5815b24",
+   "items": [
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "located"
+     ],
+     "item_id": "k-6c4760ebee9d",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-40cbe73ae3f5",
+     "state": "needs_review",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-5ca79503ae78",
+     "state": "rejected",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "not_found"
+     ],
+     "item_id": "k-0d3281b28da6",
+     "state": "needs_review",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-232ca0f26098",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-d1c9732336a2",
+     "state": "approved",
+     "support": "generated"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-cb9627cc7213",
+     "state": "approved",
+     "support": "generated"
+    }
+   ],
+   "left_for_you": 2,
+   "name": "07-revision-r2",
+   "revision": 2,
+   "route": "/v1/review",
+   "states": {
+    "approved": 4,
+    "corrected": 0,
+    "needs_review": 2,
+    "pending": 0,
+    "rejected": 1
+   },
+   "status": 200,
+   "support": {
+    "generated": 2,
+    "supported": 2,
+    "unsupported": 3
+   }
+  },
+  {
+   "added": [],
+   "feed_id": "f-4db863d2d730",
+   "feed_seq": 2,
+   "items": 0,
+   "name": "08-feed-r2-withdrawn",
+   "outcomes": 0,
+   "restored": [],
+   "revision": 2,
+   "route": "/v1/feed",
+   "status": 200,
+   "withdrawn": [
+    [
+     "p-0e74504cf958",
+     "knowledge_changed",
+     2
+    ],
+    [
+     "p-22a947cd7f5c",
+     "knowledge_changed",
+     2
+    ],
+    [
+     "p-2ea892e5eaa0",
+     "knowledge_changed",
+     2
+    ],
+    [
+     "p-664f7533a19d",
+     "knowledge_changed",
+     2
+    ],
+    [
+     "p-8d5cabf2ab59",
+     "knowledge_changed",
+     2
+    ]
+   ]
+  },
+  {
+   "batch_selected": 0,
+   "draft_id": "d-dcb8af8e1211",
+   "items": [
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "located"
+     ],
+     "item_id": "k-6c4760ebee9d",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-40cbe73ae3f5",
+     "state": "needs_review",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-5ca79503ae78",
+     "state": "rejected",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "located"
+     ],
+     "item_id": "k-0d3281b28da6",
+     "state": "needs_review",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-232ca0f26098",
+     "state": "needs_review",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-d1c9732336a2",
+     "state": "approved",
+     "support": "generated"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-cb9627cc7213",
+     "state": "needs_review",
+     "support": "generated"
+    }
+   ],
+   "left_for_you": 4,
+   "name": "09-revision-r3",
+   "revision": 3,
+   "route": "/v1/review",
+   "states": {
+    "approved": 2,
+    "corrected": 0,
+    "needs_review": 4,
+    "pending": 0,
+    "rejected": 1
+   },
+   "status": 200,
+   "support": {
+    "generated": 2,
+    "supported": 4,
+    "unsupported": 1
+   }
+  },
+  {
+   "added": [],
+   "feed_id": "f-72c907ad6a95",
+   "feed_seq": 3,
+   "items": 0,
+   "name": "10-feed-r3-awaiting",
+   "outcomes": 0,
+   "restored": [],
+   "revision": 3,
+   "route": "/v1/feed",
+   "status": 200,
+   "withdrawn": [
+    [
+     "p-0e74504cf958",
+     "knowledge_changed",
+     2
+    ],
+    [
+     "p-22a947cd7f5c",
+     "awaiting_confirmation",
+     2
+    ],
+    [
+     "p-2ea892e5eaa0",
+     "awaiting_confirmation",
+     2
+    ],
+    [
+     "p-664f7533a19d",
+     "knowledge_changed",
+     2
+    ],
+    [
+     "p-8d5cabf2ab59",
+     "awaiting_confirmation",
+     2
+    ]
+   ]
+  },
+  {
+   "batch_selected": 0,
+   "draft_id": "d-dcb8af8e1211",
+   "items": [
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "located"
+     ],
+     "item_id": "k-6c4760ebee9d",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-40cbe73ae3f5",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "not_found"
+     ],
+     "item_id": "k-5ca79503ae78",
+     "state": "rejected",
+     "support": "unsupported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located",
+      "located"
+     ],
+     "item_id": "k-0d3281b28da6",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [
+      "located"
+     ],
+     "item_id": "k-232ca0f26098",
+     "state": "approved",
+     "support": "supported"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-d1c9732336a2",
+     "state": "approved",
+     "support": "generated"
+    },
+    {
+     "cues": [],
+     "groundings": [],
+     "item_id": "k-cb9627cc7213",
+     "state": "approved",
+     "support": "generated"
+    }
+   ],
+   "left_for_you": 0,
+   "name": "11-confirmed-r3",
+   "revision": 3,
+   "route": "/v1/review",
+   "states": {
+    "approved": 6,
+    "corrected": 0,
+    "needs_review": 0,
+    "pending": 0,
+    "rejected": 1
+   },
+   "status": 200,
+   "support": {
+    "generated": 2,
+    "supported": 4,
+    "unsupported": 1
+   }
+  },
+  {
+   "added": [],
+   "feed_id": "f-d52f9713c877",
+   "feed_seq": 4,
+   "items": 5,
+   "name": "12-feed-r3-restored",
+   "outcomes": 3,
+   "restored": [
+    "p-0e74504cf958",
+    "p-22a947cd7f5c",
+    "p-2ea892e5eaa0",
+    "p-664f7533a19d",
+    "p-8d5cabf2ab59"
+   ],
+   "revision": 3,
+   "route": "/v1/feed",
+   "status": 200,
+   "withdrawn": []
+  }
+ ],
+ "schema": "flh_extraction_r4_corpus_v1.summary"
+}

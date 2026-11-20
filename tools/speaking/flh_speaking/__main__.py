@@ -18,6 +18,7 @@
   lab candidate-review --baseline EVAL --candidate EVAL [--thresholds F]   offline candidate review (never promotes)
   lab candidate-review-walkthrough --review REVIEW.json [--data-manifest M]  why the support is or is not enough
   lab intake [--proposal P] [--data-manifest M] [--source NAME=M …] [--pairs P]  data intake checks (no audio read)
+  lab training-intake --manifest M [--json OUT]       training-data intake: licence, consent, speakers, locales, leakage
   manifest   --model DIR                                     deployment manifest (no model load)
 """
 
@@ -145,6 +146,9 @@ def main(argv: list[str] | None = None) -> int:
                      help="repeatable; the first is the training set: speaker, text and audio overlap with each other set")
     lin.add_argument("--balance", action="store_true", help="with --data-manifest: rows, speakers, gender, hours and missing labels per split")
     lin.add_argument("--json")
+    lti = lsub.add_parser("training-intake", help="training-data intake (R4): provenance, licence, consent, speaker groups, locales, leakage (no audio read)")
+    lti.add_argument("--manifest", required=True, help="a flh_speaking_training_intake_v1 JSON")
+    lti.add_argument("--json")
     lpc = lsub.add_parser("privacy-check", help="machine paths, session links and UUID-like IDs in shared reports (exit 1 on any)")
     lpc.add_argument("files", nargs="+")
     lsl = lsub.add_parser("silence", help="the explicit local silence rule on a PCM16 WAV")
@@ -276,6 +280,19 @@ def main(argv: list[str] | None = None) -> int:
             cd.write_jsonl(rows, a.out)
             print(f"wrote {len(refs)} references and {len(rows) - 1} results ({rows[0]['header']['model_id']})")
             return 0
+        if a.lab_cmd == "training-intake":
+            from . import intake
+            with open(a.manifest, encoding="utf-8") as fh:
+                try:
+                    rep = intake.training_intake(json.load(fh))
+                except ValueError as e:
+                    print(f"refused: {e}", file=sys.stderr)
+                    return 2
+            if a.json:
+                with open(a.json, "w", encoding="utf-8") as fh:
+                    fh.write(json.dumps(rep, ensure_ascii=False, indent=1, sort_keys=True) + "\n")
+            sys.stdout.write(intake.render_training(rep))
+            return 0 if not rep["refusals"] else 1
         if a.lab_cmd == "intake":
             from . import intake
 

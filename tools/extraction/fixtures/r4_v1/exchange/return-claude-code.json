@@ -1,0 +1,25 @@
+{
+ "agent": "claude-code",
+ "context_id": "cx-e55666d6bd6c",
+ "corrections": [
+  {
+   "correction_id": "c1",
+   "evidence_ids": [
+    "ev-17c9dfcc08"
+   ],
+   "proposed_text": "In short: « revenir du marché » (de + le): the place takes « de », so « en ».",
+   "rationale": "a shorter lead-in for an A2 learner",
+   "unit_id": "k-cb9627cc7213"
+  },
+  {
+   "correction_id": "c2",
+   "evidence_ids": [
+    "ev-17c9dfcc08"
+   ],
+   "proposed_text": "A rule the packet does not contain.",
+   "rationale": "stand-in: a unit outside the packet",
+   "unit_id": "k-000000000000"
+  }
+ ],
+ "schema": "flh_agent_corrections_v1"
+}

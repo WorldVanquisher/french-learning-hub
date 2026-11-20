@@ -175,7 +175,11 @@ def handle_feed(req: dict, limits: dict) -> dict:
     if not isinstance(attempts, list) or len(attempts) > limits["max_attempts"]:
         raise ServiceError("too_large" if isinstance(attempts, list) else "invalid_decisions", f"attempts: a list of at most {limits['max_attempts']}")
     prac = pr.build_practice(res)
-    known = {p["practice_id"] for p in prac["items"]} | {p["practice_id"] for p in (req.get("previous") or {}).get("items", [])}
+    # An attempt may name any practice ID the learner was offered: offered now, offered in the previous feed, or
+    # withdrawn there (a withdrawn ID stays listed until it is offered again and keeps its outcome history).
+    prev = req.get("previous") or {}
+    known = {p["practice_id"] for p in prac["items"]} | {x.get("practice_id") for k in ("items", "withdrawn")
+                                                          for x in (prev.get(k) or [] if isinstance(prev, dict) else []) if isinstance(x, dict)}
     for a in attempts:
         if not isinstance(a, dict) or a.get("schema") != pr.ATTEMPT_SCHEMA or a.get("practice_id") not in known or not isinstance(a.get("seq"), int) \
                 or a.get("action") not in ("attempt", "reveal") or a.get("outcome") not in ("correct", "incorrect", "self_check", "revealed", "invalid"):

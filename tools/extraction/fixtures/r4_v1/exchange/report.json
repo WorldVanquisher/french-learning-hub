@@ -1,0 +1,102 @@
+{
+ "applied": {
+  "claude-code": false,
+  "codex": false
+ },
+ "context_id": "cx-e55666d6bd6c",
+ "evidence_verified": true,
+ "markdown_bodies_identical": true,
+ "ok": true,
+ "outdated_against_r2": {
+  "claude-code": {
+   "candidate": 1,
+   "duplicate": 0,
+   "invalid": 0,
+   "outdated": 0,
+   "uncited": 0,
+   "unknown_unit": 1
+  },
+  "codex": {
+   "candidate": 0,
+   "duplicate": 1,
+   "invalid": 0,
+   "outdated": 1,
+   "uncited": 1,
+   "unknown_unit": 0
+  }
+ },
+ "packet_has_no_answer": true,
+ "previews": {
+  "claude-code": {
+   "candidate": 1,
+   "duplicate": 0,
+   "invalid": 0,
+   "outdated": 0,
+   "uncited": 0,
+   "unknown_unit": 1
+  },
+  "codex": {
+   "candidate": 1,
+   "duplicate": 1,
+   "invalid": 0,
+   "outdated": 0,
+   "uncited": 1,
+   "unknown_unit": 0
+  }
+ },
+ "provenance_fields": {
+  "claude-code": [
+   "accepted_by",
+   "agent",
+   "context_id",
+   "correction_id",
+   "evidence_ids",
+   "source"
+  ],
+  "codex": [
+   "accepted_by",
+   "agent",
+   "context_id",
+   "correction_id",
+   "evidence_ids",
+   "source"
+  ]
+ },
+ "provenance_same_fields": true,
+ "refusals": {
+  "malformed_return": {
+   "code": "malformed_return",
+   "recovery": "find the error with: python3 -m json.tool RETURN.json; then run import-preview again",
+   "refused": true
+  },
+  "packet_altered": {
+   "code": "altered_context",
+   "recovery": "export a new packet: python3 -B -m flh_extraction.exchange export --work DIR --practice-id P --out NEW.json",
+   "refused": true
+  },
+  "packet_v0": {
+   "code": "unsupported_context",
+   "recovery": "export a new packet: python3 -B -m flh_extraction.exchange export --work DIR --practice-id P --out NEW.json",
+   "refused": true
+  },
+  "return_for_another_packet": {
+   "code": "other_context",
+   "recovery": "preview it with the packet it names: python3 -B -m flh_extraction.exchange import-preview --context THAT_PACKET.json --return RETURN.json",
+   "refused": true
+  },
+  "return_v2": {
+   "code": "unsupported_return",
+   "recovery": "ask the agent to write the return with the template at the end of the packet's Markdown, then run: python3 -B -m flh_extraction.exchange import-preview --context CONTEXT.json --return RETURN.json",
+   "refused": true
+  }
+ },
+ "texts_after_are_the_accepted": true,
+ "units_after_acceptance": {
+  "k-0d3281b28da6": "corrected",
+  "k-cb9627cc7213": "corrected"
+ },
+ "units_before": {
+  "k-0d3281b28da6": "approved",
+  "k-cb9627cc7213": "approved"
+ }
+}

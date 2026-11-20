@@ -102,6 +102,24 @@ class ServiceTest(unittest.TestCase):
         s, e = self.post("/v1/feed", svc.request(sources=[r1], decisions=decs, attempts=bad, feed_seq=1))
         self.assertEqual((s, e["error"]["type"]), (422, "invalid_decisions"))
 
+    def test_attempts_on_withdrawn_ids_after_an_empty_feed(self):
+        # R4 corpus scenario 10: revision 2 withdrew every item (feed 2 offers none); feed 3 still carries the
+        # learner's earlier attempts on those IDs. Before R4 the service refused them (422) although the CLI built the feed.
+        r1, r2, r3 = load("y_en.r1.json"), load("y_en.r2.json"), load("y_en.r3.json")
+        d1 = pr.draft(r1)
+        decs = [pr.decision(d1, i["item_id"], "approve", k + 1) for k, i in enumerate(d1["items"]) if i["support"] in ("supported", "generated")]
+        f1 = self.post("/v1/feed", svc.request(sources=[r1], decisions=decs, feed_seq=1))[1]["feed"]
+        att = [{"schema": pr.ATTEMPT_SCHEMA, "seq": 1, "practice_id": f1["items"][0]["practice_id"], "action": "reveal", "outcome": "revealed"}]
+        s, b = self.post("/v1/feed", svc.request(sources=[r1, r2], decisions=decs, attempts=att, feed_seq=2, previous=f1))
+        f2 = b["feed"]
+        self.assertEqual((s, f2["items"]), (200, []))
+        s, c = self.post("/v1/feed", svc.request(sources=[r1, r2, r3], decisions=decs, attempts=att, feed_seq=3, previous=f2))
+        self.assertEqual(s, 200, c)
+        self.assertIn(att[0]["practice_id"], [w["practice_id"] for w in c["feed"]["withdrawn"]])
+        bad = [{**att[0], "practice_id": "p-000000000000"}]
+        s, e = self.post("/v1/feed", svc.request(sources=[r1, r2, r3], decisions=decs, attempts=bad, feed_seq=3, previous=f2))
+        self.assertEqual((s, e["error"]["type"]), (422, "invalid_decisions"))
+
     def test_import_preview_of_a_return(self):
         s, d = self.post("/v1/import-preview", svc.request(packet=load("expected2/06-packet-1-codex.json"), proposals=load("switch/codex-return.json")))
         self.assertEqual(s, 200)
@@ -196,6 +214,36 @@ class Bounds(unittest.TestCase):
             self.assertEqual((st, d["error"]["type"]), (504, "timeout"))
             self.assertEqual(s.srv.state.counters["timeout"], 1)
         finally:
+            s.close()
+
+    def test_concurrent_requests_at_the_worker_limit(self):
+        # max_inflight normal requests run at the same time (a barrier proves it) and all succeed with the same
+        # result; one more while they are held is refused at once with busy, never queued.
+        n = svc.LIMITS["max_inflight"]
+        barrier, gate = threading.Barrier(n, timeout=5), threading.Event()
+        s = Server(request_timeout_s=10.0)
+        s.srv.state.slow_hook = lambda: (barrier.wait(), gate.wait(5))
+        try:
+            out = []
+            ts = [threading.Thread(target=lambda: out.append(svc.call(s.url, "/v1/review", svc.request(sources=[load("y_en.r1.json")]), timeout=15)))
+                  for _ in range(n)]
+            for t in ts:
+                t.start()
+            for _ in range(250):
+                if barrier.n_waiting == 0 and s.srv.state.sem._value == 0:  # all n passed the barrier and hold a slot
+                    break
+                time.sleep(0.02)
+            extra = svc.call(s.url, "/v1/review", svc.request(sources=[load("y_en.r1.json")]))
+            gate.set()
+            for t in ts:
+                t.join(15)
+            self.assertEqual((extra[0], extra[1]["error"]["type"]), (503, "busy"))
+            self.assertEqual(sorted(o[0] for o in out), [200] * n)
+            self.assertEqual(len({o[1]["draft_id"] for o in out}), 1)
+            self.assertFalse(barrier.broken)
+            self.assertEqual((s.srv.state.counters["ok"], s.srv.state.counters["busy"]), (n, 1))
+        finally:
+            gate.set()
             s.close()
 
     def test_not_ready_refuses_work(self):

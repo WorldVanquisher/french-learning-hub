@@ -1,0 +1,206 @@
+{
+ "M1": 0.0,
+ "M2": 0.2,
+ "by_kind": {
+  "choose": {
+   "M1": 0,
+   "M2": 0,
+   "items": 8
+  },
+  "explain": {
+   "M1": 0,
+   "M2": 4,
+   "items": 4
+  },
+  "produce": {
+   "M1": 0,
+   "M2": 0,
+   "items": 8
+  }
+ },
+ "decision": "branch_A",
+ "decision_text": "M2 >= 0.10: attempt first. A recall made after a read in the same loop is labelled retrieval 'after_reading' (never unaided), and the learner is offered recall before read.",
+ "expected_items": 20,
+ "id": "r4-retrieval-leakage",
+ "items": 20,
+ "limits": "synthetic material, 20 items from 4 sources by one author; it measures exposure of the answer before answering, not learning",
+ "m1_defects": [],
+ "rows": [
+  {
+   "answers": 3,
+   "kind": "explain",
+   "leak_prompt": [],
+   "leak_read": [
+    "Ask which preposition the place takes: « à » gives « y », « de » gives « en ».",
+    "« y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »",
+    "« en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »"
+   ],
+   "practice_id": "p-2ea892e5eaa0",
+   "source": "y_en.r1.json"
+  },
+  {
+   "answers": 1,
+   "kind": "choose",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-0e74504cf958",
+   "source": "y_en.r1.json"
+  },
+  {
+   "answers": 1,
+   "kind": "choose",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-22a947cd7f5c",
+   "source": "y_en.r1.json"
+  },
+  {
+   "answers": 4,
+   "kind": "produce",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-664f7533a19d",
+   "source": "y_en.r1.json"
+  },
+  {
+   "answers": 5,
+   "kind": "produce",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-8d5cabf2ab59",
+   "source": "y_en.r1.json"
+  },
+  {
+   "answers": 3,
+   "kind": "explain",
+   "leak_prompt": [],
+   "leak_read": [
+    "Look at what follows the verb: a noun gives « connaître »; a verb or a clause gives « savoir ».",
+    "« connaître » is followed by a noun: a person, a place or a thing you are familiar with: « Tu connais ce restaurant ? »",
+    "« savoir » is followed by a verb or a clause (où, que, si, comment): « Tu sais où il est ? »"
+   ],
+   "practice_id": "p-8d55e5e7255d",
+   "source": "savoir_connaitre.json"
+  },
+  {
+   "answers": 1,
+   "kind": "choose",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-3ca128617083",
+   "source": "savoir_connaitre.json"
+  },
+  {
+   "answers": 1,
+   "kind": "choose",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-baa71166205b",
+   "source": "savoir_connaitre.json"
+  },
+  {
+   "answers": 5,
+   "kind": "produce",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-3ac3b47e483a",
+   "source": "savoir_connaitre.json"
+  },
+  {
+   "answers": 3,
+   "kind": "produce",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-e61b319d2129",
+   "source": "savoir_connaitre.json"
+  },
+  {
+   "answers": 2,
+   "kind": "explain",
+   "leak_prompt": [],
+   "leak_read": [
+    "With a number or « des », use « en »; with a definite noun, use « les » (or « le », « la »).",
+    "« en » replaces « des + noun » when a number follows: « Vous avez des enfants ? — Oui, j'en ai deux. »"
+   ],
+   "practice_id": "p-a0e289959b36",
+   "source": "en_quantite.json"
+  },
+  {
+   "answers": 1,
+   "kind": "choose",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-344d46d91089",
+   "source": "en_quantite.json"
+  },
+  {
+   "answers": 1,
+   "kind": "choose",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-f59722e89440",
+   "source": "en_quantite.json"
+  },
+  {
+   "answers": 3,
+   "kind": "produce",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-22a472ebef30",
+   "source": "en_quantite.json"
+  },
+  {
+   "answers": 3,
+   "kind": "produce",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-fb56a6b2cd93",
+   "source": "en_quantite.json"
+  },
+  {
+   "answers": 3,
+   "kind": "explain",
+   "leak_prompt": [],
+   "leak_read": [
+    "Ask what the place is: a city takes « à »; a feminine country or a continent takes « en ».",
+    "« à » goes before a city name: « à Paris », « à Londres ».",
+    "« en » goes before a feminine country or a continent, and before a country name that begins with a vowel: « en Angleterre », « en Égypte », « en Europe »."
+   ],
+   "practice_id": "p-cf2ec01246c8",
+   "source": "a_en_lieux.json"
+  },
+  {
+   "answers": 1,
+   "kind": "choose",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-10a28f330355",
+   "source": "a_en_lieux.json"
+  },
+  {
+   "answers": 1,
+   "kind": "choose",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-f9efb7256976",
+   "source": "a_en_lieux.json"
+  },
+  {
+   "answers": 4,
+   "kind": "produce",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-04705161a655",
+   "source": "a_en_lieux.json"
+  },
+  {
+   "answers": 4,
+   "kind": "produce",
+   "leak_prompt": [],
+   "leak_read": [],
+   "practice_id": "p-919b6c108284",
+   "source": "a_en_lieux.json"
+  }
+ ],
+ "schema": "flh_experiment_result_v1"
+}
