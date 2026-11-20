@@ -1,0 +1,4 @@
+$ python3 -B scripts/ci/python_suites.py --json ...
+exit 0 (6.1 s)
+| release | PASS | 0 | 20 | 0 | 0 | 0 | 0 | 1.6 | (synthetic fixture)
+ALL PASSED

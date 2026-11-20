@@ -1,0 +1,137 @@
+{
+ "candidate": {
+  "bundle": {
+   "image_id": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+   "manifest_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+   "name": "flh-staging-0123456789ab",
+   "transfer_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "migrations": 21,
+  "revision": {
+   "commit": null,
+   "tree_id": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "server_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+  "web_files_sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+ },
+ "format": "flh-release-report/v1",
+ "gates": [
+  {
+   "evidence": {
+    "bundle": "flh-staging-0123456789ab",
+    "command": "flh-staging-bundle verify <tar> --sha256 <sha256>",
+    "path": "evidence/bundle-verify.txt",
+    "sha256": "0054136744eb4a03bf9206ff4b01e754ced676eae33b7fe1d381e51747e12429"
+   },
+   "id": "bundle-verify",
+   "kind": "artifact",
+   "next_action": null,
+   "owner": "agent",
+   "required_for": [
+    "local-rehearsal",
+    "staging"
+   ],
+   "status": "pass",
+   "summary": "VERIFIED",
+   "title": "Candidate bundle verifies"
+  },
+  {
+   "evidence": {
+    "bundle": "flh-staging-0123456789ab",
+    "command": "flh-staging-bundle verify <rollback tar> --sha256 <sha256>",
+    "path": "evidence/rollback-verify.txt",
+    "sha256": "b0a938573592a9e3a4157516cb0c4465aa137e16b79543e0d45d560f5804f3ff"
+   },
+   "id": "rollback-target",
+   "kind": "rollback",
+   "next_action": null,
+   "owner": "agent",
+   "required_for": [
+    "local-rehearsal",
+    "staging"
+   ],
+   "status": "pass",
+   "summary": "rollback target verifies and knows every candidate migration",
+   "title": "Previous verified bundle, compatible ledger"
+  },
+  {
+   "counts": {
+    "errors": 0,
+    "expected_failures": 0,
+    "failures": 0,
+    "ran": 20,
+    "skipped": 0
+   },
+   "evidence": {
+    "command": "python3 -B scripts/ci/python_suites.py",
+    "path": "evidence/python-suites.txt",
+    "sha256": "3991c1f957b18d7eaf247bb1a1458555ba1e2035a8d550a4d53f22e63bc1e30d",
+    "tree_id": "0123456789abcdef0123456789abcdef01234567"
+   },
+   "id": "python-suites",
+   "kind": "test",
+   "next_action": null,
+   "owner": "agent",
+   "required_for": [
+    "local-rehearsal",
+    "staging"
+   ],
+   "status": "pass",
+   "summary": "release PASS",
+   "title": "Python CI suites"
+  },
+  {
+   "evidence": {
+    "command": "python3 -I deploy/aws/private-staging/staging/tools/preflight.py",
+    "path": "evidence/staging-preflight.txt",
+    "sha256": "cfe4147c885666ce36ae564e9c0f32efdadd17ec7f6413b4400a0fa17ff92f92",
+    "tree_id": "0123456789abcdef0123456789abcdef01234567"
+   },
+   "id": "staging-preflight",
+   "kind": "staging",
+   "next_action": null,
+   "owner": "agent",
+   "required_for": [
+    "local-rehearsal",
+    "staging"
+   ],
+   "status": "pass",
+   "summary": "READY: 14 passed, 0 failed",
+   "title": "Staging preflight (offline)"
+  },
+  {
+   "id": "aws-plan-check",
+   "kind": "staging",
+   "next_action": "owner: deploy/aws/private-staging/RUNBOOK.md \u00a73.2, then rerun collect with --plan-json stg.plan.json",
+   "owner": "owner",
+   "required_for": [
+    "staging"
+   ],
+   "status": "unavailable",
+   "summary": "owner-only: no plan JSON supplied",
+   "title": "Owner's Terraform plan passes the stop rule"
+  },
+  {
+   "id": "staging-identity",
+   "kind": "rollout",
+   "next_action": "owner: RUNBOOK \u00a75 install, save `flh-staging-bundle status`, rerun collect with --host-status FILE",
+   "owner": "owner",
+   "required_for": [
+    "staging"
+   ],
+   "status": "unavailable",
+   "summary": "owner-only: no host status supplied",
+   "title": "Staging host runs the candidate"
+  }
+ ],
+ "generated_at": "2026-11-19T00:00:00Z",
+ "rollback_target": {
+  "bundle": "flh-staging-fedcba987654",
+  "migrations": 21,
+  "tree_id": "fedcba9876543210fedcba9876543210fedcba98"
+ },
+ "source": {
+  "tree_id": "0123456789abcdef0123456789abcdef01234567"
+ },
+ "target": "local-rehearsal"
+}

@@ -123,3 +123,34 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+  # Standard-library Python tool suites: release helpers, private staging,
+  # extraction and workbooks, through scripts/ci/python_suites.py, the same
+  # entry point as a local run (docs/RELEASE.md, "Python tool suites"). No
+  # service, secret, AWS account or third-party package is used. The Speaking
+  # and training-backend suites need numpy/PyAV/torch and are not part of
+  # this job. Each suite is labelled in the log; every suite runs, and any
+  # failure fails the job. The summary table goes to the job summary.
+  python-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      # --hermetic: no AWS settings, an empty HOME, and aws/terraform/docker trapped (any call fails).
+      # Speaking's offline suite runs once tools/speaking/scripts/run_tests.py exists (NOT-PRESENT before).
+      - name: Python tool suites (ci-runner, release, private-staging, extraction, workbooks, speaking if present)
+        run: |
+          python3 --version
+          python3 -B scripts/ci/python_suites.py --hermetic --summary "$GITHUB_STEP_SUMMARY" --json "$RUNNER_TEMP/python-suites.json"
+
+      # Runs after a failure too; the job keeps the failing status of the step above.
+      - name: Upload the suite results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-suites
+          path: ${{ runner.temp }}/python-suites.json
+          if-no-files-found: warn
+          retention-days: 14

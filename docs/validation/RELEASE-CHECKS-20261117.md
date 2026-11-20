@@ -53,7 +53,8 @@ with a model or product word ("Claude Opus 5.5", "Claude Code",
 13 of 13: AI co-author trailers, session trailers, private links and AI
 identities are rejected; human co-authors, people called Claude, prose about
 AI and the public "Generated with Claude Code" line pass. Unit tests:
-`python3 -B -m unittest discover -s scripts/release -p 'test_*.py'` (13 tests).
+`python3 -B -m unittest discover -s scripts/release -p 'test_*.py'` (13 tests:
+historical snapshot of 2026-11-17; see "Current rerun" below).
 
 ## Readiness, failed-request log and backup failures (later the same day)
 
@@ -99,8 +100,17 @@ Compose projects, found three operator-facing gaps. All three are fixed here.
 
 Commands:
 - `go test ./...`, `go vet ./...`, `gofmt -l .`;
-- `python3 -B -m unittest discover -s scripts/release -p 'test_*.py'` (14 tests);
+- `python3 -B -m unittest discover -s scripts/release -p 'test_*.py'` (14 tests:
+  historical snapshot of 2026-11-17, later the same day; see "Current rerun" below);
 - `bash scripts/validation/flh094/test_wrapper.sh WORK_DIR` (84 checks).
+
+## Current rerun (2026-11-19, recorded separately)
+
+The 13 and 14 above are snapshots of the suite as it was on 2026-11-17. The
+same command on the tree merged after it (Git tree `2bf1d9f6…`), run through
+`scripts/ci/python_suites.py --suite release` (the CI job `python-tools`),
+printed `Ran 20 tests` / `OK` on Python 3.14.9 and 3.12 (`python:3.12-slim`).
+Later counts come from that job's output, not from this file.
 
 ## Not covered
 

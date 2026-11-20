@@ -3,10 +3,13 @@
 
   flh-staging-bundle verify BUNDLE.tar --sha256 HEX [--scratch DIR]
   flh-staging-bundle verify --dir BUNDLE_DIR
-  flh-staging-bundle install BUNDLE.tar --sha256 HEX [--no-backup]
+  flh-staging-bundle plan BUNDLE.tar --sha256 HEX [--expect-target KEY=VALUE]...   # dry run, changes nothing
+  flh-staging-bundle install BUNDLE.tar --sha256 HEX [--no-backup] [--expect-target KEY=VALUE]...
   flh-staging-bundle rollback
-  flh-staging-bundle status
+  flh-staging-bundle cleanup [--yes] [--keep-transfers N]                         # stale bundles, unpacks, transfers
+  flh-staging-bundle status [--redact]   # --redact: ROOT, other paths, IDs and addresses masked
   flh-staging-bundle identity
+  flh-staging-bundle shell          # eval "$(flh-staging-bundle shell)": settings and helpers, no secret
 
 Installed by cloud-init as /usr/local/bin/flh-staging-bundle (python3 >= 3.9,
 standard library only). It also runs on the operator's machine for `verify`.
@@ -29,6 +32,19 @@ and check identity: the running container's image ID, revision labels and
 /app/server SHA-256 equal the bundle's, and /readyz answers 200. On any
 failure after the switch it switches back, starts the previous bundle and
 checks ITS identity. Nothing before the switch touches the running service.
+
+plan = the install's dry run: verify into a scratch directory, then show the target (staging.conf,
+project, root), the current, previous and proposed bundles and what differs, the image (loaded or to
+load), the data ledger against the proposed and the rollback target, the pre-install backup, and the
+steps; exit 0 if install would proceed, 1 if it would be refused. Nothing on the host changes.
+--expect-target KEY=VALUE (plan, install): refuse before anything when this host's REGION, BUCKET,
+PARAM_DIR, ROOT, PORT or PROJECT is not the operator's (a mismatched target identity).
+When the started bundle does not pass its identity check, install writes redacted diagnostics
+(container state, the last log lines, /readyz, ledger, disk) to ROOT/diagnostics/.
+cleanup = list (default) or with --yes remove what is stale (bundles neither current nor previous,
+interrupted unpacks, transfers beyond the newest N, default 2); never data, backups, settings, current
+or previous. It runs repo/scripts/release/bundle_cleanup.py from the current (else previous) bundle
+after verifying that bundle; status names the copy.
 
 rollback = verify ROOT/previous again from its files, refuse if the database
 has more migrations than it knows (restore the pre-install backup named in
@@ -91,8 +107,23 @@ def say(text):
         sys.stdout = open(os.devnull, "w")  # later prints and the exit flush must not fail either
 
 
+REDACT = False
+
+
+def redacted(msg):
+    """status --redact: what can be pasted into an issue or a handoff (ROOT, absolute paths, account,
+    instance and volume IDs, non-loopback addresses masked). scripts/release/redact.py is the full filter."""
+    msg = msg.replace(ROOT, "<ROOT>")
+    for rx, rep in ((r"(?<![0-9A-Za-z])[0-9]{12}(?![0-9A-Za-z])", "<ACCOUNT>"), (r"\bi-[0-9a-f]{8,17}\b", "<INSTANCE>"),
+                    (r"\bvol-[0-9a-f]{8,17}\b", "<VOLUME>"),
+                    (r"\b(?!127\.0\.0\.1\b)(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", "<IP>"),
+                    (r"(?<![\w.:<>/-])/(?:[^\s/'\":,]+/)+([^\s/'\":,]*)", r"<path>/\1")):
+        msg = re.sub(rx, rep, msg)
+    return msg
+
+
 def out(msg):
-    say(f"flh-staging-bundle: {msg}")
+    say(f"flh-staging-bundle: {redacted(msg) if REDACT else msg}")
 
 
 def detach_from_terminal_hangup():
@@ -121,6 +152,16 @@ def sha256_stream(fh):
     for block in iter(lambda: fh.read(1 << 20), b""):
         h.update(block)
     return h.hexdigest()
+
+
+def read_bytes(path):
+    with open(path, "rb") as fh:
+        return fh.read()
+
+
+def read_json(path):
+    with open(path) as fh:
+        return json.load(fh)
 
 
 def force_rmtree(path):
@@ -217,7 +258,9 @@ def verify_dir(d):
     if not os.path.isfile(sums_path):
         raise Refused("SHA256SUMS missing")
     listed = {}
-    for line in open(sums_path, encoding="utf-8"):
+    with open(sums_path, encoding="utf-8") as fh:
+        sum_lines = fh.read().splitlines()
+    for line in sum_lines:
         line = line.rstrip("\n")
         if not line:
             continue
@@ -240,8 +283,8 @@ def verify_dir(d):
     if problems:
         raise Refused("; ".join(problems))
     try:
-        manifest = json.load(open(os.path.join(d, "MANIFEST.json")))
-        build = json.load(open(os.path.join(d, "BUILD.json")))
+        manifest = read_json(os.path.join(d, "MANIFEST.json"))
+        build = read_json(os.path.join(d, "BUILD.json"))
     except ValueError as e:
         raise Refused(f"MANIFEST.json or BUILD.json is not JSON ({e})")
     rev = manifest.get("revision") or {}
@@ -414,8 +457,8 @@ def readyz(port):
 
 def identity(bundle):
     """Compare the running service with a verified bundle. Returns (ok, facts)."""
-    manifest = json.load(open(os.path.join(bundle, "MANIFEST.json")))
-    build = json.load(open(os.path.join(bundle, "BUILD.json")))
+    manifest = read_json(os.path.join(bundle, "MANIFEST.json"))
+    build = read_json(os.path.join(bundle, "BUILD.json"))
     facts = {"bundle": os.path.basename(bundle), "commit": manifest["revision"]["commit"],
              "tree": manifest["revision"]["tree_id"]}
     cid = running_container()
@@ -456,18 +499,19 @@ def check_ledger(manifest, what):
     if led > know:
         raise Refused(f"the database has {led} migrations but {what} knows only {know}: it would not start. "
                       "Restore the backup taken before the newer bundle was installed (see deploy.log) with "
-                      "flh-daily.sh restore, then try again")
+                      "flh-daily.sh restore, then try again; writes made after that backup are lost")
     return led
 
 
-def lock():
+def lock(clean=True):
     os.makedirs(BUNDLES, exist_ok=True)
     fh = open(os.path.join(ROOT, ".flh-staging-bundle.lock"), "w")
     try:
         fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
+        fh.close()
         raise Refused("another flh-staging-bundle run holds the lock")
-    for n in os.listdir(BUNDLES):
+    for n in os.listdir(BUNDLES) if clean else []:
         if n.startswith(".partial-"):
             force_rmtree(os.path.join(BUNDLES, n))
             log("cleanup", f"removed an interrupted unpack {n}")
@@ -487,6 +531,7 @@ def switch_and_start(new, old_cur, old_prev, why):
         log("ok", f"{why}: {os.path.basename(new)} running, identity checked in {time.time() - t0:.1f} s")
         return True, time.time() - t0
     log("failed", f"{why}: {os.path.basename(new)} did not pass ({json.dumps(facts, sort_keys=True)})")
+    write_diagnostics(new, facts)
     if not old_cur:
         out("FAILED and there is no previous bundle to go back to; the service is not verified")
         return False, None
@@ -494,7 +539,7 @@ def switch_and_start(new, old_cur, old_prev, why):
     set_link(CURRENT, old_cur)
     set_link(PREVIOUS, old_prev)
     try:
-        check_ledger(json.load(open(os.path.join(old_cur, "MANIFEST.json"))), os.path.basename(old_cur))
+        check_ledger(read_json(os.path.join(old_cur, "MANIFEST.json")), os.path.basename(old_cur))
     except Refused as e:
         out(str(e))
         log("restore-failed", str(e))
@@ -509,6 +554,157 @@ def switch_and_start(new, old_cur, old_prev, why):
 
 
 # --- commands -----------------------------------------------------------------------------------
+# --- target identity, plan, diagnostics, cleanup ------------------------------------------------------
+def target_identity():
+    """This host's non-secret identity: /etc/flh/staging.conf plus the project and root in effect."""
+    vals = {}
+    conf = os.environ.get("FLH_STAGING_CONF", "/etc/flh/staging.conf")
+    if os.path.isfile(conf):
+        with open(conf) as fh:
+            for line in fh:
+                m = re.match(r"^(REGION|BUCKET|PARAM_DIR|ROOT|PORT)=(.*)$", line.strip())
+                if m:
+                    vals[m.group(1)] = m.group(2)
+    vals["PROJECT"] = PROJECT
+    vals.setdefault("ROOT", ROOT)
+    return vals
+
+
+def check_target(expect):
+    want = []
+    for e in expect or []:
+        if "=" not in e:
+            raise Refused(f"--expect-target needs KEY=VALUE, got {e!r}")
+        want.append(e.split("=", 1))
+    t = target_identity()
+    bad = [f"{k} is {t.get(k)!r}, the operator expects {v!r}" for k, v in want if t.get(k) != v]
+    if bad:
+        raise Refused("target identity mismatch: " + "; ".join(bad) + ". This is not the host the operator named; "
+                      "nothing was changed")
+    return t
+
+
+def bundle_facts(d):
+    if not d:
+        return None
+    m, b = read_json(os.path.join(d, "MANIFEST.json")), read_json(os.path.join(d, "BUILD.json"))
+    return {"bundle": os.path.basename(d), "commit": m["revision"]["commit"], "tree": m["revision"]["tree_id"],
+            "image": b["image_id"], "server": m["server_sha256"], "web": m["web_files_sha256"],
+            "migrations": m["migrations"]["count"], "files": m.get("files", {})}
+
+
+def cmd_plan(a):
+    t = check_target(a.expect_target)
+    os.makedirs(BUNDLES, exist_ok=True)
+    scratch = tempfile.mkdtemp(prefix=".plan-", dir=BUNDLES)
+    try:
+        _, _, manifest, build = verify_tar(a.tar, a.sha256, scratch)
+    finally:
+        force_rmtree(scratch)
+    new = {"bundle": manifest["name"], "commit": manifest["revision"]["commit"], "tree": manifest["revision"]["tree_id"],
+           "image": build["image_id"], "server": manifest["server_sha256"], "web": manifest["web_files_sha256"],
+           "migrations": manifest["migrations"]["count"], "files": manifest.get("files", {})}
+    cur, prev = bundle_facts(link_target(CURRENT)), bundle_facts(link_target(PREVIOUS))
+    out("target:   " + ", ".join(f"{k}={v}" for k, v in sorted(t.items())))
+    for label, f in (("current", cur), ("previous", prev), ("proposed", new)):
+        out(f"{label + ':':<9} " + (f"{f['bundle']} commit {f['commit'] or 'none'} tree {f['tree'][:12]} image "
+                                    f"{f['image'][:19]} migrations {f['migrations']}" if f else "-"))
+    refused = []
+    if cur:
+        diff = [k for k in ("tree", "server", "web", "migrations") if cur[k] != new[k]]
+        files = sorted(p for p in set(cur["files"]) | set(new["files"]) if cur["files"].get(p) != new["files"].get(p))
+        out("differs from current: " + (", ".join(diff) if diff else "nothing (the same content)")
+            + (f"; pinned files {files}" if files else ""))
+        if cur["bundle"] == new["bundle"]:
+            out("the proposed bundle is already current: install would only re-check its identity")
+    try:
+        have = docker("image", "inspect", "-f", "{{.Id}}", manifest["image"]["tag"])
+        loaded = have.returncode == 0 and have.stdout.strip() == build["image_id"]
+        out("image:    " + ("already loaded" if loaded else "would be loaded from image.tar"))
+    except OSError:
+        loaded = False
+        out("image:    unknown (docker unavailable)")
+    led = None
+    if not os.path.isfile(ENV_FILE):
+        refused.append(f"settings file missing: {ENV_FILE} (run flh-staging-env first)")
+    else:
+        led = db_ledger(settings())
+        if led > new["migrations"]:
+            refused.append(f"the database has {led} migrations, the proposed bundle knows {new['migrations']}")
+        out(f"data:     ledger {led}; proposed knows {new['migrations']}"
+            + (f" (starting it applies {new['migrations'] - led} migration(s))" if new["migrations"] > led else ""))
+        rb = cur if cur and cur["bundle"] != new["bundle"] else prev
+        if rb:
+            after = max(led, new["migrations"])
+            out(f"rollback target after install: {rb['bundle']} (knows {rb['migrations']}): "
+                + ("compatible with the data" if after <= rb["migrations"] else
+                   f"NOT compatible once the proposed bundle migrates to {after}: a rollback then needs the "
+                   "pre-install backup restored first (deploy.log names it)"))
+        else:
+            out("rollback target after install: none (no known-good bundle on this host)")
+    try:
+        backup = bool(cur) and (led or 0) > 0 and bool(running_container())
+    except OSError:
+        backup = False
+    steps = [f"unpack under bundles/{new['bundle']}", "keep the loaded image" if loaded else "load the image"]
+    steps += (["back up the data with the current bundle's flh-daily.sh"] if backup else []) + \
+        [f"switch current -> {new['bundle']} (previous -> {cur['bundle'] if cur else '-'})", "start and check identity",
+         "on failure: write diagnostics, switch back and start the previous bundle"]
+    out("steps:    " + "; ".join(steps))
+    if refused:
+        out("PLAN: install would be REFUSED: " + "; ".join(refused) + ". Nothing was changed")
+        return 1
+    out("PLAN: install would proceed. Nothing was changed")
+    return 0
+
+
+def write_diagnostics(bundle, facts):
+    """Readiness never became healthy: keep what explains it, redacted, for the operator to share."""
+    d = os.path.join(ROOT, "diagnostics")
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    path = os.path.join(d, f"{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-"
+                           f"{os.path.basename(bundle)}.txt")
+    lines = [f"bundle {os.path.basename(bundle)}", "identity " + json.dumps(facts, sort_keys=True)]
+    try:
+        cid = running_container() or (docker("ps", "-aq", "--filter", f"label=com.docker.compose.project={PROJECT}",
+                                              "--filter", "label=com.docker.compose.service=app").stdout.split() or [None])[0]
+        if cid:
+            lines.append("state " + docker("inspect", "-f", "{{json .State}}", cid).stdout.strip()[:4000])
+            logs = docker("logs", "--tail", "80", cid)
+            lines += ["last log lines:"] + (logs.stdout + logs.stderr).splitlines()[-80:]
+        else:
+            lines.append("no container for the project")
+    except OSError as e:
+        lines.append(f"docker unavailable: {e}")
+    try:
+        status, ready = readyz(settings().get("FLH_HOST_PORT", "8080"))
+        lines.append(f"readyz {status} {ready}")
+        lines.append(f"ledger {db_ledger(settings())}")
+        du = shutil.disk_usage(ROOT)
+        lines.append(f"disk free {du.free} of {du.total}")
+    except (OSError, sqlite3.Error) as e:
+        lines.append(f"settings or data unreadable: {e}")
+    with open(path, "w") as fh:
+        fh.write("\n".join(redacted(l) for l in lines) + "\n")
+    os.chmod(path, 0o600)
+    log("diagnostics", path)
+    out(f"diagnostics (redacted) in {redacted(path)}")
+    return path
+
+
+CLEANUP = "repo/scripts/release/bundle_cleanup.py"
+
+
+def cmd_cleanup(a):
+    for d in filter(None, (link_target(CURRENT), link_target(PREVIOUS))):
+        if os.path.isfile(os.path.join(d, CLEANUP)):
+            verify_dir(d)
+            out(f"cleanup from {os.path.basename(d)} (verified)")
+            return subprocess.run([sys.executable, "-I", os.path.join(d, CLEANUP), "--root", ROOT, "--keep-transfers",
+                                   str(a.keep_transfers)] + ["--yes"] * a.yes).returncode
+    raise Refused(f"no installed bundle has {CLEANUP}; run it from a verified bundle: python3 -I DIR/{CLEANUP} --root {ROOT}")
+
+
 def cmd_verify(a):
     if a.dir:
         manifest, build = verify_dir(a.dir)
@@ -525,6 +721,7 @@ def cmd_verify(a):
 
 def cmd_install(a):
     detach_from_terminal_hangup()
+    check_target(getattr(a, "expect_target", None))
     if not os.path.isfile(ENV_FILE):
         raise Refused(f"settings file missing: {ENV_FILE} (run flh-staging-env first)")
     fh = lock()
@@ -534,8 +731,8 @@ def cmd_install(a):
         t0 = time.time()
         bundle, partial, manifest, build = verify_tar(a.tar, a.sha256, BUNDLES, keep=True)
         if os.path.exists(final):
-            same = (open(os.path.join(final, "MANIFEST.json"), "rb").read() == open(os.path.join(bundle, "MANIFEST.json"), "rb").read()
-                    and open(os.path.join(final, "BUILD.json"), "rb").read() == open(os.path.join(bundle, "BUILD.json"), "rb").read())
+            same = all(read_bytes(os.path.join(final, n)) == read_bytes(os.path.join(bundle, n))
+                       for n in ("MANIFEST.json", "BUILD.json"))
             force_rmtree(partial)
             if not same:
                 raise Refused(f"{final} exists with different content; remove it only if it is not current or previous")
@@ -603,6 +800,8 @@ def cmd_status(a, strict=False):
         partials = [n for n in os.listdir(BUNDLES) if n.startswith(".partial-")]
         if partials:
             out(f"interrupted unpack(s) present (removed by the next install): {partials}")
+    out("cleanup: " + next((os.path.basename(d) for d in (cur, prev) if d and os.path.isfile(os.path.join(d, CLEANUP))),
+                           f"no installed bundle has {CLEANUP}"))
     if not cur:
         out("no bundle installed yet")
         return 1 if strict else 0
@@ -614,6 +813,34 @@ def cmd_status(a, strict=False):
             out("the service still runs the PREVIOUS bundle (an install stopped before its start): "
                 "run `flh-staging-bundle rollback` to make that official, or install again")
     return 0 if ok or not strict else 1
+
+
+def cmd_shell(a):
+    """Shell lines for `eval "$(flh-staging-bundle shell)"`: the host's non-secret settings from
+    /etc/flh/staging.conf (REGION BUCKET PARAM_DIR ROOT PORT) and the helpers stg (the bundle's
+    flh-daily.sh in isolated mode), bt (backup_tool.py), cc (cutover_check.py) and dx (diagnose.py), every value
+    shell-quoted. The bundle's SHA-256 is deliberately absent: the operator types it from the
+    operator machine, never from what the host or S3 holds."""
+    import shlex
+    conf = os.environ.get("FLH_STAGING_CONF", "/etc/flh/staging.conf")
+    vals = {}
+    if os.path.isfile(conf):
+        with open(conf) as fh:
+            for line in fh:
+                m = re.match(r"^(REGION|BUCKET|PARAM_DIR|ROOT|PORT)=(.*)$", line.strip())
+                if m:
+                    vals[m.group(1)] = m.group(2)
+    vals.setdefault("ROOT", ROOT)
+    q = shlex.quote
+    cur = os.path.join(vals["ROOT"], "current")
+    lines = [f"{k}={q(v)}" for k, v in sorted(vals.items())]
+    lines.append(f"stg() {{ FLH_DAILY_ENV={q(ENV_FILE)} FLH_COMPOSE_PROJECT={q(PROJECT)} "
+                 f"FLH_COMPOSE_OVERRIDE={q(os.path.join(cur, 'staging.override.yaml'))} "
+                 f"bash {q(os.path.join(cur, 'repo', 'scripts', 'daily', 'flh-daily.sh'))} \"$@\"; }}")
+    for fn, tool in (("bt", "backup_tool.py"), ("cc", "cutover_check.py"), ("dx", "diagnose.py")):
+        lines.append(f"{fn}() {{ python3 -I {q(os.path.join(cur, 'repo', 'scripts', 'release', tool))} \"$@\"; }}")
+    print("\n".join(lines))
+    return 0
 
 
 def main():
@@ -628,9 +855,19 @@ def main():
     i.add_argument("tar")
     i.add_argument("--sha256", required=True)
     i.add_argument("--no-backup", action="store_true")
+    i.add_argument("--expect-target", action="append", default=[])
+    pl = sub.add_parser("plan")
+    pl.add_argument("tar")
+    pl.add_argument("--sha256", required=True)
+    pl.add_argument("--expect-target", action="append", default=[])
+    cl = sub.add_parser("cleanup")
+    cl.add_argument("--yes", action="store_true")
+    cl.add_argument("--keep-transfers", type=int, default=2)
     sub.add_parser("rollback")
-    sub.add_parser("status")
+    st = sub.add_parser("status")
+    st.add_argument("--redact", action="store_true")
     sub.add_parser("identity")
+    sub.add_parser("shell")
     a = ap.parse_args()
     if PROJECT == DAILY_PROJECT:
         print("flh-staging-bundle: FLH_STAGING_PROJECT must not be the daily project", file=sys.stderr)
@@ -641,10 +878,18 @@ def main():
             return 0
         if a.cmd == "install":
             return cmd_install(a)
+        if a.cmd == "plan":
+            return cmd_plan(a)
+        if a.cmd == "cleanup":
+            return cmd_cleanup(a)
         if a.cmd == "rollback":
             return cmd_rollback(a)
         if a.cmd == "status":
+            global REDACT
+            REDACT = a.redact
             return cmd_status(a)
+        if a.cmd == "shell":
+            return cmd_shell(a)
         return cmd_status(a, strict=True)
     except Refused as e:
         try:

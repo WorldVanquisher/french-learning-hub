@@ -518,6 +518,234 @@ git log -1 --format='Author: %an <%ae>%nCommitter: %cn <%ce>%n%n%B' origin/main 
 
 The helper scripts' tests: `python3 -B -m unittest discover -s scripts/release -p 'test_*.py'`.
 
+## Python tool suites (CI job `python-tools`)
+
+The CI job and a local run use the same entry point. It runs each
+standard-library suite in its normal working directory:
+
+| Suite | Working directory | Command |
+| --- | --- | --- |
+| `ci-runner` | repository root | `python3 -B -m unittest discover -s scripts/ci -p test_python_suites.py` |
+| `release` | repository root | `python3 -B -m unittest discover -s scripts/release -p 'test_*.py'` |
+| `private-staging` | repository root | `python3 -B -m unittest discover -s deploy/aws/private-staging/staging/tests -p 'test_*.py'` |
+| `extraction` | `tools/extraction` | `python3 -B -m unittest discover -s tests -t tests` |
+| `workbooks` | `tools/workbooks` | `python3 -B -m unittest discover -s tests` |
+| `speaking` (optional) | `tools/speaking` | `PYTHONPATH=. python3 -B scripts/run_tests.py` (offline; runs only once `scripts/run_tests.py` exists) |
+
+```bash
+python3 -B scripts/ci/python_suites.py                     # every suite, from any directory
+python3 -B scripts/ci/python_suites.py --suite extraction  # one suite (repeatable)
+python3 -B scripts/ci/python_suites.py --list              # the exact commands
+python3 -B scripts/ci/python_suites.py --hermetic --json results.json   # what CI runs
+```
+
+**What the runner does:**
+- **Before each suite:** prints its label, working directory and command.
+  In CI each suite is a collapsible log group.
+- **Before running anything:** checks that the interpreter and the files the
+  suite reads exist. A missing one fails with its full path.
+- **Every suite runs**, even after a failure. The runner then prints a table
+  of runs, skips, expected failures, failures and errors, parsed from each
+  suite's own output, and exits 1 if any suite failed.
+- **No external access:** no AWS account, credentials, network service or
+  third-party package is needed. CI proves it with `--hermetic`:
+  - `AWS_*` is removed, the AWS config and credentials files point at nothing,
+    and HOME is an empty directory;
+  - `aws`, `terraform`, `docker` and `session-manager-plugin` are traps, and
+    any call fails the run.
+- **Kept apart in the table:** test-level skips, expected failures, and an
+  optional suite that is `NOT-PRESENT` (its entry file is absent). None of
+  them counts as a pass.
+  - `--require speaking` makes a missing suite fail.
+  - `--fail-on-skip LABEL` makes any skip in that suite fail.
+- **Timings and resources:** each suite's row and the `--json` file also hold
+  its start time, wall and CPU seconds, and peak RSS.
+- **The artifact:** CI uploads `python-suites.json` (artifact
+  `python-suites`) even when a suite failed. The job still fails.
+
+**Not in this job:** suites that need numpy, PyAV, torch or a model.
+- The Speaking dependency run is the separate workflow `speaking.yml`,
+  proposed by the release lane. It lands after the Speaking Lab commit and
+  runs `scripts/run_tests.py --require-deps` with the hash-locked
+  `requirements-cpu.lock` and the weights-free fixture. Its first step fails,
+  never skips, if the entry is absent.
+- The extraction backend tests (`TINY_SFT`).
+- `tools/embedding/e5/tests` and `tools/cloud/aws/tests`.
+
+**Reproduce a CI failure locally:**
+1. **Open the failure in the log:** open the failing job and the step
+   "Python tool suites". Expand the group named by the `::error::` line.
+   The job summary has the same table.
+2. **Check out the run's commit:** check out the commit the run tested
+   (`git switch --detach <sha>`) in a clean checkout. Local Terraform state,
+   `terraform.tfvars`, plans and filled IAM policies are ignored by the tests,
+   so a working checkout also works.
+3. **Rerun the suite:** run that suite alone with the printed command, or
+   `python3 -B scripts/ci/python_suites.py --suite <label>`. CI uses the
+   runner's `python3` (3.12 on `ubuntu-latest`). To match it exactly:
+   ```bash
+   docker run --rm --network none -u "$(id -u):$(id -g)" -e HOME=/tmp -e TMPDIR=/tmp -v "$PWD:/repo:ro" -w /tmp \
+     --entrypoint python3 python:3.12-slim -B /repo/scripts/ci/python_suites.py --suite <label>
+   ```
+4. **Read the cause:** a `MISSING` row names the absent file. A `FAIL` row
+   with no counts means the suite crashed before unittest printed its
+   summary; the traceback is in the group. `trapped calls: N (docker)` means
+   a test called that tool: run the suite with `--hermetic` locally to find
+   it. The `python-suites` artifact holds the same rows as JSON.
+
+**Reproduce the Speaking job locally** (after the Speaking Lab commit; CPU
+only, about 1 GB of wheels, no weights):
+
+```bash
+cd tools/speaking
+python3.12 -m venv /tmp/spk && /tmp/spk/bin/pip install --require-hashes --no-deps \
+  --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple -r requirements-cpu.lock
+PYTHONPATH=. python3 -B -m flh_speaking fetch --dest /tmp/spk-fixture --what whisper-tiny --no-weights
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONPATH=. \
+  FLH_SPEAKING_TOKENIZER_DIR=/tmp/spk-fixture/openai/whisper-tiny/169d4a4341b33bc18d8881c4b69c2e104e1cc0af \
+  /tmp/spk/bin/python -B scripts/run_tests.py --require-deps --json /tmp/speaking-tests.json
+```
+
+`--require-deps` fails on any skip, missing module or missing fixture
+(docs/validation/SPEAKING-TEST-ENTRY.md).
+
+## Release control dashboard (`scripts/release/release_report.py`)
+
+One versioned report (`flh-release-report/v1`) says why a candidate bundle is READY or BLOCKED
+for a target. Every view is computed from that file and its evidence, never typed by hand. The
+surface below is stable: gate IDs, states and exit codes do not change meaning.
+`scripts/release/test_release_report.py` checks this table against the code.
+
+**Inputs (`collect`):**
+
+| Option | Required | What it is |
+| --- | --- | --- |
+| `--candidate TAR --candidate-sha256 HEX` | yes | the transfer file and the SHA-256 recorded at build time |
+| `--rollback TAR --rollback-sha256 HEX` | no | the previous verified bundle (its ledger must cover the candidate's) |
+| `--source DIR` | no | a checkout of the candidate's tree (for the suites, preflight and the tree check) |
+| `--target local-rehearsal\|staging` | no (local-rehearsal) | staging also requires the owner-only gates |
+| `--plan-json FILE` | owner | `terraform show -json` of the staging plan |
+| `--host-status FILE` | owner | the saved output of `flh-staging-bundle status` on the host |
+| `--receipt DIR` | no | the integration receipt (`scripts/release/integration_receipt.py`) of the sealed lane sources |
+| `--out DIR` | yes | where `report.json` and `evidence/` are written |
+
+**Outputs:** `DIR/report.json` and `DIR/evidence/*.txt` from `collect`; `check` (one line),
+`terminal [--width N]` (every line fits N columns), `commands` (the command behind each gate,
+fastest check first), `record` (the owner's release record: the digests to type and the
+verification policy; `check` also names exactly which gates, agent or owner-only, block), `markdown [--out]`, `html --out` (static, no script; evidence links are
+relative to the page, so the report directory can move) and `attest [--source] [--probe-docker]`
+(`flh-release-attestation/v1`). Markdown and HTML render the same rows. With `--receipt`, every
+view also lists the sealed handoffs the candidate came from. Exit: 0 READY, 1 BLOCKED, 2 invalid
+report.
+
+**Gates:**
+
+| Gate | Owner | Required for | Passes when |
+| --- | --- | --- | --- |
+| `bundle-verify` | agent | both targets | the candidate verifies (sums, manifest, image blobs, labels) |
+| `rollback-target` | agent | both targets | a previous verified bundle knows at least the candidate's migrations |
+| `python-suites` | agent | both targets | `scripts/ci/python_suites.py` passes on the source |
+| `staging-preflight` | agent | both targets | `preflight.py` repository checks are READY |
+| `integration-receipt` | agent | both targets (with `--receipt`) | the receipt's sealed lanes and every required check pass on the bundle's tree |
+| `browser-evidence` | agent | both targets (with `--receipt`) | learning-day, practice-feed and demo browser runs pass on the bundle's tree |
+| `aws-plan-check` | owner | staging | `plan_check.py --mode create` says SAFE on the owner's plan |
+| `staging-identity` | owner | staging | the host's status shows `IDENTITY OK` for the candidate |
+
+**Effective states** (evaluated, never trusted from the file): `pass`, `fail`, `pending`,
+`unavailable` (no evidence, or the file is missing), `skipped`, `stale` (the evidence names
+another bundle or source tree: old evidence to rerun, not a failure), `changed` (the evidence
+file's SHA-256 differs). READY needs every required gate `pass`. Views count failed and stale
+gates apart.
+
+```bash
+python3 -I scripts/release/release_report.py check scripts/release/fixtures/release-report/ready/report.json   # READY
+python3 -I scripts/release/release_report.py html scripts/release/fixtures/release-report/ready/report.json --out /tmp/flh-dashboard.html
+bash scripts/release/control_center_demo.sh /tmp/flh-control-center      # every tool on synthetic data, offline, about 20 s
+```
+
+## Integration candidate from sealed lanes (`scripts/release/integration_*`)
+
+Lanes hand over sealed snapshots (a `SHA256SUMS` plus a tar, a path list, or a hash manifest with
+patches). These tools turn the selected seals into one candidate tree without Git, and record
+every check run on that exact tree. No network, no AWS. The selection file names local
+directories, so it stays outside the repository.
+
+| Tool | What it does |
+| --- | --- |
+| `integration_candidate.py select SELECTION.json --out SELECTED.json` | verifies every seal (each listed file, the pinned `SHA256SUMS` digest, the snapshot covered by it), each lane's base against the shared base, and refuses inconsistent snapshots: a path deleted and supplied, listed twice, a symlink leaving the tree, a pending proposal already present. A `patch-chain` store rebuilds a manifest-only lane from its sealed patches |
+| `integration_candidate.py assemble SELECTED.json --out TREE` | base plus every lane in order. Bytes are read only where their SHA-256 matches; a source that changes while it is copied, or a seal that changes, stops it. Shared paths merge with `diff3 -m`; every lane's changed lines and catalog keys must survive. Writes `TREE.assembly.json` (provenance of every path) |
+| `integration_candidate.py reproduce SELECTION.json --expect TREE_ID` | select and assemble in a fresh scratch directory: the one command that reproduces a verified tree |
+| `integration_candidate.py verify SELECTED.json TREE` | every lane change holds in TREE (also after a real `git merge`) |
+| `integration_candidate.py catalogs TREE [--base DIR --lane L=DIR]` | duplicate keys, key and `{placeholder}` parity of `en.ts`/`zh-CN.ts`, and lost key changes |
+| `integration_candidate.py compare OLD NEW --selected S` / `lane-tree S LANE` | differences between two trees by lane; the tree of the base plus one lane |
+| `integration_candidate.py slices S --work DIR` | the tree after each lane in review order (what `git rev-parse HEAD^{tree}` should print after each merge) and which added scripts other lanes use |
+| `owner_preflight.py EXPECT.json --ref main=REF [--ref LANE=REF]... [--after-merge LANE]` | owner-run, read-only Git checks before and during integration: main still at the rehearsed base, a clean tree, each lane branch holding its sealed tree, the tree after each merge (agents never run it) |
+| `integration_receipt.py init/run/record/check/summary/markdown/order/carry` | the `flh-integration-receipt/v1` receipt: lanes (seal, digest, lane tree), pending proposals, and checks (start, exit, seconds, counts, log digest, tree id re-identified after the command). A check on other bytes, or whose artifact changed under the same name, is STALE; a claimed READY with a missing required check is invalid; `carry` brings older results in as STALE |
+| `evidence_share.py audit PATH...` / `share SRC --out DIR --include GLOB...` / `verify-seal DIR` | audit outputs for private addresses, session links, home paths, e-mail, AWS identities, keys, env files and databases (classes and value digests, never values); copy a redacted text subset with `REDACTIONS.json`, `SHA256SUMS.redacted` and `REDACTED-COPY.json`; a redacted copy never verifies as the original seal |
+| `pin_audit.py TREE` | workflow action pins, digest-pinned `FROM`s, `go.sum`, npm integrity, hash-locked Python locks, Terraform lock hashes (offline) |
+| `integration_battery.sh TREE RECEIPT WORK [STAGE...]` | runs go, web, python, speaking, learning, practice, demo, bundle and report on a copy of TREE and records each; `RESUME=1` keeps current passes after an interruption |
+
+Quickstart, from an empty directory (synthetic lanes, no credentials needed):
+
+```bash
+mkdir -p ~/flh-quickstart && cd ~/flh-quickstart        # empty
+python3 -B -m unittest discover -s <repo>/scripts/release -p 'test_integration_candidate.py'   # tools on synthetic lanes
+bash <repo>/scripts/release/control_center_demo.sh ./cc                          # dashboard, preflight, backup, cutover
+python3 -I <repo>/scripts/release/release_report.py terminal <repo>/scripts/release/fixtures/release-report/ready/report.json --width 60
+```
+
+For a real integration, write the selection (seal directories and pinned digests), then run
+`reproduce --expect`, `integration_battery.sh`, and `release_report.py collect --receipt`.
+
+## Reason codes (release and staging tools)
+
+Each tool ends with one short, stable code and its next step. Scripts and the
+runbooks match these codes; `scripts/release/test_reason_codes.py` fails when a
+code is renamed, removed or added without this table.
+
+| Tool | Code | Meaning | Next step |
+| --- | --- | --- | --- |
+| `diagnose.py` | `settings-missing` | the settings file does not exist | copy `scripts/daily/daily.env.example`, `chmod 600`, fill it in |
+| `diagnose.py` | `settings-readable` | the settings file is readable by others | `chmod 600` it |
+| `diagnose.py` | `data-missing` | `FLH_DATA_DIR` does not exist | `mkdir -m 700` it and `chown` it to the service user |
+| `diagnose.py` | `data-owner` | `FLH_DATA_DIR` is not owned by the service user | `chown -R` to `FLH_UID:FLH_GID` |
+| `diagnose.py` | `data-mode` | `FLH_DATA_DIR` is readable by others | `chmod 700` it |
+| `diagnose.py` | `db-readonly` | the service could read but not write `app.db` (`/readyz` 503 `storage_read_only`) | `chmod 600` and `chown` the `app.db*` files, then restart (a running server keeps it open read-only) |
+| `diagnose.py` | `db-corrupt` | `integrity_check` fails | restore `"$(backup_tool.py latest <data>.backups)"` |
+| `diagnose.py` | `db-newer` | the database has migrations this release does not know | install the newer release again, or restore a backup made by this one |
+| `diagnose.py` | `port-busy` | `127.0.0.1:FLH_HOST_PORT` is in use | find it with `ss -ltnp`; stop it or change the port |
+| `diagnose.py` | `disk-low` | less free space than twice the database | free space first |
+| `backup_tool.py inspect` | `COMPLETE` | sums, integrity and ledger all check | restorable |
+| `backup_tool.py inspect` | `INCOMPLETE` | an `.incomplete` copy from a failed backup | never restore it; delete it after inspection |
+| `backup_tool.py inspect` | `UNSEALED` | no `SHA256SUMS`: the backup stopped before sealing | take a new backup |
+| `backup_tool.py inspect` | `CORRUPT` | a sum mismatch, a listed file missing, or a failed integrity check | use another backup |
+| `backup_tool.py inspect` | `NOT_A_BACKUP` | no `app.db` | — |
+| `backup_tool.py next-action` | `ok` | every backup is complete | — |
+| `backup_tool.py next-action` | `no-backup` | none yet | `flh-daily.sh backup` |
+| `backup_tool.py next-action` | `free-space` | an interrupted backup and too little room | free space, then back up |
+| `backup_tool.py next-action` | `rerun-backup` | the last backup was interrupted | `flh-daily.sh start`, then `backup` again |
+| `backup_tool.py restore-state` | `CLEAN` | nothing left beside the data | — |
+| `backup_tool.py restore-state` | `PREPARE-INTERRUPTED` | a staging copy is left; the data and service are untouched | delete the named copy, restore again |
+| `backup_tool.py restore-state` | `SWAP-INTERRUPTED` | the data directory is missing, the previous copy exists | `mv` the named previous copy back |
+| `backup_tool.py restore-state` | `RESTORED` | the last restore completed; the previous data is kept | check the first write, start |
+| `backup_tool.py restore-state` | `NO-ACTIVE-DATA` | no data and no previous copy | restore a complete backup |
+| `backup_tool.py unpack` | `DAMAGED` | the archive ends early or is damaged; nothing unpacked | make the archive again on the sending side |
+| `backup_tool.py unpack` | `REFUSED` | a wrong SHA-256, an unsafe member, or an existing target; nothing unpacked | copy again or move the target aside |
+| `backup_tool.py receipt` | `RECOVERED` | the active data is the backup, intact, writable | start; keep the previous copy for now |
+| `backup_tool.py receipt` | `NOT RECOVERED` | the active data is not the backup, or the write check failed | do not start on it |
+| `cutover_check.py check` | `HOLD` | steps before the switch are pending | the step named next |
+| `cutover_check.py check` | `DO-NOT-SWITCH` | a check before the switch failed | keep the NAS; roll back case A |
+| `cutover_check.py check` | `SWITCHED` | AWS is the only writer | keep the NAS stopped for the window |
+| `cutover_check.py check` | `ROLLBACK-A` | AWS took no write | NAS settings back, start the NAS |
+| `cutover_check.py check` | `ROLLBACK-B` | AWS accepted writes | procedure B only (a NAS restart would discard them) |
+| `cutover_check.py check` | `ROLLED-BACK` | the NAS holds the AWS backup's data | point access back to the NAS |
+| `cutover_check.py check` | `DIVERGED` | both sides written after the boundary | stop both; never merge |
+| `plan_review.py` | `SAME` | two plans make the same changes | — |
+| `plan_review.py` | `DIFFERENT` | the plans differ (grouped by service and blast radius) | review the new plan |
+| `plan_review.py` | `FRESH` | the plan was made from the current inputs | apply |
+| `plan_review.py` | `STALE` | an input changed after the reviewed plan | plan again |
+| `plan_review.py` | `NOT COSTED` | a planned type has no rate | add an assumption |
+
 ## Troubleshooting
 
 - `bind source path does not exist`: create `FLH_DATA_DIR` first.
