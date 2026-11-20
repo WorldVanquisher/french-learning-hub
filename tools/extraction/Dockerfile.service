@@ -1,0 +1,18 @@
+# Private extraction service image (flh_extraction_service_v1): standard library only, no model,
+# no network use. Build from tools/extraction:
+#   docker build -f Dockerfile.service -t flh-extraction-service:local .
+# Run privately (publish on loopback or a private address only):
+#   docker run --rm --network bridge -p 127.0.0.1:8090:8090 --read-only --memory 256m --cpus 1 flh-extraction-service:local
+FROM python:3.12-slim@sha256:6c4dd321d176d61ea848dc8c73a4f7dbae8f70e0ee48bb411ea2f045b599fa8e
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/opt/extraction FLH_IN_CONTAINER=1
+COPY flh_extraction/__init__.py flh_extraction/audit.py flh_extraction/evaluate.py flh_extraction/evidence_review.py \
+     flh_extraction/exercises.py flh_extraction/feed2.py flh_extraction/feed_compat.py flh_extraction/packet.py \
+     flh_extraction/portable.py flh_extraction/practice.py flh_extraction/quality.py flh_extraction/records.py \
+     flh_extraction/review2.py flh_extraction/service.py flh_extraction/textnorm.py /opt/extraction/flh_extraction/
+RUN useradd --system --uid 10002 --no-create-home --shell /usr/sbin/nologin extraction \
+ && python3 -B -c "import flh_extraction.service as s; m = s.manifest(); assert len(m['code_sha256']) == 15"
+USER 10002
+WORKDIR /opt/extraction
+EXPOSE 8090
+HEALTHCHECK --interval=30s --timeout=3s CMD python3 -B -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8090/readyz', timeout=2).status == 200 else 1)"
+ENTRYPOINT ["python3", "-B", "-m", "flh_extraction.service", "serve", "--host", "0.0.0.0", "--port", "8090"]

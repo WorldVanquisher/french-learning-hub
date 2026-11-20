@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import re
 
+from . import textnorm
+
 CHECKLIST = "flh_speaking_intake_checklist_v1"
 LICENSES = {"CC-BY-4.0": "attribution required", "CC0-1.0": "no conditions", "CC-BY-SA-4.0": "attribution and share-alike: owner decision"}
 ITEMS = [
@@ -135,6 +137,55 @@ def pair_check(rows: list[dict], conditions=None) -> dict:
             "rule": "a speaker-quality report compares conditions only on clips present in every condition; unpaired clips are dropped, not imputed"}
 
 
+def require_speakers(rows: list[dict], claim: str = "speaker groups") -> dict:
+    """A claim about speaker groups refuses rows without a speaker ID (they are listed, never guessed)."""
+    missing = [r.get("id") for r in rows if r.get("speaker") in (None, "", "unknown")]
+    return {"claim": claim, "rows": len(rows), "without_speaker": len(missing), "examples": missing[:5],
+            "decision": "usable" if not missing else f"refused: {len(missing)} rows carry no speaker ID; drop them from a {claim} claim "
+                                                    "or make a sentence-group claim instead"}
+
+
+def overlap_report(train: list[dict], others: dict) -> dict:
+    """Overlap between a training set and each evaluation set: speakers (corpus:speaker), normalised
+    reference text, and audio (PCM SHA-256)."""
+    def spk(rs):
+        return {f"{r.get('corpus', '?')}:{r['speaker']}" for r in rs if r.get("speaker") not in (None, "", "unknown")}
+
+    def txt(rs):
+        return {textnorm.normalize_fr(r["text"]) for r in rs if r.get("text")}
+
+    def pcm(rs):
+        return {r["pcm_sha256"] for r in rs if r.get("pcm_sha256")}
+    ts, tt, ta = spk(train), txt(train), pcm(train)
+    out = {}
+    for name, rs in others.items():
+        out[name] = {"rows": len(rs), "speakers_shared": len(spk(rs) & ts), "texts_shared": len(txt(rs) & tt), "audio_shared": len(pcm(rs) & ta),
+                     "rows_without_speaker": sum(1 for r in rs if r.get("speaker") in (None, "", "unknown"))}
+    return {"train_rows": len(train), "train_speakers": len(ts), "sets": out,
+            "ok": all(v["speakers_shared"] == 0 and v["texts_shared"] == 0 and v["audio_shared"] == 0 for v in out.values()),
+            "note": "speaker overlap can only be checked where speaker IDs exist; rows without one are counted, not assumed disjoint"}
+
+
+def balance(rows: list[dict]) -> dict:
+    out = {}
+    for r in rows:
+        g = out.setdefault(r.get("split", "?"), {"rows": 0, "speakers": set(), "gender": {}, "seconds": 0.0, "missing_text": 0, "missing_speaker": 0})
+        g["rows"] += 1
+        if r.get("speaker") in (None, "", "unknown"):
+            g["missing_speaker"] += 1
+        else:
+            g["speakers"].add(r["speaker"])
+        if not (r.get("text") or "").strip():
+            g["missing_text"] += 1
+        g["gender"][r.get("gender") or "unknown"] = g["gender"].get(r.get("gender") or "unknown", 0) + 1
+        g["seconds"] += float(r.get("seconds") or 0)
+    for g in out.values():
+        g["hours"] = round(g.pop("seconds") / 3600, 3)
+        g["speakers"] = len(g["speakers"])
+        g["gender"] = dict(sorted(g["gender"].items()))
+    return dict(sorted(out.items()))
+
+
 def render(rep: dict) -> str:
     L = []
     if "proposal" in rep:
@@ -161,4 +212,16 @@ def render(rep: dict) -> str:
         L.append(f"Pairs over {', '.join(q['conditions'])}: {q['paired_clips']} paired clips from {q['speakers_with_pairs']} speakers; "
                  f"unpaired {len(q['unpaired'])}")
         L += [f"  unpaired {u['speaker']}/{u['clip']}: missing {', '.join(u['missing'])}" for u in q["unpaired"]]
+    if "require_speakers" in rep:
+        r = rep["require_speakers"]
+        L.append(f"Speaker-group claim over {r['rows']} rows: {r['decision']}")
+    if "overlap" in rep:
+        o = rep["overlap"]
+        L.append(f"Overlap with training ({o['train_rows']} rows, {o['train_speakers']} speakers): {'none' if o['ok'] else 'FOUND'}")
+        L += [f"  {n:12} rows {v['rows']:5}  speakers {v['speakers_shared']}  texts {v['texts_shared']}  audio {v['audio_shared']}  "
+              f"(rows without speaker ID {v['rows_without_speaker']})" for n, v in o["sets"].items()]
+    if "balance" in rep:
+        L.append("Balance per split:")
+        L += [f"  {k:6} rows {v['rows']:5}  speakers {v['speakers']:3}  hours {v['hours']:7}  gender {v['gender']}  missing text {v['missing_text']}  "
+              f"missing speaker {v['missing_speaker']}" for k, v in rep["balance"].items()]
     return "\n".join(L) + "\n"

@@ -81,6 +81,33 @@ class Intake(unittest.TestCase):
             self.assertIn("collision 103", r.stdout)
 
 
+class TrainingData(unittest.TestCase):
+    rows = [{"id": "t1", "split": "train", "corpus": "mls", "speaker": "1", "text": "Une phrase.", "pcm_sha256": "a" * 64, "gender": "F", "seconds": 3.0},
+            {"id": "t2", "split": "train", "corpus": "mls", "speaker": "2", "text": "Deux phrases.", "pcm_sha256": "b" * 64, "gender": "M", "seconds": 4.0},
+            {"id": "e1", "split": "test", "corpus": "mls", "speaker": "3", "text": "Une phrase !", "pcm_sha256": "c" * 64, "gender": "F", "seconds": 2.0},
+            {"id": "e2", "split": "test", "corpus": "mls", "speaker": "2", "text": "Autre chose.", "pcm_sha256": "b" * 64, "gender": "M", "seconds": 5.0},
+            {"id": "o1", "split": "ood", "corpus": "fleurs", "speaker": None, "text": "", "pcm_sha256": "d" * 64, "gender": None, "seconds": 1.0}]
+
+    def test_speaker_group_claims_refuse_unlabeled_rows(self):
+        r = intake.require_speakers(self.rows)
+        self.assertEqual((r["without_speaker"], r["examples"]), (1, ["o1"]))
+        self.assertTrue(r["decision"].startswith("refused"))
+        self.assertEqual(intake.require_speakers(self.rows[:4])["decision"], "usable")
+
+    def test_overlap_by_speaker_text_and_audio(self):
+        train = [r for r in self.rows if r["split"] == "train"]
+        o = intake.overlap_report(train, {"test": [r for r in self.rows if r["split"] == "test"], "ood": [self.rows[-1]]})
+        self.assertEqual((o["sets"]["test"]["speakers_shared"], o["sets"]["test"]["texts_shared"], o["sets"]["test"]["audio_shared"]), (1, 1, 1))
+        self.assertEqual(o["sets"]["ood"]["rows_without_speaker"], 1)
+        self.assertFalse(o["ok"])
+
+    def test_balance_counts_missing_labels(self):
+        b = intake.balance(self.rows)
+        self.assertEqual((b["test"]["speakers"], b["test"]["gender"]), (2, {"F": 1, "M": 1}))
+        self.assertEqual((b["ood"]["missing_text"], b["ood"]["missing_speaker"], b["ood"]["gender"]), (1, 1, {"unknown": 1}))
+        self.assertEqual(b["train"]["hours"], round(7 / 3600, 3))
+
+
 class Standing(unittest.TestCase):
     def test_eight_speakers_remain_an_observation_in_the_machine_readable_review(self):
         rv = doc(os.path.join(REVIEW, "insufficient.json"))

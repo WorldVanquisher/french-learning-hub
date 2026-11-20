@@ -140,6 +140,10 @@ def main(argv: list[str] | None = None) -> int:
     lin.add_argument("--min-groups", type=int, default=30)
     lin.add_argument("--source", action="append", metavar="NAME=MANIFEST.jsonl", help="repeatable: check several evaluation sources together")
     lin.add_argument("--pairs", help="a JSONL of {speaker, clip, condition} rows: keep noise conditions paired")
+    lin.add_argument("--require-speakers", action="store_true", help="with --data-manifest: refuse rows without a speaker ID (a speaker-group claim)")
+    lin.add_argument("--overlap", action="append", metavar="NAME=MANIFEST.jsonl[:SPLIT]",
+                     help="repeatable; the first is the training set: speaker, text and audio overlap with each other set")
+    lin.add_argument("--balance", action="store_true", help="with --data-manifest: rows, speakers, gender, hours and missing labels per split")
     lin.add_argument("--json")
     lpc = lsub.add_parser("privacy-check", help="machine paths, session links and UUID-like IDs in shared reports (exit 1 on any)")
     lpc.add_argument("files", nargs="+")
@@ -289,6 +293,17 @@ def main(argv: list[str] | None = None) -> int:
                     rep["merge"] = intake.merge_check({n: rows(f) for n, f in (x.split("=", 1) for x in a.source)})
                 if a.pairs:
                     rep["pairs"] = intake.pair_check(rows(a.pairs))
+                if a.data_manifest and a.require_speakers:
+                    rep["require_speakers"] = intake.require_speakers(rows(a.data_manifest))
+                if a.data_manifest and a.balance:
+                    rep["balance"] = intake.balance(rows(a.data_manifest))
+                if a.overlap:
+                    sets = []
+                    for x in a.overlap:
+                        name, spec = x.split("=", 1)
+                        path, _, split = spec.partition(":")
+                        sets.append((name, [r for r in rows(path) if not split or r.get("split") == split]))
+                    rep["overlap"] = intake.overlap_report(sets[0][1], dict(sets[1:]))
             except (OSError, ValueError, KeyError) as e:
                 print(f"error: {e}", file=sys.stderr)
                 return 2
@@ -299,7 +314,8 @@ def main(argv: list[str] | None = None) -> int:
                 with open(a.json, "w", encoding="utf-8") as fh:
                     fh.write(lab.to_json(rep))
             sys.stdout.write(intake.render(rep))
-            bad = (rep.get("proposal", {}).get("decision", "").startswith("not")) or not rep.get("merge", {"ok": True})["ok"]
+            bad = (rep.get("proposal", {}).get("decision", "").startswith("not")) or not rep.get("merge", {"ok": True})["ok"] \
+                or rep.get("require_speakers", {"decision": "usable"})["decision"] != "usable" or not rep.get("overlap", {"ok": True})["ok"]
             return 1 if bad else 0
         if a.lab_cmd in ("candidate-review", "candidate-review-demo", "candidate-review-walkthrough"):
             from . import candidate_review as cr

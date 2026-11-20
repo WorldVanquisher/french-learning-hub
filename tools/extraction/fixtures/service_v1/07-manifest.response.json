@@ -1,0 +1,65 @@
+{
+ "body": {
+  "code_id": "b0bd175f5d97cc009c5948983d4fee3636f4a5d18a3e4da44a41c07c56f648ea",
+  "code_sha256": {
+   "__init__.py": "a16bb46eeda8a35875ef29997bee3491ae9404664afeda4295e79bcacae76e18",
+   "audit.py": "a02d2a788572d5ded2f3bbaae19ed42105972bd03ee35230cc30d39d1ea50cd0",
+   "evaluate.py": "b85c8e28e00a720b23e0ebd1061e43dac050cda09fcd6d68348ab6fce9792907",
+   "evidence_review.py": "0f19e1a160114136a156b52f1347e3e713a7129bad06d4a6657c3eb1b9a6d8f0",
+   "exercises.py": "f01ca787665ec0f49b5fa3598ef29bf3372b0b4ebc79a007e20416582e531230",
+   "feed2.py": "09e3c31c62686046a3c1194f4a418ed4901d2cf07c9f27072104f5df21ab6165",
+   "feed_compat.py": "ec90630742e4c601d77ab06a05a1fb50876c891d6ce53aa31da3d406f1260ebd",
+   "packet.py": "62b76061a32ff6989b34635805336711ed1280db572b0142e7a8d39ec9072c29",
+   "portable.py": "558d14fe39fb5399f86efe33da71e1e2b3003887900bf65aecba8d52657cd22d",
+   "practice.py": "aa07fcf91954ab23c35b6283d1ad621bebf97b8e4f7c5abdb6c837dbe151b80b",
+   "quality.py": "9ee1cb42f859f62c593a0157bc6c9f00661c960949cc697de6ecd0eb73aee51d",
+   "records.py": "92992e561b5f2217667406b3d1e7b01a08de33ca0d4c0da241e0da51339d1ff4",
+   "review2.py": "11a4753bb0ff755bab2ebb926595ccdcb037dfc2e22b7e7d92064165173acef1",
+   "service.py": "c765f3259b5de0c6d5aabbe6cdf4ff781a4c038b3e68ee8135b64c9916d72942",
+   "textnorm.py": "c0b4b209b437293de074b623a8fb2dce66bdbeb21a40f35bf1782dea73bd2cdf"
+  },
+  "codes": {
+   "busy": 503,
+   "contract_mismatch": 409,
+   "internal": 500,
+   "invalid_decisions": 422,
+   "invalid_request": 400,
+   "invalid_return": 422,
+   "invalid_source": 422,
+   "length_required": 411,
+   "method_not_allowed": 405,
+   "not_found": 404,
+   "not_ready": 503,
+   "timeout": 504,
+   "too_large": 413,
+   "unsupported_media_type": 415
+  },
+  "contract": "flh_extraction_service_v1",
+  "deployment_id": "flh-extraction-rules@b0bd175f5d97/flh_extraction_service_v1/flh_practice_drafter_v1",
+  "limits": {
+   "max_attempts": 5000,
+   "max_body_bytes": 262144,
+   "max_decisions": 1000,
+   "max_inflight": 4,
+   "max_items_per_source": 64,
+   "max_revisions": 8,
+   "request_timeout_s": 5.0
+  },
+  "model": {
+   "kind": "rules",
+   "learned_weights": null,
+   "note": "deterministic grounding and review rules; no model is loaded or called"
+  },
+  "rules": {
+   "batch_plan": "flh_practice_batch_plan_v1",
+   "cues": "flh_quote_scope_cues_v1",
+   "drafter": "flh_practice_drafter_v1",
+   "feed": "flh_practice_review_feed_v1",
+   "material_hash": "flh_material_hash_v1",
+   "packet": "flh_practice_packet_v3",
+   "review": "flh_practice_review_v2"
+  },
+  "schema": "flh_extraction_deployment_manifest_v1"
+ },
+ "status": 200
+}

@@ -1,0 +1,273 @@
+{
+ "body": {
+  "contract": "flh_extraction_service_v1",
+  "schema": "flh_extraction_request_v1",
+  "sources": [
+   {
+    "capture": {
+     "analysis": {
+      "category": "grammar",
+      "explanation": "Before a city, « à »; before a feminine country or a continent, « en »; before a plural country, « aux »."
+     },
+     "capture_id": "synthetic-a-en-lieux-001",
+     "original_context": "Mes notes de lecture, « Le Tour du monde en quatre-vingts jours » de Jules Verne. Chapitre 1 : « j’étais sergent de pompiers, à Paris » ; « je suis valet de chambre en Angleterre ». Chapitre 3 : « ont été envoyés en Amérique et en Europe ». Chapitre 8 : « Lancer une dépêche à Londres » ; « filer mon voleur jusqu’aux Indes ». Chapitre 9 : « en débarquant en Égypte ».",
+     "original_input": "Pourquoi Verne écrit « à Paris » et « à Londres », mais « en Angleterre » et « en Égypte » ? Et pourquoi « jusqu’aux Indes » ?",
+     "schema_version": "learning_capture_v1",
+     "source": "manual"
+    },
+    "learner_goal": "Choose « à » or « en » before a place name when I say where someone is or goes (A1/A2).",
+    "proposal": {
+     "items": [
+      {
+       "canonical": "à + ville",
+       "confidence": 0.8,
+       "kind": "grammar",
+       "quotes": [
+        "sergent de pompiers, à Paris",
+        "Lancer une dépêche à Londres"
+       ],
+       "ref": "a-ville",
+       "statement": "« à » goes before a city name: « à Paris », « à Londres ».",
+       "type": "claim"
+      },
+      {
+       "canonical": "en + pays féminin ou continent",
+       "confidence": 0.8,
+       "kind": "grammar",
+       "quotes": [
+        "valet de chambre en Angleterre",
+        "débarquant en Égypte",
+        "en Amérique et en Europe"
+       ],
+       "ref": "en-pays",
+       "statement": "« en » goes before a feminine country or a continent, and before a country name that begins with a vowel: « en Angleterre », « en Égypte », « en Europe ».",
+       "type": "claim"
+      },
+      {
+       "canonical": "aux + pays pluriel",
+       "confidence": 0.7,
+       "kind": "grammar",
+       "paraphrases": [
+        {
+         "of": "filer mon voleur jusqu’aux Indes",
+         "text": "Fix plans to follow the man he thinks is a thief as far as India; « les Indes » is plural, so « à » + « les » becomes « aux »."
+        }
+       ],
+       "quotes": [
+        "filer mon voleur jusqu’aux Indes"
+       ],
+       "ref": "aux-pluriel",
+       "statement": "« aux » (« à » + « les ») goes before a plural place name: « jusqu’aux Indes ».",
+       "type": "claim"
+      },
+      {
+       "canonical": "en + tout nom de pays",
+       "confidence": 0.5,
+       "kind": "grammar",
+       "quotes": [
+        "valet de chambre en Angleterre"
+       ],
+       "ref": "en-tous-pays",
+       "statement": "« en » goes before every country name, so you also say « en Japon ».",
+       "type": "claim"
+      },
+      {
+       "canonical": "en débarquant",
+       "confidence": 0.4,
+       "kind": "grammar",
+       "quotes": [
+        "en débarquant en Égypte"
+       ],
+       "ref": "en-gerondif",
+       "statement": "In « en débarquant en Égypte », both « en » are the place preposition.",
+       "type": "claim"
+      },
+      {
+       "a": {
+        "form": "à",
+        "use": "+ a city: à Paris, à Londres"
+       },
+       "applies": [
+        "a-ville",
+        "en-pays"
+       ],
+       "b": {
+        "form": "en",
+        "use": "+ a feminine country or a continent: en Angleterre, en Europe"
+       },
+       "distinction": "Ask what the place is: a city takes « à »; a feminine country or a continent takes « en ».",
+       "quotes": [
+        "sergent de pompiers, à Paris",
+        "valet de chambre en Angleterre"
+       ],
+       "ref": "a-vs-en",
+       "type": "contrast"
+      },
+      {
+       "applies": [
+        "a-vs-en"
+       ],
+       "generated": true,
+       "ref": "en-japon",
+       "right": "au Japon",
+       "type": "common_error",
+       "why": "« Japon » is masculine and begins with a consonant, so « à » + « le » gives « au ».",
+       "wrong": "en Japon"
+      },
+      {
+       "accepted": [
+        "Elle habite à Lyon.",
+        "Ma sœur habite à Lyon.",
+        "À Lyon."
+       ],
+       "answer": "Elle habite à Lyon.",
+       "applies": [
+        "a-vs-en",
+        "a-ville"
+       ],
+       "choices": [
+        "à",
+        "en"
+       ],
+       "cloze": "Elle habite __ Lyon.",
+       "explanation": "Lyon is a city: « à ».",
+       "generated": true,
+       "instruction": "Answer with « à » or « en ».",
+       "question": "Où habite ta sœur ? (Lyon)",
+       "ref": "ex-lyon",
+       "target": "à",
+       "type": "worked_example",
+       "wrong": [
+        "Elle habite en Lyon."
+       ]
+      },
+      {
+       "accepted": [
+        "Je vais en Espagne.",
+        "Cet été, je vais en Espagne.",
+        "En Espagne."
+       ],
+       "answer": "Je vais en Espagne.",
+       "applies": [
+        "a-vs-en",
+        "en-pays"
+       ],
+       "choices": [
+        "à",
+        "en"
+       ],
+       "cloze": "Je vais __ Espagne.",
+       "explanation": "« l’Espagne » is a feminine country: « en ».",
+       "generated": true,
+       "instruction": "Answer with « à » or « en ».",
+       "question": "Où vas-tu cet été ? (l’Espagne)",
+       "ref": "ex-espagne",
+       "target": "en",
+       "type": "worked_example",
+       "wrong": [
+        "Je vais à Espagne.",
+        "Je vais à l’Espagne."
+       ]
+      }
+     ],
+     "proposer": "synthetic: hand-written fixture for the Extraction 2.2 prototype (no provider call); French needs a native-speaker check before learner use"
+    },
+    "provenance": {
+     "author": "Jules Verne (1828-1905)",
+     "copyright": "public domain: the author died in 1905",
+     "excerpts": [
+      {
+       "chapter": 1,
+       "revid": 12868439,
+       "text": "j’étais sergent de pompiers, à Paris"
+      },
+      {
+       "chapter": 1,
+       "revid": 12868439,
+       "text": "je suis valet de chambre en Angleterre"
+      },
+      {
+       "chapter": 3,
+       "revid": 3362598,
+       "text": "ont été envoyés en Amérique et en Europe"
+      },
+      {
+       "chapter": 8,
+       "revid": 12528556,
+       "text": "Lancer une dépêche à Londres"
+      },
+      {
+       "chapter": 8,
+       "revid": 12528556,
+       "text": "filer mon voleur jusqu’aux Indes"
+      },
+      {
+       "chapter": 9,
+       "revid": 11144120,
+       "text": "en débarquant en Égypte"
+      }
+     ],
+     "first_published": "serialised in Le Temps in 1872; book edition 1873",
+     "kind": "public_domain_text_quoted_in_a_synthetic_capture",
+     "synthetic_parts": [
+      "original_input (the learner's question)",
+      "the note wording around the excerpts",
+      "analysis.explanation",
+      "every proposal item"
+     ],
+     "transcription": {
+      "method": "MediaWiki API action=parse, tags removed, whitespace collapsed",
+      "pages": [
+       {
+        "chapter": 1,
+        "revid": 12868439,
+        "text_sha256": "eee7a594f0e8939a7763a68f3b8e79ff6bdaf5bfa8569e26f9789c74e6c1b0fe",
+        "title": "Le Tour du monde en quatre-vingts jours/Chapitre 1",
+        "url": "https://fr.wikisource.org/w/index.php?oldid=12868439"
+       },
+       {
+        "chapter": 3,
+        "revid": 3362598,
+        "text_sha256": "868d99dbc742c4aef9a863637452ef233275702d6e5d30930323a9b92703154d",
+        "title": "Le Tour du monde en quatre-vingts jours/Chapitre 3",
+        "url": "https://fr.wikisource.org/w/index.php?oldid=3362598"
+       },
+       {
+        "chapter": 8,
+        "revid": 12528556,
+        "text_sha256": "f714faa904e015b9e9a0542a27cd179518165a2b490ec2b4f6a3adf658cc182d",
+        "title": "Le Tour du monde en quatre-vingts jours/Chapitre 8",
+        "url": "https://fr.wikisource.org/w/index.php?oldid=12528556"
+       },
+       {
+        "chapter": 9,
+        "revid": 11144120,
+        "text_sha256": "28cc1a8e1bb199f7ab82b047be02a119b597fcfedb84f9f70e0baeeabc14f884",
+        "title": "Le Tour du monde en quatre-vingts jours/Chapitre 9",
+        "url": "https://fr.wikisource.org/w/index.php?oldid=11144120"
+       }
+      ],
+      "retrieved": "2026-11-19",
+      "site": "fr.wikisource.org"
+     },
+     "usage_boundaries": [
+      "only the six short excerpts above are quoted, each with its chapter and the Wikisource revision it was checked against",
+      "the underlying work is public domain; Wikisource's own page text is published under CC BY-SA, so a reuse beyond these short excerpts should credit it",
+      "historical place names (Bombay, les Indes) are the 1872 text's; the learner material for practice uses modern place names",
+      "a synthetic fixture for the prototype: not learner data, not for publication as course material without a native-speaker check"
+     ],
+     "work": "Le Tour du monde en quatre-vingts jours"
+    },
+    "revision": 1,
+    "schema": "flh_practice_source_v1",
+    "source_id": "a-en-lieux-demo"
+   }
+  ]
+ },
+ "headers": {
+  "Content-Type": "application/json",
+  "X-FLH-Contract": "flh_extraction_service_v0"
+ },
+ "method": "POST",
+ "path": "/v1/review"
+}
