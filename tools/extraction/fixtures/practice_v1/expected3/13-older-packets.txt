@@ -1,0 +1,23 @@
+## packet v1 (HANDOFF-136)
+Import preview (read-only): packet flh_practice_packet_v1, return flh_agent_proposals_v1
+Agent return preview (read-only) for packet pk-3cc014313f28 from fixture (hand-written; no agent was run)
+counts: accepted_candidate 3, duplicate 1, conflict 2, unknown_reference 1, invalid 1
+  accepted_candidate p1     correction « en » replaces a place introduced by « de » (also « du », « des »): « Je viens de la boulangerie, j'en viens. »
+  conflict           p2     correction the learner already corrected k-6c4760ebee9d; replacing a learner correction needs the learner's own decision
+  accepted_candidate p3     exercise   Tu vas chez le médecin demain ? Answer with « y » or « en ».
+  duplicate          p4     exercise   the same prompt is already in the packet
+  unknown_reference  p5     exercise   unknown knowledge k-000000000000, evidence ev-0000000000
+  conflict           p6     exercise   an expected answer uses a known confusion: "Oui, j'en vais."
+  accepted_candidate p7     correction « aller à » takes « y »; « j'en vais » is wrong, but « je m'en vais » (I am leaving) is correct French with « s'en aller ».
+                                       flag: cites no evidence: unsupported until the learner decides
+  invalid            p8     exercise   needs proposal_id, type (correction | exercise), rationale and an evidence_ids list
+nothing was applied: an accepted candidate still needs the learner's explicit approval
+
+## packet v2 (2.1)
+Import preview (read-only): packet flh_practice_packet_v2, return flh_agent_proposals_v1
+Agent return preview (read-only) for packet pk-e2920fe276cb from codex
+counts: accepted_candidate 2, duplicate 1, conflict 0, unknown_reference 0, invalid 0
+  accepted_candidate c1     correction Ask which preposition introduces the place: « à », « chez », « dans » or « sur » give « y » (where you go or where you are); « de », « du », « de la » or « des » give « en » (where you come from).
+  duplicate          c2     correction same wording as c1
+  accepted_candidate c3     exercise   Tu vas chez Paul ce soir ? Answer with « y » or « en ».
+nothing was applied: an accepted candidate still needs the learner's explicit approval

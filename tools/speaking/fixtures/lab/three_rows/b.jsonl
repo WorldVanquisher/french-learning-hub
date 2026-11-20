@@ -1,0 +1,4 @@
+{"header": {"config_id": "synthetic-config-1", "label": "B", "model_id": "synthetic-three-rows-b", "provenance": "hand-written synthetic results"}}
+{"id": "r1", "text": "Le chat."}
+{"id": "r2", "text": "Il pleut beaucoup ce matin."}
+{"id": "r3", "text": "Nous partons demain soir."}

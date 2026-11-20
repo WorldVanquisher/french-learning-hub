@@ -1,0 +1,55 @@
+{
+ "computed": "by hand from responses-dry-run.json, before running the summary",
+ "groups": {
+  "all": {
+   "completed": 7,
+   "correct": 4,
+   "incorrect": 1,
+   "missing": 1,
+   "observed": 11,
+   "planned": 12,
+   "revealed": 1,
+   "self_check": 2,
+   "skipped": 1,
+   "unsupported": 2
+  },
+  "assisted_recall": {
+   "completed": 1,
+   "correct": 1,
+   "incorrect": 0,
+   "missing": 0,
+   "observed": 2,
+   "planned": 2,
+   "revealed": 0,
+   "self_check": 0,
+   "skipped": 0,
+   "unsupported": 1
+  },
+  "transfer": {
+   "completed": 5,
+   "correct": 3,
+   "incorrect": 1,
+   "missing": 1,
+   "observed": 8,
+   "planned": 9,
+   "revealed": 1,
+   "self_check": 1,
+   "skipped": 1,
+   "unsupported": 1
+  },
+  "unassisted_recall": {
+   "completed": 1,
+   "correct": 0,
+   "incorrect": 0,
+   "missing": 0,
+   "observed": 1,
+   "planned": 1,
+   "revealed": 0,
+   "self_check": 1,
+   "skipped": 0,
+   "unsupported": 0
+  }
+ },
+ "probe_id": "probe-y-en-v1",
+ "schema": "flh_probe_expected_totals_v1"
+}

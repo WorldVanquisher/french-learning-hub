@@ -1,0 +1,70 @@
+Draft d-22ff0c49f9d7  source y-en-demo revision 1 (fd55a3600f1c)
+lines: QUOTE = your exact words, located in your text (evidence); PARAPHRASE = a restatement (never evidence); CUE = a word check that the quote may not support the claim (not a proof)
+
+[k-6c4760ebee9d] claim  support supported  state pending
+  says        « y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »
+  QUOTE       ev-fd704f2740 located   « Tu vas à la boulangerie ? »
+              Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+  QUOTE       ev-6659b658b9 located   « On dit : oui, j'y vais. »
+              …vais. » Elle m'a corrigée : « [On dit : oui, j'y vais.] » Plus tard, elle a dit : « J…
+
+[k-40cbe73ae3f5] claim  support supported  state pending
+  says        « en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »
+  QUOTE       ev-17c9dfcc08 located   « Je viens de la boulangerie, j'en viens. »
+              …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+
+[k-5ca79503ae78] claim  support unsupported  state pending
+  says        « en » goes with every verb of movement, so « j'en vais » is also correct.
+  QUOTE       -             not_found « en goes with every verb of movement »
+  CONFLICT    k-5ca79503ae78 presents « j'en vais » as correct; k-232ca0f26098 lists it as an error
+
+[k-0d3281b28da6] contrast  support supported  state pending
+  says        « y » à + a place: where you go or where you are / « en » de + a place: where you come from
+  distinction Ask which preposition the place takes: « à » gives « y », « de » gives « en ».
+  QUOTE       ev-fd704f2740 located   « Tu vas à la boulangerie ? »
+              Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+  QUOTE       ev-17c9dfcc08 located   « Je viens de la boulangerie, j'en viens. »
+              …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+
+[k-232ca0f26098] common_error  support supported  state pending
+  says        not « j'en vais » but « j'y vais »
+  why         « aller à » takes « y »; « en » would mean « from there ».
+  QUOTE       ev-053a01e463 located   « Oui, j'en vais. »
+              …langerie ? » J'ai répondu : « [Oui, j'en vais.] » Elle m'a corrigée : « On di…
+  CONFLICT    k-5ca79503ae78 presents « j'en vais » as correct; k-232ca0f26098 lists it as an error
+
+[k-d1c9732336a2] worked_example  support generated  state pending
+  says        Vous allez à la piscine ce soir ? — Oui, nous y allons.  (a sentence not in your source)
+  explanation « aller à la piscine »: the place takes « à », so « y ».
+  QUOTE       none (a new practice example: the source never said it)
+
+[k-cb9627cc7213] worked_example  support generated  state pending
+  says        Tu reviens du marché ? — Oui, j'en reviens.  (a sentence not in your source)
+  explanation « revenir du marché » (de + le): the place takes « de », so « en ».
+  QUOTE       none (a new practice example: the source never said it)
+
+states: pending 7, approved 0, corrected 0, rejected 0, needs_review 0
+
+Review v2 of draft d-22ff0c49f9d7 (source y-en-demo revision 1)
+
+Batch b2-d389db7d1b4c: approve 5 of 5 batchable items together. Selected, explicitly:
+  [x] k-6c4760ebee9d claim          evidence ev-fd704f2740, ev-6659b658b9
+      « y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »
+  [x] k-40cbe73ae3f5 claim          evidence ev-17c9dfcc08
+      « en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »
+  [x] k-0d3281b28da6 contrast       evidence ev-fd704f2740, ev-17c9dfcc08
+      Ask which preposition the place takes: « à » gives « y », « de » gives « en ».
+  [x] k-d1c9732336a2 worked_example new practice example, sentence not in your source
+      « aller à la piscine »: the place takes « à », so « y ».
+  [x] k-cb9627cc7213 worked_example new practice example, sentence not in your source
+      « revenir du marché » (de + le): the place takes « de », so « en ».
+  Effect: 5 items become approved knowledge (5 decision records, one each); practice 0 -> 5 exercises (new: p-2ea892e5eaa0 explain, p-0e74504cf958 choose, p-22a947cd7f5c choose, p-664f7533a19d produce, p-8d5cabf2ab59 produce); nothing else changes.
+  -> practice2 decide --work W --approve-batch b2-d389db7d1b4c   (--select k-…,k-… to approve fewer; --except k-…)
+
+Decide yourself, one by one (2):
+  [k-5ca79503ae78] claim          UNSUPPORTED: « en goes with every verb of movement » is not in your question or context
+      « en » goes with every verb of movement, so « j'en vais » is also correct.
+  [k-232ca0f26098] common_error   CONFLICTS WITH k-5ca79503ae78: k-5ca79503ae78 presents « j'en vais » as correct; k-232ca0f26098 lists it as an error
+      « aller à » takes « y »; « en » would mean « from there ».
+
+Already decided: none

@@ -1,0 +1,48 @@
+Speaking candidate review flh_speaking_candidate_review_v1
+OUTCOME: mismatched_inputs (exit 5)
+  - same_ids: 1 id(s) not in both: syn-s07-u1 (missing in candidate)
+  - same_references: 1 id(s) have another reference in the candidate: syn-s12-u1
+promotion: not performed. The owner decides; this review changes no serving setting.
+models:
+  baseline  unpinned synthetic-baseline-v1  decoding synthetic_rule_v1  split synthetic  candidate_id none (not pinned)
+            stored label: synthetic baseline: invented texts and timing, no model ran
+  candidate unpinned synthetic-candidate-v1  decoding synthetic_rule_v1  split synthetic  candidate_id none (not pinned)
+            stored label: synthetic candidate: invented texts and timing, no model ran
+inputs (sha256):
+  baseline      baseline.json  7974 bytes  ea80f8a47ac5a9dbb835709ed32863b05279164b0c610caf1d4fb6ee9156049b
+  candidate     candidate-mismatched.json  7881 bytes  11bb0399a9f28d2b8658081b6a505489c09c0329329e4c422cf32cd68b13c1c6
+  thresholds    defaults (flh_speaking_candidate_thresholds_v1)
+  references    cb7a3962b85f0bba098bae942f0aee517377d47d3dead77a2abca8ab60ef3cac  sample order 0487dd9eed69ffc9c7da02fbb0d15b40f8716315c6159a4808489993b917fd11
+input checks:
+  ok           same_split: both evaluated on split synthetic
+  ok           same_normalization: both scored under flh_fr_asr_norm_v1
+  mismatch     same_ids: 1 id(s) not in both: syn-s07-u1 (missing in candidate)
+  mismatch     same_references: 1 id(s) have another reference in the candidate: syn-s12-u1
+  ok           baseline_stored_summary: stored totals (44 errors / 210 words) equal the recomputation
+  ok           candidate_stored_summary: stored totals (10 errors / 203 words) equal the recomputation
+  ok           distinct_models: baseline and candidate are different models
+  not_supplied experiment: no experiment result given: image, limits and run identity are not reported
+  not_supplied data_manifest: no data manifest given: the audio behind the texts is identified by the split name only
+samples: baseline 32, candidate 31, matched 31, paired 31, missing 1 ['syn-s07-u1']; speakers baseline 32, candidate 31, paired 31; groups 31 (one per speaker)
+  measure                      baseline      candidate  candidate-baseline
+  WER                            0.2069         0.0394             -0.1675
+  CER                            0.2162         0.0558             -0.1604
+  real-time factor               0.0900         0.2800                    
+  peak RSS (MB)                   760.0         1500.0                    
+  compute (s)                      28.8           89.6                    
+  model load (s)                   3.40           9.10                    
+  measured under (baseline): batch 1, machine synthetic, python none, threads 2
+  measured under (candidate): batch 1, machine synthetic, python none, threads 2
+standing of the paired comparison: not_ranked
+uncertainty: candidate - baseline = -0.1675 WER, 95% speaker-bootstrap interval [-0.2010, -0.1321] over 31 groups (enough groups for a rough interval)
+sensitivity: leaving one speaker out moves the WER difference between -0.1735 and -0.1624 (31 groups; speaker s09 moves it most)
+checks (limits are inclusive: a value equal to its limit passes):
+  pass          support.min_paired_samples         31 >= 30
+  pass          support.min_groups                 31 >= 30
+  not_evaluated quality.max_wer_difference         the inputs are mismatched: no quality or resource check is evaluated
+  not_evaluated quality.max_interval_upper         the inputs are mismatched: no quality or resource check is evaluated
+  not_evaluated quality.max_cer_difference         the inputs are mismatched: no quality or resource check is evaluated
+  not_evaluated quality.max_group_wer_increase     the inputs are mismatched: no quality or resource check is evaluated
+  not_evaluated resources.max_real_time_factor     the inputs are mismatched: no quality or resource check is evaluated
+  not_evaluated resources.max_peak_rss_mb          the inputs are mismatched: no quality or resource check is evaluated
+Note: Word agreement between each transcript and the reference, after flh_fr_asr_norm_v1. Not a pronunciation, fluency or accent grade: a difference can come from the speaker, the recording or the model, and this comparison cannot tell which.

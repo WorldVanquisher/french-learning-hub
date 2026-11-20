@@ -1,0 +1,2 @@
+{"action": "accept", "id": "s1-pass", "reason": "listened: both drafts match the take", "reviewer": "reviewer-1", "schema": "flh_speaking_lab_review_v1"}
+{"action": "retry", "id": "s2-retry", "reason": "music covers the end of the answer", "reviewer": "reviewer-1", "schema": "flh_speaking_lab_review_v1"}

@@ -1,0 +1,49 @@
+Draft d-22ff0c49f9d7  source y-en-demo revision 1 (fd55a3600f1c)
+proposer: synthetic: hand-written fixture for the Extraction 2.0 prototype (no provider call); French needs a native-speaker check before learner use
+goal: Choose between « y » and « en » when I answer a question about a place (A1/A2).
+support: supported = every quote is in your own words exactly once; uncertain = repeated or only in the machine explanation; unsupported = a quote is not in your text; generated = a new practice example (the source never said it)
+
+[k-6c4760ebee9d] claim  support supported  state corrected
+  statement « y » replaces where you go or where you are (à la boulangerie, chez Paul, dans le parc): « Oui, j'y vais. »
+  proposed  « y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »  (your correction replaces it; the proposal is kept)
+  evidence  ev-fd704f2740 located          « Tu vas à la boulangerie ? »
+            Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+  evidence  ev-6659b658b9 located          « On dit : oui, j'y vais. »
+            …vais. » Elle m'a corrigée : « [On dit : oui, j'y vais.] » Plus tard, elle a dit : « J…
+  existing evidence-review heuristic: anchored
+
+[k-40cbe73ae3f5] claim  support supported  state approved
+  statement « en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »
+  evidence  ev-17c9dfcc08 located          « Je viens de la boulangerie, j'en viens. »
+            …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+  existing evidence-review heuristic: anchored
+
+[k-5ca79503ae78] claim  support unsupported  state rejected  (unsupported)
+  statement « en » goes with every verb of movement, so « j'en vais » is also correct.
+  evidence  -             not_found        « en goes with every verb of movement »  these words are not in the learner's question or context
+  existing evidence-review heuristic: anchored
+
+[k-0d3281b28da6] contrast  support supported  state approved
+  says      « y »: à + a place: where you go or where you are / « en »: de + a place: where you come from
+  distinction Ask which preposition the place takes: « à » gives « y », « de » gives « en ».
+  evidence  ev-fd704f2740 located          « Tu vas à la boulangerie ? »
+            Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+  evidence  ev-17c9dfcc08 located          « Je viens de la boulangerie, j'en viens. »
+            …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+
+[k-232ca0f26098] common_error  support supported  state approved
+  says      not « j'en vais » but « j'y vais »
+  why       « aller à » takes « y »; « en » would mean « from there ».
+  evidence  ev-053a01e463 located          « Oui, j'en vais. »
+            …langerie ? » J'ai répondu : « [Oui, j'en vais.] » Elle m'a corrigée : « On di…
+
+[k-d1c9732336a2] worked_example  support generated  state approved
+  says      Vous allez à la piscine ce soir ? — Oui, nous y allons.  (sentence not in your source)
+  explanation « aller à la piscine »: the place takes « à », so « y ».
+
+[k-cb9627cc7213] worked_example  support generated  state approved
+  says      Tu reviens du marché ? — Oui, j'en reviens.  (sentence not in your source)
+  explanation « revenir du marché » (de + le): the place takes « de », so « en ».
+
+states: pending 0, approved 5, corrected 1, rejected 1, needs_review 0
+counts: generated 2, no_evidence 0, supported 4, uncertain 0, unsupported 1

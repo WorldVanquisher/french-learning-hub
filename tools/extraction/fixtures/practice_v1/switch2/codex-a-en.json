@@ -1,0 +1,81 @@
+{
+ "agent": "codex",
+ "fixture_note": "hand-written fixture standing in for a Codex return (no agent was run); French needs a native-speaker check",
+ "packet_id": "pk-0e06b9c6b9c4",
+ "proposals": [
+  {
+   "answer": "à",
+   "evidence_ids": [
+    "ev-75a4d1fa87"
+   ],
+   "exercise_schema": "flh_exercise_proposal_v1",
+   "kind": "discrimination",
+   "options": [
+    "à",
+    "en"
+   ],
+   "prompt": "Mon oncle travaille __ Marseille.",
+   "proposal_id": "e1",
+   "rationale": "A new city in the frame of « à Paris »: the learner chooses the preposition.",
+   "rule_id": "k-886099054b26",
+   "source": {
+    "revision": 1,
+    "revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+    "source_id": "a-en-lieux-demo"
+   },
+   "type": "exercise"
+  },
+  {
+   "accepted": [
+    "Je vais en Italie.",
+    "Cet hiver, je vais en Italie.",
+    "En Italie."
+   ],
+   "ambiguity": [
+    "« Je pars en Italie. » is also correct (another verb of going); it is graded 'check it yourself'."
+   ],
+   "answer": "Je vais en Italie.",
+   "evidence_ids": [
+    "ev-2cd24b70b3"
+   ],
+   "exercise_schema": "flh_exercise_proposal_v1",
+   "kind": "production",
+   "prompt": "Où vas-tu cet hiver ? (l’Italie)",
+   "proposal_id": "e2",
+   "rationale": "Production with a feminine country, as « en Angleterre » in the notes.",
+   "rubric": "« l’Italie » is a feminine country: « en Italie »; « à l’Italie » and « au Italie » are wrong.",
+   "rule_id": "k-fb79321ec520",
+   "source": {
+    "revision": 1,
+    "revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+    "source_id": "a-en-lieux-demo"
+   },
+   "type": "exercise"
+  },
+  {
+   "accepted": [
+    "Elle travaille à Bordeaux.",
+    "Ma tante travaille à Bordeaux.",
+    "À Bordeaux."
+   ],
+   "answer": "Elle travaille à Bordeaux.",
+   "evidence_ids": [
+    "ev-371c2bef92"
+   ],
+   "exercise_schema": "flh_exercise_proposal_v1",
+   "kind": "production",
+   "prompt": "Où travaille ta tante ? (Bordeaux)",
+   "proposal_id": "e3",
+   "rationale": "Production with a city, as « à Londres » in the notes.",
+   "rubric": "Bordeaux is a city: « à Bordeaux ».",
+   "rule_id": "k-886099054b26",
+   "source": {
+    "revision": 1,
+    "revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+    "source_id": "a-en-lieux-demo"
+   },
+   "type": "exercise"
+  }
+ ],
+ "schema": "flh_agent_proposals_v2"
+}

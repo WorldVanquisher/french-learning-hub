@@ -1,0 +1,44 @@
+{
+ "bundle_2_1_unchanged": {
+  "feed-savoir-connaitre-demo-r1.json": {
+   "consumer_increment_4": [],
+   "contract": []
+  },
+  "feed-y-en-demo-r1.json": {
+   "consumer_increment_4": [],
+   "contract": []
+  },
+  "feed-y-en-demo-r2-reapproved.json": {
+   "consumer_increment_4": [],
+   "contract": []
+  },
+  "feed-y-en-demo-r2.json": {
+   "consumer_increment_4": [
+    "items must be a non-empty list (an all-withdrawn feed is refused)"
+   ],
+   "contract": []
+  }
+ },
+ "bundle_2_2": {
+  "feed-1-r1.json": {
+   "consumer_increment_4": [],
+   "contract": []
+  },
+  "feed-2-r1-newly-approved.json": {
+   "consumer_increment_4": [],
+   "contract": []
+  },
+  "feed-3-r2-withdrawn.json": {
+   "consumer_increment_4": [],
+   "contract": []
+  },
+  "feed-4-r3-awaiting-confirmation.json": {
+   "consumer_increment_4": [],
+   "contract": []
+  },
+  "feed-5-r3-restored.json": {
+   "consumer_increment_4": [],
+   "contract": []
+  }
+ }
+}

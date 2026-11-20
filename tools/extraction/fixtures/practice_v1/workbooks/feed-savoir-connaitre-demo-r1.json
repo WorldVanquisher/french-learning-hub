@@ -1,0 +1,144 @@
+{
+ "consumer": "workbooks lane: Review Today and scheduling",
+ "items": [
+  {
+   "evidence_ids": [
+    "ev-4f60430c36",
+    "ev-8d365c7a93",
+    "ev-d48a6a9c12"
+   ],
+   "grading": "self_check",
+   "kind": "explain",
+   "knowledge_ids": [
+    "k-3846e52023ef",
+    "k-bc6e7c48470c",
+    "k-885ce829bc4b"
+   ],
+   "measures": "unaided recall of the rule",
+   "new_sentence": null,
+   "outcomes": [
+    {
+     "action": "reveal",
+     "outcome": "revealed",
+     "seq": 5
+    }
+   ],
+   "practice_id": "p-8d55e5e7255d",
+   "prompt": "From memory, without looking: when do you use « connaître » and when « savoir »? Give one example of each."
+  },
+  {
+   "evidence_ids": [
+    "ev-4f60430c36",
+    "ev-8d365c7a93"
+   ],
+   "grading": "exact",
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-e38255f7d2c0",
+    "k-3846e52023ef"
+   ],
+   "measures": "recognition between confusable forms",
+   "new_sentence": true,
+   "options": [
+    "connais",
+    "sais"
+   ],
+   "outcomes": [
+    {
+     "action": "attempt",
+     "outcome": "correct",
+     "seq": 1
+    }
+   ],
+   "practice_id": "p-3ca128617083",
+   "prompt": "Tu connais mon frère ? — Oui, je __ ton frère."
+  },
+  {
+   "evidence_ids": [
+    "ev-4f60430c36",
+    "ev-8d365c7a93"
+   ],
+   "grading": "exact",
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-156a01f08b5a",
+    "k-3846e52023ef"
+   ],
+   "measures": "recognition between confusable forms",
+   "new_sentence": true,
+   "options": [
+    "connais",
+    "sais"
+   ],
+   "outcomes": [
+    {
+     "action": "attempt",
+     "outcome": "invalid",
+     "seq": 2
+    }
+   ],
+   "practice_id": "p-baa71166205b",
+   "prompt": "Tu sais nager ? — Oui, je __ nager."
+  },
+  {
+   "evidence_ids": [
+    "ev-4f60430c36",
+    "ev-8d365c7a93"
+   ],
+   "grading": "accepted_variants_else_self_check",
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-e38255f7d2c0",
+    "k-3846e52023ef"
+   ],
+   "measures": "production in a new sentence",
+   "new_sentence": true,
+   "outcomes": [
+    {
+     "action": "attempt",
+     "outcome": "self_check",
+     "seq": 4
+    }
+   ],
+   "practice_id": "p-3ac3b47e483a",
+   "prompt": "Tu connais mon frère ? Answer with « savoir » or « connaître »."
+  },
+  {
+   "evidence_ids": [
+    "ev-4f60430c36",
+    "ev-8d365c7a93"
+   ],
+   "grading": "accepted_variants_else_self_check",
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-156a01f08b5a",
+    "k-3846e52023ef"
+   ],
+   "measures": "production in a new sentence",
+   "new_sentence": true,
+   "outcomes": [
+    {
+     "action": "attempt",
+     "outcome": "incorrect",
+     "seq": 3
+    }
+   ],
+   "practice_id": "p-e61b319d2129",
+   "prompt": "Tu sais nager ? Answer with « savoir » or « connaître »."
+  }
+ ],
+ "not_included": [
+  "due dates, intervals or any schedule (Workbooks owns them)",
+  "answer keys (read them from the practice file when revealing)",
+  "attempt texts"
+ ],
+ "producer": "extraction lane prototype (owner of the practice-content contract)",
+ "schema": "flh_practice_review_feed_v1",
+ "source": {
+  "capture_id": "synthetic-savoir-connaitre-001",
+  "proposer": "synthetic: hand-written fixture for the Extraction 2.1 prototype (no provider call); French needs a native-speaker check before learner use",
+  "revision": 1,
+  "revision_sha256": "be532c74de7187b0856f8d8e5e77cc78c12693569c0446776c1181db00684728",
+  "source_id": "savoir-connaitre-demo"
+ }
+}

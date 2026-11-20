@@ -1,0 +1,35 @@
+Support walkthrough for a flh_speaking_candidate_review_v1 review
+outcome: insufficient_support (exit 4); standing of the comparison: observation
+
+1. What is counted. 8 clips were compared in pairs, one from each of 8 speakers. Clips of one speaker share a voice, a microphone and a text, so they are not independent: the review counts SPEAKERS as the unit of evidence (groups). The rule asks for at least 30 speakers and at least 30 paired clips; limits are inclusive.
+   clips: 8 < 30 -> fail; speakers: 8 < 30 -> fail; 22 more distinct speakers are needed
+
+2. Every speaker separately (WER = errors / reference words; difference = candidate - baseline):
+      speaker clips  words  baseline candidate difference
+          s01     1      7    0.2857    0.1429    -0.1429
+          s02     1      6    0.1667    0.0000    -0.1667
+          s03     1      6    0.1667    0.0000    -0.1667
+          s04     1      6    0.3333    0.0000    -0.3333
+          s05     1      7    0.1429    0.1429    +0.0000
+          s06     1      9    0.1111    0.0000    -0.1111
+          s07     1      7    0.2857    0.0000    -0.2857
+          s08     1      8    0.1250    0.0000    -0.1250
+   the candidate makes fewer errors for 7 of 8 speakers, more for 0, the same for 1.
+
+3. How stable the size of the difference is.
+   point estimate -0.1607; 95% speaker-bootstrap interval [-0.2308, -0.1000] (seed 20261119, 2000 resamples).
+   five consecutive seeds give lower ends -0.2308..-0.2245 and upper ends -0.1017..-0.0980: the random draw moves an end by at most 0.0063. The weakness is not the draw: every resample can only reuse these 8 speakers.
+   with 8 speakers there are 6,435 distinct resamples; with 30 there would be 5.9e+16. With few groups a percentile bootstrap tends to cover less often than its stated 95% (a known property of the method, not measured here).
+   leaving one speaker out moves the difference between -0.1837 and -0.1400; speaker s05 moves it most. With 8 speakers each is roughly 12.5% of the evidence (weighted by its words); with 30, roughly 3.3%.
+
+4. Who the speakers are. The review cannot see it; the data manifest and the experiment's own limits say it.
+   (no data manifest given: the speakers each split can offer are not counted)
+   Whatever the count, the rule is a minimum, not a sufficiency: thirty speakers of read speech still say little about learners, accents or phone microphones. The experiment's limits of evidence name its population.
+
+5. What the other checks say.
+   pass: 6 (quality.max_wer_difference, quality.max_interval_upper, quality.max_cer_difference, quality.max_group_wer_increase, resources.max_real_time_factor, resources.max_peak_rss_mb)
+   If these same values came with enough support, the outcome would be 'ready_for_owner_review'. That is not a forecast: with more speakers the values themselves change. The limit is not lowered to fit the data; a threshold change is an owner decision in a thresholds file, and the review names the file it used.
+
+6. Decision.
+   insufficient_support: the comparison stays an observation. The candidate is not ready for the owner's promotion decision on this evidence.
+   promotion performed: false; serving default: unchanged (RUNBOOK.md decides what is served).

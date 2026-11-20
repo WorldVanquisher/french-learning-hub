@@ -1,0 +1,11 @@
+1. A return in an unsupported format version
+   refused: unsupported return format 'flh_agent_proposals_v9': this FLH reads flh_agent_proposals_v1, flh_agent_proposals_v2. Ask the agent to answer in the format that packet.md describes under 'How to return proposals' (the packet names its version)
+   Recovery: nothing was read or changed. Ask the agent to answer again in the format packet.md describes.
+
+2. Codex's return previewed against packet 2 (it names packet 1)
+   Exercise proposals (read-only) for packet pk-baea88870f76 from codex  WARNING: the return names another packet_id
+   counts: wrong_revision 3
+   accepting e2 anyway: refused: the return names packet 'pk-0e06b9c6b9c4', not pk-baea88870f76
+   Recovery: preview it against the packet it names, kept in the work directory (packets/pk-0e06b9c6b9c4.json):
+   Exercise proposals (read-only) for packet pk-0e06b9c6b9c4 from codex
+   counts: candidate 2, decided 1

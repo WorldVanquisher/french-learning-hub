@@ -1,0 +1,4 @@
+{"header": {"config_id": "synthetic-config-1", "label": "B", "model_id": "synthetic-review-b", "provenance": "hand-written synthetic results"}}
+{"id": "s1-pass", "status": "transcribed", "text": "Je voudrais un café s'il vous plaît"}
+{"id": "s2-retry", "status": "transcribed", "text": "Nous arrivons demain matin."}
+{"id": "s3-abstention", "status": "no_speech", "text": ""}

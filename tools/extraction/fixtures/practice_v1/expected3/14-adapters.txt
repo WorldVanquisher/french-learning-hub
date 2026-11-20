@@ -1,0 +1,7 @@
+packet.json and packet.md identical for codex, claude-code, any-agent: True
+normal form problems in packet.json / packet.md: none
+privacy findings in the three adapter directories: 0
+claude-code: line 1 differs from Codex's
+claude-code: line 10 differs from Codex's
+any-agent: line 1 differs from Codex's
+any-agent: line 10 differs from Codex's

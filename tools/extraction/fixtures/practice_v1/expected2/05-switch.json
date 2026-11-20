@@ -1,0 +1,25 @@
+{
+ "accepted": {
+  "decision_seq": 8,
+  "item_id": "k-0d3281b28da6",
+  "proposal_id": "c1"
+ },
+ "checks": {
+  "accepted_correction_in_packet": true,
+  "answer_keys_checked": 9,
+  "answer_keys_in_study_packet": 0,
+  "claude_code_conflicts_with_the_accepted_correction": true,
+  "continuity_names_the_change": true,
+  "knowledge_ids": 6,
+  "last_confusion": "y vs en on p-664f7533a19d",
+  "next_exercise": "p-8d5cabf2ab59 produce",
+  "same_knowledge_ids": true
+ },
+ "packet_1": "pk-e2920fe276cb",
+ "packet_2": "pk-afdb387f3af6",
+ "refused": [
+  "c2: refused (proposal c2 is duplicate: same wording as c1)",
+  "c1: refused (duplicate: k-0d3281b28da6 already says this)"
+ ],
+ "schema": "flh_practice_switch_v1"
+}

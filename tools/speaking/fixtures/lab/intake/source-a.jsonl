@@ -1,0 +1,4 @@
+{"id": "a0", "speaker": "101", "pcm_sha256": "4e1195df020de59e0d65a33a4279f1183e7ae4e5d980e309f8b55adff2e61c3e", "split": "test", "corpus": "src_a"}
+{"id": "a1", "speaker": "102", "pcm_sha256": "f55ff16f66f43360266b95db6f8fec01d76031054306ae4a4b380598f6cfd114", "split": "test", "corpus": "src_a"}
+{"id": "a2", "speaker": "103", "pcm_sha256": "2c3a4249d77070058649dbd822dcaf7957586fce428cfb2ca88b94741eda8b07", "split": "test", "corpus": "src_a"}
+{"id": "a3", "speaker": "104", "pcm_sha256": "f46dd28a5499d8efef0b8fb8ee1ec1c5a5e407c9381741d576ba8deb4f59ec3f", "split": "test", "corpus": "src_a"}

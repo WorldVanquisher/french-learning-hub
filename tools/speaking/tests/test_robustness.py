@@ -108,7 +108,8 @@ class Punctuated(unittest.TestCase):
                     prepare.prepare_punctuated(src, base, os.path.join(tmp, "out2"), n=3, n_dev=1, log=lambda *_: None)
             self.assertEqual(man["excluded"], {"dev_sentence": 1, "held_out_text": 1, "too_long": 1})
             self.assertEqual((man["splits"]["train"]["sentences"], man["splits"]["train"]["with_second_reader"]), (1, 1))
-            got = [json.loads(line) for line in open(os.path.join(out, "manifest.jsonl"), encoding="utf-8")]
+            with open(os.path.join(out, "manifest.jsonl"), encoding="utf-8") as fh:
+                got = [json.loads(line) for line in fh]
             # two eligible sentences: one for dev, the other's two readers for train; raw text kept
             self.assertEqual({r["text"] for r in got}, {"Il pleut ; on reste.", "Et demain ?"})
             self.assertEqual(sorted(r["split"] for r in got), ["dev", "train", "train"])

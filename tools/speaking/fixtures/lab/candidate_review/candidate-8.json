@@ -1,0 +1,123 @@
+{
+ "decoding": "synthetic_rule_v1",
+ "items": [
+  {
+   "cluster": "s01",
+   "gender": "F",
+   "id": "syn-s01-u1",
+   "ref": "Le matin je bois un café chaud",
+   "served": {
+    "status": "transcribed",
+    "text": "Le matin je bois un café",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s02",
+   "gender": "M",
+   "id": "syn-s02-u1",
+   "ref": "Nous allons au marché le samedi",
+   "served": {
+    "status": "transcribed",
+    "text": "Nous allons au marché le samedi",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s03",
+   "gender": "F",
+   "id": "syn-s03-u1",
+   "ref": "Elle habite près de la gare",
+   "served": {
+    "status": "transcribed",
+    "text": "Elle habite près de la gare",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s04",
+   "gender": "M",
+   "id": "syn-s04-u1",
+   "ref": "Il fait froid en hiver ici",
+   "served": {
+    "status": "transcribed",
+    "text": "Il fait froid en hiver ici",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s05",
+   "gender": "F",
+   "id": "syn-s05-u1",
+   "ref": "Mon frère joue au football le dimanche",
+   "served": {
+    "status": "transcribed",
+    "text": "Mon frère joue au football le",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s06",
+   "gender": "M",
+   "id": "syn-s06-u1",
+   "ref": "Tu peux fermer la fenêtre s'il te plaît",
+   "served": {
+    "status": "transcribed",
+    "text": "Tu peux fermer la fenêtre s'il te plaît",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s07",
+   "gender": "F",
+   "id": "syn-s07-u1",
+   "ref": "Les enfants mangent une pomme à midi",
+   "served": {
+    "status": "transcribed",
+    "text": "Les enfants mangent une pomme à midi",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s08",
+   "gender": "M",
+   "id": "syn-s08-u1",
+   "ref": "Je prends le bus pour aller au travail",
+   "served": {
+    "status": "transcribed",
+    "text": "Je prends le bus pour aller au travail",
+    "warnings": []
+   }
+  }
+ ],
+ "model_dir_name": "synthetic-candidate-v1",
+ "normalization": "flh_fr_asr_norm_v1",
+ "runtime": {
+  "machine": "synthetic",
+  "python": "none"
+ },
+ "schema": "flh_speaking_eval_v1",
+ "summary": {
+  "label": "synthetic candidate: invented texts and timing, no model ran",
+  "served": {
+   "cer": 0.05639,
+   "del": 2,
+   "ins": 0,
+   "ref_words": 56,
+   "sub": 0,
+   "utterances": 8,
+   "wer": 0.03571
+  },
+  "split": "synthetic",
+  "timing": {
+   "audio_s": 80.0,
+   "batch": 1,
+   "compute_s": 22.4,
+   "model_load_s": 9.1,
+   "peak_rss_mb": 1500.0,
+   "real_time_factor": 0.28,
+   "threads": 2
+  },
+  "utterances": 8
+ }
+}

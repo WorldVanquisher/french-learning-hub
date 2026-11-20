@@ -1,0 +1,28 @@
+Speaking Lab flh_speaking_lab_result_v1  case synthetic-fr-001  status compared
+Note: Word agreement between each transcript and the reference, after flh_fr_asr_norm_v1. Not a pronunciation, fluency or accent grade: a difference can come from the speaker, the recording or the model, and this comparison cannot tell which.
+audio sha256 2484029a001a2d5cdf173eb93b0f05d7782ef5291275348b454b492364a3a0ed  (synthetic_tone_v1: generated 0.6 s 220 Hz tone, 16 kHz mono PCM16; a placeholder identity, not speech)
+reference   L'élève a lu le texte à voix haute, puis il s'est assis.
+normalized  l' élève a lu le texte à voix haute puis il s' est assis  (14 words, flh_fr_asr_norm_v1)
+
+[A] model synthetic-transcript-a  config synthetic-config-1  (hand-written synthetic transcript: one changed accent)
+  raw         L'eleve a lu le texte à voix haute, puis il s'est assis.
+  normalized  l' eleve a lu le texte à voix haute puis il s' est assis
+  ref         l' élève a lu le texte à voix haute puis il s' est assis
+  hyp         l' eleve a lu le texte à voix haute puis il s' est assis
+  edit           S~
+  WER 7.1% (1 sub, 0 del, 0 ins over 14 reference words; 1 accent-only)  CER 3.6%
+  views       cased_punct 1/18  uncased_punct 1/18  normalized 1/14  (case 0, punctuation 0)
+  signals     wer=0.0714 [measured]  accent_only_substitutions=1 [rule]  low_evidence=False [heuristic]  confidence=not supplied [not_supplied]
+
+[B] model synthetic-transcript-b  config synthetic-config-1  (hand-written synthetic transcript: one omitted word)
+  raw         L'élève a lu le texte à haute, puis il s'est assis.
+  normalized  l' élève a lu le texte à haute puis il s' est assis
+  ref         l' élève a lu le texte à voix haute puis il s' est assis
+  hyp         l' élève a lu le texte à *    haute puis il s' est assis
+  edit                                 D
+  WER 7.1% (0 sub, 1 del, 0 ins over 14 reference words; 0 accent-only)  CER 8.9%
+  views       cased_punct 1/18  uncased_punct 1/18  normalized 1/14  (case 0, punctuation 0)
+  signals     wer=0.0714 [measured]  accent_only_substitutions=0 [rule]  low_evidence=False [heuristic]  confidence=not supplied [not_supplied]
+
+paired: errors A 1, B 1; B - A = +0; evidence single_case. One case is one observation: use the paired evaluation (compare/accept) for a model decision.
+edit marks: S substitution, S~ accent-only substitution, D deletion (* in hyp), I insertion (* in ref)

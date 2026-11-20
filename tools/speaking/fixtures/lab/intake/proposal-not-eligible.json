@@ -1,0 +1,20 @@
+{
+ "attribution": "",
+ "audio_redistributed": true,
+ "condition_field": null,
+ "consent_statement": null,
+ "license": "unknown",
+ "metadata_fields": [
+  "speaker_name",
+  "email",
+  "condition"
+ ],
+ "note": "SYNTHETIC proposal for the checklist test; no such dataset is implied to exist",
+ "repo": "example/synthetic-read-speech-fr",
+ "revision": "main",
+ "schema": "flh_speaking_source_proposal_v1",
+ "source_id": "synthetic-scraped-clips",
+ "speaker_disjoint_splits": false,
+ "speaker_id_field": null,
+ "speaker_provenance": ""
+}

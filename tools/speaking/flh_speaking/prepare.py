@@ -375,9 +375,11 @@ def prepare_punctuated(sources: str, base_data: str, out_dir: str, n: int = 1440
     body = "".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in rows)
     with open(os.path.join(out_dir, "manifest.jsonl"), "w", encoding="utf-8") as fh:
         fh.write(body)
+    with open(os.path.join(base_data, "manifest.jsonl"), "rb") as fh:
+        held_sha = hashlib.sha256(fh.read()).hexdigest()
     man = {"schema": SCHEMA, "selection_rule": PUNCT_RULE, "audio_convention": audio.CONVENTION, "text_normalization": textnorm.NORM_VERSION,
            "sources": {"fleurs_fr_train": {k: pins.FLEURS_FR_TRAIN[k] for k in ("repo", "revision", "license", "config")},
-                       "held_out_from": {"manifest_jsonl_sha256": hashlib.sha256(open(os.path.join(base_data, "manifest.jsonl"), "rb").read()).hexdigest()}},
+                       "held_out_from": {"manifest_jsonl_sha256": held_sha}},
            "attribution": "FLEURS (google/fleurs), CC BY 4.0. Audio is not redistributed in the repository.",
            "excluded": excluded, "leakage": {"held_out_normalized_text_in_train": 0, "fleurs_dev_sentences_in_train": 0,
                                              "speaker_overlap_with_fleurs_dev": "unknown (FLEURS publishes no speaker ids)"},

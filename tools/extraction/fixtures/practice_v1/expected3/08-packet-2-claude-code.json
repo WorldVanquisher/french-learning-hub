@@ -1,0 +1,382 @@
+{
+ "agent_rules": [
+  "Cite the evidence ID (ev-…) or knowledge ID (k-…) for every claim you make about the learner's material.",
+  "Ask one question at a time and wait for the answer.",
+  "Say clearly when something is NOT supported by the packet's evidence; never present it as the learner's material."
+ ],
+ "awaiting_learner": [
+  {
+   "agent": "codex",
+   "proposal_id": "e2",
+   "status": "proposed by an agent, not accepted by the learner: not knowledge",
+   "summary": "production for k-fb79321ec520: Où vas-tu cet hiver ? (l’Italie)",
+   "type": "exercise"
+  }
+ ],
+ "concept": "à vs en",
+ "continuity": {
+  "changed": [],
+  "knowledge_ids_added": [],
+  "knowledge_ids_dropped": [
+   "k-886099054b26"
+  ],
+  "knowledge_ids_kept": 7,
+  "new_misses": [
+   {
+    "missed_since": 1,
+    "practice_id": "p-04705161a655"
+   }
+  ],
+  "previous_packet_id": "pk-0e06b9c6b9c4",
+  "same_source_revision": false
+ },
+ "evidence": [
+  {
+   "evidence_id": "ev-2cd24b70b3",
+   "excerpt": "…mpiers, à Paris » ; « je suis [valet de chambre en Angleterre] ». Chapitre 3 : « ont été env…",
+   "field": "original_context",
+   "quote": "valet de chambre en Angleterre",
+   "source_revision": 2,
+   "status": "located"
+  },
+  {
+   "evidence_id": "ev-5f148ce5b2",
+   "excerpt": "…ux Indes ». Chapitre 9 : « en [débarquant en Égypte] ».",
+   "field": "original_context",
+   "quote": "débarquant en Égypte",
+   "source_revision": 2,
+   "status": "located"
+  },
+  {
+   "evidence_id": "ev-75a4d1fa87",
+   "excerpt": "…Verne. Chapitre 1 : « j'étais [sergent de pompiers, à Paris] » ; « je suis valet de chambr…",
+   "field": "original_context",
+   "quote": "sergent de pompiers, à Paris",
+   "source_revision": 2,
+   "status": "located"
+  },
+  {
+   "evidence_id": "ev-7c2a34f83e",
+   "excerpt": "…hapitre 3 : « ont été envoyés [en Amérique et en Europe] ». Chapitre 8 : « filer mon v…",
+   "field": "original_context",
+   "quote": "en Amérique et en Europe",
+   "source_revision": 2,
+   "status": "located"
+  },
+  {
+   "evidence_id": "ev-b704ddbc0b",
+   "excerpt": "…t en Europe ». Chapitre 8 : « [filer mon voleur jusqu'aux Indes] ». Chapitre 9 : « en débarqua…",
+   "field": "original_context",
+   "quote": "filer mon voleur jusqu'aux Indes",
+   "source_revision": 2,
+   "status": "located"
+  },
+  {
+   "evidence_id": "ev-ebad63af25",
+   "excerpt": "…u'aux Indes ». Chapitre 9 : « [en débarquant en Égypte] ».",
+   "field": "original_context",
+   "quote": "en débarquant en Égypte",
+   "source_revision": 2,
+   "status": "located"
+  }
+ ],
+ "excluded_by_default": [
+  "rejected, pending and needs-review drafts",
+  "the texts of your attempts (only counts of missed items)",
+  "the full question, its context and any chat (only the cited excerpts)",
+  "other sources and unrelated history",
+  "credentials, machine-local paths, session links and e-mail addresses (checked)"
+ ],
+ "exercises_not_offered": [
+  {
+   "agent": "codex",
+   "practice_id": "p-3e03bff58a01",
+   "proposal_id": "e1",
+   "why": "k-886099054b26 is not approved in revision 2: not offered until it is"
+  }
+ ],
+ "knowledge": [
+  {
+   "evidence_ids": [
+    "ev-2cd24b70b3",
+    "ev-5f148ce5b2",
+    "ev-7c2a34f83e"
+   ],
+   "id": "k-fb79321ec520",
+   "origin": "source",
+   "support": "supported",
+   "text": "« en » goes before a feminine country or a continent, and before a country name that begins with a vowel: « en Angleterre », « en Égypte », « en Europe ».",
+   "type": "claim"
+  },
+  {
+   "evidence_ids": [
+    "ev-b704ddbc0b"
+   ],
+   "id": "k-53a8841fc7d3",
+   "origin": "source",
+   "support": "supported",
+   "text": "« aux » (« à » + « les ») goes before a plural place name: « jusqu’aux Indes ».",
+   "type": "claim"
+  },
+  {
+   "evidence_ids": [
+    "ev-ebad63af25"
+   ],
+   "id": "k-edad5a9a03c5",
+   "learner_corrected": true,
+   "origin": "learner",
+   "support": "supported",
+   "text": "In « en débarquant en Égypte », the first « en » makes a gerund (« en » + -ant: while landing); only « en Égypte » is the place preposition.",
+   "type": "claim"
+  },
+  {
+   "evidence_ids": [
+    "ev-75a4d1fa87",
+    "ev-2cd24b70b3"
+   ],
+   "forms": [
+    {
+     "form": "à",
+     "use": "+ a city: à Paris, à Londres"
+    },
+    {
+     "form": "en",
+     "use": "+ a feminine country or a continent: en Angleterre, en Europe"
+    }
+   ],
+   "id": "k-d0424fb40a11",
+   "origin": "source",
+   "support": "supported",
+   "text": "Ask what the place is: a city takes « à »; a feminine country or a continent takes « en ».",
+   "type": "contrast"
+  },
+  {
+   "evidence_ids": [],
+   "id": "k-32f4087a06b6",
+   "origin": "generated",
+   "support": "generated",
+   "text": "« Japon » is masculine and begins with a consonant, so « à » + « le » gives « au ».",
+   "type": "common_error"
+  },
+  {
+   "evidence_ids": [],
+   "example": "Où habite ta sœur ? (Lyon) — …",
+   "id": "k-82761c80f843",
+   "new_sentence": true,
+   "origin": "generated",
+   "support": "generated",
+   "text": "(answer and explanation withheld: they are the key to p-10a28f330355, p-919b6c108284)",
+   "type": "worked_example"
+  },
+  {
+   "evidence_ids": [],
+   "example": "Où vas-tu cet été ? (l’Espagne) — …",
+   "id": "k-edadc7ded432",
+   "new_sentence": true,
+   "origin": "generated",
+   "support": "generated",
+   "text": "(answer and explanation withheld: they are the key to p-04705161a655, p-f9efb7256976)",
+   "type": "worked_example"
+  }
+ ],
+ "known_confusions": [
+  {
+   "evidence_ids": [],
+   "id": "k-32f4087a06b6",
+   "missed_in_practice": 1,
+   "right": "au Japon",
+   "why": "« Japon » is masculine and begins with a consonant, so « à » + « le » gives « au ».",
+   "wrong": "en Japon"
+  }
+ ],
+ "language_level": "A1/A2 (learner-stated target)",
+ "last_confusion": {
+  "attempt_seq": 2,
+  "contrast_id": "k-d0424fb40a11",
+  "forms": [
+   "à",
+   "en"
+  ],
+  "kind": "produce",
+  "knowledge_ids": [
+   "k-edadc7ded432",
+   "k-d0424fb40a11"
+  ],
+  "known_confusion_id": null,
+  "practice_id": "p-04705161a655",
+  "prompt": "Où vas-tu cet été ? (l’Espagne) Answer with « à » or « en ».",
+  "resolved_later": false,
+  "shared": "which forms were confused, on which exercise; not the attempt text and not the expected answer"
+ },
+ "learner_goal": "Choose « à » or « en » before a place name when I say where someone is or goes (A1/A2).",
+ "mode": "study",
+ "next_exercise": {
+  "evidence_ids": [
+   "ev-2cd24b70b3",
+   "ev-75a4d1fa87"
+  ],
+  "id": "p-919b6c108284",
+  "kind": "produce",
+  "knowledge_ids": [
+   "k-82761c80f843",
+   "k-d0424fb40a11"
+  ],
+  "measures": "production in a new sentence",
+  "new_sentence": true,
+  "origin": "source",
+  "prompt": "Où habite ta sœur ? (Lyon) Answer with « à » or « en ».",
+  "rule": "flh_next_exercise_rule_v1",
+  "why": "after the miss on p-04705161a655: the same contrast in a different sentence, production first"
+ },
+ "next_exercises": [
+  {
+   "evidence_ids": [
+    "ev-2cd24b70b3",
+    "ev-75a4d1fa87"
+   ],
+   "id": "p-04705161a655",
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-edadc7ded432",
+    "k-d0424fb40a11"
+   ],
+   "measures": "production in a new sentence",
+   "missed_in_practice": 1,
+   "new_sentence": true,
+   "origin": "source",
+   "prompt": "Où vas-tu cet été ? (l’Espagne) Answer with « à » or « en »."
+  },
+  {
+   "evidence_ids": [
+    "ev-2cd24b70b3",
+    "ev-5f148ce5b2",
+    "ev-75a4d1fa87",
+    "ev-7c2a34f83e"
+   ],
+   "id": "p-cf2ec01246c8",
+   "kind": "explain",
+   "knowledge_ids": [
+    "k-d0424fb40a11",
+    "k-fb79321ec520"
+   ],
+   "measures": "unaided recall of the rule",
+   "missed_in_practice": 0,
+   "new_sentence": null,
+   "origin": "source",
+   "prompt": "From memory, without looking: when do you use « à » and when « en »? Give one example of each."
+  },
+  {
+   "evidence_ids": [
+    "ev-2cd24b70b3",
+    "ev-75a4d1fa87"
+   ],
+   "id": "p-10a28f330355",
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-82761c80f843",
+    "k-d0424fb40a11"
+   ],
+   "measures": "recognition between confusable forms",
+   "missed_in_practice": 0,
+   "new_sentence": true,
+   "options": [
+    "à",
+    "en"
+   ],
+   "origin": "source",
+   "prompt": "Où habite ta sœur ? (Lyon) — Elle habite __ Lyon."
+  },
+  {
+   "evidence_ids": [
+    "ev-2cd24b70b3",
+    "ev-75a4d1fa87"
+   ],
+   "id": "p-f9efb7256976",
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-edadc7ded432",
+    "k-d0424fb40a11"
+   ],
+   "measures": "recognition between confusable forms",
+   "missed_in_practice": 0,
+   "new_sentence": true,
+   "options": [
+    "à",
+    "en"
+   ],
+   "origin": "source",
+   "prompt": "Où vas-tu cet été ? (l’Espagne) — Je vais __ Espagne."
+  },
+  {
+   "evidence_ids": [
+    "ev-2cd24b70b3",
+    "ev-75a4d1fa87"
+   ],
+   "id": "p-919b6c108284",
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-82761c80f843",
+    "k-d0424fb40a11"
+   ],
+   "measures": "production in a new sentence",
+   "missed_in_practice": 0,
+   "new_sentence": true,
+   "origin": "source",
+   "prompt": "Où habite ta sœur ? (Lyon) Answer with « à » or « en »."
+  }
+ ],
+ "observed_in_practice": [
+  {
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-edadc7ded432",
+    "k-d0424fb40a11"
+   ],
+   "missed": 1,
+   "practice_id": "p-04705161a655",
+   "prompt": "Où vas-tu cet été ? (l’Espagne) Answer with « à » or « en »."
+  }
+ ],
+ "omitted_by_learner": [],
+ "packet_id": "pk-baea88870f76",
+ "return_format": {
+  "correction": {
+   "target_id": "a k-… id from this packet",
+   "text": "the corrected wording"
+  },
+  "each_needs": [
+   "proposal_id",
+   "type",
+   "rationale",
+   "evidence_ids"
+  ],
+  "exercise": {
+   "ambiguity": "optional: any case where the rule allows more than one answer",
+   "discrimination": "options and answer",
+   "exercise_schema": "flh_exercise_proposal_v1",
+   "explanation": "reference",
+   "kind": "explanation | discrimination | production",
+   "production": "answer, accepted (all valid variants) and rubric",
+   "rule_id": "an approved claim or contrast k-… of this packet",
+   "source": "this packet's source object, unchanged"
+  },
+  "proposal_types": [
+   "correction",
+   "exercise"
+  ],
+  "schema": "flh_agent_proposals_v1",
+  "schemas": {
+   "corrections": "flh_agent_proposals_v1",
+   "exercises": "flh_agent_proposals_v2"
+  }
+ },
+ "rubrics_included": false,
+ "rubrics_note": null,
+ "schema": "flh_practice_packet_v3",
+ "source": {
+  "revision": 2,
+  "revision_sha256": "0386e3424e34e531c2369dc63f674b539477c4e179e2c0e6113d825be73ecea6",
+  "source_id": "a-en-lieux-demo"
+ },
+ "variant": "full"
+}

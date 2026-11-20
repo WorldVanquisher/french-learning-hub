@@ -1,0 +1,126 @@
+{
+ "answers_in_study_packets": [],
+ "dry_run_differences": [],
+ "novelty": {
+  "all_novel": true,
+  "corpus": [
+   "expected/03-practice.txt",
+   "expected/04-attempts.txt",
+   "y_en.r1.json",
+   "y_en.r2.json",
+   "y_en.r3.json"
+  ],
+  "items": [
+   {
+    "difficulty": "L1",
+    "found_in": [],
+    "id": "u1",
+    "longest_shared_words": 1,
+    "novel": true,
+    "type": "unassisted_recall"
+   },
+   {
+    "difficulty": "L1",
+    "found_in": [],
+    "id": "a1",
+    "longest_shared_words": 4,
+    "novel": true,
+    "type": "assisted_recall"
+   },
+   {
+    "difficulty": "L1",
+    "found_in": [],
+    "id": "a2",
+    "longest_shared_words": 6,
+    "novel": true,
+    "type": "assisted_recall"
+   },
+   {
+    "difficulty": "L1",
+    "found_in": [],
+    "id": "t1",
+    "longest_shared_words": 4,
+    "novel": true,
+    "type": "transfer"
+   },
+   {
+    "difficulty": "L1",
+    "found_in": [],
+    "id": "t2",
+    "longest_shared_words": 2,
+    "novel": true,
+    "type": "transfer"
+   },
+   {
+    "difficulty": "L1",
+    "found_in": [],
+    "id": "t3",
+    "longest_shared_words": 2,
+    "novel": true,
+    "type": "transfer"
+   },
+   {
+    "difficulty": "L2",
+    "found_in": [],
+    "id": "t4",
+    "longest_shared_words": 3,
+    "novel": true,
+    "type": "transfer"
+   },
+   {
+    "difficulty": "L2",
+    "found_in": [],
+    "id": "t5",
+    "longest_shared_words": 2,
+    "novel": true,
+    "type": "transfer"
+   },
+   {
+    "difficulty": "L2",
+    "found_in": [],
+    "id": "t6",
+    "longest_shared_words": 4,
+    "novel": true,
+    "type": "transfer"
+   },
+   {
+    "difficulty": "L3",
+    "found_in": [],
+    "id": "t7",
+    "longest_shared_words": 3,
+    "novel": true,
+    "type": "transfer"
+   },
+   {
+    "difficulty": "L3",
+    "found_in": [],
+    "id": "t8",
+    "longest_shared_words": 4,
+    "novel": true,
+    "type": "transfer"
+   },
+   {
+    "difficulty": "L3",
+    "found_in": [],
+    "id": "t9",
+    "longest_shared_words": 3,
+    "novel": true,
+    "type": "transfer"
+   }
+  ]
+ },
+ "order": [
+  "t9",
+  "t4",
+  "u1",
+  "t1",
+  "a2",
+  "t6",
+  "t7",
+  "t3",
+  "a1",
+  "t2",
+  "t5",
+  "t8"
+ ]
+}

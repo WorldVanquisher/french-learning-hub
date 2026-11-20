@@ -1,0 +1,142 @@
+{
+ "capture": {
+  "analysis": {
+   "category": "grammar",
+   "explanation": "« en » replaces « des enfants » before a number; « les » would replace « les enfants », a definite noun."
+  },
+  "capture_id": "synthetic-en-quantite-001",
+  "original_context": "Au café, le serveur demande : « Vous avez des enfants ? » Mon mari répond : « Oui, j'en ai deux. » En France, on entend ça souvent.",
+  "original_input": "Dans « J'en ai deux », que remplace « en » ? Et pourquoi pas « Je les ai deux » ?",
+  "schema_version": "learning_capture_v1",
+  "source": "manual"
+ },
+ "learner_goal": "Use « en » with a number, and know when « les » is right instead (A2).",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "en + quantité",
+    "confidence": 0.8,
+    "kind": "grammar",
+    "quotes": [
+     "Vous avez des enfants ?",
+     "Oui, j'en ai deux."
+    ],
+    "ref": "en-quantite",
+    "statement": "« en » replaces « des + noun » when a number follows: « Vous avez des enfants ? — Oui, j'en ai deux. »",
+    "type": "claim"
+   },
+   {
+    "canonical": "en pronom / en préposition",
+    "confidence": 0.6,
+    "kind": "grammar",
+    "quotes": [
+     "en"
+    ],
+    "ref": "en-pronom",
+    "statement": "Here « en » is a pronoun, not the preposition « en » of « en France ».",
+    "type": "claim"
+   },
+   {
+    "canonical": "les (nom défini)",
+    "confidence": 0.6,
+    "kind": "grammar",
+    "quotes": [
+     "les enfants"
+    ],
+    "ref": "les-defini",
+    "statement": "« les » replaces a definite noun such as « les enfants », so it does not go with a number.",
+    "type": "claim"
+   },
+   {
+    "a": {
+     "form": "en",
+     "use": "des / du / de la + noun, or a number"
+    },
+    "applies": [
+     "en-quantite",
+     "les-defini"
+    ],
+    "b": {
+     "form": "les",
+     "use": "a definite noun: les enfants, les clés"
+    },
+    "distinction": "With a number or « des », use « en »; with a definite noun, use « les » (or « le », « la »).",
+    "quotes": [
+     "Vous avez des enfants ?",
+     "Oui, j'en ai deux."
+    ],
+    "ref": "en-vs-les",
+    "type": "contrast"
+   },
+   {
+    "applies": [
+     "en-vs-les"
+    ],
+    "quotes": [
+     "Je les ai deux"
+    ],
+    "ref": "les-deux",
+    "right": "j'en ai deux",
+    "type": "common_error",
+    "why": "A number after the verb counts the replaced noun, so it needs « en ».",
+    "wrong": "je les ai deux"
+   },
+   {
+    "accepted": [
+     "Oui, j'en ai trois.",
+     "J'en ai trois."
+    ],
+    "answer": "Oui, j'en ai trois.",
+    "applies": [
+     "en-vs-les",
+     "en-quantite"
+    ],
+    "choices": [
+     "j'en",
+     "je les"
+    ],
+    "cloze": "Oui, __ ai trois.",
+    "explanation": "« des frères » with a number: « en » + the number.",
+    "generated": true,
+    "instruction": "Answer « yes, three » with a pronoun.",
+    "question": "Tu as des frères ?",
+    "ref": "ex-freres",
+    "target": "j'en",
+    "type": "worked_example",
+    "wrong": [
+     "Oui, je les ai trois."
+    ]
+   },
+   {
+    "accepted": [
+     "Oui, je les ai.",
+     "Oui, je les ai sur moi."
+    ],
+    "answer": "Oui, je les ai.",
+    "applies": [
+     "en-vs-les",
+     "les-defini"
+    ],
+    "choices": [
+     "j'en",
+     "je les"
+    ],
+    "cloze": "Oui, __ ai.",
+    "explanation": "« les clés de la voiture » is a definite noun: « les ».",
+    "generated": true,
+    "instruction": "Answer « yes » with a pronoun.",
+    "question": "Tu as les clés de la voiture ?",
+    "ref": "ex-cles",
+    "target": "je les",
+    "type": "worked_example",
+    "wrong": [
+     "Oui, j'en ai."
+    ]
+   }
+  ],
+  "proposer": "synthetic: hand-written fixture for the Extraction 2.0 prototype (no provider call); French needs a native-speaker check before learner use"
+ },
+ "revision": 1,
+ "schema": "flh_practice_source_v1",
+ "source_id": "en-quantite-demo"
+}

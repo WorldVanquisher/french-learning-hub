@@ -1,0 +1,10 @@
+Extraction 2.1 demo (synthetic y/en and savoir/connaître; PROTOTYPE)
+0 measure       y-en-demo r1: 9 -> 3 steps; savoir-connaitre-demo r1: 9 -> 3 steps; y-en-demo r2: 5 -> 4 steps
+1 y/en          init + review; batch b-d877ea1aeb14 approved (6 items); flagged k-5ca79503ae78 rejected; approved 6, rejected 1
+2 session 1     packet pk-e2920fe276cb (flh_practice_packet_v2, study) -> Codex return (fixture): accepted_candidate 2, duplicate 1
+3 learner       accepted c1 -> decision 8 edit k-0d3281b28da6 via codex c1; c2: refused (proposal c2 is duplicate: same wording as c1); c1: refused (duplicate: k-0d3281b28da6 already says this)
+4 practice      p-664f7533a19d incorrect (known error matched; the text stays local)
+5 session 2     packet pk-afdb387f3af6 continues pk-e2920fe276cb: same knowledge IDs True (6); accepted correction present True; last confusion y vs en on p-664f7533a19d; next exercise p-8d5cabf2ab59 produce; answer keys in the study packet 0 of 9 checked
+6 Claude Code   return (fixture), read-only: accepted_candidate 1, duplicate 1, conflict 1, unknown_reference 1; it cannot silently replace the accepted correction: True
+7 revision 2    feed r1 5 items -> r2 0 items, 5 withdrawn -> re-approved 5 items, same practice IDs as r1 True
+8 savoir/conn.  5 items; attempt outcomes across both feeds: correct, incorrect, invalid, revealed, self_check

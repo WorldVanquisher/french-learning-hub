@@ -1,0 +1,22 @@
+Import preview (read-only): packet flh_practice_packet_v3, return flh_agent_proposals_v2
+  warning: unknown top-level field 'session_summary' ignored
+Agent return preview (read-only) for packet pk-baea88870f76 from claude-code
+counts: accepted_candidate 0, duplicate 0, conflict 0, unknown_reference 1, invalid 0
+  unknown_reference  q3     correction unknown target k-886099054b26, evidence ev-371c2bef92
+nothing was applied: an accepted candidate still needs the learner's explicit approval
+Exercise proposals (read-only) for packet pk-baea88870f76 from claude-code
+counts: candidate 1, duplicate 1, invalid 1
+  warning: unknown top-level field 'session_summary' ignored
+  duplicate         q1     the same prompt is already exercise p-3e03bff58a01 you accepted from codex
+  candidate         q2     production for rule k-fb79321ec520 -> would be p-6a86c6109164
+      prompt    Où vit ta cousine ? (la Suisse)
+      answer    Elle vit en Suisse.
+      accepted  Elle vit en Suisse. | Ma cousine vit en Suisse. | En Suisse.
+      rubric    « la Suisse » is a feminine country: « en Suisse ».
+      ambiguity none found (word checks only)
+      evidence  ev-2cd24b70b3; rationale (provenance, not evidence): Another feminine country for « en ».
+  invalid           q4     malformed IDs: k-XYZ
+nothing was applied: a candidate becomes practice only by your explicit decision (practice2 exercise --approve)
+
+learner rejected q2 (decision 2): too close to Codex's e2, which I want to try first
+q3 replayed against packet 1, where k-886099054b26 was still approved: refused: the packet was made from another revision of the source; export a new packet first

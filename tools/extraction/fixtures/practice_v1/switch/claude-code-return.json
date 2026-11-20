@@ -1,0 +1,63 @@
+{
+ "agent": "claude-code",
+ "fixture_note": "hand-written fixture standing in for a Claude Code session on session-2 packet pk-afdb387f3af6; no agent was run",
+ "packet_id": "pk-afdb387f3af6",
+ "proposals": [
+  {
+   "evidence_ids": [
+    "ev-fd704f2740"
+   ],
+   "proposal_id": "q1",
+   "rationale": "A shorter rule for A1.",
+   "target_id": "k-0d3281b28da6",
+   "text": "Use « y » after « à » and « en » after « de ».",
+   "type": "correction"
+  },
+  {
+   "evidence_ids": [
+    "ev-17c9dfcc08"
+   ],
+   "proposal_id": "q2",
+   "rationale": "The corrected contrast k-0d3281b28da6 already lists « du », « de la » and « des »; this claim should say the same.",
+   "target_id": "k-40cbe73ae3f5",
+   "text": "« en » replaces a place introduced by « de », « du », « de la » or « des »: « Je viens de la boulangerie, j'en viens. »",
+   "type": "correction"
+  },
+  {
+   "accepted": [
+    "Oui, nous y allons."
+   ],
+   "evidence_ids": [
+    "ev-fd704f2740"
+   ],
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-d1c9732336a2",
+    "k-0d3281b28da6"
+   ],
+   "prompt": "Vous allez à la piscine ce soir ? Answer with « y » or « en ».",
+   "proposal_id": "q3",
+   "rationale": "The packet's next exercise.",
+   "type": "exercise"
+  },
+  {
+   "answer": "en",
+   "evidence_ids": [
+    "ev-0123456789"
+   ],
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-0d3281b28da6"
+   ],
+   "options": [
+    "y",
+    "en"
+   ],
+   "prompt": "Elle revient de la poste ? — Oui, elle __ revient.",
+   "proposal_id": "q4",
+   "rationale": "A new place with « de la ».",
+   "type": "exercise"
+  }
+ ],
+ "schema": "flh_agent_proposals_v1"
+}

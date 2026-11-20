@@ -108,3 +108,33 @@ def rate(rows: list[dict]) -> dict:
         "cer": round(ce / c, 5) if c else None,
         "sub": sum(r["sub"] for r in rows), "del": sum(r["del"] for r in rows), "ins": sum(r["ins"] for r in rows),
     }
+
+
+# ---- policy identity (Speaking Lab, evaluation contract) ----
+# What flh_fr_asr_norm_v1 does, in order. Any change to normalize_fr must bump
+# NORM_VERSION: policy_fingerprint() below changes with the behaviour, and a
+# test pins it, so a silent change fails the tests.
+POLICY = (
+    "Unicode NFKC (composed and decomposed accents compare equal)",
+    "apostrophe variants (’ ‘ ʼ ` ´) become '",
+    "lower case",
+    "bracketed non-speech tags [..] (..) <..> are removed",
+    "ligatures œ æ become oe ae",
+    "an apostrophe not between two letters is a quotation mark and is removed",
+    "elision is kept as its own token: l'homme -> l' homme",
+    "every other non-alphanumeric character (punctuation, symbols, hyphens) separates tokens",
+    "accents are kept: élève and eleve differ",
+    "numbers are not converted: 1823 and mille huit cent vingt-trois differ",
+)
+PROBES = (
+    "L'élève est arrivé.", "l’homme", "Aujourd'hui", "peut-être", "Cécile", "Cécile", "cœur", "Æsop",
+    "« Bonjour ! »", "[rires] oui (bruit) <unk> non", "1823", "mille huit cent vingt-trois", "'citation'", "M. Dupont, 3e étage",
+    "VOILÀ", "a-t-il", "ÉCOLE", "naïve", "",
+)
+
+
+def policy_fingerprint() -> str:
+    """SHA-256 over the policy's outputs on PROBES: the behaviour identity of NORM_VERSION."""
+    import hashlib
+    import json
+    return hashlib.sha256(json.dumps([[p, normalize_fr(p)] for p in PROBES], ensure_ascii=False).encode()).hexdigest()

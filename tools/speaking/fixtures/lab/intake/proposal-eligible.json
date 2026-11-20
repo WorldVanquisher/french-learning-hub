@@ -1,0 +1,21 @@
+{
+ "attribution": "Synthetic Read Speech FR (example), CC BY 4.0",
+ "audio_redistributed": false,
+ "condition_field": "condition",
+ "consent_statement": "recorded with written consent for research use (as stated by the publisher)",
+ "license": "CC-BY-4.0",
+ "metadata_fields": [
+  "speaker_id",
+  "gender",
+  "condition",
+  "sentence_id"
+ ],
+ "note": "SYNTHETIC proposal for the checklist test; no such dataset is implied to exist",
+ "repo": "example/synthetic-read-speech-fr",
+ "revision": "0123456789abcdef0123456789abcdef01234567",
+ "schema": "flh_speaking_source_proposal_v1",
+ "source_id": "synthetic-read-speech",
+ "speaker_disjoint_splits": true,
+ "speaker_id_field": "speaker_id",
+ "speaker_provenance": "adult volunteers reading public-domain sentences"
+}

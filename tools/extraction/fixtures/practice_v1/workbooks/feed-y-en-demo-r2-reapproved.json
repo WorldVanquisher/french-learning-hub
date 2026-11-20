@@ -1,0 +1,144 @@
+{
+ "consumer": "workbooks lane: Review Today and scheduling",
+ "items": [
+  {
+   "evidence_ids": [
+    "ev-6659b658b9",
+    "ev-fd704f2740"
+   ],
+   "grading": "self_check",
+   "kind": "explain",
+   "knowledge_ids": [
+    "k-0d3281b28da6",
+    "k-6c4760ebee9d",
+    "k-40cbe73ae3f5"
+   ],
+   "measures": "unaided recall of the rule",
+   "new_sentence": null,
+   "outcomes": [
+    {
+     "action": "attempt",
+     "outcome": "self_check",
+     "seq": 3
+    }
+   ],
+   "practice_id": "p-2ea892e5eaa0",
+   "prompt": "From memory, without looking: when do you use « y » and when « en »? Give one example of each."
+  },
+  {
+   "evidence_ids": [
+    "ev-fd704f2740"
+   ],
+   "grading": "exact",
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-cb9627cc7213",
+    "k-0d3281b28da6"
+   ],
+   "measures": "recognition between confusable forms",
+   "new_sentence": true,
+   "options": [
+    "y",
+    "en"
+   ],
+   "outcomes": [
+    {
+     "action": "reveal",
+     "outcome": "revealed",
+     "seq": 5
+    }
+   ],
+   "practice_id": "p-0e74504cf958",
+   "prompt": "Tu reviens du marché ? — Oui, j'__ reviens."
+  },
+  {
+   "evidence_ids": [
+    "ev-fd704f2740"
+   ],
+   "grading": "exact",
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-d1c9732336a2",
+    "k-0d3281b28da6"
+   ],
+   "measures": "recognition between confusable forms",
+   "new_sentence": true,
+   "options": [
+    "y",
+    "en"
+   ],
+   "outcomes": [
+    {
+     "action": "attempt",
+     "outcome": "correct",
+     "seq": 1
+    }
+   ],
+   "practice_id": "p-22a947cd7f5c",
+   "prompt": "Vous allez à la piscine ce soir ? — Oui, nous __ allons."
+  },
+  {
+   "evidence_ids": [
+    "ev-fd704f2740"
+   ],
+   "grading": "accepted_variants_else_self_check",
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-cb9627cc7213",
+    "k-0d3281b28da6"
+   ],
+   "measures": "production in a new sentence",
+   "new_sentence": true,
+   "outcomes": [
+    {
+     "action": "attempt",
+     "outcome": "incorrect",
+     "seq": 2
+    }
+   ],
+   "practice_id": "p-664f7533a19d",
+   "prompt": "Tu reviens du marché ? Answer with « y » or « en »."
+  },
+  {
+   "evidence_ids": [
+    "ev-fd704f2740"
+   ],
+   "grading": "accepted_variants_else_self_check",
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-d1c9732336a2",
+    "k-0d3281b28da6"
+   ],
+   "measures": "production in a new sentence",
+   "new_sentence": true,
+   "outcomes": [
+    {
+     "action": "attempt",
+     "outcome": "correct",
+     "seq": 4
+    }
+   ],
+   "practice_id": "p-8d5cabf2ab59",
+   "prompt": "Vous allez à la piscine ce soir ? Answer with « y » or « en »."
+  }
+ ],
+ "not_included": [
+  "due dates, intervals or any schedule (Workbooks owns them)",
+  "answer keys (read them from the practice file when revealing)",
+  "attempt texts"
+ ],
+ "previous": {
+  "revision": 2,
+  "revision_sha256": "36cc4a8c8abcfa686abb3365ef94297ceb97aa3407c694a13a23e028283fd736"
+ },
+ "producer": "extraction lane prototype (owner of the practice-content contract)",
+ "schema": "flh_practice_review_feed_v1",
+ "source": {
+  "capture_id": "synthetic-y-en-001",
+  "proposer": "synthetic: hand-written fixture for the Extraction 2.0 prototype (no provider call); French needs a native-speaker check before learner use",
+  "revision": 2,
+  "revision_sha256": "36cc4a8c8abcfa686abb3365ef94297ceb97aa3407c694a13a23e028283fd736",
+  "source_id": "y-en-demo"
+ },
+ "withdrawn": []
+}

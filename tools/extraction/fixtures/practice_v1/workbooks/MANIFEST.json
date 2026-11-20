@@ -1,0 +1,96 @@
+{
+ "attempt_outcomes": [
+  "correct",
+  "incorrect",
+  "self_check",
+  "revealed",
+  "invalid"
+ ],
+ "consumer": "workbooks lane (read-only)",
+ "exercise_kinds": [
+  "explain",
+  "choose",
+  "produce"
+ ],
+ "feed_schema": "flh_practice_review_feed_v1",
+ "feeds": [
+  {
+   "file": "feed-savoir-connaitre-demo-r1.json",
+   "practice_ids": {
+    "p-3ac3b47e483a": "produce",
+    "p-3ca128617083": "choose",
+    "p-8d55e5e7255d": "explain",
+    "p-baa71166205b": "choose",
+    "p-e61b319d2129": "produce"
+   },
+   "revision": 1,
+   "revision_sha256": "be532c74de7187b0856f8d8e5e77cc78c12693569c0446776c1181db00684728",
+   "source_id": "savoir-connaitre-demo",
+   "withdrawn": []
+  },
+  {
+   "file": "feed-y-en-demo-r1.json",
+   "practice_ids": {
+    "p-0e74504cf958": "choose",
+    "p-22a947cd7f5c": "choose",
+    "p-2ea892e5eaa0": "explain",
+    "p-664f7533a19d": "produce",
+    "p-8d5cabf2ab59": "produce"
+   },
+   "revision": 1,
+   "revision_sha256": "fd55a3600f1c2dd1ab69503dcba4c5cfb20562d845ece7f3f76e9fc0ba6eb0a5",
+   "source_id": "y-en-demo",
+   "withdrawn": []
+  },
+  {
+   "file": "feed-y-en-demo-r2-reapproved.json",
+   "practice_ids": {
+    "p-0e74504cf958": "choose",
+    "p-22a947cd7f5c": "choose",
+    "p-2ea892e5eaa0": "explain",
+    "p-664f7533a19d": "produce",
+    "p-8d5cabf2ab59": "produce"
+   },
+   "revision": 2,
+   "revision_sha256": "36cc4a8c8abcfa686abb3365ef94297ceb97aa3407c694a13a23e028283fd736",
+   "source_id": "y-en-demo",
+   "withdrawn": []
+  },
+  {
+   "file": "feed-y-en-demo-r2.json",
+   "practice_ids": {},
+   "revision": 2,
+   "revision_sha256": "36cc4a8c8abcfa686abb3365ef94297ceb97aa3407c694a13a23e028283fd736",
+   "source_id": "y-en-demo",
+   "withdrawn": [
+    "p-2ea892e5eaa0",
+    "p-0e74504cf958",
+    "p-22a947cd7f5c",
+    "p-664f7533a19d",
+    "p-8d5cabf2ab59"
+   ]
+  }
+ ],
+ "id_rules": {
+  "evidence_id": "ev- + 10 hex of SHA-256(source ID, field, quote, occurrence)",
+  "knowledge_id": "k- + 12 hex of SHA-256(source ID, type, content key): never hashes the revision",
+  "practice_id": "p- + 12 hex of SHA-256(knowledge ID, kind): stable across revisions and corrections"
+ },
+ "never_in_a_feed": [
+  "due dates, intervals or schedules",
+  "answer keys",
+  "attempt texts"
+ ],
+ "outcomes_present": [
+  "correct",
+  "incorrect",
+  "invalid",
+  "revealed",
+  "self_check"
+ ],
+ "packet_schema": "flh_practice_packet_v2",
+ "producer": "extraction lane prototype (owner of the practice-content contract)",
+ "schema": "flh_practice_workbooks_bundle_v1",
+ "synthetic": true,
+ "verify": "python3 verify.py   (standard library only; exit 0 when the seal and every case hold)"
+}

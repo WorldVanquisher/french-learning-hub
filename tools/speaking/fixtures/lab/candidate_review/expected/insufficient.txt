@@ -1,0 +1,50 @@
+Speaking candidate review flh_speaking_candidate_review_v1
+OUTCOME: insufficient_support (exit 4)
+  - support.min_paired_samples: 8 paired samples compared; at least 30 are required
+  - support.min_groups: 8 groups (speakers) compared; at least 30 are required
+  - other_checks_decide_nothing: 6 of 6 quality and resource checks pass, but with this support they are observations and decide nothing
+promotion: not performed. The owner decides; this review changes no serving setting.
+models:
+  baseline  unpinned synthetic-baseline-v1  decoding synthetic_rule_v1  split synthetic  candidate_id none (not pinned)
+            stored label: synthetic baseline: invented texts and timing, no model ran
+  candidate unpinned synthetic-candidate-v1  decoding synthetic_rule_v1  split synthetic  candidate_id none (not pinned)
+            stored label: synthetic candidate: invented texts and timing, no model ran
+inputs (sha256):
+  baseline      baseline-8.json  2351 bytes  b2f776236acd9df7fc3bf491ed7dff9ef414c00132b086a1719470b8e869d7ba
+  candidate     candidate-8.json  2557 bytes  336dbf6bf4a9eab2ff1fd7c73d678b9c3b6181b5716a734fe50413fec5ecd284
+  thresholds    defaults (flh_speaking_candidate_thresholds_v1)
+  references    91f404041037ba84f4af7b078a94e67e483df2e24159d2657b1a9402b6d6cced  sample order 789762698b7d50d11b5aa2c421a5ccb9dafa3da786a4a0815c8444e3afca7719
+input checks:
+  ok           same_split: both evaluated on split synthetic
+  ok           same_normalization: both scored under flh_fr_asr_norm_v1
+  ok           same_ids: every id is in both evaluations
+  ok           same_references: every shared id has the same reference
+  ok           baseline_stored_summary: stored totals (11 errors / 56 words) equal the recomputation
+  ok           candidate_stored_summary: stored totals (2 errors / 56 words) equal the recomputation
+  ok           distinct_models: baseline and candidate are different models
+  not_supplied experiment: no experiment result given: image, limits and run identity are not reported
+  not_supplied data_manifest: no data manifest given: the audio behind the texts is identified by the split name only
+samples: baseline 8, candidate 8, matched 8, paired 8, missing 0; speakers baseline 8, candidate 8, paired 8; groups 8 (one per speaker)
+  measure                      baseline      candidate  candidate-baseline
+  WER                            0.1964         0.0357             -0.1607
+  CER                            0.1992         0.0564             -0.1429
+  real-time factor         not measured         0.2800                    
+  peak RSS (MB)            not measured         1500.0                    
+  compute (s)              not measured           22.4                    
+  model load (s)           not measured           9.10                    
+  measured under (baseline): machine synthetic, python none
+  measured under (candidate): batch 1, machine synthetic, python none, threads 2
+standing of the paired comparison: observation
+uncertainty: candidate - baseline = -0.1607 WER, 95% speaker-bootstrap interval [-0.2308, -0.1000] over 8 groups (few groups (< 30): the interval is unstable)
+sensitivity: leaving one speaker out moves the WER difference between -0.1837 and -0.1400 (8 groups; speaker s05 moves it most)
+checks (limits are inclusive: a value equal to its limit passes):
+  fail          support.min_paired_samples         8 >= 30 does not hold
+  fail          support.min_groups                 8 >= 30 does not hold
+  pass          quality.max_wer_difference         -0.1607 <= -0.0200
+  pass          quality.max_interval_upper         -0.1000 <= +0.0000
+  pass          quality.max_cer_difference         -0.1429 <= +0.0000
+  pass          quality.max_group_wer_increase     +0.0000 <= +0.0500
+  pass          resources.max_real_time_factor     0.2800 <= 0.5000
+  pass          resources.max_peak_rss_mb          1500.0 <= 2048.0
+  with insufficient support the quality and resource checks are shown for information only
+Note: Word agreement between each transcript and the reference, after flh_fr_asr_norm_v1. Not a pronunciation, fluency or accent grade: a difference can come from the speaker, the recording or the model, and this comparison cannot tell which.

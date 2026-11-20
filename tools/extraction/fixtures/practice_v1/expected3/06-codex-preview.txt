@@ -1,0 +1,23 @@
+Import preview (read-only): packet flh_practice_packet_v3, return flh_agent_proposals_v2
+Exercise proposals (read-only) for packet pk-0e06b9c6b9c4 from codex
+counts: candidate 3
+  candidate         e1     discrimination for rule k-886099054b26 -> would be p-3e03bff58a01
+      prompt    Mon oncle travaille __ Marseille.   options: à / en
+      answer    à
+      ambiguity none found (word checks only)
+      evidence  ev-75a4d1fa87; rationale (provenance, not evidence): A new city in the frame of « à Paris »: the learner chooses the preposition.
+  candidate         e2     production for rule k-fb79321ec520 -> would be p-98c17dac490c
+      prompt    Où vas-tu cet hiver ? (l’Italie)
+      answer    Je vais en Italie.
+      accepted  Je vais en Italie. | Cet hiver, je vais en Italie. | En Italie.
+      rubric    « l’Italie » is a feminine country: « en Italie »; « à l’Italie » and « au Italie » are wrong.
+      ambiguity declared by the agent: « Je pars en Italie. » is also correct (another verb of going); it is graded 'check it yourself'.
+      evidence  ev-2cd24b70b3; rationale (provenance, not evidence): Production with a feminine country, as « en Angleterre » in the notes.
+  candidate         e3     production for rule k-886099054b26 -> would be p-b7378c36f2be
+      prompt    Où travaille ta tante ? (Bordeaux)
+      answer    Elle travaille à Bordeaux.
+      accepted  Elle travaille à Bordeaux. | Ma tante travaille à Bordeaux. | À Bordeaux.
+      rubric    Bordeaux is a city: « à Bordeaux ».
+      ambiguity none found (word checks only)
+      evidence  ev-371c2bef92; rationale (provenance, not evidence): Production with a city, as « à Londres » in the notes.
+nothing was applied: a candidate becomes practice only by your explicit decision (practice2 exercise --approve)

@@ -1,0 +1,47 @@
+Speaking candidate review flh_speaking_candidate_review_v1
+OUTCOME: ready_for_owner_review (exit 0)
+  - all_checks_pass: 32 paired samples over 32 groups; every support, quality and resource check passes: the evidence is ready for the owner to decide
+promotion: not performed. The owner decides; this review changes no serving setting.
+models:
+  baseline  unpinned synthetic-baseline-v1  decoding synthetic_rule_v1  split synthetic  candidate_id none (not pinned)
+            stored label: synthetic baseline: invented texts and timing, no model ran
+  candidate unpinned synthetic-candidate-v1  decoding synthetic_rule_v1  split synthetic  candidate_id none (not pinned)
+            stored label: synthetic candidate: invented texts and timing, no model ran
+inputs (sha256):
+  baseline      baseline.json  7974 bytes  ea80f8a47ac5a9dbb835709ed32863b05279164b0c610caf1d4fb6ee9156049b
+  candidate     candidate.json  8126 bytes  e1a79bc2cb711455cf245ffde9adc9220b405f2a50bb0ce89442c7c0f05d17fe
+  thresholds    defaults (flh_speaking_candidate_thresholds_v1)
+  references    cb7a3962b85f0bba098bae942f0aee517377d47d3dead77a2abca8ab60ef3cac  sample order 90581c0aefe04b6650a7fe5813b808beb53be4a463b3e1f8e3e76af0cfdffece
+input checks:
+  ok           same_split: both evaluated on split synthetic
+  ok           same_normalization: both scored under flh_fr_asr_norm_v1
+  ok           same_ids: every id is in both evaluations
+  ok           same_references: every shared id has the same reference
+  ok           baseline_stored_summary: stored totals (44 errors / 210 words) equal the recomputation
+  ok           candidate_stored_summary: stored totals (8 errors / 210 words) equal the recomputation
+  ok           distinct_models: baseline and candidate are different models
+  not_supplied experiment: no experiment result given: image, limits and run identity are not reported
+  not_supplied data_manifest: no data manifest given: the audio behind the texts is identified by the split name only
+samples: baseline 32, candidate 32, matched 32, paired 32, missing 0; speakers baseline 32, candidate 32, paired 32; groups 32 (one per speaker)
+  measure                      baseline      candidate  candidate-baseline
+  WER                            0.2095         0.0381             -0.1714
+  CER                            0.2145         0.0539             -0.1606
+  real-time factor               0.0900         0.2800                    
+  peak RSS (MB)                   760.0         1500.0                    
+  compute (s)                      28.8           89.6                    
+  model load (s)                   3.40           9.10                    
+  measured under (baseline): batch 1, machine synthetic, python none, threads 2
+  measured under (candidate): batch 1, machine synthetic, python none, threads 2
+standing of the paired comparison: ranked
+uncertainty: candidate - baseline = -0.1714 WER, 95% speaker-bootstrap interval [-0.2077, -0.1379] over 32 groups (enough groups for a rough interval)
+sensitivity: leaving one speaker out moves the WER difference between -0.1773 and -0.1667 (32 groups; speaker s09 moves it most)
+checks (limits are inclusive: a value equal to its limit passes):
+  pass          support.min_paired_samples         32 >= 30
+  pass          support.min_groups                 32 >= 30
+  pass          quality.max_wer_difference         -0.1714 <= -0.0200
+  pass          quality.max_interval_upper         -0.1379 <= +0.0000
+  pass          quality.max_cer_difference         -0.1606 <= +0.0000
+  pass          quality.max_group_wer_increase     +0.0000 <= +0.0500
+  pass          resources.max_real_time_factor     0.2800 <= 0.5000
+  pass          resources.max_peak_rss_mb          1500.0 <= 2048.0
+Note: Word agreement between each transcript and the reference, after flh_fr_asr_norm_v1. Not a pronunciation, fluency or accent grade: a difference can come from the speaker, the recording or the model, and this comparison cannot tell which.
