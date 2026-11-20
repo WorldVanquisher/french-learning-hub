@@ -32,6 +32,75 @@ WITHHELD = {"ec2:DeleteVolume", "s3:DeleteBucket", "s3:DeleteObject", "s3:Delete
             "ssm:DeleteParameter", "ssm:DeleteParameters"} if ENV == "production" else set()
 READ_ONLY = re.compile(r"^[a-z0-9-]+:(Describe|Get|List|View)[A-Za-z]*$")
 NEVER_IN_VERIFY = {"ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath", "kms:Decrypt"}
+
+# R4-REL-013: the only statements allowed a wildcard ("*") or account-wide resource, with the reason and
+# whether they must keep a condition. Any other broad Allow fails the review as UNEXPECTED-WILDCARD.
+BROAD_OK = {
+    ("deploy", "Ec2ManageStackTaggedResources"): (True, "scoped by aws:ResourceTag Project/Component"),
+    ("deploy", "Ec2TagOnCreateOnly"): (True, "only together with ec2:CreateAction"),
+    ("host-boundary", "SessionManagerInstanceMinimum"): (False, "SSM agent channel actions have no resource type"),
+    ("host-boundary", "DecryptOnlyThroughSsm"): (True, "kms:ViaService ssm only"),
+    ("verify", "DescribeComputeAndNetwork"): (False, "EC2 Describe* actions support no resource-level permission"),
+    ("verify", "ListBucketsForTheTeardownCheck"): (False, "s3:ListAllMyBuckets has no resource type"),
+    ("verify", "SsmInventoryWithoutValues"): (False, "SSM describe calls without values; GetParameter* is denied"),
+    ("verify", "MetricsAlarmsAndTags"): (False, "CloudWatch reads and the tagging API have no resource type"),
+    ("verify", "QuotasAndListPrices"): (False, "Service Quotas and Pricing reads have no resource type"),
+}
+ROLE_OF = {"deploy": "deployer (owner, plan/apply)", "operate": "operator (owner, runbook)",
+           "host-boundary": "host (instance role, capped by the boundary)", "verify": "verifier (read-only profile)"}
+
+
+def wildcard_problems(policies):
+    """policies: {name: [statements]} with name in deploy/operate/host-boundary/verify."""
+    probs = []
+    for name, stmts in policies.items():
+        for sid, eff, acts, res, cond in stmts:
+            if eff != "Allow" or not any(r == "*" or r.endswith(":*") for r in res):
+                continue
+            ok = BROAD_OK.get((name, sid))
+            if ok is None:
+                probs.append(f"{name} {sid}: unexpected wildcard resource {', '.join(res)}")
+            elif ok[0] and not cond:
+                probs.append(f"{name} {sid}: wildcard allowed only with its condition ({ok[1]}), and it has none")
+    return probs
+
+
+def evaluate(stmts, action, resource):
+    """Allow, Deny (explicit) or implicit-deny for one request; conditions are not evaluated."""
+    allowed = False
+    for sid, eff, acts, res, cond in stmts:
+        if any(fnmatch.fnmatchcase(action, a) for a in acts) and any(fnmatch.fnmatchcase(resource, r) for r in res):
+            if eff == "Deny":
+                return "Deny"
+            allowed = True
+    return "Allow" if allowed else "implicit-deny"
+
+
+def policy_set():
+    named = {"deploy": list(statements(os.path.join(OUT, f"{PREFIX}-deploy-policy.json")))
+             + list(statements(os.path.join(OUT, f"{PREFIX}-deploy-ec2-policy.json"))),
+             "operate": list(statements(os.path.join(OUT, f"{PREFIX}-operate-policy.json"))),
+             "host-boundary": list(statements(os.path.join(OUT, f"{PREFIX}-host-boundary-policy.json")))}
+    vp = os.path.join(OUT, f"{PREFIX}-verify-readonly-policy.json")
+    if os.path.isfile(vp):
+        named["verify"] = list(statements(vp))
+    return named
+
+
+def matrix():
+    """role -> service -> (actions, resource types) from the generated policies (R4-REL-012)."""
+    out = {}
+    for name, stmts in policy_set().items():
+        for sid, eff, acts, res, cond in stmts:
+            if eff != "Allow":
+                continue
+            types = sorted({("*" if r == "*" else (r.split(":")[5].split("/")[0] if r.count(":") >= 5 else r)) for r in res})
+            for a in acts:
+                svc = a.split(":")[0]
+                row = out.setdefault(ROLE_OF[name], {}).setdefault(svc, {"actions": set(), "resources": set()})
+                row["actions"].add(a)
+                row["resources"].update(types)
+    return out
 MAIN = os.path.join(os.path.dirname(HERE), "terraform", "main.tf")
 
 # Terraform resource type -> (deploy write actions, tag-on-create action or None)
@@ -164,7 +233,7 @@ def review():
                 for a in acts:
                     if a not in needed and a != "ec2:CreateTags":
                         unused.append((sid, a))
-    return rows, missing, broad, unused, admin_only, verify_problems()
+    return rows, missing, broad, unused, admin_only, verify_problems() + wildcard_problems(policy_set())
 
 
 def verify_problems():
@@ -191,8 +260,19 @@ def verify_problems():
 
 
 def main():
+    if "--matrix" in sys.argv:
+        for role, svcs in sorted(matrix().items()):
+            for svc, row in sorted(svcs.items()):
+                print(f"{role:46} {svc:15} {len(row['actions']):3} actions on {', '.join(sorted(row['resources']))}")
+        return 0
+    if "--simulate" in sys.argv:
+        i = sys.argv.index("--simulate")
+        action, resource = sys.argv[i + 1], sys.argv[i + 2]
+        for name, stmts in sorted(policy_set().items()):
+            print(f"{name:14} {evaluate(stmts, action, resource):14} {action} {resource}")
+        return 0
     rows, missing, broad, unused, admin_only, vprobs = review()
-    missing = missing + [("verify", p) for p in vprobs]
+    missing = missing + [("verify" if "wildcard" not in p else "UNEXPECTED-WILDCARD", p) for p in vprobs]
     if "--json" in sys.argv:
         print(json.dumps({"env": ENV, "rows": rows, "missing": missing, "broad": broad, "unused": unused,
                           "admin_only": admin_only}, indent=1))

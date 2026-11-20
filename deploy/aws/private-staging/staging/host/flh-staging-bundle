@@ -63,6 +63,7 @@ import fcntl
 import hashlib
 import json
 import os
+import platform
 import re
 import shutil
 import signal
@@ -93,6 +94,16 @@ BUNDLES = os.path.join(ROOT, "bundles")
 CURRENT = os.path.join(ROOT, "current")
 PREVIOUS = os.path.join(ROOT, "previous")
 LOG = os.path.join(ROOT, "deploy.log")
+
+
+SUPPORTED_PLATFORMS = ("linux/amd64", "linux/arm64")
+
+
+def host_platform():
+    """This host's platform (R4-REL-061/062). FLH_STAGING_HOST_ARCH overrides it to check a bundle for
+    another host (for example an arm64 bundle on an amd64 operator machine) and in tests."""
+    arch = os.environ.get("FLH_STAGING_HOST_ARCH") or platform.machine()
+    return "linux/" + {"x86_64": "amd64", "aarch64": "arm64"}.get(arch, arch)
 
 
 class Refused(Exception):
@@ -217,8 +228,12 @@ def verify_image_tar(path, tag, image_id, labels):
             cfg = json.loads(cfg_bytes)
         except ValueError:
             return problems + ["image.tar config is not JSON"]
-        if cfg.get("os") != "linux" or cfg.get("architecture") != "amd64":
-            problems.append(f"image platform {cfg.get('os')}/{cfg.get('architecture')} is not linux/amd64")
+        plat = f"{cfg.get('os')}/{cfg.get('architecture')}"
+        if plat not in SUPPORTED_PLATFORMS:
+            problems.append(f"image platform {plat} is not supported ({', '.join(SUPPORTED_PLATFORMS)})")
+        elif plat != host_platform():
+            problems.append(f"image platform {plat} does not match this host ({host_platform()}): "
+                            "use a bundle built for this host's architecture")
         got = (cfg.get("config") or {}).get("Labels") or {}
         for k, v in labels.items():
             if got.get(k) != v:
@@ -305,8 +320,10 @@ def verify_dir(d):
     want_labels = {LABEL_REVISION: commit or "", LABEL_TREE: tid}
     if img.get("labels") != want_labels:
         problems.append("MANIFEST image labels do not carry this revision")
-    if img.get("platform") != "linux/amd64":
-        problems.append("MANIFEST platform is not linux/amd64")
+    if img.get("platform") not in SUPPORTED_PLATFORMS:
+        problems.append(f"MANIFEST platform {img.get('platform')} is not supported")
+    elif img.get("platform") != host_platform():
+        problems.append(f"MANIFEST platform {img.get('platform')} does not match this host ({host_platform()})")
     for k in ("server_sha256", "web_files_sha256"):
         if not HEX64.match(str(manifest.get(k, ""))):
             problems.append(f"MANIFEST {k} missing")
@@ -455,6 +472,17 @@ def readyz(port):
         return None, None
 
 
+def served_page(port):
+    """SHA-256 and entry script of what GET / serves now (R4-REL-031), or (None, None)."""
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5) as r:
+            body = r.read()
+    except (urllib.error.URLError, OSError):
+        return None, None
+    m = re.search(rb'/assets/(index-[A-Za-z0-9_-]+\.js)', body)
+    return hashlib.sha256(body).hexdigest(), m.group(1).decode() if m else None
+
+
 def identity(bundle):
     """Compare the running service with a verified bundle. Returns (ok, facts)."""
     manifest = read_json(os.path.join(bundle, "MANIFEST.json"))
@@ -474,7 +502,15 @@ def identity(bundle):
                  labels_match=all(labels.get(k) == v for k, v in manifest["image"]["labels"].items()),
                  server_matches=bool(srv) and srv[0] == manifest["server_sha256"],
                  readyz=status, ready=ready)
-    ok = facts["image_matches"] and facts["labels_match"] and facts["server_matches"] and status == 200
+    # R4-REL-031: what the service answers on / must be the page inside the verified image
+    page = docker("exec", cid, "sha256sum", "/app/web/index.html").stdout.split()
+    if page:
+        served, entry = served_page(port)
+        facts.update(served_page_matches=served == page[0], entry_script=entry)
+    else:
+        facts.update(served_page_matches=None, entry_script=None)   # an API-only image: nothing to compare
+    ok = (facts["image_matches"] and facts["labels_match"] and facts["server_matches"] and status == 200
+          and facts["served_page_matches"] is not False)
     return ok, facts
 
 

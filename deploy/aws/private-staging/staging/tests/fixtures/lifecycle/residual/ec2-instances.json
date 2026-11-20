@@ -1,0 +1,14 @@
+{
+ "Reservations": [
+  {
+   "Instances": [
+    {
+     "InstanceId": "i-0aaaaaaaaaaaaaaaa",
+     "State": {
+      "Name": "terminated"
+     }
+    }
+   ]
+  }
+ ]
+}

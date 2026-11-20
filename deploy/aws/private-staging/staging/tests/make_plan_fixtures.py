@@ -185,6 +185,43 @@ def main():
     fx["plan-unsafe-weakened-settings.json"] = plan(weak)
     # a create against a root that already holds state
     fx["plan-unsafe-create-over-state.json"] = plan(base, prior=as_state(base))
+    # R4-REL-017: an instance replacement (user data changed) that re-attaches the SAME data volume
+    VOL = "vol-0aaaaaaaaaaaaaaaa"
+    keep = with_actions(base, ("no-op",))
+    for c in keep:
+        if c["address"] == "aws_ebs_volume.data":
+            for side in ("before", "after"):
+                c["change"][side]["id"] = VOL
+    keep = [c if c["address"] not in ("aws_instance.host", "aws_volume_attachment.data")
+            else with_actions([c], ("create", "delete"))[0] for c in keep]
+    for c in keep:
+        if c["address"] == "aws_volume_attachment.data":
+            c["change"]["before"].update(volume_id=VOL, instance_id="i-0aaaaaaaaaaaaaaaa")
+            c["change"]["after"].update(volume_id=VOL)
+            c["change"]["after"].pop("instance_id", None)
+            c["change"]["after_unknown"] = {"instance_id": True}
+    fx["plan-update-replace-instance-keeps-data.json"] = plan(keep, prior=as_state(base))
+    # R4-REL-018: the replacement attaches ANOTHER volume, and an in-place edit of the attachment
+    swap = copy.deepcopy(keep)
+    for c in swap:
+        if c["address"] == "aws_volume_attachment.data":
+            c["change"]["after"]["volume_id"] = "vol-0bbbbbbbbbbbbbbbb"
+    fx["plan-unsafe-attachment-other-volume.json"] = plan(swap, prior=as_state(base))
+    edit = with_actions(base, ("no-op",))
+    for c in edit:
+        if c["address"] == "aws_volume_attachment.data":
+            c["change"]["actions"] = ["update"]
+            c["change"]["before"].update(volume_id=VOL, device_name="/dev/sdf")
+            c["change"]["after"].update(volume_id=VOL, device_name="/dev/sdg")
+    fx["plan-unsafe-attachment-edit.json"] = plan(edit, prior=as_state(base))
+    # R4-REL-019: a staging plan that changes a resource tagged for production (an import or a mixed state)
+    mixed = with_actions(base, ("no-op",))
+    for c in mixed:
+        if c["address"] == "aws_ebs_volume.data":
+            c["change"]["actions"] = ["update"]
+            c["change"]["after"]["tags_all"] = dict(c["change"]["after"]["tags_all"], Component="workbench-production",
+                                                      Environment="production", Name="flh-prd-data")
+    fx["plan-staging-unsafe-production-resource.json"] = plan(mixed, prior=as_state(base))
     # production (R3): the safe first apply, an instance replacement, and production built with staging settings
     prod = production(base)
     fx["plan-production-create-safe.json"] = plan(prod, env="production")

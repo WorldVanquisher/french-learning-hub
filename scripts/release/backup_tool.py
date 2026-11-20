@@ -409,6 +409,14 @@ def cmd_pack(a):
     if os.path.exists(a.out):
         print(f"backup_tool: refused: {a.out} exists", file=sys.stderr)
         return 2
+    parent = os.path.dirname(os.path.abspath(a.out))
+    if not os.path.isdir(parent):
+        print(f"backup_tool: refused: the directory of {a.out} does not exist; create it first "
+              f"(mkdir -p {parent}), then pack again", file=sys.stderr)
+        return 2
+    if not os.access(parent, os.W_OK):
+        print(f"backup_tool: refused: cannot write in {parent}", file=sys.stderr)
+        return 2
     name = os.path.basename(src)
     tmp = a.out + ".part"
     raw = open(tmp, "wb")

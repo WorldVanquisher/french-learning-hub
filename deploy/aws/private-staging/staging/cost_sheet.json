@@ -1,0 +1,41 @@
+{
+ "format": "flh-staging-cost-sheet/v1",
+ "comment": "R4 cost sheet: dated unit prices by category and named scenarios. Prices are AWS on-demand list prices for us-east-1 as known to the release lane on the as_of date, NOT fetched from the Pricing API (no AWS call in R4). Confirm each in the AWS Pricing Calculator before an approval. tools/lifecycle.py reads this file; tools/plan_review.py cost keeps reading cost_assumptions.json.",
+ "region": "us-east-1",
+ "currency": "USD",
+ "as_of": "2026-11-20",
+ "hours_per_month": 730,
+ "prices": {
+  "compute": {"unit": "instance-hour, Linux on-demand", "by_type": {"t3.small": 0.0208, "t3.medium": 0.0416, "t4g.small": 0.0168, "t4g.micro": 0.0084}},
+  "disk": {"unit": "GiB-month, gp3 (3000 IOPS / 125 MB/s baseline included)", "price": 0.08},
+  "snapshots": {"unit": "GiB-month, EBS snapshot (standard tier)", "price": 0.05},
+  "storage": {"unit": "GiB-month S3 Standard; requests per 1000", "price": 0.023, "put_per_1000": 0.005, "get_per_1000": 0.0004},
+  "ipv4": {"unit": "public IPv4 address-hour, in use or idle", "price": 0.005},
+  "logs": {"unit": "CloudWatch Logs GiB ingested, GiB-month stored; alarm-month", "ingest": 0.50, "store": 0.03, "alarm_month": 0.10}
+ },
+ "scenarios": {
+  "staging-pass": {"note": "one synthetic staging pass, power-off after 4 h, destroyed the same day",
+                   "instance_type": "t3.small", "compute_hours": 4, "storage_hours": 6, "root_gib": 16, "data_gib": 8,
+                   "snapshot_gib": 0, "s3_gib": 0.1, "s3_puts": 200, "s3_gets": 200, "ipv4": 1,
+                   "log_ingest_gib": 0, "log_store_gib": 0, "alarms": 0},
+  "staging-not-destroyed-7d": {"note": "the power-off ends compute at 4 h; terminate deletes the root disk; the data volume and the bucket stay 7 days until someone runs terraform destroy",
+                               "instance_type": "t3.small", "compute_hours": 4, "storage_hours": 168, "root_gib": 0, "data_gib": 8,
+                               "snapshot_gib": 0, "s3_gib": 0.1, "s3_puts": 200, "s3_gets": 200, "ipv4": 1,
+                               "log_ingest_gib": 0, "log_store_gib": 0, "alarms": 0},
+  "production-month": {"note": "always on; 35 daily backups of about 100 MB in S3; two EC2 alarms; no CloudWatch Logs (journald on the host)",
+                       "instance_type": "t3.small", "compute_hours": 730, "storage_hours": 730, "root_gib": 16, "data_gib": 20,
+                       "snapshot_gib": 0, "s3_gib": 3.5, "s3_puts": 1500, "s3_gets": 300, "ipv4": 1,
+                       "log_ingest_gib": 0, "log_store_gib": 0, "alarms": 2},
+  "production-peak-month": {"note": "t3.medium (for example the speech sidecar), 50 GiB data, hourly backups kept 7 days, a 20 GiB weekly snapshot, 1 GiB/month of CloudWatch Logs",
+                            "instance_type": "t3.medium", "compute_hours": 730, "storage_hours": 730, "root_gib": 16, "data_gib": 50,
+                            "snapshot_gib": 20, "s3_gib": 17, "s3_puts": 6000, "s3_gets": 1000, "ipv4": 1,
+                            "log_ingest_gib": 1, "log_store_gib": 1, "alarms": 2}
+ },
+ "assumptions": [
+  "Data transfer: the SSM port forward and S3 through the gateway endpoint stay inside the free tier at one learner's volume; not costed.",
+  "SSM Parameter Store (standard) and Session Manager: free.",
+  "IPv4 is billed per hour while associated; the auto-assigned public address is released on stop or terminate, so it stops billing with the instance.",
+  "No Elastic IP, NAT gateway, load balancer, CloudFront or Route 53 resource exists in this root (plan_check STOPs on them).",
+  "Taxes, support plans and the provider usage (OpenAI) are outside this sheet."
+ ]
+}
