@@ -120,6 +120,32 @@ const stateKey: Record<SpeakingAttemptState, MessageKey> = {
   feedback_unknown: "speaking.state.feedback_unknown",
   feedback_ready: "speaking.state.feedback_ready",
 };
+// What each attempt state asks of the learner next. The symbol beside a
+// state's text is decoration (aria-hidden); the words carry the meaning.
+const nextKey: Record<SpeakingAttemptState, MessageKey> = {
+  awaiting_transcript: "speaking.next.awaiting_transcript",
+  transcribing: "speaking.next.transcribing",
+  transcription_failed: "speaking.next.transcription_failed",
+  transcription_unknown: "speaking.next.transcription_unknown",
+  transcript_to_confirm: "speaking.next.transcript_to_confirm",
+  awaiting_feedback: "speaking.next.awaiting_feedback",
+  feedback_in_progress: "speaking.next.feedback_in_progress",
+  feedback_failed: "speaking.next.feedback_failed",
+  feedback_unknown: "speaking.next.feedback_unknown",
+  feedback_ready: "speaking.next.feedback_ready",
+};
+const stateMark: Record<SpeakingAttemptState, string> = {
+  awaiting_transcript: "○",
+  transcribing: "…",
+  transcription_failed: "!",
+  transcription_unknown: "?",
+  transcript_to_confirm: "○",
+  awaiting_feedback: "○",
+  feedback_in_progress: "…",
+  feedback_failed: "!",
+  feedback_unknown: "?",
+  feedback_ready: "✓",
+};
 const sourceKey: Record<SpeakingTake["audio_source"], MessageKey> = {
   recording: "speaking.history.source.recording",
   file: "speaking.history.source.file",
@@ -221,7 +247,7 @@ function queueReasonKey(q: SpeakingQueueItem): MessageKey | null {
   }
 }
 
-function QueueReason({ q }: { q: SpeakingQueueItem }) {
+export function QueueReason({ q }: { q: SpeakingQueueItem }) {
   const { t, tp } = useI18n();
   const n = q.take_number ?? 0;
   const key = queueReasonKey(q);
@@ -923,7 +949,13 @@ function TakesPanel({ view, take, onSelect }: { view: SpeakingExerciseView; take
                   <button type="button" className="link-button" onClick={() => onSelect(k.id)}>
                     {t("speaking.history.takeN", { n: k.number })}
                   </button>{" "}
-                  {k.state ? <span className="tag">{t(stateKey[k.state])}</span> : null}
+                  {k.state ? (
+                    <span className="tag" data-state={k.state}>
+                      <span aria-hidden="true">{stateMark[k.state]} </span>
+                      {t(stateKey[k.state])}
+                    </span>
+                  ) : null}
+                  {k.state ? <p className="hint">{t(nextKey[k.state])}</p> : null}
                   <p className="hint">
                     {t("speaking.history.line", {
                       saved: when(k.created_at),
@@ -1035,6 +1067,20 @@ function TakeDetail({
       {view.exercise.pack_status !== "current" ? (
         <p className="hint">{t("speaking.take.answeredRevision", { n: take.number, revision: revisionOf(view.exercise.content_fingerprint) })}</p>
       ) : null}
+      <ul className="speaking-take-status" aria-label={t("speaking.status.region", { n: take.number })}>
+        <li data-status="audio">
+          {t(
+            take.audio_source === "none" ? "speaking.status.audioNone" : local ? "speaking.status.audioHere" : "speaking.status.audioNotHere",
+          )}
+        </li>
+        <li data-status="transcript">
+          {latest
+            ? t("speaking.status.transcript", { version: latest.version, origin: t(originKey[latest.origin]) })
+            : machine
+              ? t("speaking.status.transcriptToConfirm")
+              : t("speaking.status.transcriptNone")}
+        </li>
+      </ul>
       {take.audio_source === "none" ? (
         <p className="hint">{t("speaking.take.typed")}</p>
       ) : (
@@ -1079,6 +1125,14 @@ function TakeDetail({
             )}
           </pre>
           <p className="hint">{t("speaking.versions.words", { words: shown.word_count })}</p>
+          <p className="hint" data-attribution={shown.origin}>
+            {shown.origin === "transcription"
+              ? t("speaking.attribution.transcription", { version: shown.version, transcriber: machine?.transcriber ?? t("speaking.attribution.unknownTranscriber") })
+              : shown.origin === "corrected"
+                ? t("speaking.attribution.corrected", { version: shown.version })
+                : t("speaking.attribution.typed", { version: shown.version })}
+          </p>
+          {shown.origin === "corrected" && machine?.text ? <EditedSpans machine={machine.text} mine={shown.text} version={shown.version} /> : null}
           <FeedbackSection view={view} take={take} transcript={shown} onChanged={onChanged} onHighlight={setHighlight} onOpenRecord={onOpenRecord} onRetry={onRetry} />
         </>
       ) : null}
@@ -1844,6 +1898,39 @@ function FeedbackFollowThrough({
   );
 }
 
+// EditedSpans shows what the learner changed in the machine transcript. It is
+// a text comparison only: a difference may come from the transcriber, so it
+// is never presented as a pronunciation judgment or a score.
+function EditedSpans({ machine, mine, version }: { machine: string; mine: string; version: number }) {
+  const { t } = useI18n();
+  const parts = useMemo(() => diffWords(machine, mine), [machine, mine]);
+  const edits = parts.filter((p) => p.op !== "same").length;
+  return (
+    <div className="speaking-edits" role="group" aria-label={t("speaking.edits.region", { version })}>
+      <p className="hint">{edits === 0 ? t("speaking.edits.none", { version }) : t("speaking.edits.hint", { version })}</p>
+      {edits > 0 ? (
+        <pre className="writing-draft writing-diff" lang="fr" aria-label={t("speaking.edits.diff", { version })}>
+          {parts.map((p, i) =>
+            p.op === "same" ? (
+              <span key={i}>{p.text}</span>
+            ) : p.op === "del" ? (
+              <del key={i}>
+                <span className="visually-hidden">{t("speaking.edits.machine")} </span>
+                {p.text}
+              </del>
+            ) : (
+              <ins key={i}>
+                <span className="visually-hidden">{t("speaking.edits.yours")} </span>
+                {p.text}
+              </ins>
+            ),
+          )}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
 function ComparePanel({ view }: { view: SpeakingExerciseView }) {
   const { t } = useI18n();
   const number = (s: SpeakingTranscript) => view.takes.find((k) => k.id === s.take_id)?.number ?? 0;
@@ -1867,6 +1954,9 @@ function ComparePanel({ view }: { view: SpeakingExerciseView }) {
     <section className="panel" aria-label={t("speaking.compare.region")}>
       <h3>{t("speaking.compare.heading", { a: label(older), b: label(newer) })}</h3>
       <p className="hint">{t("speaking.compare.hint")}</p>
+      <p className="hint" data-compare="same-prompt">
+        {t("speaking.compare.samePrompt", { revision: revisionOf(view.exercise.content_fingerprint), count: view.exercise.requirements.length })}
+      </p>
       <label htmlFor="speaking-compare-a">{t("speaking.compare.first")}</label>{" "}
       <select id="speaking-compare-a" value={first?.id} onChange={(e) => setA(Number(e.target.value))}>
         {all.map((s) => (

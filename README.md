@@ -121,6 +121,13 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   scored). Grammar and Vocabulary views list Concepts by the kinds of their
   supporting units. A **Home** tab names the seven learning sections and opens
   each one.
+- See what to act on in **Review Today**: Speaking steps and the workbook
+  mistakes marked for retry, each with its reason and the record it is based
+  on. Make practice drafts from notebook notes, compare and restore workbook
+  script revisions, and read **This week**, a sparse-safe count of your
+  practice in your own time zone. Export your learning history as NDJSON
+  (texts only when you ask; never audio or credentials) and check an export
+  file against what is stored (nothing is imported).
 - Take a timed **Mock Exam** in reading comprehension, built only from the
   authored reading pack. The deadline and your answers live on the server, so a
   reload or a lost connection resumes; a repeated submission returns the same
@@ -307,6 +314,7 @@ The development history, organized by theme and linked to that evidence, is in
 ```text
 cmd/server, cmd/capture    server entry point; thin capture CLI
 cmd/semantic-index         operator CLI for the optional semantic index
+cmd/history-export         writes a learning history export into a chosen directory
 internal/                  domain, application, storage/sqlite, transport/http,
                            analyzer, extractor, embedding, config, captureclient
 migrations/                embedded, forward-only SQL migrations

@@ -348,3 +348,88 @@ export interface ListeningScriptRevisionView {
   transcript: ListeningTranscript;
   exercise: ListeningExercise;
 }
+
+// ---- Revision studio (private workbench) ----
+
+// GET /listening/materials/{id}/revisions: every stored revision and what
+// belongs to it. linked_records is null when the server has no notebook.
+export interface ListeningLinkedRecord {
+  entry_id: number;
+  item: number;
+  in_review_today: boolean;
+}
+
+export interface ListeningRevisionRow {
+  revision: number;
+  current: boolean;
+  created_at: string;
+  fingerprint: string;
+  transcript_id: number;
+  lines: number;
+  exercise_id: number;
+  generator: string;
+  questions: number;
+  audio: "none"; // an authored script has no recording
+  linked_records: ListeningLinkedRecord[] | null;
+}
+
+export interface ListeningRevisionHistory {
+  material_id: number;
+  title: string;
+  script_id: string;
+  current_revision: number;
+  pack_status: ListeningScriptPackStatus;
+  pack_fingerprint: string | null;
+  revisions: ListeningRevisionRow[];
+}
+
+export interface ListeningWordEdit {
+  op: "same" | "inserted" | "removed";
+  text: string;
+}
+
+// One line of a comparison; every line appears, unchanged ones too.
+export interface ListeningLineBlock {
+  kind: "same" | "renumbered" | "changed" | "added" | "removed";
+  before_line: string | null;
+  after_line: string | null;
+  before: ListeningScriptLine | null;
+  after: ListeningScriptLine | null;
+  speaker_changed: boolean;
+  words: ListeningWordEdit[];
+}
+
+export interface ListeningRevisionRef {
+  revision: number;
+  fingerprint: string;
+  exercise_id: number;
+  created_at: string;
+}
+
+// GET /listening/materials/{id}/revision-compare?from=&to=
+export interface ListeningRevisionComparison {
+  material_id: number;
+  current_revision: number;
+  from: ListeningRevisionRef;
+  to: ListeningRevisionRef;
+  blocks: ListeningLineBlock[];
+  changes: ListeningScriptUpdatePreview["changes"];
+}
+
+// GET /listening/materials/{id}/restore?revision=N: from = current, to = N.
+export interface ListeningRestorePreview extends ListeningRevisionComparison {
+  target_revision: number;
+  target_fingerprint: string;
+  next_revision: number | null;
+  blocked: "is_current" | "same_content" | null;
+  current_exercise_id: number;
+  records_on_current: ListeningLinkedRecord[] | null;
+}
+
+// POST /listening/materials/{id}/restore: 201 restored, 200 replayed.
+export interface ListeningRestoreResult {
+  revision: number;
+  restored_from: number;
+  replayed: boolean;
+  lesson: ListeningLesson;
+}

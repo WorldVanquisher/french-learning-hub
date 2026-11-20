@@ -684,6 +684,43 @@ Speaking v1 (private workbench):
   a migration: `docs/plans/SPEAKING-PROMPT-REVISIONS.md`). Contract:
   `docs/ARCHITECTURE.md` §4.7, A.19.
 
+Review Today (private workbench):
+
+- `GET /review-today` (`review_today_v1`, `docs/ARCHITECTURE.md` §4.8.1) is
+  derived on every read from the Speaking practice queue (started, incomplete
+  exercises; not-started prompts are not due) and notebook items marked for
+  retry (`retry_marked`); nothing is stored, scheduled or scored. Keep the
+  order stable (priority, oldest, source, key) and saved history out of the
+  queue (counted, linked). "Done for today" is the notebook's retry save; it
+  never deletes a record. Never in the public demo. Demo seed:
+  `scripts/demo/review_today/seed.py` (loopback, empty database only).
+- "Make practice" (Mistake Notebook, `practice_draft_v1`) builds page-only
+  drafts from stored source text, never generated, and keeps each draft's
+  source revision. Approval is the existing retry save, one mark per record.
+  Do not persist edited prompts without the owner's migration
+  (`docs/validation/NOTEBOOK-PRACTICE.md`).
+- `GET /learning-week` and `?zone=` on Review Today: derived counts in the
+  learner's IANA zone (one item per kind and day; no share below 20 actions).
+- The practice prototype (`web/src/prototype/`) reads a GENERATED module
+  built only from the extraction lane's SEALED handoff (`build_fixture.py
+  --handoff H`; never from its live tree; do not edit it by hand). The page
+  re-hashes every document and refuses a mismatch. Keep its grading, its
+  next-exercise rule and its agent-return classes equal to that lane's
+  (`grade_parity.py --handoff H`, `practiceModel.test.ts`), its state in the
+  page-lifetime store (`practiceStore.ts`) and labelled as disappearing on
+  reload, and never persist approvals, attempts, defers or corrections
+  without the owner's migration (`docs/plans/PRACTICE-STORAGE-DECISION-SHEET.md`).
+- Practice checks: `practice_feed/walkthrough.py WORK --handoff H` (refuses
+  altered fixtures before building; fails on any key press that leaves focus
+  on the page body), `labels_check.py --approved TREE` (approved labels kept),
+  `public_boundary.py WORK` (nothing private in a public-demo package).
+- Web typecheck is `npm run typecheck` (`tsc -b --noEmit`). `tsc --noEmit -p .`
+  checks no file, because `tsconfig.json` lists none.
+- `learning_history_export_v1` (`/learning-history/*`, `cmd/history-export`):
+  never export audio or credentials; texts only on request; the import
+  preview never writes (there is no import). Keep `cmd/history-export`
+  writing only plain names inside the chosen directory, without overwriting.
+
 Mistake Notebook v1 (private workbench):
 
 - Optional `source_ref` on `learning_capture_v1` (`listening_item`,

@@ -7,13 +7,14 @@
 import type { MessageKey } from "./i18n";
 import type { UnitTarget } from "./navigation";
 
-export type View = "home" | "records" | "library" | "listening" | "reading" | "writing" | "speaking" | "notebook" | "exam" | "review" | "inspector" | "experiments";
+export type View = "home" | "today" | "records" | "library" | "listening" | "reading" | "writing" | "speaking" | "notebook" | "exam" | "review" | "inspector" | "experiments";
 
 // Tab order.
-export const VIEWS: readonly View[] = ["home", "records", "library", "listening", "reading", "writing", "speaking", "notebook", "exam", "review", "inspector", "experiments"];
+export const VIEWS: readonly View[] = ["home", "today", "records", "library", "listening", "reading", "writing", "speaking", "notebook", "exam", "review", "inspector", "experiments"];
 
 export const VIEW_COPY: Record<View, { title: MessageKey; subtitle: MessageKey; tab: MessageKey }> = {
   home: { title: "app.home.title", subtitle: "app.home.subtitle", tab: "nav.home" },
+  today: { title: "app.today.title", subtitle: "app.today.subtitle", tab: "nav.today" },
   records: { title: "app.records.title", subtitle: "app.records.subtitle", tab: "nav.records" },
   library: { title: "app.library.title", subtitle: "app.library.subtitle", tab: "nav.library" },
   listening: { title: "app.listening.title", subtitle: "app.listening.subtitle", tab: "nav.listening" },
@@ -45,7 +46,8 @@ export type Origin =
   | { kind: "speaking" }
   | { kind: "notebook" }
   | { kind: "exam" }
-  | { kind: "records" };
+  | { kind: "records" }
+  | { kind: "today" };
 
 // For each origin: the view "Back" returns to and the banner's two messages.
 // The record messages take the record id ({id}); the others take no variable.
@@ -60,6 +62,7 @@ export const ORIGIN_TRAIL: Record<Origin["kind"], { view: View; from: MessageKey
   notebook: { view: "notebook", from: "trail.fromNotebook", back: "trail.backToNotebook" },
   exam: { view: "exam", from: "trail.fromExam", back: "trail.backToExam" },
   records: { view: "records", from: "trail.fromRecordSource", back: "trail.backToRecords" },
+  today: { view: "today", from: "trail.fromToday", back: "trail.backToToday" },
 };
 
 export const trailVars = (origin: Origin) => (origin.kind === "record" ? { id: origin.target.entryId } : undefined);

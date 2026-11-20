@@ -1145,3 +1145,86 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .speaking-self-review-list li { margin: 4px 0; }
 .speaking-self-review-list label { display: flex; gap: 8px; align-items: flex-start; }
 .speaking-self-review-list input { margin-top: 3px; flex: none; }
+
+/* Notebook to practice: source beside the editable draft; stacked on a phone.
+   French keeps its line breaks and punctuation as stored or typed. */
+.practice-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.practice-source { border-left: 3px solid var(--border-strong); padding-left: 8px; }
+.practice-edit { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.practice-edit textarea, .practice-edit select { width: 100%; box-sizing: border-box; }
+.practice-select { list-style: none; padding-left: 0; }
+.practice-question, .practice-source .french { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .practice-columns { grid-template-columns: 1fr; }
+}
+
+/* Revision studio: inserted and removed words are underlined or struck
+   through and named for screen readers, never shown by colour alone; script
+   text keeps its line breaks, guillemets and non-breaking spaces. */
+.studio-revisions, .studio-lines { list-style: none; padding-left: 0; }
+.studio-revision { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 8px 0; }
+.studio-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; margin: 6px 0; }
+.studio-facts dt { color: var(--muted); font-size: 13px; }
+.studio-facts dd { margin: 0; overflow-wrap: anywhere; }
+.studio-line { margin: 4px 0; padding-left: 8px; border-left: 3px solid var(--border); }
+.studio-line.studio-changed, .studio-line.studio-added, .studio-line.studio-removed { border-left-color: var(--accent); }
+.studio-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.studio-text ins { text-decoration: underline 2px; text-underline-offset: 2px; background: rgba(46, 160, 67, 0.15); }
+.studio-text del { text-decoration: line-through 2px; background: rgba(248, 81, 73, 0.15); }
+.studio-source { font-weight: 600; }
+@media (max-width: 640px) {
+  .studio-facts { grid-template-columns: 1fr; }
+}
+
+/* This week: a compact table that scrolls inside itself on a narrow screen. */
+.today-week { margin-top: 16px; }
+.week-table { border-collapse: collapse; width: 100%; display: block; overflow-x: auto; }
+.week-table th, .week-table td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.week-table th[scope="row"], .week-table thead th:first-child { text-align: left; }
+@media (max-width: 640px) {
+  .week-table { display: table; table-layout: fixed; }
+  .week-table th, .week-table td { padding: 4px 3px; white-space: normal; overflow-wrap: anywhere; font-size: 13px; }
+  .week-table thead th:first-child, .week-table th[scope="row"] { width: 34%; }
+}
+
+/* Portable learning history. */
+.today-history-export { margin-top: 16px; }
+.history-options { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+.history-options label { display: block; margin: 4px 0; }
+.history-check code, .history-preview code { overflow-wrap: anywhere; }
+
+/* Practice from an approved concept (prototype). Excerpts and packet text
+   wrap on a 320 px screen; the marked quote is bold as well as highlighted. */
+.concept-practice-section { margin-top: 12px; }
+.concept-practice-jump { flex-wrap: wrap; }
+.feed-excerpt mark { font-weight: 600; }
+.feed-excerpt, .feed-exercise .french { overflow-wrap: anywhere; }
+.feed-packet-text { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 13px; white-space: pre-wrap; }
+.feed-exercise textarea { width: 100%; box-sizing: border-box; }
+.feed-knowledge { list-style: none; padding-left: 0; }
+.today-prototype { margin-top: 16px; }
+
+/* Practice prototype, increment 5: revision notices, today's set, the visit
+   log and the tutor sessions. Every state has text as well as colour; long
+   French answers, IDs and commands wrap at 320 px; touch targets are at least
+   44 px on narrow screens. */
+.banner.warning { background: var(--warn-bg); border: 1px solid var(--warn-border); color: #93370d; padding: 8px 10px; border-radius: 8px; }
+.feed-today li, .feed-withdrawn li, .feed-kept li, .feed-history li, .feed-proposals li { overflow-wrap: anywhere; }
+.feed-next { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; margin: 8px 0; }
+.feed-withdrawn, .feed-kept, .feed-log, .feed-tutors, .feed-controls { margin-top: 12px; }
+.feed-skills { border-collapse: collapse; width: 100%; font-size: 14px; }
+.feed-skills caption { text-align: left; font-weight: 600; }
+.feed-skills th, .feed-skills td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.feed-week { list-style: none; padding-left: 0; }
+.feed-diff dt { font-weight: 600; margin-top: 4px; }
+.feed-diff dd { margin: 0 0 0 12px; overflow-wrap: anywhere; }
+.feed-command { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+.feed-provenance summary { cursor: pointer; overflow-wrap: anywhere; }
+.feed-docs code, .feed-share li, .concept-practice code { overflow-wrap: anywhere; }
+.feed-state:empty { display: none; }
+.feed-controls .checkbox, .feed-export .checkbox { display: block; }
+@media (max-width: 640px) {
+  .today-prototype button, .concept-practice button { min-height: 44px; min-width: 44px; }
+  .today-prototype button.link-button, .concept-practice button.link-button { padding: 10px 0; text-align: left; }
+  .feed-skills { font-size: 13px; }
+}

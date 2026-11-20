@@ -971,6 +971,26 @@ the learning workflow only through §4.1.
     the revision routes answer `409 not_authored_script`).
   Pinned by `TestListeningScriptRevisions_*` and
   `TestListeningScripts_EarlierImportKeepsItsContentAfterAPackCorrection`.
+- **Revision studio** (workbench, behind "Revision history" on a script lesson):
+  - `GET …/revisions` lists every revision with what belongs to it: its lines
+    (transcript), its questions and authored key (exercise, generator), its
+    audio (always `none`), and the notebook records saved from its exercise
+    (`linked_records`, null without a notebook).
+  - `GET …/revision-compare?from=&to=` returns every line in order
+    (`AlignListeningBlocks`, the same alignment as the update preview), with
+    word edits (`DiffWords`) on changed lines. The edits rebuild both sides
+    exactly, so line breaks, guillemets and non-breaking spaces are never
+    normalized. Unchanged lines can be folded; the revision pair stays named.
+  - **Restore** is previewed (`GET …/restore?revision=N`: the effects, and the
+    records on the current revision), then confirmed (`POST …/restore`
+    `{from_revision, revision, fingerprint}`). The confirm appends N's content
+    as the next revision through `ReviseAuthoredScript`, so a resend replays
+    and a confirmation made against an older current revision is
+    `409 stale_preview` with a fresh preview. History is never rewritten, and
+    records keep their exercise. Afterwards `pack_status` reports any
+    difference from the pack, as usual.
+  - Pinned by `TestRevisionStudio_*`, `TestDiffWords_*`,
+    `TestAlignListeningBlocks_*` and `RevisionStudio.test.tsx`.
 - **Workbench:** the script catalogue lists **Imported (N)** and **Available to
   import (N)** separately, after the learner's own material. A script lesson is
   tagged "Script only · no audio" with a no-audio note and no video link. It
@@ -1421,6 +1441,15 @@ through §4.1. Migration `018`.
 - **Not in the public demo:** the routes are not allowlisted, and the seven
   tables must be empty in demo artifacts.
 
+**Speaking practice workspace (workbench):**
+- Each take states what the page has: in-page audio (never stored) or none, and its transcript.
+- Each version says who wrote it.
+- A corrected version shows the learner's edits against the machine transcript. This is a text
+  comparison, never a pronunciation judgment.
+- Each attempt state has a next-action sentence.
+- A comparison says both takes answered the same stored prompt.
+- Details: `docs/validation/SPEAKING-WORKSPACE.md`.
+
 ### 4.8 Mistake Notebook v1
 
 One private place to revisit the misses a learner saved from Listening,
@@ -1516,6 +1545,94 @@ Reading, Writing and Speaking. A notebook item is an ordinary learning record
   is listed with its stored reference only and nothing guessed; the rest of the
   notebook still loads, its retry mark still works, and a retry session leaves
   it out and says how many were left out.
+
+### 4.8.1 Review Today (private workbench)
+
+`GET /review-today` (`review_today_v1`) is one read-only queue of what the learner can act on now.
+It is derived on every read from two existing sources and nothing else, with no table, schedule,
+score or provider call:
+
+- **Speaking:** steps of started exercises whose latest take is not complete. These are the
+  `speaking_practice_v1` queue items, with the same reasons. A prompt not started is not due.
+- **Workbook:** Mistake Notebook items the learner explicitly marked for retry. The reason is
+  `retry_marked`, and `since` is the mark's time. An unmarked item is saved history.
+
+**Order** (`BuildReviewToday`, stable for equal priorities):
+1. `priority` (Speaking's ordinal priorities; `retry_marked` sits with `answer_again`);
+2. the item waiting longest;
+3. source;
+4. `key` (`speaking:exercise:<id>`, `notebook:entry:<id>`).
+
+**Contents:** each item carries its source's own JSON, so the workbench opens it the way that
+section does:
+- a Speaking step opens the exercise at its take;
+- a notebook item opens the lesson it was saved from (`sourceOpen`).
+
+`history` counts the saved work kept out of the queue (notebook items, Speaking exercises and
+takes). The page uses it to link to that work and to tell "nothing yet" from "all done".
+
+**Done for today** on a workbook item is the notebook's own `PUT …/retry {"marked": false}`. The
+record stays, and the item leaves the queue on the next read, without a page reload. Never in the
+public demo (not on its allowlist).
+
+**Practice prototype (workbench, sealed synthetic fixtures):**
+- **Fixtures.** A collapsed Review Today panel reads the extraction lane's sealed Extraction 2.1
+  fixtures. They are re-hashed in the page: four `flh_practice_review_feed_v1` feeds, including a
+  revision that withdraws and then restores items, and grading and study packets
+  (`docs/validation/PRACTICE-FIXTURE-SOURCES.md`).
+- **Review Today.** It starts with "Today's practice", at most three items. Each approved concept
+  is a `practice` row with reason `practice_outcome`.
+- **A visit** (`practiceSession.ts`, a pure reducer; `practiceStore.ts`, kept for the page's
+  lifetime):
+  - A source revision waits while a draft or a check is in flight.
+  - Withdrawn items leave active practice and keep their history; restored items return with
+    the same IDs.
+  - A late check for a withdrawn item is refused.
+  - Each action is applied once.
+  - Every transition has a reason code.
+- **Packets and tutors.** The study packet is previewed beside its copy. Two fixture tutor sessions
+  show every agent proposal, classed by the documented rules, before anything is accepted for the
+  visit.
+- **No storage.** It uses no route, table or provider. Its state disappears on reload, as the page
+  says.
+- **Details:** `docs/validation/DAILY-PRACTICE-R2.md`, `docs/validation/PRACTICE-FEED-SLICE.md`.
+  Storage: `docs/plans/PRACTICE-STORAGE-DECISION-SHEET.md`.
+
+**Learner zone and This week.**
+- `GET /review-today?zone=` and `GET /learning-week?zone=` take the browser's IANA zone (empty
+  means UTC; unknown is `400`). Review Today adds `zone`, `today` and each item's `since_day`.
+- `learning_week_v1` counts the last seven local days from stored rows: production practice,
+  reviewed material, the learner's own corrections and provider feedback, kept apart. An item
+  counts once per kind and day.
+- No share is shown below 20 counted actions. Corrections link back to their take version or
+  draft.
+- Each queue row names the record it is based on. "Hide for this visit" on a Speaking step is
+  page-only.
+- Details: `docs/validation/LEARNING-WEEK.md`.
+
+**Portable learning history** (`learning_history_export_v1`, workbench and `cmd/history-export`):
+- The export is NDJSON: a header, records with a portable `key`, and a footer with a count and
+  SHA-256.
+- Texts (transcripts; notes and drafts) are included only on request. Each is `included`,
+  `omitted` or `absent`. Audio and credentials are never exported.
+- `POST /learning-history/import-preview` reports integrity and `new`/`same`/`conflict` per key,
+  with the resolution "keep stored", and reads older `speaking_attempt_export_v1` files. It never
+  writes; there is no import.
+- Details: `docs/validation/PORTABLE-HISTORY.md`.
+
+**Make practice from notes** (Mistake Notebook mode, `practice_draft_v1`, workbench only):
+- The learner selects notebook records and previews one draft per record: the stored source text,
+  a draft question and the expected action, side by side. The question starts as stored French
+  text (the item's question, or the learner's own words for a correction). Nothing is generated.
+- Each draft carries its source revision: the stored source and the version the learner saw. A
+  record whose source no longer resolves gets no draft and says why; a newer source version is
+  reported, never followed.
+- Approving is the notebook's own retry save, one mark per record. A repeated click, an approval
+  retry after an error, or a deliberate second version therefore never adds a second Review Today
+  item. A failed save keeps every draft and edit, and approving again resends only what failed.
+- The edited wording, the second versions, the answers and the self-checks stay in the page.
+  Storing an edited prompt needs a table the owner has not allocated: the proposal and its forward
+  and rollback effects are in `docs/validation/NOTEBOOK-PRACTICE.md`.
 
 ### 4.9 Mock Exam v1
 
@@ -4149,6 +4266,10 @@ does not expose these routes.
 | `GET /listening/materials/{id}/script-update` | Read-only preview: `material_id`, `script_id`, `current_revision`, `current_fingerprint`, `pack_status`, `pack_fingerprint`, `next_revision` (null unless `update_available`), `changes` (`lines` [`line`, `change` `changed`/`added`/`removed`, `before_line`, `after_line`, `before`, `after` {`id`, `speaker`, `text`} or null; lines aligned by content], `lines_renumbered` [`before`, `after`]: unchanged lines that only get a new number, `questions` [`item_id`, `change`, `before_position`, `after_position`, `fields` among `kind`, `question`, `choices`, `expected_answer`, `accepted_alternatives`, `wrong_answers`, `rationale`, `segments`, `evidence`, `position`; `before`, `after` items or null], `annotations_changed`). `404`; `409` `{code}` `not_authored_script` or `script_not_in_pack` |
 | `POST /listening/materials/{id}/script-update` | Body `{"from_revision", "pack_fingerprint"}` from the preview (unknown fields refused). Appends the next revision in one transaction, no provider call. `201` `{revision, replayed: false, lesson}`; `200` the current revision already has the pack's content (`Idempotency-Replayed: true`, nothing written); `409` `{code: "stale_preview", preview}` (pack or lesson changed since the preview; nothing written), `not_authored_script`, `script_not_in_pack`, `script_title_changed`; `422` `from_revision` < 1 or a malformed fingerprint; `400`; `404` |
 | `GET /listening/materials/{id}/revisions/{n}` | One revision of an authored script: `material_id`, `revision`, `current_revision`, `fingerprint`, `transcript`, `exercise` (with `content`). `400` invalid revision; `404` unknown lesson or revision; `409 not_authored_script`. No provider call |
+| `GET /listening/materials/{id}/revisions` | Revision studio: `material_id`, `title`, `script_id`, `current_revision`, `pack_status`, `pack_fingerprint`, `revisions` [`revision`, `current`, `created_at`, `fingerprint`, `transcript_id`, `lines`, `exercise_id`, `generator`, `questions`, `audio` (`none`), `linked_records` [`entry_id`, `item`, `in_review_today`] or null without a notebook]. `404`; `409 not_authored_script`. Read-only |
+| `GET /listening/materials/{id}/revision-compare?from=A&to=B` | `material_id`, `current_revision`, `from`/`to` {`revision`, `fingerprint`, `exercise_id`, `created_at`}, `blocks` [`kind` `same`/`renumbered`/`changed`/`added`/`removed`, `before_line`, `after_line`, `before`, `after`, `speaker_changed`, `words` [`op` `same`/`inserted`/`removed`, `text`]], `changes` (as the update preview). `400` bad revision; `404`; `409 not_authored_script`. Read-only |
+| `GET /listening/materials/{id}/restore?revision=N` | Restore preview: the comparison (from = current, to = N), `target_revision`, `target_fingerprint`, `next_revision` (null when blocked), `blocked` (`is_current`, `same_content` or null), `current_exercise_id`, `records_on_current`. Read-only |
+| `POST /listening/materials/{id}/restore` | Body `{"from_revision", "revision", "fingerprint"}` from the preview. Appends N's lines and authored exercise as the next revision. `201` `{revision, restored_from, replayed: false, lesson}`; `200` the current revision already has N's content (`Idempotency-Replayed: true`); `409` `{code: "stale_preview", preview}` or `not_authored_script`; `422` malformed, or N is current; `404` |
 
 A `material` has `id`, `source_kind` (`youtube` or `authored_script`),
 `video_id` and `source_url` (null for an authored script), `pack_script_id`
@@ -4261,6 +4382,16 @@ A request has `id`, `operation_id`, `take_id` (transcription) or
 | `GET /entries/{id}/source` | `{entry_id, linked: true, item}` or `{entry_id, linked: false, notice}`; `404` unknown record. Read-only |
 
 The public demo boundary does not expose these routes.
+
+Review Today (§4.8.1):
+
+| Route | Notes |
+|---|---|
+| `GET /review-today?zone=Z` | `review_today_v1`: `zone`, `today` (local day in Z; UTC when no zone; `400` unknown zone), `items` (`key`, `source` `speaking`/`notebook`, `reason` [a `speaking_practice_v1` reason or `retry_marked`], `priority`, `since`, `since_day`, `speaking` [a practice queue item] or `notebook` [a Mistake Notebook item]), `history` (`notebook_items`, `speaking_exercises`, `speaking_takes`), `sources`. `503` when neither Speaking nor the notebook is configured. Read-only, no provider call |
+| `GET /learning-week?zone=Z` | `learning_week_v1`: `zone`, `from`, `to`, `days` [`day`, `production`, `reviewed`, `own_corrections`, `provider_feedback`], `totals` (+ `distinct_exercises`, `active_days`, `duplicates_ignored`), `sparse`, `min_for_shares`, `production_share` (null when sparse), `corrections` [`skill`, `title`, `version`, `prior_version`, `day`, `at`, ids], `sources`. `400` unknown zone; `503` not wired. Read-only, private |
+| `GET /learning-history/export-preview?transcripts=&notes=` | `header` (`format`, `included` {`transcripts`, `notes`, `audio`: false, `credentials`: false}, `never_exported`, `parts`, `counts`, `omitted_texts`), `footer` (`records`, `sha256`), `bytes`, `files` [`format`, `extension`, `opens_as_text`, `app_import` `preview_only`/`none`]. `400` for `audio`/`credentials` or a non-boolean. Read-only |
+| `GET /learning-history/export?transcripts=&notes=&format=ndjson\|text` | The NDJSON export (`application/x-ndjson`) or its readable text copy, as attachments. Read-only |
+| `POST /learning-history/import-preview` | Body: an export file (≤ 8 MiB). `format`, `integrity` (`complete`/`truncated`/`corrupted`/`unchecked`/`unreadable`), `problems`, `counts`, `missing_fields`, `included`, `rows` [`line`, `kind`, `key`, `status` `new`/`same`/`conflict`, `fields`, `resolution`], `new`, `same`, `conflicts`, `writes: false`. `413` too large. Never writes |
 
 ### A.21 Mock Exam (Mock Exam v1)
 

@@ -3,6 +3,8 @@
 // in one file. All calls go through the "/api" prefix, which Vite proxies to the Go
 // backend in development (see vite.config.ts).
 
+import type { LearningWeek, ReviewToday } from "../types/reviewToday";
+import type { HistoryExportOptions, HistoryExportPreview, HistoryImportPreview } from "../types/history";
 import type { ExamForms, ExamSessionRow, ExamView } from "../types/exam";
 import type {
   ListeningDaily,
@@ -12,6 +14,10 @@ import type {
   ListeningPreparationResult,
   ListeningPullRun,
   ListeningScriptRevisionView,
+  ListeningRestorePreview,
+  ListeningRestoreResult,
+  ListeningRevisionComparison,
+  ListeningRevisionHistory,
   ListeningScripts,
   ListeningScriptUpdatePreview,
   ListeningScriptUpdateResult,
@@ -745,6 +751,60 @@ export function getListeningScriptRevision(materialId: number, revision: number,
   return request<ListeningScriptRevisionView>("GET", `/listening/materials/${materialId}/revisions/${revision}`, undefined, fetchImpl);
 }
 
+// ---- Portable learning history (private workbench) ----
+
+const historyQuery = (o: HistoryExportOptions, format?: "text") => {
+  const q = new URLSearchParams();
+  if (o.transcripts) q.set("transcripts", "true");
+  if (o.notes) q.set("notes", "true");
+  if (format) q.set("format", format);
+  const s = q.toString();
+  return s ? `?${s}` : "";
+};
+
+// getHistoryExportPreview says what an export with these options holds (read-only).
+export function getHistoryExportPreview(o: HistoryExportOptions, fetchImpl: typeof fetch = fetch): Promise<HistoryExportPreview> {
+  return request<HistoryExportPreview>("GET", `/learning-history/export-preview${historyQuery(o)}`, undefined, fetchImpl);
+}
+
+// historyExportUrl is the download link for the NDJSON export or its readable text copy.
+export const historyExportUrl = (o: HistoryExportOptions, format?: "text") => `${BASE}/learning-history/export${historyQuery(o, format)}`;
+
+// previewHistoryImport compares an export file with the stored records. It never writes.
+export function previewHistoryImport(fileText: string, fetchImpl: typeof fetch = fetch): Promise<HistoryImportPreview> {
+  return request<HistoryImportPreview>("POST", "/learning-history/import-preview", new RawJsonBody(fileText), fetchImpl);
+}
+
+// ---- Revision studio (private workbench) ----
+
+// getListeningRevisions lists every stored revision of an imported script.
+export function getListeningRevisions(materialId: number, fetchImpl: typeof fetch = fetch): Promise<ListeningRevisionHistory> {
+  return request<ListeningRevisionHistory>("GET", `/listening/materials/${materialId}/revisions`, undefined, fetchImpl);
+}
+
+// compareListeningRevisions compares two stored revisions block by block. It only reads.
+export function compareListeningRevisions(materialId: number, from: number, to: number, fetchImpl: typeof fetch = fetch): Promise<ListeningRevisionComparison> {
+  return request<ListeningRevisionComparison>("GET", `/listening/materials/${materialId}/revision-compare?from=${from}&to=${to}`, undefined, fetchImpl);
+}
+
+// getListeningRestorePreview reads what restoring a revision would change. It only reads.
+export function getListeningRestorePreview(materialId: number, revision: number, fetchImpl: typeof fetch = fetch): Promise<ListeningRestorePreview> {
+  return request<ListeningRestorePreview>("GET", `/listening/materials/${materialId}/restore?revision=${revision}`, undefined, fetchImpl);
+}
+
+// restoreListeningRevision confirms a restore preview: the target's content is
+// appended as the next revision. A resend replays; 409 stale_preview carries a
+// fresh preview in the error body.
+export function restoreListeningRevision(
+  materialId: number,
+  fromRevision: number,
+  revision: number,
+  fingerprint: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ListeningRestoreResult> {
+  return request<ListeningRestoreResult>("POST", `/listening/materials/${materialId}/restore`, { from_revision: fromRevision, revision, fingerprint }, fetchImpl);
+}
+
 // ---- Daily Listening (pull, prepare, notify) ----
 
 // getListeningDaily reads the settings, today's use of the daily cap and the
@@ -999,6 +1059,27 @@ export function listNotebookItems(filter: { skill?: Skill; marked?: boolean } = 
   if (filter.marked) q.set("marked", "true");
   const qs = q.toString();
   return request<NotebookList>("GET", `/mistake-notebook/items${qs ? `?${qs}` : ""}`, undefined, fetchImpl);
+}
+
+// getReviewToday reads the private Review Today queue (read-only).
+export function getReviewToday(zone = learnerZone(), fetchImpl: typeof fetch = fetch): Promise<ReviewToday> {
+  return request<ReviewToday>("GET", `/review-today${zone ? `?zone=${encodeURIComponent(zone)}` : ""}`, undefined, fetchImpl);
+}
+
+// getLearningWeek reads the seven-day summary in the learner's zone (read-only).
+export function getLearningWeek(zone = learnerZone(), fetchImpl: typeof fetch = fetch): Promise<LearningWeek> {
+  return request<LearningWeek>("GET", `/learning-week${zone ? `?zone=${encodeURIComponent(zone)}` : ""}`, undefined, fetchImpl);
+}
+
+// learnerZone is the browser's IANA zone, used for Review Today and the
+// learning week alike; "" (the server then uses UTC and says so) when the
+// browser cannot tell.
+export function learnerZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+  } catch {
+    return "";
+  }
 }
 
 // setNotebookRetry records one explicit "mark for retry" / "remove" decision.

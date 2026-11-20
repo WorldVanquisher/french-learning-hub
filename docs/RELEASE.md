@@ -439,9 +439,14 @@ Two checks need the owner:
 
 - `--fixture-db PATH`: rehearse on a **copy** of your own validated 020 backup
   (the source file is only copied, never opened).
-- `--old-server BINARY`: the server built from the commit before 021. The
-  rollback stage then also starts that binary on the restored copy and fails
-  if it records a migration. Without it that stage is `NOT RUN`.
+- `--old-server BINARY`: the server built from the parent of the commit that
+  added 021. Giving it makes the `old-server` stage required. A missing or
+  non-executable path is refused before anything runs (exit 2). The stage
+  records both binaries' identities, checks that the binary's own ledger on a
+  fresh database is exactly 001–020, then starts it on the restored copy and
+  fails if it records a migration. Without it that stage is `NOT RUN`, and the
+  line says only fixture compatibility was checked. Owner build commands:
+  `docs/validation/UPGRADE-021-OLD-SERVER.md`.
 
 ## Release smoke
 

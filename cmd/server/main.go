@@ -219,6 +219,13 @@ func run() error {
 		return err
 	}
 	options = append(options, transporthttp.WithSpeaking(speakingSvc))
+	// Learning week (learning_week_v1): read-only counts over stored takes,
+	// drafts, feedback and notebook records; nothing stored or scheduled.
+	options = append(options, transporthttp.WithLearningWeek(application.NewLearningWeekService(
+		sqlite.NewSpeakingRepository(db), sqlite.NewWritingRepository(db), sqlite.NewNotebookRepository(db))))
+	// Portable learning history: read-only export and import preview (no import).
+	options = append(options, transporthttp.WithHistoryExport(application.NewHistoryExportService(
+		sqlite.NewSpeakingRepository(db), sqlite.NewWritingRepository(db), sqlite.NewNotebookRepository(db), entryRepo, sqlite.NewListeningRepository(db))))
 	// Semantic search is opt-in (SEMANTIC_SEARCH=qdrant). The server only reads
 	// the index; building it is an explicit operator command (semantic-index).
 	if cfg.Semantic.Mode == config.SemanticQdrant {
