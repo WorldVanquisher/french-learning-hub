@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type MutableRefObject, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type MutableRefObject, type ReactNode } from "react";
 import { markMatches, matchedFeatures } from "./libraryHighlight";
 import { addRecent, clearRecent, readRecent, removeRecent, type RecentSearch } from "./recentSearches";
 import * as api from "../api/client";
@@ -297,18 +297,26 @@ export function KnowledgeLibrary({
     retry,
   );
 
-  useEffect(() => {
+  // The entry is adopted once per mount, in the same commit that first shows the
+  // screen (a layout effect). Adopting later (a passive effect, or the effect
+  // running again) could follow a click that already pushed the next screen and
+  // would then rewrite that new entry as the start, so Back would skip a screen.
+  const adopted = useRef(false);
+  useLayoutEffect(() => {
     if (!demo) return;
     const presetIds = demo.presets.map((p) => p.id);
     // This entry: keep the trail a reload kept, otherwise this visit starts here.
     // The address is rewritten to the screen's own link (a malformed one becomes `/`).
-    const kept = readEntry<Screen>(window.history.state);
-    const key = entryKey(screenRef.current, searchRef.current);
-    trailRef.current = replaceEntry(
-      screenRef.current,
-      searchRef.current,
-      kept && kept.flhTrail[kept.flhTrail.length - 1] === key ? kept.flhTrail : [key],
-    );
+    if (!adopted.current) {
+      adopted.current = true;
+      const kept = readEntry<Screen>(window.history.state);
+      const key = entryKey(screenRef.current, searchRef.current);
+      trailRef.current = replaceEntry(
+        screenRef.current,
+        searchRef.current,
+        kept && kept.flhTrail[kept.flhTrail.length - 1] === key ? kept.flhTrail : [key],
+      );
+    }
     const onPop = (event: PopStateEvent) => {
       const entry = readEntry<Screen>(event.state);
       let next: Screen;
