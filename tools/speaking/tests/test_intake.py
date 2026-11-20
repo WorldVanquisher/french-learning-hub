@@ -108,6 +108,41 @@ class TrainingData(unittest.TestCase):
         self.assertEqual(b["train"]["hours"], round(7 / 3600, 3))
 
 
+class TrainingIntake(unittest.TestCase):
+    """R4: training-data intake on synthetic manifests (no audio exists)."""
+    OK = os.path.join(PKG, "fixtures", "intake_r4", "training-intake.ok.json")
+    BAD = os.path.join(PKG, "fixtures", "intake_r4", "training-intake.refused.json")
+
+    def test_clean_proposal_is_eligible_and_reports_counts_only(self):
+        r = intake.training_intake(doc(self.OK))
+        self.assertEqual((r["decision"], r["refusals"]), ("eligible for owner approval", []))
+        self.assertEqual({k: (v["clips"], v["distinct_speakers"]) for k, v in r["summary"].items()}, {"test": (12, 6), "train": (12, 0)})
+        self.assertEqual(r["summary"]["test"]["varieties"], {"african_accented": 6, "unspecified": 6})
+        text = json.dumps(r, ensure_ascii=False)
+        self.assertNotIn("phrase d", text)  # no transcript in the report
+        self.assertTrue(any("cannot be checked" in n for n in r["notes"]))  # FLEURS rows carry no speaker ID: never assumed disjoint
+
+    def test_every_fault_is_refused_with_a_fix(self):
+        r = intake.training_intake(doc(self.BAD))
+        joined = "\n".join(r["refusals"])
+        for needle in ("CC-BY-NC-4.0", "personal fields", "generator's terms", "voices' speakers consented", "same audio as row",
+                       "repeated ID", "missing locale", "'mystery' is not declared", "locale fr_ca", "1 speakers shared with train"):
+            self.assertIn(needle, joined)
+        self.assertTrue(all(" — " in x for x in r["refusals"]))
+        self.assertTrue(r["decision"].startswith("refused"))
+
+    def test_speakers_are_namespaced_per_source(self):
+        m = doc(self.OK)
+        m["rows"].append({**m["rows"][-1], "id": "x", "source_id": "mls_fr", "split": "train", "speaker": "a1", "pcm_sha256": "e" * 64, "text": "autre"})
+        r = intake.training_intake(m)
+        self.assertEqual(r["leakage"]["sets"]["test"]["speakers_shared"], 0)  # mls_fr:a1 is not slr57:a1
+
+    def test_cli_exit_codes(self):
+        run = lambda f: subprocess.run([sys.executable, "-B", "-m", "flh_speaking", "lab", "training-intake", "--manifest", f], cwd=PKG,  # noqa: E731
+                                       capture_output=True, text=True).returncode
+        self.assertEqual((run(self.OK), run(self.BAD)), (0, 1))
+
+
 class Standing(unittest.TestCase):
     def test_eight_speakers_remain_an_observation_in_the_machine_readable_review(self):
         rv = doc(os.path.join(REVIEW, "insufficient.json"))

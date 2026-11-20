@@ -24,10 +24,13 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
 
 from flh_extraction import practice as pr  # noqa: E402
+from flh_extraction import practice22 as p22  # noqa: E402
+from flh_extraction import r4corpus as rc  # noqa: E402
 from flh_extraction import service as svc  # noqa: E402
 
 FIX = os.path.join(HERE, "fixtures", "practice_v1")
 OUT = os.path.join(HERE, "fixtures", "service_v1")
+CODES = os.path.join(HERE, "fixtures", "r4_v1", "codes", "y_en.r2-codes.json")
 
 
 def load(n):
@@ -51,7 +54,27 @@ def cases() -> list[tuple[str, str, dict | None]]:
         ("05-error-contract-mismatch", "/v1/review", svc.request(sources=[a1])),
         ("06-error-invalid-source", "/v1/review", svc.request(sources=[{**a1, "revision": 0}])),
         ("07-manifest", "/manifest", None),
+        ("08-feed-withdrawn-reason-codes", "/v1/feed", reason_codes_request()),
+        ("09-feed-awaiting-confirmation", "/v1/feed", next(s["request"] for s in rc.scenarios() if s["name"] == "10-feed-r3-awaiting")),
     ]
+
+
+def reason_codes_request() -> dict:
+    """Feed 2 of y/en after a revision that removes one worked example (absent), widens a claim (knowledge_changed),
+    and the learner's rejection of another worked example (rejected): real producer output for three reason codes."""
+    with tempfile.TemporaryDirectory() as t:
+        y = p22.Work2(os.path.join(t, "y"))
+        y.init(os.path.join(FIX, "y_en.r1.json"), with_review=False)
+        ids = {i["proposal_ref"]: i["item_id"] for i in y.resolved()["items"]}
+        y.decide(ids["en-mouvement"], "reject", reason="my friend corrected exactly this: « j'en vais » is wrong")
+        y.approve_batch(y.plan()["batch_id"])
+        r1 = load("y_en.r1.json")
+        f1 = rc.call("/v1/feed", svc.request(sources=[r1], decisions=y.decisions(), feed_seq=1))["body"]["feed"]
+        y.revise(CODES, with_review=False)
+        y.decide(ids["ex-marche"], "reject", reason="I do not want this example any more")
+        with open(CODES, encoding="utf-8") as fh:
+            r2 = json.load(fh)
+        return svc.request(sources=[r1, r2], decisions=y.decisions(), feed_seq=2, previous=f1)
 
 
 def write(out: str) -> list[str]:

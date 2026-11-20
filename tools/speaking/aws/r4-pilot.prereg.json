@@ -1,0 +1,73 @@
+{
+ "baseline": {
+  "deployment_id": "whisper-base@e37978b90ca9/flh_speaking_transcribe_v1/cpu-fp32/ac92e8688ef9e17b",
+  "model": "openai/whisper-base",
+  "revision": "e37978b90ca9030d5170a5c07aadb050351a65bb",
+  "role": "approved default, unchanged"
+ },
+ "candidate": {
+  "base_revision": "e37978b90ca9030d5170a5c07aadb050351a65bb",
+  "config": "configs/punct-base-encoder.json",
+  "config_sha256": "24dc107d2f9466a3be7438da413838d030ba2867844d0e4b041a11c565bbacb6",
+  "data_manifest_sha256": "920b74a02c33ff8482573d31971af05de709554570a4a869bfdcf63420a5379b",
+  "what": "encoder-only fine-tune on FLEURS fr_fr punctuated train (1,440 utterances), 180 steps, seed 20261117: the R3 24-step smoke at full length"
+ },
+ "declared_outcome_before_running": "support cannot be met: 20 pooled speaker groups < 30, so the review ends insufficient_support (exit 4) and the result is an observation whatever the WER. The pilot measures whether 180 steps keep G1-G3 and move WER/CER; it cannot promote. Promotion needs an owner-approved evaluation source adding at least 10 speaker groups disjoint from training.",
+ "held_out": {
+  "decoding": "flh_speaking_transcribe_v1 in one image, same batch size",
+  "name": "flh_speaking_heldout_r4_v1",
+  "pooled_speaker_groups": 20,
+  "same_for_both": true,
+  "slices": [
+   {
+    "slice": "mls_test",
+    "speaker_groups": 8,
+    "use": "decision (pooled)",
+    "utterances": 240
+   },
+   {
+    "slice": "slr57_accent",
+    "speaker_groups": 12,
+    "use": "decision (pooled)",
+    "utterances": 515
+   },
+   {
+    "slice": "fleurs_ood",
+    "speaker_groups": null,
+    "use": "diagnostic only: same corpus as training, no speaker IDs",
+    "utterances": 289
+   }
+  ]
+ },
+ "id": "r4-speaking-pilot",
+ "limits": "single seed; FLEURS train speakers unknown; same author designs and evaluates",
+ "registered": "2026-11-20",
+ "schema": "flh_speaking_pilot_preregistration_v1",
+ "status": "registered before any R4 training run (none has run; the job needs the owner's approval)",
+ "stopping_rule": "one job; it ends at 180 steps, MaxRuntimeInSeconds 3600, MaxWaitTimeInSeconds 7200 or an owner stop; one evaluation of base and candidate on the held-out slices; no re-run with changed thresholds, data or seed under this id",
+ "task": "French speech recognition (transcription for FLH's Speaking feature)",
+ "thresholds": {
+  "cer": {
+   "max_cer_difference": 0.0
+  },
+  "objective": {
+   "G1": "punctuated share >= 0.8 x base on mls_test and fleurs_ood",
+   "G2": "MLS test served-WER difference 95% upper bound <= +1.0 pt",
+   "G3": "RTF <= 0.5 and peak RSS <= 2048 MB"
+  },
+  "resources": {
+   "max_peak_rss_mb": 2048.0,
+   "max_real_time_factor": 0.5
+  },
+  "source": "flh_speaking_candidate_review_v1 DEFAULT_THRESHOLDS (unchanged) plus the R3 objective G1-G3",
+  "support": {
+   "min_groups": 30,
+   "min_paired_samples": 30
+  },
+  "wer": {
+   "max_group_wer_increase": 0.05,
+   "max_interval_upper": 0.0,
+   "max_wer_difference": -0.02
+  }
+ }
+}

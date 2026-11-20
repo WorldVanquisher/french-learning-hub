@@ -1,0 +1,152 @@
+{
+ "body": {
+  "contract": "flh_extraction_service_v1",
+  "schema": "flh_extraction_request_v1",
+  "sources": [
+   {
+    "capture": {
+     "analysis": {
+      "category": "grammar",
+      "explanation": "« y » replaces a place introduced by « à »; « en » replaces a place introduced by « de »."
+     },
+     "capture_id": "synthetic-y-en-001",
+     "original_context": "Mon amie m'a demandé : « Tu vas à la boulangerie ? » J'ai répondu : « Oui, j'en vais. » Elle m'a corrigée : « On dit : oui, j'y vais. » Plus tard, elle a dit : « Je viens de la boulangerie, j'en viens. »",
+     "original_input": "Pourquoi on dit « j'y vais » mais « j'en viens » ? Je confonds toujours « y » et « en ».",
+     "schema_version": "learning_capture_v1",
+     "source": "manual"
+    },
+    "learner_goal": "Choose between « y » and « en » when I answer a question about a place (A1/A2).",
+    "proposal": {
+     "items": [
+      {
+       "canonical": "y (à + lieu)",
+       "confidence": 0.8,
+       "kind": "grammar",
+       "quotes": [
+        "Tu vas à la boulangerie ?",
+        "On dit : oui, j'y vais."
+       ],
+       "ref": "y-a",
+       "statement": "« y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »",
+       "type": "claim"
+      },
+      {
+       "canonical": "en (de + lieu)",
+       "confidence": 0.8,
+       "kind": "grammar",
+       "quotes": [
+        "Je viens de la boulangerie, j'en viens."
+       ],
+       "ref": "en-de",
+       "statement": "« en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »",
+       "type": "claim"
+      },
+      {
+       "canonical": "en + verbe de mouvement",
+       "confidence": 0.4,
+       "kind": "grammar",
+       "quotes": [
+        "en goes with every verb of movement"
+       ],
+       "ref": "en-mouvement",
+       "statement": "« en » goes with every verb of movement, so « j'en vais » is also correct.",
+       "type": "claim"
+      },
+      {
+       "a": {
+        "form": "y",
+        "use": "à + a place: where you go or where you are"
+       },
+       "applies": [
+        "y-a",
+        "en-de"
+       ],
+       "b": {
+        "form": "en",
+        "use": "de + a place: where you come from"
+       },
+       "distinction": "Ask which preposition the place takes: « à » gives « y », « de » gives « en ».",
+       "quotes": [
+        "Tu vas à la boulangerie ?",
+        "Je viens de la boulangerie, j'en viens."
+       ],
+       "ref": "y-vs-en",
+       "type": "contrast"
+      },
+      {
+       "applies": [
+        "y-vs-en"
+       ],
+       "quotes": [
+        "Oui, j'en vais."
+       ],
+       "ref": "en-vais",
+       "right": "j'y vais",
+       "type": "common_error",
+       "why": "« aller à » takes « y »; « en » would mean « from there ».",
+       "wrong": "j'en vais"
+      },
+      {
+       "accepted": [
+        "Oui, nous y allons.",
+        "Oui, on y va.",
+        "Non, nous n'y allons pas.",
+        "Non, on n'y va pas."
+       ],
+       "answer": "Oui, nous y allons.",
+       "applies": [
+        "y-vs-en",
+        "y-a"
+       ],
+       "cloze": "Oui, nous __ allons.",
+       "explanation": "« aller à la piscine »: the place takes « à », so « y ».",
+       "generated": true,
+       "instruction": "Answer with « y » or « en ».",
+       "question": "Vous allez à la piscine ce soir ?",
+       "ref": "ex-piscine",
+       "target": "y",
+       "type": "worked_example",
+       "wrong": [
+        "Oui, nous en allons.",
+        "Oui, on en va."
+       ]
+      },
+      {
+       "accepted": [
+        "Oui, j'en reviens.",
+        "Oui, j'en reviens à l'instant.",
+        "Non, je n'en reviens pas."
+       ],
+       "answer": "Oui, j'en reviens.",
+       "applies": [
+        "y-vs-en",
+        "en-de"
+       ],
+       "cloze": "Oui, j'__ reviens.",
+       "explanation": "« revenir du marché » (de + le): the place takes « de », so « en ».",
+       "generated": true,
+       "instruction": "Answer with « y » or « en ».",
+       "question": "Tu reviens du marché ?",
+       "ref": "ex-marche",
+       "target": "en",
+       "type": "worked_example",
+       "wrong": [
+        "Oui, j'y reviens."
+       ]
+      }
+     ],
+     "proposer": "synthetic: hand-written fixture for the Extraction 2.0 prototype (no provider call); French needs a native-speaker check before learner use"
+    },
+    "revision": 1,
+    "schema": "flh_practice_source_v1",
+    "source_id": "y-en-demo"
+   }
+  ]
+ },
+ "headers": {
+  "Content-Type": "application/json",
+  "X-FLH-Contract": "flh_extraction_service_v1"
+ },
+ "method": "POST",
+ "path": "/v1/review"
+}

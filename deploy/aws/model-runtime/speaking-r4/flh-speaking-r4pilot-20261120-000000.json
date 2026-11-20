@@ -1,0 +1,99 @@
+{
+  "TrainingJobName": "flh-speaking-r4pilot-20261120-000000",
+  "AlgorithmSpecification": {
+    "TrainingImage": "123456789012.dkr.ecr.us-east-1.amazonaws.com/flh-speaking@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "TrainingInputMode": "File",
+    "ContainerEntrypoint": [
+      "python3",
+      "-B",
+      "-m",
+      "flh_speaking.sagemaker_entry"
+    ],
+    "ContainerArguments": [
+      "train"
+    ]
+  },
+  "RoleArn": "arn:aws:iam::123456789012:role/flh-speaking-sagemaker-exec",
+  "HyperParameters": {
+    "config_json": "{\"base_model\":\"whisper-base\",\"batch_size\":2,\"dev_ids\":\"split:dev\",\"eval_every\":60,\"freeze\":\"decoder\",\"grad_accum\":8,\"gradient_checkpointing\":true,\"keep_checkpoints\":2,\"lr\":1e-05,\"max_grad_norm\":1.0,\"max_steps\":180,\"note\":\"Controlled experiment (v2): identical to pilot-base-encoder.json (same base model, seed, steps, batch, learning rate, frozen decoder, final step as candidate) except the training data: FLEURS French train with raw transcriptions (case and punctuation kept; prepare-punctuated, flh_fleurs_fr_punctuated_train_v1, 1440 utterances like the pilot) instead of MLS lower-case text without punctuation. Question: does the style regression (A5) disappear when the targets keep punctuation, without losing accuracy on the fixed holdout? Run with --data <prepare-punctuated output>.\",\"save_every\":5,\"schema\":\"flh_speaking_train_config_v1\",\"seed\":20261117,\"threads\":4,\"train_ids\":\"split:train\",\"warmup_steps\":18,\"weight_decay\":0.0}",
+    "data_sha256": "920b74a02c33ff8482573d31971af05de709554570a4a869bfdcf63420a5379b",
+    "base_model": "whisper-base"
+  },
+  "InputDataConfig": [
+    {
+      "ChannelName": "data",
+      "InputMode": "File",
+      "ContentType": "application/octet-stream",
+      "DataSource": {
+        "S3DataSource": {
+          "S3DataType": "S3Prefix",
+          "S3Uri": "s3://example-flh-artifacts/speaking/datasets/920b74a02c33ff8482573d31971af05de709554570a4a869bfdcf63420a5379b/",
+          "S3DataDistributionType": "FullyReplicated"
+        }
+      }
+    },
+    {
+      "ChannelName": "model",
+      "InputMode": "File",
+      "ContentType": "application/octet-stream",
+      "DataSource": {
+        "S3DataSource": {
+          "S3DataType": "S3Prefix",
+          "S3Uri": "s3://example-flh-artifacts/speaking/models/whisper-base/e37978b90ca9030d5170a5c07aadb050351a65bb/",
+          "S3DataDistributionType": "FullyReplicated"
+        }
+      }
+    }
+  ],
+  "OutputDataConfig": {
+    "S3OutputPath": "s3://example-flh-artifacts/speaking/output/"
+  },
+  "CheckpointConfig": {
+    "S3Uri": "s3://example-flh-artifacts/speaking/checkpoints/flh-speaking-r4pilot-20261120-000000/",
+    "LocalPath": "/opt/ml/checkpoints"
+  },
+  "ResourceConfig": {
+    "InstanceType": "ml.g5.xlarge",
+    "InstanceCount": 1,
+    "VolumeSizeInGB": 30
+  },
+  "StoppingCondition": {
+    "MaxRuntimeInSeconds": 3600,
+    "MaxWaitTimeInSeconds": 7200
+  },
+  "EnableNetworkIsolation": true,
+  "EnableManagedSpotTraining": true,
+  "RetryStrategy": {
+    "MaximumRetryAttempts": 1
+  },
+  "Tags": [
+    {
+      "Key": "Project",
+      "Value": "flh"
+    },
+    {
+      "Key": "Component",
+      "Value": "speaking-asr"
+    },
+    {
+      "Key": "Run",
+      "Value": "r4pilot"
+    },
+    {
+      "Key": "DatasetSha256",
+      "Value": "920b74a02c33ff8482573d31971af05de709554570a4a869bfdcf63420a5379b"
+    },
+    {
+      "Key": "ImageDigest",
+      "Value": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "Key": "Owner",
+      "Value": "flh-owner"
+    },
+    {
+      "Key": "DeleteAfter",
+      "Value": "2026-12-20"
+    }
+  ]
+}

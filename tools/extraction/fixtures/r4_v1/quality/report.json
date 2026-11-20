@@ -1,0 +1,768 @@
+{
+ "checks": "flh_grounding_checks_v2",
+ "items": [
+  {
+   "acceptable": [
+    "supported"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "control",
+   "ref": "n1",
+   "relation": "supports",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "acceptable": [
+    "review",
+    "unsupported"
+   ],
+   "exact_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "checks": [
+     {
+      "check": "negated_quote",
+      "detail": "in « On ne dit pas en Japon », « en Japon » follows « ne dit pas »: the quoted words may deny what the claim asserts (a word check, not proof)"
+     }
+    ],
+    "outcome": "review"
+   },
+   "folded_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "ref": "n2",
+   "relation": "contradicts",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "acceptable": [
+    "supported"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "ref": "n3",
+   "relation": "supports",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "acceptable": [
+    "supported"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "ref": "n4",
+   "relation": "supports",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "acceptable": [
+    "review",
+    "unsupported"
+   ],
+   "exact_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "checks": [
+     {
+      "check": "negated_quote",
+      "detail": "in « ce n'est jamais « en » devant un pays masculin », « en » follows « n' est jamais »: the quoted words may deny what the claim asserts (a word check, not proof)"
+     }
+    ],
+    "outcome": "review"
+   },
+   "folded_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "ref": "n5",
+   "relation": "contradicts",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "acceptable": [
+    "review",
+    "unsupported"
+   ],
+   "exact_v1": {
+    "category": "false_support_unrelated",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "false_support_unrelated",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "false_support_unrelated",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "false_support_unrelated",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "lexical_overlap",
+   "ref": "n6",
+   "relation": "unrelated",
+   "source_id": "r4-q-negation"
+  },
+  {
+   "acceptable": [
+    "supported"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "over_flag",
+    "outcome": "review"
+   },
+   "lexical_v1": {
+    "category": "false_rejection",
+    "outcome": "unsupported"
+   },
+   "location": "verbatim",
+   "phenomenon": "accent_error",
+   "ref": "a1",
+   "relation": "supports",
+   "source_id": "r4-q-accents"
+  },
+  {
+   "acceptable": [
+    "review"
+   ],
+   "exact_v1": {
+    "category": "missed_variant",
+    "outcome": "unsupported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "checks": [
+     {
+      "check": "spelling_variant",
+      "detail": "not the learner's exact words: the learner wrote « Hier j'ai ecrit « je vais a Lyon » » (accents differ); review before using it"
+     }
+    ],
+    "outcome": "review"
+   },
+   "folded_v1": {
+    "category": "variant_accepted_silently",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": null,
+    "outcome": null
+   },
+   "location": "accent_variant",
+   "phenomenon": "accent_error",
+   "ref": "a2",
+   "relation": "supports",
+   "source_id": "r4-q-accents"
+  },
+  {
+   "acceptable": [
+    "review"
+   ],
+   "exact_v1": {
+    "category": "missed_variant",
+    "outcome": "unsupported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "checks": [
+     {
+      "check": "spelling_variant",
+      "detail": "not the learner's exact words: the learner wrote « Sans accent, a est le verbe avoir » (case differ); review before using it"
+     }
+    ],
+    "outcome": "review"
+   },
+   "folded_v1": {
+    "category": "variant_accepted_silently",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "variant_accepted_silently",
+    "outcome": "supported"
+   },
+   "location": "case_variant",
+   "phenomenon": "accent_error",
+   "ref": "a3",
+   "relation": "supports",
+   "source_id": "r4-q-accents"
+  },
+  {
+   "acceptable": [
+    "review",
+    "unsupported"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "checks": [
+     {
+      "check": "spelling_variant",
+      "detail": "not the learner's exact words: the learner wrote « il a un chat » (accents differ); review before using it"
+     }
+    ],
+    "outcome": "review"
+   },
+   "folded_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "location": "accent_variant",
+   "phenomenon": "accent_error",
+   "ref": "a4",
+   "relation": "contradicts",
+   "source_id": "r4-q-accents"
+  },
+  {
+   "acceptable": [
+    "unsupported",
+    "review"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "folded_v1": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "lexical_v1": {
+    "category": "false_support_paraphrase",
+    "outcome": "supported"
+   },
+   "location": "paraphrase",
+   "phenomenon": "paraphrase",
+   "ref": "p1",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "acceptable": [
+    "supported"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "control",
+   "ref": "p2",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "acceptable": [
+    "review",
+    "unsupported"
+   ],
+   "exact_v1": {
+    "category": "false_support_unrelated",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "false_support_unrelated",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "false_support_unrelated",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "false_support_unrelated",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "lexical_overlap",
+   "ref": "p3",
+   "relation": "unrelated",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "acceptable": [
+    "supported"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "control",
+   "ref": "p4",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "acceptable": [
+    "review",
+    "unsupported"
+   ],
+   "exact_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "lexical_overlap",
+   "ref": "p5",
+   "relation": "contradicts",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "acceptable": [
+    "supported"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "folded_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "lexical_v1": {
+    "category": "correct",
+    "outcome": "supported"
+   },
+   "location": "verbatim",
+   "phenomenon": "negation",
+   "ref": "p6",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "acceptable": [
+    "unsupported",
+    "review"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "folded_v1": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "lexical_v1": {
+    "category": "false_support_paraphrase",
+    "outcome": "supported"
+   },
+   "location": "paraphrase",
+   "phenomenon": "paraphrase",
+   "ref": "p7",
+   "relation": "supports",
+   "source_id": "r4-q-paraphrase"
+  },
+  {
+   "acceptable": [
+    "review",
+    "unsupported"
+   ],
+   "exact_v1": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "exact_v1+checks_v2": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "folded_v1": {
+    "category": "correct",
+    "outcome": "unsupported"
+   },
+   "lexical_v1": {
+    "category": "false_support_contradiction",
+    "outcome": "supported"
+   },
+   "location": "paraphrase",
+   "phenomenon": "paraphrase",
+   "ref": "p8",
+   "relation": "contradicts",
+   "source_id": "r4-q-paraphrase"
+  }
+ ],
+ "note": "same author for cases and checks: reproducible behaviour on this fixture, not an accuracy estimate",
+ "reference_sha256": "163d31e59338e007f84b42da110fea5695432e2cb6191f35d01a595058472e93",
+ "schema": "flh_grounding_quality_report_v1",
+ "summary": {
+  "exact_v1": {
+   "by_phenomenon": {
+    "accent_error": {
+     "correct": 2,
+     "items": 4
+    },
+    "control": {
+     "correct": 3,
+     "items": 3
+    },
+    "lexical_overlap": {
+     "correct": 0,
+     "items": 3
+    },
+    "negation": {
+     "correct": 3,
+     "items": 5
+    },
+    "paraphrase": {
+     "correct": 3,
+     "items": 3
+    }
+   },
+   "correct": 11,
+   "errors": {
+    "false_support_contradiction": 3,
+    "false_support_unrelated": 2,
+    "missed_variant": 2
+   },
+   "scored": 18
+  },
+  "exact_v1+checks_v2": {
+   "by_phenomenon": {
+    "accent_error": {
+     "correct": 4,
+     "items": 4
+    },
+    "control": {
+     "correct": 3,
+     "items": 3
+    },
+    "lexical_overlap": {
+     "correct": 0,
+     "items": 3
+    },
+    "negation": {
+     "correct": 5,
+     "items": 5
+    },
+    "paraphrase": {
+     "correct": 3,
+     "items": 3
+    }
+   },
+   "correct": 15,
+   "errors": {
+    "false_support_contradiction": 1,
+    "false_support_unrelated": 2
+   },
+   "scored": 18
+  },
+  "folded_v1": {
+   "by_phenomenon": {
+    "accent_error": {
+     "correct": 0,
+     "items": 4
+    },
+    "control": {
+     "correct": 3,
+     "items": 3
+    },
+    "lexical_overlap": {
+     "correct": 0,
+     "items": 3
+    },
+    "negation": {
+     "correct": 3,
+     "items": 5
+    },
+    "paraphrase": {
+     "correct": 3,
+     "items": 3
+    }
+   },
+   "correct": 9,
+   "errors": {
+    "false_support_contradiction": 4,
+    "false_support_unrelated": 2,
+    "over_flag": 1,
+    "variant_accepted_silently": 2
+   },
+   "scored": 18
+  },
+  "lexical_v1": {
+   "by_phenomenon": {
+    "accent_error": {
+     "correct": 0,
+     "items": 3
+    },
+    "control": {
+     "correct": 3,
+     "items": 3
+    },
+    "lexical_overlap": {
+     "correct": 0,
+     "items": 3
+    },
+    "negation": {
+     "correct": 3,
+     "items": 5
+    },
+    "paraphrase": {
+     "correct": 0,
+     "items": 3
+    }
+   },
+   "correct": 6,
+   "errors": {
+    "false_rejection": 1,
+    "false_support_contradiction": 5,
+    "false_support_paraphrase": 2,
+    "false_support_unrelated": 2,
+    "variant_accepted_silently": 1
+   },
+   "scored": 17
+  }
+ },
+ "window": 3,
+ "window_sensitivity": {
+  "2": {
+   "by_phenomenon": {
+    "accent_error": {
+     "correct": 4,
+     "items": 4
+    },
+    "control": {
+     "correct": 3,
+     "items": 3
+    },
+    "lexical_overlap": {
+     "correct": 0,
+     "items": 3
+    },
+    "negation": {
+     "correct": 5,
+     "items": 5
+    },
+    "paraphrase": {
+     "correct": 3,
+     "items": 3
+    }
+   },
+   "correct": 15,
+   "errors": {
+    "false_support_contradiction": 1,
+    "false_support_unrelated": 2
+   },
+   "scored": 18
+  },
+  "3": {
+   "by_phenomenon": {
+    "accent_error": {
+     "correct": 4,
+     "items": 4
+    },
+    "control": {
+     "correct": 3,
+     "items": 3
+    },
+    "lexical_overlap": {
+     "correct": 0,
+     "items": 3
+    },
+    "negation": {
+     "correct": 5,
+     "items": 5
+    },
+    "paraphrase": {
+     "correct": 3,
+     "items": 3
+    }
+   },
+   "correct": 15,
+   "errors": {
+    "false_support_contradiction": 1,
+    "false_support_unrelated": 2
+   },
+   "scored": 18
+  },
+  "4": {
+   "by_phenomenon": {
+    "accent_error": {
+     "correct": 4,
+     "items": 4
+    },
+    "control": {
+     "correct": 3,
+     "items": 3
+    },
+    "lexical_overlap": {
+     "correct": 0,
+     "items": 3
+    },
+    "negation": {
+     "correct": 4,
+     "items": 5
+    },
+    "paraphrase": {
+     "correct": 3,
+     "items": 3
+    }
+   },
+   "correct": 14,
+   "errors": {
+    "false_support_contradiction": 1,
+    "false_support_unrelated": 2,
+    "over_flag": 1
+   },
+   "scored": 18
+  },
+  "6": {
+   "by_phenomenon": {
+    "accent_error": {
+     "correct": 4,
+     "items": 4
+    },
+    "control": {
+     "correct": 3,
+     "items": 3
+    },
+    "lexical_overlap": {
+     "correct": 0,
+     "items": 3
+    },
+    "negation": {
+     "correct": 4,
+     "items": 5
+    },
+    "paraphrase": {
+     "correct": 3,
+     "items": 3
+    }
+   },
+   "correct": 14,
+   "errors": {
+    "false_support_contradiction": 1,
+    "false_support_unrelated": 2,
+    "over_flag": 1
+   },
+   "scored": 18
+  }
+ }
+}

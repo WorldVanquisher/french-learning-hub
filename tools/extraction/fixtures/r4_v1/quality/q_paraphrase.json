@@ -1,0 +1,106 @@
+{
+ "capture": {
+  "capture_id": "synthetic-r4-q-paraphrase-001",
+  "original_context": "Mon collègue m'a répondu : « Oui, c'est juste. Depuis, c'est pour une action qui continue encore. Il y a, c'est pour un moment fini dans le passé : je suis arrivé il y a trois ans. »",
+  "original_input": "Je ne sais jamais s'il faut « depuis » ou « il y a ». Par exemple : j'habite ici depuis trois ans ?",
+  "schema_version": "learning_capture_v1",
+  "source": "manual"
+ },
+ "learner_goal": "Choose between « depuis » and « il y a » (A2).",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "depuis (durée)",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "depuis s'emploie pour une action qui dure encore"
+    ],
+    "ref": "p1",
+    "statement": "« depuis » marks an action that is still going on.",
+    "type": "claim"
+   },
+   {
+    "canonical": "il y a (moment)",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "Il y a, c'est pour un moment fini dans le passé"
+    ],
+    "ref": "p2",
+    "statement": "« il y a » places a finished moment in the past.",
+    "type": "claim"
+   },
+   {
+    "canonical": "virgule",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "Depuis, c'est pour une action"
+    ],
+    "ref": "p3",
+    "statement": "« depuis » at the start of a sentence is followed by a comma.",
+    "type": "claim"
+   },
+   {
+    "canonical": "depuis + durée",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "Oui, c'est juste"
+    ],
+    "ref": "p4",
+    "statement": "« J'habite ici depuis trois ans » is correct French.",
+    "type": "claim"
+   },
+   {
+    "canonical": "arrivé depuis",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "je suis arrivé il y a trois ans"
+    ],
+    "ref": "p5",
+    "statement": "« je suis arrivé depuis trois ans » is correct French.",
+    "type": "claim"
+   },
+   {
+    "canonical": "confusion",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "Je ne sais jamais s'il faut « depuis » ou « il y a »"
+    ],
+    "ref": "p6",
+    "statement": "The learner mixes up « depuis » and « il y a ».",
+    "type": "claim"
+   },
+   {
+    "canonical": "il y a (terminé)",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "il y a sert pour un moment terminé"
+    ],
+    "ref": "p7",
+    "statement": "« il y a » is used for a moment that is over.",
+    "type": "claim"
+   },
+   {
+    "canonical": "depuis (fini)",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "depuis, c'est pour une action finie"
+    ],
+    "ref": "p8",
+    "statement": "« depuis » is for an action that has ended.",
+    "type": "claim"
+   }
+  ],
+  "proposer": "synthetic: hand-written R4 grounding-quality fixture (no provider call); French needs a native-speaker check before learner use"
+ },
+ "revision": 1,
+ "schema": "flh_practice_source_v1",
+ "source_id": "r4-q-paraphrase"
+}

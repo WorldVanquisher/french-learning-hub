@@ -1,0 +1,5 @@
+Return from codex for cx-e55666d6bd6c (checked against current review); applied: False
+  1 c1   outdated     k-0d3281b28da6: the unit is needs_review or changed since this packet: export a new packet and ask again
+  2 c2   duplicate    k-cb9627cc7213: equal to the current text
+  3 c3   uncited      k-cb9627cc7213: cites no evidence of this packet; the learner's own words must support a correction
+  counts: duplicate 1, uncited 1, outdated 1

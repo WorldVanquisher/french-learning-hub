@@ -1,0 +1,58 @@
+{
+ "discard_keeps_no_answer": true,
+ "evidence_verified_at_read_reveal_revisit": true,
+ "offered_order": [
+  "recall",
+  "reveal",
+  "read",
+  "retry"
+ ],
+ "ok": true,
+ "opt_out_later": {
+  "after_contains_answer": false,
+  "before": "answer kept: True",
+  "removed": 1
+ },
+ "refusals": {
+  "recall_after_reveal": "recall comes before the reveal; after it, use retry",
+  "retry_before_reveal": "retry comes after the reveal; before it, use recall",
+  "start_on_withdrawn_item": "p-0e74504cf958 is not offered in revision 2"
+ },
+ "retrieval": {
+  "attempt_first": [
+   "unaided",
+   "after_reveal"
+  ],
+  "read_first": [
+   "after_reading"
+  ]
+ },
+ "revisit_r2": {
+  "practice": {
+   "reason": "k-0d3281b28da6 changed in revision 2",
+   "reason_code": "knowledge_changed",
+   "status": "withdrawn"
+  },
+  "units": [
+   "current",
+   "changed"
+  ]
+ },
+ "revisit_r3": {
+  "can_practise": true,
+  "evidence": [
+   "moved",
+   "moved"
+  ],
+  "units": [
+   "current",
+   "current"
+  ]
+ },
+ "valid": {
+  "discard": [],
+  "keep": [],
+  "opt_out_later": [],
+  "read_first": []
+ }
+}

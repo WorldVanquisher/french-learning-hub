@@ -1,0 +1,299 @@
+{
+ "body": {
+  "contract": "flh_extraction_service_v1",
+  "counts": {
+   "generated": 2,
+   "no_evidence": 0,
+   "supported": 4,
+   "uncertain": 0,
+   "unsupported": 1
+  },
+  "deployment_id": "flh-extraction-rules@b0bd175f5d97/flh_extraction_service_v1/flh_practice_drafter_v1",
+  "draft_id": "d-dcb8af8e1211",
+  "evidence": [
+   {
+    "end": 123,
+    "evidence_id": "ev-11216baa6d",
+    "excerpt": "…langerie ? » J'ai répondu : « [Oui, j'en vais.] » Elle m'a corrigée : « On di…",
+    "field": "original_context",
+    "quote": "Oui, j'en vais.",
+    "source_id": "y-en-demo",
+    "source_revision": 3,
+    "start": 108,
+    "status": "located"
+   },
+   {
+    "end": 239,
+    "evidence_id": "ev-a2f6d92552",
+    "excerpt": "…. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »",
+    "field": "original_context",
+    "quote": "Je viens de la boulangerie, j'en viens.",
+    "source_id": "y-en-demo",
+    "source_revision": 3,
+    "start": 200,
+    "status": "located"
+   },
+   {
+    "end": 171,
+    "evidence_id": "ev-f0b5fdc631",
+    "excerpt": "…vais. » Elle m'a corrigée : « [On dit : oui, j'y vais.] » Plus tard, elle a dit : « J…",
+    "field": "original_context",
+    "quote": "On dit : oui, j'y vais.",
+    "source_id": "y-en-demo",
+    "source_revision": 3,
+    "start": 148,
+    "status": "located"
+   },
+   {
+    "end": 88,
+    "evidence_id": "ev-fd87af4f62",
+    "excerpt": "…ain. Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …",
+    "field": "original_context",
+    "quote": "Tu vas à la boulangerie ?",
+    "source_id": "y-en-demo",
+    "source_revision": 3,
+    "start": 63,
+    "status": "located"
+   }
+  ],
+  "items": [
+   {
+    "carried_from_revision": 1,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": 1,
+    "evidence_ids": [
+     "ev-fd87af4f62",
+     "ev-f0b5fdc631"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-fd87af4f62",
+      "quote": "Tu vas à la boulangerie ?",
+      "status": "located"
+     },
+     {
+      "evidence_id": "ev-f0b5fdc631",
+      "quote": "On dit : oui, j'y vais.",
+      "status": "located"
+     }
+    ],
+    "item_hash": "7aa5dc7a70e608ac6c7c5b9d4159e25c23283cbe27d601f2f043841e235d207e",
+    "item_id": "k-6c4760ebee9d",
+    "material_hash": "84614414c68a38db3ac5e7defe50e2ac899f3b8ff6bb306f94d6e20335f65db4",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "approved",
+    "support": "supported",
+    "text": "« y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": 3,
+    "evidence_ids": [
+     "ev-a2f6d92552"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-a2f6d92552",
+      "quote": "Je viens de la boulangerie, j'en viens.",
+      "status": "located"
+     }
+    ],
+    "item_hash": "b13ebe90188d1591fcd2f19f407f93ecdbd914d5350a0962453f02c379006b76",
+    "item_id": "k-40cbe73ae3f5",
+    "material_hash": "a28ada0aeb474dc25b09db0ffd82c9d562353653e7737309c2b5cbfb38e8bac3",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "approved",
+    "support": "supported",
+    "text": "« en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": 1,
+    "conflicts": [
+     "k-232ca0f26098"
+    ],
+    "cues": [],
+    "decided_on_revision": 1,
+    "evidence_ids": [],
+    "groundings": [
+     {
+      "quote": "en goes with every verb of movement",
+      "status": "not_found"
+     }
+    ],
+    "item_hash": "757e1bfda44f2598820983b64c02e76e4376eb00f04a77b209c55855594cf14e",
+    "item_id": "k-5ca79503ae78",
+    "material_hash": "6d02b03871cd86dbe76b28f00f8cea7f69e365127d941d2c21c94b324114ce0e",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "rejected",
+    "support": "unsupported",
+    "text": "« en » goes with every verb of movement, so « j'en vais » is also correct.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": 3,
+    "evidence_ids": [
+     "ev-fd87af4f62",
+     "ev-a2f6d92552"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-fd87af4f62",
+      "quote": "Tu vas à la boulangerie ?",
+      "status": "located"
+     },
+     {
+      "evidence_id": "ev-a2f6d92552",
+      "quote": "Je viens de la boulangerie, j'en viens.",
+      "status": "located"
+     }
+    ],
+    "item_hash": "c5c85275add7b2040fbab74ab898e2f02d97f8acd32af961c3eff6e0a84a4ab3",
+    "item_id": "k-0d3281b28da6",
+    "material_hash": "3752249d43df06564bb0c6edffe8be6e0597b82d61f8b738ec65a25549908877",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "approved",
+    "support": "supported",
+    "text": "Ask which preposition the place takes: « à » gives « y », « de » gives « en ».",
+    "type": "contrast"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [
+     "k-5ca79503ae78"
+    ],
+    "cues": [],
+    "decided_on_revision": 3,
+    "evidence_ids": [
+     "ev-11216baa6d"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-11216baa6d",
+      "quote": "Oui, j'en vais.",
+      "status": "located"
+     }
+    ],
+    "item_hash": "9101f6f232f5a125739e1950a536fc0af1bf73409256ca217e036bae57d48e48",
+    "item_id": "k-232ca0f26098",
+    "material_hash": "fc3121fccf444c61934377d77e8932e0d0f64f30aae2c0c576cdbae5aa73874d",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "approved",
+    "support": "supported",
+    "text": "« aller à » takes « y »; « en » would mean « from there ». (« Je m'en vais » is correct: that is « s'en aller », to leave.)",
+    "type": "common_error"
+   },
+   {
+    "carried_from_revision": 1,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": 1,
+    "evidence_ids": [],
+    "groundings": [],
+    "item_hash": "22df1dec718285e517fae20bb91156ee2a9cbb638187aee8add034f9e92960df",
+    "item_id": "k-d1c9732336a2",
+    "material_hash": "e4a24771c81740f736f838f58c51c619550b2de3500e7b7db5b57c03ac5e59d1",
+    "origin": "generated",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "approved",
+    "support": "generated",
+    "text": "« aller à la piscine »: the place takes « à », so « y ».",
+    "type": "worked_example"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": 3,
+    "evidence_ids": [],
+    "groundings": [],
+    "item_hash": "e47fae3df1a37c01cc669135b4af07d01e44aa5527ff79db14878e1432f1440c",
+    "item_id": "k-cb9627cc7213",
+    "material_hash": "a780b12bca1ab53082a9e937d88b86299dd06c9a902a9937227b6ba9634b8eb7",
+    "origin": "generated",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "approved",
+    "support": "generated",
+    "text": "« revenir du marché » (de + le): the place takes « de », so « en ».",
+    "type": "worked_example"
+   }
+  ],
+  "moves": {
+   "On dit : oui, j'y vais.": {
+    "from": "original_context@110",
+    "from_revision": 2,
+    "new_evidence_id": "ev-f0b5fdc631",
+    "old_evidence_id": "ev-6659b658b9",
+    "quote": "On dit : oui, j'y vais.",
+    "to": "original_context@148"
+   },
+   "Oui, j'en vais.": {
+    "from": "original_context@70",
+    "from_revision": 2,
+    "new_evidence_id": "ev-11216baa6d",
+    "old_evidence_id": "ev-053a01e463",
+    "quote": "Oui, j'en vais.",
+    "to": "original_context@108"
+   },
+   "Tu vas à la boulangerie ?": {
+    "from": "original_context@25",
+    "from_revision": 2,
+    "new_evidence_id": "ev-fd87af4f62",
+    "old_evidence_id": "ev-fd704f2740",
+    "quote": "Tu vas à la boulangerie ?",
+    "to": "original_context@63"
+   }
+  },
+  "operation": "review",
+  "plan": {
+   "batch_id": null,
+   "effects": {
+    "decision_records": 0,
+    "evidence_links_added": [],
+    "knowledge_approved": 0,
+    "new_practice": [],
+    "practice_after": 5,
+    "practice_before": 5
+   },
+   "left_for_you": [],
+   "selected": []
+  },
+  "schema": "flh_extraction_result_v1",
+  "source": {
+   "capture_id": "synthetic-y-en-001",
+   "proposer": "synthetic: hand-written fixture for the Extraction 2.0 prototype (no provider call); French needs a native-speaker check before learner use",
+   "revision": 3,
+   "revision_sha256": "11d0085da5b22ea7e67113fb53d9ff7370b2607a0c10be5ed4068427d6d7973c",
+   "source_id": "y-en-demo"
+  },
+  "states": {
+   "approved": 6,
+   "corrected": 0,
+   "needs_review": 0,
+   "pending": 0,
+   "rejected": 1
+  },
+  "status": "ok",
+  "text": "Draft d-dcb8af8e1211  source y-en-demo revision 3 (11d0085da5b2)\nlines: QUOTE = your exact words, located in your text (evidence); PARAPHRASE = a restatement (never evidence); CUE = a word check that the quote may not support the claim (not a proof)\n\n[k-6c4760ebee9d] claim  support supported  state approved (carried from revision 1)\n  says        « y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »\n  QUOTE       ev-fd87af4f62 located   « Tu vas à la boulangerie ? »\n              …ain. Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …\n              MOVED since revision 2: original_context@25 -> original_context@63 (still located once; ev-fd704f2740 is now ev-fd87af4f62; a move does not change your decision)\n  QUOTE       ev-f0b5fdc631 located   « On dit : oui, j'y vais. »\n              …vais. » Elle m'a corrigée : « [On dit : oui, j'y vais.] » Plus tard, elle a dit : « J…\n              MOVED since revision 2: original_context@110 -> original_context@148 (still located once; ev-6659b658b9 is now ev-f0b5fdc631; a move does not change your decision)\n  note        the wording differs only in spacing, apostrophes or Unicode form; your decision is kept\n\n[k-40cbe73ae3f5] claim  support supported  state approved\n  says        « en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »\n  QUOTE       ev-a2f6d92552 located   « Je viens de la boulangerie, j'en viens. »\n              …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »\n\n[k-5ca79503ae78] claim  support unsupported  state rejected (carried from revision 1)\n  says        « en » goes with every verb of movement, so « j'en vais » is also correct.\n  QUOTE       -             not_found « en goes with every verb of movement »\n  CONFLICT    k-5ca79503ae78 presents « j'en vais » as correct; k-232ca0f26098 lists it as an error\n  rejected    on revision 1: my friend corrected exactly this: « j'en vais » is wrong\n\n[k-0d3281b28da6] contrast  support supported  state approved\n  says        « y » à + a place: where you go or where you are / « en » de + a place: where you come from\n  distinction Ask which preposition the place takes: « à » gives « y », « de » gives « en ».\n  QUOTE       ev-fd87af4f62 located   « Tu vas à la boulangerie ? »\n              …ain. Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …\n              MOVED since revision 2: original_context@25 -> original_context@63 (still located once; ev-fd704f2740 is now ev-fd87af4f62; a move does not change your decision)\n  QUOTE       ev-a2f6d92552 located   « Je viens de la boulangerie, j'en viens. »\n              …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »\n\n[k-232ca0f26098] common_error  support supported  state approved\n  says        not « j'en vais » but « j'y vais »\n  why         « aller à » takes « y »; « en » would mean « from there ». (« Je m'en vais » is correct: that is « s'en aller », to leave.)\n  QUOTE       ev-11216baa6d located   « Oui, j'en vais. »\n              …langerie ? » J'ai répondu : « [Oui, j'en vais.] » Elle m'a corrigée : « On di…\n              MOVED since revision 2: original_context@70 -> original_context@108 (still located once; ev-053a01e463 is now ev-11216baa6d; a move does not change your decision)\n  CONFLICT    k-5ca79503ae78 presents « j'en vais » as correct; k-232ca0f26098 lists it as an error\n\n[k-d1c9732336a2] worked_example  support generated  state approved (carried from revision 1)\n  says        Vous allez à la piscine ce soir ? — Oui, nous y allons.  (a sentence not in your source)\n  explanation « aller à la piscine »: the place takes « à », so « y ».\n  QUOTE       none (a new practice example: the source never said it)\n\n[k-cb9627cc7213] worked_example  support generated  state approved\n  says        Tu reviens du marché ? — Oui, j'en reviens.  (a sentence not in your source)\n  explanation « revenir du marché » (de + le): the place takes « de », so « en ».\n  QUOTE       none (a new practice example: the source never said it)\n\nstates: pending 0, approved 6, corrected 0, rejected 1, needs_review 0\n\nReview v2 of draft d-dcb8af8e1211 (source y-en-demo revision 3)\n\nBatch: none (no pending item can be approved together with others)\n\nDecide yourself, one by one (0):\n  (none)\n\nAlready decided: approved 6, rejected 1\n"
+ },
+ "status": 200
+}

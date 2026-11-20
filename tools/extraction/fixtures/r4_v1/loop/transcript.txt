@@ -1,0 +1,29 @@
+Loop lp-76c4e50b6815 on p-0e74504cf958 (choose); answers: keep
+  1 recall   incorrect (unaided)  « y »
+  2 reveal   after a recall: en
+  3 read     k-cb9627cc7213 (approved); k-0d3281b28da6 (approved)
+             evidence ev-17c9dfcc08 r1 original_context: . » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »  verified True
+             evidence ev-fd704f2740 r1 original_context: Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en   verified True
+  4 retry    correct (after_reveal)  « en »
+  5 revisit  r2: units k-cb9627cc7213 current, k-0d3281b28da6 changed; evidence ev-17c9dfcc08 absent, ev-fd704f2740 current; practice withdrawn (knowledge_changed); can practise: False
+  6 revisit  r3: units k-cb9627cc7213 current, k-0d3281b28da6 current; evidence ev-17c9dfcc08 moved, ev-fd704f2740 moved; practice offered; can practise: True
+
+Loop lp-e957e09f41f4 on p-664f7533a19d (produce); answers: discard
+  1 read     k-cb9627cc7213 (approved); k-0d3281b28da6 (approved)
+             evidence ev-17c9dfcc08 r1 original_context: . » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »  verified True
+             evidence ev-fd704f2740 r1 original_context: Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en   verified True
+  2 recall   self_check (after_reading)  (answer not kept)
+  3 reveal   after a recall: Oui, j'en reviens.
+
+Loop lp-35635a8697d0 on p-664f7533a19d (produce); answers: discard
+  1 recall   self_check (unaided)  (answer not kept)
+  2 reveal   after a recall: Oui, j'en reviens.
+  3 retention discard: 1 earlier answer(s) removed
+
+Loop lp-d15eca7df38c on p-2ea892e5eaa0 (explain); answers: keep
+  1 read     k-0d3281b28da6 (approved); k-6c4760ebee9d (approved); k-40cbe73ae3f5 (approved)
+             evidence ev-17c9dfcc08 r1 original_context: . » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »  verified True
+             evidence ev-6659b658b9 r1 original_context: vais. » Elle m'a corrigée : « [On dit : oui, j'y vais.] » Plus tard, elle a dit : « J  verified True
+             evidence ev-fd704f2740 r1 original_context: Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en   verified True
+  2 recall   self_check (after_reading)  « y after à, en after de »
+

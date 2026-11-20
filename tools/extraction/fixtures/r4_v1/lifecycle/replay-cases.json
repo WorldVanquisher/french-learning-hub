@@ -1,0 +1,160 @@
+{
+ "cases": {
+  "in_order": {
+   "deliver": [
+    "feed-1-r1.json",
+    "feed-2-r2-withdrawn.json",
+    "feed-3-r3-awaiting.json",
+    "feed-4-r3-restored.json"
+   ],
+   "expect": {
+    "actions": [
+     "applied",
+     "applied",
+     "applied",
+     "applied"
+    ],
+    "items": {
+     "p-0e74504cf958": {
+      "history": 1,
+      "offered": true
+     },
+     "p-22a947cd7f5c": {
+      "history": 0,
+      "offered": true
+     },
+     "p-2ea892e5eaa0": {
+      "history": 1,
+      "offered": true
+     },
+     "p-664f7533a19d": {
+      "history": 1,
+      "offered": true
+     },
+     "p-8d5cabf2ab59": {
+      "history": 0,
+      "offered": true
+     }
+    }
+   }
+  },
+  "late_feed_3": {
+   "deliver": [
+    "feed-1-r1.json",
+    "feed-2-r2-withdrawn.json",
+    "feed-4-r3-restored.json",
+    "feed-3-r3-awaiting.json"
+   ],
+   "expect": {
+    "actions": [
+     "applied",
+     "applied",
+     "applied",
+     "stale"
+    ],
+    "items": {
+     "p-0e74504cf958": {
+      "history": 1,
+      "offered": true
+     },
+     "p-22a947cd7f5c": {
+      "history": 0,
+      "offered": true
+     },
+     "p-2ea892e5eaa0": {
+      "history": 1,
+      "offered": true
+     },
+     "p-664f7533a19d": {
+      "history": 1,
+      "offered": true
+     },
+     "p-8d5cabf2ab59": {
+      "history": 0,
+      "offered": true
+     }
+    }
+   }
+  },
+  "missed_feed_3": {
+   "deliver": [
+    "feed-1-r1.json",
+    "feed-2-r2-withdrawn.json",
+    "feed-4-r3-restored.json"
+   ],
+   "expect": {
+    "actions": [
+     "applied",
+     "applied",
+     "applied"
+    ],
+    "items": {
+     "p-0e74504cf958": {
+      "history": 1,
+      "offered": true
+     },
+     "p-22a947cd7f5c": {
+      "history": 0,
+      "offered": true
+     },
+     "p-2ea892e5eaa0": {
+      "history": 1,
+      "offered": true
+     },
+     "p-664f7533a19d": {
+      "history": 1,
+      "offered": true
+     },
+     "p-8d5cabf2ab59": {
+      "history": 0,
+      "offered": true
+     }
+    }
+   }
+  },
+  "replay_and_stale": {
+   "deliver": [
+    "feed-1-r1.json",
+    "feed-2-r2-withdrawn.json",
+    "feed-2-r2-withdrawn.json",
+    "feed-3-r3-awaiting.json",
+    "feed-4-r3-restored.json",
+    "feed-2-r2-withdrawn.json"
+   ],
+   "expect": {
+    "actions": [
+     "applied",
+     "applied",
+     "replay",
+     "applied",
+     "applied",
+     "replay"
+    ],
+    "items": {
+     "p-0e74504cf958": {
+      "history": 1,
+      "offered": true
+     },
+     "p-22a947cd7f5c": {
+      "history": 0,
+      "offered": true
+     },
+     "p-2ea892e5eaa0": {
+      "history": 1,
+      "offered": true
+     },
+     "p-664f7533a19d": {
+      "history": 1,
+      "offered": true
+     },
+     "p-8d5cabf2ab59": {
+      "history": 0,
+      "offered": true
+     }
+    }
+   }
+  }
+ },
+ "schema": "flh_feed_replay_cases_v1",
+ "source": "R4 lifecycle (fixtures/r4_v1/lifecycle)"
+}

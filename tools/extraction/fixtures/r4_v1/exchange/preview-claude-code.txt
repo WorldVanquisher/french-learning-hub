@@ -1,0 +1,4 @@
+Return from claude-code for cx-e55666d6bd6c (checked against current review); applied: False
+  1 c1   candidate    k-cb9627cc7213: waits for your decision; nothing is applied
+  2 c2   unknown_unit k-000000000000: k-000000000000 is not a unit of this packet
+  counts: candidate 1, unknown_unit 1

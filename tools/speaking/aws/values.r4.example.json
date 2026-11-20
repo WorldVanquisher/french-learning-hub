@@ -1,0 +1,11 @@
+{
+  "BASE_MODEL": "whisper-base",
+  "BASE_REVISION": "e37978b90ca9030d5170a5c07aadb050351a65bb",
+  "BUCKET": "example-flh-artifacts",
+  "DATA_SHA256": "920b74a02c33ff8482573d31971af05de709554570a4a869bfdcf63420a5379b",
+  "DELETE_AFTER": "2026-12-20",
+  "EXEC_ROLE_ARN": "arn:aws:iam::123456789012:role/flh-speaking-sagemaker-exec",
+  "IMAGE_DIGEST": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "REGISTRY": "123456789012.dkr.ecr.us-east-1.amazonaws.com",
+  "RUN": "r4pilot"
+}

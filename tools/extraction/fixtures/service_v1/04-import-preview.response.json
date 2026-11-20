@@ -1,7 +1,7 @@
 {
  "body": {
   "contract": "flh_extraction_service_v1",
-  "deployment_id": "flh-extraction-rules@b0bd175f5d97/flh_extraction_service_v1/flh_practice_drafter_v1",
+  "deployment_id": "flh-extraction-rules@e978b6c2bdb6/flh_extraction_service_v1/flh_practice_drafter_v1",
   "operation": "import_preview",
   "preview": {
    "corrections": null,

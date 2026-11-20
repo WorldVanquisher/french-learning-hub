@@ -1,0 +1,333 @@
+{
+ "note": "synthetic stand-in rows (no audio exists); source fields describe the proposed public sources",
+ "proposal_id": "r4-synthetic-ok",
+ "rows": [
+  {
+   "id": "syn-fleurs-train-00",
+   "locale": "fr_fr",
+   "pcm_sha256": "1c3c9ece4711747882953b77ef384cef7d2f722006cb820519a277fac66e6c43",
+   "seconds": 6.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 0",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-01",
+   "locale": "fr_fr",
+   "pcm_sha256": "c8fceafe558ddd14a77fd6d55c198ba6f395277033e0e4307bc8b094ef2718e9",
+   "seconds": 7.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 1",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-02",
+   "locale": "fr_fr",
+   "pcm_sha256": "0e098e3457c8f0994a35b6d4431801217649a21ca4d62930ba14911e4231568b",
+   "seconds": 8.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 2",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-03",
+   "locale": "fr_fr",
+   "pcm_sha256": "23f41f453156ee119c230b06f4dddadeb2cf1ef98c43660959e70e9383b165fb",
+   "seconds": 9.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 3",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-04",
+   "locale": "fr_fr",
+   "pcm_sha256": "62ce2937d579bbb7c358ea6266576b480609c4a9031c6d57f2ff8d34464e68f5",
+   "seconds": 10.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 4",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-05",
+   "locale": "fr_fr",
+   "pcm_sha256": "2ba23058b6d48e7f8d0ccd71d32bcff81722cbe19c12cd5408584348fe5448a7",
+   "seconds": 6.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 5",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-06",
+   "locale": "fr_fr",
+   "pcm_sha256": "1e3f4c50613eb765851a1feb71647c25668a86c892ae4fdf78f184b9bb5c0ea5",
+   "seconds": 7.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 6",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-07",
+   "locale": "fr_fr",
+   "pcm_sha256": "35edba2cc4322ff4f678322831feb7728c66e89e8a3fb7cf0a303e3e854cfbfb",
+   "seconds": 8.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 7",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-08",
+   "locale": "fr_fr",
+   "pcm_sha256": "5236b251cb4411c43b2f9ab229bc66525b6ffdcb03510e91326be9c7f66d12d2",
+   "seconds": 9.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 8",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-09",
+   "locale": "fr_fr",
+   "pcm_sha256": "01fe905def54594571deb53769b3ea7f3aa0e84ad19686f9f207050ebdee2d9f",
+   "seconds": 10.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 9",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-10",
+   "locale": "fr_fr",
+   "pcm_sha256": "7cbd6e193a6a83b8451552d3d0fbdded4538b5b3f65fade3f8db49e624bcacb4",
+   "seconds": 6.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 10",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-fleurs-train-11",
+   "locale": "fr_fr",
+   "pcm_sha256": "321042abee86c14d861615cf7ab4ae6790a41d7660e8cee0e9d7c896e27dd94b",
+   "seconds": 7.0,
+   "source_id": "fleurs_fr_train",
+   "speaker": null,
+   "split": "train",
+   "text": "phrase d'entraînement synthétique numéro 11",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-mls_fr-test-00",
+   "locale": "fr",
+   "pcm_sha256": "35fc4a0029a3a577e593674a87c770f814062c64df4f89cf893a410c4bfeafce",
+   "seconds": 8.0,
+   "source_id": "mls_fr",
+   "speaker": "m1",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique mls_fr 0",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-mls_fr-test-01",
+   "locale": "fr",
+   "pcm_sha256": "fd295e85158154bb4918639bcc88c3e6077d8cbf351a66a2a2b3d4d0cf9a386f",
+   "seconds": 9.0,
+   "source_id": "mls_fr",
+   "speaker": "m2",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique mls_fr 1",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-mls_fr-test-02",
+   "locale": "fr",
+   "pcm_sha256": "ab916aecd56b36ac06a1c8f4907b50be241cd8e289892b80ce000de45808590c",
+   "seconds": 10.0,
+   "source_id": "mls_fr",
+   "speaker": "m3",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique mls_fr 2",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-mls_fr-test-03",
+   "locale": "fr",
+   "pcm_sha256": "72e98588e9caaab9afe4f87a81e082f86d130c0d1d807b2988f04f9dfe45dae5",
+   "seconds": 11.0,
+   "source_id": "mls_fr",
+   "speaker": "m1",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique mls_fr 3",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-mls_fr-test-04",
+   "locale": "fr",
+   "pcm_sha256": "3950d0b9a48a16689371f7ead045561bf9b4639c0e1185b0b938711107188473",
+   "seconds": 12.0,
+   "source_id": "mls_fr",
+   "speaker": "m2",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique mls_fr 4",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-mls_fr-test-05",
+   "locale": "fr",
+   "pcm_sha256": "d074e0d719e5c5e5885fdcda3064e175c1fc53d5fa50203d24d35032957aed2e",
+   "seconds": 13.0,
+   "source_id": "mls_fr",
+   "speaker": "m3",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique mls_fr 5",
+   "variety": "unspecified"
+  },
+  {
+   "id": "syn-slr57-test-00",
+   "locale": "fr",
+   "pcm_sha256": "d1c10c751ddacbe9b86a59b28b398fce71742bebe19b6baf357ea5541b55ef95",
+   "seconds": 8.0,
+   "source_id": "slr57",
+   "speaker": "a1",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique slr57 0",
+   "variety": "african_accented"
+  },
+  {
+   "id": "syn-slr57-test-01",
+   "locale": "fr",
+   "pcm_sha256": "cfd4d926b3cdfc89bd5c3409fb9970f9039ea2ab72c89d4308d4c39ee0b79376",
+   "seconds": 9.0,
+   "source_id": "slr57",
+   "speaker": "a2",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique slr57 1",
+   "variety": "african_accented"
+  },
+  {
+   "id": "syn-slr57-test-02",
+   "locale": "fr",
+   "pcm_sha256": "c60ee6703b8f88b4b57f8887bb20ce2845a8559542647a929a9c83b4d4907e8d",
+   "seconds": 10.0,
+   "source_id": "slr57",
+   "speaker": "a3",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique slr57 2",
+   "variety": "african_accented"
+  },
+  {
+   "id": "syn-slr57-test-03",
+   "locale": "fr",
+   "pcm_sha256": "11e76115b3877a352b2d9f14af9729b9729963b62f8da59ed4b7691ce9b00ace",
+   "seconds": 11.0,
+   "source_id": "slr57",
+   "speaker": "a1",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique slr57 3",
+   "variety": "african_accented"
+  },
+  {
+   "id": "syn-slr57-test-04",
+   "locale": "fr",
+   "pcm_sha256": "3628f9faca1b0ca108f8b14f2a2cc638d61259aced642e910f7e9a25a69040c8",
+   "seconds": 12.0,
+   "source_id": "slr57",
+   "speaker": "a2",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique slr57 4",
+   "variety": "african_accented"
+  },
+  {
+   "id": "syn-slr57-test-05",
+   "locale": "fr",
+   "pcm_sha256": "4cfec59007ed8259fa787ebaebf55646eb54827fd7839f2b2c54c703a4afbec2",
+   "seconds": 13.0,
+   "source_id": "slr57",
+   "speaker": "a3",
+   "split": "test",
+   "text": "phrase d'évaluation synthétique slr57 5",
+   "variety": "african_accented"
+  }
+ ],
+ "schema": "flh_speaking_training_intake_v1",
+ "sources": [
+  {
+   "attribution": "FLEURS (Conneau et al., 2022), CC BY 4.0",
+   "audio_redistributed": false,
+   "consent_statement": "released by the dataset authors under CC BY 4.0; the owner confirms the card's consent wording before any fetch",
+   "kind": "public_dataset",
+   "license": "CC-BY-4.0",
+   "locales": [
+    "fr_fr"
+   ],
+   "metadata_fields": [
+    "id",
+    "transcription",
+    "gender",
+    "num_samples"
+   ],
+   "repo": "google/fleurs",
+   "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+   "role": "train",
+   "source_id": "fleurs_fr_train",
+   "speaker_provenance": "read FLoRes sentences recorded by native speakers for the dataset (dataset card at the pinned revision)"
+  },
+  {
+   "attribution": "Multilingual LibriSpeech (Pratap et al., 2020), CC BY 4.0",
+   "audio_redistributed": false,
+   "consent_statement": "volunteer recordings released to the public domain by LibriVox; MLS under CC BY 4.0",
+   "kind": "public_dataset",
+   "license": "CC-BY-4.0",
+   "locales": [
+    "fr"
+   ],
+   "metadata_fields": [
+    "speaker_id",
+    "book_id",
+    "segment"
+   ],
+   "repo": "facebook/multilingual_librispeech",
+   "revision": "2e83e61823b4c47dcbcb1980bb88601274127609",
+   "role": "evaluation",
+   "source_id": "mls_fr",
+   "speaker_provenance": "LibriVox volunteer readers of public-domain books (dataset card at the pinned revision)"
+  },
+  {
+   "attribution": "African Accented French (OpenSLR 57), Apache-2.0",
+   "audio_redistributed": false,
+   "consent_statement": "released by the corpus authors under Apache-2.0; the owner confirms the consent wording before any fetch",
+   "kind": "public_dataset",
+   "license": "Apache-2.0",
+   "locales": [
+    "fr"
+   ],
+   "metadata_fields": [
+    "speaker",
+    "utterance"
+   ],
+   "repo": "openslr/57",
+   "revision": "2018-10-24",
+   "role": "evaluation",
+   "source_id": "slr57",
+   "speaker_provenance": "read speech by speakers of African-accented French recorded for the corpus (OpenSLR 57 page)"
+  }
+ ]
+}

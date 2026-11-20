@@ -1,0 +1,18 @@
+{
+ "schema": "flh_speaking_teardown_plan_v1",
+ "id": "r4-speaking-pilot",
+ "note": "Order for the owner's teardown after the R4 pilot (deploy/aws/model-runtime/SPEAKING-PILOT-R4.md §7). ${BUCKET}, ${JOB}, ${DATA_SHA} are the run's values. The pilot creates no endpoint; the endpoint steps apply only if one was created for an approved comparison.",
+ "steps": [
+  {"action": "stop_training_job", "target": "${JOB}", "when": "only if the job is still InProgress"},
+  {"action": "wait_job_terminal", "target": "${JOB}", "expect": "Completed, Stopped or Failed"},
+  {"action": "copy_evidence", "target": "retained evidence (owner's local handoff)", "items": ["describe-training-job JSON", "model.tar.gz and its SHA-256", "CloudWatch log events of the job", "the rendered request and values (no credentials)", "billing line of the job"]},
+  {"action": "delete_endpoint", "target": "${ENDPOINT}", "when": "only if an endpoint was created"},
+  {"action": "delete_endpoint_config", "target": "${ENDPOINT_CONFIG}", "when": "only if created"},
+  {"action": "delete_model", "target": "${MODEL}", "when": "only if a SageMaker model was registered"},
+  {"action": "delete_s3_prefix", "target": "s3://${BUCKET}/speaking/checkpoints/${JOB}/"},
+  {"action": "delete_s3_prefix", "target": "s3://${BUCKET}/speaking/output/${JOB}/"},
+  {"action": "delete_s3_prefix", "target": "s3://${BUCKET}/speaking/datasets/${DATA_SHA}/", "when": "only if no other approved job will use it"},
+  {"action": "delete_ecr_image", "target": "flh-speaking@${IMAGE_DIGEST}", "when": "only if no other job references the digest"},
+  {"action": "verify_empty", "target": "list-training-jobs, list-endpoints, s3 ls speaking/, ecr list-images"}
+ ]
+}

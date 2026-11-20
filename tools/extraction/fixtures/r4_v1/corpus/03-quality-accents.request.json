@@ -1,0 +1,75 @@
+{
+ "body": {
+  "contract": "flh_extraction_service_v1",
+  "schema": "flh_extraction_request_v1",
+  "sources": [
+   {
+    "capture": {
+     "capture_id": "synthetic-r4-q-accents-001",
+     "original_context": "Ma correspondante m'a repondu : « On écrit à avec un accent quand c'est une préposition : je vais à Lyon. Sans accent, a est le verbe avoir : il a un chat. »",
+     "original_input": "Je ne comprends pas quand on ecrit « a » avec un accent. Hier j'ai ecrit « je vais a Lyon » et c'etait faux.",
+     "schema_version": "learning_capture_v1",
+     "source": "manual"
+    },
+    "learner_goal": "Write « à » and « a » correctly (A1).",
+    "proposal": {
+     "items": [
+      {
+       "canonical": "à + ville",
+       "confidence": 0.7,
+       "kind": "grammar",
+       "quotes": [
+        "je vais à Lyon"
+       ],
+       "ref": "a1",
+       "statement": "Before a city, the preposition is written « à » with an accent.",
+       "type": "claim"
+      },
+      {
+       "quotes": [
+        "Hier j'ai écrit « je vais a Lyon »"
+       ],
+       "ref": "a2",
+       "right": "je vais à Lyon",
+       "type": "common_error",
+       "why": "the preposition « à » takes an accent; « a » is the verb avoir.",
+       "wrong": "je vais a Lyon"
+      },
+      {
+       "canonical": "a (avoir)",
+       "confidence": 0.7,
+       "kind": "grammar",
+       "quotes": [
+        "sans accent, a est le verbe avoir"
+       ],
+       "ref": "a3",
+       "statement": "Without an accent, « a » is the verb avoir.",
+       "type": "claim"
+      },
+      {
+       "canonical": "il à",
+       "confidence": 0.7,
+       "kind": "grammar",
+       "quotes": [
+        "il à un chat"
+       ],
+       "ref": "a4",
+       "statement": "« il à un chat » is correct French.",
+       "type": "claim"
+      }
+     ],
+     "proposer": "synthetic: hand-written R4 grounding-quality fixture (no provider call); French needs a native-speaker check before learner use"
+    },
+    "revision": 1,
+    "schema": "flh_practice_source_v1",
+    "source_id": "r4-q-accents"
+   }
+  ]
+ },
+ "headers": {
+  "Content-Type": "application/json",
+  "X-FLH-Contract": "flh_extraction_service_v1"
+ },
+ "method": "POST",
+ "path": "/v1/review"
+}

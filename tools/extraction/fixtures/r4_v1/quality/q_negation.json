@@ -1,0 +1,84 @@
+{
+ "capture": {
+  "capture_id": "synthetic-r4-q-negation-001",
+  "original_context": "Dans ma rédaction, j'ai écrit : « Cet été, je pars en Japon avec ma sœur. » Mon professeur a écrit dans la marge : « On ne dit pas en Japon : Japon est masculin, donc on dit au Japon. » Pour la France, il n'a rien corrigé : « Je reste en France » était juste. Il a aussi entouré « avec ma sœur » sans rien ajouter. À la fin, il a écrit : « Attention, ce n'est jamais « en » devant un pays masculin. »",
+  "original_input": "Pourquoi mon professeur a corrigé « en Japon » ? Je croyais que tous les pays prenaient « en ».",
+  "schema_version": "learning_capture_v1",
+  "source": "manual"
+ },
+ "learner_goal": "Choose between « en » and « au » before a country (A2).",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "au + pays masculin",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "Japon est masculin, donc on dit au Japon"
+    ],
+    "ref": "n1",
+    "statement": "Before a masculine country such as Japon, French uses « au »: « au Japon ».",
+    "type": "claim"
+   },
+   {
+    "canonical": "en Japon",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "On ne dit pas en Japon"
+    ],
+    "ref": "n2",
+    "statement": "« en Japon » is correct French.",
+    "type": "claim"
+   },
+   {
+    "canonical": "en + pays féminin",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "il n'a rien corrigé : « Je reste en France » était juste"
+    ],
+    "ref": "n3",
+    "statement": "« Je reste en France » is correct French.",
+    "type": "claim"
+   },
+   {
+    "canonical": "pas en Japon",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "On ne dit pas en Japon"
+    ],
+    "ref": "n4",
+    "statement": "« en Japon » is wrong: it is not said.",
+    "type": "claim"
+   },
+   {
+    "canonical": "en + pays masculin",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "ce n'est jamais « en » devant un pays masculin"
+    ],
+    "ref": "n5",
+    "statement": "« en » is used before a masculine country.",
+    "type": "claim"
+   },
+   {
+    "canonical": "possessif",
+    "confidence": 0.7,
+    "kind": "grammar",
+    "quotes": [
+     "entouré « avec ma sœur » sans rien ajouter"
+    ],
+    "ref": "n6",
+    "statement": "« avec ma sœur » contains a possessive error.",
+    "type": "claim"
+   }
+  ],
+  "proposer": "synthetic: hand-written R4 grounding-quality fixture (no provider call); French needs a native-speaker check before learner use"
+ },
+ "revision": 1,
+ "schema": "flh_practice_source_v1",
+ "source_id": "r4-q-negation"
+}

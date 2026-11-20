@@ -1,0 +1,269 @@
+{
+ "body": {
+  "contract": "flh_extraction_service_v1",
+  "counts": {
+   "generated": 0,
+   "no_evidence": 0,
+   "supported": 6,
+   "uncertain": 0,
+   "unsupported": 0
+  },
+  "deployment_id": "flh-extraction-rules@e978b6c2bdb6/flh_extraction_service_v1/flh_practice_drafter_v1",
+  "draft_id": "d-848b41cad9a9",
+  "evidence": [
+   {
+    "end": 258,
+    "evidence_id": "ev-3968f715d7",
+    "excerpt": "…t au Japon. » Pour la France, [il n'a rien corrigé : « Je reste en France » était juste]. Il a aussi entouré « avec ma…",
+    "field": "original_context",
+    "quote": "il n'a rien corrigé : « Je reste en France » était juste",
+    "source_id": "r4-q-negation",
+    "source_revision": 1,
+    "start": 202,
+    "status": "located"
+   },
+   {
+    "end": 139,
+    "evidence_id": "ev-69690c0724",
+    "excerpt": "…eur a écrit dans la marge : « [On ne dit pas en Japon] : Japon est masculin, donc on…",
+    "field": "original_context",
+    "quote": "On ne dit pas en Japon",
+    "source_id": "r4-q-negation",
+    "source_revision": 1,
+    "start": 117,
+    "status": "located"
+   },
+   {
+    "end": 397,
+    "evidence_id": "ev-6bcc25b132",
+    "excerpt": "…in, il a écrit : « Attention, [ce n'est jamais « en » devant un pays masculin]. »",
+    "field": "original_context",
+    "quote": "ce n'est jamais « en » devant un pays masculin",
+    "source_id": "r4-q-negation",
+    "source_revision": 1,
+    "start": 351,
+    "status": "located"
+   },
+   {
+    "end": 313,
+    "evidence_id": "ev-8fdd72194d",
+    "excerpt": "…nce » était juste. Il a aussi [entouré « avec ma sœur » sans rien ajouter]. À la fin, il a écrit : « Att…",
+    "field": "original_context",
+    "quote": "entouré « avec ma sœur » sans rien ajouter",
+    "source_id": "r4-q-negation",
+    "source_revision": 1,
+    "start": 271,
+    "status": "located"
+   },
+   {
+    "end": 182,
+    "evidence_id": "ev-dbfae08c47",
+    "excerpt": "… : « On ne dit pas en Japon : [Japon est masculin, donc on dit au Japon]. » Pour la France, il n'a rie…",
+    "field": "original_context",
+    "quote": "Japon est masculin, donc on dit au Japon",
+    "source_id": "r4-q-negation",
+    "source_revision": 1,
+    "start": 142,
+    "status": "located"
+   }
+  ],
+  "items": [
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-dbfae08c47"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-dbfae08c47",
+      "quote": "Japon est masculin, donc on dit au Japon",
+      "status": "located"
+     }
+    ],
+    "item_hash": "71e46299e8dd6d84e4473129edaefde4284e083b182f50fb62c3244d7f602564",
+    "item_id": "k-7319a49a593b",
+    "material_hash": "db4933c9e1dedf6d0c5dd11c4b15267511e37a369069fb31cddf6770befbaa7f",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "Before a masculine country such as Japon, French uses « au »: « au Japon ».",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-69690c0724"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-69690c0724",
+      "quote": "On ne dit pas en Japon",
+      "status": "located"
+     }
+    ],
+    "item_hash": "aa4cfe20a1b92110776102d318aa04fc5fa953bd38fdbe0752e92b8e2e2b9a81",
+    "item_id": "k-5744bb392976",
+    "material_hash": "0415eed12274e26e8b5749a4756bcdadd89a6b4af7fabf27f06d1070ac297a75",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« en Japon » is correct French.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-3968f715d7"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-3968f715d7",
+      "quote": "il n'a rien corrigé : « Je reste en France » était juste",
+      "status": "located"
+     }
+    ],
+    "item_hash": "7a5164b392ac4540635b0187afed39c053285b9b7db68e7509a0f39e87e7494f",
+    "item_id": "k-5f5e45db99e4",
+    "material_hash": "f99e4b713e48f92b4a9454806086d928adadf463620caecbb63f2c18a1b923a5",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« Je reste en France » is correct French.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-69690c0724"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-69690c0724",
+      "quote": "On ne dit pas en Japon",
+      "status": "located"
+     }
+    ],
+    "item_hash": "fb7b9e45ebc7e35595bf13c3c56e419145fa71ffc83b9fd68d24302989c5a90b",
+    "item_id": "k-295ca73f0c83",
+    "material_hash": "cf193ae1b8a8d86da536d4e81b1af64a264d64f965861761e68626ac8e8a1dcb",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« en Japon » is wrong: it is not said.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-6bcc25b132"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-6bcc25b132",
+      "quote": "ce n'est jamais « en » devant un pays masculin",
+      "status": "located"
+     }
+    ],
+    "item_hash": "1a317485c11af67400189bce3e7037b0b35e439bf840050045d8ded586a17ba9",
+    "item_id": "k-0f17ef088279",
+    "material_hash": "8c249cf54d06fd26ec429ade65ca3aafbe50e524775cd9e91409386a9f3dbcd0",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« en » is used before a masculine country.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-8fdd72194d"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-8fdd72194d",
+      "quote": "entouré « avec ma sœur » sans rien ajouter",
+      "status": "located"
+     }
+    ],
+    "item_hash": "a7d94780503655305402ebff99c009f5366d7bfb41f4de9c16706f3ea8d7b184",
+    "item_id": "k-c321dd2b2202",
+    "material_hash": "44c852009995c269eb4b5bef11d6ef3746d8b903a812db370f6545dabcbe32a7",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« avec ma sœur » contains a possessive error.",
+    "type": "claim"
+   }
+  ],
+  "moves": {},
+  "operation": "review",
+  "plan": {
+   "batch_id": "b2-19bf34d9cd7f",
+   "effects": {
+    "decision_records": 6,
+    "evidence_links_added": [],
+    "knowledge_approved": 6,
+    "new_practice": [],
+    "practice_after": 0,
+    "practice_before": 0
+   },
+   "left_for_you": [],
+   "selected": [
+    "k-7319a49a593b",
+    "k-5744bb392976",
+    "k-5f5e45db99e4",
+    "k-295ca73f0c83",
+    "k-0f17ef088279",
+    "k-c321dd2b2202"
+   ]
+  },
+  "schema": "flh_extraction_result_v1",
+  "source": {
+   "capture_id": "synthetic-r4-q-negation-001",
+   "proposer": "synthetic: hand-written R4 grounding-quality fixture (no provider call); French needs a native-speaker check before learner use",
+   "revision": 1,
+   "revision_sha256": "d1657641ddefc2c24d344e182b7fcd226dafce61f91b83cb060d7fae89f9c18a",
+   "source_id": "r4-q-negation"
+  },
+  "states": {
+   "approved": 0,
+   "corrected": 0,
+   "needs_review": 0,
+   "pending": 6,
+   "rejected": 0
+  },
+  "status": "ok",
+  "text": "Draft d-848b41cad9a9  source r4-q-negation revision 1 (d1657641ddef)\nlines: QUOTE = your exact words, located in your text (evidence); PARAPHRASE = a restatement (never evidence); CUE = a word check that the quote may not support the claim (not a proof)\n\n[k-7319a49a593b] claim  support supported  state pending\n  says        Before a masculine country such as Japon, French uses « au »: « au Japon ».\n  QUOTE       ev-dbfae08c47 located   « Japon est masculin, donc on dit au Japon »\n              … : « On ne dit pas en Japon : [Japon est masculin, donc on dit au Japon]. » Pour la France, il n'a rie…\n\n[k-5744bb392976] claim  support supported  state pending\n  says        « en Japon » is correct French.\n  QUOTE       ev-69690c0724 located   « On ne dit pas en Japon »\n              …eur a écrit dans la marge : « [On ne dit pas en Japon] : Japon est masculin, donc on…\n\n[k-5f5e45db99e4] claim  support supported  state pending\n  says        « Je reste en France » is correct French.\n  QUOTE       ev-3968f715d7 located   « il n'a rien corrigé : « Je reste en France » était juste »\n              …t au Japon. » Pour la France, [il n'a rien corrigé : « Je reste en France » était juste]. Il a aussi entouré « avec ma…\n\n[k-295ca73f0c83] claim  support supported  state pending\n  says        « en Japon » is wrong: it is not said.\n  QUOTE       ev-69690c0724 located   « On ne dit pas en Japon »\n              …eur a écrit dans la marge : « [On ne dit pas en Japon] : Japon est masculin, donc on…\n\n[k-0f17ef088279] claim  support supported  state pending\n  says        « en » is used before a masculine country.\n  QUOTE       ev-6bcc25b132 located   « ce n'est jamais « en » devant un pays masculin »\n              …in, il a écrit : « Attention, [ce n'est jamais « en » devant un pays masculin]. »\n\n[k-c321dd2b2202] claim  support supported  state pending\n  says        « avec ma sœur » contains a possessive error.\n  QUOTE       ev-8fdd72194d located   « entouré « avec ma sœur » sans rien ajouter »\n              …nce » était juste. Il a aussi [entouré « avec ma sœur » sans rien ajouter]. À la fin, il a écrit : « Att…\n\nstates: pending 6, approved 0, corrected 0, rejected 0, needs_review 0\n\nReview v2 of draft d-848b41cad9a9 (source r4-q-negation revision 1)\n\nBatch b2-19bf34d9cd7f: approve 6 of 6 batchable items together. Selected, explicitly:\n  [x] k-7319a49a593b claim          evidence ev-dbfae08c47\n      Before a masculine country such as Japon, French uses « au »: « au Japon ».\n  [x] k-5744bb392976 claim          evidence ev-69690c0724\n      « en Japon » is correct French.\n  [x] k-5f5e45db99e4 claim          evidence ev-3968f715d7\n      « Je reste en France » is correct French.\n  [x] k-295ca73f0c83 claim          evidence ev-69690c0724\n      « en Japon » is wrong: it is not said.\n  [x] k-0f17ef088279 claim          evidence ev-6bcc25b132\n      « en » is used before a masculine country.\n  [x] k-c321dd2b2202 claim          evidence ev-8fdd72194d\n      « avec ma sœur » contains a possessive error.\n  Effect: 6 items become approved knowledge (6 decision records, one each); practice 0 -> 0 exercises (new: none); nothing else changes.\n  -> practice2 decide --work W --approve-batch b2-19bf34d9cd7f   (--select k-…,k-… to approve fewer; --except k-…)\n\nDecide yourself, one by one (0):\n  (none)\n\nAlready decided: none\n"
+ },
+ "status": 200
+}

@@ -1,0 +1,65 @@
+{
+ "answer_strings": {
+  "choose": "the part of the prompt after ' — ' with '__' replaced by the hidden answer",
+  "explain": "each hidden reference statement",
+  "produce": "the hidden answer and every accepted variant"
+ },
+ "background": [
+  {
+   "observation": "repeated retrieval, not repeated study, raised one-week recall of Swahili-English pairs",
+   "source": "Karpicke & Roediger (2008), Science 319:966-968"
+  },
+  {
+   "observation": "in French immersion classes, prompts (elicitation, metalinguistic clues) were followed by student-generated repair far more often than recasts, which give the form",
+   "source": "Lyster & Ranta (1997), SSLA 19:37-66"
+  }
+ ],
+ "corpus": {
+  "expected_items": 20,
+  "rule": "revision 1 of each source; the learner approves exactly the review's batch plan and decides nothing else; practice is built by practice.build_practice",
+  "sources": [
+   {
+    "file": "fixtures/practice_v1/y_en.r1.json",
+    "sha256": "f6f59d0a71f526554fb518e1bc7d7256bbc3a8f1144fda4553cfeafbc976915c"
+   },
+   {
+    "file": "fixtures/practice_v1/savoir_connaitre.json",
+    "sha256": "c73bcf07e847c19178b40b240078a6434ff0358292616643e3a234533cd52326"
+   },
+   {
+    "file": "fixtures/practice_v1/en_quantite.json",
+    "sha256": "7dd0f35e51bd9e5fc06f9e47254307d300e2c330909ed4029b0ca42643bef231"
+   },
+   {
+    "file": "fixtures/practice_v1/a_en_lieux.json",
+    "sha256": "17da86c69654063eab6ac6f11d3e8547e8eea884b6102c43df5d1597cff897ae"
+   }
+  ]
+ },
+ "decision_rule": {
+  "M1": "any M1 leak is reported as an item defect (not fixed in R4)",
+  "branch_A": "M2 >= 0.10: attempt first. A recall made after a read in the same loop is labelled retrieval 'after_reading' (never unaided), and the learner is offered recall before read.",
+  "branch_B": "M2 < 0.10: keep the loop order unchanged"
+ },
+ "experiment": "H1 only, offline, deterministic",
+ "hypotheses": {
+  "H1": "A practice item trains retrieval only if its answer is absent from what the learner sees before answering. In the R4 loop the learner may read the reviewed units and evidence right before recalling; for some items that view contains the answer, so the recall is re-reading.",
+  "H2": "After a wrong answer, a prompt step that points to the learner's own evidence and the rule without the form, before the reveal, leads to more self-repair on retry than revealing the form at once. Not run: it needs learners; it is recorded for a later, owner-approved study."
+ },
+ "id": "r4-retrieval-leakage",
+ "limits": "synthetic material, 20 items from 4 sources by one author; it measures exposure of the answer before answering, not learning",
+ "match": "practice.fr_norm on both sides; a leak is an answer string that occurs in the view as a whole-word sequence",
+ "metrics": {
+  "M1": "share of items with a leak in the prompt view",
+  "M2": "share of items with a leak in the read view",
+  "by_kind": "M1 and M2 per kind (explain, choose, produce)"
+ },
+ "registered": "2026-11-20",
+ "schema": "flh_experiment_preregistration_v1",
+ "status": "registered before any metric was computed",
+ "stopping_rule": "one run on the pinned corpus; the result is recorded whatever it is; neither the corpus nor the thresholds change after the run; another corpus is another experiment id",
+ "views": {
+  "prompt": "the item's prompt and options",
+  "read": "prompt and options plus every unit text and evidence quote that loop.read shows for the item"
+ }
+}
