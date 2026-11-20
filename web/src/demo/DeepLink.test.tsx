@@ -31,6 +31,40 @@ describe("demo direct links (URL fragments)", () => {
     }
     expect(hashForScreen({ kind: "results" })).toBe("");
   });
+
+  it("names a comparison's practice question only when it has that question (R3-056)", () => {
+    expect(screenFromHash("#compare=imparfait-passe-compose&practice=2")).toEqual({ kind: "compare", compare: "imparfait-passe-compose", practice: 2 });
+    expect(screenFromHash("#compare=present-en-train-de&practice=1")).toEqual({ kind: "compare", compare: "present-en-train-de", practice: 1 });
+    // A question the comparison does not have, or none at all, is left out: the pair.
+    for (const hash of [
+      "#compare=present-en-train-de&practice=2",
+      "#compare=imparfait-passe-compose&practice=0",
+      "#compare=imparfait-passe-compose&practice=x",
+      "#compare=imparfait-passe-compose&practice=",
+      "#compare=imparfait-passe-compose&practice=10",
+      "#compare=depuis-pendant&practice=1",
+    ])
+      expect(screenFromHash(hash), hash).toEqual({ kind: "compare", compare: hash.slice(9, hash.indexOf("&")) });
+    // Without a comparison it names nothing.
+    expect(screenFromHash("#practice=1")).toEqual({ kind: "results" });
+    expect(screenFromHash("#example=y-en&practice=1")).toEqual({ kind: "example", example: "y-en" });
+    // A Concept or source opened from a question returns to it.
+    expect(screenFromHash("#compare=imparfait-passe-compose&practice=2&concept=6&unit=7")).toEqual({
+      kind: "source",
+      conceptId: 6,
+      unitId: 7,
+      from: undefined,
+      compare: "imparfait-passe-compose",
+      comparePractice: 2,
+    });
+    for (const hash of [
+      "#compare=imparfait-passe-compose&practice=1",
+      "#compare=imparfait-passe-compose&practice=2&concept=6",
+      "#compare=imparfait-passe-compose&practice=2&concept=6&unit=7",
+      "#compare=present-en-train-de&practice=1&concept=13&unit=15",
+    ])
+      expect(hashForScreen(screenFromHash(hash)), hash).toBe(hash);
+  });
 });
 
 const info = {

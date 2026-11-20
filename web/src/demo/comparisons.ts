@@ -37,10 +37,20 @@ export interface PracticeItem {
   side: 0 | 1;
   alternate: boolean;
   alternateText?: MessageKey;
+  // R3-052: a short hint, shown on request before the answer; it never names the form.
+  hint?: MessageKey;
+}
+// R3-053: a form offered beside the two sides' forms that does not work there.
+// Its explanation is the stored interpretation of the side's learner question
+// (server data), which must name the form (DiscoverySpec.test.ts,
+// check_examples.py); the page adds no claim of its own.
+export interface PracticeDistractor {
+  form: string;
 }
 export interface ComparisonPractice {
   choices: readonly [PracticeChoice, PracticeChoice];
   items: readonly PracticeItem[];
+  distractors: readonly PracticeDistractor[];
 }
 
 export interface DemoComparison {
@@ -56,11 +66,21 @@ export interface DemoComparison {
 // The comparison data lives in discovery.json (also read by the package
 // check); the title, summary and practice explanations are application text,
 // by key.
-const COMPARISON_TEXT: Readonly<Record<string, { title: MessageKey; summary: MessageKey; alternates?: readonly MessageKey[] }>> = {
+const COMPARISON_TEXT: Readonly<
+  Record<string, { title: MessageKey; summary: MessageKey; alternates?: readonly MessageKey[]; hints?: readonly MessageKey[] }>
+> = {
+  // R3-041: a beginner's contrast, both units from the first guided example's question.
+  "present-en-train-de": {
+    title: "demo.compare.enTrainDe.title",
+    summary: "demo.compare.enTrainDe.summary",
+    alternates: ["demo.practice.enTrainDe.alternate.1"],
+    hints: ["demo.practice.enTrainDe.hint.1"],
+  },
   "imparfait-passe-compose": {
     title: "demo.compare.imparfait.title",
     summary: "demo.compare.imparfait.summary",
     alternates: ["demo.practice.imparfait.alternate.1", "demo.practice.imparfait.alternate.2"],
+    hints: ["demo.practice.imparfait.hint.1", "demo.practice.imparfait.hint.2"],
   },
   "depuis-pendant": { title: "demo.compare.depuis.title", summary: "demo.compare.depuis.summary" },
 };
@@ -69,17 +89,24 @@ type ComparisonData = {
   key: string;
   example?: string;
   sides: ComparisonSide[];
-  practice?: { choices: PracticeChoice[]; items: Array<{ side: number; alternate: boolean }> };
+  practice?: { choices: PracticeChoice[]; items: Array<{ side: number; alternate: boolean }>; distractors?: PracticeDistractor[] };
 };
 
 function practiceOf(c: ComparisonData): ComparisonPractice | undefined {
   const p = c.practice;
   if (!p || p.choices.length !== 2) return undefined;
   const alternates = COMPARISON_TEXT[c.key]?.alternates ?? [];
+  const hints = COMPARISON_TEXT[c.key]?.hints ?? [];
   const items = p.items
     .filter((it) => it.side === 0 || it.side === 1)
-    .map((it, i) => ({ side: it.side as 0 | 1, alternate: it.alternate && Boolean(alternates[i]), alternateText: it.alternate ? alternates[i] : undefined }));
-  return items.length ? { choices: [p.choices[0], p.choices[1]], items } : undefined;
+    .map((it, i) => ({
+      side: it.side as 0 | 1,
+      alternate: it.alternate && Boolean(alternates[i]),
+      alternateText: it.alternate ? alternates[i] : undefined,
+      hint: hints[i],
+    }));
+  const distractors = (p.distractors ?? []).filter((d) => d.form && !p.choices.some((ch) => ch.form === d.form));
+  return items.length ? { choices: [p.choices[0], p.choices[1]], items, distractors } : undefined;
 }
 
 export const DEMO_COMPARISONS: readonly DemoComparison[] = (discovery.comparisons as ComparisonData[])
@@ -104,6 +131,14 @@ export function blankForm(example: string | null | undefined, form: string): [st
 }
 
 export const findComparison = (key: string | undefined) => (key ? DEMO_COMPARISONS.find((c) => c.key === key) : undefined);
+
+// R3-042: a way in from a common beginner's confusion: the first distractor of
+// the first comparison that has one, offered under the guided example the
+// comparison comes from and opening its first question.
+export const CONFUSION = (() => {
+  const c = DEMO_COMPARISONS.find((x) => x.example && x.practice?.distractors.length);
+  return c ? { compare: c.key, example: c.example!, form: c.practice!.distractors[0].form } : undefined;
+})();
 
 // One side as this build has it. `missing`: no Concept the query matches holds
 // a unit with the seed wording (another catalog). `no-source`: the unit is

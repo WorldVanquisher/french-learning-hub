@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PublicDemoApp from "../PublicDemoApp";
 import { KnowledgeLibrary } from "../pages/KnowledgeLibrary";
@@ -33,6 +33,16 @@ const exampleHeading = () => screen.findByRole("heading", { level: 2, name: "One
 const conceptHeading = (name: RegExp = /the pronouns y and en/) => screen.findByRole("heading", { level: 2, name });
 const sourceHeading = () => screen.findByRole("heading", { level: 3, name: "Original learning record #9" });
 const click = (name: string | RegExp) => fireEvent.click(screen.getAllByRole("button", { name })[0]);
+// R3-062: a history move is asynchronous (popstate), and a loaded CI runner
+// can take well over the default second to reach it. Wait for the route state
+// the page actually reached (the address and the demo's entry), then for its
+// screen. A move to the wrong screen still fails: the expected state never comes.
+const ROUTE_WAIT = { timeout: 4000 };
+const routeIs = (hash: string, kind: string) =>
+  waitFor(() => {
+    expect(window.location.hash).toBe(hash);
+    expect((window.history.state as { flhLibrary?: { kind?: string } } | null)?.flhLibrary?.kind).toBe(kind);
+  }, ROUTE_WAIT);
 const search = (q: string) => {
   fireEvent.change(screen.getByLabelText("Search learned material"), { target: { value: q } });
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
@@ -100,30 +110,39 @@ describe("in-page back and the browser's Back are the same move", () => {
   it("never sends the browser's Back forward to the screen just left, and keeps Forward", async () => {
     await renderDemo();
     await startScreen();
+    // Click as soon as the start is shown (no wait for its entry): the first
+    // click may race the page adopting its opening entry (HistoryAdoption.test.tsx).
     const before = window.history.length;
     click(/One question, two pronouns$/);
+    await routeIs("#example=y-en", "example");
     await exampleHeading();
     click("Open the Concept and its evidence");
+    await routeIs("#example=y-en&concept=12", "concept");
     await conceptHeading();
     click("View source record #9 for unit #12");
+    await routeIs("#example=y-en&concept=12&unit=12", "source");
     await sourceHeading();
     expect(window.history.length).toBe(before + 3);
-    expect(window.location.hash).toBe("#example=y-en&concept=12&unit=12");
 
     click(/^← Back to concept #12/);
+    await routeIs("#example=y-en&concept=12", "concept");
     const concept = await conceptHeading();
-    await waitFor(() => expect(concept).toHaveFocus());
-    expect(window.location.hash).toBe("#example=y-en&concept=12");
+    await waitFor(() => expect(concept).toHaveFocus(), ROUTE_WAIT);
     expect(window.history.length).toBe(before + 3);
 
-    window.history.back();
-    expect(await screen.findByText(QUESTION, { selector: "blockquote" })).toBeInTheDocument();
-    expect(window.location.hash).toBe("#example=y-en");
-    window.history.forward();
+    // The browser's Back: to the example, never forward to the source just left.
+    act(() => window.history.back());
+    await routeIs("#example=y-en", "example");
+    expect(await screen.findByText(QUESTION, { selector: "blockquote" }, ROUTE_WAIT)).toBeInTheDocument();
+    // Forward keeps both later screens.
+    act(() => window.history.forward());
+    await routeIs("#example=y-en&concept=12", "concept");
     await conceptHeading();
-    window.history.forward();
+    act(() => window.history.forward());
+    await routeIs("#example=y-en&concept=12&unit=12", "source");
     expect(await sourceHeading()).toBeInTheDocument();
-  });
+    expect(window.history.length).toBe(before + 3);
+  }, 20000);
 
   it("goes from evidence straight back to its example, with the Concept still ahead", async () => {
     await renderDemo();
@@ -201,7 +220,7 @@ describe("searches are entries and links keep them", () => {
     expect(await screen.findByRole("button", { name: "subjunctive after « il faut que »" })).toBeInTheDocument();
     window.history.forward();
     await waitFor(() => expect(screen.getByLabelText("Search learned material")).toHaveValue("pronouns"));
-  });
+  }, 20000); // R3-064: it hit the 5 s default once in 80 runs on a loaded runner
 
   it("reopens a Concept with the way back to the search it was opened from (reload or shared link)", async () => {
     await renderDemo("/#q=pronouns&concept=12");

@@ -6,14 +6,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import PublicDemoApp from "../PublicDemoApp";
 import { hashForScreen, linkFromHash } from "./deepLink";
 import { DEMO_COMPARISONS } from "./comparisons";
-import { concept, demoServer, source, unit } from "./demoTestServer";
+import { concept, COOKING_QUESTION, demoServer, enTrain, presentNow, source, unit } from "./demoTestServer";
 import { forgetCompareVisits } from "./visit";
 
 // Comparisons (comparisons.ts, CompareScreen.tsx): two public units side by
 // side, read through the existing GETs, reached from the start page or a link.
 
 const catalog = JSON.parse(readFileSync(resolve(process.cwd(), "../scripts/demo/flh073/fixtures/catalog.json"), "utf8")) as {
-  entries: Array<{ key: string; original_input: string; units: Array<{ key: string; canonical: string; example?: string }> }>;
+  entries: Array<{ key: string; original_input: string; analysis?: { explanation: string }; units: Array<{ key: string; canonical: string; example?: string }> }>;
   concepts: Array<{ key: string; target: string; members: string[] }>;
 };
 
@@ -35,6 +35,19 @@ const impUnit = unit(6, 5, "imparfait pour le contexte", "Quand j'étais petit, 
 const pcUnit = unit(7, 5, "passé composé pour un événement", "Hier, j'ai joué au foot.");
 const etreUnit = unit(8, 6, "passé composé avec être");
 const Q = "When do I use the imparfait instead of the passé composé?";
+
+const COOKING_EXPLANATION = catalog.entries.find((e) => e.key === "e-en-train-de")!.analysis!.explanation;
+const withExplanation = (src: ReturnType<typeof source>, explanation: string) => {
+  const si = src.source_interpretation;
+  return {
+    ...src,
+    source_interpretation: {
+      ...si,
+      analysis: { ...si.analysis, explanation },
+      effective: { ...si.effective, original: { ...si.effective.original, explanation }, effective: { ...si.effective.effective, explanation } },
+    },
+  };
+};
 
 // The demo test server with the tense Concepts; `drop` leaves some out.
 function server(drop: { concept6?: boolean; source7?: boolean } = {}) {
@@ -60,6 +73,9 @@ function server(drop: { concept6?: boolean; source7?: boolean } = {}) {
     if (path === "/knowledge-library/concepts/7") return record(), reply(200, detail(PC_ETRE, [etreUnit]));
     if (path === "/knowledge-library/units/6/source") return record(), reply(200, source(impUnit, 5, Q));
     if (path === "/knowledge-library/units/7/source") return record(), drop.source7 ? reply(404, { error: "not found" }) : reply(200, source(pcUnit, 6, Q));
+    // R3: the cooking record's stored interpretation, as the catalog has it.
+    if (path === "/knowledge-library/units/15/source") return record(), reply(200, withExplanation(source(presentNow, 13, COOKING_QUESTION), COOKING_EXPLANATION));
+    if (path === "/knowledge-library/units/16/source") return record(), reply(200, withExplanation(source(enTrain, 14, COOKING_QUESTION), COOKING_EXPLANATION));
     return inner(input, init);
   }) as unknown as typeof fetch;
   return base;
@@ -284,7 +300,8 @@ describe("choose-first practice (R2)", () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     fireEvent.click(await screen.findByRole("button", { name: "Try “Imparfait or passé composé?” as a question first" }));
-    expect(window.location.hash).toBe("#compare=imparfait-passe-compose");
+    // R3-056: the address names the question (never an answer).
+    expect(window.location.hash).toBe("#compare=imparfait-passe-compose&practice=1");
     await waitFor(() => expect(screen.getByRole("heading", { level: 3, name: QUESTION })).toBeInTheDocument());
     // R2-012: the learner's question and its recorded context before any choice.
     expect(screen.getByText("Example 1 of 2. Nothing is saved or sent.")).toBeInTheDocument();
@@ -296,6 +313,14 @@ describe("choose-first practice (R2)", () => {
     expect(screen.queryByRole("heading", { name: "Why each form" })).toBeNull();
     expect(screen.queryByRole("link", { name: /See the evidence/ })).toBeNull();
     expect(document.querySelector("[data-practice-alternate]")).toBeNull();
+    // R3-052: a hint on request, before the answer; it names no form.
+    const hintToggle = screen.getByRole("button", { name: "Show a hint" });
+    expect(hintToggle).toHaveAttribute("aria-expanded", "false");
+    expect(document.getElementById("demo-practice-hint")).not.toBeVisible();
+    fireEvent.click(hintToggle);
+    expect(screen.getByText("“Quand j'étais petit” sets a period in the past: is this a habit or a single event?")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Hide the hint" })).toHaveAttribute("aria-expanded", "true");
+    expect(sentence().textContent).toBe("Quand j'étais petit, _____blank au foot.");
     const group = screen.getByRole("group", { name: "Complete the example" });
     const choices = within(group).getAllByRole("button");
     expect(choices.map((b) => b.textContent)).toEqual(["je jouais (imparfait)", "j'ai joué (passé composé)", "Skip and show the answer"]);
@@ -312,14 +337,16 @@ describe("choose-first practice (R2)", () => {
     expect(choices[0]).toHaveAttribute("aria-pressed", "false");
     // R2-014: both forms with their unit's rule and a link to its evidence.
     expect(screen.getByRole("heading", { name: "Why each form" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "See the evidence: unit #6, record #5" })).toHaveAttribute("href", "#compare=imparfait-passe-compose&concept=5&unit=6");
-    expect(screen.getByRole("link", { name: "See the evidence: unit #7, record #5" })).toHaveAttribute("href", "#compare=imparfait-passe-compose&concept=6&unit=7");
+    expect(screen.getByRole("link", { name: "See the evidence: unit #6, record #5" })).toHaveAttribute("href", "#compare=imparfait-passe-compose&practice=1&concept=5&unit=6");
+    expect(screen.getByRole("link", { name: "See the evidence: unit #7, record #5" })).toHaveAttribute("href", "#compare=imparfait-passe-compose&practice=1&concept=6&unit=7");
+    // The hint is gone once answered.
+    expect(screen.queryByRole("button", { name: /a hint$/ })).toBeNull();
     expect(document.querySelector("[data-practice-form=used] .demo-practice-form")).toHaveTextContent("“je jouais” (imparfait): the form this example uses.");
     // R2-015: the valid alternative, with its other meaning.
     expect(screen.getByRole("heading", { name: "Also possible" })).toBeInTheDocument();
     expect(document.querySelector("[data-practice-alternate] p")).toHaveTextContent(/^“j'ai joué” also makes a correct sentence here, with another meaning/);
     // R2-016: nothing written, stored or sent, and the address never named progress.
-    expect(window.location.hash).toBe("#compare=imparfait-passe-compose");
+    expect(window.location.hash).toBe("#compare=imparfait-passe-compose&practice=1");
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);
     expect(document.cookie).toBe("");
@@ -333,9 +360,12 @@ describe("choose-first practice (R2)", () => {
     await waitFor(() => expect(screen.getByRole("heading", { level: 3, name: QUESTION })).toHaveFocus());
     fireEvent.click(screen.getByRole("button", { name: "je jouais (imparfait)" }));
     await outcomeText("You chose “je jouais”. That is the form this example uses.");
-    // R2-017: one visible way to the second example.
+    // R2-017: one visible way to the second example. It rewrites the entry (R3).
+    const entries = window.history.length;
     fireEvent.click(screen.getByRole("button", { name: "Try the other example" }));
     await waitFor(() => expect(screen.getByRole("heading", { level: 3, name: QUESTION })).toHaveFocus());
+    expect(window.location.hash).toBe("#compare=imparfait-passe-compose&practice=2");
+    expect(window.history.length).toBe(entries);
     expect(screen.getByText("Example 2 of 2. Nothing is saved or sent.")).toBeInTheDocument();
     expect(sentence().textContent).toBe("Hier, _____blank au foot.");
     fireEvent.click(screen.getByRole("button", { name: "Skip and show the answer" }));
@@ -345,10 +375,10 @@ describe("choose-first practice (R2)", () => {
     const link = screen.getByRole("link", { name: "See the evidence: unit #7, record #5" });
     link.focus();
     fireEvent.click(link);
-    expect(window.location.hash).toBe("#compare=imparfait-passe-compose&concept=6&unit=7");
+    expect(window.location.hash).toBe("#compare=imparfait-passe-compose&practice=2&concept=6&unit=7");
     await screen.findByRole("button", { name: "← Back to the comparison “Imparfait or passé composé?”" });
     act(() => window.history.back());
-    await waitFor(() => expect(window.location.hash).toBe("#compare=imparfait-passe-compose"));
+    await waitFor(() => expect(window.location.hash).toBe("#compare=imparfait-passe-compose&practice=2"));
     await waitFor(() => expect(screen.getByRole("link", { name: "See the evidence: unit #7, record #5" })).toHaveFocus());
     expect(screen.getByText("Example 2 of 2. Nothing is saved or sent.")).toBeInTheDocument();
     await outcomeText("Skipped. This example uses “j'ai joué”.");
@@ -360,17 +390,25 @@ describe("choose-first practice (R2)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "je jouais (imparfait)" })).toHaveFocus());
     fireEvent.click(screen.getByRole("button", { name: "Leave the question and show both examples" }));
     await waitFor(() => expect(screen.getByRole("heading", { level: 3, name: "The two examples" })).toHaveFocus());
+    expect(window.location.hash).toBe("#compare=imparfait-passe-compose");
   });
 
-  it("is not part of the link: a reload of the comparison opens the pair, and answers are gone", async () => {
+  it("links to the question, never to an answer: a reload opens the same question unanswered, the comparison's link the pair (R3-056)", async () => {
     server();
     renderDemo("/#compare=imparfait-passe-compose");
     fireEvent.click(await screen.findByRole("button", { name: "Try a question" }));
     fireEvent.click(await screen.findByRole("button", { name: "je jouais (imparfait)" }));
     await outcomeText(/That is the form this example uses/);
+    expect(window.location.hash).toBe("#compare=imparfait-passe-compose&practice=1");
     cleanup();
     forgetCompareVisits();
     renderDemo(window.location.pathname + window.location.hash);
+    expect(await screen.findByRole("button", { name: "Skip and show the answer" })).toBeInTheDocument();
+    expect(document.getElementById("demo-practice-outcome")).toBeNull();
+    expect(sentence().textContent).toBe("Quand j'étais petit, _____blank au foot.");
+    cleanup();
+    forgetCompareVisits();
+    renderDemo("/#compare=imparfait-passe-compose");
     expect(await screen.findByRole("region", { name: "The two examples" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try a question" }));
     expect(await screen.findByRole("button", { name: "Skip and show the answer" })).toBeInTheDocument();
@@ -456,5 +494,161 @@ describe("canonical links (R2-084/085)", () => {
     renderDemo("/#q=imparfait&state=bogus", locale === "en" ? undefined : locale);
     await screen.findByRole("button", { name: "imparfait for background and past habits" });
     expect(window.location.hash).toBe("#q=imparfait");
+  });
+});
+
+describe("a beginner's contrast from a common confusion (R3)", () => {
+  const QUESTION = "Which form completes the example?";
+  const sentence = () => document.querySelector("[data-practice-sentence]")!;
+  const outcomeText = async (text: string | RegExp) => {
+    await waitFor(() => expect(document.getElementById("demo-practice-outcome")).toHaveTextContent(text));
+    return document.getElementById("demo-practice-outcome")!;
+  };
+
+  it("opens from the start page on its question: a hint, a distractor explained by the stored interpretation, the valid alternative, and where to continue", async () => {
+    const s = server();
+    renderDemo("/");
+    // R3-042: the way in names the confusion, with the French form marked as
+    // French, under the card of the example it comes from (the first one).
+    // jsdom puts spaces around the French span in a computed name; browsers do not.
+    const examples = await screen.findByRole("region", { name: "Start with an example" });
+    const first = within(examples).getAllByRole("listitem")[0];
+    expect(within(first).getAllByRole("button")[0]).toHaveTextContent(COOKING_QUESTION);
+    const entry = await within(first).findByRole("button", { name: /^Common mix-up: is “ ?je suis cuisinant ?” French\? Answer one question$/ });
+    expect(within(entry).getByText("je suis cuisinant")).toHaveAttribute("lang", "fr");
+    fireEvent.click(entry);
+    expect(window.location.hash).toBe("#compare=present-en-train-de&practice=1");
+    // A newly opened screen: focus on its title, the question right under it.
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Je cuisine or je suis en train de cuisiner?" })).toHaveFocus());
+    expect(screen.getByRole("heading", { level: 3, name: QUESTION })).toBeInTheDocument();
+    expect(screen.getByText("Example 1 of 1. Nothing is saved or sent.")).toBeInTheDocument();
+    expect(screen.getByText(COOKING_QUESTION, { selector: "blockquote" })).toBeInTheDocument();
+    expect(sentence().textContent).toBe("Je ne peux pas répondre, _____blank.");
+    // R3-054: nothing of the answer before a choice.
+    expect(screen.queryByRole("heading", { name: "Why each form" })).toBeNull();
+    expect(screen.queryByText(COOKING_EXPLANATION)).toBeNull();
+    expect(document.querySelector("[data-practice-alternate]")).toBeNull();
+    // R3-052: the hint.
+    fireEvent.click(screen.getByRole("button", { name: "Show a hint" }));
+    expect(screen.getByText(/French has no “-ing” tense/)).toBeVisible();
+    // R3-053: the distractor first, then the sides' forms, then the skip.
+    const choices = within(screen.getByRole("group", { name: "Complete the example" })).getAllByRole("button");
+    expect(choices.map((b) => b.textContent)).toEqual([
+      "je suis cuisinant",
+      "je cuisine (présent)",
+      "je suis en train de cuisiner (être en train de)",
+      "Skip and show the answer",
+    ]);
+    expect(choices[0]).toHaveAttribute("lang", "fr");
+    fireEvent.click(choices[0]);
+    const outcome = await outcomeText("You chose “je suis cuisinant”. That form does not work in French; this example uses “je cuisine”.");
+    expect(outcome).toHaveAttribute("data-practice-outcome", "distractor");
+    await waitFor(() => expect(outcome).toHaveFocus());
+    expect(sentence().textContent).toBe("Je ne peux pas répondre, je cuisine.");
+    const why = document.querySelector<HTMLElement>("[data-practice-form=distractor]")!;
+    expect(why).toHaveTextContent("“je suis cuisinant”: not a French form.");
+    expect(within(why).getByText(COOKING_EXPLANATION, { selector: "blockquote" })).toBeInTheDocument();
+    expect(within(why).getByRole("link", { name: "See the evidence: unit #15, record #11" })).toHaveAttribute(
+      "href",
+      "#compare=present-en-train-de&practice=1&concept=13&unit=15",
+    );
+    // R3-043: each form's rule links to its unit's evidence, the other form's too.
+    expect(within(document.querySelector<HTMLElement>("[data-practice-form=other]")!).getByRole("link", { name: "See the evidence: unit #16, record #11" })).toHaveAttribute(
+      "href",
+      "#compare=present-en-train-de&practice=1&concept=14&unit=16",
+    );
+    // R3-044: the other form is a valid alternative here.
+    expect(document.querySelector("[data-practice-alternate] p")).toHaveTextContent(
+      "“je suis en train de cuisiner” is also correct here: it stresses that the cooking is in progress right now.",
+    );
+    expect(screen.queryByRole("button", { name: "Try the other example" })).toBeNull();
+    // R3-060: where to continue.
+    const next = within(screen.getByRole("navigation", { name: "Where to continue" })).getByRole("button", { name: "Next question: Imparfait or passé composé?" });
+    expect(s.calls.every((c) => c.method === "GET" && c.url.startsWith("/api/knowledge-library/"))).toBe(true);
+    expect(window.localStorage.length).toBe(0);
+    fireEvent.click(next);
+    expect(window.location.hash).toBe("#compare=imparfait-passe-compose&practice=1");
+    expect(await screen.findByText("Example 1 of 2. Nothing is saved or sent.")).toBeInTheDocument();
+  });
+
+  it("links each example to its exact evidence and shows the learner's question on request (R3-043, R3-046)", async () => {
+    server();
+    renderDemo("/#compare=present-en-train-de");
+    await screen.findByRole("region", { name: "The two examples" });
+    expect(screen.getByRole("link", { name: "Where this example comes from: unit #15, record #11" })).toHaveAttribute(
+      "href",
+      "#compare=present-en-train-de&concept=13&unit=15",
+    );
+    expect(screen.getByRole("link", { name: "Where this example comes from: unit #16, record #11" })).toHaveAttribute(
+      "href",
+      "#compare=present-en-train-de&concept=14&unit=16",
+    );
+    const toggle = screen.getByRole("button", { name: "Show the learner's question" });
+    const panel = document.getElementById("demo-compare-source")!;
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(panel).not.toBeVisible();
+    fireEvent.click(toggle);
+    expect(panel).toBeVisible();
+    expect(screen.getByRole("button", { name: "Hide the learner's question" })).toHaveAttribute("aria-expanded", "true");
+    // Both examples come from one record: it is shown once.
+    expect(within(panel).getAllByRole("heading")).toHaveLength(1);
+    expect(within(panel).getByText(COOKING_QUESTION)).toBeInTheDocument();
+    expect(within(panel).getByText("Synthetic example.")).toBeInTheDocument();
+    // Opening it changes neither the address nor the history.
+    expect(window.location.hash).toBe("#compare=present-en-train-de");
+    // An example's evidence, and Back to the pair as it was left.
+    const link = screen.getByRole("link", { name: "Where this example comes from: unit #15, record #11" });
+    link.focus();
+    fireEvent.click(link);
+    expect(window.location.hash).toBe("#compare=present-en-train-de&concept=13&unit=15");
+    await screen.findByRole("button", { name: "← Back to the comparison “Je cuisine or je suis en train de cuisiner?”" });
+    act(() => window.history.back());
+    await waitFor(() => expect(screen.getByRole("link", { name: "Where this example comes from: unit #15, record #11" })).toHaveFocus());
+    expect(document.getElementById("demo-compare-source")).toBeVisible();
+  });
+
+  it("walks Back and Forward between the pair and its question, keeping the answer for this visit (R3-045)", async () => {
+    server();
+    renderDemo("/#compare=present-en-train-de");
+    await screen.findByRole("region", { name: "The two examples" });
+    const start = screen.getByRole("button", { name: "Try a question" });
+    start.focus();
+    fireEvent.click(start);
+    expect(window.location.hash).toBe("#compare=present-en-train-de&practice=1");
+    fireEvent.click(await screen.findByRole("button", { name: "je cuisine (présent)" }));
+    await outcomeText("You chose “je cuisine”. That is the form this example uses.");
+    act(() => window.history.back());
+    await waitFor(() => expect(window.location.hash).toBe("#compare=present-en-train-de"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Try a question" })).toHaveFocus());
+    expect(screen.getByRole("region", { name: "The two examples" })).toBeInTheDocument();
+    act(() => window.history.forward());
+    await waitFor(() => expect(window.location.hash).toBe("#compare=present-en-train-de&practice=1"));
+    await outcomeText("You chose “je cuisine”. That is the form this example uses.");
+    await waitFor(() => expect(screen.getByRole("heading", { level: 3, name: QUESTION })).toHaveFocus());
+  });
+
+  it("copies a link to exactly this question, without the answer (R3-056)", async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    server();
+    renderDemo("/#compare=present-en-train-de&practice=1");
+    fireEvent.click(await screen.findByRole("button", { name: "je suis en train de cuisiner (être en train de)" }));
+    await outcomeText(/is also possible here|This example uses/);
+    fireEvent.click(screen.getByRole("button", { name: "Copy a link to this question (your answer is not included)" }));
+    await screen.findByText("Link copied: #compare=present-en-train-de&practice=1");
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/#compare=present-en-train-de&practice=1`);
+    Reflect.deleteProperty(navigator, "clipboard");
+  });
+
+  it("reads in 简体中文, French forms and stored text untranslated", async () => {
+    server();
+    renderDemo("/", "zh-CN");
+    fireEvent.click(await screen.findByRole("button", { name: /^常见混淆：“ ?je suis cuisinant ?”是法语吗？答一道题看看$/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "显示提示" }));
+    expect(screen.getByText(/法语没有“-ing”时态/)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "je suis cuisinant" }));
+    await outcomeText("你选择了“je suis cuisinant”。法语里没有这种形式；这个例句用的是“je cuisine”。");
+    expect(screen.getByText(COOKING_EXPLANATION, { selector: "blockquote" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "接下来可以" })).toBeInTheDocument();
   });
 });

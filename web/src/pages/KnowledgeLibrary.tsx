@@ -25,7 +25,6 @@ import { hashForScreen, linkFromHash, queryToSearch, sameSearch, searchToQuery, 
 import { EvidenceCard } from "../demo/EvidenceCard";
 import { compareCardId, ComparePicker, CompareScreen } from "../demo/CompareScreen";
 import { findComparison, type SideResolution } from "../demo/comparisons";
-import { readCompareVisit, writeCompareVisit } from "../demo/visit";
 import { StartPoints, TourBar, TOUR_STEPS } from "../demo/Landing";
 import { adoptEntry, entryKey, focusControl, focusFallback, pushEntry, readEntry, replaceEntry, stepsBack } from "../demo/history";
 import { NoMatchHelp, RecordedTime, SearchProblem, SuggestedSearches } from "../demo/DemoStates";
@@ -51,11 +50,13 @@ type Load<T> = { status: "loading" } | { status: "error"; message: string; code?
 type Screen =
   | { kind: "results" }
   | { kind: "example"; example: string; step?: number }
-  | { kind: "compare"; compare: string }
-  // `from`: the guided example, `compare`: the comparison it was opened from (public demo).
-  | { kind: "concept"; conceptId: number; from?: string; compare?: string }
+  // `practice`: the comparison's choose-first question shown (1-based; R3-056).
+  | { kind: "compare"; compare: string; practice?: number }
+  // `from`: the guided example, `compare`: the comparison it was opened from (public demo),
+  // `comparePractice`: the comparison's question it was opened from.
+  | { kind: "concept"; conceptId: number; from?: string; compare?: string; comparePractice?: number }
   | { kind: "practice"; conceptId: number; session: number }
-  | { kind: "source"; conceptId: number; unitId: number; practice?: number; from?: string; compare?: string };
+  | { kind: "source"; conceptId: number; unitId: number; practice?: number; from?: string; compare?: string; comparePractice?: number };
 
 const resultButtonId = (conceptId: number) => `library-result-${conceptId}`;
 
@@ -420,17 +421,22 @@ export function KnowledgeLibrary({
   const openExample = (key: string) => setScreen({ kind: "example", example: key });
   // Public demo: a comparison (demo/comparisons.ts), the way back to the start
   // from it (focus on its card), and back to it from a Concept or source.
-  // `practice`: open it on its choose-first question (R2) instead of the pair;
-  // that is the comparison's in-page state for this visit, not part of its link.
-  const openCompare = (key: string, practice = false) => {
-    writeCompareVisit(key, { ...readCompareVisit(key), practice });
-    setScreen({ kind: "compare", compare: key });
+  // `practice`: open it on its first choose-first question (R2) instead of the
+  // pair. The question is part of the comparison's link (R3-056); answers are not.
+  const openCompare = (key: string, practice = false) => setScreen(practice ? { kind: "compare", compare: key, practice: 1 } : { kind: "compare", compare: key });
+  // Moving between a comparison's questions rewrites the current entry.
+  const replaceScreen = (next: Screen) => {
+    if (demo) trailRef.current = replaceEntry(next, searchRef.current, trailRef.current);
+    setScreenState(next);
   };
   const backFromCompare = (key: string) => {
     goBack({ kind: "results" });
     if (demo && !focusReturn.current) focusReturn.current = compareCardId(key);
   };
-  const backToCompare = (key: string) => goBack({ kind: "compare", compare: key });
+  const backToCompare = (key: string, practice?: number) => goBack(practice ? { kind: "compare", compare: key, practice } : { kind: "compare", compare: key });
+  // A Concept or source opened from a comparison (and from one of its questions).
+  const viaCompare = (s: { compare?: string; comparePractice?: number }) =>
+    s.compare ? (s.comparePractice ? { compare: s.compare, comparePractice: s.comparePractice } : { compare: s.compare }) : {};
   const comparisonTitle = (key: string | undefined) => {
     const c = findComparison(key);
     return c ? t("demo.compare.backTo", { title: t(c.title) }) : null;
@@ -665,7 +671,7 @@ export function KnowledgeLibrary({
         ) : null}
         {intro}
         {guided ? <StartPoints onTour={startTour} /> : null}
-        {guided ? <ExamplePicker onOpen={openExample} /> : null}
+        {guided ? <ExamplePicker onOpen={openExample} onConfusion={(key) => openCompare(key, true)} /> : null}
         {guided ? <ComparePicker onOpen={(key) => openCompare(key)} onPractice={(key) => openCompare(key, true)} /> : null}
         {about}
         {guided ? (
@@ -844,8 +850,12 @@ export function KnowledgeLibrary({
           comparison={findComparison(screen.compare)!}
           onBack={() => backFromCompare(screen.compare)}
           onSearch={searchFor}
-          onOpenComparison={(key) => openCompare(key)}
+          onOpenComparison={(key, practice) => openCompare(key, practice)}
           onOpenExample={openExample}
+          practice={screen.practice}
+          onStartPractice={(n) => setScreen({ kind: "compare", compare: screen.compare, practice: n })}
+          onPracticeItem={(n) => replaceScreen({ kind: "compare", compare: screen.compare, practice: n })}
+          onLeavePractice={() => backToCompare(screen.compare)}
           onReady={(sides: SideResolution[]) => {
             const first = sides[0];
             if (screen.compare === TOUR.compare && first?.kind === "found" && first.source)
@@ -853,12 +863,16 @@ export function KnowledgeLibrary({
           }}
           href={(conceptId, unitId) =>
             hashForScreen(
-              unitId ? { kind: "source", conceptId, unitId, compare: screen.compare } : { kind: "concept", conceptId, compare: screen.compare },
+              unitId
+                ? { kind: "source", conceptId, unitId, ...viaCompare({ compare: screen.compare, comparePractice: screen.practice }) }
+                : { kind: "concept", conceptId, ...viaCompare({ compare: screen.compare, comparePractice: screen.practice }) },
               searchRef.current,
             ) || "#"
           }
-          onOpenConcept={(conceptId) => setScreen({ kind: "concept", conceptId, compare: screen.compare })}
-          onOpenSource={(conceptId, unitId) => setScreen({ kind: "source", conceptId, unitId, compare: screen.compare })}
+          onOpenConcept={(conceptId) => setScreen({ kind: "concept", conceptId, ...viaCompare({ compare: screen.compare, comparePractice: screen.practice }) })}
+          onOpenSource={(conceptId, unitId) =>
+            setScreen({ kind: "source", conceptId, unitId, ...viaCompare({ compare: screen.compare, comparePractice: screen.practice }) })
+          }
           returnFocus={focusReturn}
         />
       ) : null}
@@ -874,10 +888,14 @@ export function KnowledgeLibrary({
           }
           walkthrough={Boolean(guided && fromExample(screen.from))}
           onBack={() =>
-            findComparison(screen.compare) ? backToCompare(screen.compare!) : screen.from ? backToExample(screen.from) : backToResults(screen.conceptId)
+            findComparison(screen.compare)
+              ? backToCompare(screen.compare!, screen.comparePractice)
+              : screen.from
+                ? backToExample(screen.from)
+                : backToResults(screen.conceptId)
           }
-          onOpenConcept={(conceptId) => setScreen({ kind: "concept", conceptId, from: screen.from, compare: screen.compare })}
-          onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId, from: screen.from, compare: screen.compare })}
+          onOpenConcept={(conceptId) => setScreen({ kind: "concept", conceptId, from: screen.from, ...viaCompare(screen) })}
+          onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId, from: screen.from, ...viaCompare(screen) })}
           demo={Boolean(demo)}
           returnFocus={demo ? focusReturn : undefined}
           onOpenExample={guided ? () => openExample(screen.from ?? DEMO_EXAMPLES[0].key) : undefined}
@@ -916,10 +934,10 @@ export function KnowledgeLibrary({
               : t("library.backTo", { label: resultsLabel }))
           }
           walkthrough={Boolean(guided && fromExample(screen.from))}
-          onBackToConcept={() => goBack({ kind: "concept", conceptId: screen.conceptId, from: screen.from, compare: screen.compare })}
+          onBackToConcept={() => goBack({ kind: "concept", conceptId: screen.conceptId, from: screen.from, ...viaCompare(screen) })}
           onBackToResults={() =>
             findComparison(screen.compare)
-              ? backToCompare(screen.compare!)
+              ? backToCompare(screen.compare!, screen.comparePractice)
               : screen.from
                 ? backToExample(screen.from)
                 : backToResults(screen.conceptId)
@@ -929,7 +947,7 @@ export function KnowledgeLibrary({
               ? () => setScreen({ kind: "practice", conceptId: screen.conceptId, session: screen.practice! })
               : undefined
           }
-          onOpenConcept={(conceptId) => setScreen({ kind: "concept", conceptId, from: screen.from, compare: screen.compare })}
+          onOpenConcept={(conceptId) => setScreen({ kind: "concept", conceptId, from: screen.from, ...viaCompare(screen) })}
           onOpenRecord={onOpenRecord}
           demo={Boolean(demo)}
           returnFocus={demo ? focusReturn : undefined}

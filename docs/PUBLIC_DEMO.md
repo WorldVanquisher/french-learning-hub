@@ -382,14 +382,51 @@ stops with exit 2 before building anything. Both produce the same
 | Path | Contents |
 | --- | --- |
 | `bin/linux-amd64/`, `bin/linux-arm64/` | Static `flh-server` and `flh-prepare` |
-| `artifact/` | The artifact |
+| `artifact/` | The artifact, with a public `provenance.json` (below) |
 | `web/` | The demo build |
 | `deploy/` | `flh-public-demo.service.example`, `nginx-flh-public-demo.conf.example`, `ctl.sh` |
 | `RELEASE.json` | Label, source revision, Go version, artifact identity, model provenance summary, runtime requirements, release status |
 | `SHA256SUMS`, `validate-release.sh`, `README.md` | Validation and instructions |
 
+**Public provenance (`scripts/demo/flh076/public_provenance.py`):**
+- The preparation records the embedding service's address in the artifact's `provenance.json`. That
+  address is private.
+- `package.sh` therefore projects its staged copy of the artifact onto an allowlist. The address and any
+  unknown field are dropped, and a post's error text is emptied. It then updates `manifest.json`'s
+  provenance entry and validates the copy with the server's loader. The input artifact is never changed.
+- **What stays:** the artifact version, vectors, fixtures, database and fingerprint. The manifest
+  digest differs from the private artifact's.
+- **The check:** before checksums, `public_provenance.py check` allows only public fields in
+  `RELEASE.json` and `artifact/provenance.json`. `RELEASE.json`'s model provenance summary no longer
+  carries the address. A failure names the file and key path, never the value.
+- **The gate (R3):** `check_package.sh` runs the same check in its identity stage, so the gate
+  refuses a package that carries a non-public field. That includes every package built before this
+  rule: their `RELEASE.json` and `artifact/provenance.json` hold the private host, and they must
+  never serve as a public rollout or rollback artifact.
+
+**Metadata versions and compatibility (R3-020):**
+- **Schemas:** `RELEASE.json` keeps `flh076_public_demo_release_v1`, and `provenance.json` keeps the
+  artifact's `flh076_vector_provenance_v1`. The public files hold a subset of those fields; no field
+  was renamed or added, so readers of either schema read both.
+- **Allowlist owner:** `public_provenance.py` (`RELEASE`, `PROVENANCE`). A new public field needs an
+  allowlist entry, a test and a review: the packager and the gate refuse unknown keys at every
+  depth.
+- **Unchanged readers:**
+  - the server's artifact loader, which revalidates the projected copy;
+  - `validate-release.sh`;
+  - `flh-release` (artifact version and manifest digest from the package's own files);
+  - `check_served.py` (the manifest digest from the package).
+- **What does change:** the artifact manifest digest, from `3aa4e7cc…` (private provenance) to
+  `4c2488b2…` (public projection). The artifact version (`97dbe0f215af37e7`) and the domain fingerprint
+  stay. An `--expect-manifest` pinned to `3aa4e7cc…` belongs to a private-provenance package; use
+  `4c2488b2…`.
+- **Projection is deterministic:** the same input artifact always gives the same `provenance.json`
+  bytes and manifest digest. The R3 package is byte-identical to the packaging lane's reviewed
+  projection.
+
 **The packager refuses:**
 - symlinks, unexpected files, `.env`, keys, logs or extra databases;
+- a non-public field in `RELEASE.json` or `artifact/provenance.json`;
 - an artifact that does not validate;
 - a model artifact whose id is not a pinned E5 deployment equal to
   `--expected-deployment`.
@@ -717,12 +754,13 @@ server. `web/src/demo/deepLink.ts` is the parser.
 | `/#mode=semantic\|hybrid&preset=<id>` (optionally `&state=…`) | the start with a preset search; `<id>` must be one of the build's presets |
 | `/#example=<key>` | a guided example (`en-train-de`, `y-en`, `il-faut-venir`, `imparfait`) |
 | `/#example=<key>&step=<1–4>` | the same example at that step of its walkthrough (question, rules, Concept, evidence). A `step` outside 1–4, blank, or on any other screen is left out (R2) |
-| `/#compare=<key>` | a comparison of two units (`imparfait-passe-compose`, `depuis-pendant`) |
+| `/#compare=<key>` | a comparison of two units (`present-en-train-de`, `imparfait-passe-compose`, `depuis-pendant`) |
+| `/#compare=<key>&practice=<n>` | that comparison's practice question `n` (1-based; R3). A `practice` the comparison has no question for, blank or not 1–9, is left out (the pair opens). The link never holds an answer |
 | `/#concept=<id>` | a Concept |
 | `/#concept=<id>&unit=<id>` | a unit's source evidence, reached from that Concept |
 | any search before a Concept or evidence (`/#q=il+faut&concept=1`) | the same screen; its back action returns to that search |
 | `example=<key>` before a Concept or evidence (`/#example=y-en&concept=12&unit=12`) | the same screen; its back actions return to that example |
-| `compare=<key>` before a Concept or evidence (`/#compare=depuis-pendant&concept=8&unit=9`) | the same screen; its back actions return to that comparison. `compare` with `example`, or an unknown key, is malformed |
+| `compare=<key>` before a Concept or evidence (`/#compare=depuis-pendant&concept=8&unit=9`) | the same screen; its back actions return to that comparison (to its question `n` with `&practice=<n>`, R3). `compare` with `example`, or an unknown key, is malformed |
 
 **Rules:**
 - **IDs:** 1–9 digits, no leading zero.
@@ -732,7 +770,7 @@ server. `web/src/demo/deepLink.ts` is the parser.
 - **Blank values:** a blank `q` (or one of spaces) is the start's empty
   search. Any other blank required parameter (`#example=`,
   `#concept=12&unit=`) is a link cut short, so the notice opens.
-- **Optional parameters (R2):** `step` and `state` are tolerated: an
+- **Optional parameters (R2, R3):** `step`, `state` and `practice` are tolerated: an
   invalid or blank value is left out and the rest of the link opens, at its
   canonical address. Unknown parameters (`utm_source=…`) are ignored.
 - **Canonical address:** on opening, the address is rewritten to the
@@ -1122,7 +1160,8 @@ lives in page memory: a reload or a shared link has none.
   page memory for the visit (`web/src/demo/visit.ts`): never in the address,
   browser storage, a cookie or a request. Back from a source finds the
   practice as it was; a reload or shared link starts at the pair. No score
-  and no record.
+  and no record. (Since R3 the question shown is part of the link,
+  `&practice=<n>`; answers still are not. See the R3 section.)
 
 **Why it matched** (`EvidenceCard.tsx`): each matched unit carries a label,
 "Supports" or "Filed, not supporting", then the sentence. A filed unit
@@ -1208,6 +1247,87 @@ python3 -I scripts/validation/demo_candidate/check_served.py http://127.0.0.1:18
 curl -s http://127.0.0.1:18773/ | grep -o 'flh-build" content="[^"]*'     # the package's build_id
 PORT=18773 bash $PKG/deploy/ctl.sh stop $RUN             # "stopped"; nothing left listening
 ```
+
+## A beginner's contrast and links to a question (R3, 2026-11-20)
+
+**For visitors.** New under the first example: "Common mix-up: is « je suis
+cuisinant » French? Answer one question". It opens a short question about
+saying what is happening now. Choose a form, or ask for a hint first; then see
+why each form works or not, with the learner's record it comes from.
+
+**The contrast `present-en-train-de`** (`discovery.json`, `comparisons.ts`):
+- **Source:** both units come from the first guided example's record
+  (`e-en-train-de` in the synthetic catalog): "présent pour une action en
+  cours" (*Je ne peux pas répondre, je cuisine.*) and "être en train de +
+  infinitif" (*Je suis en train de cuisiner.*).
+- **Links:** the example and the comparison link to each other (the example's
+  `compare`).
+- **The way in** (`ExampleScreen.tsx`, `CONFUSION` in `comparisons.ts`): it is
+  built from the first distractor of the first comparison that has one, and
+  sits under the card of the example that comparison comes from (the first),
+  as a comparison's practice entry sits under its card.
+  - **Placement:** the row of ways in and the first card are where they were
+    (first card at 504 px in English and 414 px in 简体中文 on a 320 × 640 phone).
+    The entry starts at 656 px (just below the first view) or 565 px (inside it).
+  - **Steps:** the path to the answer (path P6) takes 2 steps at 1280 px and in
+    简体中文 at 320 px, and 3 steps in English at 320 px (2 taps, 1 swipe). While a
+    question is shown the comparison's summary is left out, so on a phone its
+    choices come one swipe sooner (it was 4 steps).
+
+**The pair, since R3** (`CompareScreen.tsx`):
+- **Evidence link:** under each example, "Where this example comes from:
+  unit #N, record #M", the exact unit's source (`#compare=…&concept=…&unit=…`).
+- **The learner's question:** "Show the learner's question" (`aria-expanded`)
+  opens a panel under the pair with the recorded question and context, once
+  per record. It is page memory only, like the evidence, and nothing above it
+  moves when it opens.
+
+**Practice, since R3:**
+- **Hint:** a hint on request before the answer, under the choices so they
+  stay where they were (application text, `COMPARISON_TEXT[…].hints`). `DiscoverySpec.test.ts` checks that no hint
+  names an offered form, in either language.
+- **Distractor:** a comparison may name `distractors` (here *je suis
+  cuisinant*). It is offered first, then the two sides' forms. After a
+  choice, its reason is the stored interpretation of the item's record,
+  quoted with its evidence link; the page adds only "not a French form".
+  Each side's form keeps its rule and evidence link, also a side without a
+  question of its own.
+  `DiscoverySpec.test.ts` (catalog) and `check_examples.py` (served package)
+  require that interpretation to name the distractor.
+- **Valid alternative:** each item may carry one; here *je suis en train de
+  cuisiner* is also correct and stresses that the action is in progress.
+- **Where to continue:** after an answer, the next comparison's question and
+  "Search the library". The guided example stays in the comparison's own
+  navigation below.
+- **Links:** `#compare=<key>&practice=<n>` opens question `n`, unanswered. Its
+  "Copy a link to this question" copies exactly that; the answer is never in
+  a link.
+  - **History:** entering a question is a history entry; moving to another
+    question rewrites it. A Concept or source opened from a question carries
+    `&practice=<n>`, so Back returns to it. Back and Forward between the pair
+    and its question keep this visit's answer.
+  - **Focus:** a newly opened screen focuses its title; moving between the
+    pair and a question focuses the control that left it, else the heading.
+
+**Cost in steps:** the imparfait question from its comparison card (path P3)
+takes one more swipe at 1280 px and in English at 320 px, because the new
+comparison is listed first. Other paths are unchanged (`paths_probe`, R3 lane
+evidence).
+
+**Removing the contrast** (R3-050), with no other change:
+1. In `web/src/demo/discovery.json`, delete the `present-en-train-de`
+   comparison and the `"compare": "present-en-train-de"` of the `en-train-de`
+   example.
+2. In `web/src/demo/comparisons.ts`, delete its `COMPARISON_TEXT` entry.
+3. Delete these keys from both `web/src/i18n/en.ts` and `zh-CN.ts`:
+   `demo.compare.enTrainDe.{title,summary}`,
+   `demo.practice.enTrainDe.{alternate,hint}.1`.
+4. In tests: update the comparison list in `DiscoverySpec.test.ts` and delete
+   the "beginner's contrast" block of `Compare.test.tsx`.
+5. `check_examples.py` then checks 12 entries instead of 13.
+
+The way in under the first example disappears when no comparison has a distractor. The
+link parameter and the practice features stay for the imparfait comparison.
 
 ## Limits
 

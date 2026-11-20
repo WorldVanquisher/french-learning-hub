@@ -5,6 +5,8 @@ import discovery from "./discovery.json";
 import { DEMO_COMPARISONS } from "./comparisons";
 import { DEMO_EXAMPLES } from "./examples";
 import { DEMO_QUERIES } from "./queries";
+import { en } from "../i18n/en";
+import { zhCN } from "../i18n/zh-CN";
 
 // discovery.json holds every French phrase the public demo keeps in its bundle
 // (example questions, seed wording, suggested searches). Each must come from
@@ -14,7 +16,12 @@ import { DEMO_QUERIES } from "./queries";
 
 const catalog = JSON.parse(readFileSync(resolve(process.cwd(), "../scripts/demo/flh073/fixtures/catalog.json"), "utf8")) as {
   data_classification: string;
-  entries: Array<{ key: string; original_input: string; units: Array<{ key: string; canonical: string; statement: string; example?: string }> }>;
+  entries: Array<{
+    key: string;
+    original_input: string;
+    analysis?: { explanation: string };
+    units: Array<{ key: string; canonical: string; statement: string; example?: string }>;
+  }>;
   concepts: Array<{ key: string; target: string; pedagogical_intent: string; scope: string; identity_features: Record<string, string>; members: string[] }>;
 };
 const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
@@ -50,28 +57,52 @@ describe("the demo's example data", () => {
       }
   });
 
-  it("gives each practice item a form found exactly once in its side's catalog example, and only public data (R2-053)", () => {
-    type Practice = { choices: Array<{ form: string; tense: string }>; items: Array<{ side: number; alternate: boolean }> };
+  it("gives each practice item a form found exactly once in its side's catalog example, and only public data (R2-053, R3-051)", () => {
+    type Practice = {
+      choices: Array<{ form: string; tense: string }>;
+      items: Array<{ side: number; alternate: boolean }>;
+      distractors?: Array<{ form: string }>;
+    };
     const withPractice = (discovery.comparisons as Array<{ key: string; example?: string; sides: Array<{ seed: string }>; practice?: Practice }>).filter((c) => c.practice);
-    expect(withPractice.map((c) => c.key)).toEqual(["imparfait-passe-compose"]);
+    expect(withPractice.map((c) => c.key)).toEqual(["present-en-train-de", "imparfait-passe-compose"]);
     for (const c of withPractice) {
       const p = c.practice!;
       expect(p.choices, c.key).toHaveLength(2);
       // Exactly these fields: forms and French tense names, no IDs, answers or other text.
       for (const ch of p.choices) expect(Object.keys(ch).sort()).toEqual(["form", "tense"]);
       for (const it of p.items) expect(Object.keys(it).sort()).toEqual(["alternate", "side"]);
-      p.choices.forEach((ch, side) => {
-        const u = units.find((x) => x.canonical.toLocaleLowerCase("fr").includes(c.sides[side].seed))!;
-        expect(u.example!.split(ch.form).length - 1, `${c.key} side ${side}: ${ch.form}`).toBe(1);
-        // The tense name is the unit's own wording.
-        expect(u.canonical).toContain(ch.tense);
-      });
-      expect(new Set(p.items.map((it) => it.side))).toEqual(new Set([0, 1]));
+      const sideUnit = (side: number) => units.find((x) => x.canonical.toLocaleLowerCase("fr").includes(c.sides[side].seed))!;
+      // The tense name is the unit's own wording.
+      p.choices.forEach((ch, side) => expect(sideUnit(side).canonical).toContain(ch.tense));
+      expect(p.items.length, c.key).toBeGreaterThan(0);
+      for (const it of p.items) {
+        expect([0, 1]).toContain(it.side);
+        const form = p.choices[it.side].form;
+        expect(sideUnit(it.side).example!.split(form).length - 1, `${c.key} side ${it.side}: ${form}`).toBe(1);
+        // R3-053: a distractor is none of the forms, and the stored
+        // interpretation of the item's record names it (the page's reason).
+        for (const d of p.distractors ?? []) {
+          expect(Object.keys(d)).toEqual(["form"]);
+          expect(p.choices.map((ch) => ch.form)).not.toContain(d.form);
+          expect(catalog.entries.find((e) => e.key === sideUnit(it.side).entry)!.analysis!.explanation).toContain(d.form);
+        }
+      }
       // The comparison names the guided example both its units come from.
       const sideEntries = c.sides.map((sd) => units.find((x) => x.canonical.toLocaleLowerCase("fr").includes(sd.seed))!.entry);
       const ex = discovery.examples.find((e) => e.key === c.example)!;
       expect(catalog.entries.find((e) => e.original_input === ex.question)!.key).toBe(sideEntries[0]);
       expect(sideEntries[1]).toBe(sideEntries[0]);
+    }
+  });
+
+  it("gives a hint to every practice item that names none of the offered forms, in both languages (R3-052)", () => {
+    for (const c of DEMO_COMPARISONS.filter((x) => x.practice)) {
+      const p = c.practice!;
+      const forms = [...p.choices.map((ch) => ch.form), ...p.distractors.map((d) => d.form)].map(fold);
+      for (const it of p.items) {
+        expect(it.hint, `${c.key} side ${it.side}`).toBeDefined();
+        for (const text of [en[it.hint!], zhCN[it.hint!]]) for (const f of forms) expect(fold(text)).not.toContain(f);
+      }
     }
   });
 
