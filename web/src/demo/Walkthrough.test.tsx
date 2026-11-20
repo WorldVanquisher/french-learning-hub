@@ -122,10 +122,14 @@ describe.each(LOCALES)("first-visit walkthrough (%s)", (locale) => {
     const input = await screen.findByLabelText(ui.searchLabel);
     fireEvent.change(input, { target: { value: "subjonctiff" } });
     fireEvent.click(screen.getByRole("button", { name: ui.search }));
-    expect(await screen.findByText(ui.noMatch)).toHaveAttribute("role", "status");
+    // R2-045: the outcome is announced by the search status region (present
+    // before the search); the visible line is not a second live region.
+    expect(await screen.findByText(ui.noMatch)).not.toHaveAttribute("role");
+    await waitFor(() => expect(document.getElementById("demo-search-status")).toHaveTextContent(/subjonctiff/));
     const help = screen.getByRole("region", { name: ui.noMatchHeading });
     expect(within(help).getByText(ui.noMatchHow)).toBeInTheDocument();
-    expect(within(help).getAllByRole("button")).toHaveLength(4);
+    // One search per guided example's query (four examples since R2), and “show every Concept”.
+    expect(within(help).getAllByRole("button")).toHaveLength(5);
 
     fireEvent.click(within(help).getByRole("button", { name: ui.tryPronouns }));
     expect(await screen.findByRole("button", { name: "the pronouns y and en" })).toBeInTheDocument();

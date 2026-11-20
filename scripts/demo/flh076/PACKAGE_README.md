@@ -50,6 +50,9 @@ front: see `deploy/nginx-flh-public-demo.conf.example`. For systemd, adapt
    directory, to the new release. Restart the service.
 5. Check `deploy/ctl.sh status`, or `curl -s http://127.0.0.1:18970/knowledge-library/demo`:
    the artifact version and `real_model` must be what you released.
+6. Check the page too, since two releases can share one artifact:
+   `curl -s http://127.0.0.1:18970/ | grep -o 'flh-build" content="[^"]*'`
+   must name `RELEASE.json`'s `web.build_id`.
 
 **Rollback:** point `current` back at the previous release directory and
 restart. Releases are immutable; nothing is migrated.

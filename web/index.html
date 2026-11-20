@@ -16,13 +16,28 @@
       .flh-boot p { margin: 0 0 0.75rem; }
       .flh-boot-late { visibility: hidden; animation: flh-boot-late 0s linear 8s forwards; }
       @keyframes flh-boot-late { to { visibility: visible; } }
+      .flh-boot-stale .flh-boot-late { display: none; }
     </style>
+    <script>
+      // A file this copy of the page names could not be loaded (typically an
+      // expired cached page after an upgrade removed its old files): say so at
+      // once instead of after the generic delay. Only the startup placeholder
+      // changes; once the application has rendered, this does nothing.
+      addEventListener("error", function (e) {
+        var t = e.target, boot = document.querySelector(".flh-boot");
+        if (!boot || !t || (t.tagName !== "SCRIPT" && t.tagName !== "LINK")) return;
+        boot.className = "flh-boot flh-boot-stale";
+        boot.querySelector(".flh-boot-gone").hidden = false;
+      }, true);
+    </script>
   </head>
   <body>
     <div id="root"><div class="flh-boot" role="status">
       <p><span lang="en">Loading French Learning Hub…</span> · <span lang="zh-CN">正在加载…</span></p>
       <p class="flh-boot-late"><span lang="en">Still not loaded? The page could not reach the server or its files. Check the connection, then reload.</span>
         <span lang="zh-CN">仍未加载？页面无法连接服务器或载入文件。请检查网络后刷新。</span></p>
+      <p class="flh-boot-gone" hidden><span lang="en">This copy of the page is out of date: a file it needs is no longer on the server, usually because the site was updated. Reload the page to get the current version.</span>
+        <span lang="zh-CN">此页面副本已过期：它需要的文件已不在服务器上，通常是因为网站已更新。请刷新页面以获取当前版本。</span></p>
     </div></div>
     <noscript><p lang="en">This page needs JavaScript.</p><p lang="zh-CN">此页面需要启用 JavaScript。</p></noscript>
     <script type="module" src="/src/main.tsx"></script>

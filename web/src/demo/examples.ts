@@ -1,10 +1,13 @@
 import * as api from "../api/client";
+import discovery from "./discovery.json";
 import type { MessageKey } from "../i18n";
 import type { Concept } from "../types/concept";
 import type { LibraryConcept, LibrarySource, LibraryUnit } from "../types/library";
 
 // The public demo's guided examples: the three questions written in French in
-// the synthetic catalog (scripts/demo/flh073/fixtures/catalog.json). An example
+// the synthetic catalog (scripts/demo/flh073/fixtures/catalog.json), the most
+// beginner-friendly first, and one written in English whose two units are the
+// imparfait/passé composé comparison (R2). An example
 // names application text, how to find its question through the existing read
 // API (a keyword query, the library's own search, and a word from the stored
 // wording of one unit extracted from that question) and, for the starting
@@ -16,38 +19,33 @@ import type { LibraryConcept, LibrarySource, LibraryUnit } from "../types/librar
 export interface DemoExample {
   key: string;
   title: MessageKey;
-  // The catalog question, verbatim (French; never translated).
+  // The catalog question, verbatim (never translated), and the language it is
+  // written in (French unless the data says otherwise).
   question: string;
+  lang: string;
   // Existing keyword search; its Concepts hold the example's units.
   query: string;
   // Lower-case text found in the canonical wording of exactly one unit of the
   // example's question.
   seed: string;
+  // The comparison (comparisons.ts) built from this example's units, if any.
+  compare?: string;
 }
 
-export const DEMO_EXAMPLES: readonly DemoExample[] = [
-  {
-    key: "y-en",
-    title: "demo.example.yEn.title",
-    question: "Dans « j'y vais » et « j'en veux », qu'est-ce que « y » et « en » remplacent ?",
-    query: "pronouns",
-    seed: "y remplace",
-  },
-  {
-    key: "il-faut-venir",
-    title: "demo.example.ilFaut.title",
-    question: "Dans mon exercice : « Il faut que tu viennes demain ». Pourquoi « viennes » et pas « viens » ?",
-    query: "viennes",
-    seed: "subjonctif de venir",
-  },
-  {
-    key: "en-train-de",
-    title: "demo.example.enTrainDe.title",
-    question: "Pour dire « I'm cooking right now », est-ce que « je suis cuisinant » existe ?",
-    query: "action en cours",
-    seed: "en train de",
-  },
-];
+// The example data lives in discovery.json (also read by the package check);
+// the titles are application text, by key.
+const EXAMPLE_TITLES: Readonly<Record<string, MessageKey>> = {
+  "y-en": "demo.example.yEn.title",
+  "il-faut-venir": "demo.example.ilFaut.title",
+  "en-train-de": "demo.example.enTrainDe.title",
+  imparfait: "demo.example.imparfait.title",
+};
+
+type ExampleData = { key: string; question: string; query: string; seed: string; lang?: string; compare?: string };
+
+export const DEMO_EXAMPLES: readonly DemoExample[] = (discovery.examples as ExampleData[])
+  .filter((e) => EXAMPLE_TITLES[e.key])
+  .map((e) => ({ ...e, lang: e.lang ?? "fr", title: EXAMPLE_TITLES[e.key] }));
 
 // One unit taken from the example's question, with the Concept it is filed under.
 export interface ExtractedUnit {

@@ -54,10 +54,14 @@ STAGE=$(mktemp -d "$OUT/.$NAME.partial-XXXXXX")
 trap 'rm -rf "$TOOLS" "$STAGE"' EXIT
 chmod 755 "$STAGE"
 
+# -buildvcs=false: the binaries depend on the source files only. Without it, go
+# build asks Git for the checkout's commit and "modified" flag and embeds them,
+# so the same sources gave different binaries in a commit, a dirty working tree
+# or an exported copy (and packaging ran Git).
 for arch in amd64 arm64; do
   mkdir -p "$STAGE/bin/linux-$arch"
-  (cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -o "$STAGE/bin/linux-$arch/flh-server" ./cmd/server)
-  (cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -o "$STAGE/bin/linux-$arch/flh-prepare" ./scripts/demo/flh073/prepare)
+  (cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -buildvcs=false -o "$STAGE/bin/linux-$arch/flh-server" ./cmd/server)
+  (cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -buildvcs=false -o "$STAGE/bin/linux-$arch/flh-prepare" ./scripts/demo/flh073/prepare)
 done
 mkdir -p "$STAGE/artifact" "$STAGE/deploy"
 for f in manifest.json demo.db vectors.json fixtures.json provenance.json; do
@@ -69,6 +73,14 @@ extra=$(cd "$ARTIFACT" && ls -A | grep -v -E '^(manifest|vectors|fixtures|proven
 # own origin under /api, so a deployed page can be matched to its release.
 (cd "$REPO/web" && VITE_FLH_PUBLIC_DEMO=1 VITE_FLH_API_BASE=/api VITE_FLH_BUILD_ID="$NAME" \
   ./node_modules/.bin/vite build --outDir "$STAGE/web" --emptyOutDir > "$TOOLS/web-build.log" 2>&1)
+# R2-054: the public page ships no workbench code, private route, content pack,
+# fixture, local path or tailnet value (scripts/validation/demo_candidate/check_bundle.py).
+if ! python3 -I "$REPO/scripts/validation/demo_candidate/check_bundle.py" "$STAGE/web" > "$TOOLS/bundle-check.txt"; then
+  cat "$TOOLS/bundle-check.txt" >&2
+  echo "refused: the web build fails the bundle check" >&2
+  exit 1
+fi
+tail -n 1 "$TOOLS/bundle-check.txt"
 cp "$REPO/scripts/demo/flh076/deploy/flh-public-demo.service.example" "$REPO/scripts/demo/flh076/deploy/nginx-flh-public-demo.conf.example" \
    "$REPO/scripts/demo/flh076/deploy/ctl.sh" "$STAGE/deploy/"
 cp "$REPO/scripts/demo/flh076/validate-release.sh" "$STAGE/validate-release.sh"
@@ -120,4 +132,7 @@ mv "$STAGE" "$FINAL"
 (cd "$OUT" && COPYFILE_DISABLE=1 tar -czf "$NAME.tar.gz" "$NAME" && sha256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256")
 trap 'rm -rf "$TOOLS"' EXIT
 echo "$STATUS package: $FINAL"
+# The digest of the file list binds every file of the package (server binaries
+# included); check_package.sh --expect-sums compares a package with it.
+echo "SHA256SUMS digest: $(sha256 "$FINAL/SHA256SUMS" | cut -d' ' -f1)"
 echo "tarball: $OUT/$NAME.tar.gz ($(cut -d' ' -f1 "$OUT/$NAME.tar.gz.sha256"))"

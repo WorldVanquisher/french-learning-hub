@@ -23,9 +23,12 @@ const check = (name, ok, detail = "") => checks.push({ name, ok: Boolean(ok), de
 
 // The D1 authored examples (fixture data; shown untranslated in every locale).
 const EXAMPLES = [
+  // R2: the most beginner-friendly question first, and a fourth example whose
+  // learner question is written in English (its two units are a comparison).
+  { key: "en-train-de", question: "est-ce que « je suis cuisinant » existe ?", units: 2, concepts: 2 },
   { key: "y-en", question: "« j'y vais » et « j'en veux »", units: 2, concepts: 1 },
   { key: "il-faut-venir", question: "Pourquoi « viennes » et pas « viens » ?", units: 1, concepts: 1, otherEvidence: true },
-  { key: "en-train-de", question: "est-ce que « je suis cuisinant » existe ?", units: 2, concepts: 2 },
+  { key: "imparfait", question: "When do I use the imparfait instead of the passé composé?", units: 2, concepts: 2, lang: "en" },
 ];
 const ALLOWED = /^\/(api\/)?(knowledge-library\/(concepts(\/\d+)?|units\/\d+\/source|demo(\/(semantic|hybrid)-search)?)|assets\/.+|readyz|healthz)?$/;
 const origin = new URL(url).origin;
@@ -52,7 +55,7 @@ for (const locale of ["en", "zh-CN"]) {
     await page.goto(url);
     await page.waitForSelector(".demo-example-card");
     check(`${tag}: lead sentence visible`, await page.locator(".demo-lead").isVisible());
-    check(`${tag}: three example entry points`, (await page.locator(".demo-example-card").count()) === 3);
+    check(`${tag}: ${EXAMPLES.length} example entry points`, (await page.locator(".demo-example-card").count()) === EXAMPLES.length);
     check(`${tag}: read-only and synthetic labels visible`, (await page.locator(".demo-labels .demo-label").count()) >= 2 && (await page.locator(".demo-labels").isVisible()));
     if (expectVectors === "mechanical") {
       check(`${tag}: mechanical warning visible on landing`, await page.locator(".demo-intro .banner.info").isVisible());
@@ -61,7 +64,7 @@ for (const locale of ["en", "zh-CN"]) {
       check(`${tag}: no mechanical warning for a model build`, (await page.locator(".demo-label.warn").count()) === 0);
     }
     check(`${tag}: direct search kept`, await page.locator("#library-query").isVisible());
-    const firstCard = await page.locator("#demo-example-y-en").boundingBox();
+    const firstCard = await page.locator(`#demo-example-${EXAMPLES[0].key}`).boundingBox();
     check(`${tag}: first example fully on the first screen`, firstCard && firstCard.y >= 0 && firstCard.y + firstCard.height <= h, JSON.stringify(firstCard));
     check(`${tag}: synthetic notice and artifact identity visible`, await page.locator('section[aria-label] .hint', { hasText: /synthetic|合成|Artifact|工件/ }).first().isVisible());
     await noSideScroll("landing");
@@ -71,7 +74,7 @@ for (const locale of ["en", "zh-CN"]) {
     let reached = false;
     for (let i = 0; i < 25 && !reached; i++) {
       await page.keyboard.press("Tab");
-      reached = await page.evaluate(() => document.activeElement?.id === "demo-example-y-en");
+      reached = await page.evaluate((k) => document.activeElement?.id === `demo-example-${k}`, EXAMPLES[0].key);
     }
     check(`${tag}: first example reachable by keyboard`, reached);
 
@@ -82,8 +85,8 @@ for (const locale of ["en", "zh-CN"]) {
       await page.waitForSelector(".demo-question");
       check(`${tag}: ${ex.key}: heading focused`, await page.evaluate(() => document.activeElement?.tagName === "H2"));
       const q = page.locator(".demo-question");
-      check(`${tag}: ${ex.key}: original French question shown unchanged`, (await q.innerText()).includes(ex.question), await q.innerText());
-      check(`${tag}: ${ex.key}: question marked French`, (await q.getAttribute("lang")) === "fr");
+      check(`${tag}: ${ex.key}: original question shown unchanged`, (await q.innerText()).includes(ex.question), await q.innerText());
+      check(`${tag}: ${ex.key}: question marked with its language (${ex.lang ?? "fr"})`, (await q.getAttribute("lang")) === (ex.lang ?? "fr"));
       check(`${tag}: ${ex.key}: ${ex.units} extracted units`, (await page.locator("#demo-step-extracted ~ ul .demo-unit").count()) === ex.units);
       check(`${tag}: ${ex.key}: ${ex.concepts} Concepts`, (await page.locator("#demo-step-concepts ~ ul .demo-unit").count()) === ex.concepts);
       await noSideScroll(`${ex.key} example`);
@@ -189,7 +192,8 @@ for (const locale of ["en", "zh-CN"]) {
 
   await page.fill("#library-query", "zzzzqx");
   await page.press("#library-query", "Enter");
-  const noMatch = page.locator(".library .empty[role=status]", { hasText: "zzzzqx" });
+  // R2-045: a search's outcome is announced by one status region present before the search (#demo-search-status); the visible line is plain text.
+  const noMatch = page.locator(".library .empty", { hasText: "zzzzqx" });
   await noMatch.waitFor({ timeout: 5000 }).catch(() => {});
   check("en-desktop: no keyword match is stated", (await noMatch.count()) === 1);
   await page.screenshot({ path: join(out, "en-desktop-91-no-match.png"), fullPage: true });

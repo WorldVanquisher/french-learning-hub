@@ -24,7 +24,7 @@ import { hashForScreen, NO_SEARCH, urlForScreen, type LinkSearch } from "./deepL
 // Each entry the demo writes keeps the trail of this visit's entries up to it
 // (their link keys), which is how an in-page back finds how far back to go,
 // and, once left, the id of the control that left it (`flhFocus`).
-type Screen = { kind: string; example?: string; conceptId?: number; unitId?: number; from?: string };
+type Screen = { kind: string; example?: string; step?: number; compare?: string; conceptId?: number; unitId?: number; from?: string };
 
 export interface DemoEntry<S extends Screen> {
   flhLibrary: S;

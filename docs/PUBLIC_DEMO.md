@@ -715,17 +715,26 @@ server. `web/src/demo/deepLink.ts` is the parser.
 | `/` | the start: examples, then the search with every Concept listed |
 | `/#q=<words>` (optionally `&state=active\|orphaned\|retired`) | the start with that keyword search |
 | `/#mode=semantic\|hybrid&preset=<id>` (optionally `&state=…`) | the start with a preset search; `<id>` must be one of the build's presets |
-| `/#example=<key>` | a guided example (`y-en`, `il-faut-venir`, `en-train-de`) |
+| `/#example=<key>` | a guided example (`en-train-de`, `y-en`, `il-faut-venir`, `imparfait`) |
+| `/#example=<key>&step=<1–4>` | the same example at that step of its walkthrough (question, rules, Concept, evidence). A `step` outside 1–4, blank, or on any other screen is left out (R2) |
+| `/#compare=<key>` | a comparison of two units (`imparfait-passe-compose`, `depuis-pendant`) |
 | `/#concept=<id>` | a Concept |
 | `/#concept=<id>&unit=<id>` | a unit's source evidence, reached from that Concept |
 | any search before a Concept or evidence (`/#q=il+faut&concept=1`) | the same screen; its back action returns to that search |
 | `example=<key>` before a Concept or evidence (`/#example=y-en&concept=12&unit=12`) | the same screen; its back actions return to that example |
+| `compare=<key>` before a Concept or evidence (`/#compare=depuis-pendant&concept=8&unit=9`) | the same screen; its back actions return to that comparison. `compare` with `example`, or an unknown key, is malformed |
 
 **Rules:**
 - **IDs:** 1–9 digits, no leading zero.
 - **Queries:** at most 200 characters. Percent-encoded and raw Unicode are the
   same query.
 - **Duplicates:** the first value of a repeated parameter wins.
+- **Blank values:** a blank `q` (or one of spaces) is the start's empty
+  search. Any other blank required parameter (`#example=`,
+  `#concept=12&unit=`) is a link cut short, so the notice opens.
+- **Optional parameters (R2):** `step` and `state` are tolerated: an
+  invalid or blank value is left out and the rest of the link opens, at its
+  canonical address. Unknown parameters (`utm_source=…`) are ignored.
 - **Canonical address:** on opening, the address is rewritten to the
   screen's own link.
 
@@ -733,7 +742,7 @@ server. `web/src/demo/deepLink.ts` is the parser.
 this demo". That covers an unknown key or preset, a malformed or over-long
 ID, an over-long query, `unit` without `concept`, and a link cut short. A
 well-formed link to an ID this build lacks opens that screen's "not in this
-demo" state with a working example.
+demo" state with a working example and, since R2, "Search the library".
 
 **Behaviour checked for every row:** direct open, reload, a move, Back
 (focus on the control used), Forward, and Back out of the demo, at 390 and
@@ -805,21 +814,196 @@ workbench build is unchanged):
   understand.
 - **Effect**, on packaged builds with the same artifact:
 
-  | Measure | Before | After |
-  |---|---|---|
-  | Entry script, raw | 547,523 bytes | 287,580 bytes |
-  | Entry script, as sent (server gzip) | 150,131 bytes | 85,647 bytes |
-  | First visit to the start, all responses | 172,696 bytes | 108,298 bytes |
-  | Start rendered | 1.27 s | 0.96 s |
-  | First example card on screen | 1.84 s | 1.66 s |
+  | Measure | Kind | Before (`d1118-base`) | After (`d1118-final`) |
+  |---|---|---|---|
+  | Entry script | asset size (decoded) | 547,523 bytes | 287,580 bytes |
+  | Entry script | transferred (gzip, with headers) | 150,131 bytes | 85,647 bytes |
+  | Start: page, script, style and both reads | transferred | 172,696 bytes | 108,298 bytes |
+  | Start rendered (placeholder replaced) | browser timing | 1.19 s | 0.88 s |
+  | First example card on screen | browser timing | 1.60 s | 1.60 s (no measurable change) |
 
-  Times are on a slow phone profile, as medians of 7 interleaved cold runs.
-  The page, script, style and both reads count toward the first-visit bytes.
-  The validation record has the method.
+  **Bytes:** Chromium's encoded lengths, body plus headers. Counting with a
+  plain HTTP client gives the same within 0.1 %.
 
-**Packaged gate fix:** `check_package.sh` now passes the vectors kind to
-`accept_guided.mjs`, as its README already said. Before, a CANDIDATE
-package failed the guided suite because it expected the mechanical notice.
+  **Times:** each figure is the median of 9 cold runs per build, alternating
+  between the builds run by run (2026-11-19). The profile is Chromium 156
+  with 390 px phone emulation, 150 ms round trip, 1.6 Mbit/s down and
+  750 kbit/s up, a 4× CPU slowdown, and a new browser context (empty cache)
+  per run.
+
+  The measurement record, including an earlier 5-run series, is
+  [validation/demo-performance-evidence-20261119.md](validation/demo-performance-evidence-20261119.md).
+
+**Packaged gate fixes:**
+- **Vectors kind:** `check_package.sh` now passes the vectors kind to
+  `accept_guided.mjs`, as its README already said. Before, a CANDIDATE
+  package failed the guided suite because it expected the mechanical notice.
+- **Package identity:** its live stage now also checks the page actually
+  served against `RELEASE.json` `web`: build id, entry script and
+  `index.html` SHA-256. The artifact alone does not name a package, because
+  packages built from different trees can share one artifact.
+
+## Step-by-step walkthrough (2026-11-19)
+
+Each guided example offers "Walk through it step by step". The whole example
+stays on the page. The walkthrough then names the current step ("Step 2 of
+4: the rules taken from it"), marks it (`aria-current="step"`), focuses its
+heading, and keeps Previous and Next inside that step, so the way on is where
+the visitor is reading, also on a phone.
+
+- **Links and history:** each step is its own history entry and link
+  (`#example=y-en&step=2`). Back and Forward therefore retrace the steps; a
+  shared link opens at its step. The way back from the example's Concept or
+  evidence returns to the step the visitor left.
+- **What changed:** from step 2, the learner's question marks its words that
+  reappear in the extracted rules' wording, and step 2 lists them beside the
+  rules. Words compare without case or accents. A rule word of five letters
+  or more also marks a longer form ("remplace" marks "remplacent"); shorter
+  words must match whole, so "de" never marks "demain".
+- **Data:** nothing is fetched beyond the example's existing reads, and
+  nothing is recorded.
+- **Checks:** `web/src/demo/WalkthroughSteps.test.tsx`. In a real browser, a
+  scripted fresh visit reaches the source in 6 clicks and about 1.4 s, in
+  English and 简体中文, at 390 and 1280 px. That is a lower bound for a
+  person, not a user study.
+
+## Why a result matched, and comparing two examples (2026-11-19)
+
+**Why it matched.** Each keyword result offers "Show why it matched"
+(`web/src/demo/EvidenceCard.tsx`). The card explains the match from the
+result's own metadata and reads only the existing GETs, on request:
+- **Tier:** whether every searched word is in the Concept's own wording
+  (`match_tier: identity`) or some only in the wording of units filed under
+  it (`unit_evidence`).
+- **Each word:** "“remplace” is the whole word remplace", or "“rempl” is the
+  beginning of remplace". The search ignores case and accents and matches the
+  beginning of words; the page applies that same rule to the text it shows.
+  A word the server matched but the page cannot find in that text is said so,
+  never guessed.
+- **Wording, grouped:** the Concept's matched fields; then, per unit, its
+  matched fields (long wording shortened around the match, with "Show the
+  whole wording"), the learner's question it was taken from, what it
+  supports, and a link to its source record (`#q=…&concept=…&unit=…`). Three
+  units first, the rest on request.
+- **What it supports:** "Concept #12, “the pronouns y and en”: this unit
+  currently supports it", or that the unit is filed there without supporting
+  it. This comes from the Concept read's supporting units. A first-visit
+  rehearsal (2026-11-19) showed visitors otherwise had to open the Concept
+  screen to answer what the evidence supports.
+- **Keyboard:** a native toggle (`aria-expanded`, `aria-controls`); Escape
+  inside the card closes it and returns focus to the toggle. Back from a
+  source returns to the open card with focus on the link that was used.
+- **No match details:** a result without `matched_fields` or `tokens` (an
+  older server) says that this page cannot tell which wording matched, and
+  fetches nothing.
+
+**Comparing two examples.** (R2 replaced the stacked layout described here
+on every width; see "Phone comparison, practice and first-visit paths"
+below.) The start page offers two comparisons after the
+guided examples (`web/src/demo/comparisons.ts`, `CompareScreen.tsx`):
+"Imparfait or passé composé?" and "Depuis or pendant?". Each side is found
+like a guided example: one keyword query plus wording from exactly one unit,
+then the unit's Concept and source. Nothing is written and no account is
+involved.
+- **Layout:** each card has the same headed rows: the learner's question,
+  the stored interpretation of that question, the rule taken from it, its
+  example, and the Concept it is filed under, with links to the source record
+  and the Concept. From 721 px wide the rows line up across both cards
+  (CSS subgrid); narrower screens stack the cards.
+- **Address:** `#compare=<key>`, kept on reload. A Concept or source opened
+  from it carries `compare=<key>`, so its back action returns to the
+  comparison.
+- **Incomplete data:** a side this build lacks says so and offers its
+  keyword search; a unit whose source cannot be read is shown without its
+  question, and the other side is unaffected.
+
+**For a reviewer, in about a minute:** open `/`, choose "Imparfait or passé
+composé?", and read the two examples row by row ("Quand j'étais petit, je
+jouais au foot." against "Hier, j'ai joué au foot."). Then follow "Open
+source record #5" to the learner's original question and use Back, which
+returns to the comparison with focus on that link.
+
+**Checks:** `web/src/demo/EvidenceExplorer.test.tsx` and
+`web/src/demo/Compare.test.tsx`. On a package, a real-browser probe drives
+both by keyboard in English and 简体中文 at 390 and 1280 px, with no write
+request.
+
+## Example data and suggested searches (2026-11-19)
+
+**One data file.** `web/src/demo/discovery.json` holds the data of the
+guided examples, the comparisons and the suggested searches. Application
+text (titles, labels) stays in `web/src/i18n`.
+
+**Suggested searches.** Under the search form, collapsed by default, each
+shows one search behaviour: unit wording only, identity details, every word
+must match, accents ignored, word beginnings, and one search that finds
+nothing (`pronoms`). That one is followed by its own way on: "Search
+“pronouns”" and "Open the example “One question, two pronouns”".
+
+**Checked against the package.** The package gate's `examples` stage
+(`scripts/validation/demo_candidate/check_examples.py`) resolves every entry
+against the served artifact, the way the page does. It writes a support
+matrix and fails with one readable line for each stale entry. Evidence:
+`docs/validation/demo-discovery-20261119.md`.
+
+**Updating example data:**
+1. Edit `discovery.json`.
+2. Run `python3 -I scripts/validation/demo_candidate/check_examples.py
+   http://127.0.0.1:<port> web/src/demo/discovery.json <out>` against a
+   running package.
+3. Rebuild the package. A data-only change alters only the web bundle; the
+   server binary and the artifact stay the same.
+
+A new example or comparison also needs its title in both catalogs.
+
+**Search recovery (2026-11-19).** Evidence:
+`docs/validation/demo-state-identity-20261119.md`.
+- **Overtaken searches:** only the newest is shown; its count names the
+  query the server executed.
+- **Failures:** a failed search keeps the last one that worked below the
+  error, and its retry names the search it runs.
+- **Refused searches:** a search the server refuses (more than 8 words, more
+  than 200 bytes, no word of two letters) names the limit and offers "Edit
+  the search".
+- **Binding the package:** `package.sh` prints the `SHA256SUMS` digest.
+  `check_package.sh --expect-sums <digest>` then refuses any package file
+  that differs from the one built, such as another server binary.
+
+**Browser behaviour (2026-11-19).** Evidence:
+`docs/validation/demo-browser-ux-20261119.md`.
+- **Link names:** each source link names its unit ("Open the source of unit
+  #12 (record #9)"), so two units of one record never share a link name.
+- **Expired page:** the startup placeholder in `web/index.html` says at once
+  that the page is out of date when a file it names is gone from the server.
+- **Measured:** the path from a query to evidence, and focus after closing,
+  returning, reloading and switching language. Also 320 px with text-spacing
+  overrides, a slow response, and reduced motion.
+
+## Checking a served demo against its package (2026-11-19)
+
+`scripts/validation/demo_candidate/check_served.py BASE_URL PKG_DIR` (GETs
+only) checks that the page, its entry script and stylesheet bytes, and the
+artifact identity served at an address are those of a package.
+- **Staged smoke:** run it against the staging address with the package
+  installed there.
+- **After deploying:** run it against the public address (through the proxy)
+  with the released package.
+- **After a rollback:** run it with the package rolled back to.
+
+**Tested locally:**
+- a package against itself: 7/7;
+- another package served: FAIL on build, entry and manifest;
+- a stand-in proxy serving stale bytes under the right entry name: FAIL on
+  the entry's bytes.
+
+`check_package.sh --expect-sums <digest>` (digest printed by `package.sh`)
+binds every file of the package, server binaries included.
+
+**FLH-076 browser acceptance, changed contract.** A server 400 is now shown
+naming the limit, with "Edit the search" and no retry, because running a
+refused search again cannot succeed. `scripts/demo/flh076/browser/accept.mjs`
+checks that. The FLH-076 and FLH-078 validation records describe the earlier
+"error with retry" as it was then.
 
 ## Real-E5 candidate (owner only)
 
@@ -886,6 +1070,144 @@ CHROME=/path/to/chromium bash scripts/validation/demo_candidate/negative_control
 matrix and FLH-076 screenshots) and judge their relevance yourself. Mechanical
 vectors proved only the mechanics. A passing CANDIDATE is ready for the
 separate deployment decision; it is not deployed by any of this.
+
+## Phone comparison, practice and first-visit paths (R2, 2026-11-19)
+
+**For visitors.** The demo follows French learners' questions to the rules
+taken from them and the evidence behind each rule. Start with a guided
+example, compare two easily confused forms, try one as a question before
+reading the answer, or search the whole synthetic library with your own
+words. Everything is read-only: nothing you choose is saved or sent.
+
+**First screen.** One row of ways in under the introduction: the 60-second
+tour, Examples, Comparisons and Search the library (each moves focus within
+the page). The search section says how searching differs from the prepared
+paths. The first example is the most beginner-friendly question
+(`en-train-de`); a fourth example (`imparfait`, a question written in
+English, `lang="en"`) holds the two units of the imparfait comparison, and
+the example and the comparison link to each other.
+
+**The 60-second tour** (`web/src/demo/Landing.tsx`): the imparfait example's
+question, its comparison, then the source of its first unit. Each step is the
+ordinary screen and history entry; the tour bar says where the visitor is and
+offers the next step. "Leave the tour and stay here" keeps the screen. The tour
+lives in page memory: a reload or a shared link has none.
+
+**The comparison** (`CompareScreen.tsx`):
+- **The pair:** each side's unit wording (as its label) and its example
+  sentence, compact, so both sentences are read together: 106 px apart on a
+  320 × 640 phone (714 px in English and 672 px in Chinese before), in one
+  view at 320, 768 and 1280 px, at 200 % zoom, with a 24 px default font and
+  with a 200-character French sentence.
+- **The evidence:** the learner's question, the stored interpretation, the
+  rule and the Concept, behind one "Show the evidence" button
+  (`aria-expanded`), open on wide screens and closed on phones. Opening it
+  changes neither the address nor the history. Escape closes it and returns
+  focus to the button; coming back from a source opened there reopens it with
+  focus on that link.
+- **Copy a link to this comparison:** `#compare=<key>` only.
+
+**Practice (optional)** for `imparfait-passe-compose`
+(`discovery.json` `practice`; `comparisons.ts`):
+- From the start page ("Try … as a question first") or the comparison's
+  "Try a question". The pair is hidden while a question is unanswered.
+- The learner's question and its recorded context come first, then the
+  example with its form blanked, then both forms in side order and an
+  explicit skip. A form must occur exactly once in its side's example, or
+  the item is not offered (`DiscoverySpec.test.ts`, `check_examples.py`).
+- After a choice or a skip: the outcome (in a status region, and focused),
+  each form's rule with a link to its unit's evidence, and the valid
+  alternative with its other meaning. Then "Try the other example".
+- **State:** the answers, the item and whether the evidence is open live in
+  page memory for the visit (`web/src/demo/visit.ts`): never in the address,
+  browser storage, a cookie or a request. Back from a source finds the
+  practice as it was; a reload or shared link starts at the pair. No score
+  and no record.
+
+**Why it matched** (`EvidenceCard.tsx`): each matched unit carries a label,
+"Supports" or "Filed, not supporting", then the sentence. A filed unit
+that does not support says why, from its own fields: from an earlier,
+replaced extraction (`in_current_extraction: false`), or an admission other
+than active. A missing source record reads "No excerpt…" (not a failed
+read); a question without the search words says so. "Show the question's
+context" shows the recorded context and stored interpretation in place, with
+no request. "Copy a link to the source of unit #N" copies
+`#concept=<id>&unit=<id>`.
+
+**Accessibility and layout:**
+- **Font size:** text follows the browser's font-size setting. Every px size
+  of the shared `styles.css` that reaches a demo element is restated in rem
+  under `.demo-app`, and `demo.css` sizes nothing in px. At a 24 px default
+  font, 0 text elements keep their size, against 580 before
+  (`demoStyles.test.ts`).
+- **Highlights:** underlined as well as coloured, in dark text (4.6:1 is the
+  lowest text contrast on every screen, both languages).
+- **Targets:** every control at least 24 × 24 CSS px at 320 px (a link
+  inside a sentence excepted).
+- **Status:** a search's progress and outcome are announced by one status
+  region that is on the page before the search; the visible result lines are
+  plain text.
+- **Motion:** no transitions or animations.
+
+**Links (R2-084/085):** shared links name a screen, never progress. `step`
+and `state` are optional parameters: a bad value is left out (see
+"Supported addresses"). A link to a Concept or unit this build lacks offers
+the first example and "Search the library".
+
+**What a first visit requests** (R2-059), all same-origin GETs:
+1. `GET /`
+2. `GET /assets/index-<hash>.js`
+3. `GET /assets/index-<hash>.css`
+4. `GET /api/knowledge-library/demo`
+5. `GET /api/knowledge-library/concepts?q=&state=all`
+
+Nothing else: no fonts, images, other origins, cookies or storage. Each
+screen then reads only the knowledge library's GETs (search, Concept, unit
+source).
+
+**Package (R2-054, 064–066, 070, 078):**
+- **Build assertion:** `package.sh` refuses a web build that fails
+  `scripts/validation/demo_candidate/check_bundle.py`. It checks for:
+  only `index.html` and assets; one entry script; no workbench-named chunk; no
+  private route, content pack, fixture, workbench storage key, local path or
+  tailnet value. Private recall practice is compiled out of demo builds.
+- **Practice not split:** it costs 1,115 gzip bytes of the entry script
+  (1.1 %). A lazily loaded prototype saved 192 bytes, so the package stays a
+  single script. On that prototype, a failed chunk showed a retry in place
+  that worked without a reload.
+- **Pinned manifest:** `check_package.sh --pinned-manifest FILE` checks
+  every file against a copy of `SHA256SUMS` kept outside the package and
+  names any file that differs.
+
+**Staged HTTPS (R2-077, owner only; nothing here changes DNS or a host):**
+- **Host tool:** the staging host serves the package through
+  `deploy/aws/host/flh-public-https` (FLH-088; `docs/AWS_DEMO.md`). It runs
+  nginx with a Let's Encrypt certificate (`enable HOST --staging` for the
+  untrusted dry run), allows only GET and HEAD, and adds HOST to
+  `HTTP_ALLOWED_HOSTS`.
+- **Owner needs:**
+  - a DNS name pointing at the instance's address;
+  - inbound TCP 80 and 443;
+  - `flh-public-https preflight HOST` passing;
+  - the release installed with `flh-release install` and the tarball
+    SHA-256.
+- **Then check:** `check_served.py https://HOST <package>` must report 7/7.
+  `flh-release`'s own identity check binds the artifact only, and two
+  releases can share one artifact, so this page check is required.
+- **Offline render:** `flh-public-https render DIR HOST CERT` writes the
+  nginx files for review without root.
+
+**Owner runbook: the local candidate (R2-088), tested on `d1119-r2`:**
+
+```sh
+PKG=/abs/flh-public-demo-d1119-r2; RUN=/abs/runtime-dir
+(cd $PKG && ./validate-release.sh)                       # exit 0 = CANDIDATE
+PORT=18773 bash $PKG/deploy/ctl.sh start $RUN            # "started (pid …, 127.0.0.1:18773)"
+PORT=18773 bash $PKG/deploy/ctl.sh status $RUN
+python3 -I scripts/validation/demo_candidate/check_served.py http://127.0.0.1:18773 $PKG   # 7/7
+curl -s http://127.0.0.1:18773/ | grep -o 'flh-build" content="[^"]*'     # the package's build_id
+PORT=18773 bash $PKG/deploy/ctl.sh stop $RUN             # "stopped"; nothing left listening
+```
 
 ## Limits
 
