@@ -1366,6 +1366,79 @@ link parameter and the practice features stay for the imparfait comparison.
 storage (none), and the request set (same-origin GETs of the read routes).
 
 
+## The first-visit journey and the feature gallery (R5, 2026-11-20)
+
+**For visitors:** the **Guided tour** button walks one French learner's question through FLH in five
+steps:
+1. the question;
+2. how it was analysed, and how a person's correction is recorded;
+3. the rule taken from it, with its source record;
+4. the Concept search;
+5. a retry of the mistake.
+
+Below the comparisons, a compact gallery lists the private workbench's other features and says why
+the public demo does not run them.
+
+**Fixture replays.** Two steps show what the private workbench does with the learner's own
+records. They are replays, each labelled as one where it is shown:
+- **Step 2:** a correction of the stored analysis. The section is tagged "Fixture replay" with a
+  dashed border, and says it is not from the server and not stored. The fixture is
+  `web/src/demo/journeyFixtures.ts`; `Journey.test.tsx` checks that it corrects the catalog's
+  analysis, verbatim.
+- **Step 5:** the step's hint says it is a fixture replay of a Mistake Notebook retry. The
+  question itself is the public comparison question.
+
+Everything else in the journey is read from the demo's server.
+
+**Routes:**
+
+| Step | Route | Screen |
+|---|---|---|
+| 1 | `#example=en-train-de` | the guided example |
+| 2 | `#analysis=en-train-de` (new; it must stand alone, or the link is malformed) | `AnalysisScreen.tsx` |
+| 3 | `#example=en-train-de&concept=14&unit=16` | the source of the example's seed unit |
+| 4 | `#q=action+en+cours` | the keyword search for the example's own query |
+| 5 | `#compare=present-en-train-de&practice=1` (after step 4: `#q=action+en+cours&compare=…&practice=1`) | the comparison's question |
+
+The tour remains page memory: a reload or a shared link opens the screen without the bar.
+
+**Coverage of FLH's major features:**
+
+| Feature | In the demo | Where | Data |
+|---|---|---|---|
+| Learning entry (question and context, never rewritten) | yes | step 1; every source screen | public synthetic |
+| Versioned analysis (category, explanation, confidence, provenance) | yes | step 2, `#analysis=en-train-de` | public synthetic |
+| Human feedback and corrections; the effective interpretation | replay | step 2, the "Fixture replay" section | fixture (`journeyFixtures.ts`) |
+| Bilingual explanations (FLH-095) | yes | step 2: the stored analysis is labelled "language not recorded"; the replay shows English and Chinese variants | public synthetic and fixture |
+| Knowledge extraction (units) and admission | yes | step 3; `#example=…&step=2` | public synthetic |
+| Source evidence (record, extraction, interpretation) | yes | step 3 | public synthetic |
+| Concepts: support, membership, the orphaned state | yes | step 4 → a Concept; `#concept=11` (orphaned) | public synthetic |
+| Knowledge Library keyword search | yes | step 4, `#q=action+en+cours` | public synthetic |
+| Semantic and hybrid search | yes (presets only) | gallery → `#mode=semantic&preset=right-now` | precomputed vectors |
+| Mistake Notebook retry | replay | step 5 | public question, framed as a replay; retry marks and history are private |
+| Comparisons and choose-first practice | yes | start page → Comparisons; `#compare=…&practice=N` | public synthetic |
+| Guided walkthrough | yes | `#example=<key>&step=1…4` | public synthetic |
+| Review Today (daily review) | gallery | "Mistake Notebook and Review Today" | private only |
+| Capture import and CLI | gallery | "Capture a discussion" | private only (writes records) |
+| Concept review, relations, AI suggestions | gallery | "Concept review and AI suggestions" (links to a Concept's read view) | private only (writes decisions; AI provider) |
+| Recall practice | gallery | "Recall practice" | private only (compiled out of the demo) |
+| Listening lessons and daily pull | gallery | "Listening lessons" | private only (AI provider, the learner's transcripts) |
+| Reading lessons and mock exams | gallery | "Reading and mock exams" | private only (saves answers) |
+| Writing feedback | gallery | "Writing feedback" | private only (AI provider, saves drafts) |
+| Speaking practice | gallery | "Speaking practice" | private only (audio and AI providers) |
+| Retrieval experiments, annotation inspector, dataset reports | gallery | "Retrieval experiments" | private only (private annotations) |
+
+**Why the private features are omitted:** each of them writes records, needs the learner's own
+data, or calls an AI provider. The public boundary serves only GET and HEAD of the knowledge
+library's read routes, so they cannot run here, and the demo never imitates them with server
+writes. The gallery's cards are text only: no fixture, no request, and a control only where it
+leads to a public screen.
+
+**Tests and checks touched:** the boundary tests in `PublicDemoApp.test.tsx` and
+`Listening.test.tsx` now exclude the gallery's descriptive text. They still require that no
+private control or route appears, and that the Listening card has no control.
+
+
 ## Publication checklist, keyed to one candidate (R4)
 
 Use this list for every public demo candidate. Put the candidate's own values into the variables;

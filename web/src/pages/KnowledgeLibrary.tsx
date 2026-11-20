@@ -24,7 +24,9 @@ import { ExamplePicker, ExampleScreen, focusExampleCard } from "../demo/ExampleS
 import { hashForScreen, linkFromHash, queryToSearch, sameSearch, searchToQuery, type LinkSearch } from "../demo/deepLink";
 import { EvidenceCard } from "../demo/EvidenceCard";
 import { compareCardId, ComparePicker, CompareScreen } from "../demo/CompareScreen";
-import { findComparison, type SideResolution } from "../demo/comparisons";
+import { findComparison } from "../demo/comparisons";
+import { AnalysisScreen } from "../demo/AnalysisScreen";
+import { FeatureGallery } from "../demo/FeatureGallery";
 import { StartPoints, TourBar, TOUR_STEPS } from "../demo/Landing";
 import { adoptEntry, entryKey, focusControl, focusFallback, pushEntry, readEntry, replaceEntry, stepsBack } from "../demo/history";
 import { NoMatchHelp, RecordedTime, SearchProblem, SuggestedSearches } from "../demo/DemoStates";
@@ -50,6 +52,8 @@ type Load<T> = { status: "loading" } | { status: "error"; message: string; code?
 type Screen =
   | { kind: "results" }
   | { kind: "example"; example: string; step?: number }
+  // R5: a guided example's stored analysis and a correction replay (demo/AnalysisScreen.tsx).
+  | { kind: "analysis"; example: string }
   // `practice`: the comparison's choose-first question shown (1-based; R3-056).
   | { kind: "compare"; compare: string; practice?: number }
   // `from`: the guided example, `compare`: the comparison it was opened from (public demo),
@@ -75,6 +79,8 @@ const questionLang = (text: string) => DEMO_EXAMPLES.find((e) => e.question === 
 // suggested action opens the first French example (it was the imparfait one,
 // whose question is written in English).
 const TOUR = { example: "en-train-de", compare: "present-en-train-de" } as const;
+// R5: the journey's Concept search is the example's own keyword query.
+const TOUR_QUERY = DEMO_EXAMPLES.find((e) => e.key === TOUR.example)?.query ?? "";
 
 function describeError(error: unknown): string {
   if (error instanceof ApiError) return `(${error.status}) ${error.message}`;
@@ -475,27 +481,35 @@ export function KnowledgeLibrary({
   };
   // The guided example a Concept or source was opened from, if any.
   const fromExample = (key: string | undefined) => (key ? DEMO_EXAMPLES.find((e) => e.key === key) : undefined);
-  // Public demo: the 60-second tour (R2, demo/Landing.tsx): the imparfait
-  // example's question, its comparison, then the source of the comparison's
-  // first unit. Kept in this page's memory only; the step shown follows the
-  // screen, so Back and Forward move along it too.
+  // Public demo: the guided tour (R2, R4, R5; demo/Landing.tsx). R5 makes it the
+  // first-visit journey on one French example: its question, its analysis and a
+  // correction replay, the rule taken from it with its source, the Concept
+  // search, and a mistake retry (a fixture replay, said so). Kept in this page's
+  // memory only; the step shown follows the screen, so Back and Forward move
+  // along it too.
   const [tour, setTour] = useState(false);
   const [tourSource, setTourSource] = useState<{ conceptId: number; unitId: number } | null>(null);
   const tourStep = !tour
     ? 0
     : screen.kind === "example" && screen.example === TOUR.example
       ? 1
-      : screen.kind === "compare" && screen.compare === TOUR.compare
+      : screen.kind === "analysis" && screen.example === TOUR.example
         ? 2
-        : screen.kind === "source" && screen.compare === TOUR.compare
+        : screen.kind === "source" && screen.from === TOUR.example && !screen.compare
           ? 3
-          : 0;
+          : screen.kind === "results" && mode === "keyword" && query.q === TOUR_QUERY
+            ? 4
+            : screen.kind === "compare" && screen.compare === TOUR.compare && screen.practice !== undefined
+              ? 5
+              : 0;
   const tourReached = useRef(1);
   if (tourStep > 0) tourReached.current = tourStep;
   const tourGo = (step: number) => {
     if (step === 1) openExample(TOUR.example);
-    else if (step === 2) openCompare(TOUR.compare);
-    else if (step === 3 && tourSource) setScreen({ kind: "source", conceptId: tourSource.conceptId, unitId: tourSource.unitId, compare: TOUR.compare });
+    else if (step === 2) setScreen({ kind: "analysis", example: TOUR.example });
+    else if (step === 3 && tourSource) setScreen({ kind: "source", conceptId: tourSource.conceptId, unitId: tourSource.unitId, from: TOUR.example });
+    else if (step === 4) searchFor(TOUR_QUERY);
+    else if (step === 5) openCompare(TOUR.compare, true);
   };
   const startTour = () => {
     setTour(true);
@@ -514,6 +528,18 @@ export function KnowledgeLibrary({
   };
   // A keyword search started by the page itself (an example this build lacks,
   // or a suggestion after a search found nothing), shown in the form too.
+  // R5: a demo link opened in place (the feature gallery), as the address would open it.
+  const openLink = (hash: string) => {
+    const l = linkFromHash(hash, demo?.presets.map((p) => p.id));
+    if (l.malformed) return;
+    if (l.screen.kind === "results") {
+      const next = searchToQuery(l.search, demo?.presets ?? []);
+      applySearch(l.search);
+      runSearch(next.query, next.mode);
+      return;
+    }
+    setScreen(l.screen as Screen);
+  };
   const searchFor = (q: string) => {
     setDraft({ q, state: "all" });
     setDraftMode("keyword");
@@ -689,6 +715,9 @@ export function KnowledgeLibrary({
         {guided ? <StartPoints onTour={startTour} /> : null}
         {guided ? <ExamplePicker onOpen={openExample} onConfusion={(key) => openCompare(key, true)} /> : null}
         {guided ? <ComparePicker onOpen={(key) => openCompare(key)} onPractice={(key) => openCompare(key, true)} /> : null}
+        {guided ? (
+          <FeatureGallery onOpenHash={openLink} onRetry={() => openCompare(TOUR.compare, true)} presets={demo?.presets.map((p) => p.id) ?? []} />
+        ) : null}
         {about}
         {guided ? (
           <>
@@ -860,6 +889,19 @@ export function KnowledgeLibrary({
           returnFocus={focusReturn}
         />
       ) : null}
+      {screen.kind === "analysis" && guided && fromExample(screen.example) ? (
+        <AnalysisScreen
+          key={`analysis-${screen.example}`}
+          example={fromExample(screen.example)!}
+          onBack={() => backToExample(screen.example)}
+          href={(conceptId, unitId) => hashForScreen({ kind: "source", conceptId, unitId, from: screen.example }, searchRef.current) || "#"}
+          onOpenSource={(conceptId, unitId) => setScreen({ kind: "source", conceptId, unitId, from: screen.example })}
+          onReady={(seed) => {
+            if (screen.example === TOUR.example) setTourSource(seed);
+          }}
+          returnFocus={focusReturn}
+        />
+      ) : null}
       {screen.kind === "compare" && guided && findComparison(screen.compare) ? (
         <CompareScreen
           key={`compare-${screen.compare}`}
@@ -872,11 +914,6 @@ export function KnowledgeLibrary({
           onStartPractice={(n) => setScreen({ kind: "compare", compare: screen.compare, practice: n })}
           onPracticeItem={(n) => replaceScreen({ kind: "compare", compare: screen.compare, practice: n })}
           onLeavePractice={() => backToCompare(screen.compare)}
-          onReady={(sides: SideResolution[]) => {
-            const first = sides[0];
-            if (screen.compare === TOUR.compare && first?.kind === "found" && first.source)
-              setTourSource({ conceptId: first.concept.id, unitId: first.unit.unit_id });
-          }}
           href={(conceptId, unitId) =>
             hashForScreen(
               unitId

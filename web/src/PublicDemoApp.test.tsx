@@ -77,7 +77,10 @@ describe("Public demo", () => {
     for (const name of ["Learning Records", "Concept Review", "Annotation Inspector", "Experiment Dashboard"]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }
-    expect(screen.queryByText(/Import|Request analysis|Extract/i)).toBeNull();
+    // No workbench action anywhere; the R5 feature gallery may describe a private
+    // feature (with no control), so text inside it is not an action.
+    expect(screen.queryAllByText(/Import|Request analysis|Extract/i).filter((e) => !e.closest("[data-gallery]"))).toEqual([]);
+    expect(screen.queryByRole("button", { name: /Import|Request analysis|Extract/i })).toBeNull();
     expect(calls.every((c) => c.method === "GET")).toBe(true);
     expect(document.title).toBe("Knowledge Library — read-only public demo");
     expect(document.documentElement.lang).toBe("en");
