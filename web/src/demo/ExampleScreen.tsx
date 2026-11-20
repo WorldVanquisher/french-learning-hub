@@ -26,10 +26,12 @@ function focusStep(step: number) {
 // kept and what it added. Words are compared without case or accents; a rule
 // word of five letters or more also marks a longer form of it in the question
 // (« remplace » marks « remplacent »). Shorter words must match whole, so
-// « de » never marks « demain ». One-letter words are ignored.
+// « de » never marks « demain ». One-letter words are ignored. A word is its
+// letters with their combining marks, so a word written with decomposed accents
+// stays whole (R4-DEM-029).
 const fold = (w: string) => w.toLocaleLowerCase("fr").normalize("NFD").replace(/\p{M}/gu, "");
 function sharedWordTest(wordings: readonly string[]): ((word: string) => boolean) | null {
-  const words = [...new Set(wordings.flatMap((w) => w.split(/[^\p{L}]+/u)).map(fold).filter((w) => w.length >= 2))];
+  const words = [...new Set(wordings.flatMap((w) => w.split(/[^\p{L}\p{M}]+/u)).map(fold).filter((w) => w.length >= 2))];
   if (words.length === 0) return null;
   return (word: string) => {
     const f = fold(word);
@@ -39,13 +41,13 @@ function sharedWordTest(wordings: readonly string[]): ((word: string) => boolean
 export function markSharedWords(text: string, wordings: readonly string[]): ReactNode {
   const shared = sharedWordTest(wordings);
   if (!shared) return text;
-  return text.split(/(\p{L}+)/u).map((part, i) => (i % 2 === 1 && shared(part) ? <mark key={i}>{part}</mark> : part));
+  return text.split(/(\p{L}[\p{L}\p{M}]*)/u).map((part, i) => (i % 2 === 1 && shared(part) ? <mark key={i}>{part}</mark> : part));
 }
 // The question's words that reappear in the rules, in question order, once each.
 export function sharedWords(text: string, wordings: readonly string[]): string[] {
   const shared = sharedWordTest(wordings);
   if (!shared) return [];
-  return [...new Set(text.split(/(\p{L}+)/u).filter((part, i) => i % 2 === 1 && shared(part)))];
+  return [...new Set(text.split(/(\p{L}[\p{L}\p{M}]*)/u).filter((part, i) => i % 2 === 1 && shared(part)))];
 }
 
 // WalkBar is the optional walkthrough: one step at a time, each step its own
@@ -257,9 +259,12 @@ export function ExampleScreen({
   useEffect(() => {
     const id = returnFocus?.current;
     if (id && load.status !== "loading") {
-      returnFocus.current = null;
+      // Only this screen's own control (R4-DEM-030; see useFocusedHeading).
       const el = document.getElementById(id);
-      if (el && heading.current?.closest(".demo-example")?.contains(el) && focusControl(el)) return;
+      if (el && heading.current?.closest(".demo-example")?.contains(el)) {
+        returnFocus.current = null;
+        if (focusControl(el)) return;
+      }
     }
     if (step && load.status === "ready" && load.data.kind === "found") {
       focusStep(step);
@@ -284,6 +289,8 @@ export function ExampleScreen({
     else heading.current?.focus();
   }, [step]);
   const found = load.status === "ready" && load.data.kind === "found" ? load.data.example : null;
+  // The learner's question, for the rules' "not in the question" note (R4-DEM-032).
+  const question = found?.source.entry.original_input ?? "";
   const current = (n: number) => (step === n ? { "aria-current": "step" as const } : {});
   const stepClass = (n: number) => `panel demo-step${step === n ? " demo-step-current" : ""}`;
   const walkHere = (n: number) => (onStep && step === n ? <WalkBar step={step} onStep={onStep} /> : null);
@@ -362,6 +369,12 @@ export function ExampleScreen({
                     {unit.canonical}
                   </p>
                   <p>{unit.statement}</p>
+                  {/* R4-DEM-032: a rule none of whose words is in the question cannot be read off it. */}
+                  {sharedWords(question, [unit.canonical]).length === 0 ? (
+                    <p className="hint demo-unit-origin" data-unit-origin>
+                      {t("demo.example.unitNotInQuestion")}
+                    </p>
+                  ) : null}
                   {unit.example ? (
                     <p className="hint">
                       {t("library.frenchExample")}{" "}
@@ -389,7 +402,7 @@ export function ExampleScreen({
                       id={`demo-ex-source-${unit.unit_id}`}
                       onClick={() => onOpenSource(concept.id, unit.unit_id)}
                     >
-                      {t("demo.example.howExtracted")}
+                      {t("demo.example.howExtracted", { unit: unit.unit_id })}
                     </button>
                   </p>
                 </li>
@@ -434,7 +447,7 @@ export function ExampleScreen({
                     id={`demo-ex-open-concept-${c.concept.id}`}
                     onClick={() => onOpenConcept(c.concept.id)}
                   >
-                    {t("demo.example.openConcept")}
+                    {t("demo.example.openConcept", { concept: c.concept.target })}
                   </button>
                 </li>
               ))}

@@ -1329,6 +1329,82 @@ evidence).
 The way in under the first example disappears when no comparison has a distractor. The
 link parameter and the practice features stay for the imparfait comparison.
 
+## A clearer learning path (R4, 2026-11-20)
+
+**For visitors:**
+- The 60-second tour now starts with the first French question, « je suis cuisinant », then its
+  comparison and the record its first rule came from.
+- Every link to evidence says where it leads.
+- A rule that the learner's question does not contain says that it comes from the stored
+  interpretation.
+- The wrong option in the « je suis cuisinant » question is set against the rule that is
+  supported.
+
+**Changes:**
+- **Tour** (`KnowledgeLibrary.tsx`, `TOUR`): `en-train-de` → `present-en-train-de` → the source
+  of its first unit. It was the imparfait example, whose question is written in English. This
+  supersedes the R2 description above.
+- **Names of evidence controls:**
+  - "See where unit #N came from" was "See where this unit came from";
+  - "Open the Concept “…” and its evidence" was the same text for every Concept.
+  - So no two controls with one name lead to different places.
+- **The source screen's quotation:** it carries `lang` when the question is one of the
+  authored examples, which name their language. For any other question no language is claimed.
+- **A rule not in the question** (`ExampleScreen.tsx`): under a rule none of whose words is in
+  the question (`sharedWords`), one line says it comes from the stored interpretation.
+- **The distractor's explanation:** it adds "Tempting: «form»" and "Supported rule (unit #N):
+  wording: «form»", all from the data; it stacks below 600 px.
+- **Focus after a quick Back:** a screen takes the return-focus id only when that control is its
+  own. A screen being left could otherwise take it, and focus fell to the step heading.
+- **Repeated-word marking:** letters with their combining marks form one word, so a question
+  stored with decomposed accents is marked as whole words too.
+- **Demo routes only:** a demo build tests `PUBLIC_DEMO_BUILD` first when choosing a search
+  route, so the bundle names only `/knowledge-library/demo/…`. `check_bundle.py` refuses the
+  workbench's `/knowledge-library/semantic-search` and `/hybrid-search`.
+
+**Unchanged:** the data contract, the routes, the artifact, the bundle's scripts (one),
+storage (none), and the request set (same-origin GETs of the read routes).
+
+
+## Publication checklist, keyed to one candidate (R4)
+
+Use this list for every public demo candidate. Put the candidate's own values into the variables;
+the R4 handoff fills them for its candidate.
+
+```sh
+TAR=/abs/flh-public-demo-<label>.tar.gz
+TAR_SHA256=<tarball SHA-256 from package.sh>
+SUMS_SHA256=<SHA256SUMS digest from package.sh>
+VERSION=<artifact version>; MANIFEST=<public artifact manifest SHA-256>
+PIN=/abs/pinned-SHA256SUMS            # the copy kept outside the package when it was built
+HOSTFILE=/abs/private-host.txt        # the owner's private host value, compared, never printed
+```
+
+1. **The exact archive:**
+   - `sha256sum "$TAR"` must print `$TAR_SHA256`;
+   - extract it into a new, empty directory; `PKG` is the extracted directory.
+2. **Identity:**
+   - `(cd "$PKG" && ./validate-release.sh)`: exit 0 is CANDIDATE, exit 3 is BLOCKED, which is
+     never public;
+   - `RELEASE.json` names `$VERSION` and `$MANIFEST`.
+3. **Public fields only:** `python3 -I scripts/demo/flh076/public_provenance.py check "$PKG"`
+   must print `PUBLIC FIELDS CHECK PASSED`. A failure names the field path, never its value.
+4. **The bundle:**
+   `python3 -I scripts/validation/demo_candidate/check_bundle.py "$PKG/web" --private-host-file "$HOSTFILE"`
+   must print `BUNDLE CHECK PASSED`. This also refuses private routes, including the
+   workbench's own semantic and hybrid search.
+5. **The gate:**
+   `bash scripts/validation/demo_candidate/check_package.sh "$PKG" /abs/new/work --expect-version "$VERSION" --expect-manifest "$MANIFEST" --expect-status CANDIDATE --expect-sums "$SUMS_SHA256" --pinned-manifest "$PIN" --suites all`,
+   with `CHROME` and `--node-modules` for the browser stage. Every stage must PASS. A browser
+   stage reported NOT RUN is a skipped check, not a pass.
+6. **Served identity, after the host serves it:**
+   `python3 -I scripts/validation/demo_candidate/check_served.py <base URL> "$PKG"` must report 7/7.
+   Run it again after any rollout or rollback.
+7. **Rollback target:** a package that passed steps 1–5 itself. Never a package that fails
+   step 3: such a package carries private provenance.
+8. **Owner decisions:** the stage, DNS and publication (`docs/AWS_DEMO.md`). This checklist
+   performs none of them.
+
 ## Limits
 
 - **Synthetic data:** 11 questions (3 written in French), 16 units and 14

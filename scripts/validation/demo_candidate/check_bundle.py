@@ -10,7 +10,9 @@ build with VITE_FLH_PUBLIC_DEMO=1) before it ships:
   chunks     every script is the entry or a lazily loaded demo chunk; none is
              named after a workbench page or feature
   private    no script or page names a private route (the server's routes
-             other than health, the knowledge library and static assets), a
+             other than health, the knowledge library and static assets, and
+             the workbench's own /knowledge-library/semantic-search and
+             /hybrid-search; the demo's are under /knowledge-library/demo/), a
              private content pack or fixture, a workbench-only browser
              storage key, a machine-local path, a tailnet host name or a
              tailnet (100.64/10, the shared CGNAT range) address; with --private-host-file, not
@@ -37,6 +39,9 @@ PRIVATE_ROUTES = [
 ]
 ROUTE = re.compile(r'["\'`](?:/api)?/(' + "|".join(map(re.escape, PRIVATE_ROUTES)) + r')(?:[/?"\'`]|\$\{)')
 PRIVATE_CONCEPTS = re.compile(r'(?<!knowledge-library)["\'`/]concepts(?:/|["\'`?])')
+# The workbench's own semantic and hybrid search (R4-DEM-008): the demo has
+# preset-only routes under /knowledge-library/demo/, and the boundary refuses these.
+WORKBENCH_SEARCH = re.compile(r'["\'`](?:/api)?/knowledge-library/(semantic-search|hybrid-search)(?:[/?"\'`]|\$\{)')
 MARKERS = {
     "private content pack": ["reading_pack_v1", "listening_scripts_v1", "writing_prompts_v1", "flh_listening_script_pack_v1", "exam_forms"],
     "private fixture": ["fixture:flh034", "flh034"],
@@ -91,6 +96,8 @@ def main(argv):
                 problems.append(f"private: {f} names the private route /{m}")
             if PRIVATE_CONCEPTS.search(text):
                 problems.append(f"private: {f} names the private route /concepts")
+            for m in sorted(set(WORKBENCH_SEARCH.findall(text))):
+                problems.append(f"private: {f} names the workbench route /knowledge-library/{m}")
         for kind, needles in MARKERS.items():
             if not code and kind in ("private content pack", "private fixture", "workbench storage key"):
                 continue
