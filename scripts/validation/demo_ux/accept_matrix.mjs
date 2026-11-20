@@ -51,10 +51,13 @@ const TEXT = {
   "zh-CN": { step3: "第 3 步，共 4 步 · 概念", step4: "第 4 步，共 4 步 · 来源证据", noMatch: "没有找到？试试这些", empty: "此演示构建中没有可显示的概念。" },
 };
 // The D1 authored examples (fixture data; shown untranslated in every locale).
+// R2: the most beginner-friendly question first, and a fourth example whose
+// learner question is written in English (its two units are a comparison).
 const EXAMPLES = [
+  { key: "en-train-de", question: "est-ce que « je suis cuisinant » existe ?", units: 2, concepts: 2 },
   { key: "y-en", question: "« j'y vais » et « j'en veux »", units: 2, concepts: 1 },
   { key: "il-faut-venir", question: "Pourquoi « viennes » et pas « viens » ?", units: 1, concepts: 1 },
-  { key: "en-train-de", question: "est-ce que « je suis cuisinant » existe ?", units: 2, concepts: 2 },
+  { key: "imparfait", question: "When do I use the imparfait instead of the passé composé?", units: 2, concepts: 2 },
 ];
 const ALLOWED = /^\/(api\/)?(knowledge-library\/(concepts(\/\d+)?|units\/\d+\/source|demo(\/(semantic|hybrid)-search)?)|assets\/[^/]+|favicon\.[a-z]+|readyz|healthz)?$/;
 // The evidence-row layout before the fix (and before this lane's demo rules).
@@ -185,12 +188,12 @@ for (const sz of SIZES) {
     const t0 = Date.now();
     await page.goto(base);
     await settle(page, ".demo-example-card");
-    check(`${tag}: start: three examples`, (await page.locator(".demo-example-card").count()) === 3);
+    check(`${tag}: start: ${EXAMPLES.length} examples`, (await page.locator(".demo-example-card").count()) === EXAMPLES.length);
     check(`${tag}: start: read-only and synthetic labels`, (await page.locator(".demo-labels .demo-label").count()) >= 2);
     check(`${tag}: start: development-build label matches the vectors`, (await page.locator(".demo-label.warn").count()) === (expectVectors === "mechanical" ? 1 : 0));
     // The first example is whole on the first screen from 390 px up; on a 320 px
     // phone its title line is (a mechanical build's warning takes the room).
-    const card = await page.locator("#demo-example-y-en").boundingBox();
+    const card = await page.locator(`#demo-example-${EXAMPLES[0].key}`).boundingBox();
     const need = sz.width >= 390 ? card?.height ?? 0 : 64;
     check(`${tag}: start: first example on the first screen`, card && card.y >= 0 && card.y + need <= sz.height, JSON.stringify(card));
     metrics[`${tag}: first example card top (px)`] = Math.round(card?.y ?? -1);
@@ -518,7 +521,7 @@ for (const sz of SIZES) {
       failInfo = false;
       await page.locator(".banner.error button").click();
       await settle(page, ".demo-example-card");
-      check(`${tag}: unavailable: retry recovers without a reload`, (await page.locator(".demo-example-card").count()) === 3);
+      check(`${tag}: unavailable: retry recovers without a reload`, (await page.locator(".demo-example-card").count()) === EXAMPLES.length);
 
       let release;
       const gate = new Promise((r) => (release = r));
@@ -536,7 +539,8 @@ for (const sz of SIZES) {
       await page.fill("#library-query", "subjonctiff");
       await page.press("#library-query", "Enter");
       await settle(page, ".demo-no-match-help");
-      check(`${tag}: no match: stated, with how matching works`, (await page.locator(".demo-no-match .empty[role=status]").count()) === 1 && (await page.locator(".demo-no-match-help h3").innerText()) === T.noMatch);
+      // R2-045: a search's outcome is announced by one status region present before the search (#demo-search-status); the visible line is plain text.
+      check(`${tag}: no match: stated, with how matching works`, (await page.locator(".demo-no-match .empty").count()) === 1 && (await page.locator("#demo-search-status[role=status]").innerText()).length > 0 && (await page.locator(".demo-no-match-help h3").innerText()) === T.noMatch);
       await fits(page, sz, tag, "no match");
       await shot("state-no-match", false, page);
       await page.locator(".demo-no-match-help button").first().click();
@@ -547,8 +551,8 @@ for (const sz of SIZES) {
         route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schema_version: "knowledge_library_search_v1", query: "", tokens: [], state: "all", limit: 20, total_matches: 0, truncated: false, results: [] }) }));
       await page.goto(base);
       await page.reload();
-      await settle(page, ".library .empty[role=status]");
-      check(`${tag}: empty: an empty catalog is the demo build's`, (await page.locator(".library .empty[role=status]").innerText()) === T.empty && (await page.locator(".demo-no-match-help").count()) === 0);
+      await settle(page, ".library .empty");
+      check(`${tag}: empty: an empty catalog is the demo build's`, (await page.locator(".library .empty").innerText()) === T.empty && (await page.locator(".demo-no-match-help").count()) === 0);
       await ctx.close();
     }
   }

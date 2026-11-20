@@ -31,7 +31,8 @@ function demoGraph(): Map<string, string> {
       ...text.matchAll(/import\(\s*["'](\.[^"']+)["']\s*\)/g),
     ].map((m) => m[1]);
     for (const spec of specs) {
-      if (/\.css$/.test(spec)) continue;
+      // Styles and data (discovery.json) name no message keys.
+      if (/\.(css|json)$/.test(spec)) continue;
       if (file === resolve(src, "main.tsx") && spec === "./App") continue;
       const target = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"].map((ext) => resolve(dirname(file), spec + ext)).find((p) => existsSync(p) && /\.tsx?$/.test(p));
       if (!target) throw new Error(`cannot resolve ${spec} from ${file}`);

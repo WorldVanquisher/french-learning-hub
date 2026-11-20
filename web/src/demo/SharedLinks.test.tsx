@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PublicDemoApp from "../PublicDemoApp";
-import { demoServer, QUESTION } from "./demoTestServer";
+import { demoServer, QUESTION, COOKING_QUESTION } from "./demoTestServer";
 
 // Shared links that name nothing in this build, and the keyboard return path
 // (demo/history.ts): coming back to a screen focuses the control that left it.
@@ -50,9 +50,10 @@ describe("a link that matches nothing says so", () => {
     await renderDemo("/#concept=abc");
     await screen.findByText(MALFORMED);
     const before = window.history.length;
-    fireEvent.click(screen.getByRole("button", { name: "Open the example “One question, two pronouns”" }));
-    expect(await exampleHeading()).toHaveFocus();
-    expect(window.location.hash).toBe("#example=y-en");
+    // R2-032: the first example is the most beginner-friendly question.
+    fireEvent.click(screen.getByRole("button", { name: "Open the example “One question, two Concepts”" }));
+    expect(await screen.findByRole("heading", { level: 2, name: "One question, two Concepts" })).toHaveFocus();
+    expect(window.location.hash).toBe("#example=en-train-de");
     expect(window.history.length).toBe(before + 1);
     expect(screen.queryByText(MALFORMED)).toBeNull();
   });
@@ -105,9 +106,9 @@ describe("a link to an ID this build lacks leads on to a working example", () =>
     const before = window.history.length;
     const marker = (window as unknown as { __sameDocument?: number });
     marker.__sameDocument = 1;
-    click("Open the example “One question, two pronouns”");
-    expect(await screen.findByText(QUESTION, { selector: "blockquote" })).toBeInTheDocument();
-    expect(window.location.hash).toBe("#example=y-en");
+    click("Open the example “One question, two Concepts”");
+    expect(await screen.findByText(COOKING_QUESTION, { selector: "blockquote" })).toBeInTheDocument();
+    expect(window.location.hash).toBe("#example=en-train-de");
     expect(window.history.length).toBe(before + 1);
     expect(marker.__sameDocument).toBe(1);
     window.history.back();
@@ -121,6 +122,14 @@ describe("a link to an ID this build lacks leads on to a working example", () =>
     click("打开示例“一个问题，两个代词”");
     expect(await screen.findByText(QUESTION, { selector: "blockquote" })).toBeInTheDocument();
     expect(window.location.hash).toBe("#example=y-en");
+  });
+
+  it("offers the search one tap away, with its field focused (R2-038)", async () => {
+    await renderDemo("/#example=y-en&concept=999");
+    expect(await screen.findByText(/This link names Concept #999/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Search the library" }));
+    await waitFor(() => expect(screen.getByLabelText("Search learned material")).toHaveFocus());
+    expect(window.location.hash).toBe("");
   });
 
   it("keeps the retry for a failure that may pass", async () => {

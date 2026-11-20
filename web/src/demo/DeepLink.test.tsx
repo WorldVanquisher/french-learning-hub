@@ -84,6 +84,6 @@ describe("Public demo direct links", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
     expect(within(screen.getByRole("navigation", { name: "Return" })).getByRole("button")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open the example “One question, two pronouns”" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open the example “One question, two Concepts”" })).toBeInTheDocument();
   });
 });

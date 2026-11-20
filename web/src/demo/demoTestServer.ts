@@ -1,8 +1,8 @@
 import { vi } from "vitest";
 
 // A small synthetic public demo for component tests: the demo description, a
-// two-Concept catalog in the shape of the D1 fixtures, and the sources of three
-// units. Everything is invented test data. Requests are recorded; any path or
+// two-Concept catalog in the shape of the D1 fixtures (browsed with no query),
+// the two Concepts of the first guided example, and the sources of their units. Everything is invented test data. Requests are recorded; any path or
 // query can be failed (status) or held until the test releases it.
 
 export const QUESTION = "Dans « j'y vais » et « j'en veux », qu'est-ce que « y » et « en » remplacent ?";
@@ -41,6 +41,12 @@ export const ilFautOld = unit(1, 1, "subjonctif après il faut que");
 export const ilFautVenir = unit(14, 10, "il faut que + subjonctif de venir");
 export const PRONOUNS = concept(12, "the pronouns y and en");
 export const IL_FAUT = concept(1, "subjunctive after « il faut que »");
+// The first guided example (R2-032: the most beginner-friendly question).
+export const COOKING_QUESTION = "Pour dire « I'm cooking right now », est-ce que « je suis cuisinant » existe ?";
+export const presentNow = unit(15, 11, "présent pour une action en cours", "Je ne peux pas répondre, je cuisine.");
+export const enTrain = unit(16, 11, "être en train de + infinitif", "Je suis en train de cuisiner.");
+export const PRESENT_NOW = concept(13, "the present tense for an action happening now");
+export const EN_TRAIN = concept(14, "« être en train de » + infinitive: in the middle of doing");
 
 export const info = (realModel = false) => ({
   schema_version: "knowledge_library_public_demo_v1", read_only: true, data: "synthetic",
@@ -85,11 +91,16 @@ export function demoServer(opts: DemoServerOptions = {}) {
       const q = url.searchParams.get("q") ?? "";
       if (q === "") return search([PRONOUNS, IL_FAUT]);
       if (q === "pronouns") return search([PRONOUNS]);
+      if (q === "action en cours") return search([PRESENT_NOW, EN_TRAIN]);
       if (q === "viennes" || q === "il faut") return search([IL_FAUT]);
       return search([]);
     }
     if (path === "/knowledge-library/concepts/12") return reply(200, detail(PRONOUNS, [yLieu, enNom]));
     if (path === "/knowledge-library/concepts/1") return reply(200, detail(IL_FAUT, [ilFautOld, ilFautVenir]));
+    if (path === "/knowledge-library/concepts/13") return reply(200, detail(PRESENT_NOW, [presentNow]));
+    if (path === "/knowledge-library/concepts/14") return reply(200, detail(EN_TRAIN, [enTrain]));
+    if (path === "/knowledge-library/units/15/source") return reply(200, source(presentNow, 13, COOKING_QUESTION));
+    if (path === "/knowledge-library/units/16/source") return reply(200, source(enTrain, 14, COOKING_QUESTION));
     if (path === "/knowledge-library/units/12/source") return reply(200, source(yLieu, 12, QUESTION));
     if (path === "/knowledge-library/units/13/source") return reply(200, source(enNom, 12, QUESTION));
     if (path === "/knowledge-library/units/14/source") return reply(200, source(ilFautVenir, 1, OTHER_QUESTION));

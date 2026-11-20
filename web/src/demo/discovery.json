@@ -1,0 +1,28 @@
+{
+  "schema": "flh_public_demo_discovery_v1",
+  "note": "Public demo example data (synthetic catalog, scripts/demo/flh073/fixtures/catalog.json). Each entry names only how to find its evidence through the read API: a keyword query and wording from exactly one unit. scripts/validation/demo_candidate/check_examples.py checks every entry against a running package; DiscoverySpec.test.ts checks it against the catalog. Application text (titles, labels) lives in web/src/i18n. A comparison may name the guided example its units come from (`example`) and an optional choose-first practice (`practice`): each item blanks one choice's form, which must occur exactly once in that side's example, and offers the forms of both sides. An example's `lang` is the language its question is written in (default French).",
+  "examples": [
+    {"key": "en-train-de", "question": "Pour dire « I'm cooking right now », est-ce que « je suis cuisinant » existe ?", "query": "action en cours", "seed": "en train de"},
+    {"key": "y-en", "question": "Dans « j'y vais » et « j'en veux », qu'est-ce que « y » et « en » remplacent ?", "query": "pronouns", "seed": "y remplace"},
+    {"key": "il-faut-venir", "question": "Dans mon exercice : « Il faut que tu viennes demain ». Pourquoi « viennes » et pas « viens » ?", "query": "viennes", "seed": "subjonctif de venir"},
+    {"key": "imparfait", "lang": "en", "question": "When do I use the imparfait instead of the passé composé?", "query": "foot", "seed": "imparfait pour le contexte", "compare": "imparfait-passe-compose"}
+  ],
+  "comparisons": [
+    { "key": "imparfait-passe-compose", "example": "imparfait", "sides": [
+      {"query": "imparfait", "seed": "imparfait pour le contexte"},
+      {"query": "passé composé", "seed": "passé composé pour un événement"} ],
+      "practice": { "choices": [ {"form": "je jouais", "tense": "imparfait"}, {"form": "j'ai joué", "tense": "passé composé"} ],
+        "items": [ {"side": 0, "alternate": true}, {"side": 1, "alternate": true} ] } },
+    { "key": "depuis-pendant", "sides": [
+      {"query": "depuis", "seed": "depuis avec le présent"},
+      {"query": "pendant", "seed": "pendant pour une durée finie"} ] }
+  ],
+  "queries": [
+    {"q": "remplace", "shows": "unit_wording", "expect": {"min": 1, "tier": "unit_evidence"}},
+    {"q": "subjonctif", "shows": "identity_details", "expect": {"min": 2, "field": "identity_features"}},
+    {"q": "tu me manques", "shows": "all_words", "expect": {"min": 1, "tokens": 3}},
+    {"q": "marché", "shows": "accents", "expect": {"min": 1, "token": "marche"}},
+    {"q": "pass", "shows": "word_beginning", "expect": {"min": 1, "prefix": true}},
+    {"q": "pronoms", "shows": "no_match", "expect": {"max": 0}, "follow_up": {"q": "pronouns", "example": "y-en"}}
+  ]
+}

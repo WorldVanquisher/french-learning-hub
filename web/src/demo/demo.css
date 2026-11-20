@@ -4,16 +4,54 @@
    tokens only; no fonts, images, url(), animations or transitions.
    demoStyles.test.ts keeps both promises. */
 
+/* R2-042: the browser's font-size setting applies on every public route. The
+   shared styles.css sizes text in px, which a reader's larger default font
+   does not change; on the public demo each of its px sizes that reaches a demo
+   element is restated here in rem (the same size at the default 16 px), scoped
+   to `.demo-app` so the workbench keeps styles.css as it is. demoStyles.test.ts
+   keeps this list complete and demo.css itself free of px font sizes. */
+.demo-app .app-header h1 { font-size: 1.25rem; }
+.demo-app .app-header .subtitle { font-size: 0.8125rem; }
+.demo-app .language-select { font-size: 0.8125rem; }
+.demo-app .language-select select { font-size: 0.8125rem; }
+.demo-app .panel h2 { font-size: 0.875rem; }
+.demo-app .french { font-size: 1rem; }
+.demo-app .tag { font-size: 0.75rem; }
+.demo-app .hint { font-size: 0.75rem; }
+.demo-app .banner { font-size: 0.875rem; }
+.demo-app .unit-evidence dt { font-size: 0.8125rem; }
+.demo-app .library-search label { font-size: 0.8125rem; }
+.demo-app .library-mode { font-size: 0.8125rem; }
+.demo-app .library-search .library-mode label { font-size: 0.8125rem; }
+.demo-app .panel h2.library-title { font-size: 1.125rem; }
+.demo-app .library-section h3 { font-size: 0.875rem; }
+.demo-app .demo-lead { font-size: 1.0625rem; }
+.demo-app .demo-details summary { font-size: 0.875rem; }
+.demo-app .demo-section-heading { font-size: 1rem; }
+.demo-app .demo-example-open { font-size: 0.875rem; }
+.demo-app .demo-eyebrow { font-size: 0.75rem; }
+.demo-app .demo-step-n { font-size: 0.75rem; }
+.demo-app .demo-question { font-size: 1.125rem; }
+
 /* Starting screen: each example card leads with the learner's French question;
    the line under it says, in the interface language, what the example shows. */
-.demo-app .demo-example-card .demo-example-question { font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
-.demo-app .demo-example-card .demo-example-title { font-size: 14px; color: var(--muted); }
+.demo-app .demo-example-card .demo-example-question { font-size: 1rem; line-height: 1.4; overflow-wrap: anywhere; }
+.demo-app .demo-example-card .demo-example-title { font-size: 0.875rem; color: var(--muted); }
 
 /* A Concept named inside a sentence (the evidence's "why this record" line and
    the unit's current filing) stays inline, so a long title wraps with the
    sentence instead of taking a line of its own. */
 .demo-app .demo-why .link-button,
 .demo-app .library-section .hint .link-button { display: inline; }
+
+/* Guided example walkthrough: the bar that names the current step, and the
+   step it points at. No motion: moving between steps only moves focus. */
+.demo-app .demo-walk-start { margin: 8px 0 0; }
+.demo-app .demo-walk { margin-top: 8px; }
+.demo-app .demo-walk-where { margin: 0 0 6px; font-weight: 600; }
+.demo-app .demo-walk .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.demo-app .panel.demo-step-current { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
+.demo-app .demo-walk-changed { margin: 4px 0 8px; }
 
 /* Guided example, step 3: the way to find the Concept by keyword search. */
 .demo-app .demo-find { margin: 6px 0 10px; }
@@ -23,7 +61,7 @@
 
 /* A search that found nothing: how matching works and searches that do. */
 .demo-app .demo-no-match-help { margin-top: 10px; }
-.demo-app .demo-no-match-help h3 { font-size: 14px; margin: 0 0 6px; }
+.demo-app .demo-no-match-help h3 { font-size: 0.875rem; margin: 0 0 6px; }
 .demo-app .demo-no-match-help .actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* Shared links that name nothing in this build: the start screen's notice, and
@@ -62,8 +100,137 @@
   .demo-app .panel { padding: 10px 12px; }
   .demo-app .app-header { margin-bottom: 10px; padding-bottom: 8px; }
   .demo-app .app-header .subtitle { margin: 4px 0; }
-  .demo-app .demo-lead { font-size: 15px; margin-bottom: 8px; }
-  .demo-app .demo-intro .banner { margin: 0; padding: 8px 10px; font-size: 13px; }
-  .demo-app .demo-bad-link { padding: 8px 10px; font-size: 13px; }
-  .demo-app .library .demo-question { padding: 8px 10px; font-size: 17px; }
+  .demo-app .demo-lead { font-size: 0.9375rem; margin-bottom: 8px; }
+  .demo-app .demo-intro .banner { margin: 0; padding: 8px 10px; font-size: 0.8125rem; }
+  .demo-app .demo-bad-link { padding: 8px 10px; font-size: 0.8125rem; }
+  .demo-app .library .demo-question { padding: 8px 10px; font-size: 1.0625rem; }
 }
+
+/* R2-046/049: a highlighted word stays distinguishable without colour (it is
+   also underlined), and is dark text on its highlight: a highlight inside a
+   muted hint used to inherit the hint's grey (3.99:1 on the yellow). */
+.demo-app mark, .demo-app .library-result mark { color: var(--text); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+
+/* Keyword results: "Why it matched" (EvidenceCard.tsx). The card sits inside
+   its result; fields read as label + wording and stack on phones. */
+.demo-app .demo-evidence { margin: 6px 0 0; }
+.demo-app .demo-evidence-card { margin: 6px 0 0; padding: 8px 10px; border-left: 3px solid var(--accent); }
+.demo-app .demo-evidence-heading { font-size: 1em; margin: 0 0 4px; }
+.demo-app .demo-evidence-group { font-size: 0.95em; margin: 10px 0 4px; }
+.demo-app .demo-evidence-tier { margin: 0 0 6px; }
+.demo-app .demo-evidence-words { margin: 4px 0; padding-left: 1.2em; }
+.demo-app .demo-evidence-words li[data-match="prefix"] mark { text-decoration: underline dotted; }
+.demo-app .demo-evidence-units { list-style: none; margin: 0; padding: 0; }
+.demo-app .demo-evidence-unit { margin: 0 0 10px; padding: 0 0 8px; border-bottom: 1px solid var(--muted); }
+.demo-app .demo-evidence-fields { margin: 0; }
+.demo-app .demo-evidence-fields > div { display: grid; grid-template-columns: minmax(7em, max-content) 1fr; gap: 0 10px; margin: 2px 0; }
+.demo-app .demo-evidence-fields dt { font-weight: 600; }
+.demo-app .demo-evidence-fields dd { margin: 0; overflow-wrap: anywhere; }
+.demo-app .demo-evidence-question { margin: 0; }
+.demo-app .demo-evidence-unit .actions { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-top: 4px; }
+@media (max-width: 480px) {
+  .demo-app .demo-evidence-fields > div { grid-template-columns: 1fr; }
+}
+
+/* Comparisons (CompareScreen.tsx): the start page's comparison cards, and two
+   cards side by side whose rows line up (subgrid); stacked on phones. */
+.demo-app .demo-compare-pick {
+  display: flex; flex-direction: column; gap: 6px; width: 100%; height: 100%;
+  padding: 12px 14px; text-align: left; font: inherit; color: var(--text);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+}
+.demo-app .demo-compare-pick:hover { border-color: var(--accent); }
+.demo-app .demo-compare-pick:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+.demo-app .demo-compare-pick-title { font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
+.demo-app .demo-compare-pick-summary { font-size: 0.875rem; color: var(--muted); overflow-wrap: anywhere; }
+.demo-app .demo-compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.demo-app .demo-compare-card { display: grid; grid-row: span 6; grid-template-rows: subgrid; gap: 0; align-content: start; min-width: 0; }
+.demo-app .demo-compare-card h3 { margin: 0 0 6px; overflow-wrap: anywhere; }
+.demo-app .demo-compare-row { padding: 6px 0; border-top: 1px solid var(--border); min-width: 0; }
+.demo-app .demo-compare-row h4 { margin: 0 0 4px; font-size: 0.8125rem; color: var(--muted); }
+.demo-app .demo-compare-row p, .demo-app .demo-compare-row blockquote { margin: 0 0 4px; overflow-wrap: anywhere; }
+.demo-app .demo-compare-actions { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-top: 6px; border-top: 1px solid var(--border); }
+.demo-app .demo-compare-missing { grid-row: span 1; display: block; }
+.demo-app .demo-compare-others { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.demo-app .demo-compare-others .label { margin: 0; }
+@media (max-width: 720px) {
+  .demo-app .demo-compare-grid { grid-template-columns: 1fr; }
+  .demo-app .demo-compare-card { display: block; grid-row: auto; }
+}
+
+/* R2: the comparison's compact pair (CompareScreen.tsx). Both example
+   sentences sit close together, each under its unit wording, so they are read
+   in one view on a 320 px phone too; wide screens put the sides next to each
+   other. The sides differ by their border style as well as their position,
+   not by colour alone. Sizes are in rem so the browser's font setting applies. */
+.demo-app .demo-compare-pair h3, .demo-app .demo-practice-offer h3, .demo-app .demo-practice h3 { margin: 0 0 6px; font-size: 1rem; }
+.demo-app .demo-practice-offer .hint { margin: 0 0 8px; }
+.demo-app .demo-compare-pair-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 12px; }
+.demo-app .demo-compare-pair-side { min-width: 0; padding: 4px 0 4px 10px; border-left: 3px solid var(--accent); }
+.demo-app .demo-compare-pair-side[data-side="1"] { border-left-style: double; border-left-width: 4px; }
+.demo-app .demo-compare-tense { margin: 0 0 2px; font-size: 0.875rem; font-weight: 600; overflow-wrap: anywhere; }
+.demo-app .demo-compare-sentence { margin: 0; font-size: 1.0625rem; line-height: 1.4; overflow-wrap: anywhere; }
+.demo-app .demo-compare-evidence-toggle { margin-top: 8px; }
+.demo-app .demo-compare-head-actions { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0; }
+.demo-app .demo-compare-same { margin: 0 0 8px; }
+@media (max-width: 720px) {
+  .demo-app .demo-compare-pair-list { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* R2: the optional choose-first practice. Choices are at least 44 px tall
+   (touch); the chosen one is marked by a heavier border and weight, and the
+   revealed form by an underline, so neither depends on colour. */
+/* A comparison card and, under it, its practice entry share one list item:
+   the card fills what the practice entry leaves (it used to fill the item). */
+.demo-app .demo-compare-picker li { display: flex; flex-direction: column; gap: 6px; }
+.demo-app .demo-compare-picker .demo-compare-pick { height: auto; flex: 1 1 auto; }
+.demo-app .demo-practice-pick { min-height: 44px; }
+.demo-app .demo-practice-context blockquote { margin: 0 0 4px; overflow-wrap: anywhere; }
+.demo-app .demo-practice h4 { margin: 10px 0 4px; font-size: 0.8125rem; color: var(--muted); }
+.demo-app .demo-practice-sentence { margin: 4px 0 8px; font-size: 1.125rem; line-height: 1.5; overflow-wrap: anywhere; }
+.demo-app .demo-practice-blank { display: inline-block; min-width: 3.5em; border-bottom: 2px solid var(--text); }
+.demo-app .demo-practice-sentence mark { padding: 0 2px; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.demo-app .demo-practice-choices { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.demo-app .demo-practice-choice { min-height: 44px; padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+.demo-app .demo-practice-choice.chosen { border: 3px solid var(--text); font-weight: 600; }
+.demo-app .demo-practice-choice[aria-disabled="true"] { cursor: default; }
+.demo-app .demo-practice-choice:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.demo-app .demo-practice-outcome { margin: 10px 0 4px; font-weight: 600; overflow-wrap: anywhere; }
+.demo-app .demo-practice-why { margin: 0; padding-left: 1.2em; }
+.demo-app .demo-practice-why li { margin: 0 0 8px; overflow-wrap: anywhere; }
+.demo-app .demo-practice-why p { margin: 0 0 2px; }
+.demo-app .demo-practice-alternate { margin: 8px 0; padding: 4px 10px; border-left: 3px dashed var(--border-strong); }
+.demo-app .demo-practice-alternate p { margin: 0; }
+.demo-app .demo-practice-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+/* R2-047: every control on the public demo is at least 24 x 24 CSS px (WCAG
+   2.2 target size; a link inside a sentence is exempt): stand-alone text links
+   and link-style buttons get vertical padding, and the selects, disclosure
+   summaries and search-mode choices (a radio's label is its target) a 24 px
+   minimum height. */
+.demo-app .actions a, .demo-app .demo-practice-why a, .demo-app button.link-button { padding-top: 4px; padding-bottom: 4px; }
+.demo-app .actions a, .demo-app .demo-practice-why a { display: inline-block; }
+.demo-app .language-select select, .demo-app .library-search select { min-height: 32px; }
+.demo-app summary { min-height: 24px; padding: 2px 0; }
+.demo-app .library-search .library-mode label { min-height: 24px; }
+.demo-app .library-mode input[type="radio"] { width: 18px; height: 18px; margin: 0; }
+
+/* R2: the first screen's ways in, the 60-second tour bar, related links and
+   copyable links. */
+.demo-app .demo-start { margin: -6px 0 12px; }
+.demo-app .demo-start-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.demo-app .demo-start-list button { min-height: 44px; padding: 6px 12px; }
+.demo-app .demo-start-hint { margin: 0 0 8px; }
+.demo-app .demo-tour { border-left: 4px solid var(--accent); }
+.demo-app .demo-tour-where { margin: 0 0 4px; font-weight: 600; }
+.demo-app .demo-tour .actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
+.demo-app .demo-related { margin: 0; flex-basis: 100%; }
+.demo-app .demo-copy-link { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; max-width: 100%; }
+.demo-app .demo-copy-status:empty { display: none; }
+.demo-app .demo-copy-field { width: 100%; max-width: 100%; font: inherit; }
+
+/* Suggested searches (DemoStates.tsx): collapsed under the search form. */
+.demo-app .demo-suggested { margin: 8px 0 0; }
+.demo-app .demo-suggested-list { list-style: none; margin: 0; padding: 0; }
+.demo-app .demo-suggested-list li { margin: 2px 0; overflow-wrap: anywhere; }
+.demo-app .demo-follow-up { margin: 0 0 10px; }

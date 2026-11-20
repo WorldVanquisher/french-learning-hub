@@ -74,12 +74,16 @@ describe("demo links name the screen and the search", () => {
       "#mode=quantum&preset=right-now",
       "#preset=right-now",
       "#q=x&mode=semantic&preset=right-now",
-      "#state=bogus&concept=12",
       `#q=${"a".repeat(201)}`,
       "#mode=semantic&preset=Right%20Now",
     ]) {
       expect(linkFromHash(bad, ["right-now"]), bad).toEqual({ screen: { kind: "results" }, search: NO_SEARCH, malformed: true });
     }
+  });
+
+  it("leaves out an unknown status filter and opens the rest of the link (R2-085)", () => {
+    expect(linkFromHash("#state=bogus&concept=12", ["right-now"])).toEqual({ screen: { kind: "concept", conceptId: 12 }, search: NO_SEARCH, malformed: false });
+    expect(linkFromHash("#q=il+faut&state=", ["right-now"]).search).toEqual({ mode: "keyword", q: "il faut", state: "all" });
   });
 
   it("counts an in-page back by the most recent matching entry, never the current one", () => {
