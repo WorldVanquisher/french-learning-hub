@@ -294,6 +294,34 @@ func (s *MistakeNotebookService) ListItems(ctx context.Context, skill string, ma
 	return out, nil
 }
 
+// ReviewItems returns the records currently marked for retry, newest first,
+// and how many notebook records exist in all. Only the marked records are
+// resolved: Review Today needs the others as a count, and resolving each one
+// (its source and its entry) on every read made the queue's cost grow with
+// all saved history (R3-065, measured by health_perf.py).
+func (s *MistakeNotebookService) ReviewItems(ctx context.Context) ([]NotebookItem, int, error) {
+	srcs, err := s.repo.ListSources(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	marks, err := s.repo.CurrentMarks(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := []NotebookItem{}
+	for _, src := range srcs {
+		if !marks[src.EntryID].Marked {
+			continue
+		}
+		it, err := s.item(ctx, src, marks)
+		if err != nil {
+			return nil, 0, err
+		}
+		out = append(out, it)
+	}
+	return out, len(srcs), nil
+}
+
 // EntrySource returns the notebook item for one record, or ErrNotFound when
 // the record has no structured source (saved without one, or before source
 // links existed): it is never inferred.

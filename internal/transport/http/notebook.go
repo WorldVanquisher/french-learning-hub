@@ -15,6 +15,8 @@ type MistakeNotebookService interface {
 	EntrySource(ctx context.Context, entryID int64) (*application.NotebookItem, error)
 	SetRetry(ctx context.Context, entryID int64, marked bool) (*application.NotebookItem, bool, error)
 	ConceptsByKind(ctx context.Context, kind, text string) (*application.ConceptKindView, error)
+	// ReviewItems: the records marked for retry, resolved, and the count of all records (Review Today).
+	ReviewItems(ctx context.Context) ([]application.NotebookItem, int, error)
 }
 
 // WithMistakeNotebook enables the private /mistake-notebook routes and

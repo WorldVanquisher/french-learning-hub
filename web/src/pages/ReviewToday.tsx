@@ -104,6 +104,9 @@ export function ReviewToday({
       focusRow(index);
     } catch (e) {
       setError(t("today.doneFailed", { message: e instanceof Error ? e.message : String(e) }));
+      // The button was disabled while saving, which drops focus: give it back to
+      // the same item's button so the learner can retry from where they were.
+      requestAnimationFrame(() => listRef.current?.querySelector<HTMLElement>(`li[data-key="${it.key}"] [data-action="done"]`)?.focus());
     } finally {
       setBusy(null);
     }
@@ -221,7 +224,7 @@ export function ReviewToday({
                     ) : (
                       <span className="hint">{t("today.sourceMissing")}</span>
                     )}
-                    <button type="button" className="ghost" disabled={busy !== null} onClick={() => void done(it, i)}>
+                    <button type="button" className="ghost" data-action="done" disabled={busy !== null} onClick={() => void done(it, i)}>
                       {busy === it.key ? t("today.doneSaving") : t("today.done")}
                     </button>
                   </div>

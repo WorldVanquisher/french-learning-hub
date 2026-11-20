@@ -2,7 +2,7 @@
 """A synthetic learner's day in real Chromium: note → practice → Review Today →
 Speaking → revision studio, with accessibility and narrow-screen checks.
 
-    python3 -I scripts/validation/learning_day/walkthrough.py WORK_DIR
+    python3 -I scripts/validation/learning_day/walkthrough.py WORK_DIR [--from-db DB --facts FACTS.json]
 
 WORK_DIR must be absolute, outside the repository, and new or empty. Builds the
 server (go build -trimpath) and the workbench (vite build) from this tree into
@@ -15,9 +15,17 @@ disposable node:22-bookworm-slim container (--rm, host network; Playwright
 emulated. Writes WORK_DIR/results.json, WORK_DIR/shots/<combo>/*.png and logs.
 Every server it started is stopped. Exit status is the browser's (0 all PASS),
 2 when refused.
+
+--from-db DB --facts FACTS.json: instead of seeding, each combination starts on
+its own COPY of DB (with any -wal/-shm sidecar; DB itself is never opened), and
+the browser uses FACTS.json as the seed's output. Use it with a database that
+the same seed built and that went through a backup and restore
+(scripts/validation/migration/rehearse.py), to run the same journey on restored
+data.
 """
 import json
 import os
+import shutil
 import signal
 import socket
 import subprocess
@@ -37,10 +45,18 @@ def free_port():
 
 
 def main():
-    if len(sys.argv) != 2 or not os.path.isabs(sys.argv[1]):
-        print("usage: walkthrough.py /abs/new/empty/dir", file=sys.stderr)
+    args = sys.argv[1:]
+    opts = {}
+    for flag in ("--from-db", "--facts"):
+        if flag in args:
+            i = args.index(flag)
+            opts[flag] = args[i + 1]
+            args = args[:i] + args[i + 2:]
+    if len(args) != 1 or not os.path.isabs(args[0]) or (("--from-db" in opts) != ("--facts" in opts)):
+        print("usage: walkthrough.py /abs/new/empty/dir [--from-db DB --facts FACTS.json]", file=sys.stderr)
         return 2
-    work = Path(os.path.realpath(sys.argv[1]))
+    from_db = Path(os.path.realpath(opts["--from-db"])) if "--from-db" in opts else None
+    work = Path(os.path.realpath(args[0]))
     if work == REPO or REPO in work.parents:
         print("refused: WORK_DIR must be outside the repository", file=sys.stderr)
         return 2
@@ -60,6 +76,10 @@ def main():
         for tag, locale, phone in (("desktop-en", "en", False), ("phone320-zh", "zh-CN", True), ("phone320-en", "en", True)):
             d = work / tag
             d.mkdir()
+            if from_db:
+                for side in ("", "-wal", "-shm"):
+                    if Path(str(from_db) + side).exists():
+                        shutil.copyfile(str(from_db) + side, d / f"app.db{side}")
             port = free_port()
             env = {"PATH": "/usr/bin:/bin", "HOME": str(d), "LISTEN_HOST": "127.0.0.1", "PORT": str(port), "DB_PATH": str(d / "app.db"),
                    "AI_PROVIDER": "rule-based", "EXTRACTOR_PROVIDER": "disabled", "SPEAKING_PROVIDER": "disabled",
@@ -74,6 +94,10 @@ def main():
                         break
                 except OSError:
                     time.sleep(0.1)
+            if from_db:
+                facts = json.loads(Path(opts["--facts"]).read_text())
+                combos.append({"tag": tag, "locale": locale, "phone": phone, "url": url, "seed": facts})
+                continue
             seed = subprocess.run([sys.executable, "-I", "-B", str(REPO / "scripts/demo/learning_day/seed.py"), url, str(d / "app.db")], capture_output=True, text=True)
             (d / "seed.txt").write_text(seed.stdout + seed.stderr)
             if seed.returncode != 0:

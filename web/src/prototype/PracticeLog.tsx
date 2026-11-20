@@ -45,6 +45,7 @@ const eventKey: Record<string, MessageKey> = {
   late_response_revision_changed: "feedPractice.event.late_response_revision_changed",
   mistake_converted: "feedPractice.event.mistake_converted",
   proposal_accepted_for_visit: "feedPractice.event.proposal_accepted_for_visit",
+  feed_timeout: "feedPractice.event.feed_timeout",
 };
 
 export const learnerZone = () => {

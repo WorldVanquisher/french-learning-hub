@@ -174,7 +174,7 @@ for (const c of combos) {
     const t0 = { ...counts };
     await activate(btn("feedPractice.panel.open"), "open the prototype");
     await page.locator('[data-fixture="verified"]').waitFor();
-    check("the page re-checked all 21 sealed fixture documents", (await page.locator('[data-fixture="verified"] [data-doc]').count()) === 21);
+    check("the page re-checked all 22 sealed fixture documents", (await page.locator('[data-fixture="verified"] [data-doc]').count()) === 22);
     check("html lang follows the interface language", (await page.evaluate(() => document.documentElement.lang)) === (c.locale === "zh-CN" ? "zh-CN" : "en"), await page.evaluate(() => document.documentElement.lang));
     const today = page.getByRole("list", { name: T.p("feedPractice.today.heading", 3), exact: true });
     const picks = await today.locator("[data-practice]").evaluateAll((els) => els.map((e) => `${e.dataset.practice}:${e.dataset.pickReason}`));

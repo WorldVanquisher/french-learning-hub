@@ -63,6 +63,14 @@ var reviewRetryPriority = domain.SpeakingQueuePriority(domain.SpeakingQueueAnswe
 // priority (most urgent first), then the item waiting longest, then source,
 // then key, so equal priorities always come out in the same order.
 func BuildReviewToday(practice *SpeakingPractice, notebook []NotebookItem, now time.Time) ReviewToday {
+	return BuildReviewTodayCounted(practice, notebook, len(notebook), now)
+}
+
+// BuildReviewTodayCounted is BuildReviewToday when the notebook items given
+// are only some of the records (MistakeNotebookService.ReviewItems: the marked
+// ones) and notebookTotal counts them all. Unmarked items are skipped either
+// way, so the queue is the same.
+func BuildReviewTodayCounted(practice *SpeakingPractice, notebook []NotebookItem, notebookTotal int, now time.Time) ReviewToday {
 	out := ReviewToday{Items: []ReviewItem{}, Now: now}
 	if practice != nil {
 		out.History.SpeakingExercises = practice.Summary.Started
@@ -80,7 +88,7 @@ func BuildReviewToday(practice *SpeakingPractice, notebook []NotebookItem, now t
 				Reason: q.Reason, Priority: domain.SpeakingQueuePriority(q.Reason), Since: since, Speaking: &q})
 		}
 	}
-	out.History.NotebookItems = len(notebook)
+	out.History.NotebookItems = notebookTotal
 	for i := range notebook {
 		it := notebook[i]
 		if it.Mark == nil || !it.Mark.Marked {

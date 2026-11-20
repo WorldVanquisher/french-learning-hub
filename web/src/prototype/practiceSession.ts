@@ -35,7 +35,8 @@ export type ReasonCode =
   | "revision_waiting"
   | "revision_applied"
   | "mistake_converted"
-  | "proposal_accepted_for_visit";
+  | "proposal_accepted_for_visit"
+  | "feed_timeout";
 
 export type SelfCheck = "got" | "notyet";
 // Where an outcome comes from (shown on every history entry).
@@ -147,6 +148,7 @@ export type VisitAction =
   | { type: "reveal"; at: string; sourceId: string; practiceId: string }
   | { type: "check"; op: string; value: SelfCheck }
   | { type: "arrive"; at: string; sourceId: string }
+  | { type: "feedTimeout"; at: string; sourceId: string }
   | { type: "apply"; at: string; sourceId: string }
   | { type: "discardKept"; sourceId: string; practiceId: string }
   | { type: "resume"; sourceId: string; practiceId: string }
@@ -312,6 +314,10 @@ export function reduce(c: FixtureCatalog, s: VisitState, a: VisitAction): VisitS
         };
       return applyIndex(c, s, a.sourceId, idx, a.at);
     }
+    case "feedTimeout":
+      // The extraction feed did not answer in time: nothing changes (drafts, checks
+      // in flight and the current revision stay); the event says so.
+      return { ...s, events: [...s.events, { at: a.at, code: "feed_timeout", sourceId: a.sourceId, revision: current(c, s, a.sourceId).feed.source.revision }] };
     case "apply": {
       const idx = s.waiting[a.sourceId];
       return idx === undefined ? s : applyIndex(c, s, a.sourceId, idx, a.at);

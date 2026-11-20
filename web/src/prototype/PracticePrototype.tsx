@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { useI18n, type MessageKey } from "../i18n";
 import { outcomeCounts } from "./practiceFeed";
-import { applyWaiting, arrive, closePanel, focusSoon, openPanel, setDelay, usePracticeVisit } from "./practiceStore";
+import { applyWaiting, arrive, closePanel, focusSoon, openPanel, setDelay, setFeedTimeout, usePracticeVisit } from "./practiceStore";
 import { availability, current, nextIndex, timeline, todaySet, type PickReason } from "./practiceSession";
 import { PracticeLog } from "./PracticeLog";
 import { TutorSessions } from "./TutorSessions";
@@ -32,9 +32,15 @@ export const openerId = (sourceId: string) => `practice-open-${sourceId}`;
 export const startId = (practiceId: string) => `practice-start-${practiceId}`;
 export const noticeId = (sourceId: string) => `practice-notice-${sourceId}`;
 
+// The latest feed event of a source was a timeout (nothing applied since).
+const lastFeedTimeout = (events: { code: string; sourceId: string }[], sourceId: string) => {
+  const last = [...events].reverse().find((e) => e.sourceId === sourceId && ["feed_timeout", "revision_applied", "revision_waiting"].includes(e.code));
+  return last?.code === "feed_timeout";
+};
+
 export function PracticePrototype({ onOpen }: { onOpen: (sourceId: string, focusItem: string | null, returnTo: string) => void }) {
   const { t, tp } = useI18n();
-  const { panel, error, catalog, visit, delayMs } = usePracticeVisit();
+  const { panel, error, catalog, visit, delayMs, feedTimeout } = usePracticeVisit();
   // The open button is replaced by the panel once the fixtures are checked
   // (asynchronously): focus its heading in the same commit, so focus never
   // rests on the page body in between.
@@ -131,6 +137,8 @@ export function PracticePrototype({ onOpen }: { onOpen: (sourceId: string, focus
               const withdrawn = st.feed.withdrawn?.length ?? 0;
               const restored = st.feed.items.filter((it) => availability(catalog, visit, tl.sourceId, it.practice_id).code === "restored_same_id").length;
               const s = st.feed.source;
+              // A timed-out feed request owns the row's notice (and its id) until the feed answers.
+              const timedOut = lastFeedTimeout(visit.events, tl.sourceId);
               return (
                 <li
                   key={tl.sourceId}
@@ -157,12 +165,12 @@ export function PracticePrototype({ onOpen }: { onOpen: (sourceId: string, focus
                       })}
                     </p>
                   ) : null}
-                  {withdrawn && waiting === undefined ? (
+                  {withdrawn && waiting === undefined && !timedOut ? (
                     <p data-reason-code="withdrawn_source_revised" id={noticeId(tl.sourceId)} tabIndex={-1}>
                       {tp("feedPractice.rev.rowWithdrawn", withdrawn, { revision: s.revision })}
                     </p>
                   ) : null}
-                  {restored && waiting === undefined ? (
+                  {restored && waiting === undefined && !timedOut ? (
                     <p data-reason-code="restored_same_id" id={noticeId(tl.sourceId)} tabIndex={-1}>
                       {tp("feedPractice.rev.rowRestored", restored, { revision: s.revision })}
                     </p>
@@ -172,6 +180,22 @@ export function PracticePrototype({ onOpen }: { onOpen: (sourceId: string, focus
                       ? t("feedPractice.panel.basedOn", { source: s.source_id, revision: s.revision, sha: s.revision_sha256.slice(0, 12), tutor: d.tutorId })
                       : t("feedPractice.rev.basedOnNoItems", { source: s.source_id, revision: s.revision, sha: s.revision_sha256.slice(0, 12), feed: st.feedName })}
                   </p>
+                  {timedOut ? (
+                    <div className="banner error" role="alert" data-reason-code="feed_timeout" id={noticeId(tl.sourceId)} tabIndex={-1}>
+                      <p>{t("feedPractice.feed.timeout", { revision: s.revision })}</p>
+                      <div className="actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            arrive(tl.sourceId);
+                            focusSoon(noticeId(tl.sourceId));
+                          }}
+                        >
+                          {t("feedPractice.feed.retry")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   {waiting !== undefined ? (
                     <div className="banner warning" role="alert" data-reason-code="revision_waiting" id={noticeId(tl.sourceId)} tabIndex={-1}>
                       <p>{t("feedPractice.rev.waiting", { revision: timeline(catalog, tl.sourceId).states[waiting].feed.source.revision })}</p>
@@ -215,6 +239,9 @@ export function PracticePrototype({ onOpen }: { onOpen: (sourceId: string, focus
               <input type="checkbox" checked={delayMs > 0} onChange={(e) => setDelay(e.target.checked ? 2000 : 0)} /> {t("feedPractice.delay.label")}
             </label>
             <p className="hint">{t("feedPractice.delay.hint")}</p>
+            <label className="checkbox">
+              <input type="checkbox" checked={feedTimeout} onChange={(e) => setFeedTimeout(e.target.checked)} /> {t("feedPractice.feed.timeoutLabel")}
+            </label>
           </div>
           <TutorSessions catalog={catalog} visit={visit} />
           <PracticeLog catalog={catalog} visit={visit} onPractise={(sourceId, pid) => onOpen(sourceId, pid, openerId(sourceId))} />

@@ -88,6 +88,32 @@ describe("Review Today", () => {
     expect(props.onShow).toHaveBeenCalledWith("notebook");
   });
 
+  it("keeps the item and gives focus back to its button when the save fails (R3-087)", async () => {
+    serve({
+      items: [{ key: "notebook:entry:41", source: "notebook", reason: "retry_marked", priority: 6, since: "2026-11-18T10:00:00Z", speaking: null, notebook: notebookItem(41, true) }],
+      history: { notebook_items: 1, speaking_exercises: 0, speaking_takes: 0 },
+    });
+    const ok = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) =>
+      (init?.method ?? "GET").toUpperCase() === "PUT"
+        ? new Response(JSON.stringify({ error: "could not record the retry decision" }), { status: 500, headers: { "Content-Type": "application/json" } })
+        : ok(input, init),
+    ) as unknown as typeof fetch;
+    renderPage();
+    const queue = await screen.findByRole("list", { name: "Due now" });
+    const button = within(queue).getByRole("button", { name: "Done for today" });
+    button.focus();
+    fireEvent.click(button);
+    // a browser drops focus from a button that becomes disabled; jsdom keeps it there,
+    // so move it away as the browser would before the save fails
+    expect(button).toBeDisabled();
+    (document.querySelector("h2") as HTMLElement).focus();
+    expect(button).not.toHaveFocus();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Not changed: could not record the retry decision");
+    expect(within(queue).getAllByRole("listitem")).toHaveLength(1);
+    await waitFor(() => expect(within(queue).getByRole("button", { name: "Done for today" })).toHaveFocus());
+  });
+
   it("removes a completed workbook item without a reload, keeps the record, and moves focus on", async () => {
     const calls = serve({
       items: [

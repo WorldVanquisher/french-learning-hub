@@ -1571,6 +1571,13 @@ section does:
 `history` counts the saved work kept out of the queue (notebook items, Speaking exercises and
 takes). The page uses it to link to that work and to tell "nothing yet" from "all done".
 
+**Cost.** Only the records marked for retry are resolved (`MistakeNotebookService.ReviewItems`:
+their source and entry). Unmarked records are only counted for `history`, so a read follows the
+size of the queue, not all saved history. With a 33-item queue, the median was 42 ms at 2,400 saved
+records; resolving every record took 1.2 s (`scripts/validation/migration/health_perf.py`,
+`docs/validation/R3-DATA-MIGRATION-AND-DAILY-LEARNING.md`). The full Mistake Notebook list still
+resolves every record.
+
 **Done for today** on a workbook item is the notebook's own `PUT …/retry {"marked": false}`. The
 record stays, and the item leaves the queue on the next read, without a page reload. Never in the
 public demo (not on its allowlist).
@@ -1593,6 +1600,16 @@ public demo (not on its allowlist).
 - **Packets and tutors.** The study packet is previewed beside its copy. Two fixture tutor sessions
   show every agent proposal, classed by the documented rules, before anything is accepted for the
   visit.
+- **Extraction 2.2 feeds** (`feedClient.ts`, sealed copy `extraction22Fixture.ts`):
+  - It applies a feed once by `feed_id`. Older feeds are stale. Withdrawn IDs keep their history
+    and the producer's `reason_code`, explained in both catalogs; an unknown code is shown verbatim.
+  - It matches the extraction lane's reference client on their sealed replay cases.
+- **Not offered.** The source view lists the items of the revision that the feed does not offer:
+  support, the learner's decision and each quote's grounding, never as an exercise.
+- **Feed timeout.** A timed-out feed request changes nothing. The row says so and offers an explicit
+  retry, never an automatic one.
+- **Ending a concept.** When today's items of a concept are settled, the page offers the next
+  concept, or the study packet.
 - **No storage.** It uses no route, table or provider. Its state disappears on reload, as the page
   says.
 - **Details:** `docs/validation/DAILY-PRACTICE-R2.md`, `docs/validation/PRACTICE-FEED-SLICE.md`.

@@ -1,4 +1,4 @@
-// Interactions from Review Today to the first graded practice answer, by
+// Interactions (and wall-clock milliseconds, scripted) from Review Today to the first graded practice answer, by
 // keyboard: Tab presses to reach each control, activations (Enter), typed
 // answers and the submit. Runs on any build that has the practice prototype
 // (the increment-4 tree has only the concept-first path; the current tree has
@@ -34,6 +34,7 @@ for (const c of combos) {
       n.activations++;
     };
     try {
+      const t0 = Date.now();
       await page.goto(c.url + "/#/today");
       await page.locator("h2").first().waitFor();
       await activate(page.getByRole("button", { name: cat["feedPractice.panel.open"], exact: true }));
@@ -57,7 +58,7 @@ for (const c of combos) {
       await page.keyboard.press("Control+Enter");
       n.submits++;
       await page.locator("[data-outcome]").first().waitFor();
-      out.push({ combo: c.tag, path, available: true, ...n, total: n.tabs + n.activations + n.typed + n.submits, screens: 2 });
+      out.push({ combo: c.tag, path, available: true, ...n, total: n.tabs + n.activations + n.typed + n.submits, screens: 2, ms: Date.now() - t0 });
     } catch (e) {
       out.push({ combo: c.tag, path, available: false, error: String(e).slice(0, 200) });
     }

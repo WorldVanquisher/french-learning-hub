@@ -36,12 +36,22 @@ export interface FixtureSourceLike {
 
 // One state of a source as one feed describes it. `data` is null when the feed
 // offers nothing (every item withdrawn).
+export interface NotOffered {
+  item_id: string;
+  type: string;
+  statement: string | null;
+  support: string;
+  state: string;
+  groundings: { quote: string; status: string; note: string | null }[];
+}
+
 export interface RevisionState {
   feedName: string;
   feedSha: string;
   feed: Feed;
   data: ConceptPracticeData | null;
   grading: string | null; // the tutor packet document that holds the keys
+  notOffered: NotOffered[]; // items of this revision the feed does not offer, with why (when the fixture has them)
 }
 
 export interface SourceTimeline {
@@ -60,11 +70,11 @@ export interface FixtureCatalog {
 
 // The documents the prototype needs, and how each source's feeds pair with
 // their grading and study packets.
-export const TIMELINES: { sourceId: string; states: { feed: string; tutor: string | null; study: string | null; studyMd: string | null }[] }[] = [
+export const TIMELINES: { sourceId: string; states: { feed: string; tutor: string | null; study: string | null; studyMd: string | null; notOffered?: string }[] }[] = [
   {
     sourceId: "y-en-demo",
     states: [
-      { feed: "feed-y-en-demo-r1.json", tutor: "tutor-y-en-r1.json", study: "study-y-en-r1.json", studyMd: "study-y-en-r1.md" },
+      { feed: "feed-y-en-demo-r1.json", tutor: "tutor-y-en-r1.json", study: "study-y-en-r1.json", studyMd: "study-y-en-r1.md", notOffered: "not-offered-y-en-r1.json" },
       { feed: "feed-y-en-demo-r2.json", tutor: null, study: null, studyMd: null },
       { feed: "feed-y-en-demo-r2-reapproved.json", tutor: "tutor-y-en-r2.json", study: "study-y-en-r2.json", studyMd: "study-y-en-r2.md" },
     ],
@@ -80,7 +90,7 @@ export const SESSIONS = [
 ];
 export const REQUIRED = [
   ...new Set([
-    ...TIMELINES.flatMap((t) => t.states.flatMap((s) => [s.feed, s.tutor, s.study, s.studyMd])),
+    ...TIMELINES.flatMap((t) => t.states.flatMap((s) => [s.feed, s.tutor, s.study, s.studyMd, s.notOffered ?? null])),
     ...SESSIONS.flatMap((s) => [s.packet, s.markdown, s.ret, s.preview]),
     "cases.json",
     "MANIFEST.json",
@@ -108,6 +118,26 @@ const json = (texts: Map<string, string>, name: string): unknown => {
   }
 };
 
+function parseNotOffered(x: unknown, feed: Feed): NotOffered[] {
+  const d = x as { schema?: string; source?: { revision_sha256?: string }; items?: unknown[] };
+  if (d.schema !== "flh_wb_not_offered_v0" || !Array.isArray(d.items)) throw new FixtureError("not-offered document: unknown schema");
+  if (d.source?.revision_sha256 !== feed.source.revision_sha256) throw new FixtureError("not-offered document is about another revision than its feed");
+  return d.items.map((i) => {
+    const o = i as Record<string, unknown>;
+    return {
+      item_id: String(o.item_id),
+      type: String(o.type),
+      statement: typeof o.statement === "string" ? o.statement : null,
+      support: String(o.support),
+      state: String(o.state),
+      groundings: (Array.isArray(o.groundings) ? o.groundings : []).map((g) => {
+        const r = g as Record<string, unknown>;
+        return { quote: String(r.quote), status: String(r.status), note: typeof r.note === "string" ? r.note : null };
+      }),
+    };
+  });
+}
+
 export function buildCatalog(source: FixtureSourceLike, docs: readonly FixtureDocumentLike[]): FixtureCatalog {
   const texts = verifyDocuments(docs);
   const sha = new Map(docs.map((d) => [d.name, d.sha256]));
@@ -115,10 +145,11 @@ export function buildCatalog(source: FixtureSourceLike, docs: readonly FixtureDo
     const states = tl.states.map((st): RevisionState => {
       const feed = parseFeed(json(texts, st.feed));
       if (feed.source.source_id !== tl.sourceId) throw new FixtureError(`${st.feed} is about ${feed.source.source_id}, not ${tl.sourceId}`);
-      if (feed.items.length === 0) return { feedName: st.feed, feedSha: sha.get(st.feed)!, feed, data: null, grading: null };
+      const notOffered = st.notOffered ? parseNotOffered(json(texts, st.notOffered), feed) : [];
+      if (feed.items.length === 0) return { feedName: st.feed, feedSha: sha.get(st.feed)!, feed, data: null, grading: null, notOffered };
       if (!st.tutor || !st.study || !st.studyMd) throw new FixtureError(`${st.feed} offers items but has no grading or study packet`);
       const data = joinConcept(feed, parsePacket(json(texts, st.tutor)), parsePacket(json(texts, st.study)), texts.get(st.studyMd)!);
-      return { feedName: st.feed, feedSha: sha.get(st.feed)!, feed, data, grading: st.tutor };
+      return { feedName: st.feed, feedSha: sha.get(st.feed)!, feed, data, grading: st.tutor, notOffered };
     });
     // Revisions only move forward within one source.
     for (let i = 1; i < states.length; i++)

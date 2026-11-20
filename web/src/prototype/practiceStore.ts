@@ -15,11 +15,12 @@ export interface PracticeVisitSnapshot {
   catalog: FixtureCatalog | null;
   visit: VisitState;
   delayMs: number; // a simulated response delay for checks (0 = immediate)
+  feedTimeout: boolean; // prototype control: the next feed request times out
   openConcept: string | null; // the source whose concept view is open
   focusItem: string | null; // an exercise to focus when the concept opens
 }
 
-let snap: PracticeVisitSnapshot = { panel: "closed", error: null, catalog: null, visit: initialVisit(), delayMs: 0, openConcept: null, focusItem: null };
+let snap: PracticeVisitSnapshot = { panel: "closed", error: null, catalog: null, visit: initialVisit(), delayMs: 0, feedTimeout: false, openConcept: null, focusItem: null };
 const listeners = new Set<() => void>();
 const set = (next: Partial<PracticeVisitSnapshot>) => {
   snap = { ...snap, ...next };
@@ -76,7 +77,11 @@ export function submitAnswer(sourceId: string, practiceId: string, text: string)
   return op;
 }
 export const reveal = (sourceId: string, practiceId: string) => dispatch({ type: "reveal", at: now(), sourceId, practiceId });
-export const arrive = (sourceId: string) => dispatch({ type: "arrive", at: now(), sourceId });
+// Ask the extraction feed for the next revision. With the prototype's timeout
+// control on, the request "times out": nothing changes but an event.
+export const arrive = (sourceId: string) =>
+  dispatch(snap.feedTimeout ? { type: "feedTimeout", at: now(), sourceId } : { type: "arrive", at: now(), sourceId });
+export const setFeedTimeout = (on: boolean) => set({ feedTimeout: on });
 export const applyWaiting = (sourceId: string) => dispatch({ type: "apply", at: now(), sourceId });
 
 const subscribe = (l: () => void) => {
@@ -91,6 +96,6 @@ export const listenerCount = () => listeners.size;
 export function resetPracticeVisit() {
   timers.forEach((t) => clearTimeout(t));
   timers.clear();
-  snap = { panel: "closed", error: null, catalog: null, visit: initialVisit(), delayMs: 0, openConcept: null, focusItem: null };
+  snap = { panel: "closed", error: null, catalog: null, visit: initialVisit(), delayMs: 0, feedTimeout: false, openConcept: null, focusItem: null };
   listeners.forEach((l) => l());
 }

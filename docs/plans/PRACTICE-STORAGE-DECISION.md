@@ -308,3 +308,198 @@ schema must equal a server-built one. Results are in `evidence/` at the 050 chec
 
 Every row above is labelled in the page ("Disappears on reload…"). The walkthrough checks that a
 reload leaves the panel closed and no state behind (no web storage written).
+
+## Revision 3 (R3, 2026-11-20): minimum persistence, optional parts, and the 2.2 contract
+
+**Status: PROPOSED; still no migration file.** Revision 2 above stays as the record of increment 5.
+This revision splits the proposal into a **minimum** and two **optional** parts.
+
+**Changes from revision 2:**
+- It applies the extraction lane's amendment
+  (`extraction2-20261119/handoff-2.2/sample/workbooks2/STORAGE-DECISION-RECORD.md`).
+- The learner's free-text retention is its own decision (R3-041–R3-045).
+- Every table enforces append-only in SQL.
+
+**Checked on scratch databases only:**
+```bash
+python3 -I -B scripts/validation/extraction_practice/storage_r3.py "$(mktemp -d)" --rows HANDOFF_2_2/sample/workbooks2/storage-rows.json
+```
+
+### Review against the live contract (R3-041)
+
+| Contract element (Extraction 2.2) | Revision 2 | Revision 3 |
+|---|---|---|
+| practice ID stable across revisions, `withdrawn`/`restored`/`added`, `reason_code`, `since_revision`, `feed_id`/`feed_seq` | not stored, and need not be: feeds are rebuildable and replay-safe by `feed_id` | unchanged: attempts keep `practice_id` and the revision they were made on, so a withdrawn item's history survives and a restored one continues it |
+| learner decision with `draft_id`, `material_hash`, batch, `via`, attestation | no column for the 2.2 context | `provenance_json` (JSON-checked), from the amendment |
+| agent exercise decision | refused (`subject_kind`) | `agent_exercise`, from the amendment |
+| attempt and reveal, never correct when revealed | yes | yes |
+| `text_omitted: true` in exports; no attempt text in feeds or packets | `answer_kept` per attempt | text only while the learner's **retention decision** is on (below); exports keep their own `text_omitted` rule |
+| deterministic `operation_key` (a hash of source, record kind and sequence) | UUID from the client | either; both are UNIQUE, so an import of the extraction JSONL is idempotent |
+
+### Minimum versus optional (R3-042)
+
+| Part | Tables | Needed for | Without it |
+|---|---|---|---|
+| **minimum** | `practice_attempts` (outcome only: no text column), `review_defers` | practice history and "Not today" surviving a reload; the weekly counts | page-only, as today |
+| **optional A: answer text** | `practice_text_retention` (the learner's decision), plus `practice_attempts.answer_text` (added by `ALTER TABLE … ADD COLUMN`, enforced by a trigger) | recomputing a matched variant or a known confusion later | outcomes stay; the "known confusion" link of an old miss cannot be rebuilt (Extraction 2.2 §7) |
+| **optional B: decisions** | `practice_decisions` (amended), `personal_corrections` | approvals and corrections kept in Workbooks instead of the extraction JSONL | the extraction lane's JSONL stays authoritative |
+
+### Raw response fields that must not persist by default (R3-043)
+
+| Field | Default |
+|---|---|
+| the typed answer of an attempt | **not stored**: there is no column in the minimum |
+| a reveal's text | never: a reveal has no answer |
+| a self-check note | never (the self-check is `got` or `notyet`) |
+| a matched variant or known error | not stored; recomputed when the text is kept |
+| an agent's raw return or a packet body | not stored; only its provenance IDs, in `provenance_json` |
+| Speaking audio | never stored anywhere (unchanged) |
+
+### A separate learner decision for free-text retention (R3-044)
+
+- `practice_text_retention` holds append-only rows (`keep_answer_text` 1 or 0).
+- The **latest** row decides. A trigger refuses an attempt with text unless that row says keep.
+  With no row at all, nothing is kept.
+- This decision is separate from every practice action, so changing it changes no outcome.
+- Turning it off can be followed by an erase. The one mutation the triggers allow is
+  `UPDATE practice_attempts SET answer_text = NULL`. Any other update or delete of an attempt is
+  refused.
+
+### Idempotent writes and conflicts (R3-045)
+
+- Every row has a UNIQUE `operation_key`.
+- The application writes once, using `insert_once` in the prototype:
+
+| The same `operation_key` arrives with | Result |
+|---|---|
+| the same payload | the stored row (a replay) |
+| any other payload | a conflict (`409`), never an overwrite |
+
+- A deterministic key derived by the extraction lane makes a re-import of its JSONL a replay.
+- Attempts and reveals are intentionally new events, each with its own key.
+
+<!-- proposed-sql-r3-minimum:start -->
+```sql
+-- 0NN_practice_state.sql, revision 3, MINIMUM (number allocated by the owner). Additive only.
+CREATE TABLE practice_attempts (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_key           TEXT    NOT NULL UNIQUE,
+    practice_id             TEXT    NOT NULL CHECK (practice_id GLOB 'p-[0-9a-f]*' AND length(practice_id) = 14),
+    source_id               TEXT    NOT NULL,
+    source_revision         INTEGER CHECK (source_revision IS NULL OR source_revision >= 1), -- the number when known (2.2 feeds carry it; imported JSONL may not)
+    source_revision_sha256  TEXT    NOT NULL CHECK (length(source_revision_sha256) = 64),
+    action                  TEXT    NOT NULL CHECK (action IN ('attempt', 'reveal')),
+    outcome                 TEXT    NOT NULL CHECK (outcome IN ('correct', 'incorrect', 'self_check', 'revealed', 'invalid')),
+    self_check              TEXT    CHECK (self_check IS NULL OR self_check IN ('got', 'notyet')),
+    local_day               TEXT    NOT NULL,
+    zone                    TEXT    NOT NULL,
+    created_at              TEXT    NOT NULL,
+    CHECK ((action = 'reveal') = (outcome = 'revealed')),
+    CHECK (self_check IS NULL OR outcome IN ('self_check', 'revealed'))
+);
+CREATE INDEX idx_practice_attempts_item ON practice_attempts(practice_id, id);
+CREATE INDEX idx_practice_attempts_day ON practice_attempts(local_day);
+CREATE TRIGGER practice_attempts_no_delete BEFORE DELETE ON practice_attempts
+BEGIN SELECT RAISE(ABORT, 'practice attempts are append-only'); END;
+CREATE TRIGGER practice_attempts_no_update BEFORE UPDATE ON practice_attempts
+BEGIN SELECT RAISE(ABORT, 'practice attempts are append-only'); END;
+
+CREATE TABLE review_defers (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_key    TEXT    NOT NULL UNIQUE,
+    item_key         TEXT    NOT NULL,
+    action           TEXT    NOT NULL CHECK (action IN ('defer', 'undo')),
+    defer_until_day  TEXT,
+    zone             TEXT    NOT NULL,
+    refers_to        INTEGER REFERENCES review_defers(id),
+    created_at       TEXT    NOT NULL,
+    CHECK ((action = 'defer') = (defer_until_day IS NOT NULL AND refers_to IS NULL)),
+    CHECK ((action = 'undo') = (refers_to IS NOT NULL AND defer_until_day IS NULL))
+);
+CREATE INDEX idx_review_defers_item ON review_defers(item_key, id);
+CREATE UNIQUE INDEX idx_review_defers_one_undo ON review_defers(refers_to) WHERE action = 'undo';
+CREATE TRIGGER review_defers_undo_targets_defer BEFORE INSERT ON review_defers
+WHEN NEW.action = 'undo' AND NOT EXISTS (
+    SELECT 1 FROM review_defers d WHERE d.id = NEW.refers_to AND d.action = 'defer' AND d.item_key = NEW.item_key)
+BEGIN SELECT RAISE(ABORT, 'an undo refers to a defer of the same item'); END;
+CREATE TRIGGER review_defers_no_change BEFORE UPDATE ON review_defers
+BEGIN SELECT RAISE(ABORT, 'review defers are append-only'); END;
+CREATE TRIGGER review_defers_no_delete BEFORE DELETE ON review_defers
+BEGIN SELECT RAISE(ABORT, 'review defers are append-only'); END;
+```
+<!-- proposed-sql-r3-minimum:end -->
+
+<!-- proposed-sql-r3-retention:start -->
+```sql
+-- revision 3, OPTIONAL A: the learner's decision to keep answer text (after the minimum).
+CREATE TABLE practice_text_retention (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_key     TEXT    NOT NULL UNIQUE,
+    keep_answer_text  INTEGER NOT NULL CHECK (keep_answer_text IN (0, 1)),
+    created_at        TEXT    NOT NULL
+);
+CREATE TRIGGER practice_text_retention_append_only BEFORE UPDATE ON practice_text_retention
+BEGIN SELECT RAISE(ABORT, 'the retention decision is append-only: add a new row'); END;
+ALTER TABLE practice_attempts ADD COLUMN answer_text TEXT CHECK (answer_text IS NULL OR length(answer_text) <= 2000);
+CREATE TRIGGER practice_attempts_text_needs_retention BEFORE INSERT ON practice_attempts
+WHEN NEW.answer_text IS NOT NULL AND (NEW.action = 'reveal' OR coalesce(
+    (SELECT keep_answer_text FROM practice_text_retention ORDER BY id DESC LIMIT 1), 0) != 1)
+BEGIN SELECT RAISE(ABORT, 'answer text is kept only while the learner chose to keep it, and never on a reveal'); END;
+DROP TRIGGER practice_attempts_no_update;
+CREATE TRIGGER practice_attempts_only_erase_text BEFORE UPDATE ON practice_attempts
+WHEN NOT (NEW.answer_text IS NULL AND NEW.id = OLD.id AND NEW.operation_key = OLD.operation_key AND NEW.practice_id = OLD.practice_id
+          AND NEW.source_id = OLD.source_id AND NEW.source_revision = OLD.source_revision AND NEW.source_revision_sha256 = OLD.source_revision_sha256
+          AND NEW.action = OLD.action AND NEW.outcome = OLD.outcome AND NEW.self_check IS OLD.self_check AND NEW.local_day = OLD.local_day
+          AND NEW.zone = OLD.zone AND NEW.created_at = OLD.created_at)
+BEGIN SELECT RAISE(ABORT, 'only erasing the answer text is allowed'); END;
+```
+<!-- proposed-sql-r3-retention:end -->
+
+<!-- proposed-sql-r3-decisions:start -->
+```sql
+-- revision 3, OPTIONAL B: decisions (with the Extraction 2.2 amendment) and personal corrections.
+CREATE TABLE practice_decisions (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_key           TEXT    NOT NULL UNIQUE,
+    subject_kind            TEXT    NOT NULL CHECK (subject_kind IN ('extraction_item', 'notebook_draft', 'agent_exercise')),
+    subject_id              TEXT    NOT NULL,
+    source_id               TEXT    NOT NULL,
+    source_revision_sha256  TEXT    NOT NULL CHECK (length(source_revision_sha256) = 64),
+    item_hash               TEXT    NOT NULL,
+    action                  TEXT    NOT NULL CHECK (action IN ('approve', 'reject', 'edit')),
+    edited_text             TEXT,
+    reason                  TEXT,
+    provenance_json         TEXT    CHECK (provenance_json IS NULL OR json_valid(provenance_json)),
+    created_at              TEXT    NOT NULL,
+    CHECK ((action = 'edit') = (edited_text IS NOT NULL AND length(trim(edited_text)) > 0))
+);
+CREATE INDEX idx_practice_decisions_subject ON practice_decisions(subject_kind, subject_id, id);
+CREATE TRIGGER practice_decisions_append_only BEFORE UPDATE ON practice_decisions
+BEGIN SELECT RAISE(ABORT, 'practice decisions are append-only'); END;
+CREATE TRIGGER practice_decisions_no_delete BEFORE DELETE ON practice_decisions
+BEGIN SELECT RAISE(ABORT, 'practice decisions are append-only'); END;
+
+CREATE TABLE personal_corrections (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_key    TEXT    NOT NULL UNIQUE,
+    action           TEXT    NOT NULL CHECK (action IN ('add', 'retire')),
+    subject_kind     TEXT    CHECK (subject_kind IS NULL OR subject_kind IN ('speaking_transcript', 'writing_draft', 'notebook_entry', 'extraction_item')),
+    subject_ref      TEXT,
+    subject_version  INTEGER,
+    original_text    TEXT,
+    corrected_text   TEXT,
+    refers_to        INTEGER REFERENCES personal_corrections(id),
+    created_at       TEXT    NOT NULL,
+    CHECK ((action = 'add') = (subject_kind IS NOT NULL AND subject_ref IS NOT NULL AND corrected_text IS NOT NULL
+                               AND length(trim(corrected_text)) > 0 AND refers_to IS NULL)),
+    CHECK ((action = 'retire') = (refers_to IS NOT NULL AND corrected_text IS NULL))
+);
+CREATE INDEX idx_personal_corrections_subject ON personal_corrections(subject_kind, subject_ref, id);
+CREATE UNIQUE INDEX idx_personal_corrections_one_retire ON personal_corrections(refers_to) WHERE action = 'retire';
+CREATE TRIGGER personal_corrections_retire_targets_add BEFORE INSERT ON personal_corrections
+WHEN NEW.action = 'retire' AND NOT EXISTS (SELECT 1 FROM personal_corrections a WHERE a.id = NEW.refers_to AND a.action = 'add')
+BEGIN SELECT RAISE(ABORT, 'a retire refers to an add'); END;
+CREATE TRIGGER personal_corrections_append_only BEFORE UPDATE ON personal_corrections
+BEGIN SELECT RAISE(ABORT, 'personal corrections are append-only'); END;
+```
+<!-- proposed-sql-r3-decisions:end -->
