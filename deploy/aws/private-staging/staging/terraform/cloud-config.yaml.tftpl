@@ -45,7 +45,7 @@ write_files:
       PORT=${port}
 runcmd:
   - [systemctl, daemon-reload]
-  - [systemctl, enable, --now, flh-staging-expire.timer]
+  - [systemctl, ${expire_timer_verb}, --now, flh-staging-expire.timer]
   - [systemctl, enable, --now, docker]
   - [usermod, -aG, docker, ec2-user]
   - [mkdir, -p, /usr/local/lib/docker/cli-plugins]

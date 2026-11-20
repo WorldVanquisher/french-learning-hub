@@ -15,10 +15,41 @@ databases are never merged.
 - **T1:** the moment private access (the SSH/SSM alias or tailnet name the
   learner's browser uses) points at AWS.
 - **`DUMP(db)`:** `sqlite3 -readonly "$db" .dump | sha256sum`. It is equal for
-  byte copies and unaffected by WAL checkpoints.
-- **`COUNTS(db)`:** row count and `max(id)` of `learning_entries`,
-  `learning_captures`, `knowledge_units`, `listening_materials` and
-  `speaking_takes`, plus `select count(*) from schema_migrations`.
+  byte copies and unaffected by WAL checkpoints. Run it only on a stopped
+  service or on a copy.
+- **`COUNTS(db)`:** the backup contract agreed with the Workbooks lane (R3-041,
+  2026-11-20): row count and `max(rowid)` of **every** table except
+  `schema_migrations` (compared as the ledger) and the rebuildable semantic
+  caches (`semantic_index_*`, `semantic_embedding_cache`). That is 46 of the 53
+  tables at migration 021.
+  - `max(rowid)`, not `max(id)`: some tables have no `id` column.
+  - `cutover_check.py` measures every table (rows, `max(rowid)` and a digest)
+    on a scratch copy, so it is at least this strict.
+
+**Rules from the Workbooks lane's rehearsals:**
+- **Never copy `app.db` without its `-wal` file, and never while the service
+  writes.** A live copy missed committed rows: 101 rows copied against 127
+  committed.
+- **Never hold a connection beside a running server.** An outside connection
+  holding the write lock stalls every request (the server has one SQLite
+  connection): writes fail after the 5 s busy timeout, and `/readyz` goes 503
+  after 2 s.
+
+**Additional acceptance, Workbooks-owned and read-only:** run
+`python3 -I -B scripts/validation/migration/inventory.py SOURCE --out DIR` on
+the NAS backup and on the AWS restored copy.
+- Both must exit 0, with an equal `logical_digest` and equal `rows_by_table`.
+- The tool checks foreign keys, notebook sources, the version chains
+  1..N, one authored exercise per listening script revision, and no exam
+  answer after its deadline or submission.
+- Take it from the Workbooks lane's final **sealed** `workbooks-r3` handoff-100 (`SHA256SUMS`
+  digest `758939cb4055…ca322`; `inventory.py` byte-identical to handoff-075, `90a1ad828d3e…d609a`)
+  until it is on `main`. Its `docs/validation/R3-DATA-MIGRATION-AND-DAILY-LEARNING.md` §5 lists
+  the related rehearsal commands. The seal carries it in `changes.patch`: apply that
+  to a scratch export of the release commit, never to a checkout in use.
+- **Rehearsed (release lane, 2026-11-20, stand-in):** after restoring the synthetic fixture and
+  stopping the service, it reported READY on the source backup and on the restored data, with an
+  equal `logical_digest` and equal `rows_by_table` (53 tables).
 
 ## Evidence and verdicts (`scripts/release/cutover_check.py`)
 
@@ -74,12 +105,15 @@ back first, step 2b in reverse).
 | Step | Where | Command | Expected | Dry run |
 | --- | --- | --- | --- | --- |
 | 1 | AWS (`ec2-user`) | `stg stop`; `mv "$ROOT/data/app" "$ROOT/data/app.staging-pass-$(date -u +%Y%m%dT%H%M%SZ)"`; `mkdir -m 700 "$ROOT/data/app"` | staging data kept aside, never deleted; service stopped | C1 PASS |
+| 2a | NAS (learner has stopped writing, service still running) | `GET /learning-history/export?transcripts=true&notes=true` saved **beside the final backup** (learner data: the backup's encryption and retention, never in evidence or reports) | export file written | (R3, Workbooks contract) |
 | 2 | NAS | stop using the workbench and any listening-pull timer; `bash scripts/daily/flh-daily.sh stop` | **T0**. Record the time | C2 PASS |
 | 2b | NAS | **guard:** `mv ~/.config/flh/daily.env ~/.config/flh/daily.env.moved-to-aws-<date>`; then `bash scripts/daily/flh-daily.sh status` | `settings file not found`, exit 2. No NAS write can start, not even by habit or by a timer | C2 PASS (status and start both refused) |
 | 2c | NAS | record `DUMP` and `COUNTS` of `<FLH_DATA_DIR>/app.db` | written down | C2 |
 | 3 | NAS | `FLH_DAILY_ENV=~/.config/flh/daily.env.moved-to-aws-<date> bash scripts/daily/flh-daily.sh backup`; `sha256sum -c SHA256SUMS` in it | the service stays stopped; `DUMP(backup/app.db)` == T0 | C3 PASS (0.6 s) |
+| 3b | NAS | Workbooks `inventory.py` on the backup directory (from its sealed handoff-075) | exit 0 (READY); `logical_digest` recorded | (R3; rehearsed with the sealed tool) |
 | 4 | NAS → S3 → AWS | as RUNBOOK §6 (tar + `.sha256`, `aws s3 cp` to `backups/`, verify on the host before untarring) | `sha256sum -c` OK | C4 PASS |
 | 5 | AWS | `stg restore "$ROOT/transfer/<backup>"` | ready; `DUMP` and `COUNTS` == T0; `PRAGMA integrity_check` = ok | C5 PASS (2.3 s) |
+| 5b | AWS | `inventory.py` on a copy of the restored data; the export through the port forward, compared with 2a without `exported_at`/`generated_at`; then `POST /learning-history/import-preview` with the NAS export | exit 0 and the same `logical_digest` and `rows_by_table` as 3b; exports equal; preview complete, 0 new, 0 conflicts; `DUMP` unchanged | (R3; the preview never writes) |
 | 6 | AWS (port forward) | one keyword search; open one source; **replay one stored capture** (`POST /captures` with its existing `capture_id` and identical content) | search 200, replay 200, `DUMP` unchanged | C6 PASS |
 | 7 | client | point private access at AWS (the SSM port forward, RUNBOOK E10). **Public DNS is not involved** | **T1**. The freeze window (T1 − T0) is the time nobody can write | C7 PASS (3.3 s on the stand-in) |
 | 8 | AWS | the owner's first real write | 201. From now on AWS holds the newest state | C8 PASS |

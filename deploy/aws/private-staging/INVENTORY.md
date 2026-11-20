@@ -81,3 +81,29 @@ Run `staging/tools/plan_check.py` on every plan before `terraform apply`.
 
 Fix the cause, plan again, check again. The fixed fixtures in
 `staging/tests/fixtures/` show one safe and one unsafe example of each rule.
+
+## 5. Production instance of this root (R3; nothing applied)
+
+The same 21 addresses serve production when `environment = "production"`
+(`docs/plans/FLH-R3-aws-migration.md` §5). Owner decisions A7/A8 come first.
+
+| Setting | Staging | Production |
+| --- | --- | --- |
+| Terraform workspace | any but `production` (the runbook uses `default`) | `production` only (precondition on `aws_vpc.stg`) |
+| Variables | `terraform.tfvars` | `-var-file=production.tfvars`; no `terraform.tfvars` in the root (preflight FAILs: it would be merged in) |
+| Names and tags | `flh-stg-*`, `Component=workbench-staging`, `Environment=staging` | `flh-prd-*`, `Component=workbench-production`, `Environment=production` |
+| Network | 10.85.0.0/24 | 10.86.0.0/24 |
+| Parameters | `/flh/staging/*` | `/flh/production/*` |
+| Data volume | 8 GiB | 20 GiB (grow-only) |
+| Expiry | `ExpiresAt` time, power-off timer enabled, shutdown terminates | `ExpiresAt=never`, timer installed disabled, shutdown **stops** |
+| Termination protection | off | **on** (`disable_api_termination`) |
+| Bucket on destroy | emptied (`force_destroy`) | **kept** while objects remain |
+| S3 lifecycle | every object 14 days | `backups/` `backup_retention_days` (35) + 7 days as old versions; `releases/` kept, old versions 30 days |
+| IAM | `staging/iam/out/flh-stg-*` | `staging/iam/out-production/flh-prd-*`: **no** delete of the data volume, bucket, objects or parameters (administrator-only) |
+| Plan check | `plan_check.py --env staging` (default) | `plan_check.py --env production`: also STOPs on any destroy and on a plan made for the other environment |
+
+Both environments get a read-only verification policy (`<prefix>-verify-readonly`):
+- it allows only describe, list, get and view;
+- it explicitly denies parameter values, KMS decrypt and `backups/*` objects.
+
+That is the policy to grant the release lane's read-only profile (plan §9).

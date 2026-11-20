@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Offline review: do the staging IAM templates allow what the staging root and runbook need?
 
-  review_permissions.py [--json]
+  review_permissions.py [--json] [--env staging|production]
 
 Maps every resource type in terraform/main.tf to the write calls Terraform
 makes for create, update and destroy (reads come from the operator's
@@ -13,6 +13,10 @@ ec2:CreateAction). Conditions are listed, not evaluated: a tag or shape
 condition the request does not meet still ends in AccessDenied on AWS.
 Prints MISSING (exit 1), then broad statements and allowed actions no step
 needs. This is a static review; it proves nothing about live AWS behaviour.
+--env production (R3) reviews iam/out-production: the deletes production withholds
+(data volume, bucket, objects, parameters) are listed as ADMIN-ONLY, not MISSING.
+Both environments: the <prefix>-verify-readonly policy must allow only
+describe/list/get/view actions, never a parameter value, KMS decrypt or a backup object.
 """
 import fnmatch
 import json
@@ -21,7 +25,13 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "out")
+ENV = "production" if "--env" in sys.argv and sys.argv[sys.argv.index("--env") + 1:][:1] == ["production"] else "staging"
+OUT = os.path.join(HERE, "out" if ENV == "staging" else "out-production")
+PREFIX = "flh-stg" if ENV == "staging" else "flh-prd"
+WITHHELD = {"ec2:DeleteVolume", "s3:DeleteBucket", "s3:DeleteObject", "s3:DeleteObjectVersion",
+            "ssm:DeleteParameter", "ssm:DeleteParameters"} if ENV == "production" else set()
+READ_ONLY = re.compile(r"^[a-z0-9-]+:(Describe|Get|List|View)[A-Za-z]*$")
+NEVER_IN_VERIFY = {"ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath", "kms:Decrypt"}
 MAIN = os.path.join(os.path.dirname(HERE), "terraform", "main.tf")
 
 # Terraform resource type -> (deploy write actions, tag-on-create action or None)
@@ -103,13 +113,13 @@ def host_inline_actions():
 
 
 def review():
-    deploy = list(statements(os.path.join(OUT, "flh-stg-deploy-policy.json"))) + \
-        list(statements(os.path.join(OUT, "flh-stg-deploy-ec2-policy.json")))
-    operate = list(statements(os.path.join(OUT, "flh-stg-operate-policy.json")))
-    boundary = list(statements(os.path.join(OUT, "flh-stg-host-boundary-policy.json")))
+    deploy = list(statements(os.path.join(OUT, f"{PREFIX}-deploy-policy.json"))) + \
+        list(statements(os.path.join(OUT, f"{PREFIX}-deploy-ec2-policy.json")))
+    operate = list(statements(os.path.join(OUT, f"{PREFIX}-operate-policy.json")))
+    boundary = list(statements(os.path.join(OUT, f"{PREFIX}-host-boundary-policy.json")))
     inline = host_inline_actions()
     types = sorted(set(re.findall(r'^resource "([a-z0-9_]+)"', open(MAIN).read(), re.M)))
-    rows, missing, needed = [], [], set()
+    rows, missing, needed, admin_only = [], [], set(), []
     for t in types:
         if t not in TF:
             missing.append((t, "?", "resource type not mapped in review_permissions.py"))
@@ -119,7 +129,9 @@ def review():
             needed.add(a)
             hits = allows(deploy, a)
             rows.append(("deploy", t, a, hits))
-            if not hits:
+            if not hits and a in WITHHELD:
+                admin_only.append(("deploy", t, a))
+            elif not hits:
                 missing.append(("deploy", t, a))
         if create:
             hits = allows(deploy, "ec2:CreateTags", create)
@@ -130,7 +142,9 @@ def review():
         for a in acts:
             hits = allows(operate, a)
             rows.append(("operate", step, a, hits))
-            if not hits:
+            if not hits and a in WITHHELD:
+                admin_only.append(("operate", step, a))
+            elif not hits:
                 missing.append(("operate", step, a))
     for step, acts in HOST.items():
         for a in acts:
@@ -150,15 +164,44 @@ def review():
                 for a in acts:
                     if a not in needed and a != "ec2:CreateTags":
                         unused.append((sid, a))
-    return rows, missing, broad, unused
+    return rows, missing, broad, unused, admin_only, verify_problems()
+
+
+def verify_problems():
+    """The verify-readonly policy: read-only Allow actions only, and never a value, a decrypt or a backup object."""
+    path = os.path.join(OUT, f"{PREFIX}-verify-readonly-policy.json")
+    if not os.path.isfile(path):
+        return [f"{os.path.basename(path)} missing"]
+    probs, denied = [], set()
+    for sid, eff, acts, res, cond in statements(path):
+        if eff == "Deny":
+            denied |= set(acts)
+            continue
+        for a in acts:
+            if not READ_ONLY.match(a):
+                probs.append(f"{sid}: {a} is not a read-only action")
+            if a in NEVER_IN_VERIFY:
+                probs.append(f"{sid}: {a} would read a parameter value or decrypt")
+            if a.startswith("s3:GetObject") and any("backups/" in r or r.endswith("/*") and "releases/" not in r for r in res):
+                probs.append(f"{sid}: {a} on {res} could read backup objects")
+    for a in NEVER_IN_VERIFY:
+        if a not in denied:
+            probs.append(f"{a} is not explicitly denied")
+    return probs
 
 
 def main():
-    rows, missing, broad, unused = review()
+    rows, missing, broad, unused, admin_only, vprobs = review()
+    missing = missing + [("verify", p) for p in vprobs]
     if "--json" in sys.argv:
-        print(json.dumps({"rows": rows, "missing": missing, "broad": broad, "unused": unused}, indent=1))
+        print(json.dumps({"env": ENV, "rows": rows, "missing": missing, "broad": broad, "unused": unused,
+                          "admin_only": admin_only}, indent=1))
         return 1 if missing else 0
-    print(f"checked {len(rows)} required actions (deploy per Terraform resource type, operator, host)")
+    print(f"environment {ENV} ({os.path.relpath(OUT, HERE)}): checked {len(rows)} required actions "
+          "(deploy per Terraform resource type, operator, host)")
+    for m in admin_only:
+        print("ADMIN-ONLY " + " | ".join(m) + " (withheld from production; an administrator deletes)")
+    print(f"verify-readonly: {'read-only' if not vprobs else 'PROBLEMS'}")
     for m in missing:
         print("MISSING " + " | ".join(m))
     print("== broad statements (Resource * or account-wide; scoped by the listed conditions)")

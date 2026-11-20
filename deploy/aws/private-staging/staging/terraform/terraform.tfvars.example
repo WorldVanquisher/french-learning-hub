@@ -6,3 +6,7 @@ instance_type         = "t3.small"
 max_runtime_hours     = 4
 data_volume_size_gib  = 8
 compose_plugin_sha256 = "REPLACE_WITH_SHA256_FROM_THE_RELEASE_CHECKSUMS"
+# environment = "staging"   # the default. Production (R3; only after the owner's decisions A7/A8):
+#   a separate production.tfvars with environment = "production" and expires_at = "never",
+#   no terraform.tfvars in this directory, `terraform workspace new production`, and
+#   -var-file=production.tfvars on every plan. See docs/plans/FLH-R3-aws-migration.md §5.

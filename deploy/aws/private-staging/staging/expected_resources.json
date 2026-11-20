@@ -1,9 +1,15 @@
 {
- "format": "flh-staging-expected/v1",
- "comment": "Every address the staging root may plan. INVENTORY.md explains owner, purpose and the stop rule; tools/plan_check.py enforces it on an owner-supplied `terraform show -json` plan.",
+ "format": "flh-staging-expected/v2",
+ "comment": "Every address the root may plan, for both environments (R3: --env staging|production). INVENTORY.md explains owner, purpose and the stop rule; tools/plan_check.py enforces it on an owner-supplied `terraform show -json` plan.",
  "provider": "registry.terraform.io/hashicorp/aws",
- "required_tags": {"Project": "flh", "Component": "workbench-staging"},
+ "required_tags": {"Project": "flh"},
  "required_tag_keys": ["ExpiresAt", "Run", "ManagedBy"],
+ "environments": {
+  "staging": {"Component": "workbench-staging", "name_prefix": "flh-stg-", "shutdown_behavior": "terminate",
+              "termination_protection": false, "bucket_force_destroy": true, "expires_at_never": false, "destroy_allowed": true},
+  "production": {"Component": "workbench-production", "name_prefix": "flh-prd-", "shutdown_behavior": "stop",
+                 "termination_protection": true, "bucket_force_destroy": false, "expires_at_never": true, "destroy_allowed": false}
+ },
  "managed": {
   "aws_vpc.stg": {"owner": "terraform (staging root)", "holds_data": false},
   "aws_internet_gateway.stg": {"owner": "terraform (staging root)", "holds_data": false},

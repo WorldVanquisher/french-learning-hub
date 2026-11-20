@@ -3,8 +3,9 @@
 
   render_policies.py --account 123456789012 --ami ami-0123456789abcdef0 --out DIR [--region us-east-1]
 
-Reads out/flh-stg-*-policy.json (the generator's reviewed output), substitutes
-__AWS_ACCOUNT_ID__ and __STAGING_AMI_ID__, and writes DIR/<policy name>.json
+Reads every flh-*-policy.json in --templates (default out/, the staging output;
+out-production/ for production, R3), substitutes __AWS_ACCOUNT_ID__ and the AMI
+placeholder (__STAGING_AMI_ID__ or __PRODUCTION_AMI_ID__), and writes DIR/<policy name>.json
 (mode 0600). Refuses: an output directory inside the repository (the files
 hold the account ID), an existing non-empty DIR, a malformed account or AMI ID,
 a region other than the one the templates name, any placeholder left after
@@ -19,16 +20,15 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.realpath(os.path.join(HERE, "..", "..", "..", "..", ".."))
-NAMES = {
-    "flh-stg-host-boundary-policy.json": "flh-stg-host-boundary",
-    "flh-stg-deploy-policy.json": "flh-stg-deploy",
-    "flh-stg-deploy-ec2-policy.json": "flh-stg-deploy-ec2",
-    "flh-stg-operate-policy.json": "flh-stg-operate",
-}
+def names(templates):
+    """{template file: policy name} for every flh-*-policy.json in the templates directory, sorted."""
+    return {f: f[: -len("-policy.json")] for f in sorted(os.listdir(templates))
+            if f.startswith("flh-") and f.endswith("-policy.json")}
 
 
 def render(text, account, ami):
-    return text.replace("__AWS_ACCOUNT_ID__", account).replace("__STAGING_AMI_ID__", ami)
+    return (text.replace("__AWS_ACCOUNT_ID__", account).replace("__STAGING_AMI_ID__", ami)
+            .replace("__PRODUCTION_AMI_ID__", ami))
 
 
 def check_doc(name, text):
@@ -68,7 +68,7 @@ def main():
         sys.exit(f"refused: {out} is not empty")
     bad = 0
     rendered = {}
-    for fname in NAMES:
+    for fname in names(a.templates):
         text = open(os.path.join(a.templates, fname)).read()
         regions = set(re.findall(r"arn:aws:[a-z0-9-]+:([a-z]{2}-[a-z]+-[0-9]):", text))
         if regions - {a.region}:
@@ -92,7 +92,7 @@ def main():
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w") as fh:
             fh.write(filled)
-        print(f"OK   {fname} -> create as {NAMES[fname]} ({size} non-whitespace characters)")
+        print(f"OK   {fname} -> create as {names(a.templates)[fname]} ({size} non-whitespace characters)")
     print(f"written to {out} (0600). Do not commit these files.")
 
 

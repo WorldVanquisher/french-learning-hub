@@ -354,6 +354,22 @@ until the owner runs it.
     for the old commit (2.8 s on the stand-in).
   - Data written since the install stays: the same database, no migration in
     this release.
+  - R3: `rollback --to flh-staging-<tree12>` chooses any installed bundle. The
+    tool first prints the target it chose and why.
+  - **The browser after a rollback (R3, demo lane finding):** the page `/` is
+    revalidated by its file time. A browser that cached the newer page can get
+    `304` from the older server and keep a page whose assets no longer exist.
+    After a rollback:
+    - reload with the cache bypassed, or clear the site data of the forwarded
+      origin (`http://127.0.0.1:18080`);
+    - check that the entry script in the page source (`/assets/index-….js`)
+      equals what the server sends now:
+      `curl -s http://127.0.0.1:18080/ | grep -o '/assets/index-[^"]*\.js'`
+      (curl keeps no cache). The private build has no `flh-build` meta tag;
+      only the demo build sets one.
+
+    An ETag fix for `/` is proposed for the owner; it protects only releases
+    built after it.
 - **A failed install** checks the new bundle after the switch; if that fails,
   it switches back automatically and prints `FAILED: switching back`, then
   `IDENTITY OK` for the previous bundle.

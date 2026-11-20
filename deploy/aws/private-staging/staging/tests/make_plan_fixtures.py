@@ -12,7 +12,7 @@ import json
 import os
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
-TAGS = {"Project": "flh", "Component": "workbench-staging", "Run": "20261118T000000Z",
+TAGS = {"Project": "flh", "Component": "workbench-staging", "Environment": "staging", "Run": "20261118T000000Z",
         "ExpiresAt": "2026-11-18T18:00:00Z", "ManagedBy": "terraform"}
 P = "registry.terraform.io/hashicorp/aws"
 
@@ -62,6 +62,7 @@ def base_changes():
         rc("aws_iam_instance_profile.host", {"name_prefix": "flh-stg-host-"}),
         rc("aws_instance.host", {"ami": "ami-0123456789abcdef0", "instance_type": "t3.small",
                                  "associate_public_ip_address": True, "instance_initiated_shutdown_behavior": "terminate",
+                                 "disable_api_termination": False,
                                  "metadata_options": [{"http_endpoint": "enabled", "http_tokens": "required",
                                                        "http_put_response_hop_limit": 2}],
                                  "root_block_device": [{"encrypted": True, "volume_type": "gp3", "volume_size": 16}]},
@@ -77,8 +78,9 @@ def datas():
                               "data.aws_iam_policy_document.ec2_assume", "data.aws_iam_policy_document.host")]
 
 
-def plan(changes, prior=None):
-    return {"format_version": "1.2", "terraform_version": "1.16.6",
+def plan(changes, prior=None, env=None):
+    extra = {"variables": {"environment": {"value": env}}} if env else {}
+    return {**extra, "format_version": "1.2", "terraform_version": "1.16.6",
             "planned_values": {"root_module": {}},
             "prior_state": {"format_version": "1.0", "values": {"root_module": {"resources": prior or []}}},
             "resource_changes": datas() + changes,
@@ -98,6 +100,30 @@ def with_actions(changes, actions, only=None):
             if actions == ("delete",):
                 c["change"]["after"] = None
         out.append(c)
+    return out
+
+
+def production(changes):
+    """The same plan as the production environment renders it (R3): flh-prd-* names, its tags,
+    10.86.0.0/24, a 20 GiB data volume, stop on shutdown, termination protection, no force_destroy."""
+    text = json.dumps(changes)
+    for a, b in (("flh-stg-", "flh-prd-"), ('"workbench-staging"', '"workbench-production"'),
+                 ('"Environment": "staging"', '"Environment": "production"'),
+                 ('"ExpiresAt": "2026-11-18T18:00:00Z"', '"ExpiresAt": "never"'), ("10.85.0.0/24", "10.86.0.0/24")):
+        text = text.replace(a, b)
+    out = json.loads(text)
+    for c in out:
+        a = c["change"]["after"] or {}
+        if c["address"] == "aws_instance.host":
+            a.update(instance_initiated_shutdown_behavior="stop", disable_api_termination=True)
+        if c["address"] == "aws_s3_bucket.staging":
+            a["force_destroy"] = False
+        if c["address"] == "aws_ebs_volume.data":
+            a["size"] = 20
+        if c["address"] == "aws_s3_bucket_lifecycle_configuration.staging":
+            a["rule"] = [{"id": "expire-old-backups"}, {"id": "keep-releases"}]
+        if c["change"].get("before"):
+            c["change"]["before"] = copy.deepcopy(a)
     return out
 
 
@@ -159,6 +185,26 @@ def main():
     fx["plan-unsafe-weakened-settings.json"] = plan(weak)
     # a create against a root that already holds state
     fx["plan-unsafe-create-over-state.json"] = plan(base, prior=as_state(base))
+    # production (R3): the safe first apply, an instance replacement, and production built with staging settings
+    prod = production(base)
+    fx["plan-production-create-safe.json"] = plan(prod, env="production")
+    pupd = with_actions(prod, ("no-op",))
+    pupd = [c if c["address"] not in ("aws_instance.host", "aws_volume_attachment.data")
+            else with_actions([c], ("create", "delete"))[0] for c in pupd]
+    fx["plan-production-update-replace-instance.json"] = plan(pupd, prior=as_state(prod), env="production")
+    fx["plan-production-destroy.json"] = plan(with_actions(prod, ("delete",)), prior=as_state(prod), env="production")
+    pweak = copy.deepcopy(prod)
+    for c in pweak:
+        a = c["change"]["after"]
+        if c["address"] == "aws_instance.host":
+            a.update(instance_initiated_shutdown_behavior="terminate", disable_api_termination=False)
+        if c["address"] == "aws_s3_bucket.staging":
+            a["force_destroy"] = True
+        if c["address"] == "aws_vpc.stg":
+            a["tags_all"]["ExpiresAt"] = "2026-11-18T18:00:00Z"
+        if c["address"] == "aws_ebs_volume.data":
+            a["tags_all"]["Name"] = "flh-stg-data"
+    fx["plan-production-unsafe-staging-settings.json"] = plan(pweak, env="production")
     for name, doc in fx.items():
         with open(os.path.join(OUT, name), "w") as fh:
             json.dump(doc, fh, indent=1, sort_keys=True)
