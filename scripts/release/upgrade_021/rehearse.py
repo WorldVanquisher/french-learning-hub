@@ -52,15 +52,24 @@ Stages (each one line in WORK_DIR/summary.txt: STAGE<TAB>PASS|FAIL|NOT RUN<TAB>d
              same path (checksums, integrity, rename, old directory kept).
              The restored database is byte-identical to the backup and its
              logical state equals the pre-upgrade state (ledger ends at 020).
-  old-server With --old-server: that binary (built by the owner from the
-             commit before 021) starts on the restored database, is ready,
-             serves the listening and Notebook reads, and records no new
-             migration. Without it: NOT RUN (owner verification).
+  old-server Optional unless asked for. Giving --old-server BINARY (the
+             server built by the owner from the parent of the commit that added
+             021) makes this stage REQUIRED: a missing or non-executable path is
+             refused before anything runs (exit 2), and a required stage that
+             cannot run is FAIL, never NOT RUN. It records both binaries'
+             identities (path, sha256, `go version -m`: revision and build
+             settings) in evidence/old_server_identity.json, refuses the server
+             this rehearsal built, starts the binary on a fresh database (its
+             own ledger must be exactly 001-020: it lacks 021), then on a copy of
+             the restored database: ready, listening and Notebook reads 200, no
+             new migration. Without --old-server: NOT RUN, and the line says
+             that only fixture compatibility was checked (owner verification).
   reupgrade  The current server upgrades the restored database again and the
              script import works there too.
 
-Exit status: 0 when every stage that ran passed (old-server may be NOT RUN);
-1 when a stage failed; 2 for a refused invocation.
+Exit status: 0 when every stage that ran passed (old-server may be NOT RUN
+only when it was not asked for); 1 when a stage failed; 2 for a refused
+invocation (including an unusable --old-server).
 """
 
 import argparse
@@ -137,6 +146,73 @@ def ro(path):
 def migration_names(before=None):
     names = sorted(p.name for p in MIGRATIONS.glob("*.sql"))
     return [n for n in names if before is None or n < before]
+
+
+def old_server_problem(path):
+    """Why PATH cannot be the --old-server binary, or None."""
+    p = Path(path)
+    if not p.exists():
+        return f"--old-server {path}: no such file"
+    if not p.is_file():
+        return f"--old-server {path}: not a regular file"
+    if not os.access(p, os.X_OK):
+        return f"--old-server {path}: not executable"
+    return None
+
+
+def parse_build_info(text):
+    """The facts `go version -m BINARY` prints: Go version, main package,
+    VCS revision and build settings (flags, GOOS/GOARCH, CGO)."""
+    info = {"go": None, "path": None, "build": {}}
+    for line in text.splitlines():
+        if line and not line.startswith("\t") and ": " in line and info["go"] is None:
+            info["go"] = line.split(": ", 1)[1].strip()
+            continue
+        parts = line.strip().split("\t")
+        if parts[0] == "path" and len(parts) > 1:
+            info["path"] = parts[1]
+        elif parts[0] == "build" and len(parts) > 1:
+            key, _, value = parts[1].partition("=")
+            info["build"][key] = value
+    return info
+
+
+def go_build_info(binary):
+    out = subprocess.run(["go", "version", "-m", str(binary)], capture_output=True, text=True)
+    info = parse_build_info(out.stdout)
+    info["go_version_m_exit"] = out.returncode
+    return info
+
+
+def old_server_identity(old_binary, old_sha, info, new_binary, new_sha):
+    """Evidence naming both binaries apart: each by its own file path and
+    sha256; the old one's `go version -m` facts kept under go_build (whose
+    "path" is the Go package, never a file)."""
+    return {"old_server": {"binary": str(old_binary), "sha256": old_sha, "go_build": info},
+            "new_server": {"binary": str(new_binary), "sha256": new_sha}, "ports": {}}
+
+
+OPTIONAL_OLD_SERVER = ("optional, not requested: only fixture compatibility was checked (the fixture "
+                       "stage's schema equals a pristine 001-020 database); no pre-021 binary was started. "
+                       "Owner: build the server from the parent of the commit that added "
+                       "migrations/021_listening_authored_scripts.sql and rerun with --old-server BINARY")
+
+
+OPTIONAL_OLD_SERVER_FIXTURE_DB = ("optional, not requested: only fixture compatibility was checked (the "
+                                  "--fixture-db copy's ledger ends at 020 and its integrity is ok; it was not "
+                                  "compared with a pristine schema); no pre-021 binary was started. Owner: rerun "
+                                  "with --old-server BINARY built from the pinned pre-021 commit")
+
+
+def old_server_skip(requested, rolled, fixture_db=False):
+    """The old-server line when the stage does not run, or None when it runs.
+    Asked for (--old-server) means required: it can FAIL, never be NOT RUN.
+    The optional line says exactly what the fixture stage checked."""
+    if requested:
+        return None if rolled else ("FAIL", "required (--old-server given) but not run: rollback failed")
+    if not rolled:
+        return ("NOT RUN", "optional, not requested; rollback failed")
+    return ("NOT RUN", OPTIONAL_OLD_SERVER_FIXTURE_DB if fixture_db else OPTIONAL_OLD_SERVER)
 
 
 def build_pristine(path):
@@ -642,6 +718,13 @@ def main():
         if not shutil.which(tool):
             print(f"refused: {tool} is required", file=sys.stderr)
             return 2
+    if args.old_server is not None:
+        # Asked for: the stage is required, so an unusable binary stops the
+        # rehearsal now instead of after every other stage.
+        problem = old_server_problem(args.old_server)
+        if problem:
+            print(f"refused: {problem} (the old-server stage is required when --old-server is given)", file=sys.stderr)
+            return 2
     os.umask(0o077)
     for d in ("bin", "logs", "evidence", "run", "dbs"):
         (work / d).mkdir()
@@ -661,7 +744,7 @@ def main():
         out = subprocess.run(["go", "build", "-o", str(server_bin), "./cmd/server"], cwd=REPO,
                              capture_output=True, text=True)
         check(out.returncode == 0, out.stderr.strip()[:300])
-        return f"server sha256 {sha256_file(server_bin)[:16]}…"
+        return f"new server (this tree) {server_bin} sha256 {sha256_file(server_bin)[:16]}…"
 
     if not stage("build", build):
         return 1
@@ -819,24 +902,53 @@ def main():
 
     def do_old_server():
         binary = Path(args.old_server).resolve()
-        check(binary.is_file() and os.access(binary, os.X_OK), "--old-server is not an executable file")
+        problem = old_server_problem(binary)
+        check(problem is None, problem)
+        old_sha, new_sha = sha256_file(binary), sha256_file(server_bin)
+        info = go_build_info(binary)
+        rev = info["build"].get("vcs.revision", "unknown")
+        platform = f"{info['build'].get('GOOS', '?')}/{info['build'].get('GOARCH', '?')}"
+        identity = old_server_identity(binary, old_sha, info, server_bin.resolve(), new_sha)
+        identity["old_server"]["size"] = binary.stat().st_size
+        evidence = work / "evidence" / "old_server_identity.json"
+        evidence.write_text(json.dumps(identity, indent=1))
+        check(binary != server_bin.resolve() and old_sha != new_sha,
+              "--old-server is the server this rehearsal built from the current tree, not a pre-021 build")
+        # Its own migrations on a fresh database: exactly 001-020, without 021.
+        fresh = work / "dbs" / "old-server-fresh"
+        fresh.mkdir()
+        with Server(binary, fresh / "app.db", work / "run" / "old-fresh", work / "logs" / "old-server-fresh.log") as s:
+            identity["ports"]["fresh"] = s.port
+        ledger = state(fresh / "app.db")["ledger"]
+        identity["old_server"]["fresh_ledger"] = ledger
+        evidence.write_text(json.dumps(identity, indent=1))
+        check(UPGRADE not in ledger, f"--old-server {binary} applies {UPGRADE} (vcs.revision {rev}): it is not a "
+                                     f"pre-021 build; its own ledger must end at {migration_names(before=UPGRADE[:3])[-1]}")
+        check(ledger == migration_names(before=UPGRADE[:3]), f"--old-server's own migrations end {ledger[-1:]}, expected 001-020")
         copy = work / "dbs" / "old-server"
         copy.mkdir()
         copy_db(active / "app.db", copy / "app.db")
+        reads = {}
         with Server(binary, copy / "app.db", work / "run" / "old", work / "logs" / "old-server.log") as s:
-            expect(s, "GET", "/listening/materials", 200)
-            expect(s, "GET", "/mistake-notebook/items", 200)
+            identity["ports"]["restored"] = s.port
+            for route in ("/listening/materials", "/mistake-notebook/items"):
+                expect(s, "GET", route, 200)
+                reads[route] = 200
         st = state(copy / "app.db")
+        identity["restored"] = {"database": str(copy / "app.db"), "ledger_before": ctx["pre"]["ledger"],
+                                "ledger_after": st["ledger"], "reads": reads}
+        evidence.write_text(json.dumps(identity, indent=1))
         check(st["ledger"] == ctx["pre"]["ledger"], f"old server changed the ledger to end {st['ledger'][-1:]}")
-        return "older binary ready on a copy of the restored database; reads 200; ledger unchanged"
+        return (f"required; old binary {binary} sha256 {old_sha[:16]}… (vcs.revision {rev[:12]}, {platform}) "
+                f"started: fresh database ledger 001-020 without 021; restored database (ledger ends "
+                f"{st['ledger'][-1]}) reads 200, ledger unchanged. "
+                f"New server sha256 {new_sha[:16]}… is a different binary")
 
-    if not rolled:
-        summary.stage("old-server", "NOT RUN", "rollback failed")
-    elif args.old_server:
-        stage("old-server", do_old_server)
+    skip = old_server_skip(bool(args.old_server), rolled, fixture_db=bool(args.fixture_db))
+    if skip:
+        summary.stage("old-server", *skip)
     else:
-        summary.stage("old-server", "NOT RUN",
-                      "owner verification: rerun with --old-server built from the commit before 021")
+        stage("old-server", do_old_server)
 
     def do_reupgrade():
         with Server(server_bin, active / "app.db", work / "run" / "reupgrade", work / "logs" / "reupgrade.log") as s:

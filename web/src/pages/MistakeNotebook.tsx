@@ -4,6 +4,7 @@ import { ApiError } from "../api/client";
 import { StoredText } from "../components/ExplanationText";
 import { useI18n, type MessageKey } from "../i18n";
 import { sourceOpen, type KindConcepts, type KindView, type NotebookItem, type Skill, type SourceOpen } from "../types/notebook";
+import { NotebookPractice } from "./NotebookPractice";
 
 // Mistake Notebook v1 (private workbench only; never in the public demo).
 //
@@ -18,7 +19,7 @@ import { sourceOpen, type KindConcepts, type KindView, type NotebookItem, type S
 // - Grammar / Vocabulary list Concepts by the kinds of their current
 //   supporting units (concept_kind_view_v1); anything else stays unclassified.
 
-export type NotebookMode = "mistakes" | "retry" | KindView;
+export type NotebookMode = "mistakes" | "retry" | "practice" | KindView;
 type Mode = NotebookMode;
 type Load<T> = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: T };
 
@@ -54,11 +55,13 @@ export function MistakeNotebook({
   onOpenSource,
   onOpenRecord,
   onOpenConcept,
+  onOpenToday,
   modeRequest = null,
 }: {
   onOpenSource?: (open: SourceOpen) => void;
   onOpenRecord?: (entryId: number) => void;
   onOpenConcept?: (conceptId: number) => void;
+  onOpenToday?: () => void;
   // The learning home opens Grammar or Vocabulary directly.
   modeRequest?: { mode: NotebookMode; nonce: number } | null;
 } = {}) {
@@ -70,6 +73,7 @@ export function MistakeNotebook({
   const modes: [Mode, MessageKey][] = [
     ["mistakes", "notebook.mode.mistakes"],
     ["retry", "notebook.mode.retry"],
+    ["practice", "notebook.mode.practice"],
     ["grammar", "notebook.mode.grammar"],
     ["vocabulary", "notebook.mode.vocabulary"],
     ["unclassified", "notebook.mode.unclassified"],
@@ -87,6 +91,8 @@ export function MistakeNotebook({
         <MistakeList onOpenSource={onOpenSource} onOpenRecord={onOpenRecord} />
       ) : mode === "retry" ? (
         <RetrySession onOpenSource={onOpenSource} />
+      ) : mode === "practice" ? (
+        <NotebookPractice onOpenSource={onOpenSource} onOpenRecord={onOpenRecord} onOpenToday={onOpenToday} />
       ) : (
         <ConceptKinds key={mode} kind={mode} onOpenConcept={onOpenConcept} />
       )}
@@ -145,7 +151,7 @@ function Attempt({ item }: { item: NotebookItem }) {
   return <p className="hint">{t("notebook.item.noAttempt")}</p>;
 }
 
-function Reference({ item }: { item: NotebookItem }) {
+export function Reference({ item }: { item: NotebookItem }) {
   const { t } = useI18n();
   return (
     <div className="notebook-reference" role="group" aria-label={t("notebook.item.referenceRegion")}>

@@ -885,3 +885,103 @@ describe("Speaking practice overview from the backend's own answer", () => {
     expect(speakingWrites(server)).toEqual([]);
   });
 });
+
+// Speaking practice workspace (Review Today batch 041–050).
+describe("Speaking practice workspace", () => {
+  it("attributes each version, shows the learner's edits of the machine transcript as text only, and states what a take has", async () => {
+    installMedia("grant");
+    const server = newServer();
+    serve(server);
+    const panel = await openExercise(server);
+    fireEvent.click(within(panel).getByRole("button", { name: "Start recording" }));
+    fireEvent.click(await within(panel).findByRole("button", { name: "Stop" }));
+    fireEvent.click(await within(panel).findByRole("button", { name: "Use as take 1" }));
+    const take = await screen.findByRole("region", { name: "Take 1" });
+    const status = within(take).getByRole("list", { name: "Take 1: what this page has" });
+    expect(status).toHaveTextContent("Audio: in this page only, playable until you leave or reload; it is never stored.");
+    expect(status).toHaveTextContent("Transcript: none yet.");
+    fireEvent.click(within(take).getByRole("button", { name: "Send audio of take 1 for transcription…" }));
+    fireEvent.click(within(take).getByRole("button", { name: "Send audio" }));
+    await waitFor(() => expect((screen.getByLabelText("Transcript of take 1, version 1") as HTMLTextAreaElement).value).toBe(machineTranscript));
+    const editor = within(take).getByRole("form", { name: "Transcript of take 1" });
+    fireEvent.change(within(editor).getByLabelText("Transcript of take 1, version 1"), { target: { value: transcriptV1 } });
+    fireEvent.click(within(editor).getByRole("button", { name: "Confirm as version 1" }));
+    await within(take).findByRole("button", { name: "v1 · corrected" });
+    const region = screen.getByRole("region", { name: "Take 1" });
+    expect(within(region).getByRole("list", { name: "Take 1: what this page has" })).toHaveTextContent("Transcript: version 1, corrected.");
+    expect(within(region).getByText("Version 1 is your correction of the transcript.")).toBeInTheDocument();
+    const edits = within(region).getByRole("group", { name: "Your edits in version 1" });
+    expect(edits).toHaveTextContent("This compares text only: a difference can come from the transcriber, so it is not a pronunciation check or a score.");
+    const diff = within(edits).getByLabelText("Machine transcript compared with version 1");
+    expect(diff.querySelectorAll("ins").length + diff.querySelectorAll("del").length).toBeGreaterThan(0);
+    expect(diff.querySelector("ins")!.textContent).toMatch(/^your text: /);
+    // Nothing anywhere grades pronunciation.
+    expect(region.textContent).not.toMatch(/pronunciation (score|grade)|\d+\s*%/i);
+  });
+
+  it("keeps take 1 playable while a second recording is made and cancelled, and stores no audio anywhere", async () => {
+    installMedia("grant");
+    let n = 0;
+    URL.createObjectURL = vi.fn(() => `blob:take-${++n}`);
+    const server = newServer();
+    serve(server);
+    const panel = await openExercise(server);
+    fireEvent.click(within(panel).getByRole("button", { name: "Start recording" }));
+    fireEvent.click(await within(panel).findByRole("button", { name: "Stop" }));
+    fireEvent.click(await within(panel).findByRole("button", { name: "Use as take 1" }));
+    const take1 = await screen.findByRole("region", { name: "Take 1" });
+    expect(within(take1).getByLabelText("Play back take 1")).toHaveAttribute("src", "blob:take-1");
+    const writesBefore = speakingWrites(server).length;
+    // A second recording, then cancelled: take 1 keeps its audio.
+    const next = screen.getByRole("region", { name: "New take" });
+    fireEvent.click(within(next).getByRole("button", { name: "Start recording" }));
+    const stop = await within(next).findByRole("button", { name: "Stop" });
+    expect(screen.getByLabelText("Play back take 1")).toHaveAttribute("src", "blob:take-1");
+    fireEvent.click(stop);
+    const preview = await within(next).findByRole("group", { name: "Recorded take, not saved yet" });
+    expect(within(preview).getByLabelText("Play back this take")).toHaveAttribute("src", "blob:take-2");
+    fireEvent.click(within(preview).getByRole("button", { name: "Discard and record again" }));
+    await waitFor(() => expect(within(next).queryByRole("group", { name: "Recorded take, not saved yet" })).toBeNull());
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:take-2");
+    expect(URL.revokeObjectURL).not.toHaveBeenCalledWith("blob:take-1");
+    // The earlier take still plays from the same in-page audio, and nothing was sent.
+    expect(screen.getByLabelText("Play back take 1")).toHaveAttribute("src", "blob:take-1");
+    expect(speakingWrites(server)).toHaveLength(writesBefore);
+    // No audio in browser storage, and no request carried audio bytes.
+    const stored = [...Object.keys(window.localStorage), ...Object.keys(window.sessionStorage)]
+      .map((k) => window.localStorage.getItem(k) ?? window.sessionStorage.getItem(k) ?? "")
+      .join("\n");
+    expect(stored).not.toContain(WEBM_B64);
+    expect(server.calls.some((c) => c.body.includes(WEBM_B64))).toBe(false);
+  });
+
+  it("gives each attempt state a next action in words, with a decorative symbol beside it", async () => {
+    installMedia("grant");
+    const v = withTypedTake(1, [transcriptV1]);
+    v.takes[0].state = "feedback_ready";
+    v.takes.push({ id: 12, number: 2, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t", state: "feedback_unknown" });
+    v.takes.push({ id: 13, number: 3, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t", state: "transcription_failed" });
+    v.takes.push({ id: 14, number: 4, audio_source: "none", audio_mime: null, audio_bytes: null, audio_sha256: null, duration_ms: null, created_at: "t", state: "awaiting_transcript" });
+    const server = newServer({ exercises: [v] });
+    serve(server);
+    await openExercise(server);
+    const rows = within(screen.getByRole("list", { name: "Attempts" })).getAllByRole("listitem");
+    expect(rows.map((r) => r.querySelector("[data-state]")?.getAttribute("data-state"))).toEqual(["feedback_ready", "feedback_unknown", "transcription_failed", "awaiting_transcript"]);
+    expect(rows[0]).toHaveTextContent("Completed: read the feedback, or record another take.");
+    expect(rows[1]).toHaveTextContent("Interrupted: the outcome is unknown. Check the request before asking again.");
+    expect(rows[2]).toHaveTextContent("Recoverable: ask for the transcription again, or type the transcript.");
+    expect(rows[3]).toHaveTextContent("Next: type what you said, or ask for a transcription.");
+    for (const r of rows) expect(r.querySelector('[data-state] [aria-hidden="true"]')).not.toBeNull();
+    expect(speakingWrites(server)).toEqual([]);
+  });
+
+  it("says that two compared takes answered the same stored prompt and requirements", async () => {
+    installMedia("grant");
+    const v = withTypedTake(1, [transcriptV1, transcriptV2]);
+    const server = newServer({ exercises: [v] });
+    serve(server);
+    await openExercise(server);
+    const compare = screen.getByRole("region", { name: "Compare confirmed transcripts" });
+    expect(within(compare).getByText(`Both takes answered the same stored prompt (revision ffffffff) and its ${invitation.requirements.length} requirements.`)).toBeInTheDocument();
+  });
+});

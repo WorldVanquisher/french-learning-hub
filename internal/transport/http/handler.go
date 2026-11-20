@@ -88,6 +88,8 @@ type Handler struct {
 	writing             WritingService
 	speaking            SpeakingService
 	notebook            MistakeNotebookService
+	week                LearningWeekService
+	history             HistoryExportService
 	exam                ExamService
 	// demo is set only in the FLH-073 public demo mode.
 	demo *publicDemo
@@ -220,6 +222,10 @@ func (h *Handler) Routes() http.Handler {
 	h.registerWritingRoutes(mux)
 	h.registerSpeakingRoutes(mux)
 	h.registerNotebookRoutes(mux)
+	h.registerReviewTodayRoutes(mux)
+	h.registerRevisionStudioRoutes(mux)
+	h.registerLearningWeekRoutes(mux)
+	h.registerHistoryExportRoutes(mux)
 	h.registerExamRoutes(mux)
 	h.registerPublicDemoRoutes(mux)
 	return mux

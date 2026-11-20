@@ -7,6 +7,7 @@ import { Speaking } from "./pages/Speaking";
 import { MistakeNotebook, type NotebookMode } from "./pages/MistakeNotebook";
 import { HOME_SECTIONS, LearningHome, type HomeSection, type HomeTarget } from "./pages/LearningHome";
 import { LazySection } from "./LazySection";
+import { ReviewToday } from "./pages/ReviewToday";
 import { AnnotationInspector } from "./pages/AnnotationInspector";
 import type { SourceOpen } from "./types/notebook";
 import { RecordsBrowser } from "./pages/RecordsBrowser";
@@ -339,6 +340,19 @@ function Workbench() {
       <Kept view="speaking" shown={view} mounted={mounted}>
         <Speaking onOpenRecord={(entryId) => openRecord(entryId, { kind: "speaking" })} openRequest={speakingOpen} />
       </Kept>
+      {view === "today" ? (
+        <ReviewToday
+          onOpenSpeaking={(exerciseId, takeId) => {
+            setFocus(null);
+            setSpeakingOpen({ exerciseId, takeId, nonce: ++nonce.current });
+            keep("speaking");
+            setOrigin({ from: { kind: "today" }, on: "speaking" });
+            setView("speaking");
+          }}
+          onOpenSource={(open) => openSource(open, { kind: "today" })}
+          onShow={show}
+        />
+      ) : null}
       {view === "home" ? <LearningHome<HomeTarget | "exam"> sections={HOME_WITH_EXAM} onOpen={openHome} lead={<ContinueLearning onContinue={continueWith} />} /> : null}
       <Kept view="exam" shown={view} mounted={mounted}>
         <LazySection>
@@ -350,6 +364,7 @@ function Workbench() {
           onOpenSource={(open) => openSource(open, { kind: "notebook" })}
           onOpenRecord={(entryId) => openRecord(entryId, { kind: "notebook" })}
           onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "notebook" })}
+          onOpenToday={() => show("today")}
           modeRequest={notebookMode}
         />
       </Kept>

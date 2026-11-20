@@ -1,0 +1,31 @@
+{
+ "about": "Grading cases checked on both sides: web/src/prototype/practiceFeed.test.ts (the workbench's mirror) and grade_parity.py (the extraction lane's practice.grade() from the SEALED Extraction 2.1 snapshot). Each case names the grading fixture (a tutor packet with rubrics, generated from the seal) and the feed whose item it grades. Synthetic French.",
+ "cases": [
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-8d5cabf2ab59", "text": "Oui, on y va !", "outcome": "correct"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-8d5cabf2ab59", "text": "oui nous y allons", "outcome": "correct"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-8d5cabf2ab59", "text": "Non, on n’y va pas.", "outcome": "correct"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-8d5cabf2ab59", "text": "Oui, nous en allons.", "outcome": "incorrect"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-8d5cabf2ab59", "text": "Oui, ce soir nous y allons avec Paul.", "outcome": "self_check"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-664f7533a19d", "text": "Oui, j'y reviens.", "outcome": "incorrect"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-664f7533a19d", "text": "Oui, j’en reviens.", "outcome": "correct"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-664f7533a19d", "text": "OUI J'EN REVIENS", "outcome": "correct"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-664f7533a19d", "text": "« Oui, j'en reviens à l'instant ! »", "outcome": "correct"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-664f7533a19d", "text": "Je reviens du marché.", "outcome": "self_check"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-0e74504cf958", "text": "en", "outcome": "correct"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-0e74504cf958", "text": "Y", "outcome": "incorrect"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-0e74504cf958", "text": "là", "outcome": "invalid"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-22a947cd7f5c", "text": " y. ", "outcome": "correct"},
+  {"grading": "tutor-y-en-r1.json", "feed": "feed-y-en-demo-r1.json", "practice_id": "p-2ea892e5eaa0", "text": "« y » après à, « en » après de", "outcome": "self_check"},
+  {"grading": "tutor-y-en-r2.json", "feed": "feed-y-en-demo-r2-reapproved.json", "practice_id": "p-664f7533a19d", "text": "Non, je n'en reviens pas.", "outcome": "correct"},
+  {"grading": "tutor-y-en-r2.json", "feed": "feed-y-en-demo-r2-reapproved.json", "practice_id": "p-8d5cabf2ab59", "text": "Oui, on en va.", "outcome": "incorrect"},
+  {"grading": "tutor-y-en-r2.json", "feed": "feed-y-en-demo-r2-reapproved.json", "practice_id": "p-0e74504cf958", "text": "EN", "outcome": "correct"},
+  {"grading": "tutor-savoir-connaitre-r1.json", "feed": "feed-savoir-connaitre-demo-r1.json", "practice_id": "p-3ca128617083", "text": "connais", "outcome": "correct"},
+  {"grading": "tutor-savoir-connaitre-r1.json", "feed": "feed-savoir-connaitre-demo-r1.json", "practice_id": "p-3ca128617083", "text": "sais", "outcome": "incorrect"},
+  {"grading": "tutor-savoir-connaitre-r1.json", "feed": "feed-savoir-connaitre-demo-r1.json", "practice_id": "p-baa71166205b", "text": "conait", "outcome": "invalid"},
+  {"grading": "tutor-savoir-connaitre-r1.json", "feed": "feed-savoir-connaitre-demo-r1.json", "practice_id": "p-e61b319d2129", "text": "Oui, je connais nager.", "outcome": "incorrect"},
+  {"grading": "tutor-savoir-connaitre-r1.json", "feed": "feed-savoir-connaitre-demo-r1.json", "practice_id": "p-e61b319d2129", "text": "non je ne sais pas nager", "outcome": "correct"},
+  {"grading": "tutor-savoir-connaitre-r1.json", "feed": "feed-savoir-connaitre-demo-r1.json", "practice_id": "p-3ac3b47e483a", "text": "Oui, je le connais bien.", "outcome": "self_check"},
+  {"grading": "tutor-savoir-connaitre-r1.json", "feed": "feed-savoir-connaitre-demo-r1.json", "practice_id": "p-3ac3b47e483a", "text": "Oui, je le connais.", "outcome": "correct"},
+  {"grading": "tutor-savoir-connaitre-r1.json", "feed": "feed-savoir-connaitre-demo-r1.json", "practice_id": "p-8d55e5e7255d", "text": "savoir + infinitif, connaître + une personne", "outcome": "self_check"}
+ ]
+}

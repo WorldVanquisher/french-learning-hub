@@ -26,6 +26,7 @@ import { randomOperationId } from "./annotationOperation";
 import { alreadySaved, sourceRef } from "./notebookLink";
 import { DailyPanel, NotificationsSection } from "./ListeningDaily";
 import { NextScript, ScriptsPanel } from "./ListeningScripts";
+import { RevisionStudio } from "./RevisionStudio";
 
 // Exam Listening Lesson v1 (private workbench only; never in the public demo).
 //
@@ -392,6 +393,17 @@ function LessonScreen({
             setEpoch((n) => n + 1);
           }}
           onReload={() => setEpoch((n) => n + 1)}
+        />
+      ) : null}
+      {isScript(material) && lesson.data.script_revision ? (
+        <RevisionStudio
+          materialId={id}
+          currentRevision={lesson.data.script_revision.revision}
+          answered={answered}
+          onRestored={(from, to, replayed) => {
+            setUpdated({ from, to, replayed });
+            setEpoch((n) => n + 1);
+          }}
         />
       ) : null}
       {target ? (
