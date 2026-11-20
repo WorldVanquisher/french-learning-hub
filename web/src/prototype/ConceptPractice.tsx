@@ -310,6 +310,26 @@ export function RevisionNotices({ catalog, visit, sourceId }: { catalog: Fixture
                     ) : null}
                     {t("feedPractice.rev.producerReason")} <q>{w.reason}</q> {n ? tp("feedPractice.rev.historyKept", n) : t("feedPractice.rev.historyNone")}
                   </span>
+                  {off && off.item.evidence_ids.length ? (
+                    // The latest revision no longer supports it: the evidence it was built on stays
+                    // visible, labelled with the revision it came from (R4-WB-027).
+                    <details className="feed-previous-evidence" data-previous-evidence={off.data.source.revision}>
+                      <summary>{t("feedPractice.rev.previousEvidence", { revision: off.data.source.revision })}</summary>
+                      <ul>
+                        {off.item.evidence_ids.map((id) => {
+                          const e = off.data.evidence.find((x) => x.evidence_id === id);
+                          return (
+                            <li key={id} data-evidence={id}>
+                              <q lang="fr" className="french">
+                                {e?.quote ?? id}
+                              </q>{" "}
+                              <code>{id}</code>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </details>
+                  ) : null}
                 </li>
               );
             })}

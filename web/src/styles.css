@@ -1231,3 +1231,8 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 /* R3: the section menu is collapsed by default (one Tab stop). */
 .concept-practice-jump-menu summary { cursor: pointer; padding: 6px 0; }
 @media (max-width: 640px) { .concept-practice-jump-menu summary { min-height: 44px; display: flex; align-items: center; } }
+/* R4: Review Today's next-review recommendation (collapsed by default). */
+.today-schedule { margin-top: 6px; }
+.today-schedule summary { cursor: pointer; }
+.today-schedule p { margin: 4px 0 0; }
+@media (max-width: 640px) { .today-schedule summary { min-height: 44px; display: flex; align-items: center; } }

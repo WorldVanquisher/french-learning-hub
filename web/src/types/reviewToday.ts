@@ -14,6 +14,25 @@ export interface ReviewTodayItem {
   since_day?: string | null; // the local day of `since` in the requested zone
   speaking: SpeakingQueueItem | null;
   notebook: NotebookItem | null;
+  // Other marked notebook records for the same question (another revision of
+  // the lesson): this one item stands for them all; "Done for today" clears all.
+  also_entry_ids?: number[];
+  // The readable next-review recommendation (existing scheduling ladder).
+  schedule?: ReviewSchedule;
+}
+
+export interface ReviewScheduleStep {
+  day: string; // local day in the requested zone
+  interval_days: number; // calendar days from today
+  rule: string; // the traceable rule, e.g. "ladder n=2 +3d from 2026-11-20 (last attempt)"
+}
+
+export interface ReviewSchedule {
+  class: "recovery" | "review" | "new";
+  due_day: string;
+  rule: string;
+  if_completed: ReviewScheduleStep;
+  if_missed: ReviewScheduleStep;
 }
 
 export interface ReviewToday {

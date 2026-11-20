@@ -136,6 +136,21 @@ func TestReviewToday_MergesDueItemsKeepsHistoryOutAndDropsCompletedActions(t *te
 		path(items[1], "notebook", "source_status") != "resolved" || path(items[1], "speaking") != nil {
 		t.Fatalf("item payloads: %v", items)
 	}
+	// R4-WB-011/014: every item carries its readable recommendation: due now,
+	// and the day after a completed or a missed attempt today.
+	for i, it := range items {
+		for _, k := range []string{"class", "due_day", "rule"} {
+			if path(it, "schedule", k) == nil {
+				t.Fatalf("item %d: schedule.%s missing: %v", i, k, path(it, "schedule"))
+			}
+		}
+		if path(it, "schedule", "if_completed", "interval_days") == nil || path(it, "schedule", "if_missed", "rule") == nil || path(it, "also_entry_ids") != nil {
+			t.Fatalf("item %d schedule: %v", i, it)
+		}
+	}
+	if path(items[1], "schedule", "if_missed", "interval_days") != 1.0 || path(items[1], "schedule", "if_completed", "interval_days") != 3.0 {
+		t.Fatalf("notebook schedule: %v", path(items[1], "schedule"))
+	}
 	// History stays out of the queue but is counted for its link.
 	if path(out, "history", "notebook_items") != 2.0 || path(out, "history", "speaking_exercises") != 2.0 || path(out, "history", "speaking_takes") != 1.0 {
 		t.Fatalf("history: %v", out["history"])

@@ -9,6 +9,7 @@ import { closeConcept, openConcept, usePracticeVisit } from "../prototype/practi
 import { HistoryExport } from "./HistoryExport";
 import { LearningWeek } from "./LearningWeek";
 import { QueueReason } from "./Speaking";
+import { hiddenKeys, rememberReturn, setHiddenKeys, takeReturn } from "./reviewTodayMemory";
 
 // Review Today (private workbench): one queue of what the learner can act on
 // now, from the backend's review_today_v1. Speaking steps open the exercise at
@@ -45,11 +46,22 @@ export function ReviewToday({
   const [epoch, setEpoch] = useState(0);
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [busy, setBusy] = useState<string | null>(null);
+  // Focus to give back after a save, applied by an effect once the buttons are
+  // enabled again: a browser refuses focus on a disabled button, so focusing in
+  // an animation frame could land before the re-render and lose it (R4).
+  const [refocus, setRefocus] = useState<{ key: string; index: number; on: "done" | "next" } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [announce, setAnnounce] = useState("");
   // "Hide for this visit" (Speaking steps): page-only, nothing is deleted or
   // stored; a persisted defer needs storage the owner has not allocated.
-  const [hidden, setHidden] = useState<string[]>([]);
+  // Kept in page memory, so leaving for a lesson and coming back keeps it.
+  const [hidden, setHiddenState] = useState<string[]>(hiddenKeys);
+  const setHidden = (next: string[] | ((h: string[]) => string[])) =>
+    setHiddenState((h) => {
+      const v = typeof next === "function" ? next(h) : next;
+      setHiddenKeys(v);
+      return v;
+    });
   const listRef = useRef<HTMLOListElement>(null);
   // The practice prototype (sealed synthetic fixture): page memory only
   // (practiceStore), so its panel, the opened concept and every answer survive
@@ -67,6 +79,33 @@ export function ReviewToday({
       live = false;
     };
   }, [epoch]);
+
+  // Coming back from an item's lesson or take (the BackBanner): focus goes to
+  // that item's first button, or, when it has left the queue, to the heading.
+  useEffect(() => {
+    if (load.status !== "ready") return;
+    const key = takeReturn();
+    if (key === null) return;
+    requestAnimationFrame(() => {
+      const row = listRef.current?.querySelector<HTMLElement>(`li[data-key="${key}"]`);
+      (row?.querySelector<HTMLElement>("button") ?? headingRef.current)?.focus();
+    });
+  }, [load]);
+
+  useEffect(() => {
+    if (!refocus || busy !== null) return;
+    const rows = [...(listRef.current?.querySelectorAll<HTMLElement>("li[data-key]") ?? [])];
+    const { key, index, on } = refocus;
+    if (on === "done") {
+      // the same item's button; after a partial group save, the row at the same place
+      const row = rows.find((r) => r.dataset.key === key) ?? rows[index] ?? rows[index - 1];
+      (row?.querySelector<HTMLElement>('[data-action="done"]') ?? row?.querySelector<HTMLElement>("button") ?? headingRef.current)?.focus();
+    } else {
+      const row = rows[index] ?? rows[index - 1];
+      (row?.querySelector<HTMLElement>("button") ?? headingRef.current)?.focus();
+    }
+    setRefocus(null);
+  }, [refocus, busy, load]);
 
   // After an item leaves the queue, focus goes to the item that took its
   // place (or the one before it, or the heading when the queue is empty).
@@ -90,23 +129,34 @@ export function ReviewToday({
 
   // "Done for today": the notebook's own retry save, then a fresh read; the
   // item leaves the queue without a page reload and focus moves on.
+  // An item standing for several records of the same question clears each
+  // (the same save, one record at a time; a repeated save is a no-op).
   const done = async (it: ReviewTodayItem, index: number) => {
     if (!it.notebook) return;
     setBusy(it.key);
     setError(null);
+    let cleared = 0;
     try {
-      await api.setNotebookRetry(it.notebook.entry_id, false);
+      for (const id of [it.notebook.entry_id, ...(it.also_entry_ids ?? [])]) {
+        await api.setNotebookRetry(id, false);
+        cleared++;
+      }
       const data = await api.getReviewToday();
       setLoad({ status: "ready", data });
       setAnnounce(t("today.doneAnnounce", { title: it.notebook.title }));
       // Focus goes to the item that took this one's place (or the one before
-      // it, or the heading when the queue is empty).
-      focusRow(index);
+      // it, or the heading when the queue is empty), once the buttons are enabled.
+      setRefocus({ key: it.key, index, on: "next" });
     } catch (e) {
       setError(t("today.doneFailed", { message: e instanceof Error ? e.message : String(e) }));
+      // Part of a group cleared: re-read so the row shows the truth (it stays
+      // while any record is still marked). A failed re-read keeps the row.
+      if (cleared > 0) await api.getReviewToday().then((data) => setLoad({ status: "ready", data }), () => undefined);
       // The button was disabled while saving, which drops focus: give it back to
-      // the same item's button so the learner can retry from where they were.
-      requestAnimationFrame(() => listRef.current?.querySelector<HTMLElement>(`li[data-key="${it.key}"] [data-action="done"]`)?.focus());
+      // the same item's button so the learner can retry from where they were
+      // (after a partial group save, the row at the same place: it may now
+      // stand for the record still marked).
+      setRefocus({ key: it.key, index, on: "done" });
     } finally {
       setBusy(null);
     }
@@ -183,7 +233,14 @@ export function ReviewToday({
                       : t("today.basedOn.speaking", { exercise: it.speaking.exercise_id ?? 0, reason: it.reason, day: it.since_day ?? when(it.since) })}
                   </p>
                   <div className="actions">
-                    <button type="button" className="primary" onClick={() => onOpenSpeaking(it.speaking!.exercise_id!, it.speaking!.take_id ?? undefined)}>
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={() => {
+                        rememberReturn(it.key);
+                        onOpenSpeaking(it.speaking!.exercise_id!, it.speaking!.take_id ?? undefined);
+                      }}
+                    >
                       {it.speaking.take_number ? t("today.openTake", { n: it.speaking.take_number }) : t("today.openExercise")}
                     </button>
                     <button
@@ -207,6 +264,11 @@ export function ReviewToday({
                       {it.notebook.prompt}
                     </span>
                   </p>
+                  {it.also_entry_ids?.length ? (
+                    <p className="hint" data-also={it.also_entry_ids.join(" ")}>
+                      {tp("today.also", it.also_entry_ids.length)}
+                    </p>
+                  ) : null}
                   <p className="hint" data-based-on="notebook">
                     {t("today.basedOn.notebook", {
                       entry: it.notebook.entry_id,
@@ -218,7 +280,14 @@ export function ReviewToday({
                   </p>
                   <div className="actions">
                     {sourceOpen(it.notebook) ? (
-                      <button type="button" className="primary" onClick={() => onOpenSource(sourceOpen(it.notebook!)!)}>
+                      <button
+                        type="button"
+                        className="primary"
+                        onClick={() => {
+                          rememberReturn(it.key);
+                          onOpenSource(sourceOpen(it.notebook!)!);
+                        }}
+                      >
                         {t("today.openLesson")}
                       </button>
                     ) : (
@@ -230,6 +299,7 @@ export function ReviewToday({
                   </div>
                 </>
               ) : null}
+              {it.schedule ? <NextReview s={it.schedule} /> : null}
             </li>
           ))}
         </ol>
@@ -292,5 +362,22 @@ export function ReviewToday({
         <HistoryExport />
       </section>
     </main>
+  );
+}
+
+// The next-review recommendation (R4-WB-011, R4-WB-014): when the item is due,
+// and what one more attempt today would change, completed or missed. The
+// learner's queue itself is still only what they marked; nothing is stored.
+function NextReview({ s }: { s: NonNullable<ReviewTodayItem["schedule"]> }) {
+  const { t, tp } = useI18n();
+  return (
+    <details className="today-schedule" data-schedule={s.class}>
+      <summary>{t(s.class === "recovery" ? "today.schedule.recovery" : "today.schedule.due")}</summary>
+      <p data-if="completed">{tp("today.schedule.ifCompleted", s.if_completed.interval_days, { day: s.if_completed.day })}</p>
+      <p data-if="missed">
+        {s.if_missed.interval_days === 0 ? t("today.schedule.ifMissedToday") : tp("today.schedule.ifMissed", s.if_missed.interval_days, { day: s.if_missed.day })}
+      </p>
+      <p className="hint">{t("today.schedule.rule", { completed: s.if_completed.rule, missed: s.if_missed.rule })}</p>
+    </details>
   );
 }

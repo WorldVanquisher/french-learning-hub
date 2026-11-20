@@ -109,6 +109,28 @@ class InventoryTest(unittest.TestCase):
         self.assertEqual(rec["invariants"], {"listening_transcripts: versions not 1..N per material_id": 1, "exam answers saved after their session's deadline": 1})
         self.assertIn("invariants:", summary)
 
+    def test_missing_critical_family_blocks_against_the_baseline(self):
+        code, base, _ = run(self.data, self.t / "base")
+        self.assertEqual(code, 0)
+        code, same, _ = run(self.data, self.t / "same", "--expect", str(self.t / "base" / "inventory.json"))
+        self.assertEqual((code, same["expect"]["missing"], same["expect"]["same_logical_digest"]), (0, [], True))
+        self.sql("DELETE FROM mistake_retry_marks")
+        code, rec, summary = run(self.data, self.t / "o", "--expect", str(self.t / "base" / "inventory.json"))
+        self.assertEqual((code, rec["verdict"]), (1, "PROBLEMS"))
+        self.assertEqual(rec["expect"]["missing"], ["mistake notebook: mistake_retry_marks 0 of 1 rows"])
+        self.assertIn("missing data family (blocking)", summary)
+
+    def test_auxiliary_files_and_a_reproducible_receipt(self):
+        (self.data / "notes.txt").write_text("not learner data")
+        code1, a, _ = run(self.data, self.t / "a")
+        code2, b, _ = run(self.data, self.t / "b")
+        self.assertEqual(a, b)
+        self.assertEqual([x["name"] for x in a["auxiliary"]], ["notes.txt"])
+        self.assertTrue(any("files beside the database" in w for w in a["warnings"]))
+        blob = (self.t / "a" / "inventory.json").read_text()
+        for private in (SECRET, "contexte privé", "not learner data"):
+            self.assertNotIn(private, blob)
+
     def test_encoding_control_characters_and_identifier_forms(self):
         self.sql(("UPDATE learning_entries SET original_context = CAST(? AS TEXT)", (b"\xff\xfe bad",)),
                  "UPDATE learning_entries SET original_input = 'a' || char(7) || 'b'",

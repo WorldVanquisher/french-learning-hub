@@ -90,6 +90,22 @@ SOURCE_REFS = {
 }
 
 # Rows a rehearsal may leave out, and why (R3-009).
+# Learner-critical data families (R4-WB-041): a restore or migration that loses
+# any row of these, compared with the source's inventory (--expect), is blocked.
+CRITICAL = {
+    "learning records": ["learning_entries", "learning_captures", "entry_analyses", "analysis_feedback"],
+    "mistake notebook": ["learning_capture_sources", "mistake_retry_marks"],
+    "listening lessons": ["listening_materials", "listening_transcripts", "listening_exercises"],
+    "reading lessons": ["reading_lessons", "reading_passages", "reading_exercises"],
+    "writing": ["writing_tasks", "writing_drafts", "writing_feedback"],
+    "speaking": ["speaking_exercises", "speaking_takes", "speaking_transcriptions", "speaking_transcripts", "speaking_feedback"],
+    "mock exams": ["exam_sessions", "exam_session_items", "exam_answers", "exam_submissions"],
+    "knowledge": ["knowledge_extractions", "knowledge_units", "knowledge_admission_overrides", "knowledge_concepts",
+                  "unit_concept_memberships", "unit_concept_links", "unit_resolution_judgments", "unit_concept_distinctions",
+                  "entry_current_extractions", "concept_suggestion_confirmations"],
+    "idempotency receipts": ["annotation_operations"],
+}
+
 EXCLUDABLE = {
     "cache": "rebuildable from learner rows (semantic-index sync); never learner data",
     "operational": "request and lease bookkeeping; copied byte for byte, but never compared field by field after a move",

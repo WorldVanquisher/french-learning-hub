@@ -268,6 +268,11 @@ describe("Practice prototype on the sealed Extraction 2.1 fixtures", () => {
     const w = document.querySelector('[data-withdrawn="p-22a947cd7f5c"]')!;
     expect(w).toHaveTextContent("The extraction feed says: not offered from revision 2: its knowledge needs the learner's review or was rejected");
     expect(w).toHaveTextContent("Your 1 answer on it stays in this visit's history.");
+    // R4-WB-027: the evidence it was built on stays visible, from revision 1
+    const prev = w.querySelector('[data-previous-evidence="1"]')!;
+    expect(prev.querySelector("summary")).toHaveTextContent("What it was built on, in revision 1 (no longer in the latest source)");
+    expect(prev.querySelectorAll("[data-evidence]").length).toBeGreaterThan(0);
+    expect([...prev.querySelectorAll("q")].every((q) => (q.textContent ?? "").length > 3)).toBe(true);
     expect(screen.queryByRole("group", { name: "Exercise p-22a947cd7f5c" })).toBeNull();
     await back();
     fireEvent.click(within(conceptRow("y-en-demo")).getByRole("button", { name: "Simulate the next feed: revision 2 (synthetic)" }));
@@ -406,6 +411,66 @@ describe("Practice prototype on the sealed Extraction 2.1 fixtures", () => {
     await screen.findByRole("heading", { name: "Practise: y vs en" });
     fireEvent.click(screen.getByRole("button", { name: "Open the source now (counts as a reveal)" }));
     expect(document.querySelector('[data-knowledge="k-40cbe73ae3f5"] [data-accepted-visit="claude-code:q2"]')).toHaveTextContent("Accepted for this visit only, from claude-code's proposal q2:");
+  });
+
+  it("never sends or stores a typed answer; only the learner's opt-in puts it in an export, and a reload removes it (R4-WB-032, R4-WB-033)", async () => {
+    const SECRET = "ZZ-PRIVATE-7731 je le connais";
+    await openConcept("savoir-connaitre-demo", "Practise: connaître vs savoir");
+    const calls: string[] = [];
+    const real = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push(`${String(input)} ${String(init?.body ?? "")}`);
+      return real(input, init);
+    }) as unknown as typeof fetch;
+    type("p-3ac3b47e483a", SECRET);
+    fireEvent.click(within(card("p-3ac3b47e483a")).getByRole("button", { name: "Check" }));
+    fireEvent.click(within(card("p-3ac3b47e483a")).getByRole("button", { name: "Not yet" }));
+    type("p-e61b319d2129", SECRET);
+    await back();
+    const storage = () => [...Object.keys(window.localStorage).map((k) => window.localStorage.getItem(k)), ...Object.keys(window.sessionStorage).map((k) => window.sessionStorage.getItem(k))].join(" ");
+    expect(calls.join(" ")).not.toContain("ZZ-PRIVATE-7731");
+    expect(storage()).not.toContain("ZZ-PRIVATE-7731");
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    fireEvent.click(screen.getByRole("button", { name: "Copy this visit as JSON" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect((writeText.mock.calls[0] as unknown as [string])[0]).not.toContain("ZZ-PRIVATE-7731");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Include my answer texts (off by default)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy this visit as JSON" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect((writeText.mock.calls[1] as unknown as [string])[0]).toContain("ZZ-PRIVATE-7731");
+    // removal: a reload forgets the visit (attempts, drafts, the opt-in)
+    resetPracticeVisit();
+    const after = getSnapshot();
+    expect([after.visit.attempts.length, Object.keys(after.visit.drafts).length, JSON.stringify(after).includes("ZZ-PRIVATE")]).toEqual([0, 0, false]);
+    expect(calls.join(" ")).not.toContain("ZZ-PRIVATE-7731");
+  });
+
+  it("traces each attempt to its source, revision and evidence, and lists a check in flight apart (R4-WB-026, R4-WB-028)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await openConcept();
+    fireEvent.click(within(card("p-22a947cd7f5c")).getByRole("button", { name: "y" }));
+    await back();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Simulate a slow check (2 seconds)" }));
+    fireEvent.click(within(conceptRow("y-en-demo")).getByRole("button", { name: "Open the concept" }));
+    await screen.findByRole("heading", { name: "Practise: y vs en" });
+    type("p-8d5cabf2ab59", "Oui, on y va !");
+    fireEvent.click(within(card("p-8d5cabf2ab59")).getByRole("button", { name: "Check" }));
+    await back();
+    const log = document.querySelector('[data-log="visit"]')!;
+    const pending = log.querySelector('[data-log="pending"]')!;
+    expect(pending.querySelectorAll("[data-pending]")).toHaveLength(1);
+    expect(pending).toHaveTextContent("Waiting for a check (not an attempt yet)");
+    expect(pending).toHaveTextContent("p-8d5cabf2ab59");
+    const done = [...log.querySelectorAll("[data-entry]")];
+    expect(done.map((e) => e.querySelector("code")?.textContent)).not.toContain("p-8d5cabf2ab59");
+    const trace = done[0].querySelector("[data-trace]")!;
+    expect(trace).toHaveAttribute("data-trace", "y-en-demo@1");
+    expect(trace.textContent).toMatch(/^\(source y-en-demo, revision 1; evidence ev-[0-9a-f]+/);
+    await act(async () => {
+      vi.advanceTimersByTime(2100);
+    });
+    expect(document.querySelector('[data-log="pending"]')).toBeNull();
   });
 
   it("logs the visit by skill and day with each outcome's origin, and exports it without answer texts unless asked", async () => {
