@@ -45,7 +45,11 @@ the NAS backup and on the AWS restored copy.
 - Take it from the Workbooks lane's final **sealed** `workbooks-r3` handoff-100 (`SHA256SUMS`
   digest `758939cb4055…ca322`; `inventory.py` byte-identical to handoff-075, `90a1ad828d3e…d609a`)
   until it is on `main`. Its `docs/validation/R3-DATA-MIGRATION-AND-DAILY-LEARNING.md` §5 lists
-  the related rehearsal commands. The seal carries it in `changes.patch`: apply that
+  the related rehearsal commands.
+- **R4 (Workbooks handoff-075, `SHA256SUMS` `c93eb479…00862`):** `inventory.py --expect BASELINE` refuses a
+  restore that loses rows of a learner-critical family, and `verify_restore.sh BACKUP_DIR WORK` runs the whole
+  sequence (inspect, pack, transfer check, unpack, restore copy, write check, inventory against the
+  baseline). Release-lane rehearsal: VERIFIED on the synthetic fixture. The seal carries it in `changes.patch`: apply that
   to a scratch export of the release commit, never to a checkout in use.
 - **Rehearsed (release lane, 2026-11-20, stand-in):** after restoring the synthetic fixture and
   stopping the service, it reported READY on the source backup and on the restored data, with an

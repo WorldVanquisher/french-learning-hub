@@ -16,6 +16,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -83,6 +84,15 @@ class PlanCheck(unittest.TestCase):
         ("plan-unsafe-weakened-settings.json", "create", [], 1, "IMDSv2"),
         ("plan-unsafe-create-over-state.json", "create", [], 1, "not a first apply"),
         ("plan-create-safe.json", "destroy", [], 1, "create in a destroy plan"),
+        # R4: the data volume survives an instance replacement; anything else about its attachment STOPs
+        ("plan-update-replace-instance-keeps-data.json", "update",
+         ["--allow-replace", "aws_instance.host", "--allow-replace", "aws_volume_attachment.data"], 0, "re-attaches the same data volume"),
+        ("plan-unsafe-attachment-other-volume.json", "update",
+         ["--allow-replace", "aws_instance.host", "--allow-replace", "aws_volume_attachment.data"], 1, "volume_id changes"),
+        ("plan-unsafe-attachment-edit.json", "update", [], 1, "in-place update of the data volume attachment"),
+        ("plan-unsafe-attachment-edit.json", "update", [], 1, "device_name changes"),
+        ("plan-staging-unsafe-production-resource.json", "update", [], 1, "tag Component is 'workbench-production'"),
+        ("plan-staging-unsafe-production-resource.json", "update", [], 1, "belongs to another environment"),
         # R3: production settings, and each environment's plan checked as the other
         ("plan-production-create-safe.json", "create", ["--env", "production"], 0, "SAFE"),
         ("plan-production-update-replace-instance.json", "update", ["--env", "production"], 1, "without --allow-replace"),
@@ -241,6 +251,31 @@ class IamEnvironments(unittest.TestCase):
                 denies = {a for st in doc["Statement"] if st["Effect"] == "Deny" for a in st["Action"]}
                 self.assertTrue(rv.NEVER_IN_VERIFY <= denies)
 
+    def test_unexpected_wildcard_resource_is_refused(self):
+        # R4-REL-013: a staging policy that widens a statement to Resource "*" fails the review
+        rv = load_module("review_permissions_wc", os.path.join(STAGING, "iam", "review_permissions.py"))
+        bad = list(rv.statements(os.path.join(FIX, "iam-unexpected-wildcard-operate.json")))
+        probs = rv.wildcard_problems({"operate": bad})
+        self.assertEqual(len(probs), 1, probs)
+        self.assertIn("operate S3ReadBackups: unexpected wildcard resource *", probs[0])
+        self.assertEqual(rv.wildcard_problems(rv.policy_set()), [])
+        stripped = [(sid, eff, acts, res, {} if sid == "DecryptOnlyThroughSsm" else cond)
+                    for sid, eff, acts, res, cond in rv.policy_set()["host-boundary"]]
+        self.assertIn("wildcard allowed only with its condition", " ".join(rv.wildcard_problems({"host-boundary": stripped})))
+
+    def test_verifier_cannot_read_backups(self):
+        # R4-REL-014: the verify role is explicitly denied backup objects in both environments
+        for env, prefix in (("staging", "flh-stg"), ("production", "flh-prd")):
+            r = run(os.path.join(STAGING, "iam", "review_permissions.py"), "--env", env, "--simulate", "s3:GetObject",
+                    f"arn:aws:s3:::{prefix}-abc/backups/flh-20261120T000000Z.tar")
+            rows = dict(l.split()[:2] for l in r.stdout.splitlines() if l.strip())
+            with self.subTest(env=env):
+                self.assertEqual(rows["verify"], "Deny")
+                self.assertEqual(rows["host-boundary"], "Allow")
+            r = run(os.path.join(STAGING, "iam", "review_permissions.py"), "--env", env, "--simulate", "s3:GetObject",
+                    f"arn:aws:s3:::{prefix}-abc/releases/flh-staging-0123456789ab.tar.sha256")
+            self.assertIn("verify         Allow", r.stdout)
+
     def test_render_fills_production(self):
         with tempfile.TemporaryDirectory() as td:
             out = os.path.join(td, "filled")
@@ -281,6 +316,357 @@ class RollbackTarget(unittest.TestCase):
             with self.subTest(to=to), self.assertRaises(self.mod.Refused) as cm:
                 self.mod.rollback_target(cur, prev, to)
             self.assertIn(needle, str(cm.exception))
+
+
+class CandidateGates(unittest.TestCase):
+    """R4: candidate identity, provenance and promotion, the account/region/environment gate,
+    the effective-variable inventory and the authorization dry run (tools/candidate.py)."""
+    TOOL = os.path.join(STAGING, "tools", "candidate.py")
+    COMMIT = "c" * 40
+
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+        self.d = make_bundle(self.td, commit=self.COMMIT)
+        self.tar, self.sha = make_tar(self.d)
+        wr(self.tar + ".sha256", f"{self.sha}  {os.path.basename(self.tar)}\n")
+        self.mod = load_module("candidate_mod", self.TOOL)
+
+    def tearDown(self):
+        shutil.rmtree(self.td)
+
+    def run_tool(self, *args, env=None):
+        e = {k: v for k, v in os.environ.items() if not k.startswith("TF_VAR_")}
+        e.update(env or {})
+        return subprocess.run([PY, "-I", "-B", self.TOOL, *args], capture_output=True, text=True, env=e)
+
+    def test_identity_reads_the_bundle(self):
+        ident = self.mod.identity(self.tar)
+        self.assertEqual((ident["bundle"], ident["commit"], ident["tree"], ident["tar_sha256"], ident["image_platform"]),
+                         (NAME, self.COMMIT, TID, self.sha, "linux/amd64"))
+        self.assertEqual(ident["migrations"]["count"], 21)
+        self.assertEqual(self.run_tool("identity", self.tar).returncode, 0)
+
+    def test_promotion_requires_agreement(self):
+        prov = os.path.join(self.td, "prov.json")
+        r = self.run_tool("provenance", self.tar, "--commit", self.COMMIT, "--out", prov)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = self.run_tool("promote-check", self.tar, "--provenance", prov, "--sha256", self.sha)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("PROMOTE", r.stdout)
+        doc = json.loads(rd(prov))
+        for field, bad in (("commit", "d" * 40), ("tree", "e" * 40), ("tar_sha256", "f" * 64), ("image_id", "sha256:" + "0" * 64)):
+            with self.subTest(field=field):
+                p2 = os.path.join(self.td, f"prov-{field}.json")
+                jdump(dict(doc, **{field: bad}), p2)
+                r = self.run_tool("promote-check", self.tar, "--provenance", p2)
+                self.assertEqual(r.returncode, 1)
+                self.assertIn(f"MISMATCH {field}:", r.stdout)
+                self.assertIn("REFUSED", r.stdout)
+        r = self.run_tool("promote-check", self.tar, "--provenance", prov, "--sha256", "a" * 64)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("the typed SHA-256", r.stdout)
+        self.assertNotEqual(self.run_tool("provenance", self.tar, "--commit", "d" * 40, "--out",
+                                          os.path.join(self.td, "x.json")).returncode, 0)
+
+    def test_gate_compares_the_account_by_hash_and_never_prints_it(self):
+        acct = "111122223333"
+        ci = os.path.join(self.td, "caller.json")
+        jdump({"Account": acct, "Arn": f"arn:aws:sts::{acct}:assumed-role/AWSReservedSSO_X_abc/s", "UserId": "x"}, ci)
+        good = hashlib.sha256(acct.encode()).hexdigest()
+        r = self.run_tool("gate", "--caller-identity", ci, "--allowed-account-sha256", good, "--region", "us-east-1",
+                          "--env", "staging", "--workspace", "default")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn(acct, r.stdout + r.stderr)
+        for args, needle in ((["--allowed-account-sha256", "0" * 64, "--region", "us-east-1", "--env", "staging"], "FAIL account"),
+                             (["--allowed-account-sha256", good, "--region", "eu-west-3", "--env", "staging"], "FAIL region"),
+                             (["--allowed-account-sha256", good, "--region", "us-east-1", "--env", "prod"], "FAIL environment"),
+                             (["--allowed-account-sha256", good, "--region", "us-east-1", "--env", "staging", "--workspace", "production"], "FAIL workspace"),
+                             (["--allowed-account-sha256", good, "--region", "us-east-1", "--env", "production", "--workspace", "default"], "FAIL workspace")):
+            with self.subTest(needle=needle, args=args):
+                r = self.run_tool("gate", "--caller-identity", ci, *args)
+                self.assertEqual(r.returncode, 1, r.stdout)
+                self.assertIn(needle, r.stdout)
+                self.assertNotIn(acct, r.stdout)
+
+    def test_vars_show_sources_and_refuse_silent_inputs(self):
+        tv = filled_tfvars(os.path.join(self.td, "stg.tfvars"))
+        root = os.path.join(self.td, "root")
+        os.makedirs(root)
+        r = self.run_tool("vars", "--tfvars", tv, "--root", root, "--json")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        rows = {x["name"]: x for x in json.loads(r.stdout)["variables"]}
+        self.assertEqual(rows["run_id"]["source"], "-var-file stg.tfvars")
+        self.assertEqual((rows["vpc_cidr"]["value"], rows["vpc_cidr"]["source"]),
+                         ("10.85.0.0/24", "environment default (staging, main.tf locals)"))
+        self.assertEqual(rows["app_port"]["source"], "default")
+        # R4-009: a production value inherited from the shell or an auto-loaded file never arrives silently
+        r = self.run_tool("vars", "--tfvars", tv, "--root", root, env={"TF_VAR_environment": "production"})
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("REFUSE silent input: environment from environment TF_VAR_environment", r.stdout)
+        wr(os.path.join(root, "terraform.tfvars"), 'data_volume_size_gib = 20\n')
+        r = self.run_tool("vars", "--tfvars", tv, "--root", root)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("REFUSE silent input: data_volume_size_gib from auto-loaded terraform.tfvars", r.stdout)
+        r = self.run_tool("vars", "--tfvars", tv, "--root", os.path.join(self.td, "root2"), env={"TF_VAR_typo": "1"})
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("REFUSE unknown TF_VAR_typo", r.stdout)
+
+    def test_vars_redact_identifiers(self):
+        self.assertEqual(self.mod.redact("arn:aws:iam::111122223333:role/x and 111122223333"), "<arn> and <account-id>")
+
+    def test_authorize_is_a_dry_run_that_refuses_problems(self):
+        tv = filled_tfvars(os.path.join(self.td, "stg.tfvars"))
+        root = os.path.join(self.td, "root")
+        os.makedirs(root)
+        prov = os.path.join(self.td, "prov.json")
+        self.run_tool("provenance", self.tar, "--commit", self.COMMIT, "--out", prov)
+        r = self.run_tool("authorize", "--tfvars", tv, "--bundle", self.tar, "--sha256", self.sha, "--provenance", prov,
+                          "--root", root)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        for needle in ("DRY RUN", "environment      staging", "A2 (budget", "plan_check.py --env staging --mode create",
+                       "AUTHORIZATION MATERIAL READY"):
+            self.assertIn(needle, r.stdout)
+        r = self.run_tool("authorize", "--tfvars", tv, "--bundle", self.tar, "--sha256", "a" * 64, "--provenance", prov,
+                          "--root", root, env={"TF_VAR_expires_at": "never"})
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("NOT READY", r.stdout)
+
+
+class Lifecycle(unittest.TestCase):
+    """R4-REL-021..025: dated cost sheet by category, billable-after-shutdown, teardown rehearsal on a
+    synthetic inventory, and the residual-resource checklist from read-only evidence files."""
+    TOOL = os.path.join(STAGING, "tools", "lifecycle.py")
+    LF = os.path.join(FIX, "lifecycle")
+
+    def test_cost_by_category_adds_up(self):
+        mod = load_module("lifecycle_mod", self.TOOL)
+        sheet = mod.load_sheet(mod.SHEET)
+        self.assertRegex(sheet["as_of"], r"^\d{4}-\d{2}-\d{2}$")
+        for name, sc in sheet["scenarios"].items():
+            with self.subTest(scenario=name):
+                rows = mod.cost(sheet, sc)
+                self.assertEqual(sorted(rows), sorted(["compute", "disk", "snapshots", "storage", "ipv4", "logs"]))
+        out = json.loads(run(self.TOOL, "cost", "--scenario", "staging-pass", "--json").stdout)
+        self.assertAlmostEqual(out["total"], round(sum(out["by_category"].values()), 2), places=2)
+        self.assertLess(out["total"], 0.5)
+        more = json.loads(run(self.TOOL, "cost", "--scenario", "staging-pass", "--set", "compute_hours=12", "--json").stdout)
+        self.assertGreater(more["by_category"]["compute"], out["by_category"]["compute"])
+
+    def test_after_shutdown_names_what_keeps_billing(self):
+        stg = run(self.TOOL, "after-shutdown", "--env", "staging").stdout
+        prd = run(self.TOOL, "after-shutdown", "--env", "production").stdout
+        self.assertRegex(stg, r"BILLS +aws_ebs_volume\.data")
+        self.assertRegex(stg, r"free +root volume")
+        self.assertRegex(prd, r"BILLS +root volume")
+        self.assertRegex(stg, r"free +public IPv4")
+
+    def test_teardown_rehearsal_finds_the_manual_snapshot(self):
+        r = run(self.TOOL, "teardown-rehearse", os.path.join(self.LF, "inventory-synthetic.json"), "--now", "2026-11-20T21:00:00Z")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("RESIDUAL ebs_snapshot", r.stdout)
+        self.assertIn("still billable: aws_ebs_volume, aws_s3_bucket", r.stdout)
+
+    def test_residual_checklist(self):
+        r = run(self.TOOL, "residual", os.path.join(self.LF, "clean"), "--env", "staging")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        r = run(self.TOOL, "residual", os.path.join(self.LF, "residual"), "--env", "staging", "--json")
+        self.assertEqual(r.returncode, 1)
+        rows = {x["check"]: x for x in json.loads(r.stdout.split("RESIDUAL CHECK")[0])["rows"]}
+        self.assertEqual((rows["volumes"]["status"], rows["buckets"]["count"], rows["instances"]["status"]),
+                         ("RESIDUAL", 1, "PASS"))
+        self.assertNotIn("111122223333", r.stdout)
+        with tempfile.TemporaryDirectory() as td:
+            self.assertEqual(run(self.TOOL, "residual", td, "--env", "staging").returncode, 2)
+        cmds = run(self.TOOL, "verify-commands", "--env", "production", "--out", "/tmp/x").stdout
+        self.assertIn("Values=workbench-production", cmds)
+        self.assertNotRegex(cmds, r"aws [a-z0-9-]+ (delete|put|create|run|terminate)")
+
+
+class EvidenceIndex(unittest.TestCase):
+    """R4-REL-056..060: one offline index; partial runs and recovery; redaction; runs never merge."""
+    TOOL = os.path.join(STAGING, "tools", "evidence_index.py")
+
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.td)
+
+    def make_run(self, name, run_id, complete=True, status="PASS", extra_rows=()):
+        d = os.path.join(self.td, name)
+        os.makedirs(d)
+        # the tailnet name below is assembled from pieces, so no literal one sits in the repository
+        base = {"run_id": run_id, "source_commit": "c" * 40, "artifact": "flh-staging-aaaaaaaaaaaa.tar",
+                "artifact_sha256": "a" * 64, "collected_at": "2026-11-20T18:00:00Z"}
+        rows = [dict(base, item="R4-REL-026", step="B1", status=status, expected="installs",
+                     actual="log at /home/someone/x via 10.85.0.9 and " + "box.tail0000" + ".ts" + ".net")] + list(extra_rows)
+        raw = "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows)
+        wr(os.path.join(d, "results.jsonl"), raw)
+        wr(os.path.join(d, "results.tsv"), "B1\tPASS\n")
+        if complete:
+            jdump({"format": "flh-r4-rehearsal/v1", "run_id": run_id, "artifact": base["artifact"], "artifact_sha256": "a" * 64,
+                   "rows_sha256": hashlib.sha256(raw.encode()).hexdigest(), "counts": {"PASS": 1}}, os.path.join(d, "summary.json"))
+        return d
+
+    def test_complete_run_is_approvable_and_redacted(self):
+        d = self.make_run("run1", "R4-A")
+        out = os.path.join(self.td, "index.md")
+        r = run(self.TOOL, d, "--out", out, "--approve", "R4-A")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("APPROVABLE: run R4-A", r.stdout)
+        text = rd(out)
+        for leak in ("/home/someone", "10.85.0.9", "ts.net"):
+            self.assertNotIn(leak, text)
+        self.assertIn("| R4-REL-026 | B1 | PASS | cccccccccccc | aaaaaaaaaaaa | 2026-11-20T18:00:00Z |", text)
+
+    def test_partial_runs_are_named_with_their_recovery_and_refused(self):
+        d = self.make_run("run2", "R4-B", complete=False)
+        r = run(self.TOOL, d, "--out", os.path.join(self.td, "i.md"), "--approve", "R4-B")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("summary.json missing", r.stdout)
+        self.assertIn("NEW directory", rd(os.path.join(self.td, "i.md")))
+        d3 = self.make_run("run3", "R4-C")
+        with open(os.path.join(d3, "results.jsonl"), "a") as fh:
+            fh.write("{broken\n")
+        r = run(self.TOOL, d3, "--out", os.path.join(self.td, "i3.md"), "--approve", "R4-C")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("rows_sha256 differs", r.stdout)
+
+    def test_two_runs_never_form_one_approval(self):
+        other = {"run_id": "R4-OTHER", "item": "R4-REL-027", "step": "B2", "status": "PASS", "source_commit": "c" * 40,
+                 "artifact_sha256": "a" * 64, "collected_at": "2026-11-20T18:01:00Z", "expected": "", "actual": ""}
+        mixed = self.make_run("mixed", "R4-D", extra_rows=[other])
+        r = run(self.TOOL, mixed, "--out", os.path.join(self.td, "m.md"), "--approve", "R4-D")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("rows of other runs mixed in: R4-OTHER", r.stdout)
+        a, b = self.make_run("ra", "R4-E"), self.make_run("rb", "R4-F")
+        r = run(self.TOOL, a, b, "--out", os.path.join(self.td, "ab.md"), "--approve", "R4-E")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("not part of this approval", r.stdout)
+        r = run(self.TOOL, a, b, "--out", os.path.join(self.td, "ab.md"), "--approve", "R4-G")
+        self.assertEqual(r.returncode, 1)
+
+
+class BundlePlatform(unittest.TestCase):
+    """R4-REL-061/062: a bundle is verified for the host's architecture; a wrong one is refused with the reason."""
+
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.td)
+
+    def verify(self, tar, sha, host_arch):
+        env = dict(os.environ, FLH_STAGING_HOST_ARCH=host_arch)
+        return subprocess.run([PY, "-I", "-B", os.path.join(STAGING, "host", "flh-staging-bundle"), "verify", tar,
+                               "--sha256", sha, "--scratch", self.td], capture_output=True, text=True, env=env)
+
+    def test_architecture_must_match_the_host(self):
+        arm = make_bundle(os.path.join(self.td, "arm"), commit="c" * 40, arch="arm64")
+        tar, sha = make_tar(arm)
+        r = self.verify(tar, sha, "x86_64")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("does not match this host (linux/amd64)", r.stdout + r.stderr)
+        r = self.verify(tar, sha, "aarch64")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        amd = make_bundle(os.path.join(self.td, "amd"), commit="c" * 40)
+        tar2, sha2 = make_tar(amd)
+        r = self.verify(tar2, sha2, "arm64")
+        self.assertIn("does not match this host (linux/arm64)", r.stdout + r.stderr)
+        self.assertEqual(self.verify(tar2, sha2, "x86_64").returncode, 0)
+
+
+def compose_available():
+    """Docker Compose usable, decided WITHOUT calling a trapped docker: the hermetic suite runner
+    (scripts/ci/python_suites.py --hermetic) puts a recording trap first on PATH, and any call fails it."""
+    path = shutil.which("docker")
+    if not path:
+        return False
+    try:
+        with open(path, "rb") as fh:
+            if b"trapped by python_suites.py" in fh.read(4096):
+                return False
+    except OSError:
+        return False
+    return subprocess.run(["docker", "compose", "version"], capture_output=True).returncode == 0
+
+
+@unittest.skipUnless(compose_available(), "docker compose not available (the check renders config only)")
+class RuntimeOverride(unittest.TestCase):
+    """R4-REL-052/053: the extraction sidecar override, checked offline with `docker compose config`."""
+    TOOL = os.path.join(STAGING, "tools", "runtime_check.py")
+
+    def test_pinned_override_passes_and_default_is_unchanged(self):
+        r = run(self.TOOL)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        for needle in ("PASS the app service is unchanged by the override", "PASS extraction publishes no port",
+                       "PASS a missing FLH_EXTRACTION_IMAGE fails visibly",
+                       "PASS a missing FLH_EXTRACTION_DEPLOYMENT_ID fails visibly"):
+            self.assertIn(needle, r.stdout)
+
+    def test_malformed_deployment_id_fails(self):
+        r = run(self.TOOL, "--deployment-id", "flh-extraction-rules@latest")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("FAIL the expected deployment_id is recorded and well formed", r.stdout)
+
+
+class PathsWithSpaces(unittest.TestCase):
+    """R4-REL-063: the host tool verifies a bundle whose path and scratch directory contain spaces."""
+
+    def test_verify_with_spaces(self):
+        with tempfile.TemporaryDirectory(prefix="flh r4 spaces ") as td:
+            parent = os.path.join(td, "release bundles")
+            d = make_bundle(parent, commit="c" * 40)
+            tar, sha_ = make_tar(d)
+            scratch = os.path.join(td, "scratch dir")
+            os.makedirs(scratch)
+            r = subprocess.run([PY, "-I", "-B", os.path.join(STAGING, "host", "flh-staging-bundle"), "verify", tar,
+                                "--sha256", sha_, "--scratch", scratch], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("VERIFIED", r.stdout + r.stderr)
+
+
+class CutoverEdges(unittest.TestCase):
+    """R4-REL-047/048: stale snapshot -> DO-NOT-SWITCH (a fresh backup clears C3); writes on both sides -> DIVERGED;
+    NAS-only writes after the switch -> ROLLBACK-A. Synthetic SQLite files, cutover_check.py verdicts."""
+
+    def test_edges(self):
+        with tempfile.TemporaryDirectory() as td:
+            r = run(os.path.join(STAGING, "rehearsal", "r4_cutover_edges.py"), os.path.join(td, "w"))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("CUTOVER EDGES: 4 PASS, 0 FAIL", r.stdout)
+
+
+class DocSnippets(unittest.TestCase):
+    """R4-REL-065: every ```bash block in the release lane's runbooks and plans parses (bash -n), and so do
+    the shell launchers. Placeholders such as <backup> or <flh-staging-TREE12> are documentation, not shell,
+    and are replaced by a word before parsing."""
+    DOCS = ["deploy/aws/private-staging/RUNBOOK.md", "deploy/aws/private-staging/CUTOVER_DRY_RUN.md",
+            "deploy/aws/private-staging/DEMO_REFRESH_STAGING.md", "docs/plans/FLH-R3-aws-migration.md",
+            "docs/plans/FLH-R4-release-candidate.md"]
+    LAUNCHERS = ["deploy/aws/private-staging/staging/build_bundle.sh", "deploy/aws/private-staging/staging/host/flh-staging-env",
+                 "scripts/daily/flh-daily.sh", "scripts/release/smoke.sh", "scripts/release/disk_preflight.sh"]
+
+    def blocks(self, path):
+        text = rd(os.path.join(REPO, path))
+        return re.findall(r"^```bash\n(.*?)^```", text, re.S | re.M)
+
+    def test_documented_snippets_parse(self):
+        seen = 0
+        for doc in self.DOCS:
+            for i, block in enumerate(self.blocks(doc), 1):
+                seen += 1
+                code = re.sub(r"<[A-Za-z][^<>\n]*>", "PLACEHOLDER", block)
+                with self.subTest(doc=doc, block=i):
+                    r = subprocess.run(["bash", "-n"], input=code, capture_output=True, text=True)
+                    self.assertEqual(r.returncode, 0, f"{doc} block {i}: {r.stderr.strip()}")
+        self.assertGreaterEqual(seen, 19)
+
+    def test_launchers_parse(self):
+        for f in self.LAUNCHERS:
+            with self.subTest(launcher=f):
+                r = subprocess.run(["bash", "-n", os.path.join(REPO, f)], capture_output=True, text=True)
+                self.assertEqual(r.returncode, 0, r.stderr)
 
 
 class TreeId(unittest.TestCase):
@@ -336,7 +722,7 @@ def sha(path):
     return hashlib.sha256(rd(path, "rb")).hexdigest()
 
 
-def make_bundle(parent, commit=None, with_cleanup=False):
+def make_bundle(parent, commit=None, with_cleanup=False, arch="amd64"):
     d = os.path.join(parent, NAME)
     os.makedirs(os.path.join(d, "repo", "scripts", "daily"))
     os.makedirs(os.path.join(d, "repo", "scripts", "release"))
@@ -348,13 +734,13 @@ def make_bundle(parent, commit=None, with_cleanup=False):
                         os.path.join(d, "repo", "scripts", "release", "bundle_cleanup.py"))
     wr(os.path.join(d, "staging.override.yaml"), bundle_tool.OVERRIDE.format(tag=TAG))
     labels = {bundle_tool.LABEL_REVISION: commit or "", bundle_tool.LABEL_TREE: TID}
-    image_id = make_image_tar(os.path.join(d, "image.tar"), labels)
+    image_id = make_image_tar(os.path.join(d, "image.tar"), labels, arch=arch)
     files = {os.path.relpath(os.path.join(dp, f), d): sha(os.path.join(dp, f))
              for dp, _, fns in os.walk(d) for f in fns}
     pinned = {p: h for p, h in files.items() if p.startswith("repo/") or p == "staging.override.yaml"}
     manifest = {"format": bundle_tool.FORMAT, "name": NAME,
                 "revision": {"commit": commit, "tree_id": TID, "files": 3, "content_sha256": "0" * 64},
-                "image": {"tag": TAG, "platform": "linux/amd64", "labels": labels},
+                "image": {"tag": TAG, "platform": f"linux/{arch}", "labels": labels},
                 "server_sha256": "1" * 64, "web_files_sha256": "2" * 64,
                 "migrations": {"count": 21, "last": "021_x.sql"}, "files": pinned}
     jdump(manifest, os.path.join(d, "MANIFEST.json"), indent=1, sort_keys=True)
@@ -755,6 +1141,18 @@ class PreflightInputs(unittest.TestCase):
 
     def states(self):
         return {n: s for s, n, _ in self.pf.results if n.startswith("input var.")}
+
+    def test_missing_expiry_and_malformed_run_id_are_rejected(self):
+        # R4-REL-010: a staging candidate without expires_at, or with a run_id that is not UTC compact
+        for over, name in (({"expires_at": None}, "tfvars expires_at set"),
+                           ({"run_id": '"2026-11-20 08:00"'}, "tfvars run_id format"),
+                           ({"run_id": None}, "tfvars run_id set"),
+                           ({"expires_at": '"tomorrow"'}, "tfvars expires_at is RFC 3339 UTC")):
+            with self.subTest(name=name):
+                self.pf.results.clear()
+                tv = filled_tfvars(os.path.join(self.td, "c.tfvars"), **over)
+                quiet(self.pf.check_tfvars, tv)
+                self.assertIn(("FAIL", name), [(r[0], r[1]) for r in self.pf.results])
 
     def test_production_tfvars_never_expire_and_use_production_policies(self):
         # R3: production tfvars need expires_at never and are checked against out-production's IAM shape

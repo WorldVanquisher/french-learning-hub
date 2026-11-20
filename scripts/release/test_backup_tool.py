@@ -151,6 +151,16 @@ class BackupTool(unittest.TestCase):
         os.makedirs(self.p("empty dir"))
         self.assertEqual(run("latest", self.p("empty dir")).returncode, 1)
 
+    def test_pack_refuses_a_missing_directory_with_its_remedy(self):
+        # Workbooks lane finding (R4): a traceback (FileNotFoundError on OUT.part) instead of a refusal
+        b = make_backup(self.p("flh-y"))
+        out = self.p(os.path.join("missing-dir", "a.tar.gz"))
+        r = run("pack", b, out)
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn("does not exist; create it first", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertFalse(os.path.exists(out + ".part"))
+
     def test_pack_unpack_and_damaged_archives(self):
         b = make_backup(self.p("flh-x"))
         dest = self.p("dest")

@@ -1,0 +1,120 @@
+{
+ "name": "synthetic staging stack (R4-REL-024; no real ID)",
+ "resources": [
+  {
+   "type": "aws_instance",
+   "id": "i-0aaaaaaaaaaaaaaaa",
+   "tags": {
+    "Project": "flh",
+    "Component": "workbench-staging",
+    "Environment": "staging",
+    "Run": "20261120T080000Z",
+    "ExpiresAt": "2026-11-20T20:00:00Z",
+    "ManagedBy": "terraform"
+   },
+   "billable": true
+  },
+  {
+   "type": "root_volume",
+   "id": "vol-0aaaaaaaaaaaaaaa1",
+   "tags": {
+    "Project": "flh",
+    "Component": "workbench-staging",
+    "Environment": "staging",
+    "Run": "20261120T080000Z",
+    "ExpiresAt": "2026-11-20T20:00:00Z",
+    "ManagedBy": "terraform"
+   },
+   "billable": true,
+   "delete_on_termination": true
+  },
+  {
+   "type": "public_ipv4",
+   "id": "eni-0aaaaaaaaaaaaaaaa",
+   "tags": {
+    "Project": "flh",
+    "Component": "workbench-staging",
+    "Environment": "staging",
+    "Run": "20261120T080000Z",
+    "ExpiresAt": "2026-11-20T20:00:00Z",
+    "ManagedBy": "terraform"
+   },
+   "billable": true
+  },
+  {
+   "type": "aws_ebs_volume",
+   "id": "vol-0aaaaaaaaaaaaaaa2",
+   "tags": {
+    "Project": "flh",
+    "Component": "workbench-staging",
+    "Environment": "staging",
+    "Run": "20261120T080000Z",
+    "ExpiresAt": "2026-11-20T20:00:00Z",
+    "ManagedBy": "terraform"
+   },
+   "billable": true
+  },
+  {
+   "type": "aws_s3_bucket",
+   "id": "flh-stg-20261120000000000000000000",
+   "tags": {
+    "Project": "flh",
+    "Component": "workbench-staging",
+    "Environment": "staging",
+    "Run": "20261120T080000Z",
+    "ExpiresAt": "2026-11-20T20:00:00Z",
+    "ManagedBy": "terraform"
+   },
+   "billable": true
+  },
+  {
+   "type": "aws_vpc",
+   "id": "vpc-0aaaaaaaaaaaaaaaa",
+   "tags": {
+    "Project": "flh",
+    "Component": "workbench-staging",
+    "Environment": "staging",
+    "Run": "20261120T080000Z",
+    "ExpiresAt": "2026-11-20T20:00:00Z",
+    "ManagedBy": "terraform"
+   },
+   "billable": false
+  },
+  {
+   "type": "aws_iam_role",
+   "id": "flh-stg-host-0000",
+   "tags": {
+    "Project": "flh",
+    "Component": "workbench-staging",
+    "Environment": "staging",
+    "Run": "20261120T080000Z",
+    "ExpiresAt": "2026-11-20T20:00:00Z",
+    "ManagedBy": "terraform"
+   },
+   "billable": false
+  },
+  {
+   "type": "ebs_snapshot",
+   "id": "snap-0aaaaaaaaaaaaaaaa",
+   "tags": {
+    "Project": "flh",
+    "Component": "workbench-staging",
+    "Environment": "staging",
+    "Run": "20261120T080000Z",
+    "ExpiresAt": "2026-11-20T20:00:00Z",
+    "ManagedBy": "terraform"
+   },
+   "billable": true,
+   "managed_by_terraform": false,
+   "note": "a manual snapshot taken during the pass"
+  },
+  {
+   "type": "ssm_parameters",
+   "id": "/flh/staging/*",
+   "tags": {},
+   "billable": false,
+   "managed_by_terraform": false,
+   "note": "RUNBOOK \u00a79 deletes them"
+  }
+ ]
+}

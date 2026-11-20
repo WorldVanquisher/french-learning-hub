@@ -172,6 +172,20 @@ def check(plan, expected, mode, allow_replace, env="staging"):
                            f"{ecfg['termination_protection']}")
             if after.get("associate_public_ip_address"):
                 info(addr, "public IPv4 for outbound HTTPS only (no inbound rule); the workbench is reached by SSM")
+        if rtype == "aws_volume_attachment" and kind in ("update", "replace"):
+            # R4-REL-017/018: an instance replacement re-attaches the SAME data volume at the same device
+            before = (rc.get("change") or {}).get("before") or {}
+            unknown = (rc.get("change") or {}).get("after_unknown") or {}
+            for key in ("volume_id", "device_name"):
+                b, a2 = before.get(key), after.get(key)
+                if b and a2 is None and unknown.get(key):
+                    stop(addr, f"{key} becomes unknown: the attachment may attach another volume (stop rule)")
+                elif b and a2 and b != a2:
+                    stop(addr, f"{key} changes from {b} to {a2}: the data volume attachment must keep its volume (stop rule)")
+            if kind == "update":
+                stop(addr, "in-place update of the data volume attachment: unexpected (attachments are replaced, never edited)")
+            elif before.get("volume_id") and after.get("volume_id") == before.get("volume_id"):
+                info(addr, f"re-attaches the same data volume {before['volume_id']} (data kept)")
         if rtype == "aws_ebs_volume" and after.get("encrypted") is not True:
             stop(addr, "data volume not encrypted")
         if "tags_all" in after or "tags" in after:

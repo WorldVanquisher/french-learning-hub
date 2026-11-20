@@ -1,0 +1,31 @@
+# R4 (opt-in; owner decision A11): the private extraction service (tools/extraction/SERVICE.md,
+# flh_extraction_service_v1) as a sidecar on the app's Compose network. It publishes NO port: only
+# containers on that network reach it, as http://extraction:8090. The app has no provider that calls
+# it yet (a shared-contract change for the owner), so this override only runs it beside the app.
+# Use it as a third file after compose.yaml and the bundle's staging.override.yaml. Without it, the
+# default deployment is exactly as before (staging/tools/runtime_check.py proves both).
+# Identity: the pin is the deployment_id (Extraction lane: image IDs differ between cached and uncached
+# builds of the same tree, and a docker-loaded image has no registry digest). It is recorded as a label
+# and must equal GET /manifest from inside the network. The service reads no setting from the
+# environment (flags only), so none is passed. Flags follow the Extraction rehearsals, except restart:
+# unless-stopped here so the sidecar returns after a host reboot (callers still never retry by themselves).
+services:
+  extraction:
+    image: ${FLH_EXTRACTION_IMAGE:?set FLH_EXTRACTION_IMAGE to the loaded extraction image (for example flh-extraction-service:TREE12)}
+    labels:
+      org.flh.extraction.expect-deployment-id: ${FLH_EXTRACTION_DEPLOYMENT_ID:?set FLH_EXTRACTION_DEPLOYMENT_ID to the deployment_id recorded for the release}
+    read_only: true
+    user: "10002"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    cpus: 1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-B", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8090/readyz', timeout=2).status == 200 else 1)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s

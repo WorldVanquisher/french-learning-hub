@@ -1,0 +1,7 @@
+{
+ "ResourceTagMappingList": [
+  {
+   "ResourceARN": "arn:aws:ec2:us-east-1:111122223333:volume/vol-0aaaaaaaaaaaaaaa2"
+  }
+ ]
+}
