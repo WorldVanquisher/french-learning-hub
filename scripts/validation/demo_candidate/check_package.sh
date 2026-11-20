@@ -26,7 +26,8 @@
 # Each stage runs a maintained tool, unchanged:
 #   1 identity    validate-release.sh (exit 0 = CANDIDATE, 3 = BLOCKED, matching
 #                 RELEASE.json); RELEASE.json's identity equals artifact/manifest.json
-#                 and every --expect-* value
+#                 and every --expect-* value; RELEASE.json and artifact/provenance.json
+#                 hold only public fields (scripts/demo/flh076/public_provenance.py check)
 #   2 boundary    scripts/demo/flh076/smoke_package.sh: allowed and denied routes at
 #                 the root and under /api, preset counters, package files unchanged
 #   3 live        deploy/ctl.sh start; /healthz and /readyz; /knowledge-library/demo
@@ -47,7 +48,7 @@
 set -uo pipefail
 REPO=$(cd "$(dirname "$0")/../../.." && pwd)
 PKG=${1:-}; WORK=${2:-}
-[ -n "$PKG" ] && [ -n "$WORK" ] || { sed -n '2,46p' "$0" >&2; exit 2; }
+[ -n "$PKG" ] && [ -n "$WORK" ] || { sed -n '2,47p' "$0" >&2; exit 2; }
 shift 2
 EXPECT_VERSION= EXPECT_MANIFEST= EXPECT_STATUS= EXPECT_SUMS= PINNED= PORT=18986 NODE_MODULES= SUITES=matrix SKIP_BROWSER=0
 EXAMPLES=$REPO/web/src/demo/discovery.json
@@ -152,6 +153,17 @@ sys.exit(1 if bad else 0)
 PY
 ID_RC=$?
 cat "$WORK/identity.txt" | tee -a "$WORK/check.txt" > /dev/null
+# R3-016: only explicitly public metadata may ship. RELEASE.json and
+# artifact/provenance.json must hold allowlisted fields only, with no address,
+# URL, local path or e-mail (scripts/demo/flh076/public_provenance.py check;
+# key paths reported, never values). A package built before that rule carries
+# the private embedding host and is refused here: never a public rollout or
+# rollback artifact.
+python3 -I "$REPO/scripts/demo/flh076/public_provenance.py" check "$PKG" > "$WORK/public-fields.txt" 2>&1
+PF_RC=$?
+grep '^FAIL' "$WORK/public-fields.txt" | sed 's/^FAIL /FAIL public fields: /' >> "$WORK/identity.txt"
+cat "$WORK/public-fields.txt" >> "$WORK/check.txt"
+[ "$PF_RC" = 0 ] || ID_RC=1
 if [ "$ID_RC" = 0 ]; then stage identity PASS; else stage identity FAIL "$(grep '^FAIL' "$WORK/identity.txt" | head -3 | tr '\n' ';')"; fi
 STATUS=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["release_status"])' "$PKG/RELEASE.json")
 VECTORS=model; [ "$STATUS" = BLOCKED ] && VECTORS=mechanical

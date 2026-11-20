@@ -13,7 +13,9 @@ import { readCompareVisit, writeCompareVisit, type CompareVisit, type PracticeAn
 // R2 layout, the same at every width:
 // 1. The pair: each side's unit wording (its rule, as a label) and its example
 //    sentence, compact, so both sentences are read together, on a 320 px
-//    phone too. Wide screens put the two sides next to each other.
+//    phone too. Wide screens put the two sides next to each other. Since R3
+//    each side links to its exact evidence (the unit's source record), and a
+//    "Where these come from" panel shows the learner's question and context.
 // 2. "Show the evidence": the rest of each side (the learner's question, the
 //    stored interpretation, the rule, the Concept, links to the source and the
 //    Concept) behind one disclosure button. It starts open on wide screens and
@@ -21,7 +23,8 @@ import { readCompareVisit, writeCompareVisit, type CompareVisit, type PracticeAn
 //    and coming back to a control inside it opens it again. Opening or closing
 //    it never changes the address: the comparison's link stays the same.
 // 3. An optional choose-first practice question, for a comparison that has one
-//    (Practice below), with the pair hidden while a question is unanswered.
+//    (Practice below), with the pair hidden while it is shown. The question is
+//    part of the link (`#compare=…&practice=N`, R3-056); answers are not.
 //
 // Everything shown is read from the server; nothing is written.
 
@@ -108,12 +111,17 @@ export function CompareScreen({
   onOpenSource,
   onReady,
   returnFocus,
+  practice,
+  onStartPractice,
+  onPracticeItem,
+  onLeavePractice,
 }: {
   comparison: DemoComparison;
   onBack: () => void;
-  // A side this build lacks: its keyword query in the ordinary search.
+  // A side this build lacks: its keyword query in the ordinary search; "" is the whole library.
   onSearch: (q: string) => void;
-  onOpenComparison: (key: string) => void;
+  // Another comparison, on its first question when `practice`.
+  onOpenComparison: (key: string, practice?: boolean) => void;
   // The guided example both units come from (`comparison.example`).
   onOpenExample?: (key: string) => void;
   // The demo links of a Concept or a source opened from this comparison.
@@ -123,6 +131,13 @@ export function CompareScreen({
   // The sides as this build resolved them (the 60-second tour's next step).
   onReady?: (sides: SideResolution[]) => void;
   returnFocus?: MutableRefObject<string | null>;
+  // The practice question shown (1-based, from the link), or none: the pair.
+  practice?: number;
+  // Open a question (a new history entry), move to another (the same entry),
+  // and back to the pair.
+  onStartPractice?: (n: number) => void;
+  onPracticeItem?: (n: number) => void;
+  onLeavePractice?: () => void;
 }) {
   const { t } = useI18n();
   const [retry, setRetry] = useState(0);
@@ -180,11 +195,26 @@ export function CompareScreen({
     heading.current?.focus({ preventScroll: true });
     heading.current?.scrollIntoView?.({ block: "start" });
   }, [load.status]);
+  // Moving between the pair and a question (a button, Back, Forward): the
+  // control that left the entry when coming back to it, else the new heading.
+  const shownPractice = useRef(practice);
+  useEffect(() => {
+    if (shownPractice.current === practice || load.status !== "ready") return;
+    shownPractice.current = practice;
+    const id = returnFocus?.current;
+    if (id) {
+      returnFocus.current = null;
+      const el = document.getElementById(id);
+      if (el && focusControl(el)) return;
+    }
+    const el = document.getElementById(practice !== undefined ? "demo-practice-heading" : "demo-compare-pair-heading");
+    if (el) focusControl(el);
+  }, [practice, load.status]);
   const sides = load.status === "ready" ? load.sides : [];
   const found = sides.filter((s): s is FoundSide => s.kind === "found");
   const entries = new Set(found.map((s) => s.unit.entry_id));
   const items = readyItems(comparison, sides);
-  const practicing = visit.practice && items.length > 0;
+  const practicing = practice !== undefined && items.length > 0;
   const others = DEMO_COMPARISONS.filter((c) => c.key !== comparison.key);
   const example = comparison.example ? DEMO_EXAMPLES.find((e) => e.key === comparison.example) : undefined;
   const shown = visit.evidence === true;
@@ -195,14 +225,8 @@ export function CompareScreen({
     setVisit({ ...visit, evidence: false });
     focusNext.current = "demo-compare-evidence-toggle";
   };
-  const startPractice = () => {
-    setVisit({ ...visit, practice: true });
-    focusNext.current = "demo-practice-heading";
-  };
-  const leavePractice = () => {
-    setVisit({ ...visit, practice: false });
-    focusNext.current = "demo-compare-pair-heading";
-  };
+  // R3-046: the learner's question(s) and recorded context, once per record.
+  const records = found.filter((s, i) => found.findIndex((x) => x.unit.entry_id === s.unit.entry_id) === i);
   return (
     <div className="demo-compare">
       <section className="panel" aria-labelledby="demo-compare-heading">
@@ -210,7 +234,9 @@ export function CompareScreen({
         <h2 id="demo-compare-heading" ref={heading} tabIndex={-1} className="library-title">
           {t(comparison.title)}
         </h2>
-        <p>{t(comparison.summary)}</p>
+        {/* R3-078: the question carries its own context; on a phone the summary
+            would push its choices below the first view. */}
+        {practicing ? null : <p>{t(comparison.summary)}</p>}
         <div className="actions demo-compare-head-actions">
           <button type="button" className="ghost" onClick={onBack}>
             {t("demo.compare.back")}
@@ -230,14 +256,20 @@ export function CompareScreen({
         </div>
       ) : practicing ? (
         <Practice
+          key={practice}
           comparison={comparison}
           items={items}
+          sides={load.sides}
+          index={Math.min(Math.max(practice - 1, 0), items.length - 1)}
           visit={visit}
           setVisit={setVisit}
           focusNext={focusNext}
           href={href}
           onOpenSource={onOpenSource}
-          onLeave={leavePractice}
+          onItem={(n) => onPracticeItem?.(n)}
+          onLeave={() => onLeavePractice?.()}
+          onOpenComparison={onOpenComparison}
+          onSearch={onSearch}
         />
       ) : (
         <>
@@ -260,6 +292,18 @@ export function CompareScreen({
                       ) : (
                         <p className="hint">{t("demo.compare.noExample")}</p>
                       )}
+                      {side.source ? (
+                        // R3-043: each example's exact public evidence.
+                        <p className="demo-compare-pair-src">
+                          <MoveLink
+                            href={href(side.concept.id, side.unit.unit_id)}
+                            id={`demo-pair-src-${side.unit.unit_id}`}
+                            onMove={() => onOpenSource(side.concept.id, side.unit.unit_id)}
+                          >
+                            {t("demo.compare.pairEvidence", { unit: side.unit.unit_id, entry: side.unit.entry_id })}
+                          </MoveLink>
+                        </p>
+                      ) : null}
                     </>
                   ) : (
                     <>
@@ -272,16 +316,49 @@ export function CompareScreen({
                 </li>
               ))}
             </ul>
-            <button
-              type="button"
-              className="ghost demo-compare-evidence-toggle"
-              id="demo-compare-evidence-toggle"
-              aria-expanded={shown}
-              aria-controls="demo-compare-evidence"
-              onClick={toggle}
-            >
-              {t(shown ? "demo.compare.evidenceHide" : "demo.compare.evidenceShow")}
-            </button>
+            <div className="actions demo-compare-pair-actions">
+              <button
+                type="button"
+                className="ghost demo-compare-evidence-toggle"
+                id="demo-compare-evidence-toggle"
+                aria-expanded={shown}
+                aria-controls="demo-compare-evidence"
+                onClick={toggle}
+              >
+                {t(shown ? "demo.compare.evidenceHide" : "demo.compare.evidenceShow")}
+              </button>
+              {records.length ? (
+                <button
+                  type="button"
+                  className="ghost"
+                  id="demo-compare-source-toggle"
+                  aria-expanded={visit.source === true}
+                  aria-controls="demo-compare-source"
+                  onClick={() => setVisit({ ...visit, source: !visit.source })}
+                >
+                  {t(visit.source ? "demo.compare.sourceHide" : "demo.compare.sourceShow")}
+                </button>
+              ) : null}
+            </div>
+            <div id="demo-compare-source" className="demo-compare-source" hidden={visit.source !== true}>
+              {records.map((s) => (
+                <div key={s.unit.entry_id} className="demo-compare-source-record">
+                  <h4>{t("demo.compare.question", { entry: s.unit.entry_id })}</h4>
+                  {s.source ? (
+                    <>
+                      <blockquote dir="auto">{s.source.entry.original_input}</blockquote>
+                      {s.source.entry.original_context ? (
+                        <p className="hint" dir="auto">
+                          {s.source.entry.original_context}
+                        </p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="hint">{t("demo.compare.noSource", { unit: s.unit.unit_id })}</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </section>
           <div id="demo-compare-evidence" hidden={!shown} onKeyDown={closeEvidence}>
             {found.length === 2 && entries.size === 1 ? (
@@ -305,7 +382,7 @@ export function CompareScreen({
             <section className="panel demo-practice-offer" aria-labelledby="demo-practice-offer-heading">
               <h3 id="demo-practice-offer-heading">{t("demo.practice.offerHeading")}</h3>
               <p className="hint">{t("demo.practice.offer")}</p>
-              <button type="button" className="primary" id="demo-practice-start" onClick={startPractice}>
+              <button type="button" className="primary" id="demo-practice-start" onClick={() => onStartPractice?.(1)}>
                 {t("demo.practice.start")}
               </button>
             </section>
@@ -421,46 +498,76 @@ function Side({
   );
 }
 
-// Practice (R2): choose the form that completes one example before seeing it.
-// The learner's question and its recorded context come first; the example
-// follows with its form blanked; the two forms are offered in side order, with
-// an explicit skip. The answer, both forms' rules with links to their
-// evidence, and a valid alternative (where the item has one) are shown only
-// after a choice or a skip. The outcome is announced (a status region) and
-// focused. Answers stay in this page's memory (visit.ts): no score, no record,
-// no request beyond the reads the comparison already made.
+// One offered answer: a side's form (with its tense name) or a distractor.
+interface PracticeOption {
+  form: string;
+  tense?: string;
+  side?: 0 | 1;
+}
+
+// Practice (R2, R3): choose the form that completes one example before seeing
+// it. The learner's question and its recorded context come first; the example
+// follows with its form blanked; then the offered forms (any distractor first,
+// then the two sides' forms in side order, so the position never gives the
+// answer away) and an explicit skip; a hint is under them on request. The
+// answer, every form's explanation with a link to its evidence (a side's rule;
+// for a distractor, the stored interpretation of the learner's question, which
+// names it), and a valid alternative (where the item has one) are shown only
+// after a choice or a skip. The outcome is announced (a status
+// region) and focused. Then: ways to continue. Answers stay in this page's
+// memory (visit.ts): no score, no record, no request beyond the reads the
+// comparison already made. The question itself is the link (copyable).
 function Practice({
   comparison,
   items,
+  sides,
+  index,
   visit,
   setVisit,
   focusNext,
   href,
   onOpenSource,
+  onItem,
   onLeave,
+  onOpenComparison,
+  onSearch,
 }: {
   comparison: DemoComparison;
   items: ReadyItem[];
+  // Both sides as resolved: each form's rule and evidence, with or without an item of its own.
+  sides: SideResolution[];
+  index: number;
   visit: CompareVisit;
   setVisit: (v: CompareVisit) => void;
   focusNext: MutableRefObject<string | null>;
   href: (conceptId: number, unitId?: number) => string;
   onOpenSource: (conceptId: number, unitId: number) => void;
+  onItem: (n: number) => void;
   onLeave: () => void;
+  onOpenComparison: (key: string, practice?: boolean) => void;
+  onSearch: (q: string) => void;
 }) {
   const { t, tn } = useI18n();
-  const choices = comparison.practice!.choices;
-  const index = Math.min(Math.max(visit.item, 0), items.length - 1);
+  const practice = comparison.practice!;
+  const choices = practice.choices;
   const { item, side, parts } = items[index];
+  const options: PracticeOption[] = [
+    ...practice.distractors.map((d) => ({ form: d.form })),
+    { ...choices[0], side: 0 as const },
+    { ...choices[1], side: 1 as const },
+  ];
   const answer: PracticeAnswer | undefined = visit.answers[index];
   const revealed = answer !== undefined;
+  const chosen = typeof answer === "number" ? options[answer] : undefined;
   const used = choices[item.side];
   const other = choices[item.side === 0 ? 1 : 0];
   const source = side.source;
+  const interpretation = source?.source_interpretation.effective?.effective?.explanation;
+  const [hint, setHint] = useState(false);
   const setAnswer = (a: PracticeAnswer | undefined) => {
     const answers = [...visit.answers];
     answers[index] = a;
-    setVisit({ ...visit, item: index, answers });
+    setVisit({ ...visit, answers });
   };
   const choose = (a: PracticeAnswer) => {
     if (revealed) return;
@@ -472,8 +579,20 @@ function Practice({
       {text}
     </span>
   );
-  // Each form's rule and evidence: the unit of the side whose example uses it.
-  const sideOf = (i: number) => items.find((x) => x.item.side === i)?.side;
+  // Each side form's rule and evidence: the unit of the side whose example uses it.
+  const sideOf = (i: number) => {
+    const sd = sides[i];
+    return sd?.kind === "found" ? sd : undefined;
+  };
+  const nextOthers = DEMO_COMPARISONS.filter((c) => c.key !== comparison.key && c.practice);
+  const outcome =
+    answer === "skip"
+      ? tn("demo.practice.skipped", { form: fr(used.form) })
+      : chosen?.side === undefined
+        ? tn("demo.practice.chosenDistractor", { chosen: fr(chosen?.form ?? ""), form: fr(used.form) })
+        : chosen.side === item.side
+          ? tn("demo.practice.same", { form: fr(used.form) })
+          : tn(item.alternate ? "demo.practice.chosenOtherAlso" : "demo.practice.chosenOther", { chosen: fr(other.form), form: fr(used.form) });
   return (
     <section className="panel demo-practice" aria-labelledby="demo-practice-heading">
       <p className="demo-eyebrow">{t("demo.practice.eyebrow")}</p>
@@ -510,7 +629,7 @@ function Practice({
         {parts[1]}
       </p>
       <div className="demo-practice-choices" role="group" aria-labelledby="demo-practice-sentence-label">
-        {choices.map((c, i) => (
+        {options.map((o, i) => (
           <button
             key={i}
             type="button"
@@ -519,12 +638,13 @@ function Practice({
             aria-pressed={answer === i}
             aria-disabled={revealed || undefined}
             data-practice-choice={i}
+            data-practice-kind={o.side === undefined ? "distractor" : "form"}
             // A form and its tense name, both French; only the brackets are
             // interface text.
             lang="fr"
             onClick={() => choose(i)}
           >
-            {t("demo.practice.choice", { form: c.form, tense: c.tense })}
+            {o.tense ? t("demo.practice.choice", { form: o.form, tense: o.tense }) : o.form}
           </button>
         ))}
         {!revealed ? (
@@ -533,14 +653,27 @@ function Practice({
           </button>
         ) : null}
       </div>
+      {item.hint && !revealed ? (
+        // R3-052: a short hint before the answer, under the choices so they stay
+        // where they were; it never names the form.
+        <div className="demo-practice-hint">
+          <button type="button" className="ghost" id="demo-practice-hint-toggle" aria-expanded={hint} aria-controls="demo-practice-hint" onClick={() => setHint(!hint)}>
+            {t(hint ? "demo.practice.hintHide" : "demo.practice.hintShow")}
+          </button>
+          <p id="demo-practice-hint" className="hint" hidden={!hint}>
+            {t(item.hint)}
+          </p>
+        </div>
+      ) : null}
       <div role="status" className="demo-practice-status">
         {revealed ? (
-          <p id="demo-practice-outcome" tabIndex={-1} className="demo-practice-outcome" data-practice-outcome={answer === "skip" ? "skip" : answer === item.side ? "used" : "other"}>
-            {answer === "skip"
-              ? tn("demo.practice.skipped", { form: fr(used.form) })
-              : answer === item.side
-                ? tn("demo.practice.same", { form: fr(used.form) })
-                : tn(item.alternate ? "demo.practice.chosenOtherAlso" : "demo.practice.chosenOther", { chosen: fr(other.form), form: fr(used.form) })}
+          <p
+            id="demo-practice-outcome"
+            tabIndex={-1}
+            className="demo-practice-outcome"
+            data-practice-outcome={answer === "skip" ? "skip" : chosen?.side === undefined ? "distractor" : chosen.side === item.side ? "used" : "other"}
+          >
+            {outcome}
           </p>
         ) : null}
       </div>
@@ -551,7 +684,7 @@ function Practice({
             {choices.map((c, i) => {
               const s = sideOf(i);
               return (
-                <li key={i} data-practice-form={i === item.side ? "used" : "other"}>
+                <li key={`f${i}`} data-practice-form={i === item.side ? "used" : "other"}>
                   <p className="demo-practice-form">
                     {tn(i === item.side ? "demo.practice.formUsed" : "demo.practice.formOther", {
                       form: fr(c.form),
@@ -579,6 +712,27 @@ function Practice({
                 </li>
               );
             })}
+            {practice.distractors.map((d) => (
+              // R3-053: why a distractor does not work, in the stored interpretation's own words.
+              <li key={`d${d.form}`} data-practice-form="distractor">
+                <p className="demo-practice-form">{tn("demo.practice.formDistractor", { form: fr(d.form) })}</p>
+                {interpretation ? (
+                  <>
+                    <p className="hint">{t("demo.practice.distractorWhy", { entry: side.unit.entry_id })}</p>
+                    <blockquote dir="auto">{interpretation}</blockquote>
+                    <MoveLink
+                      href={href(side.concept.id, side.unit.unit_id)}
+                      id={`demo-practice-why-${side.unit.unit_id}`}
+                      onMove={() => onOpenSource(side.concept.id, side.unit.unit_id)}
+                    >
+                      {t("demo.practice.evidence", { unit: side.unit.unit_id, entry: side.unit.entry_id })}
+                    </MoveLink>
+                  </>
+                ) : (
+                  <p className="hint">{t("demo.compare.noInterpretation")}</p>
+                )}
+              </li>
+            ))}
           </ul>
           {item.alternate && item.alternateText ? (
             <div className="demo-practice-alternate" data-practice-alternate>
@@ -588,15 +742,7 @@ function Practice({
           ) : null}
           <div className="actions demo-practice-actions">
             {items.length > 1 ? (
-              <button
-                type="button"
-                className="primary"
-                id="demo-practice-next"
-                onClick={() => {
-                  setVisit({ ...visit, item: (index + 1) % items.length });
-                  focusNext.current = "demo-practice-heading";
-                }}
-              >
+              <button type="button" className="primary" id="demo-practice-next" onClick={() => onItem(((index + 1) % items.length) + 1)}>
                 {t("demo.practice.next")}
               </button>
             ) : null}
@@ -606,7 +752,7 @@ function Practice({
               id="demo-practice-again"
               onClick={() => {
                 setAnswer(undefined);
-                focusNext.current = "demo-practice-choice-0";
+                focusNext.current = `demo-practice-choice-0`;
               }}
             >
               {t("demo.practice.again")}
@@ -615,6 +761,25 @@ function Practice({
               {t("demo.practice.toPair")}
             </button>
           </div>
+          {/* R3-060: where to go after one question. */}
+          <nav className="demo-practice-continue" aria-labelledby="demo-practice-continue-heading">
+            <h4 id="demo-practice-continue-heading">{t("demo.practice.continue")}</h4>
+            <ul>
+              {nextOthers.map((c) => (
+                <li key={c.key}>
+                  <button type="button" className="ghost" id={`demo-practice-next-${c.key}`} onClick={() => onOpenComparison(c.key, true)}>
+                    {t("demo.practice.nextQuestion", { title: t(c.title) })}
+                  </button>
+                </li>
+              ))}
+              {/* The guided example is in the comparison's own navigation, just below. */}
+              <li>
+                <button type="button" className="ghost" id="demo-practice-search" onClick={() => onSearch("")}>
+                  {t("demo.start.search")}
+                </button>
+              </li>
+            </ul>
+          </nav>
         </>
       ) : (
         <div className="actions demo-practice-actions">
@@ -623,6 +788,15 @@ function Practice({
           </button>
         </div>
       )}
+      <p className="demo-related">
+        {/* R3-056: a link to exactly this question; the answer is never in it. */}
+        <CopyLink
+          fragment={hashForScreen({ kind: "compare", compare: comparison.key, practice: index + 1 })}
+          id="demo-practice-copy"
+          label="demo.practice.copy"
+          done="demo.link.copied"
+        />
+      </p>
     </section>
   );
 }

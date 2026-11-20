@@ -203,6 +203,25 @@
 .demo-app .demo-practice-alternate p { margin: 0; }
 .demo-app .demo-practice-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
+/* R3: each example's evidence link, the learner's-question panel under the
+   pair (opened on request; it pushes nothing above it), the practice hint, a
+   distractor's stored reason and the ways to continue. Targets stay 44 px
+   (buttons) or 24 px (stand-alone links). */
+.demo-app .demo-compare-pair-src { margin: 4px 0 0; font-size: 0.875rem; overflow-wrap: anywhere; }
+.demo-app .demo-compare-pair-src a { display: inline-block; padding: 4px 0; }
+.demo-app .demo-compare-pair-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.demo-app .demo-compare-pair-actions .demo-compare-evidence-toggle { margin-top: 0; }
+.demo-app .demo-compare-source { margin: 8px 0 0; padding: 4px 10px; border-left: 3px solid var(--border-strong); }
+.demo-app .demo-compare-source h4 { margin: 0 0 4px; font-size: 0.8125rem; color: var(--muted); }
+.demo-app .demo-compare-source blockquote { margin: 0 0 4px; overflow-wrap: anywhere; }
+.demo-app .demo-compare-source .hint { margin: 0; }
+.demo-app .demo-practice-hint { margin: 0 0 8px; }
+.demo-app .demo-practice-hint button { min-height: 44px; }
+.demo-app .demo-practice-hint p { margin: 4px 0 0; }
+.demo-app .demo-practice-why blockquote { margin: 2px 0 4px; overflow-wrap: anywhere; }
+.demo-app .demo-practice-continue ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.demo-app .demo-practice-continue button { min-height: 44px; text-align: start; white-space: normal; }
+
 /* R2-047: every control on the public demo is at least 24 x 24 CSS px (WCAG
    2.2 target size; a link inside a sentence is exempt): stand-alone text links
    and link-style buttons get vertical padding, and the selects, disclosure
@@ -221,6 +240,11 @@
 .demo-app .demo-start-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .demo-app .demo-start-list button { min-height: 44px; padding: 6px 12px; }
 .demo-app .demo-start-hint { margin: 0 0 8px; }
+/* R3-042: the common-confusion way in, under its example's card (as a
+   comparison's practice entry sits under its card); a 44 px target. */
+.demo-app .demo-example-list li { display: flex; flex-direction: column; gap: 6px; }
+.demo-app .demo-example-list .demo-example-card { height: auto; flex: 1 1 auto; }
+.demo-app .demo-example-confusion { min-height: 44px; padding: 6px 12px; text-align: start; white-space: normal; }
 .demo-app .demo-tour { border-left: 4px solid var(--accent); }
 .demo-app .demo-tour-where { margin: 0 0 4px; font-weight: 600; }
 .demo-app .demo-tour .actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }

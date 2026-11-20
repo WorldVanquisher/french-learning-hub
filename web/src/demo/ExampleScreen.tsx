@@ -4,7 +4,7 @@ import { useI18n } from "../i18n";
 import { DEMO_EXAMPLES, resolveExample, type DemoExample, type ExampleResolution, type ResolvedExample } from "./examples";
 import { focusControl } from "./history";
 import { WALK_STEPS } from "./deepLink";
-import { findComparison } from "./comparisons";
+import { CONFUSION, findComparison } from "./comparisons";
 
 type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; data: ExampleResolution };
 
@@ -108,9 +108,10 @@ function WalkBar({ step, onStep }: { step?: number; onStep: (step: number) => vo
 // English), each opened as a guided example. A card leads with the learner's
 // question as written (the visitor picks by the question itself, in every
 // interface language), then says in the interface language what the example
-// shows. Opening one records nothing.
-export function ExamplePicker({ onOpen }: { onOpen: (key: string) => void }) {
-  const { t } = useI18n();
+// shows. Opening one records nothing. Under the card of the example a common
+// confusion comes from, one more way in opens its practice question (R3-042).
+export function ExamplePicker({ onOpen, onConfusion }: { onOpen: (key: string) => void; onConfusion?: (compare: string) => void }) {
+  const { t, tn } = useI18n();
   return (
     <section className="panel demo-examples" aria-labelledby="demo-examples-heading">
       <h2 id="demo-examples-heading" className="library-title" tabIndex={-1}>
@@ -128,6 +129,17 @@ export function ExamplePicker({ onOpen }: { onOpen: (key: string) => void }) {
                 {t("demo.examples.open")}
               </span>
             </button>
+            {CONFUSION && onConfusion && CONFUSION.example === ex.key ? (
+              <button type="button" className="ghost demo-example-confusion" id="demo-example-confusion" onClick={() => onConfusion(CONFUSION.compare)}>
+                {tn("demo.examples.confusion", {
+                  form: (
+                    <span lang="fr" className="french">
+                      {CONFUSION.form}
+                    </span>
+                  ),
+                })}
+              </button>
+            ) : null}
           </li>
         ))}
       </ol>

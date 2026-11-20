@@ -69,6 +69,16 @@ for f in manifest.json demo.db vectors.json fixtures.json provenance.json; do
 done
 extra=$(cd "$ARTIFACT" && ls -A | grep -v -E '^(manifest|vectors|fixtures|provenance)\.json$|^demo\.db$' || true)
 [ -z "$extra" ] || { echo "refused: unexpected artifact files: $extra" >&2; exit 1; }
+# Public provenance: the staged copy keeps only explicitly public fields (the preparation also records
+# the embedding service's private address). The input artifact is never changed; the artifact identity
+# (version, vectors, fixtures, database, fingerprint) stays, and only manifest.json's provenance entry
+# is updated. The server's own loader then validates the projected copy.
+chmod u+w "$STAGE/artifact"/*
+python3 -I "$REPO/scripts/demo/flh076/public_provenance.py" project "$STAGE/artifact" > "$TOOLS/public-provenance.txt" \
+  || { cat "$TOOLS/public-provenance.txt" >&2; echo "refused: the artifact's provenance could not be made public" >&2; exit 1; }
+tail -n 1 "$TOOLS/public-provenance.txt"
+(cd "$REPO" && go run ./scripts/demo/flh073/prepare validate -artifact "$STAGE/artifact" -release > "$TOOLS/public-artifact-validate.txt" 2>&1) \
+  || { cat "$TOOLS/public-artifact-validate.txt" >&2; echo "refused: the public artifact does not validate" >&2; exit 1; }
 # The page names its package (<meta name="flh-build">) and calls the API on its
 # own origin under /api, so a deployed page can be matched to its release.
 (cd "$REPO/web" && VITE_FLH_PUBLIC_DEMO=1 VITE_FLH_API_BASE=/api VITE_FLH_BUILD_ID="$NAME" \
@@ -106,7 +116,7 @@ release = {
                "vector_source": m["vectors"]["source"], "real_model": m["vectors"]["real_model"], "model_id": m["vectors"]["model_id"],
                "dimensions": m["vectors"]["dimensions"], "release_status": m["release_status"], "domain_fingerprint": m["domain_fingerprint"]["sha256"],
                "fingerprint_version": m["domain_fingerprint"]["version"]},
-  "model_provenance": None if prov is None else {"deployment_id": prov["deployment_id"], "base_url": prov["base_url"],
+  "model_provenance": None if prov is None else {"deployment_id": prov["deployment_id"],
                "plan_sha256": prov["plan_sha256"], "positions": len(prov["positions"]), "posts": prov["accounting"]["used_posts"],
                "probes": prov["accounting"]["used_probes"], "readiness": prov["probes"]},
   "runtime_requirements": {"os": "Linux (amd64 or arm64)", "needs": ["this directory", "a loopback port", "a TLS reverse proxy for public use"],
@@ -117,6 +127,10 @@ json.dump(release, open(os.path.join(stage, "RELEASE.json"), "w"), indent=2)
 open(os.path.join(stage, "RELEASE.json"), "a").write("\n")
 PY
 
+# Only public fields in RELEASE.json and artifact/provenance.json (names a key path, never a value).
+python3 -I "$REPO/scripts/demo/flh076/public_provenance.py" check "$STAGE" > "$TOOLS/public-fields.txt" \
+  || { cat "$TOOLS/public-fields.txt" >&2; echo "refused: a non-public field in RELEASE.json or artifact/provenance.json" >&2; exit 1; }
+tail -n 1 "$TOOLS/public-fields.txt"
 # Content rules, checked on the staged tree before publication.
 [ -z "$(find "$STAGE" -type l)" ] || { echo "refused: symbolic links in the package" >&2; exit 1; }
 [ -z "$(find "$STAGE" \( -name '.env*' -o -name '*.pem' -o -name '*.key' -o -name '.git' -o -name '*.log' -o -name '.DS_Store' \))" ] || { echo "refused: forbidden file in the package" >&2; exit 1; }

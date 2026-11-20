@@ -113,24 +113,33 @@ def main():
             for u in c["supporting_units"] + c["non_supporting_members"]:
                 if sd["seed"] in u["canonical"].lower():
                     s = source(u["unit_id"])
+                    interp = ((s.get("source_interpretation") or {}).get("effective") or {}).get("effective") or {}
                     return {"unit": u["unit_id"], "concept": c["concept"]["id"], "record": s["entry"]["id"],
                             "supporting": any(x["unit_id"] == u["unit_id"] for x in c["supporting_units"]),
-                            "example": u.get("example") or ""}
+                            "example": u.get("example") or "", "interpretation": interp.get("explanation") or ""}
         ids = [r["concept"]["id"] for r in d["results"]]
         raise Stale(f"no unit with “{sd['seed']}” in its wording among the Concepts “{sd['query']}” matches ({ids or 'none'})")
 
     def comparison(cmp):
         sides = [side(sd) for sd in cmp["sides"]]
-        # R2 practice: each choice's form occurs exactly once in its side's
+        # R2 practice: each item's form occurs exactly once in its side's
         # example, or the page cannot blank it (the item would not be offered).
+        # R3: each distractor is explained by the stored interpretation of the
+        # item's record, which must name it (the page shows that text as why).
         practice = cmp.get("practice")
         if practice:
-            for i, ch in enumerate(practice["choices"]):
-                n = sides[i]["example"].count(ch["form"])
+            for it in practice["items"]:
+                i = it["side"]
+                form = practice["choices"][i]["form"]
+                n = sides[i]["example"].count(form)
                 if n != 1:
-                    raise Stale(f"practice form “{ch['form']}” occurs {n} times in the example of unit #{sides[i]['unit']} (the page needs exactly 1)")
+                    raise Stale(f"practice form “{form}” occurs {n} times in the example of unit #{sides[i]['unit']} (the page needs exactly 1)")
+                for d in practice.get("distractors", []):
+                    if d["form"] not in sides[i]["interpretation"]:
+                        raise Stale(f"practice distractor “{d['form']}” is not named by the stored interpretation of record #{sides[i]['record']} (the page shows that text as the reason)")
         for sd in sides:
             sd.pop("example")
+            sd.pop("interpretation")
         return {"sides": sides, **({"practice_items": len(practice["items"])} if practice else {})}
 
     examples_by_key = {e["key"] for e in spec["examples"]}

@@ -1,13 +1,19 @@
 {
   "schema": "flh_public_demo_discovery_v1",
-  "note": "Public demo example data (synthetic catalog, scripts/demo/flh073/fixtures/catalog.json). Each entry names only how to find its evidence through the read API: a keyword query and wording from exactly one unit. scripts/validation/demo_candidate/check_examples.py checks every entry against a running package; DiscoverySpec.test.ts checks it against the catalog. Application text (titles, labels) lives in web/src/i18n. A comparison may name the guided example its units come from (`example`) and an optional choose-first practice (`practice`): each item blanks one choice's form, which must occur exactly once in that side's example, and offers the forms of both sides. An example's `lang` is the language its question is written in (default French).",
+  "note": "Public demo example data (synthetic catalog, scripts/demo/flh073/fixtures/catalog.json). Each entry names only how to find its evidence through the read API: a keyword query and wording from exactly one unit. scripts/validation/demo_candidate/check_examples.py checks every entry against a running package; DiscoverySpec.test.ts checks it against the catalog. Application text (titles, labels) lives in web/src/i18n. A comparison may name the guided example its units come from (`example`) and an optional choose-first practice (`practice`): each item blanks one choice's form, which must occur exactly once in that side's example, and offers the forms of both sides; a `distractors` form (R3) is offered too and explained, from the stored interpretation of the side's learner question, as not working there. An example's `lang` is the language its question is written in (default French).",
   "examples": [
-    {"key": "en-train-de", "question": "Pour dire « I'm cooking right now », est-ce que « je suis cuisinant » existe ?", "query": "action en cours", "seed": "en train de"},
+    {"key": "en-train-de", "question": "Pour dire « I'm cooking right now », est-ce que « je suis cuisinant » existe ?", "query": "action en cours", "seed": "en train de", "compare": "present-en-train-de"},
     {"key": "y-en", "question": "Dans « j'y vais » et « j'en veux », qu'est-ce que « y » et « en » remplacent ?", "query": "pronouns", "seed": "y remplace"},
     {"key": "il-faut-venir", "question": "Dans mon exercice : « Il faut que tu viennes demain ». Pourquoi « viennes » et pas « viens » ?", "query": "viennes", "seed": "subjonctif de venir"},
     {"key": "imparfait", "lang": "en", "question": "When do I use the imparfait instead of the passé composé?", "query": "foot", "seed": "imparfait pour le contexte", "compare": "imparfait-passe-compose"}
   ],
   "comparisons": [
+    { "key": "present-en-train-de", "example": "en-train-de", "sides": [
+      {"query": "action en cours", "seed": "présent pour une action en cours"},
+      {"query": "action en cours", "seed": "être en train de"} ],
+      "practice": { "choices": [ {"form": "je cuisine", "tense": "présent"}, {"form": "je suis en train de cuisiner", "tense": "être en train de"} ],
+        "items": [ {"side": 0, "alternate": true} ],
+        "distractors": [ {"form": "je suis cuisinant"} ] } },
     { "key": "imparfait-passe-compose", "example": "imparfait", "sides": [
       {"query": "imparfait", "seed": "imparfait pour le contexte"},
       {"query": "passé composé", "seed": "passé composé pour un événement"} ],

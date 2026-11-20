@@ -9,7 +9,10 @@ import { DEMO_EXAMPLES } from "./examples";
 //   #example=y-en                  a guided example
 //   #example=y-en&step=2           …at step 2 of its walkthrough (1–4)
 //   #compare=depuis-pendant        a comparison of two units (comparisons.ts)
+//   #compare=…&practice=1          its choose-first question 1 (R3-056: the exact
+//                                  exercise; answers are never in a link)
 //   …&compare=depuis-pendant       a Concept or source opened from that comparison
+//                                  (…&practice=1 too when opened from its question)
 //   #concept=12                    a Concept
 //   #concept=12&unit=14            the source of unit 14, reached from Concept 12
 //   …&example=y-en                 the same, opened from that example (its back
@@ -43,9 +46,9 @@ import { DEMO_EXAMPLES } from "./examples";
 export type LinkScreen =
   | { kind: "results" }
   | { kind: "example"; example: string; step?: number }
-  | { kind: "compare"; compare: string }
-  | { kind: "concept"; conceptId: number; from?: string; compare?: string }
-  | { kind: "source"; conceptId: number; unitId: number; from?: string; compare?: string };
+  | { kind: "compare"; compare: string; practice?: number }
+  | { kind: "concept"; conceptId: number; from?: string; compare?: string; comparePractice?: number }
+  | { kind: "source"; conceptId: number; unitId: number; from?: string; compare?: string; comparePractice?: number };
 
 // A submitted search as a link carries it. Semantic and hybrid searches are
 // named by their preset only (the demo runs presets only); `q` is then empty.
@@ -63,6 +66,7 @@ const ID = /^[1-9][0-9]{0,8}$/;
 // The guided example's walkthrough steps: question, units, Concept, evidence.
 export const WALK_STEPS = 4;
 const STEP = /^[1-4]$/;
+const PRACTICE = /^[1-9]$/;
 const STATES: readonly LibraryStateFilter[] = ["all", "active", "orphaned", "retired"];
 const PRESET = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
@@ -100,10 +104,15 @@ function screenFromParams(params: URLSearchParams): LinkScreen | "malformed" {
   if (exampleKey !== null && !example) return "malformed";
   // A comparison is its own screen, or where a Concept or source was opened from.
   if (compareKey !== null && (!compare || example)) return "malformed";
-  const via = compare ? { compare } : {};
+  // R3-056: `practice` names one of the comparison's questions (1-based). It is
+  // optional: a value the comparison has no question for is left out.
+  const givenPractice = params.get("practice");
+  const items = compare ? (DEMO_COMPARISONS.find((c) => c.key === compare)?.practice?.items.length ?? 0) : 0;
+  const practice = givenPractice !== null && PRACTICE.test(givenPractice) && Number(givenPractice) <= items ? Number(givenPractice) : undefined;
+  const via = compare ? (practice ? { compare, comparePractice: practice } : { compare }) : {};
   if (concept === null) {
     if (unit !== null) return "malformed";
-    if (compare) return { kind: "compare", compare };
+    if (compare) return practice ? { kind: "compare", compare, practice } : { kind: "compare", compare };
     return example ? (step !== null ? { kind: "example", example, step: Number(step) } : { kind: "example", example }) : { kind: "results" };
   }
   if (!ID.test(concept) || (unit !== null && !ID.test(unit))) return "malformed";
@@ -129,7 +138,17 @@ export function screenFromHash(hash: string): LinkScreen {
   return linkFromHash(hash).screen;
 }
 
-type AnyScreen = { kind: string; example?: string; step?: number; compare?: string; conceptId?: number; unitId?: number; from?: string };
+type AnyScreen = {
+  kind: string;
+  example?: string;
+  step?: number;
+  compare?: string;
+  practice?: number;
+  comparePractice?: number;
+  conceptId?: number;
+  unitId?: number;
+  from?: string;
+};
 
 export function hashForScreen(screen: AnyScreen, search: LinkSearch = NO_SEARCH): string {
   const params = new URLSearchParams();
@@ -144,10 +163,16 @@ export function hashForScreen(screen: AnyScreen, search: LinkSearch = NO_SEARCH)
     params.set("example", screen.example);
     if (screen.step) params.set("step", String(screen.step));
   }
-  if (screen.kind === "compare" && screen.compare) params.set("compare", screen.compare);
+  if (screen.kind === "compare" && screen.compare) {
+    params.set("compare", screen.compare);
+    if (screen.practice) params.set("practice", String(screen.practice));
+  }
   if ((screen.kind === "concept" || screen.kind === "source") && screen.conceptId) {
     if (screen.from) params.set("example", screen.from);
-    if (screen.compare) params.set("compare", screen.compare);
+    if (screen.compare) {
+      params.set("compare", screen.compare);
+      if (screen.comparePractice) params.set("practice", String(screen.comparePractice));
+    }
     params.set("concept", String(screen.conceptId));
     if (screen.kind === "source" && screen.unitId) params.set("unit", String(screen.unitId));
   }
