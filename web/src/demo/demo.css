@@ -268,3 +268,26 @@
 .demo-app .demo-suggested-list { list-style: none; margin: 0; padding: 0; }
 .demo-app .demo-suggested-list li { margin: 2px 0; overflow-wrap: anywhere; }
 .demo-app .demo-follow-up { margin: 0 0 10px; }
+
+/* R5: the analysis screen and the journey's fixture replays. A replay is set
+   apart by a dashed border and a "Fixture replay" tag (text, not colour alone),
+   so it is never taken for data from the server. */
+.demo-app .demo-analysis-fields { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 6px 0; }
+.demo-app .demo-analysis-fields dt { font-weight: 600; }
+.demo-app .demo-analysis-fields dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .demo-app .demo-analysis-fields { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .demo-app .demo-analysis-fields dd { margin: 0 0 6px; }
+}
+.demo-app .demo-replay { border: 2px dashed var(--border-strong); }
+.demo-app .demo-replay-tag { display: inline-block; margin: 0 0 6px; padding: 2px 8px; border: 1px solid var(--text); border-radius: 4px; font-size: 0.8125rem; font-weight: 600; }
+
+/* R5: the compact feature gallery: small cards, two to four per row on wide
+   screens, one per row on a phone. */
+.demo-app .demo-gallery-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 8px; }
+.demo-app .demo-gallery-card { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; min-width: 0; }
+.demo-app .demo-gallery-card h3 { margin: 0 0 4px; font-size: 0.9375rem; }
+.demo-app .demo-gallery-card .hint { margin: 0 0 6px; font-size: 0.875rem; }
+.demo-app .demo-gallery-tag { display: inline-block; margin: 0 0 4px; padding: 1px 6px; border: 1px solid var(--border-strong); border-radius: 4px; font-size: 0.75rem; }
+.demo-app .demo-gallery-tag.shown { border-style: solid; font-weight: 600; }
+.demo-app .demo-gallery-card button { min-height: 44px; white-space: normal; text-align: start; }

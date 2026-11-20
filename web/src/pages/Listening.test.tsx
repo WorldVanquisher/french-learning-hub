@@ -406,7 +406,13 @@ describe("Listening (private workbench)", () => {
     );
     expect(await screen.findByRole("search")).toBeInTheDocument(); // the demo's Knowledge Library rendered
     expect(screen.queryByRole("button", { name: "Listening" })).toBeNull();
-    expect(screen.queryByText(/Listening/)).toBeNull();
+    // R5: the demo's feature gallery describes Listening as private only, with no
+    // control; nothing else in the demo names it.
+    expect(screen.queryAllByText(/Listening/).filter((e) => !e.closest("[data-gallery]"))).toEqual([]);
+    const card = document.querySelector('[data-gallery="listening"]');
+    expect(card).not.toBeNull();
+    expect(card!.textContent).toContain("Private only");
+    expect(card!.querySelector("button, a")).toBeNull();
     expect(server.calls.filter((c) => c.path.startsWith("/api/listening"))).toEqual([]);
   });
 

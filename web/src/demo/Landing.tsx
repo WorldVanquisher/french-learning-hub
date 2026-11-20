@@ -50,9 +50,13 @@ export function StartPoints({ onTour }: { onTour: () => void }) {
 // this bar only says where the visitor is on it and offers the next step.
 // Leaving it keeps the visitor exactly where they are. It lives in this page's
 // memory: a reload or a shared link has no tour.
-export const TOUR_STEPS = 3;
-const STEP_TITLE: readonly MessageKey[] = ["demo.tour.step.1", "demo.tour.step.2", "demo.tour.step.3"];
-const STEP_HINT: readonly MessageKey[] = ["demo.tour.hint.1", "demo.tour.hint.2", "demo.tour.hint.3"];
+// R5: the guided journey, five steps on one French example: its question, its
+// analysis and how a correction is recorded, the rule taken from it with its
+// source evidence, the Concept search, and a mistake retry (a fixture replay of
+// the private Mistake Notebook's retry, said so in its hint).
+export const TOUR_STEPS = 5;
+const STEP_TITLE: readonly MessageKey[] = ["demo.tour.step.1", "demo.tour.step.2", "demo.tour.step.3", "demo.tour.step.4", "demo.tour.step.5"];
+const STEP_HINT: readonly MessageKey[] = ["demo.tour.hint.1", "demo.tour.hint.2", "demo.tour.hint.3", "demo.tour.hint.4", "demo.tour.hint.5"];
 
 export function TourBar({
   step,

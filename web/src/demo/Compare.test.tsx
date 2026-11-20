@@ -425,12 +425,12 @@ describe("choose-first practice (R2)", () => {
   });
 });
 
-describe("the first screen's ways in and the 60-second tour (R2)", () => {
+describe("the first screen's ways in and the guided journey (R2, R5)", () => {
   it("names browsing and searching apart, and its entries move focus within the page", async () => {
     server();
     renderDemo("/");
     const start = await screen.findByRole("navigation", { name: "Where to start" });
-    expect(within(start).getAllByRole("button").map((b) => b.textContent)).toEqual(["60-second tour", "Examples", "Comparisons", "Search the library"]);
+    expect(within(start).getAllByRole("button").map((b) => b.textContent)).toEqual(["Guided tour", "Examples", "Comparisons", "Search the library"]);
     // The search section says how searching differs from the prepared paths.
     expect(screen.getByText(/^Search looks through the whole synthetic library for the words you type; the examples and comparisons above are prepared paths/)).toBeInTheDocument();
     const length = window.history.length;
@@ -444,39 +444,61 @@ describe("the first screen's ways in and the 60-second tour (R2)", () => {
     expect(window.location.hash).toBe("");
   });
 
-  it("goes question → comparison → source, follows Back, and can be left without moving", async () => {
-    server();
+  it("walks one French example: question → analysis and correction → rule and source → Concept search → mistake retry (R5)", async () => {
+    const s = server();
     renderDemo("/");
-    fireEvent.click(await screen.findByRole("button", { name: "60-second tour" }));
-    // R4-DEM-012: the tour opens the first French example.
+    fireEvent.click(await screen.findByRole("button", { name: "Guided tour" }));
+    const bar = () => screen.getByRole("navigation", { name: "Guided tour" });
+    // 1. The question.
     expect(window.location.hash).toBe("#example=en-train-de");
-    const bar = () => screen.getByRole("navigation", { name: "60-second tour" });
-    await waitFor(() => expect(bar()).toHaveTextContent("60-second tour, step 1 of 3: A learner's question"));
+    await waitFor(() => expect(bar()).toHaveTextContent("Guided tour, step 1 of 5: A learner's question"));
     expect(await screen.findByText(COOKING_QUESTION, { selector: "blockquote" })).toHaveAttribute("lang", "fr");
-    fireEvent.click(within(bar()).getByRole("button", { name: "Next: Two examples side by side" }));
-    expect(window.location.hash).toBe("#compare=present-en-train-de");
-    await screen.findByRole("region", { name: "The two examples" });
-    expect(bar()).toHaveTextContent("step 2 of 3");
-    await waitFor(() => expect(within(bar()).getByRole("button", { name: "Next: The source evidence" })).toBeEnabled());
-    fireEvent.click(within(bar()).getByRole("button", { name: "Next: The source evidence" }));
-    expect(window.location.hash).toBe("#compare=present-en-train-de&concept=13&unit=15");
-    expect(bar()).toHaveTextContent("step 3 of 3: The source evidence");
+    // 2. Analysis and correction: the stored analysis from the server, the correction a labelled replay.
+    fireEvent.click(within(bar()).getByRole("button", { name: "Next: Analysis and correction" }));
+    expect(window.location.hash).toBe("#analysis=en-train-de");
+    await waitFor(() => expect(bar()).toHaveTextContent("step 2 of 5: Analysis and correction"));
+    const stored = await screen.findByRole("region", { name: "The stored analysis (version 1)" });
+    expect(within(stored).getByText(COOKING_EXPLANATION)).toBeInTheDocument();
+    expect(within(stored).getByText("unreviewed")).toBeInTheDocument();
+    const replay = screen.getByRole("region", { name: "How a correction is recorded" });
+    expect(replay).toHaveAttribute("data-fixture-replay", "correction");
+    expect(within(replay).getByText("Fixture replay")).toBeInTheDocument();
+    expect(within(replay).getAllByText(/« Je suis cuisinant » is not French\./).length).toBeGreaterThan(0);
+    // 3. The rule and its source: the example's seed unit, opened from the example.
+    await waitFor(() => expect(within(bar()).getByRole("button", { name: "Next: The rule and its source" })).toBeEnabled());
+    fireEvent.click(within(bar()).getByRole("button", { name: "Next: The rule and its source" }));
+    expect(window.location.hash).toBe("#example=en-train-de&concept=14&unit=16");
+    await waitFor(() => expect(bar()).toHaveTextContent("step 3 of 5: The rule and its source"));
+    // 4. The Concept search: the example's own keyword query.
+    fireEvent.click(within(bar()).getByRole("button", { name: "Next: Concept search" }));
+    expect(window.location.hash).toBe("#q=action+en+cours");
+    await waitFor(() => expect(bar()).toHaveTextContent("step 4 of 5: Concept search"));
+    expect(await screen.findByRole("button", { name: /the present tense for an action happening now/ })).toBeInTheDocument();
+    // 5. A mistake retry: the question, the hint saying it is a fixture replay.
+    fireEvent.click(within(bar()).getByRole("button", { name: "Next: A mistake retry" }));
+    // The search of step 4 stays in the address, as for any screen opened after a search.
+    expect(window.location.hash).toBe("#q=action+en+cours&compare=present-en-train-de&practice=1");
+    await waitFor(() => expect(bar()).toHaveTextContent("step 5 of 5: A mistake retry"));
+    expect(bar()).toHaveTextContent(/^.*Fixture replay of a mistake retry/);
+    expect(await screen.findByRole("heading", { level: 3, name: "Which form completes the example?" })).toBeInTheDocument();
+    // Back follows the path; leaving keeps the position.
     act(() => window.history.back());
-    await waitFor(() => expect(bar()).toHaveTextContent("step 2 of 3"));
-    // R2-035: leaving keeps the position.
+    await waitFor(() => expect(bar()).toHaveTextContent("step 4 of 5"));
     fireEvent.click(within(bar()).getByRole("button", { name: "Leave the tour and stay here" }));
-    expect(screen.queryByRole("navigation", { name: "60-second tour" })).toBeNull();
-    expect(window.location.hash).toBe("#compare=present-en-train-de");
-    expect(screen.getByRole("region", { name: "The two examples" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Guided tour" })).toBeNull();
+    expect(window.location.hash).toBe("#q=action+en+cours");
+    // Reads only, nothing stored.
+    expect(s.calls.every((c) => c.method === "GET" && c.url.startsWith("/api/knowledge-library/"))).toBe(true);
+    expect(window.localStorage.length).toBe(0);
   });
 
   it("says when the visitor has left the path, and returns to it", async () => {
     server();
     renderDemo("/");
-    fireEvent.click(await screen.findByRole("button", { name: "60-second tour" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Guided tour" }));
     await screen.findByText(COOKING_QUESTION, { selector: "blockquote" });
     fireEvent.click(screen.getByRole("button", { name: "← Back to examples and search" }));
-    await waitFor(() => expect(screen.getByRole("navigation", { name: "60-second tour" })).toHaveTextContent("You have left the tour's path."));
+    await waitFor(() => expect(screen.getByRole("navigation", { name: "Guided tour" })).toHaveTextContent("You have left the tour's path."));
     fireEvent.click(screen.getByRole("button", { name: "Return to the tour" }));
     expect(window.location.hash).toBe("#example=en-train-de");
   });

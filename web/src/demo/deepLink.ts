@@ -8,6 +8,8 @@ import { DEMO_EXAMPLES } from "./examples";
 //
 //   #example=y-en                  a guided example
 //   #example=y-en&step=2           …at step 2 of its walkthrough (1–4)
+//   #analysis=en-train-de          a guided example's stored analysis and how a
+//                                  correction is recorded (R5; AnalysisScreen.tsx)
 //   #compare=depuis-pendant        a comparison of two units (comparisons.ts)
 //   #compare=…&practice=1          its choose-first question 1 (R3-056: the exact
 //                                  exercise; answers are never in a link)
@@ -46,6 +48,7 @@ import { DEMO_EXAMPLES } from "./examples";
 export type LinkScreen =
   | { kind: "results" }
   | { kind: "example"; example: string; step?: number }
+  | { kind: "analysis"; example: string }
   | { kind: "compare"; compare: string; practice?: number }
   | { kind: "concept"; conceptId: number; from?: string; compare?: string; comparePractice?: number }
   | { kind: "source"; conceptId: number; unitId: number; from?: string; compare?: string; comparePractice?: number };
@@ -90,6 +93,12 @@ function searchFromParams(params: URLSearchParams, presets?: readonly string[]):
 }
 
 function screenFromParams(params: URLSearchParams): LinkScreen | "malformed" {
+  // R5: an example's analysis screen stands alone; anything beside it is malformed.
+  const analysisKey = params.get("analysis");
+  if (analysisKey !== null) {
+    const others = ["example", "compare", "concept", "unit", "step", "practice"].some((k) => params.get(k) !== null);
+    return !others && DEMO_EXAMPLES.some((e) => e.key === analysisKey) ? { kind: "analysis", example: analysisKey } : "malformed";
+  }
   const exampleKey = params.get("example");
   const example = exampleKey && DEMO_EXAMPLES.some((e) => e.key === exampleKey) ? exampleKey : undefined;
   const concept = params.get("concept");
@@ -159,6 +168,7 @@ export function hashForScreen(screen: AnyScreen, search: LinkSearch = NO_SEARCH)
     params.set("preset", search.preset);
   }
   if (search.state !== "all" && (search.mode === "keyword" || search.preset)) params.set("state", search.state);
+  if (screen.kind === "analysis" && screen.example) params.set("analysis", screen.example);
   if (screen.kind === "example" && screen.example) {
     params.set("example", screen.example);
     if (screen.step) params.set("step", String(screen.step));
