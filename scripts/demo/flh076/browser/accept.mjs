@@ -89,8 +89,12 @@ try {
   await search();
   const alert = page.getByRole("alert");
   await alert.waitFor();
-  check("server 400 shown as an explicit error with retry", /Could not search the knowledge library: \(400\)/.test(await alert.innerText()) &&
-    (await alert.getByRole("button", { name: "Try again" }).count()) === 1, await alert.innerText());
+  // A refused search (400) names the limit it broke and offers to edit the
+  // search; running it again cannot succeed, so no retry is offered (item 057).
+  check("server 400 shown as an explicit error naming the limit, with Edit the search and no retry",
+    /This search is 201 bytes long; the search accepts at most 200/.test(await alert.innerText()) &&
+    (await alert.getByRole("button", { name: "Edit the search" }).count()) === 1 &&
+    (await alert.getByRole("button", { name: /again/ }).count()) === 0, await alert.innerText());
   await shot("keyword-error");
 
   phase = "semantic";

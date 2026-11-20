@@ -112,7 +112,7 @@ for (const locale of ["en", "zh-CN"]) {
   if (await retry.count()) {
     await retry.click();
     await page.waitForSelector(".demo-example-card", { timeout: 5000 }).catch(() => {});
-    check("retry recovers the starting screen", (await page.locator(".demo-example-card").count()) === 3);
+    check("retry recovers the starting screen", (await page.locator(".demo-example-card").count()) === 4);
   } else {
     await page.reload();
     await page.waitForSelector(".demo-example-card");
@@ -167,7 +167,8 @@ for (const locale of ["en", "zh-CN"]) {
   await sleep(2000);
   const titles = await resultTitles(page);
   check("out-of-order search: the later query wins", titles.length === 1 && /train/.test(titles[0]), titles.join(" | "));
-  check("out-of-order search: the label names the later query", (await page.locator('section[aria-label="Library results"] [role=status]').first().innerText()).includes("train"));
+  // R2-045: a search's outcome is announced by one status region present before the search (#demo-search-status); the visible line is plain text.
+  check("out-of-order search: the label names the later query", (await page.locator('section[aria-label="Library results"] .hint').first().innerText()).includes("train") && (await page.locator("#demo-search-status").innerText()).includes("train"));
 
   // A slow Concept, then another opened before it arrives.
   await page.route(/\/knowledge-library\/concepts\/12$/, async (route) => {
@@ -191,7 +192,7 @@ for (const locale of ["en", "zh-CN"]) {
   await page.waitForSelector(".demo-example-card");
   await page.selectOption('select[aria-label="Concept status"]', "retired");
   await page.click('form[role=search] button[type=submit]');
-  const empty = page.locator(".library .empty[role=status]", { hasText: "retired" });
+  const empty = page.locator(".library .empty", { hasText: "retired" });
   await empty.waitFor({ timeout: 5000 }).catch(() => {});
   check("empty status filter is stated", (await empty.count()) === 1);
   await page.selectOption('select[aria-label="Concept status"]', "all");
@@ -212,7 +213,8 @@ for (const locale of ["en", "zh-CN"]) {
   });
   if (!(await page.locator(".demo-example-card").count())) await page.goto(url);
   await page.click("#demo-example-y-en");
-  await page.locator(".demo-next button").nth(1).click();
+  // R2: "Keep exploring" lists the other examples in the start page's order.
+  await page.locator(".demo-next button", { hasText: "One question, two Concepts" }).click();
   await sleep(1800);
   check("rapid example switching shows the last example", (await page.locator(".demo-question").innerText()).includes("cuisinant"));
   await ctx.close();

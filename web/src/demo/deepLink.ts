@@ -1,4 +1,5 @@
 import type { LibraryQuery, LibrarySearchMode, LibraryStateFilter } from "../types/library";
+import { DEMO_COMPARISONS } from "./comparisons";
 import { DEMO_EXAMPLES } from "./examples";
 
 // Direct links for the public demo. The server serves the demo only at `/`
@@ -6,6 +7,9 @@ import { DEMO_EXAMPLES } from "./examples";
 // must be a URL fragment, which browsers never send to the server:
 //
 //   #example=y-en                  a guided example
+//   #example=y-en&step=2           …at step 2 of its walkthrough (1–4)
+//   #compare=depuis-pendant        a comparison of two units (comparisons.ts)
+//   …&compare=depuis-pendant       a Concept or source opened from that comparison
 //   #concept=12                    a Concept
 //   #concept=12&unit=14            the source of unit 14, reached from Concept 12
 //   …&example=y-en                 the same, opened from that example (its back
@@ -20,16 +24,28 @@ import { DEMO_EXAMPLES } from "./examples";
 // fixture identifier: an example key, a preset id, or a Concept or unit ID,
 // which the artifact's domain fingerprint fixes for a given catalog.
 //
-// Anything else, including an unknown example key or preset, a malformed ID or
-// an over-long query, opens the starting screen, and `malformed` says so: the
+// A blank `q` (or one of spaces) is the start's own empty search.
+//
+// R2-085: the optional parameters, `step` (an example's walkthrough step) and
+// `state` (the search's status filter), are tolerated: an invalid or blank
+// value, or a step on a screen that has none, is left out, and the link opens
+// what its other parameters name. The page then rewrites the address to that
+// screen's own link, so the address bar and a copied link show the canonical
+// form. Parameters the demo does not know (`utm_source=…`) are ignored the
+// same way.
+//
+// Any other parameter with a blank value (`#example=`, `#concept=12&unit=`) is
+// a link cut short. That, an unknown example key or preset, a malformed ID or
+// an over-long query opens the starting screen, and `malformed` says so: the
 // page then tells the visitor that the link matched nothing. A link names IDs
 // only; every screen still reads its data from the server, so a well-formed
 // link to an ID this build lacks opens that screen's "not in this demo" state.
 export type LinkScreen =
   | { kind: "results" }
-  | { kind: "example"; example: string }
-  | { kind: "concept"; conceptId: number; from?: string }
-  | { kind: "source"; conceptId: number; unitId: number; from?: string };
+  | { kind: "example"; example: string; step?: number }
+  | { kind: "compare"; compare: string }
+  | { kind: "concept"; conceptId: number; from?: string; compare?: string }
+  | { kind: "source"; conceptId: number; unitId: number; from?: string; compare?: string };
 
 // A submitted search as a link carries it. Semantic and hybrid searches are
 // named by their preset only (the demo runs presets only); `q` is then empty.
@@ -44,6 +60,9 @@ export const NO_SEARCH: LinkSearch = { mode: "keyword", q: "", state: "all" };
 export const MAX_LINK_QUERY = 200;
 
 const ID = /^[1-9][0-9]{0,8}$/;
+// The guided example's walkthrough steps: question, units, Concept, evidence.
+export const WALK_STEPS = 4;
+const STEP = /^[1-4]$/;
 const STATES: readonly LibraryStateFilter[] = ["all", "active", "orphaned", "retired"];
 const PRESET = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
@@ -51,10 +70,11 @@ type ParsedSearch = LinkSearch | "malformed";
 
 function searchFromParams(params: URLSearchParams, presets?: readonly string[]): ParsedSearch {
   const mode = params.get("mode") ?? "keyword";
-  const state = params.get("state") ?? "all";
+  // An unknown or blank status filter is left out (R2-085).
+  const given = params.get("state");
+  const state = given !== null && STATES.includes(given as LibraryStateFilter) ? given : "all";
   const q = (params.get("q") ?? "").trim();
   const preset = params.get("preset");
-  if (!STATES.includes(state as LibraryStateFilter)) return "malformed";
   if (mode === "keyword") {
     if (preset !== null || q.length > MAX_LINK_QUERY) return "malformed";
     return { mode: "keyword", q, state: state as LibraryStateFilter };
@@ -70,15 +90,26 @@ function screenFromParams(params: URLSearchParams): LinkScreen | "malformed" {
   const example = exampleKey && DEMO_EXAMPLES.some((e) => e.key === exampleKey) ? exampleKey : undefined;
   const concept = params.get("concept");
   const unit = params.get("unit");
-  if (exampleKey && !example) return "malformed";
+  // A step that is not one of the walkthrough's, or on a screen without a
+  // walkthrough, is left out (R2-085).
+  const givenStep = params.get("step");
+  const step = givenStep !== null && STEP.test(givenStep) && params.get("example") !== null && params.get("concept") === null ? givenStep : null;
+  const compareKey = params.get("compare");
+  const compare = compareKey && DEMO_COMPARISONS.some((c) => c.key === compareKey) ? compareKey : undefined;
+  // A blank value names nothing (a link cut short), like an unknown one.
+  if (exampleKey !== null && !example) return "malformed";
+  // A comparison is its own screen, or where a Concept or source was opened from.
+  if (compareKey !== null && (!compare || example)) return "malformed";
+  const via = compare ? { compare } : {};
   if (concept === null) {
     if (unit !== null) return "malformed";
-    return example ? { kind: "example", example } : { kind: "results" };
+    if (compare) return { kind: "compare", compare };
+    return example ? (step !== null ? { kind: "example", example, step: Number(step) } : { kind: "example", example }) : { kind: "results" };
   }
   if (!ID.test(concept) || (unit !== null && !ID.test(unit))) return "malformed";
   const conceptId = Number(concept);
-  if (unit !== null) return { kind: "source", conceptId, unitId: Number(unit), from: example };
-  return { kind: "concept", conceptId, from: example };
+  if (unit !== null) return { kind: "source", conceptId, unitId: Number(unit), from: example, ...via };
+  return { kind: "concept", conceptId, from: example, ...via };
 }
 
 // linkFromHash reads a whole fragment. `presets` (the demo's preset ids, when
@@ -98,7 +129,7 @@ export function screenFromHash(hash: string): LinkScreen {
   return linkFromHash(hash).screen;
 }
 
-type AnyScreen = { kind: string; example?: string; conceptId?: number; unitId?: number; from?: string };
+type AnyScreen = { kind: string; example?: string; step?: number; compare?: string; conceptId?: number; unitId?: number; from?: string };
 
 export function hashForScreen(screen: AnyScreen, search: LinkSearch = NO_SEARCH): string {
   const params = new URLSearchParams();
@@ -109,9 +140,14 @@ export function hashForScreen(screen: AnyScreen, search: LinkSearch = NO_SEARCH)
     params.set("preset", search.preset);
   }
   if (search.state !== "all" && (search.mode === "keyword" || search.preset)) params.set("state", search.state);
-  if (screen.kind === "example" && screen.example) params.set("example", screen.example);
+  if (screen.kind === "example" && screen.example) {
+    params.set("example", screen.example);
+    if (screen.step) params.set("step", String(screen.step));
+  }
+  if (screen.kind === "compare" && screen.compare) params.set("compare", screen.compare);
   if ((screen.kind === "concept" || screen.kind === "source") && screen.conceptId) {
     if (screen.from) params.set("example", screen.from);
+    if (screen.compare) params.set("compare", screen.compare);
     params.set("concept", String(screen.conceptId));
     if (screen.kind === "source" && screen.unitId) params.set("unit", String(screen.unitId));
   }

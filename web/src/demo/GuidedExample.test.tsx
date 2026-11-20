@@ -26,14 +26,20 @@ describe("guided examples match the demo catalog", () => {
     }
   });
 
-  it("each seed names exactly one unit, of a different question written in French", () => {
+  it("each seed names exactly one unit, of a different question, in the language the example says", () => {
     const entries = DEMO_EXAMPLES.map((ex) => {
       const hits = catalog.entries.flatMap((e) => e.units.filter((u) => u.canonical.toLocaleLowerCase("fr").includes(ex.seed)).map(() => e));
       expect(hits, ex.key).toHaveLength(1);
       return hits[0];
     });
     expect(new Set(entries.map((e) => e.key)).size).toBe(DEMO_EXAMPLES.length);
-    for (const e of entries) expect(e.original_input).toMatch(/« .+ »/);
+    // Three questions written in French (they quote French in « »), and one
+    // written in English (R2: its two units are the imparfait comparison).
+    entries.forEach((e, i) => {
+      if (DEMO_EXAMPLES[i].lang === "fr") expect(e.original_input, DEMO_EXAMPLES[i].key).toMatch(/« .+ »/);
+      else expect(e.original_input, DEMO_EXAMPLES[i].key).toMatch(/^When do I use /);
+    });
+    expect(DEMO_EXAMPLES.map((e) => e.lang)).toEqual(["fr", "fr", "fr", "en"]);
   });
 
   it("every unit of an example's question is filed under a Concept", () => {
@@ -126,14 +132,15 @@ function demoServer(fail: Record<string, number> = {}, realModel = false) {
 describe("resolveExample", () => {
   it("collects the units of the seed's question across the matched Concepts and counts other evidence", async () => {
     demoServer();
-    const yEn = await resolveExample(DEMO_EXAMPLES[0]);
+    const byKey = (key: string) => DEMO_EXAMPLES.find((e) => e.key === key)!;
+    const yEn = await resolveExample(byKey("y-en"));
     expect(yEn.kind).toBe("found");
     if (yEn.kind !== "found") return;
     expect(yEn.example.source.entry.original_input).toBe(QUESTION);
     expect(yEn.example.extracted.map((e) => e.unit.unit_id)).toEqual([12, 13]);
     expect(yEn.example.concepts).toEqual([expect.objectContaining({ fromThisQuestion: 2, supporting: 2 })]);
 
-    const ilFaut = await resolveExample(DEMO_EXAMPLES[1]);
+    const ilFaut = await resolveExample(byKey("il-faut-venir"));
     if (ilFaut.kind !== "found") throw new Error("missing");
     expect(ilFaut.example.extracted.map((e) => e.unit.unit_id)).toEqual([14]);
     expect(ilFaut.example.concepts).toEqual([expect.objectContaining({ fromThisQuestion: 1, supporting: 2 })]);
@@ -141,7 +148,7 @@ describe("resolveExample", () => {
 
   it("reports an example this build does not contain instead of guessing", async () => {
     demoServer();
-    expect(await resolveExample(DEMO_EXAMPLES[2])).toEqual({ kind: "missing" });
+    expect(await resolveExample(DEMO_EXAMPLES.find((e) => e.key === "en-train-de")!)).toEqual({ kind: "missing" });
   });
 });
 
@@ -188,18 +195,21 @@ describe("Public demo guided path", () => {
     expect(calls.every((c) => /^\/api\/knowledge-library\/(concepts|units|demo)/.test(c.url))).toBe(true);
   });
 
-  it("leads each example card with the learner's French question", async () => {
+  it("leads each example card with the learner's question, the most beginner-friendly French one first", async () => {
     demoServer();
     render(<StrictMode><PublicDemoApp /></StrictMode>);
-    const cards = await screen.findAllByRole("button", { name: /(One question, two pronouns|New evidence for a known rule|One question, two Concepts)$/ });
-    expect(cards).toHaveLength(3);
+    const cards = await screen.findAllByRole("button", { name: /(One question, two pronouns|New evidence for a known rule|One question, two Concepts|One question, two tenses)$/ });
+    expect(cards).toHaveLength(4);
     DEMO_EXAMPLES.forEach((ex, i) => {
       const question = within(cards[i]).getByText(ex.question);
-      expect(question).toHaveAttribute("lang", "fr");
+      // In the language it is written in: French for three, English for one.
+      expect(question).toHaveAttribute("lang", ex.lang);
       expect(question).toHaveAttribute("dir", "auto");
     });
-    // The question comes first, so the card is chosen by the French itself.
-    expect(cards[0].textContent).toMatch(/^Dans « j'y vais »/);
+    // The question comes first, so the card is chosen by the question itself:
+    // R2-032, a beginner's question (is « je suis cuisinant » French?) first.
+    expect(cards[0].textContent).toMatch(/^Pour dire « I'm cooking right now »/);
+    expect(cards[3].textContent).toMatch(/^When do I use the imparfait/);
   });
 
   it("shows on the example that its Concept can now be found by keyword search", async () => {
@@ -223,7 +233,7 @@ describe("Public demo guided path", () => {
     const result = await screen.findByRole("button", { name: "subjunctive after « il faut que »" });
     const line = result.closest("li")!.querySelector(".demo-match")!;
     expect(line).toHaveTextContent(
-      "Found in the explanation of a unit filed here, the example of a unit filed here, not in the Concept's title: viennes. Open the Concept to read that wording and see whether the unit currently supports it.",
+      "Found in the explanation of a unit filed here, the example of a unit filed here, not in the Concept's title: viennes. “Show why it matched” shows that wording and whether the unit currently supports the Concept.",
     );
     expect(line.querySelector("mark")).toHaveTextContent("viennes");
   });

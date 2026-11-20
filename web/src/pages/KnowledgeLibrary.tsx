@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type MutableRefObject, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type MutableRefObject, type ReactNode } from "react";
 import { markMatches, matchedFeatures } from "./libraryHighlight";
 import { addRecent, clearRecent, readRecent, removeRecent, type RecentSearch } from "./recentSearches";
 import * as api from "../api/client";
@@ -9,6 +9,7 @@ import type {
   LibraryHistoricalUnit,
   LibraryQuery,
   LibrarySearch,
+  LibrarySearchResult,
   LibrarySearchMode,
   LibrarySource,
   LibraryStateFilter,
@@ -20,9 +21,14 @@ import { useI18n, type I18n, type MessageKey } from "../i18n";
 import { RecallPractice } from "./RecallPractice";
 import { DEMO_EXAMPLES } from "../demo/examples";
 import { ExamplePicker, ExampleScreen, focusExampleCard } from "../demo/ExampleScreen";
-import { linkFromHash, queryToSearch, sameSearch, searchToQuery, type LinkSearch } from "../demo/deepLink";
+import { hashForScreen, linkFromHash, queryToSearch, sameSearch, searchToQuery, type LinkSearch } from "../demo/deepLink";
+import { EvidenceCard } from "../demo/EvidenceCard";
+import { compareCardId, ComparePicker, CompareScreen } from "../demo/CompareScreen";
+import { findComparison, type SideResolution } from "../demo/comparisons";
+import { readCompareVisit, writeCompareVisit } from "../demo/visit";
+import { StartPoints, TourBar, TOUR_STEPS } from "../demo/Landing";
 import { adoptEntry, entryKey, focusControl, focusFallback, pushEntry, readEntry, replaceEntry, stepsBack } from "../demo/history";
-import { NoMatchHelp, RecordedTime } from "../demo/DemoStates";
+import { NoMatchHelp, RecordedTime, SearchProblem, SuggestedSearches } from "../demo/DemoStates";
 
 // One search outcome per submitted query. Semantic and hybrid modes need a
 // query; with an empty one nothing is requested (browsing is keyword search's job).
@@ -44,12 +50,22 @@ type Load<T> = { status: "loading" } | { status: "error"; message: string; code?
 // actions return to that example instead of the search results.
 type Screen =
   | { kind: "results" }
-  | { kind: "example"; example: string }
-  | { kind: "concept"; conceptId: number; from?: string }
+  | { kind: "example"; example: string; step?: number }
+  | { kind: "compare"; compare: string }
+  // `from`: the guided example, `compare`: the comparison it was opened from (public demo).
+  | { kind: "concept"; conceptId: number; from?: string; compare?: string }
   | { kind: "practice"; conceptId: number; session: number }
-  | { kind: "source"; conceptId: number; unitId: number; practice?: number; from?: string };
+  | { kind: "source"; conceptId: number; unitId: number; practice?: number; from?: string; compare?: string };
 
 const resultButtonId = (conceptId: number) => `library-result-${conceptId}`;
+
+// A public demo build (VITE_FLH_PUBLIC_DEMO=1, fixed at build time): the
+// private workbench's recall practice is never offered there, so its code is
+// left out of that bundle altogether (R2-054; check_bundle.py).
+const PUBLIC_DEMO_BUILD = import.meta.env.VITE_FLH_PUBLIC_DEMO === "1";
+
+// Public demo: the 60-second tour's example and comparison (demo/Landing.tsx).
+const TOUR = { example: "imparfait", compare: "imparfait-passe-compose" } as const;
 
 function describeError(error: unknown): string {
   if (error instanceof ApiError) return `(${error.status}) ${error.message}`;
@@ -209,6 +225,7 @@ export function KnowledgeLibrary({
   // what it found instead) is brought into view once it is shown.
   const revealResults = useRef(false);
   const searchFormRef = useRef<HTMLFormElement>(null);
+  const lastKeyword = useRef<{ query: LibraryQuery; data: LibrarySearch } | null>(null);
   const [badLink, setBadLink] = useState(() => Boolean(link?.malformed));
   const setScreen = (next: Screen, search: LinkSearch = searchRef.current) => {
     if (demo) {
@@ -280,18 +297,26 @@ export function KnowledgeLibrary({
     retry,
   );
 
-  useEffect(() => {
+  // The entry is adopted once per mount, in the same commit that first shows the
+  // screen (a layout effect). Adopting later (a passive effect, or the effect
+  // running again) could follow a click that already pushed the next screen and
+  // would then rewrite that new entry as the start, so Back would skip a screen.
+  const adopted = useRef(false);
+  useLayoutEffect(() => {
     if (!demo) return;
     const presetIds = demo.presets.map((p) => p.id);
     // This entry: keep the trail a reload kept, otherwise this visit starts here.
     // The address is rewritten to the screen's own link (a malformed one becomes `/`).
-    const kept = readEntry<Screen>(window.history.state);
-    const key = entryKey(screenRef.current, searchRef.current);
-    trailRef.current = replaceEntry(
-      screenRef.current,
-      searchRef.current,
-      kept && kept.flhTrail[kept.flhTrail.length - 1] === key ? kept.flhTrail : [key],
-    );
+    if (!adopted.current) {
+      adopted.current = true;
+      const kept = readEntry<Screen>(window.history.state);
+      const key = entryKey(screenRef.current, searchRef.current);
+      trailRef.current = replaceEntry(
+        screenRef.current,
+        searchRef.current,
+        kept && kept.flhTrail[kept.flhTrail.length - 1] === key ? kept.flhTrail : [key],
+      );
+    }
     const onPop = (event: PopStateEvent) => {
       const entry = readEntry<Screen>(event.state);
       let next: Screen;
@@ -316,6 +341,7 @@ export function KnowledgeLibrary({
       const left = screenRef.current;
       if (next.kind === "results") {
         if (left.kind === "example") returnToExample.current = left.example;
+        else if (left.kind === "compare") focusReturn.current = focusReturn.current ?? compareCardId(left.compare);
         else if ((left.kind === "concept" || left.kind === "source") && left.from) returnToExample.current = left.from;
         else if (left.kind === "concept" || left.kind === "source") returnTo.current = left.conceptId;
       }
@@ -371,6 +397,13 @@ export function KnowledgeLibrary({
     const area = searchFormRef.current?.nextElementSibling;
     const target = area?.querySelector(".library-result, .demo-no-match, [role=alert]") ?? area;
     if (target instanceof HTMLElement) target.scrollIntoView?.({ block: "nearest" });
+    // The field the visitor typed in stays in view too: when showing the whole
+    // result pushed it off the top (a 320 px phone), the field goes near the
+    // top (8 px clear, so subpixel layout cannot leave it a fraction above) and
+    // the result's beginning stays on screen below it.
+    const field = document.activeElement;
+    if (field instanceof HTMLElement && field.id === "library-query" && field.getBoundingClientRect().top < 0)
+      window.scrollBy?.(0, field.getBoundingClientRect().top - 8);
   }, [screen, search.status]);
 
   const submit = (event: FormEvent) => {
@@ -385,13 +418,78 @@ export function KnowledgeLibrary({
   };
   const openConcept = (conceptId: number, from?: string) => setScreen({ kind: "concept", conceptId, from });
   const openExample = (key: string) => setScreen({ kind: "example", example: key });
-  const backToExample = (key: string) => goBack({ kind: "example", example: key });
+  // Public demo: a comparison (demo/comparisons.ts), the way back to the start
+  // from it (focus on its card), and back to it from a Concept or source.
+  // `practice`: open it on its choose-first question (R2) instead of the pair;
+  // that is the comparison's in-page state for this visit, not part of its link.
+  const openCompare = (key: string, practice = false) => {
+    writeCompareVisit(key, { ...readCompareVisit(key), practice });
+    setScreen({ kind: "compare", compare: key });
+  };
+  const backFromCompare = (key: string) => {
+    goBack({ kind: "results" });
+    if (demo && !focusReturn.current) focusReturn.current = compareCardId(key);
+  };
+  const backToCompare = (key: string) => goBack({ kind: "compare", compare: key });
+  const comparisonTitle = (key: string | undefined) => {
+    const c = findComparison(key);
+    return c ? t("demo.compare.backTo", { title: t(c.title) }) : null;
+  };
+  // Public demo: the walkthrough step each example was last shown at, so the
+  // way back from its Concept or evidence returns to that step's entry.
+  const exampleStep = useRef<Record<string, number | undefined>>({});
+  if (screen.kind === "example") exampleStep.current[screen.example] = screen.step;
+  const backToExample = (key: string) =>
+    goBack(exampleStep.current[key] ? { kind: "example", example: key, step: exampleStep.current[key] } : { kind: "example", example: key });
   const backFromExample = (key: string) => {
     returnToExample.current = key;
     goBack({ kind: "results" });
   };
+  // Public demo (R2-038): from a link that names nothing, back to the search,
+  // with the search field focused.
+  const searchLibrary = () => {
+    goBack({ kind: "results" });
+    focusReturn.current = "library-query";
+  };
   // The guided example a Concept or source was opened from, if any.
   const fromExample = (key: string | undefined) => (key ? DEMO_EXAMPLES.find((e) => e.key === key) : undefined);
+  // Public demo: the 60-second tour (R2, demo/Landing.tsx): the imparfait
+  // example's question, its comparison, then the source of the comparison's
+  // first unit. Kept in this page's memory only; the step shown follows the
+  // screen, so Back and Forward move along it too.
+  const [tour, setTour] = useState(false);
+  const [tourSource, setTourSource] = useState<{ conceptId: number; unitId: number } | null>(null);
+  const tourStep = !tour
+    ? 0
+    : screen.kind === "example" && screen.example === TOUR.example
+      ? 1
+      : screen.kind === "compare" && screen.compare === TOUR.compare
+        ? 2
+        : screen.kind === "source" && screen.compare === TOUR.compare
+          ? 3
+          : 0;
+  const tourReached = useRef(1);
+  if (tourStep > 0) tourReached.current = tourStep;
+  const tourGo = (step: number) => {
+    if (step === 1) openExample(TOUR.example);
+    else if (step === 2) openCompare(TOUR.compare);
+    else if (step === 3 && tourSource) setScreen({ kind: "source", conceptId: tourSource.conceptId, unitId: tourSource.unitId, compare: TOUR.compare });
+  };
+  const startTour = () => {
+    setTour(true);
+    tourReached.current = 1;
+    tourGo(1);
+  };
+  // Leaving the tour keeps the screen; focus goes to the screen's own heading.
+  const leaveTour = () => {
+    setTour(false);
+    const focusHeading = () => {
+      const heading = [...document.querySelectorAll<HTMLElement>("main h2[tabindex='-1']")].find((h) => !h.closest("[hidden]"));
+      heading?.focus();
+    };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(focusHeading);
+    else setTimeout(focusHeading, 0);
+  };
   // A keyword search started by the page itself (an example this build lacks,
   // or a suggestion after a search found nothing), shown in the form too.
   const searchFor = (q: string) => {
@@ -475,8 +573,81 @@ export function KnowledgeLibrary({
         ? { conceptId: screen.conceptId, session: screen.practice }
         : null;
 
+  // A keyword search's results (and, in the public demo, the last search that
+  // worked, shown under a failed one).
+  const keywordResults = (data: LibrarySearch, shown: LibraryQuery) => (
+    <Results
+      search={{ status: "ready", data }}
+      query={shown}
+      onOpen={openConcept}
+      onRetry={() => setRetry((n) => n + 1)}
+      onShowMore={() => runSearch({ ...shown, limit: MAX_LIBRARY_LIMIT }, "keyword")}
+      demo={Boolean(demo)}
+      evidence={
+        demo
+          ? {
+              href: (conceptId, unitId) => hashForScreen({ kind: "source", conceptId, unitId }, searchRef.current) || "#",
+              open: (conceptId, unitId) => setScreen({ kind: "source", conceptId, unitId }),
+            }
+          : undefined
+      }
+      noMatchHelp={
+        guided ? (
+          <NoMatchHelp
+            query={query.q}
+            onOpenExample={openExample}
+            onSearch={(q) => {
+              searchFor(q);
+              document.getElementById("library-query")?.focus();
+            }}
+          />
+        ) : undefined
+      }
+    />
+  );
+  // Public demo: the last keyword search that worked, kept for when one fails.
+  if (demo && search.status === "ready" && search.data.kind === "keyword") lastKeyword.current = { query, data: search.data.data };
+  const previousKeyword =
+    demo && search.status === "error" && lastKeyword.current && !sameQuery(lastKeyword.current.query, query) ? lastKeyword.current : null;
+  // R2-045 (public demo): one polite status region, on the page before any
+  // search, says that a submitted search is running and then what it found.
+  // (A status line inserted with its text, as the results below are, is not
+  // announced by every screen reader.)
+  // Its own wording, so it never repeats a visible line word for word.
+  const found =
+    search.status !== "ready" || search.data.kind === "needs-query"
+      ? 0
+      : search.data.kind === "keyword"
+        ? search.data.data.total_matches
+        : search.data.data.results.length;
+  // What was searched: the words, or a status filter used without words.
+  const subject = query.q || (query.state !== "all" ? i18n.status(query.state) : "");
+  const announcement =
+    !demo || !subject || screen.kind !== "results"
+      ? ""
+      : search.status === "loading"
+        ? t("demo.announce.searching", { q: subject })
+        : search.status === "error"
+          ? t("demo.announce.failed", { q: subject, message: search.message })
+          : found === 0
+            ? t("demo.announce.none", { q: subject })
+            : i18n.tp("demo.announce.found", found, { q: subject });
   return (
     <main className="library">
+      {demo ? (
+        <p className="visually-hidden" role="status" id="demo-search-status">
+          {announcement}
+        </p>
+      ) : null}
+      {demo && tour ? (
+        <TourBar
+          step={tourStep}
+          canNext={tourStep !== 2 || tourSource !== null}
+          onNext={() => tourGo(Math.min(tourStep + 1, TOUR_STEPS))}
+          onResume={() => tourGo(tourReached.current)}
+          onLeave={leaveTour}
+        />
+      ) : null}
       <div hidden={screen.kind !== "results"}>
         {demo && badLink ? (
           <div className="banner info demo-bad-link" role="status">
@@ -493,12 +664,18 @@ export function KnowledgeLibrary({
           </div>
         ) : null}
         {intro}
+        {guided ? <StartPoints onTour={startTour} /> : null}
         {guided ? <ExamplePicker onOpen={openExample} /> : null}
+        {guided ? <ComparePicker onOpen={(key) => openCompare(key)} onPractice={(key) => openCompare(key, true)} /> : null}
         {about}
         {guided ? (
-          <h2 className="demo-section-heading" id="demo-search-heading" tabIndex={-1}>
-            {t("demo.search.heading")}
-          </h2>
+          <>
+            <h2 className="demo-section-heading" id="demo-search-heading" tabIndex={-1}>
+              {t("demo.search.heading")}
+            </h2>
+            {/* R2-033: searching is not browsing. */}
+            <p className="hint demo-start-hint">{t("demo.start.hint")}</p>
+          </>
         ) : null}
         <form className="panel library-search" role="search" onSubmit={submit} ref={searchFormRef}>
           {demo && draftMode !== "keyword" ? (
@@ -587,6 +764,14 @@ export function KnowledgeLibrary({
               {tn("library.demo.note", { label: strong("library.demo.label") })}
             </p>
           ) : null}
+          {guided ? (
+            <SuggestedSearches
+              onSearch={(q) => {
+                searchFor(q);
+                document.getElementById("library-query")?.focus();
+              }}
+            />
+          ) : null}
           {demo ? null : (
             <RecentSearches
               recent={recent}
@@ -599,24 +784,7 @@ export function KnowledgeLibrary({
           {demo ? null : searchHelp}
         </form>
         {search.status === "ready" && search.data.kind === "keyword" ? (
-          <Results
-            search={{ status: "ready", data: search.data.data }}
-            query={query}
-            onOpen={openConcept}
-            onRetry={() => setRetry((n) => n + 1)}
-            onShowMore={() => runSearch({ ...query, limit: MAX_LIBRARY_LIMIT }, "keyword")}
-            demo={Boolean(demo)}
-            noMatchHelp={
-              guided ? (
-                <NoMatchHelp
-                  onSearch={(q) => {
-                    searchFor(q);
-                    document.getElementById("library-query")?.focus();
-                  }}
-                />
-              ) : undefined
-            }
-          />
+          keywordResults(search.data.data, query)
         ) : search.status === "ready" && search.data.kind === "semantic" ? (
           <SemanticResults data={search.data.data} query={query} onOpen={openConcept} mechanical={demo ? !demo.artifact.real_model : false} />
         ) : search.status === "ready" && search.data.kind === "hybrid" ? (
@@ -624,7 +792,27 @@ export function KnowledgeLibrary({
         ) : search.status === "ready" ? (
           <p className="empty" role="status">{t(needsQueryKey[mode])}</p>
         ) : search.status === "loading" ? (
-          <p className="empty" role="status">{t("library.searching")}</p>
+          // Public demo: announced by the search status region (R2-045), so
+          // this line is not a second live region saying the same.
+          <p className="empty" role={demo ? undefined : "status"}>
+            {t("library.searching")}
+          </p>
+        ) : demo ? (
+          <SearchProblem
+            query={query.q}
+            code={search.code}
+            message={search.message}
+            failed={t(searchFailedKey[mode], { message: search.message })}
+            onRetry={() => setRetry((n) => n + 1)}
+            onEdit={() => {
+              const input = document.getElementById("library-query");
+              if (input instanceof HTMLInputElement) {
+                input.focus();
+                input.select();
+              }
+            }}
+            previous={previousKeyword ? { q: previousKeyword.query.q, results: keywordResults(previousKeyword.data, previousKeyword.query) } : null}
+          />
         ) : (
           <div className="banner error" role="alert">
             {t(searchFailedKey[mode], { message: search.message })}{" "}
@@ -642,8 +830,35 @@ export function KnowledgeLibrary({
           onBack={() => backFromExample(screen.example)}
           onSearch={searchFor}
           onOpenExample={openExample}
+          onOpenComparison={(key) => openCompare(key)}
           onOpenConcept={(conceptId) => openConcept(conceptId, screen.example)}
           onOpenSource={(conceptId, unitId) => setScreen({ kind: "source", conceptId, unitId, from: screen.example })}
+          step={screen.step}
+          onStep={(step) => setScreen({ kind: "example", example: screen.example, step })}
+          returnFocus={focusReturn}
+        />
+      ) : null}
+      {screen.kind === "compare" && guided && findComparison(screen.compare) ? (
+        <CompareScreen
+          key={`compare-${screen.compare}`}
+          comparison={findComparison(screen.compare)!}
+          onBack={() => backFromCompare(screen.compare)}
+          onSearch={searchFor}
+          onOpenComparison={(key) => openCompare(key)}
+          onOpenExample={openExample}
+          onReady={(sides: SideResolution[]) => {
+            const first = sides[0];
+            if (screen.compare === TOUR.compare && first?.kind === "found" && first.source)
+              setTourSource({ conceptId: first.concept.id, unitId: first.unit.unit_id });
+          }}
+          href={(conceptId, unitId) =>
+            hashForScreen(
+              unitId ? { kind: "source", conceptId, unitId, compare: screen.compare } : { kind: "concept", conceptId, compare: screen.compare },
+              searchRef.current,
+            ) || "#"
+          }
+          onOpenConcept={(conceptId) => setScreen({ kind: "concept", conceptId, compare: screen.compare })}
+          onOpenSource={(conceptId, unitId) => setScreen({ kind: "source", conceptId, unitId, compare: screen.compare })}
           returnFocus={focusReturn}
         />
       ) : null}
@@ -652,17 +867,21 @@ export function KnowledgeLibrary({
           key={`concept-${screen.conceptId}`}
           conceptId={screen.conceptId}
           backLabel={
-            fromExample(screen.from)
+            comparisonTitle(screen.compare) ??
+            (fromExample(screen.from)
               ? t("demo.example.backTo", { title: t(fromExample(screen.from)!.title) })
-              : t("library.backTo", { label: resultsLabel })
+              : t("library.backTo", { label: resultsLabel }))
           }
           walkthrough={Boolean(guided && fromExample(screen.from))}
-          onBack={() => (screen.from ? backToExample(screen.from) : backToResults(screen.conceptId))}
-          onOpenConcept={(conceptId) => openConcept(conceptId, screen.from)}
-          onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId, from: screen.from })}
+          onBack={() =>
+            findComparison(screen.compare) ? backToCompare(screen.compare!) : screen.from ? backToExample(screen.from) : backToResults(screen.conceptId)
+          }
+          onOpenConcept={(conceptId) => setScreen({ kind: "concept", conceptId, from: screen.from, compare: screen.compare })}
+          onOpenSource={(unitId) => setScreen({ kind: "source", conceptId: screen.conceptId, unitId, from: screen.from, compare: screen.compare })}
           demo={Boolean(demo)}
           returnFocus={demo ? focusReturn : undefined}
           onOpenExample={guided ? () => openExample(screen.from ?? DEMO_EXAMPLES[0].key) : undefined}
+          onSearchLibrary={guided ? searchLibrary : undefined}
           exampleTitle={guided ? t(fromExample(screen.from ?? DEMO_EXAMPLES[0].key)!.title) : undefined}
           // The public demo has no recall practice.
           onPractice={
@@ -672,7 +891,7 @@ export function KnowledgeLibrary({
           }
         />
       ) : null}
-      {practice ? (
+      {practice && !PUBLIC_DEMO_BUILD ? (
         <div hidden={screen.kind !== "practice"}>
           <RecallPractice
             key={`practice-${practice.session}`}
@@ -691,23 +910,31 @@ export function KnowledgeLibrary({
           unitId={screen.unitId}
           conceptId={screen.conceptId}
           backText={
-            fromExample(screen.from)
+            comparisonTitle(screen.compare) ??
+            (fromExample(screen.from)
               ? t("demo.example.backTo", { title: t(fromExample(screen.from)!.title) })
-              : t("library.backTo", { label: resultsLabel })
+              : t("library.backTo", { label: resultsLabel }))
           }
           walkthrough={Boolean(guided && fromExample(screen.from))}
-          onBackToConcept={() => goBack({ kind: "concept", conceptId: screen.conceptId, from: screen.from })}
-          onBackToResults={() => (screen.from ? backToExample(screen.from) : backToResults(screen.conceptId))}
+          onBackToConcept={() => goBack({ kind: "concept", conceptId: screen.conceptId, from: screen.from, compare: screen.compare })}
+          onBackToResults={() =>
+            findComparison(screen.compare)
+              ? backToCompare(screen.compare!)
+              : screen.from
+                ? backToExample(screen.from)
+                : backToResults(screen.conceptId)
+          }
           onBackToPractice={
             screen.practice !== undefined
               ? () => setScreen({ kind: "practice", conceptId: screen.conceptId, session: screen.practice! })
               : undefined
           }
-          onOpenConcept={(conceptId) => openConcept(conceptId, screen.from)}
+          onOpenConcept={(conceptId) => setScreen({ kind: "concept", conceptId, from: screen.from, compare: screen.compare })}
           onOpenRecord={onOpenRecord}
           demo={Boolean(demo)}
           returnFocus={demo ? focusReturn : undefined}
           onOpenExample={guided ? () => openExample(screen.from ?? DEMO_EXAMPLES[0].key) : undefined}
+          onSearchLibrary={guided ? searchLibrary : undefined}
           exampleTitle={guided ? t(fromExample(screen.from ?? DEMO_EXAMPLES[0].key)!.title) : undefined}
         />
       ) : null}
@@ -822,6 +1049,8 @@ function RecentSearches({
 // The backend's largest page of keyword results (application.ParseLibrarySearchQuery).
 const MAX_LIBRARY_LIMIT = 50;
 
+const sameQuery = (a: LibraryQuery, b: LibraryQuery) => a.q === b.q && a.state === b.state && (a.limit ?? 0) === (b.limit ?? 0) && (a.preset ?? "") === (b.preset ?? "");
+
 function Results({
   search,
   query,
@@ -830,6 +1059,7 @@ function Results({
   demo = false,
   noMatchHelp,
   onShowMore,
+  evidence,
 }: {
   search: Load<LibrarySearch>;
   query: LibraryQuery;
@@ -841,6 +1071,9 @@ function Results({
   noMatchHelp?: ReactNode;
   // A truncated search can ask for up to MAX_LIBRARY_LIMIT results (the backend's limit).
   onShowMore?: () => void;
+  // Public demo: "Why it matched" under each keyword result (demo/EvidenceCard.tsx),
+  // with the link to a matched unit's source record and the move to it.
+  evidence?: { href: (conceptId: number, unitId: number) => string; open: (conceptId: number, unitId: number) => void };
 }) {
   const i18n = useI18n();
   const { t, tp, tn, status } = i18n;
@@ -855,20 +1088,26 @@ function Results({
       </div>
     );
   const data = search.data;
+  // The words named with the count and the "no match" message are the query
+  // the server executed (`data.query`), so they always describe these results.
+  const executed = typeof data.query === "string" ? data.query : query.q;
+  // Match metadata may be absent (an older server): no marks, no field list.
+  const tokens = Array.isArray(data.tokens) ? data.tokens : [];
+  const matched = (r: LibrarySearchResult) => (Array.isArray(r.matched_fields) ? r.matched_fields : []);
   if (data.results.length === 0) {
-    const message = query.q
+    const message = executed
       ? query.state === "all"
-        ? t("library.noMatch", { q: query.q })
-        : t("library.noMatchState", { q: query.q, state: status(query.state) })
+        ? t("library.noMatch", { q: executed })
+        : t("library.noMatchState", { q: executed, state: status(query.state) })
       : query.state === "all"
         ? t(demo ? "demo.library.empty" : "library.empty")
         : t("library.emptyState", { state: status(query.state) });
     const empty = (
-      <div className="empty" role="status">
+      <div className="empty" role={demo ? undefined : "status"}>
         {message}
       </div>
     );
-    return noMatchHelp && (query.q || query.state !== "all") ? (
+    return noMatchHelp && (executed || query.state !== "all") ? (
       <div className="demo-no-match">
         {empty}
         {noMatchHelp}
@@ -879,11 +1118,11 @@ function Results({
   }
   return (
     <section aria-label={t("library.results")}>
-      <p className="hint" role="status">
+      <p className="hint" role={demo ? undefined : "status"}>
         {data.truncated
           ? t("library.truncated", { shown: data.results.length, total: data.total_matches })
-          : query.q
-            ? tp("library.countMatching", data.total_matches, { q: query.q })
+          : executed
+            ? tp("library.countMatching", data.total_matches, { q: executed })
             : tp("library.count", data.total_matches)}
         {data.truncated && onShowMore && data.limit < MAX_LIBRARY_LIMIT ? (
           <>
@@ -898,30 +1137,43 @@ function Results({
         {data.results.map((r) => (
           <li key={r.concept.id} className="panel library-result">
             <button type="button" className="link-button" id={resultButtonId(r.concept.id)} onClick={() => onOpen(r.concept.id)}>
-              {r.matched_fields.includes("target") ? markMatches(r.concept.target, data.tokens) : r.concept.target}
+              {matched(r).includes("target") ? markMatches(r.concept.target, tokens) : r.concept.target}
             </button>{" "}
             <StateTag state={r.concept.state} />
             <ResultMeta
               concept={r.concept}
               members={r.current_member_count}
               supporting={r.supporting_unit_count}
-              marks={r.match_tier !== "browse" ? { tokens: data.tokens, fields: r.matched_fields } : undefined}
+              marks={r.match_tier !== "browse" ? { tokens, fields: matched(r) } : undefined}
             />
-            {r.matched_fields.includes("identity_features") ? <FeatureSnippet features={r.concept.identity_features} tokens={data.tokens} /> : null}
+            {matched(r).includes("identity_features") ? <FeatureSnippet features={r.concept.identity_features} tokens={tokens} /> : null}
             {r.match_tier !== "browse" && demo ? (
               // Public demo: say which words matched where, from the search's own
-              // tokens and matched fields. A unit-wording match shows no unit
-              // text (the result carries none); the Concept screen shows it.
-              <div className="hint demo-match">
-                {tn(r.match_tier === "unit_evidence" ? "demo.result.foundInUnits" : "demo.result.foundIn", {
-                  words: <MatchedWords tokens={data.tokens} />,
-                  fields: fieldList(i18n, r.matched_fields),
-                })}
-              </div>
+              // tokens and matched fields, and offer "Why it matched", which
+              // reads the matched wording, including a unit's (EvidenceCard).
+              <>
+                {matched(r).length > 0 && tokens.length > 0 ? (
+                  <div className="hint demo-match">
+                    {tn(r.match_tier === "unit_evidence" ? "demo.result.foundInUnits" : "demo.result.foundIn", {
+                      words: <MatchedWords tokens={tokens} />,
+                      fields: fieldList(i18n, matched(r)),
+                    })}
+                  </div>
+                ) : null}
+                {evidence ? (
+                  <EvidenceCard
+                    key={`${data.query}\u0000${r.concept.id}`}
+                    result={r}
+                    tokens={tokens}
+                    sourceHref={(unitId) => evidence.href(r.concept.id, unitId)}
+                    onOpenSource={(unitId) => evidence.open(r.concept.id, unitId)}
+                  />
+                ) : null}
+              </>
             ) : r.match_tier !== "browse" ? (
               <div className="hint">
                 {t(r.match_tier === "unit_evidence" ? "library.foundInUnits" : "library.foundIn", {
-                  fields: fieldList(i18n, r.matched_fields),
+                  fields: fieldList(i18n, matched(r)),
                 })}
               </div>
             ) : null}
@@ -1121,22 +1373,31 @@ type DemoReturn = {
   returnFocus?: MutableRefObject<string | null>;
   onOpenExample?: () => void;
   exampleTitle?: string;
+  // R2-038: the search, one tap away from a link that names nothing.
+  onSearchLibrary?: () => void;
 };
 
 // NotInDemo is the public demo's answer to a link naming a Concept or unit this
-// build does not have (the server's 404): what happened, and a working example
-// to continue with. Retrying cannot help, so it is not offered; the return bar
-// above still leads back.
-function NotInDemo({ message, onOpenExample, exampleTitle }: { message: string } & DemoReturn) {
+// build does not have (the server's 404): what happened, a working example to
+// continue with, and the search. Retrying cannot help, so it is not offered;
+// the return bar above still leads back.
+function NotInDemo({ message, onOpenExample, exampleTitle, onSearchLibrary }: { message: string } & DemoReturn) {
   const { t } = useI18n();
   return (
     <div className="banner info demo-not-found" role="status">
       <p>{message}</p>
-      {onOpenExample && exampleTitle ? (
+      {(onOpenExample && exampleTitle) || onSearchLibrary ? (
         <div className="actions">
-          <button type="button" className="primary" id="demo-not-found-example" onClick={onOpenExample}>
-            {t("demo.missing.openExample", { title: exampleTitle })}
-          </button>
+          {onOpenExample && exampleTitle ? (
+            <button type="button" className="primary" id="demo-not-found-example" onClick={onOpenExample}>
+              {t("demo.missing.openExample", { title: exampleTitle })}
+            </button>
+          ) : null}
+          {onSearchLibrary ? (
+            <button type="button" className="ghost" id="demo-not-found-search" onClick={onSearchLibrary}>
+              {t("demo.start.search")}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -1155,6 +1416,7 @@ function ConceptScreen({
   returnFocus,
   onOpenExample,
   exampleTitle,
+  onSearchLibrary,
 }: {
   conceptId: number;
   backLabel: string;
@@ -1192,7 +1454,7 @@ function ConceptScreen({
         {load.status === "loading" ? (
           <p className="hint" role="status">{t("library.concept.loading", { id: conceptId })}</p>
         ) : demo && load.code === 404 ? (
-          <NotInDemo message={t("demo.missing.concept", { id: conceptId })} onOpenExample={onOpenExample} exampleTitle={exampleTitle} />
+          <NotInDemo message={t("demo.missing.concept", { id: conceptId })} onOpenExample={onOpenExample} exampleTitle={exampleTitle} onSearchLibrary={onSearchLibrary} />
         ) : (
           <div className="banner error" role="alert">
             {t("library.concept.failed", { id: conceptId, message: load.message })}{" "}
@@ -1498,6 +1760,7 @@ function SourceScreen({
   returnFocus,
   onOpenExample,
   exampleTitle,
+  onSearchLibrary,
 }: {
   unitId: number;
   conceptId: number;
@@ -1555,7 +1818,7 @@ function SourceScreen({
         {load.status === "loading" ? (
           <p className="hint" role="status">{t("library.source.loading", { id: unitId })}</p>
         ) : demo && load.code === 404 ? (
-          <NotInDemo message={t("demo.missing.source", { id: unitId })} onOpenExample={onOpenExample} exampleTitle={exampleTitle} />
+          <NotInDemo message={t("demo.missing.source", { id: unitId })} onOpenExample={onOpenExample} exampleTitle={exampleTitle} onSearchLibrary={onSearchLibrary} />
         ) : (
           <div className="banner error" role="alert">
             {t("library.source.failed", { id: unitId, message: load.message })}{" "}

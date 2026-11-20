@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -67,5 +67,39 @@ describe("demo.css is the public demo's alone", () => {
     const plain = demoCss.replace(/\/\*[\s\S]*?\*\//g, "");
     expect(plain).not.toMatch(/url\(|animation|transition|font-family|clip-path/);
     for (const at of plain.match(/@[^{]*/g) ?? []) expect(at.trim()).toMatch(/^@media \(max-width: \d+px\)$/);
+  });
+});
+
+// R2-041/042: the public demo follows the browser's font-size setting. The
+// shared styles.css sizes text in px (a reader's larger default font does not
+// change px); demo.css restates, in rem and under `.demo-app`, every such size
+// whose selector's classes the demo's own code uses, and sizes nothing in px
+// itself. A real browser measures the result (type_probe in the lane's
+// handoff tools: text elements at a 16 px and a 24 px default font).
+describe("public demo text follows the browser's font size", () => {
+  const demoCode = ["PublicDemoApp.tsx", "pages/KnowledgeLibrary.tsx", "pages/libraryHighlight.tsx", "freshness.tsx", "i18n/index.tsx"]
+    .concat(readdirSync(resolve(process.cwd(), "src/demo")).filter((f) => f.endsWith(".tsx") && !f.includes(".test.")).map((f) => `demo/${f}`))
+    .map((f) => readFileSync(resolve(process.cwd(), "src", f), "utf8"))
+    .join("\n");
+  const used = new Set<string>();
+  for (const m of demoCode.matchAll(/className=(?:"([^"]+)"|\{`([^`]+)`\}|\{([^}]+)\})/g))
+    for (const w of (m[1] ?? m[2] ?? m[3] ?? "").match(/[a-z][a-z0-9-]+/g) ?? []) used.add(w);
+  const pxRules = rules(styles).flatMap((r) => {
+    const px = /font-size:\s*([\d.]+)px/.exec(r.body);
+    return px ? r.selectors.map((sel) => ({ sel, px: Number(px[1]) })) : [];
+  });
+  const reaching = pxRules.filter(({ sel }) => {
+    const classes = [...sel.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]);
+    return classes.length > 0 && classes.every((c) => used.has(c));
+  });
+
+  it("restates in rem every shared px size that reaches demo elements", () => {
+    expect(reaching.length).toBeGreaterThan(15);
+    for (const { sel, px } of reaching)
+      expect(declares(demoCss, `.demo-app ${sel}`, new RegExp(`font-size:\\s*${px / 16}rem`)), `${sel} (${px}px)`).toBe(true);
+  });
+
+  it("sizes no demo text in px", () => {
+    expect(demoCss.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/font-size:\s*[\d.]+px/);
   });
 });
