@@ -13,3 +13,6 @@ coverage.out
 /server
 /capture
 /PROJECT_REPORT.md
+
+# Python bytecode caches (written when python3 runs without -B)
+__pycache__/
