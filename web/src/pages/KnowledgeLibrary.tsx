@@ -65,8 +65,16 @@ const resultButtonId = (conceptId: number) => `library-result-${conceptId}`;
 // left out of that bundle altogether (R2-054; check_bundle.py).
 const PUBLIC_DEMO_BUILD = import.meta.env.VITE_FLH_PUBLIC_DEMO === "1";
 
+// R4-DEM-026: a quoted learner question's language, when it is one of the
+// demo's authored examples (which name it); otherwise none is claimed and the
+// quotation keeps the page's language.
+const questionLang = (text: string) => DEMO_EXAMPLES.find((e) => e.question === text)?.lang;
+
 // Public demo: the 60-second tour's example and comparison (demo/Landing.tsx).
-const TOUR = { example: "imparfait", compare: "imparfait-passe-compose" } as const;
+// R4-DEM-012: the first French example and its beginner contrast, so the first
+// suggested action opens the first French example (it was the imparfait one,
+// whose question is written in English).
+const TOUR = { example: "en-train-de", compare: "present-en-train-de" } as const;
 
 function describeError(error: unknown): string {
   if (error instanceof ApiError) return `(${error.status}) ${error.message}`;
@@ -109,9 +117,14 @@ function useFocusedHeading(status: string, returnFocus?: MutableRefObject<string
   useEffect(() => {
     const id = returnFocus?.current;
     if (id && status !== "loading") {
-      returnFocus.current = null;
+      // Only this screen's own control (R4-DEM-030): the screen being left can
+      // run this effect after a quick Back, and must leave the id to the screen
+      // the visitor returns to.
       const el = document.getElementById(id);
-      if (el && ref.current?.closest("main")?.contains(el) && focusControl(el)) return;
+      if (el && ref.current?.closest("main")?.contains(el)) {
+        returnFocus.current = null;
+        if (focusControl(el)) return;
+      }
     }
     ref.current?.focus();
   }, [status]);
@@ -288,7 +301,10 @@ export function KnowledgeLibrary({
     async (): Promise<SearchOutcome> => {
       if (mode === "keyword") return { kind: "keyword", data: await api.searchLibrary(query) };
       if (!query.q) return { kind: "needs-query" };
-      if (demo) {
+      // A public demo build only ever names the demo's preset routes (R4-DEM-008):
+      // with the build constant tested first, the workbench routes below are dead
+      // code in that build and are left out of its bundle.
+      if (PUBLIC_DEMO_BUILD || demo) {
         if (mode === "hybrid") return { kind: "hybrid", data: await api.demoHybridSearch(query) };
         return { kind: "semantic", data: await api.demoSemanticSearch(query) };
       }
@@ -1948,7 +1964,7 @@ function SourceScreen({
       <section className="panel library-section current" aria-labelledby="src-entry">
         <h3 id="src-entry">{t("library.source.entry", { id: s.entry.id })}</h3>
         {demo ? (
-          <blockquote className="demo-question french" dir="auto">
+          <blockquote className="demo-question french" lang={questionLang(s.entry.original_input)} dir="auto">
             {s.entry.original_input}
           </blockquote>
         ) : null}
@@ -2030,7 +2046,7 @@ function SourceScreen({
       <section className="panel library-section current" aria-labelledby="src-entry">
         <h3 id="src-entry">{t("library.source.entry", { id: s.entry.id })}</h3>
         {demo ? (
-          <blockquote className="demo-question french" dir="auto">
+          <blockquote className="demo-question french" lang={questionLang(s.entry.original_input)} dir="auto">
             {s.entry.original_input}
           </blockquote>
         ) : null}

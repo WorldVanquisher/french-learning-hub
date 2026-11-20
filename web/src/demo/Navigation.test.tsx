@@ -116,7 +116,7 @@ describe("in-page back and the browser's Back are the same move", () => {
     click(/One question, two pronouns$/);
     await routeIs("#example=y-en", "example");
     await exampleHeading();
-    click("Open the Concept and its evidence");
+    click(/^Open the Concept “.+” and its evidence$/);
     await routeIs("#example=y-en&concept=12", "concept");
     await conceptHeading();
     click("View source record #9 for unit #12");
@@ -149,7 +149,7 @@ describe("in-page back and the browser's Back are the same move", () => {
     await startScreen();
     click(/One question, two pronouns$/);
     await exampleHeading();
-    click("Open the Concept and its evidence");
+    click(/^Open the Concept “.+” and its evidence$/);
     await conceptHeading();
     click("View source record #9 for unit #12");
     await sourceHeading();
@@ -236,7 +236,7 @@ describe("searches are entries and links keep them", () => {
     await startScreen();
     click(/One question, two pronouns$/);
     await exampleHeading();
-    click("Open the Concept and its evidence");
+    click(/^Open the Concept “.+” and its evidence$/);
     await conceptHeading();
     cleanup(); // the page goes away; the address and the history entry stay
     render(<StrictMode><PublicDemoApp /></StrictMode>);

@@ -187,9 +187,12 @@ export function CompareScreen({
   useEffect(() => {
     const id = returnFocus?.current;
     if (id && load.status !== "loading") {
-      returnFocus.current = null;
+      // Only this screen's own control (R4-DEM-030; see useFocusedHeading).
       const el = document.getElementById(id);
-      if (el && heading.current?.closest(".demo-compare")?.contains(el) && focusControl(el)) return;
+      if (el && heading.current?.closest(".demo-compare")?.contains(el)) {
+        returnFocus.current = null;
+        if (focusControl(el)) return;
+      }
     }
     // At the top of the screen, so on a phone the pair below it is in view too.
     heading.current?.focus({ preventScroll: true });
@@ -716,6 +719,19 @@ function Practice({
               // R3-053: why a distractor does not work, in the stored interpretation's own words.
               <li key={`d${d.form}`} data-practice-form="distractor">
                 <p className="demo-practice-form">{tn("demo.practice.formDistractor", { form: fr(d.form) })}</p>
+                {/* R4-DEM-033: the tempting form against the supported rule, both from the data. */}
+                <dl className="demo-practice-contrast" data-practice-contrast>
+                  <dt>{t("demo.practice.contrastTempting")}</dt>
+                  <dd>{fr(d.form)}</dd>
+                  <dt>{t("demo.practice.contrastSupported", { unit: side.unit.unit_id })}</dt>
+                  <dd>
+                    <span lang="fr" className="french">
+                      {side.unit.canonical}
+                    </span>
+                    {": "}
+                    {fr(used.form)}
+                  </dd>
+                </dl>
                 {interpretation ? (
                   <>
                     <p className="hint">{t("demo.practice.distractorWhy", { entry: side.unit.entry_id })}</p>

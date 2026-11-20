@@ -64,7 +64,7 @@ function server(drop: { concept6?: boolean; source7?: boolean } = {}) {
       total_matches: cs.length, truncated: false, results: cs.map((c) => ({ concept: c, match_tier: "identity", matched_fields: ["target"], current_member_count: 1, supporting_unit_count: 1 })) });
     const q = url.searchParams.get("q");
     if (path === "/knowledge-library/concepts" && q === "imparfait") return record(), hits([IMP]);
-    // The guided example both units come from (R2: the tour's first step).
+    // The imparfait guided example, both of its comparison's units (R2).
     if (path === "/knowledge-library/concepts" && q === "foot") return record(), hits([IMP, PC]);
     if (path === "/knowledge-library/concepts" && q === "passé composé") return record(), hits(drop.concept6 ? [PC_ETRE] : [PC_ETRE, PC]);
     if (path === "/knowledge-library/concepts" && (q === "depuis" || q === "pendant")) return record(), hits([]);
@@ -448,24 +448,25 @@ describe("the first screen's ways in and the 60-second tour (R2)", () => {
     server();
     renderDemo("/");
     fireEvent.click(await screen.findByRole("button", { name: "60-second tour" }));
-    expect(window.location.hash).toBe("#example=imparfait");
+    // R4-DEM-012: the tour opens the first French example.
+    expect(window.location.hash).toBe("#example=en-train-de");
     const bar = () => screen.getByRole("navigation", { name: "60-second tour" });
     await waitFor(() => expect(bar()).toHaveTextContent("60-second tour, step 1 of 3: A learner's question"));
-    expect(await screen.findByText(Q, { selector: "blockquote" })).toBeInTheDocument();
+    expect(await screen.findByText(COOKING_QUESTION, { selector: "blockquote" })).toHaveAttribute("lang", "fr");
     fireEvent.click(within(bar()).getByRole("button", { name: "Next: Two examples side by side" }));
-    expect(window.location.hash).toBe("#compare=imparfait-passe-compose");
+    expect(window.location.hash).toBe("#compare=present-en-train-de");
     await screen.findByRole("region", { name: "The two examples" });
     expect(bar()).toHaveTextContent("step 2 of 3");
     await waitFor(() => expect(within(bar()).getByRole("button", { name: "Next: The source evidence" })).toBeEnabled());
     fireEvent.click(within(bar()).getByRole("button", { name: "Next: The source evidence" }));
-    expect(window.location.hash).toBe("#compare=imparfait-passe-compose&concept=5&unit=6");
+    expect(window.location.hash).toBe("#compare=present-en-train-de&concept=13&unit=15");
     expect(bar()).toHaveTextContent("step 3 of 3: The source evidence");
     act(() => window.history.back());
     await waitFor(() => expect(bar()).toHaveTextContent("step 2 of 3"));
     // R2-035: leaving keeps the position.
     fireEvent.click(within(bar()).getByRole("button", { name: "Leave the tour and stay here" }));
     expect(screen.queryByRole("navigation", { name: "60-second tour" })).toBeNull();
-    expect(window.location.hash).toBe("#compare=imparfait-passe-compose");
+    expect(window.location.hash).toBe("#compare=present-en-train-de");
     expect(screen.getByRole("region", { name: "The two examples" })).toBeInTheDocument();
   });
 
@@ -473,11 +474,11 @@ describe("the first screen's ways in and the 60-second tour (R2)", () => {
     server();
     renderDemo("/");
     fireEvent.click(await screen.findByRole("button", { name: "60-second tour" }));
-    await screen.findByText(Q, { selector: "blockquote" });
+    await screen.findByText(COOKING_QUESTION, { selector: "blockquote" });
     fireEvent.click(screen.getByRole("button", { name: "← Back to examples and search" }));
     await waitFor(() => expect(screen.getByRole("navigation", { name: "60-second tour" })).toHaveTextContent("You have left the tour's path."));
     fireEvent.click(screen.getByRole("button", { name: "Return to the tour" }));
-    expect(window.location.hash).toBe("#example=imparfait");
+    expect(window.location.hash).toBe("#example=en-train-de");
   });
 });
 
@@ -548,6 +549,10 @@ describe("a beginner's contrast from a common confusion (R3)", () => {
     const why = document.querySelector<HTMLElement>("[data-practice-form=distractor]")!;
     expect(why).toHaveTextContent("“je suis cuisinant”: not a French form.");
     expect(within(why).getByText(COOKING_EXPLANATION, { selector: "blockquote" })).toBeInTheDocument();
+    // R4-DEM-033: the tempting form against the supported rule.
+    const contrast = why.querySelector("[data-practice-contrast]")!;
+    expect([...contrast.querySelectorAll("dt")].map((d) => d.textContent)).toEqual(["Tempting", "Supported rule (unit #15)"]);
+    expect([...contrast.querySelectorAll("dd")].map((d) => d.textContent)).toEqual(["je suis cuisinant", "présent pour une action en cours: je cuisine"]);
     expect(within(why).getByRole("link", { name: "See the evidence: unit #15, record #11" })).toHaveAttribute(
       "href",
       "#compare=present-en-train-de&practice=1&concept=13&unit=15",

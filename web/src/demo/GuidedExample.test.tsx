@@ -177,7 +177,7 @@ describe("Public demo guided path", () => {
     // The labels stay visible away from the starting screen.
     expect(screen.getByText("Read-only")).toBeVisible();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open the Concept and its evidence" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Open the Concept “.+” and its evidence$/ }));
     const back = await screen.findByRole("button", { name: "← Back to the example “One question, two pronouns”" });
     fireEvent.click(screen.getAllByRole("button", { name: "View source record #9 for unit #12" })[0]);
     expect(await screen.findByRole("heading", { name: "Original learning record #9" })).toBeInTheDocument();
@@ -264,10 +264,19 @@ describe("Public demo guided path", () => {
     render(<StrictMode><PublicDemoApp /></StrictMode>);
     fireEvent.click(await screen.findByRole("button", { name: /New evidence for a known rule/ }));
     expect(await screen.findByText("2 supporting units: 1 from this question and 1 from other questions.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "See where this unit came from" }));
+    fireEvent.click(screen.getByRole("button", { name: "See where unit #14 came from" }));
     expect(await screen.findByText("Pourquoi « viennes » et pas « viens » ?")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "← Back to the example “New evidence for a known rule”" }));
     expect(await screen.findByRole("heading", { name: "New evidence for a known rule" })).toBeInTheDocument();
+  });
+
+  it("names each unit's source link by its unit, so a screen reader's link list tells them apart (R4-DEM-027)", async () => {
+    demoServer();
+    render(<StrictMode><PublicDemoApp /></StrictMode>);
+    fireEvent.click(await screen.findByRole("button", { name: /One question, two pronouns$/ }));
+    expect(await screen.findByRole("button", { name: "See where unit #12 came from" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "See where unit #13 came from" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "See where this unit came from" })).toBeNull();
   });
 
   it("states a failed example read with a retry, and an example this build lacks with the search instead", async () => {
@@ -290,7 +299,7 @@ describe("Public demo interactions", () => {
     render(<StrictMode><PublicDemoApp /></StrictMode>);
     fireEvent.click(await screen.findByRole("button", { name: /One question, two pronouns/ }));
     await screen.findByText(QUESTION, { selector: "blockquote" });
-    fireEvent.click(screen.getByRole("button", { name: "Open the Concept and its evidence" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Open the Concept “.+” and its evidence$/ }));
     await screen.findByRole("heading", { level: 2, name: /the pronouns y and en/ });
 
     window.history.back();

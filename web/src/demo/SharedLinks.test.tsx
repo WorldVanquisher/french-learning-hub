@@ -146,7 +146,7 @@ describe("coming back focuses the control that left the screen", () => {
     await firstCard();
     press(/One question, two pronouns$/);
     await exampleHeading();
-    press("Open the Concept and its evidence");
+    press(/^Open the Concept “.+” and its evidence$/);
     await conceptHeading();
     press("View source record #9 for unit #13");
     await sourceHeading();
@@ -165,7 +165,7 @@ describe("coming back focuses the control that left the screen", () => {
     // …and from the Concept to the example's step 3 button.
     window.history.back();
     await exampleHeading();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Open the Concept and its evidence" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Open the Concept “.+” and its evidence$/ })).toHaveFocus());
     // …and from the example to its card.
     window.history.back();
     await waitFor(() => expect(screen.getByRole("button", { name: /One question, two pronouns$/ })).toHaveFocus());
@@ -204,7 +204,7 @@ describe("coming back focuses the control that left the screen", () => {
     await firstCard();
     click(/One question, two pronouns$/);
     await exampleHeading();
-    click("Open the Concept and its evidence");
+    click(/^Open the Concept “.+” and its evidence$/);
     await conceptHeading();
     (document.activeElement as HTMLElement | null)?.blur();
     click("View source record #9 for unit #12");

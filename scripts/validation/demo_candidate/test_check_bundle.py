@@ -51,6 +51,15 @@ class CheckBundle(unittest.TestCase):
             self.assertEqual(code, 1, extra)
             self.assertIn(why, out)
 
+    def test_workbench_search_routes_fail_and_the_demos_pass(self):
+        # R4-DEM-008: the demo names only its preset routes under /knowledge-library/demo/.
+        for js in ['request("GET", `/knowledge-library/semantic-search?${p}`)', 'fetch("/api/knowledge-library/hybrid-search?q=x")']:
+            code, out = run(build({**GOOD, "assets/index-a1.js": js}))
+            self.assertEqual(code, 1, js)
+            self.assertIn("workbench route /knowledge-library/", out)
+        demo = 'request("GET", `/knowledge-library/demo/semantic-search?${p}`); fetch("/api/knowledge-library/demo/hybrid-search?preset=a")'
+        self.assertEqual(run(build({**GOOD, "assets/index-a1.js": demo}))[0], 0)
+
     def test_the_private_host_is_found_but_never_printed(self):
         host = "secret-host.example.internal"
         hf = os.path.join(build({}), "host.txt")

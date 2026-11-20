@@ -104,7 +104,7 @@ describe("walking an example step by step", () => {
   it("returns from the Concept to the step it was opened from", async () => {
     await renderDemo("/#example=y-en&step=3");
     await screen.findByText("Step 3 of 4: the Concept they are filed under");
-    fireEvent.click(screen.getAllByRole("button", { name: "Open the Concept and its evidence" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Open the Concept “.+” and its evidence$/ })[0]);
     await screen.findByRole("heading", { level: 2, name: /the pronouns y and en/ });
     expect(window.location.hash).toBe("#example=y-en&concept=12");
     fireEvent.click(screen.getByRole("button", { name: "← Back to the example “One question, two pronouns”" }));
