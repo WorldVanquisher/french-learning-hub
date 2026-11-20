@@ -1,0 +1,4 @@
+$ flh-staging-bundle verify flh-staging-fedcba987654.tar --sha256 <sha256>
+exit 0 (0.4 s)
+flh-staging-bundle: VERIFIED flh-staging-fedcba987654 (synthetic fixture)
+candidate migrations 21, rollback migrations 21

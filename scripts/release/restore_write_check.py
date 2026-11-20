@@ -17,12 +17,15 @@ else the current user):
   sidecars   app.db-wal and app.db-shm, when present, are regular files it may write
   directory  DATA_DIR is a directory it may write and enter (SQLite creates
              and removes the sidecars there; without them it cannot even read)
-  write      run as that uid only: open app.db read-write and write inside a
-             transaction that is rolled back (a temporary probe table): the
-             database content is unchanged (checked by digest). A lock-only
+  write      run as that uid only: open app.db read-write, create a temporary
+             probe table and write one row inside BEGIN IMMEDIATE. A lock-only
              probe (BEGIN IMMEDIATE) is not enough: it succeeds on a read-only
              file. The service must be stopped; a lock held by another process
              fails the check instead of waiting.
+  cleanup    the probe is rolled back: no probe table is left, app.db is
+             byte-identical (digest), no rollback journal remains; the sidecars
+             before and after are listed (SQLite may create -wal/-shm, as the
+             service does).
 
 Limitations: when run as another user (for example root), the write probe is
 skipped and permissions are judged from mode bits for the given uid/gid only
@@ -49,6 +52,12 @@ def digest(path):
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def sidecars(data):
+    """Which SQLite sidecar files exist beside app.db, with their sizes."""
+    return {f: os.path.getsize(os.path.join(data, f)) for f in ("app.db-wal", "app.db-shm", "app.db-journal")
+            if os.path.isfile(os.path.join(data, f))}
 
 
 def allowed(path, want, uid, gid, as_target):
@@ -107,18 +116,29 @@ def main(argv=None):
            f"{os.path.basename(data) or data} mode {stat.filemode(dst.st_mode)} owner {dst.st_uid}:{dst.st_gid}")
     if as_target and all(results):
         before = digest(db)
+        side_before = sidecars(data)
         try:
             con = sqlite3.connect(f"file:{db}?mode=rw", uri=True, timeout=0.5, isolation_level=None)
             try:
                 con.execute("BEGIN IMMEDIATE")
                 con.execute(f"CREATE TABLE {PROBE} (x INTEGER)")
+                con.execute(f"INSERT INTO {PROBE} VALUES (1)")
+                seen = con.execute(f"SELECT COUNT(*) FROM {PROBE}").fetchone()[0]
                 con.execute("ROLLBACK")
                 left = con.execute("SELECT COUNT(*) FROM sqlite_master WHERE name = ?", (PROBE,)).fetchone()[0]
             finally:
                 con.close()
+            report("write", seen == 1, "created a probe table and wrote one row inside BEGIN IMMEDIATE"
+                   if seen == 1 else f"the probe row was not visible inside the transaction ({seen})")
             same = digest(db) == before
-            report("write", left == 0 and same, "a write inside a rolled-back transaction succeeded; app.db unchanged"
-                   if left == 0 and same else f"probe left behind: {left}; app.db unchanged: {same}")
+            side_after = sidecars(data)
+            made = sorted(set(side_after) - set(side_before))
+            gone = sorted(set(side_before) - set(side_after))
+            journal = "app.db-journal" in side_after
+            report("cleanup", left == 0 and same and not journal,
+                   f"rolled back: probe table left {left}, app.db unchanged {same}, rollback journal left {journal}; "
+                   f"sidecars before {side_before or 'none'}, after {side_after or 'none'}"
+                   + (f" (created {made}, as the service does)" if made else "") + (f" (removed {gone})" if gone else ""))
         except sqlite3.Error as e:
             hint = " (is the service still running? stop it first)" if "locked" in str(e) else ""
             report("write", False, f"{e}{hint}")

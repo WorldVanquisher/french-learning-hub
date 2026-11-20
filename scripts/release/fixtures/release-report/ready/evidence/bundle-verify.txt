@@ -1,0 +1,3 @@
+$ flh-staging-bundle verify flh-staging-0123456789ab.tar --sha256 <sha256>
+exit 0 (0.4 s)
+flh-staging-bundle: VERIFIED flh-staging-0123456789ab: commit none (tree-only rehearsal), tree 0123456789abcdef0123456789abcdef01234567 (synthetic fixture)

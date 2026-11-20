@@ -20,6 +20,27 @@ databases are never merged.
   `learning_captures`, `knowledge_units`, `listening_materials` and
   `speaking_takes`, plus `select count(*) from schema_migrations`.
 
+## Evidence and verdicts (`scripts/release/cutover_check.py`)
+
+Record each step's measurement instead of copying values by hand, then ask for the verdict.
+The tool reads every database from a scratch copy. Values and digests stay in the private
+evidence file (0600); the check prints counts and same/different only. On the AWS host it is
+`$ROOT/current/repo/scripts/release/cutover_check.py`.
+
+```bash
+CC="python3 -I scripts/release/cutover_check.py"; EV=~/flh-cutover-<date>.jsonl    # outside Git
+$CC record $EV --step C2-boundary --host nas --db <FLH_DATA_DIR>/app.db           # T0, after stop
+$CC record $EV --step C5-restored --host aws --db $ROOT/data/app/app.db --ready-url http://127.0.0.1:$PORT/readyz
+$CC check $EV          # HOLD / DO-NOT-SWITCH / SWITCHED / ROLLBACK-A / ROLLBACK-B / ROLLED-BACK / DIVERGED
+$CC template --out ~/flh-cutover-owner-checks.md                                  # DNS, identity, routing
+```
+
+The steps are C1-aws-empty, C2-boundary, C3-backup, C4-sent, C4-received, C5-restored, C6-smoke,
+C7-switch, C8-first-write, then N-check (NAS), A-check (AWS stopped, at a rollback decision) and
+R-restored. A failed check before C7 gives DO-NOT-SWITCH. After AWS writes, the check prints how
+many rows a NAS restart would discard. The stand-in walkthrough is
+`staging/rehearsal/aborted_cutover_rehearsal.py`.
+
 ## Preconditions
 
 | # | Check | Command | Dry run |
@@ -29,6 +50,24 @@ databases are never merged.
 | P3 | The NAS's latest backup verifies | `cd <backup> && sha256sum -c SHA256SUMS` | (13b) |
 | P4 | Rollback window (e.g. 14 days) and who decides | written down | — |
 | P5 | Public DNS answers recorded: `dig +short A/AAAA/CAA <public demo name>`, `dig +short NS <apex>` | read-only | — |
+
+## Abort criteria (decided before T0; any one of them stops the cutover)
+
+Write the time limit and the decider down at P4. "Abort" means: no switch, the NAS stays the only
+writer. Before T1 nothing on the NAS changed, so the NAS restarts as it was (put the settings file
+back first, step 2b in reverse).
+
+| When | Abort if | `cutover_check.py` verdict | Then |
+| --- | --- | --- | --- |
+| before step 2 | any of P1–P5 is not met, or the AWS bundle knows fewer migrations than the NAS database | (not started) | do not start |
+| step 3 | the backup's `sha256sum -c` fails, or `DUMP(backup)` ≠ T0 | DO-NOT-SWITCH | restart the NAS; take a new backup later |
+| step 4 | the received file's `sha256sum -c` fails twice | DO-NOT-SWITCH | restart the NAS |
+| step 5 | the restore is refused or not ready, `DUMP`/`COUNTS` ≠ T0, or `integrity_check` ≠ ok | DO-NOT-SWITCH | restart the NAS; AWS keeps its staging data aside |
+| step 6 | search or replay ≠ 200, or `DUMP` changed | DO-NOT-SWITCH | restart the NAS |
+| any step before 7 | the freeze window (now − T0) passes the limit written at P4 | HOLD → abort | restart the NAS; record why |
+| after 7, before 8 | `flh-staging-bundle status` is not `IDENTITY OK`, or the access path fails | ROLLBACK-A (AWS took no write) | NAS settings back, start the NAS |
+| after 8 | anything wrong with the data on AWS | ROLLBACK-B | procedure B only: never restart the NAS directly (the check prints how many rows that would discard) |
+| any time | both sides were written after T0 | DIVERGED | stop both; never merge; the owner decides from the two backups |
 
 ## Cutover (18)
 

@@ -146,10 +146,14 @@ python3 -I $S/tools/preflight.py --tools                     # expect READY
 cd $S/terraform
 cp terraform.tfvars.example terraform.tfvars                 # ignored by Git
 #   fill: run_id (UTC, e.g. 20261118T090000Z), expires_at (<= 24 h ahead), ami_id, compose_plugin_sha256
-cd - && python3 -I $S/tools/preflight.py --tfvars $S/terraform/terraform.tfvars --policies ~/flh-stg-iam --bundle "$OUT/$NAME.tar" --sha256 "$BUNDLE_SHA"
+cd - && python3 -I $S/tools/preflight.py --inputs --tfvars $S/terraform/terraform.tfvars --policies ~/flh-stg-iam --bundle "$OUT/$NAME.tar" --sha256 "$BUNDLE_SHA" \
+  --render-compose --card ~/flh-stg-launch-card.md
 ```
 
-**Expected:** `READY: N passed, 0 failed`. A `FAIL` names what to fix.
+**Expected:** `READY: N passed, 0 failed, K open owner inputs`. A `FAIL` names what to fix.
+- **`--inputs`:** every Terraform variable as SET, DEFAULT, MISSING, PLACEHOLDER or INVALID; the
+  16 parameters of §4; the owner decisions still OPEN (authorization, backup).
+- **The card:** a private (0600) copy of this run's values and commands, outside the repository.
 
 ### 3.1 Init and validate
 
@@ -169,7 +173,13 @@ cd $S/terraform
 terraform plan -out stg.tfplan                               # expect: 21 to add, 0 to change, 0 to destroy
 terraform show -json stg.tfplan > stg.plan.json              # both ignored by Git: they hold the account ID
 python3 -I ../tools/plan_check.py --mode create stg.plan.json
+python3 -I ../tools/plan_review.py stamp stg.plan.json --tfvars terraform.tfvars    # input hashes, ignored by Git
+python3 -I ../tools/plan_review.py summary stg.plan.json                            # by service and blast radius
+python3 -I ../tools/plan_review.py cost stg.plan.json                               # counts x cost_assumptions.json
 ```
+
+To compare a new plan with the reviewed one, `plan_review.py diff reviewed.plan.json
+stg.plan.json`: it ignores order and values known only after apply.
 
 **Expected:** `plan (create): 21 to add, 0 to change, 0 to destroy, 0 to replace`
 followed by `SAFE`.
@@ -180,6 +190,7 @@ followed by `SAFE`.
 ### 3.3 Apply (starts billing)
 
 ```bash
+python3 -I ../tools/plan_review.py freshness stg.plan.json --tfvars terraform.tfvars   # FRESH, else plan again
 terraform apply stg.tfplan
 IID=$(terraform output -raw instance_id); BUCKET=$(terraform output -raw bucket); echo "$IID $BUCKET"
 cd -
@@ -216,7 +227,7 @@ the steps below.
 ```bash
 sudo cloud-init status --wait                                # expect: status: done
 sudo -iu ec2-user
-. /etc/flh/staging.conf                                      # REGION BUCKET PARAM_DIR ROOT PORT (no secret)
+eval "$(flh-staging-bundle shell)"     # REGION BUCKET PARAM_DIR ROOT PORT and the helpers stg, bt, cc, dx (no secret)
 docker compose version && sqlite3 --version && findmnt "$ROOT/data" && systemctl list-timers flh-staging-expire.timer
 flh-staging-env "$REGION" "$PARAM_DIR" "$ROOT/staging.env"    # names with set/empty only; 0600
 NAME=flh-staging-<tree12>; BUNDLE_SHA=<the 64-hex value from §1>   # typed from the operator machine, not read from S3
@@ -240,13 +251,19 @@ files, inconsistent identity, or a database newer than the bundle.
 ignore SIGHUP and keep `deploy.log`. Reconnect and run `flh-staging-bundle
 status`. Rehearsed: about 4 s for an install on the stand-in.
 
-The daily wrapper is the bundle's own copy. Define a shell helper for the
-later steps:
+The `eval` line above defines the helpers for the later steps. Each runs a copy
+from the installed bundle (`$ROOT/current/repo/…`):
+- `stg`: the daily wrapper, `flh-daily.sh`, in isolated mode;
+- `bt`: `backup_tool.py`;
+- `cc`: `cutover_check.py`;
+- `dx`: `diagnose.py`.
+
+Every value is shell-quoted. The bundle's SHA-256 is deliberately not among
+them: type it from §1.
 
 ```bash
-stg() { FLH_DAILY_ENV="$ROOT/staging.env" FLH_COMPOSE_PROJECT=flh-staging \
-        FLH_COMPOSE_OVERRIDE="$ROOT/current/staging.override.yaml" bash "$ROOT/current/repo/scripts/daily/flh-daily.sh" "$@"; }
 stg status
+dx --env "$ROOT/staging.env" --running        # nothing found; else one [code] and its RECOVER line
 ```
 
 ## 6. Restore the synthetic NAS-shaped backup
@@ -264,15 +281,19 @@ On the host, as `ec2-user`:
 
 ```bash
 B=<backup dir name>
-cd "$ROOT/transfer" && aws s3 cp --region "$REGION" "s3://$BUCKET/backups/$B.tar" . && aws s3 cp --region "$REGION" "s3://$BUCKET/backups/$B.tar.sha256" .
-sha256sum -c "$B.tar.sha256"                                 # compare the value with the operator's note too
-tar -xf "$B.tar" && (cd "$B" && sha256sum --quiet -c SHA256SUMS) && cd
-time stg restore "$ROOT/transfer/$B"
+aws s3 cp --region "$REGION" "s3://$BUCKET/backups/$B.tar" "$ROOT/transfer/"
+bt unpack "$ROOT/transfer/$B.tar" --sha256 <the value noted on the operator machine> "$ROOT/transfer"
+time stg restore "$(bt latest "$ROOT/transfer")"
 curl -fsS "http://127.0.0.1:$PORT/readyz"; echo
 ```
 
-**Expected:** `restored … the previous data is kept at …`, then healthy and
-`{"status":"ready"}`.
+**Expected:** `unpacked <B>: COMPLETE`, `restored … the previous data is kept
+at …`, then healthy and `{"status":"ready"}`.
+- **`bt unpack` checks first:** the SHA-256, then every member, then the
+  backup's own sums and integrity. Only then does it rename the directory
+  into place.
+- **A truncated or damaged archive** is refused with what to do. Nothing is
+  left behind.
 - **Read-only backup:** a backup whose files are read-only is refused with
   "the service could not write the restored database". Run `chmod 600` on its
   `app.db*` files as the message says, then `stg start`.
@@ -304,6 +325,23 @@ Run every row; each has an exact expected result.
 | E11 | Bounded runtime armed (host) | `systemctl list-timers flh-staging-expire.timer` | next run ≤ `max_runtime_hours` after boot |
 | E12 | Restart persistence (host) | `stg restart` then re-read the E4 entry | the same entry, 200 |
 | E13 | Backup to S3 (host) | `stg backup`, then tar + `sha256sum` + `aws s3 cp … s3://$BUCKET/backups/` | the `.sha256` verifies after download to a second target |
+
+### 7.1 Owner verification: logging, storage, restart, teardown (OWNER-ONLY)
+
+These need the real host. Each row's local rehearsal is named; the AWS behaviour itself is unproven
+until the owner runs it.
+
+| # | Area | Command (host unless noted) | Expected | Rehearsed locally |
+| --- | --- | --- | --- | --- |
+| V1 | Logging: no failed request | `stg logs --since 30m \| grep -c 'request failed:'` | `0` | E5 on the stand-in (STANDIN-REHEARSAL.md) |
+| V2 | Logging: no secret, no learner text | `stg logs --since 30m \| grep -c -E 'sk-[A-Za-z0-9]{8}\|AKIA[0-9A-Z]{12}\|FIXTURE-PRIVATE'` | `0` (synthetic captures carry `FIXTURE-PRIVATE` markers) | deploy-controls rehearsal: 0 in the logs of a failing start |
+| V3 | Logging: diagnostics stay private | `ls -l "$ROOT/diagnostics"` after a failed install | files `-rw-------`, paths and IDs masked | deploy-controls rehearsal D4 |
+| V4 | Storage: the data volume holds the data | `findmnt -no SOURCE,FSTYPE "$ROOT/data"; df -h "$ROOT/data"` | the attached EBS device, `xfs`, not the root disk | not possible locally |
+| V5 | Storage: encrypted, tagged, survives a restart (operator) | `aws ec2 describe-volumes --region $REGION --filters Name=tag:Component,Values=workbench-staging --query 'Volumes[].[Encrypted,State,Size]'` | `[[true, "in-use", 8]]` | plan_check (encrypted) only |
+| V6 | Restart: service | `stg restart && flh-staging-bundle status && dx --env "$ROOT/staging.env" --running` | `IDENTITY OK`, the E4 entry reads back, `nothing found` | first-run and recovery rehearsals |
+| V7 | Restart: host reboot keeps the data and the timer (operator) | `aws ec2 reboot-instances --region $REGION --instance-ids $IID`, reconnect, `stg start`, V6 | the same data; `flh-staging-expire.timer` armed again (`OnBootSec`) | not possible locally |
+| V8 | Teardown: nothing billable left (operator) | §9 listings | every listing `[]` | `plan_check --mode destroy` fixture only |
+| V9 | Teardown: no local state left (operator) | `ls $S/terraform` after §9 | no `*.tfplan`, `*.plan.json`, `*.plan-stamp.json`, `terraform.tfvars` kept only if wanted | preflight publication check |
 
 ## 8. Rollback and recovery
 
@@ -349,7 +387,7 @@ aws ec2 describe-volumes --region $REGION --filters Name=tag:Component,Values=wo
 aws ec2 describe-addresses --region $REGION --filters Name=tag:Component,Values=workbench-staging --query 'Addresses'
 aws s3api list-buckets --query "Buckets[?starts_with(Name, 'flh-stg-')].Name"
 aws ssm get-parameters-by-path --region $REGION --path /flh/staging --query 'Parameters[].Name'
-rm -f stg.tfplan stg.plan.json stg-destroy.tfplan stg-destroy.plan.json; cd -
+rm -f stg.tfplan stg.plan.json stg.plan-stamp.json stg-destroy.tfplan stg-destroy.plan.json stg-destroy.plan-stamp.json; cd -
 ```
 
 **Expected:** every listing prints `[]`. The administrator then detaches
@@ -364,6 +402,9 @@ four policies.
 
 ## 10. Cost assumptions (us-east-1 list prices; confirm in the AWS calculator)
 
+The rates are also in `staging/cost_assumptions.json`; `plan_review.py cost` multiplies them by
+the counts in the plan and names any resource type without a rate.
+
 | Item | Rate | 4-hour pass | Left running 30 days |
 | --- | --- | --- | --- |
 | t3.small | $0.0208/h | $0.08 | $15.18 |
@@ -375,6 +416,20 @@ four policies.
 | **Total** | | **≈ $0.11** | **≈ $21** |
 
 ## 11. Live checks still pending (cannot be proven without AWS)
+
+**Simulated locally vs needs AWS (release lane, 20261119):**
+
+| Capability | Simulated locally (stand-in or offline tool) | Needs the real AWS run (owner) |
+| --- | --- | --- |
+| Inputs, tools, binding, publication | `preflight.py` on synthetic tfvars, parameters, stubs | `--tools` on the operator machine; real parameters |
+| Plan review | `plan_check.py`, `plan_review.py` on synthetic plans | a real `terraform show -json` (with `variables`, `timestamp`) |
+| Bundle | build, cache, reproduce, verify, compare, attest (real Docker) | `--git` build from a commit on main |
+| Install, plan, target identity, diagnostics, cleanup | `flh-staging-bundle` on a stand-in (real Docker, isolated project) | the AL2023 host: Python 3.9, Docker, Compose v2.29.7 |
+| Backup, restore, failed prepare, receipt | `recovery_rehearsal.py` (two sizes) | S3 transfer and EBS times |
+| Cutover and rollback | `aborted_cutover_rehearsal.py` with recorded evidence | the NAS and AWS hosts, SSM as the access path, DNS unchanged |
+| First run | `first_run.py` from a fresh fixture | §0–§4 and §9 (authorization, IAM, Terraform, parameters, teardown) |
+| CI | the runner, hermetic, on this machine | GitHub Actions: `python-tools`, and `speaking.yml` after the Speaking Lab commit |
+| Logging, storage, restart, teardown | partly (§7.1 "Rehearsed locally") | V4, V5, V7, V8 |
 
 1. IAM: the four policies against real calls. Every `AccessDenied` names the
    action; add only that and record it.

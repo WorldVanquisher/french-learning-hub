@@ -1,0 +1,22 @@
+{
+ "format": "flh-staging-cost-assumptions/v1",
+ "comment": "Rates only. Resource counts come from the plan (tools/plan_review.py cost); nothing here counts resources. RUNBOOK.md section 10 is the same table in prose.",
+ "region": "us-east-1",
+ "currency": "USD",
+ "as_of": "2026-11-17",
+ "source": "AWS on-demand list prices for us-east-1 as quoted in RUNBOOK.md section 10 (release lane, 20261117); not fetched. Confirm in the AWS Pricing Calculator before the run",
+ "rates": {
+  "instance_hour": {"by_type": {"t3.small": 0.0208}, "note": "Linux on-demand; standard CPU credits"},
+  "public_ipv4_hour": {"rate": 0.005, "note": "one in-use public IPv4 per instance with associate_public_ip_address (outbound only)"},
+  "gp3_gb_month": {"rate": 0.08, "note": "root and data volumes; 3000 IOPS / 125 MB/s baseline included"},
+  "per_resource_month": {
+   "aws_s3_bucket": {"rate": 0.05, "note": "upper bound: about 50 MB stored plus a few hundred requests"}
+  },
+  "free": ["aws_vpc", "aws_internet_gateway", "aws_subnet", "aws_route_table", "aws_route_table_association",
+           "aws_vpc_endpoint", "aws_security_group", "aws_vpc_security_group_egress_rule",
+           "aws_s3_bucket_public_access_block", "aws_s3_bucket_ownership_controls",
+           "aws_s3_bucket_server_side_encryption_configuration", "aws_s3_bucket_versioning",
+           "aws_s3_bucket_lifecycle_configuration", "aws_s3_bucket_policy", "aws_iam_role", "aws_iam_role_policy",
+           "aws_iam_instance_profile", "aws_volume_attachment"]
+ }
+}

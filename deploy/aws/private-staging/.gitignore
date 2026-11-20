@@ -27,3 +27,5 @@ staging/iam/local/
 # Bundles and their transfer files, if one is ever built here by mistake.
 flh-staging-*.tar
 flh-staging-*.tar.sha256
+# Stamps of a reviewed plan (tools/plan_review.py stamp): input hashes beside the plan.
+*.plan-stamp.json

@@ -201,11 +201,24 @@ class RestoreWriteCheck(unittest.TestCase):
         before = self.digest()
         r = self.run_check()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("PASS\twrite\t", r.stdout)
+        self.assertIn("PASS\twrite\tcreated a probe table and wrote one row", r.stdout)
+        self.assertRegex(r.stdout, r"PASS\tcleanup\trolled back: probe table left 0, app.db unchanged True, "
+                                   r"rollback journal left False; sidecars before")
         self.assertEqual(self.digest(), before)
         con = sqlite3.connect(f"file:{self.db}?mode=ro", uri=True)
         self.assertEqual(con.execute("SELECT name FROM sqlite_master ORDER BY name").fetchall(), [("t",)])
         con.close()
+
+    def test_rollback_journal_database_reports_its_cleanup(self):
+        os.unlink(self.db + "-wal") if os.path.exists(self.db + "-wal") else None
+        con = sqlite3.connect(self.db, isolation_level=None)
+        con.execute("PRAGMA journal_mode = DELETE")
+        con.close()
+        before = self.digest()
+        r = self.run_check()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("rollback journal left False; sidecars before none, after none", r.stdout)
+        self.assertEqual(self.digest(), before)
 
     def test_read_only_file_fails_although_reads_still_work(self):
         os.chmod(self.db, 0o444)
