@@ -112,6 +112,8 @@ function WalkBar({ step, onStep }: { step?: number; onStep: (step: number) => vo
 // confusion comes from, one more way in opens its practice question (R3-042).
 export function ExamplePicker({ onOpen, onConfusion }: { onOpen: (key: string) => void; onConfusion?: (compare: string) => void }) {
   const { t, tn } = useI18n();
+  // A local binding, so the guard below also narrows it inside the click handler.
+  const confusion = CONFUSION;
   return (
     <section className="panel demo-examples" aria-labelledby="demo-examples-heading">
       <h2 id="demo-examples-heading" className="library-title" tabIndex={-1}>
@@ -129,12 +131,12 @@ export function ExamplePicker({ onOpen, onConfusion }: { onOpen: (key: string) =
                 {t("demo.examples.open")}
               </span>
             </button>
-            {CONFUSION && onConfusion && CONFUSION.example === ex.key ? (
-              <button type="button" className="ghost demo-example-confusion" id="demo-example-confusion" onClick={() => onConfusion(CONFUSION.compare)}>
+            {confusion && onConfusion && confusion.example === ex.key ? (
+              <button type="button" className="ghost demo-example-confusion" id="demo-example-confusion" onClick={() => onConfusion(confusion.compare)}>
                 {tn("demo.examples.confusion", {
                   form: (
                     <span lang="fr" className="french">
-                      {CONFUSION.form}
+                      {confusion.form}
                     </span>
                   ),
                 })}
