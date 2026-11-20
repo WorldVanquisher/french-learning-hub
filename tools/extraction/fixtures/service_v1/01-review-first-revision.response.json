@@ -1,0 +1,426 @@
+{
+ "body": {
+  "contract": "flh_extraction_service_v1",
+  "counts": {
+   "generated": 3,
+   "no_evidence": 0,
+   "supported": 6,
+   "uncertain": 0,
+   "unsupported": 0
+  },
+  "deployment_id": "flh-extraction-rules@b0bd175f5d97/flh_extraction_service_v1/flh_practice_drafter_v1",
+  "draft_id": "d-637499c7bd1d",
+  "evidence": [
+   {
+    "end": 178,
+    "evidence_id": "ev-2cd24b70b3",
+    "excerpt": "…mpiers, à Paris » ; « je suis [valet de chambre en Angleterre] ». Chapitre 3 : « ont été env…",
+    "field": "original_context",
+    "quote": "valet de chambre en Angleterre",
+    "source_id": "a-en-lieux-demo",
+    "source_revision": 1,
+    "start": 148,
+    "status": "located"
+   },
+   {
+    "end": 284,
+    "evidence_id": "ev-371c2bef92",
+    "excerpt": "…t en Europe ». Chapitre 8 : « [Lancer une dépêche à Londres] » ; « filer mon voleur jusqu'…",
+    "field": "original_context",
+    "quote": "Lancer une dépêche à Londres",
+    "source_id": "a-en-lieux-demo",
+    "source_revision": 1,
+    "start": 256,
+    "status": "located"
+   },
+   {
+    "end": 365,
+    "evidence_id": "ev-60c96b27d6",
+    "excerpt": "…u'aux Indes ». Chapitre 9 : « [en débarquant en Égypte] ».",
+    "field": "original_context",
+    "quote": "en débarquant en Égypte",
+    "source_id": "a-en-lieux-demo",
+    "source_revision": 1,
+    "start": 342,
+    "status": "located"
+   },
+   {
+    "end": 133,
+    "evidence_id": "ev-75a4d1fa87",
+    "excerpt": "…Verne. Chapitre 1 : « j'étais [sergent de pompiers, à Paris] » ; « je suis valet de chambr…",
+    "field": "original_context",
+    "quote": "sergent de pompiers, à Paris",
+    "source_id": "a-en-lieux-demo",
+    "source_revision": 1,
+    "start": 105,
+    "status": "located"
+   },
+   {
+    "end": 323,
+    "evidence_id": "ev-7962c7e3a2",
+    "excerpt": "…r une dépêche à Londres » ; « [filer mon voleur jusqu'aux Indes] ». Chapitre 9 : « en débarqua…",
+    "field": "original_context",
+    "quote": "filer mon voleur jusqu'aux Indes",
+    "source_id": "a-en-lieux-demo",
+    "source_revision": 1,
+    "start": 291,
+    "status": "located"
+   },
+   {
+    "end": 237,
+    "evidence_id": "ev-7c2a34f83e",
+    "excerpt": "…hapitre 3 : « ont été envoyés [en Amérique et en Europe] ». Chapitre 8 : « Lancer une …",
+    "field": "original_context",
+    "quote": "en Amérique et en Europe",
+    "source_id": "a-en-lieux-demo",
+    "source_revision": 1,
+    "start": 213,
+    "status": "located"
+   },
+   {
+    "end": 365,
+    "evidence_id": "ev-906a1a54d7",
+    "excerpt": "…ux Indes ». Chapitre 9 : « en [débarquant en Égypte] ».",
+    "field": "original_context",
+    "quote": "débarquant en Égypte",
+    "source_id": "a-en-lieux-demo",
+    "source_revision": 1,
+    "start": 345,
+    "status": "located"
+   }
+  ],
+  "items": [
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-75a4d1fa87",
+     "ev-371c2bef92"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-75a4d1fa87",
+      "quote": "sergent de pompiers, à Paris",
+      "status": "located"
+     },
+     {
+      "evidence_id": "ev-371c2bef92",
+      "quote": "Lancer une dépêche à Londres",
+      "status": "located"
+     }
+    ],
+    "item_hash": "a69a43b699320b91f9eb509bc6ebfaab3ab98b6e2f907e529d6615198f3d0446",
+    "item_id": "k-886099054b26",
+    "material_hash": "5f407a2f55480211357a2bb86069fdb4ae645642bc0e751eeb9da1c0c44d5c2f",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« à » goes before a city name: « à Paris », « à Londres ».",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-2cd24b70b3",
+     "ev-906a1a54d7",
+     "ev-7c2a34f83e"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-2cd24b70b3",
+      "quote": "valet de chambre en Angleterre",
+      "status": "located"
+     },
+     {
+      "evidence_id": "ev-906a1a54d7",
+      "quote": "débarquant en Égypte",
+      "status": "located"
+     },
+     {
+      "evidence_id": "ev-7c2a34f83e",
+      "quote": "en Amérique et en Europe",
+      "status": "located"
+     }
+    ],
+    "item_hash": "390a1fe13f9f003a0c6d846710842c2e59ad626ff42f562d19848a79d96f7f01",
+    "item_id": "k-fb79321ec520",
+    "material_hash": "f46956938a2e6a56147f809379dc4ac20c916acf241cc47f7912c62464255156",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« en » goes before a feminine country or a continent, and before a country name that begins with a vowel: « en Angleterre », « en Égypte », « en Europe ».",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-7962c7e3a2"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-7962c7e3a2",
+      "quote": "filer mon voleur jusqu'aux Indes",
+      "status": "located"
+     }
+    ],
+    "item_hash": "f9340d787783926589a519572c61b6bea7eb6e14309aadbb0c18ece9ad6e6be0",
+    "item_id": "k-53a8841fc7d3",
+    "material_hash": "47c545c21bc415f7e14e63a929cea4e404cbabc69a1daf52d9a0ed1a4846f6f3",
+    "origin": "source",
+    "paraphrases": 1,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« aux » (« à » + « les ») goes before a plural place name: « jusqu’aux Indes ».",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [
+     "k-32f4087a06b6"
+    ],
+    "cues": [
+     {
+      "cue": "generalises",
+      "detail": "the claim says « every »; its 1 located quote shows one example, not a rule for every case"
+     }
+    ],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-2cd24b70b3"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-2cd24b70b3",
+      "quote": "valet de chambre en Angleterre",
+      "status": "located"
+     }
+    ],
+    "item_hash": "3753d2c89a1a7b85856292a5f1440a4c274be4f9abe47e2d72e168a88f5e5a0e",
+    "item_id": "k-1ef55be82232",
+    "material_hash": "b6028e68a2eaef43e64ed5d087b905dfb232aa9e4e498bd57e6b5c9318f14f21",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "« en » goes before every country name, so you also say « en Japon ».",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [
+     {
+      "cue": "en_plus_ant",
+      "detail": "in « en débarquant en Égypte », « en débarquant » is « en » + a word in -ant: it may be a gerund, not the place preposition"
+     }
+    ],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-60c96b27d6"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-60c96b27d6",
+      "quote": "en débarquant en Égypte",
+      "status": "located"
+     }
+    ],
+    "item_hash": "16d736d6572b0e8f1e6a483f1b3df80d8ae3baccf98c2446b59629c064161adc",
+    "item_id": "k-edad5a9a03c5",
+    "material_hash": "2b6fce25129f49bb072beb8b62d232d0c4fdb1b6697a1c53993135af64d23a0a",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "In « en débarquant en Égypte », both « en » are the place preposition.",
+    "type": "claim"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [
+     "ev-75a4d1fa87",
+     "ev-2cd24b70b3"
+    ],
+    "groundings": [
+     {
+      "evidence_id": "ev-75a4d1fa87",
+      "quote": "sergent de pompiers, à Paris",
+      "status": "located"
+     },
+     {
+      "evidence_id": "ev-2cd24b70b3",
+      "quote": "valet de chambre en Angleterre",
+      "status": "located"
+     }
+    ],
+    "item_hash": "48ed13a9f943c83d66b2ed2e62530ebb089fbf1b7dbc3327ccdf92086fe0a17f",
+    "item_id": "k-d0424fb40a11",
+    "material_hash": "36e5e6ff68ff0c77d577fdff7bd50d9ce4e88788e51a05cf2ae49fbb904547c4",
+    "origin": "source",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "supported",
+    "text": "Ask what the place is: a city takes « à »; a feminine country or a continent takes « en ».",
+    "type": "contrast"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [
+     "k-1ef55be82232"
+    ],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [],
+    "groundings": [],
+    "item_hash": "ae4821eb4e7ce7b5c111f61fada16d41e32f291ac1abcae92e7fb76638a6441c",
+    "item_id": "k-32f4087a06b6",
+    "material_hash": "3947177027363ff5976a9fa160be03d672512ccd5cd93e718fa6db9fb3861e76",
+    "origin": "generated",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "generated",
+    "text": "« Japon » is masculine and begins with a consonant, so « à » + « le » gives « au ».",
+    "type": "common_error"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [],
+    "groundings": [],
+    "item_hash": "d6a2bff7270c111563ad32a3dd3646c6f6430ead10957a022a9a02c731cab84d",
+    "item_id": "k-82761c80f843",
+    "material_hash": "c99647b14cd9db31b1625fe81267382868a443ac01c6dc79d51120b7ecc42133",
+    "origin": "generated",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "generated",
+    "text": "Lyon is a city: « à ».",
+    "type": "worked_example"
+   },
+   {
+    "carried_from_revision": null,
+    "conflicts": [],
+    "cues": [],
+    "decided_on_revision": null,
+    "evidence_ids": [],
+    "groundings": [],
+    "item_hash": "0027c3549fa2e7236b0ec7d0cde73f7c9451fa8605f5ff20295fd64db70420a2",
+    "item_id": "k-edadc7ded432",
+    "material_hash": "79fefff5474adcb807ae2b8a94f173290502f079e10d0a104b7132c3d8d04c87",
+    "origin": "generated",
+    "paraphrases": 0,
+    "review_kind": null,
+    "state": "pending",
+    "support": "generated",
+    "text": "« l’Espagne » is a feminine country: « en ».",
+    "type": "worked_example"
+   }
+  ],
+  "moves": {},
+  "operation": "review",
+  "plan": {
+   "batch_id": "b2-adcf5ee59182",
+   "effects": {
+    "decision_records": 5,
+    "evidence_links_added": [
+     "ev-2cd24b70b3",
+     "ev-371c2bef92",
+     "ev-75a4d1fa87",
+     "ev-7c2a34f83e",
+     "ev-906a1a54d7"
+    ],
+    "knowledge_approved": 5,
+    "new_practice": [
+     {
+      "kind": "explain",
+      "practice_id": "p-cf2ec01246c8"
+     },
+     {
+      "kind": "choose",
+      "practice_id": "p-10a28f330355"
+     },
+     {
+      "kind": "choose",
+      "practice_id": "p-f9efb7256976"
+     },
+     {
+      "kind": "produce",
+      "practice_id": "p-04705161a655"
+     },
+     {
+      "kind": "produce",
+      "practice_id": "p-919b6c108284"
+     }
+    ],
+    "practice_after": 5,
+    "practice_before": 0
+   },
+   "left_for_you": [
+    {
+     "item_id": "k-53a8841fc7d3",
+     "why": "PARAPHRASE: approving it needs your attestation that the paraphrase says what the quote says (--attest-paraphrase)"
+    },
+    {
+     "item_id": "k-1ef55be82232",
+     "why": "QUOTE FOUND, CLAIM MAY SAY MORE (a word check, not a proof): the claim says « every »; its 1 located quote shows one example, not a rule for every case"
+    },
+    {
+     "item_id": "k-edad5a9a03c5",
+     "why": "QUOTE FOUND, CLAIM MAY SAY MORE (a word check, not a proof): in « en débarquant en Égypte », « en débarquant » is « en » + a word in -ant: it may be a gerund, not the place preposition"
+    },
+    {
+     "item_id": "k-32f4087a06b6",
+     "why": "CONFLICTS WITH k-1ef55be82232: k-1ef55be82232 presents « en Japon » as correct; k-32f4087a06b6 lists it as an error"
+    }
+   ],
+   "selected": [
+    "k-886099054b26",
+    "k-fb79321ec520",
+    "k-d0424fb40a11",
+    "k-82761c80f843",
+    "k-edadc7ded432"
+   ]
+  },
+  "schema": "flh_extraction_result_v1",
+  "source": {
+   "capture_id": "synthetic-a-en-lieux-001",
+   "proposer": "synthetic: hand-written fixture for the Extraction 2.2 prototype (no provider call); French needs a native-speaker check before learner use",
+   "revision": 1,
+   "revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+   "source_id": "a-en-lieux-demo"
+  },
+  "states": {
+   "approved": 0,
+   "corrected": 0,
+   "needs_review": 0,
+   "pending": 9,
+   "rejected": 0
+  },
+  "status": "ok",
+  "text": "Draft d-637499c7bd1d  source a-en-lieux-demo revision 1 (324b8a2a1b9d)\nlines: QUOTE = your exact words, located in your text (evidence); PARAPHRASE = a restatement (never evidence); CUE = a word check that the quote may not support the claim (not a proof)\n\n[k-886099054b26] claim  support supported  state pending\n  says        « à » goes before a city name: « à Paris », « à Londres ».\n  QUOTE       ev-75a4d1fa87 located   « sergent de pompiers, à Paris »\n              …Verne. Chapitre 1 : « j'étais [sergent de pompiers, à Paris] » ; « je suis valet de chambr…\n  QUOTE       ev-371c2bef92 located   « Lancer une dépêche à Londres »\n              …t en Europe ». Chapitre 8 : « [Lancer une dépêche à Londres] » ; « filer mon voleur jusqu'…\n\n[k-fb79321ec520] claim  support supported  state pending\n  says        « en » goes before a feminine country or a continent, and before a country name that begins with a vowel: « en Angleterre », « en Égypte »,…\n  QUOTE       ev-2cd24b70b3 located   « valet de chambre en Angleterre »\n              …mpiers, à Paris » ; « je suis [valet de chambre en Angleterre] ». Chapitre 3 : « ont été env…\n  QUOTE       ev-906a1a54d7 located   « débarquant en Égypte »\n              …ux Indes ». Chapitre 9 : « en [débarquant en Égypte] ».\n  QUOTE       ev-7c2a34f83e located   « en Amérique et en Europe »\n              …hapitre 3 : « ont été envoyés [en Amérique et en Europe] ». Chapitre 8 : « Lancer une …\n\n[k-53a8841fc7d3] claim  support supported  state pending\n  says        « aux » (« à » + « les ») goes before a plural place name: « jusqu’aux Indes ».\n  QUOTE       ev-7962c7e3a2 located   « filer mon voleur jusqu'aux Indes »\n              …r une dépêche à Londres » ; « [filer mon voleur jusqu'aux Indes] ». Chapitre 9 : « en débarqua…\n  PARAPHRASE  restates ev-7962c7e3a2: Fix plans to follow the man he thinks is a thief as far as India; « les Indes » is plural, so « à » + « les » becomes « aux ».\n\n[k-1ef55be82232] claim  support supported  state pending\n  says        « en » goes before every country name, so you also say « en Japon ».\n  QUOTE       ev-2cd24b70b3 located   « valet de chambre en Angleterre »\n              …mpiers, à Paris » ; « je suis [valet de chambre en Angleterre] ». Chapitre 3 : « ont été env…\n  CUE         generalises: the claim says « every »; its 1 located quote shows one example, not a rule for every case\n  CONFLICT    k-1ef55be82232 presents « en Japon » as correct; k-32f4087a06b6 lists it as an error\n\n[k-edad5a9a03c5] claim  support supported  state pending\n  says        In « en débarquant en Égypte », both « en » are the place preposition.\n  QUOTE       ev-60c96b27d6 located   « en débarquant en Égypte »\n              …u'aux Indes ». Chapitre 9 : « [en débarquant en Égypte] ».\n  CUE         en_plus_ant: in « en débarquant en Égypte », « en débarquant » is « en » + a word in -ant: it may be a gerund, not the place preposition\n\n[k-d0424fb40a11] contrast  support supported  state pending\n  says        « à » + a city: à Paris, à Londres / « en » + a feminine country or a continent: en Angleterre, en Europe\n  distinction Ask what the place is: a city takes « à »; a feminine country or a continent takes « en ».\n  QUOTE       ev-75a4d1fa87 located   « sergent de pompiers, à Paris »\n              …Verne. Chapitre 1 : « j'étais [sergent de pompiers, à Paris] » ; « je suis valet de chambr…\n  QUOTE       ev-2cd24b70b3 located   « valet de chambre en Angleterre »\n              …mpiers, à Paris » ; « je suis [valet de chambre en Angleterre] ». Chapitre 3 : « ont été env…\n\n[k-32f4087a06b6] common_error  support generated  state pending\n  says        not « en Japon » but « au Japon »\n  why         « Japon » is masculine and begins with a consonant, so « à » + « le » gives « au ».\n  QUOTE       none (a new practice example: the source never said it)\n  CONFLICT    k-1ef55be82232 presents « en Japon » as correct; k-32f4087a06b6 lists it as an error\n\n[k-82761c80f843] worked_example  support generated  state pending\n  says        Où habite ta sœur ? (Lyon) — Elle habite à Lyon.  (a sentence not in your source)\n  explanation Lyon is a city: « à ».\n  QUOTE       none (a new practice example: the source never said it)\n\n[k-edadc7ded432] worked_example  support generated  state pending\n  says        Où vas-tu cet été ? (l’Espagne) — Je vais en Espagne.  (a sentence not in your source)\n  explanation « l’Espagne » is a feminine country: « en ».\n  QUOTE       none (a new practice example: the source never said it)\n\nstates: pending 9, approved 0, corrected 0, rejected 0, needs_review 0\n\nReview v2 of draft d-637499c7bd1d (source a-en-lieux-demo revision 1)\n\nBatch b2-adcf5ee59182: approve 5 of 5 batchable items together. Selected, explicitly:\n  [x] k-886099054b26 claim          evidence ev-75a4d1fa87, ev-371c2bef92\n      « à » goes before a city name: « à Paris », « à Londres ».\n  [x] k-fb79321ec520 claim          evidence ev-2cd24b70b3, ev-906a1a54d7, ev-7c2a34f83e\n      « en » goes before a feminine country or a continent, and before a country name that begins wit…\n  [x] k-d0424fb40a11 contrast       evidence ev-75a4d1fa87, ev-2cd24b70b3\n      Ask what the place is: a city takes « à »; a feminine country or a continent takes « en ».\n  [x] k-82761c80f843 worked_example new practice example, sentence not in your source\n      Lyon is a city: « à ».\n  [x] k-edadc7ded432 worked_example new practice example, sentence not in your source\n      « l’Espagne » is a feminine country: « en ».\n  Effect: 5 items become approved knowledge (5 decision records, one each); practice 0 -> 5 exercises (new: p-cf2ec01246c8 explain, p-10a28f330355 choose, p-f9efb7256976 choose, p-04705161a655 produce, p-919b6c108284 produce); nothing else changes.\n  -> practice2 decide --work W --approve-batch b2-adcf5ee59182   (--select k-…,k-… to approve fewer; --except k-…)\n\nDecide yourself, one by one (4):\n  [k-53a8841fc7d3] claim          PARAPHRASE: approving it needs your attestation that the paraphrase says what the quote says (--attest-paraphrase)\n      « aux » (« à » + « les ») goes before a plural place name: « jusqu’aux Indes ».\n  [k-1ef55be82232] claim          QUOTE FOUND, CLAIM MAY SAY MORE (a word check, not a proof): the claim says « every »; its 1 located quote shows one example, not a rule for every case\n      « en » goes before every country name, so you also say « en Japon ».\n  [k-edad5a9a03c5] claim          QUOTE FOUND, CLAIM MAY SAY MORE (a word check, not a proof): in « en débarquant en Égypte », « en débarquant » is « en » + a word in -ant: it may be a gerund, not the place preposition\n      In « en débarquant en Égypte », both « en » are the place preposition.\n  [k-32f4087a06b6] common_error   CONFLICTS WITH k-1ef55be82232: k-1ef55be82232 presents « en Japon » as correct; k-32f4087a06b6 lists it as an error\n      « Japon » is masculine and begins with a consonant, so « à » + « le » gives « au ».\n\nAlready decided: none\n"
+ },
+ "status": 200
+}

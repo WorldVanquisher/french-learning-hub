@@ -360,6 +360,24 @@ On the pinned v1 manifest: test 8 speakers (22 more needed), dev 4 (26 more), de
 pooled 12 (18 more); the 289 FLEURS clips carry no speaker ID. Below 30 speakers a comparison
 stays an observation whatever these checks say. Fixtures: `fixtures/lab/intake/` (synthetic).
 
+Further intake flags: `--require-speakers` refuses a speaker-group claim over rows without a
+speaker ID; `--balance` reports rows, speakers, gender, hours and missing labels per split;
+`--overlap train=M[:split] --overlap name=M2[:split] …` counts shared speakers, normalised texts
+and audio between a training set and each evaluation set.
+
+**Candidate bundles and identities.**
+
+```sh
+python3 -I -B scripts/export_candidate.py --checkpoint CKPT --out NEW_DIR --name NAME [--deployment-manifest M.json]
+python3 -I -B scripts/export_candidate.py --verify NEW_DIR      # every file against its seal and the manifest
+python3 -I -B scripts/identity_diff.py --a BASE_MANIFEST.json --b CAND_MANIFEST.json [--prompts-a DIR --prompts-b DIR]
+```
+
+A bundle holds the inference files only (no trainer state), `candidate_manifest.json`
+(`flh_speaking_candidate_bundle_v1`, status `candidate`, `promotion.performed: false`), a model
+card and `SHA256SUMS`. `identity_diff.py` says whether two deployments differ by weights,
+decoding policy, audio convention, code, runtime or FLH's feedback prompts.
+
 **Strict suite on the packaged code.** Rebuild the image, copy its own package out, and
 mount only tests and data:
 
