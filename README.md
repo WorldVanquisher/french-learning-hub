@@ -123,7 +123,9 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   each one.
 - See what to act on in **Review Today**: Speaking steps and the workbook
   mistakes marked for retry, each with its reason and the record it is based
-  on. Make practice drafts from notebook notes, compare and restore workbook
+  on. A question saved from several lesson revisions appears once, and each
+  item says when to review it next after a completed or a missed attempt
+  (advisory; nothing is scheduled). Make practice drafts from notebook notes, compare and restore workbook
   script revisions, and read **This week**, a sparse-safe count of your
   practice in your own time zone. Export your learning history as NDJSON
   (texts only when you ask; never audio or credentials) and check an export

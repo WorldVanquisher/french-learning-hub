@@ -159,6 +159,20 @@ export function PracticeLog({
         </ul>
       )}
 
+      {visit.pending.length ? (
+        // R4-WB-028: a check still in flight is not an attempt yet: listed apart, never counted.
+        <div data-log="pending">
+          <h5>{t("feedPractice.log.pendingHeading")}</h5>
+          <ul className="listening-steps">
+            {visit.pending.map((p) => (
+              <li key={p.op} data-pending={p.op}>
+                <span className="hint">{time(p.askedAt)}</span> <span className="tag">{t("feedPractice.log.pendingTag")}</span> {conceptOf(p.sourceId)} <code>{p.practiceId}</code>{" "}
+                <span className="hint">{t("feedPractice.log.onRevision", { revision: p.revision })}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {days.length ? (
         <>
           <h5>{t("feedPractice.log.history")}</h5>
@@ -178,6 +192,16 @@ export function PracticeLog({
                       </span>{" "}
                       {a.afterReveal ? <span className="tag">{t("feedPractice.afterReveal")}</span> : null} {conceptOf(a.sourceId)} <code>{a.practiceId}</code>{" "}
                       <span className="hint">{t("feedPractice.log.onRevision", { revision: a.revision })}</span>{" "}
+                      {(() => {
+                        // R4-WB-026: from the attempt to its source and the evidence it rests on, in its own revision.
+                        const st = catalog.timelines.find((tl) => tl.sourceId === a.sourceId)?.states.find((x) => x.feed.source.revision === a.revision);
+                        const ev = st?.data?.items.find((i) => i.practice_id === a.practiceId)?.evidence_ids ?? [];
+                        return (
+                          <span className="hint" data-trace={`${a.sourceId}@${a.revision}`}>
+                            {t("feedPractice.log.trace", { source: a.sourceId, revision: a.revision, evidence: ev.join(", ") || "—" })}{" "}
+                          </span>
+                        );
+                      })()}
                       {av.status === "withdrawn" ? <span className="tag">{t("feedPractice.log.withdrawnSince", { revision: av.revision })}</span> : null}
                       {av.status === "active" && av.code === "restored_same_id" ? <span className="tag">{t("feedPractice.log.restoredOn", { revision: av.revision })}</span> : null}
                     </li>

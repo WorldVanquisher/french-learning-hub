@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Migration inventory of a private learner database: read-only, without printing any record.
 
-    python3 -I -B scripts/validation/migration/inventory.py SOURCE --out DIR [--zone ZONE] [--dest-repo REPO]
+    python3 -I -B scripts/validation/migration/inventory.py SOURCE --out DIR [--zone ZONE] [--dest-repo REPO] [--expect BASELINE]
 
 SOURCE is an app.db, a data directory holding one, or a `flh-daily.sh backup` directory. It is
 never opened: its files (app.db and any -wal/-shm sidecar) are copied byte for byte into a private
@@ -30,7 +30,15 @@ Reports (R3-011..R3-019), never a row value:
                revision; no exam answer saved after its session's deadline or submission
   parity       the ledger against the destination checkout's migrations/ (default: this
                tree): EQUAL, BEHIND (the server will upgrade it), AHEAD or FOREIGN (refuse)
+  auxiliary    every other file in a data or backup directory (name, size, SHA-256, what it is):
+               the database is the only learner data, so an unknown file is a warning to check
+  expect       with --expect BASELINE (an earlier inventory.json, e.g. the source's): a
+               learner-critical family (entities.py CRITICAL) with fewer rows than the baseline is
+               a blocking problem ("missing data family"); equal rows with another table digest is
+               a problem ("content identity differs"); more rows is a warning (written later)
 Writes DIR/inventory.json (flh_migration_inventory_v1, the machine receipt) and DIR/summary.txt.
+The receipt holds counts, digests and file metadata only, and is the same on every run over an
+unchanged source (R4-WB-044).
 
 Exit codes, each with its next action in the summary:
   0  ready to copy
@@ -117,7 +125,7 @@ def week(t: dt.datetime) -> str:
 
 def main():
     args = sys.argv[1:]
-    opts = {"--out": None, "--zone": "UTC", "--dest-repo": str(REPO)}
+    opts = {"--out": None, "--zone": "UTC", "--dest-repo": str(REPO), "--expect": None}
     for k in list(opts):
         if k in args:
             i = args.index(k)
@@ -340,6 +348,37 @@ def main():
         warnings.append(f"tables of this checkout not in the source (an older schema): {', '.join(missing)}")
     if times["future"]:
         warnings.append("future times: " + ", ".join(f"{k} {v}" for k, v in sorted(times["future"].items())))
+    known = {"SHA256SUMS": "backup checksums (flh-daily.sh)", "MANIFEST.json": "backup manifest"}
+    auxiliary = []
+    if kind in ("data", "backup"):
+        for p in sorted(d.iterdir()):
+            if p.is_file() and p.name not in names:
+                auxiliary.append({"name": p.name, "bytes": p.stat().st_size, "sha256": sha256(p), "is": known.get(p.name, "unknown: not part of the database")})
+    unknown = [a["name"] for a in auxiliary if a["is"].startswith("unknown")]
+    if unknown:
+        warnings.append("files beside the database that no restore needs or checks: " + ", ".join(unknown) + " (learner data lives only in app.db; check them before a cutover)")
+    expect = None
+    if opts["--expect"]:
+        base = json.loads(Path(opts["--expect"]).read_text())
+        brows, bdig = base.get("rows_by_table", {}), base.get("table_digests", {})
+        missing, differ, newer = [], [], []
+        for fam, ts in entities.CRITICAL.items():
+            for t in ts:
+                want, got = brows.get(t, 0), counts.get(t)
+                if want and (got is None or got < want):
+                    missing.append(f"{fam}: {t} {got if got is not None else 'absent'} of {want} rows")
+                elif want and got == want and bdig.get(t) and digests.get(t) != bdig.get(t):
+                    differ.append(f"{fam}: {t}")
+                elif got is not None and got > want:
+                    newer.append(f"{t} +{got - want}")
+        expect = {"baseline_logical_digest": base.get("logical_digest"), "missing": missing, "content_differs": differ, "newer": newer,
+                  "same_logical_digest": base.get("logical_digest") == hashlib.sha256(json.dumps(digests, sort_keys=True).encode()).hexdigest()}
+        if missing:
+            problems.append("missing data family (blocking): " + "; ".join(missing))
+        if differ:
+            problems.append("content identity differs from the baseline: " + ", ".join(differ))
+        if newer:
+            warnings.append("rows written after the baseline: " + ", ".join(newer))
     if any(duplicates.values()):
         warnings.append("duplicates (kept as they are; a copy never merges): " + ", ".join(f"{k} {v}" for k, v in duplicates.items() if v))
     receipt.update({
@@ -359,6 +398,8 @@ def main():
         "time": {"weeks_first_last": times["weeks"], "active_local_days": len(times["active_local_days"]), "future": dict(times["future"]), "unparseable": dict(times["unparseable"])},
         "private_text_kib": {k: round(v / 1024, 1) for k, v in sorted(sizes.items())},
         "duplicates": duplicates,
+        "auxiliary": auxiliary,
+        "expect": expect,
         "invariants": dict(inv),
         "logical_digest": hashlib.sha256(json.dumps(digests, sort_keys=True).encode()).hexdigest(),
         "table_digests": digests,

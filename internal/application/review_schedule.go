@@ -38,6 +38,9 @@ type ScheduleInput struct {
 	Class     string      // recovery, review or new; "" for an older record without scheduling fields
 	Completed []time.Time // completed attempts; a zero time is a completed attempt without a timestamp
 	CreatedAt time.Time   // zero when unknown
+	// LastMissed says the latest completed attempt was missed: the ladder
+	// restarts at its first step, counted from that attempt (R4).
+	LastMissed bool
 }
 
 // Recommendation is when to practise an item next, and why.
@@ -72,7 +75,9 @@ func addDays(day time.Time, n int, loc *time.Location) time.Time {
 //  3. new, or review without any completed attempt: due today;
 //  4. review: the ladder step for the number of completed attempts, counted
 //     from the latest attempt that has a timestamp; when none has one, from
-//     CreatedAt; when that is unknown too, from today ("fallback").
+//     CreatedAt; when that is unknown too, from today ("fallback"). When the
+//     latest attempt was missed (LastMissed), the ladder restarts: the first
+//     step, from the same date.
 //
 // A due day before today is reported as today (overdue items are due now).
 func NextRecommendation(in ScheduleInput, now time.Time, loc *time.Location) Recommendation {
@@ -87,6 +92,9 @@ func NextRecommendation(in ScheduleInput, now time.Time, loc *time.Location) Rec
 		rec.Rule = fmt.Sprintf("%s: no completed attempt, due today", in.Class)
 	default:
 		n := len(in.Completed)
+		if in.LastMissed {
+			n = 1
+		}
 		step := SchedLadderDays[min(n, len(SchedLadderDays))-1]
 		var base time.Time
 		from := "last attempt"
@@ -104,6 +112,9 @@ func NextRecommendation(in ScheduleInput, now time.Time, loc *time.Location) Rec
 		start := localMidnight(base, loc)
 		rec.Due = addDays(start, step, loc)
 		rec.Rule = fmt.Sprintf("ladder n=%d +%dd from %s (%s)", n, step, LocalDay(start, loc), from)
+		if in.LastMissed {
+			rec.Rule = "missed: " + rec.Rule
+		}
 		if rec.Due.Before(today) {
 			rec.Due = today
 			rec.Rule += ", overdue: due today"

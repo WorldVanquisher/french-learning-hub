@@ -65,7 +65,16 @@ func (h *Handler) handleReviewToday(w http.ResponseWriter, r *http.Request) {
 		}
 		if it.Notebook != nil {
 			row["notebook"] = toNotebookItem(*it.Notebook)
+			if len(it.Also) > 0 {
+				row["also_entry_ids"] = it.Also
+			}
 		}
+		sch := application.ScheduleFor(it, rt.Now, loc)
+		step := func(r application.Recommendation) map[string]any {
+			return map[string]any{"day": r.Day, "interval_days": application.IntervalDays(r, rt.Now, loc), "rule": r.Rule}
+		}
+		row["schedule"] = map[string]any{"class": sch.Now.Class, "due_day": sch.Now.Day, "rule": sch.Now.Rule,
+			"if_completed": step(sch.IfCompleted), "if_missed": step(sch.IfMissed)}
 		items = append(items, row)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

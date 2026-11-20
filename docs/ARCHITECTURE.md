@@ -1582,6 +1582,27 @@ resolves every record.
 record stays, and the item leaves the queue on the next read, without a page reload. Never in the
 public demo (not on its allowlist).
 
+**One row per workbook question (R4).**
+- Marked records of the same question appear as one row: the same lesson and item position (pack
+  corrections keep positions), saved from several revisions.
+- The row is led by the newest source version and waits since the earliest mark.
+- The other records are listed in `also_entry_ids`, and "Done for today" clears each of them.
+- Unresolved sources, and writing and speaking corrections, are never grouped.
+
+**Next review (R4, advisory).**
+- Each item's optional `schedule` comes from the existing ladder (`ScheduleFor` →
+  `NextRecommendation`): the class, and the day and interval after a completed or a missed attempt
+  today, each with its rule. A missed attempt restarts the ladder at +1 day, and a stuck step stays
+  due today.
+- Inputs are mapped as `ScheduleInputsFromExport` maps the export.
+- Nothing is stored or applied: the queue stays what the learner marked.
+
+**The learner's place.** Review Today unmounts when another section shows. A page-memory module (no
+browser storage) keeps the steps hidden for this visit and the item opened, so "← Back to Review
+Today" returns focus to that item. A failed save keeps its row and focus.
+
+Details: `docs/plans/R4-WORKBOOKS-DAILY-PRACTICE.md`.
+
 **Practice prototype (workbench, sealed synthetic fixtures):**
 - **Fixtures.** A collapsed Review Today panel reads the extraction lane's sealed Extraction 2.1
   fixtures. They are re-hashed in the page: four `flh_practice_review_feed_v1` feeds, including a
@@ -4404,7 +4425,7 @@ Review Today (§4.8.1):
 
 | Route | Notes |
 |---|---|
-| `GET /review-today?zone=Z` | `review_today_v1`: `zone`, `today` (local day in Z; UTC when no zone; `400` unknown zone), `items` (`key`, `source` `speaking`/`notebook`, `reason` [a `speaking_practice_v1` reason or `retry_marked`], `priority`, `since`, `since_day`, `speaking` [a practice queue item] or `notebook` [a Mistake Notebook item]), `history` (`notebook_items`, `speaking_exercises`, `speaking_takes`), `sources`. `503` when neither Speaking nor the notebook is configured. Read-only, no provider call |
+| `GET /review-today?zone=Z` | `review_today_v1`: `zone`, `today` (local day in Z; UTC when no zone; `400` unknown zone), `items` (`key`, `source` `speaking`/`notebook`, `reason` [a `speaking_practice_v1` reason or `retry_marked`], `priority`, `since`, `since_day`, `speaking` [a practice queue item] or `notebook` [a Mistake Notebook item], optional `also_entry_ids` [other marked records of the same workbook question], `schedule` [`class`, `due_day`, `rule`, `if_completed`/`if_missed`: `day`, `interval_days`, `rule`]), `history` (`notebook_items`, `speaking_exercises`, `speaking_takes`), `sources`. `503` when neither Speaking nor the notebook is configured. Read-only, no provider call |
 | `GET /learning-week?zone=Z` | `learning_week_v1`: `zone`, `from`, `to`, `days` [`day`, `production`, `reviewed`, `own_corrections`, `provider_feedback`], `totals` (+ `distinct_exercises`, `active_days`, `duplicates_ignored`), `sparse`, `min_for_shares`, `production_share` (null when sparse), `corrections` [`skill`, `title`, `version`, `prior_version`, `day`, `at`, ids], `sources`. `400` unknown zone; `503` not wired. Read-only, private |
 | `GET /learning-history/export-preview?transcripts=&notes=` | `header` (`format`, `included` {`transcripts`, `notes`, `audio`: false, `credentials`: false}, `never_exported`, `parts`, `counts`, `omitted_texts`), `footer` (`records`, `sha256`), `bytes`, `files` [`format`, `extension`, `opens_as_text`, `app_import` `preview_only`/`none`]. `400` for `audio`/`credentials` or a non-boolean. Read-only |
 | `GET /learning-history/export?transcripts=&notes=&format=ndjson\|text` | The NDJSON export (`application/x-ndjson`) or its readable text copy, as attachments. Read-only |

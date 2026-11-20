@@ -4,9 +4,13 @@
 // Workbooks never guesses what a new code means.
 import type { MessageKey } from "../i18n";
 
+// The merged contract (tools/extraction/PRACTICE.md §13) lists five codes.
 const KNOWN: Record<string, MessageKey> = {
-  rule_not_approved: "feedPractice.rev.code.rule_not_approved",
+  knowledge_changed: "feedPractice.rev.code.knowledge_changed",
   awaiting_confirmation: "feedPractice.rev.code.awaiting_confirmation",
+  rejected: "feedPractice.rev.code.rejected",
+  rule_not_approved: "feedPractice.rev.code.rule_not_approved",
+  absent: "feedPractice.rev.code.absent",
 };
 
 export const isKnownReasonCode = (code: string) => Object.prototype.hasOwnProperty.call(KNOWN, code);
