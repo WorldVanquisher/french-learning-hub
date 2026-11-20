@@ -38,19 +38,20 @@ func (h *Handler) handleReviewToday(w http.ResponseWriter, r *http.Request) {
 		practice = p
 	}
 	var notebook []application.NotebookItem
+	notebookTotal := 0
 	if h.notebook != nil {
-		items, err := h.notebook.ListItems(r.Context(), "", false)
+		items, total, err := h.notebook.ReviewItems(r.Context())
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not read the Mistake Notebook")
 			return
 		}
-		notebook = items
+		notebook, notebookTotal = items, total
 	}
 	now := time.Now().UTC()
 	if practice != nil {
 		now = practice.Now
 	}
-	rt := application.BuildReviewToday(practice, notebook, now)
+	rt := application.BuildReviewTodayCounted(practice, notebook, notebookTotal, now)
 	items := make([]map[string]any, 0, len(rt.Items))
 	for _, it := range rt.Items {
 		var sinceDay any

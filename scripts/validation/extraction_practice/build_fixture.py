@@ -68,6 +68,7 @@ GENERATED = [
     ("study-savoir-connaitre-r1.json", "study packet, savoir/connaître revision 1"),
     ("study-savoir-connaitre-r1.md", "study packet text"),
     ("session-2-claude-code-preview.json", "import preview of the Claude Code return"),
+    ("not-offered-y-en-r1.json", "the y/en revision-1 items not offered, with their support and quote grounding (from the sealed draft)"),
 ]
 
 # Runs inside the scratch overlay (cwd = its tools/extraction). It re-runs the lane's own 2.1
@@ -83,6 +84,14 @@ def revise(self, src, with_review=False):
     # the y/en r1 feed was written just before this revision: export its keys now
     if "tutor-y-en-r1" not in cap:
         cap["tutor-y-en-r1"] = self.export("tutor", include_rubrics=True)
+        res = self.resolved()
+        cap["not-offered-y-en-r1"] = {
+            "schema": "flh_wb_not_offered_v0",
+            "note": "derived by Workbooks from the sealed code's resolved draft: items the feed does not offer, why, and their quotes' grounding",
+            "source": {k: res["source"][k] for k in ("source_id", "revision", "revision_sha256") if k in res["source"]},
+            "items": [{"item_id": i["item_id"], "type": i["type"], "statement": (i.get("content") or {}).get("statement"), "support": i["support"],
+                       "state": i["state"], "groundings": [{"quote": g["quote"], "status": g["status"], "note": g.get("note")} for g in i.get("groundings", [])]}
+                      for i in res["items"] if i["state"] not in ("approved", "corrected")]}
     return orig(self, src, with_review)
 pw.Work.revise = revise
 pf.pipeline(os.path.join(out, "run"))

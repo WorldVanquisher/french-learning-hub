@@ -52,8 +52,8 @@ describe("sealed fixture verification", () => {
     expect(sha256Hex("« Oui, j’en reviens. »\n")).toHaveLength(64);
   });
 
-  it("verifies all 21 documents and names their provenance", () => {
-    expect(verifyDocuments(FIXTURE_DOCUMENTS).size).toBe(21);
+  it("verifies all 22 documents and names their provenance", () => {
+    expect(verifyDocuments(FIXTURE_DOCUMENTS).size).toBe(22);
     expect(FIXTURE_SOURCE.handoff_sha256sums).toBe("bad6f86e991179f1a0c911e0c4fb3ec1892dabe743da455712e0ded30cae2bc4");
     expect(FIXTURE_SOURCE.snapshot_tar_sha256).toBe("857040c5e8b843db8aa69937769dfde947356b2d327a2c58d1aed5f2b9a9a8ae");
     const feeds = FIXTURE_DOCUMENTS.filter((d) => d.name.startsWith("feed-"));

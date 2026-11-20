@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useI18n, type MessageKey } from "../i18n";
 import { excerptParts, type ConceptPracticeData, type FeedItem, type Outcome } from "./practiceFeed";
-import { applyWaiting, consumeFocus, dispatch, focusSoon, reveal, submitAnswer, usePracticeVisit } from "./practiceStore";
+import { applyWaiting, consumeFocus, dispatch, focusSoon, openConcept, reveal, submitAnswer, usePracticeVisit } from "./practiceStore";
 import {
   availability,
   current,
@@ -11,10 +11,12 @@ import {
   seenOutcomes,
   summarize,
   timeline,
+  todaySet,
   type VisitAttempt,
   type VisitState,
 } from "./practiceSession";
-import type { FixtureCatalog } from "./practiceFixture";
+import type { FixtureCatalog, NotOffered } from "./practiceFixture";
+import { reasonCodeMessage } from "./reasonCodes";
 import { PacketShare } from "./PacketShare";
 
 // Practice from an approved concept (PROTOTYPE, private workbench), on the
@@ -163,10 +165,15 @@ export function ConceptPractice({ sourceId, onExit }: { sourceId: string; onExit
               </div>
             </div>
           ) : (
-            <p className="hint" data-next="none">
-              {t("feedPractice.next.none")}
-            </p>
+            <NextAction catalog={catalog} visit={visit} sourceId={sourceId} onPacket={() => jump("packet")} />
           )}
+          {/* Today's set for this concept is settled (correct or "I had it"): practice has ended here, so offer one way on. */}
+          {next && !todaySet(catalog, visit, 99).some((p) => p.sourceId === sourceId) ? (
+            <NextAction catalog={catalog} visit={visit} sourceId={sourceId} onPacket={() => jump("packet")} doneToday />
+          ) : null}
+          {/* One Tab stop until opened: the menu no longer stands between the heading and the first exercise. */}
+          <details className="concept-practice-jump-menu">
+            <summary>{t("feedPractice.jump")}</summary>
           <nav className="actions concept-practice-jump" aria-label={t("feedPractice.jump")}>
             {(
               [
@@ -182,6 +189,7 @@ export function ConceptPractice({ sourceId, onExit }: { sourceId: string; onExit
               </button>
             ))}
           </nav>
+          </details>
           <p className="hint">{t("feedPractice.keys")}</p>
 
           {explain ? (
@@ -214,6 +222,7 @@ export function ConceptPractice({ sourceId, onExit }: { sourceId: string; onExit
               doneWith={(id) => mine.some((a) => a.practiceId === id)}
               onRevealRecall={() => explain && reveal(sourceId, explain.practice_id)}
               accepted={visit.accepted}
+              notOffered={st.notOffered}
             />
           </div>
 
@@ -292,6 +301,13 @@ export function RevisionNotices({ catalog, visit, sourceId }: { catalog: Fixture
                   <code>{w.practice_id}</code> {off ? <span lang="fr" className="french">{off.item.prompt}</span> : null}
                   <span className="hint">
                     {" "}
+                    {w.reason_code ? (
+                      <span data-reason-code-feed={w.reason_code}>{(() => {
+                          const m = reasonCodeMessage(w.reason_code, w.since_revision ?? st.feed.source.revision);
+                          return t(m.key, m.vars);
+                        })()}{" "}
+                      </span>
+                    ) : null}
                     {t("feedPractice.rev.producerReason")} <q>{w.reason}</q> {n ? tp("feedPractice.rev.historyKept", n) : t("feedPractice.rev.historyNone")}
                   </span>
                 </li>
@@ -631,12 +647,14 @@ function SourceView({
   doneWith,
   onRevealRecall,
   accepted,
+  notOffered,
 }: {
   data: ConceptPracticeData;
   recalled: boolean;
   doneWith: (id: string) => boolean;
   onRevealRecall: () => void;
   accepted: VisitState["accepted"];
+  notOffered: NotOffered[];
 }) {
   const { t } = useI18n();
   if (!recalled)
@@ -728,6 +746,62 @@ function SourceView({
           );
         })}
       </ul>
+      {notOffered.length ? (
+        <>
+          <h4>{t("feedPractice.notOffered.heading")}</h4>
+          <p className="hint">{t("feedPractice.notOffered.why")}</p>
+          <ul className="listening-items" aria-label={t("feedPractice.notOffered.heading")}>
+            {notOffered.map((n) => (
+              <li key={n.item_id} className="listening-item" data-not-offered={n.item_id} data-support={n.support} data-state={n.state}>
+                <p>
+                  <span className="tag">{n.type}</span> <span className="tag">{t("feedPractice.support", { support: n.support })}</span>{" "}
+                  <span className="tag">{t(n.state === "rejected" ? "feedPractice.notOffered.rejected" : "feedPractice.notOffered.pending")}</span> <code>{n.item_id}</code>
+                </p>
+                {n.statement ? <p className="french">{n.statement}</p> : null}
+                {n.groundings.map((g, i) => (
+                  <p key={i} className="hint" data-grounding={g.status}>
+                    {t("feedPractice.notOffered.quote", { quote: g.quote, status: g.status })} {g.note ? <q>{g.note}</q> : null}
+                  </p>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// After the last exercise of a concept: one next useful action, never a dead end.
+function NextAction({
+  catalog,
+  visit,
+  sourceId,
+  onPacket,
+  doneToday = false,
+}: {
+  catalog: FixtureCatalog;
+  visit: VisitState;
+  sourceId: string;
+  onPacket: () => void;
+  doneToday?: boolean;
+}) {
+  const { t } = useI18n();
+  const other = todaySet(catalog, visit).find((p) => p.sourceId !== sourceId);
+  return (
+    <div className="feed-next" data-next={doneToday ? undefined : "none"} data-done-today={doneToday ? "" : undefined} data-next-action={other ? "other_concept" : "share_packet"}>
+      <p>{t(doneToday ? "feedPractice.next.doneToday" : "feedPractice.next.none")}</p>
+      <div className="actions">
+        {other ? (
+          <button type="button" className="primary" onClick={() => openConcept(other.sourceId, other.item.practice_id)}>
+            {t("feedPractice.next.otherConcept", { concept: other.concept })}
+          </button>
+        ) : (
+          <button type="button" className="primary" onClick={onPacket}>
+            {t("feedPractice.next.sharePacket")}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

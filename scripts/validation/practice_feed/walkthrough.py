@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The practice prototype in real Chromium on the SEALED Extraction 2.1 fixtures (walkthrough.mjs).
 
-    python3 -I scripts/validation/practice_feed/walkthrough.py WORK_DIR --handoff H [--tree TREE] [--combos a,b] [--script measure.mjs]
+    python3 -I scripts/validation/practice_feed/walkthrough.py WORK_DIR --handoff H [--tree TREE] [--combos a,b] [--script measure.mjs] [--from-db DB]
 
 WORK_DIR must be absolute, outside the repository, and new or empty. H is the extraction lane's
 sealed handoff directory (handoff-2.1).
@@ -22,11 +22,13 @@ zoom200-en 640x450 at device scale 2 (1280 px at 200 %); largetext-en with a 32 
 The last two run the first part only. Nothing is added to the database or stored.
 Writes WORK_DIR/results.json, trace-<combo>.json, counts-<combo>.json, shots/<combo>/*.png,
 fixture-check.out and logs. --script measure.mjs runs measure.mjs instead (interactions from
-Review Today to the first graded answer, per path; use --tree to measure an older tree). Every server it started is stopped. Exit status is the browser's
+Review Today to the first graded answer, per path; use --tree to measure an older tree). --from-db
+DB starts each combination on its own copy of DB (never DB itself), for example restored data. Every server it started is stopped. Exit status is the browser's
 (0 all PASS), 2 when refused.
 """
 import json
 import os
+import shutil
 import signal
 import socket
 import subprocess
@@ -63,7 +65,7 @@ def forbidden_strings() -> list:
 def main():
     args = sys.argv[1:]
     opts = {}
-    for flag in ("--handoff", "--tree", "--combos", "--script"):
+    for flag in ("--handoff", "--tree", "--combos", "--script", "--from-db"):
         if flag in args:
             i = args.index(flag)
             opts[flag] = args[i + 1]
@@ -112,6 +114,10 @@ def main():
         for tag in combos:
             d = work / tag
             d.mkdir()
+            if "--from-db" in opts:  # start on a COPY of a given (for example restored) database
+                for side in ("", "-wal", "-shm"):
+                    if Path(opts["--from-db"] + side).exists():
+                        shutil.copyfile(opts["--from-db"] + side, d / f"app.db{side}")
             port = free_port()
             env = {"PATH": "/usr/bin:/bin", "HOME": str(d), "LISTEN_HOST": "127.0.0.1", "PORT": str(port), "DB_PATH": str(d / "app.db"),
                    "AI_PROVIDER": "rule-based", "EXTRACTOR_PROVIDER": "disabled", "SPEAKING_PROVIDER": "disabled",

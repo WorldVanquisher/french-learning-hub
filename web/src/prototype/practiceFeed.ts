@@ -55,6 +55,8 @@ export interface Withdrawn {
   practice_id: string;
   kind: PracticeKind;
   reason: string;
+  reason_code: string | null; // Extraction 2.2: rule_not_approved, awaiting_confirmation, …
+  since_revision: number | null;
 }
 
 export interface Feed {
@@ -223,7 +225,13 @@ export function parseFeed(x: unknown): Feed {
       seen.add(id);
       const kind = str(w, "kind", where);
       if (kind !== "explain" && kind !== "choose" && kind !== "produce") throw new ContractError(`${where}: unknown kind ${kind}`);
-      return { practice_id: id, kind, reason: str(w, "reason", where) };
+      return {
+        practice_id: id,
+        kind,
+        reason: str(w, "reason", where),
+        reason_code: typeof w.reason_code === "string" ? w.reason_code : null,
+        since_revision: Number.isInteger(w.since_revision) ? (w.since_revision as number) : null,
+      };
     });
   }
   return {

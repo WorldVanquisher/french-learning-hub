@@ -73,8 +73,8 @@ describe("Practice prototype on the sealed Extraction 2.1 fixtures", () => {
     // the open button is replaced by the panel: focus lands on its heading, never on the body
     await waitFor(() => expect(screen.getByRole("heading", { name: "Practice from approved concepts (prototype)" })).toHaveFocus());
     const prov = document.querySelector('[data-fixture="verified"]')!;
-    expect(prov).toHaveTextContent("Sealed fixtures: 21 documents from the Extraction 2.1 handoff (SHA256SUMS bad6f86e9911…), each re-checked in this page.");
-    expect(prov.querySelectorAll("[data-doc]")).toHaveLength(21);
+    expect(prov).toHaveTextContent("Sealed fixtures: 22 documents from the Extraction 2.1 handoff (SHA256SUMS bad6f86e9911…), each re-checked in this page.");
+    expect(prov.querySelectorAll("[data-doc]")).toHaveLength(22);
     expect(prov.querySelector('[data-doc="tutor-y-en-r1.json"]')).toHaveAttribute("data-origin", "generated");
     const today = screen.getByRole("list", { name: "Today's practice: 3 items to start with" });
     expect([...today.querySelectorAll("[data-practice]")].map((li) => `${li.getAttribute("data-practice")}:${li.getAttribute("data-pick-reason")}`)).toEqual([
@@ -131,6 +131,68 @@ describe("Practice prototype on the sealed Extraction 2.1 fixtures", () => {
     expect(example).not.toHaveTextContent("Oui, j'en reviens.");
     expect(summary()).toHaveAttribute("data-independent", "1");
     expect(summary()).toHaveTextContent("1 self-checked as known");
+  });
+
+  it("shows what the feed does not offer from the learner's question, with each quote's grounding, never as an exercise (R3-055)", async () => {
+    await openConcept();
+    fireEvent.click(screen.getByRole("button", { name: "Open the source now (counts as a reveal)" }));
+    const list = await screen.findByRole("list", { name: "Not offered from your question" });
+    const claim = list.querySelector('[data-not-offered="k-5ca79503ae78"]')!;
+    expect(claim).toHaveAttribute("data-support", "unsupported");
+    expect(claim).toHaveAttribute("data-state", "rejected");
+    expect(claim).toHaveTextContent("you rejected it");
+    expect(claim).toHaveTextContent("« en » goes with every verb of movement, so « j'en vais » is also correct.");
+    const g = claim.querySelector('[data-grounding="not_found"]')!;
+    expect(g).toHaveTextContent("Quote « en goes with every verb of movement »: not_found.");
+    expect(g).toHaveTextContent("these words are not in the learner's question or context");
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    expect(getSnapshot().catalog!.timelines.flatMap((tl) => tl.states.flatMap((s) => s.feed.items.flatMap((i) => i.knowledge_ids)))).not.toContain("k-5ca79503ae78");
+  });
+
+  it("keeps the revision, the draft and the visit when the extraction feed times out, says so, and retries only on request (R3-056)", async () => {
+    await openConcept();
+    type("p-664f7533a19d", "Oui, j'en");
+    await back();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Simulate an extraction timeout" }));
+    fireEvent.click(within(conceptRow("y-en-demo")).getByRole("button", { name: "Simulate the next feed: revision 2 (synthetic)" }));
+    const row = conceptRow("y-en-demo");
+    expect(row).toHaveAttribute("data-revision", "1");
+    const banner = row.querySelector('[data-reason-code="feed_timeout"]') as HTMLElement;
+    expect(banner).toHaveTextContent("The extraction feed did not answer in time. Nothing changed: you are still on revision 1, and your answers and drafts are kept.");
+    await waitFor(() => expect(banner).toHaveFocus());
+    expect(document.querySelectorAll(`[id="${banner.id}"]`)).toHaveLength(1);
+    const v = getSnapshot().visit;
+    expect(v.events.at(-1)).toMatchObject({ code: "feed_timeout", sourceId: "y-en-demo", revision: 1 });
+    expect(Object.values(v.drafts)).toContain("Oui, j'en");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Simulate an extraction timeout" }));
+    fireEvent.click(within(banner).getByRole("button", { name: "Try the feed again" }));
+    // the answer in progress makes the revision wait; nothing is lost
+    expect(conceptRow("y-en-demo").querySelector('[data-reason-code="feed_timeout"]')).toBeNull();
+    expect(conceptRow("y-en-demo").querySelector('[data-reason-code="revision_waiting"]')).not.toBeNull();
+    fireEvent.click(within(conceptRow("y-en-demo")).getByRole("button", { name: "Open the concept" }));
+    await screen.findByRole("heading", { name: "Practise: y vs en" });
+    expect(within(card("p-664f7533a19d")).getByRole("textbox")).toHaveValue("Oui, j'en");
+  });
+
+  it("offers one way on when today's practice from a concept is done: the other concept's first item (R3-085)", async () => {
+    await openConcept("savoir-connaitre-demo", "Practise: connaître vs savoir");
+    const data = getSnapshot().catalog!.timelines.find((tl) => tl.sourceId === "savoir-connaitre-demo")!.states[0].data!;
+    expect(document.querySelector("[data-done-today]")).toBeNull();
+    for (const it of data.items) {
+      const c = card(it.practice_id);
+      if (it.kind === "choose") fireEvent.click(within(c).getByRole("button", { name: data.rubric(it.practice_id).answer! }));
+      else {
+        fireEvent.change(within(c).getByRole("textbox"), { target: { value: data.rubric(it.practice_id).answer ?? data.rubric(it.practice_id).reference[0] ?? "x" } });
+        fireEvent.click(within(c).getByRole("button", { name: it.kind === "explain" ? "Check my recall" : "Check" }));
+        const had = within(c).queryByRole("button", { name: "I had it" });
+        if (had) fireEvent.click(had);
+      }
+    }
+    const done = document.querySelector("[data-done-today]") as HTMLElement;
+    expect(done).toHaveTextContent("Today's practice from this concept is done");
+    expect(done).toHaveAttribute("data-next-action", "other_concept");
+    fireEvent.click(within(done).getByRole("button", { name: "Practise next: y vs en" }));
+    await screen.findByRole("heading", { name: "Practise: y vs en" });
   });
 
   it("starts today's first item straight on its field, suggests the next useful exercise, and resumes after inspecting evidence", async () => {
@@ -253,6 +315,22 @@ describe("Practice prototype on the sealed Extraction 2.1 fixtures", () => {
     const kept = document.querySelector('[data-reason-code="draft_kept_withdrawn"]')!;
     expect(kept.querySelector('[data-kept="p-8d5cabf2ab59"]')).toHaveTextContent("Oui, on y va !");
     expect(kept.querySelector('[data-kept="p-664f7533a19d"]')).toHaveTextContent("Oui, j'en reviens");
+  });
+
+  it("copies and shows the study packet with the network gone: no request is made after the page loaded (R3-057)", async () => {
+    await openConcept();
+    // from here on every request fails, as when the connection drops
+    const offline = vi.fn(async () => Promise.reject(new TypeError("Failed to fetch")));
+    globalThis.fetch = offline as unknown as typeof fetch;
+    const share = document.querySelector('[data-packet="pk-afdb387f3af6"]') as HTMLElement;
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    fireEvent.click(within(share).getByRole("button", { name: "Copy the study packet" }));
+    await waitFor(() => expect(share.querySelector('[data-copy="copied"]')).toHaveTextContent("Copied packet pk-afdb387f3af6"));
+    expect((writeText.mock.calls[0] as unknown as [string])[0]).toBe(STUDY_MD);
+    fireEvent.click(within(share).getByRole("button", { name: "Show the packet text" }));
+    expect((within(share).getByLabelText("Packet pk-afdb387f3af6 (Markdown)") as HTMLTextAreaElement).value).toBe(STUDY_MD);
+    expect(offline).not.toHaveBeenCalled();
   });
 
   it("previews the study packet beside the copy action; nothing of this visit is in it; dismissing the text keeps the draft; the clipboard can fail", async () => {

@@ -1228,3 +1228,6 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
   .today-prototype button.link-button, .concept-practice button.link-button { padding: 10px 0; text-align: left; }
   .feed-skills { font-size: 13px; }
 }
+/* R3: the section menu is collapsed by default (one Tab stop). */
+.concept-practice-jump-menu summary { cursor: pointer; padding: 6px 0; }
+@media (max-width: 640px) { .concept-practice-jump-menu summary { min-height: 44px; display: flex; align-items: center; } }
