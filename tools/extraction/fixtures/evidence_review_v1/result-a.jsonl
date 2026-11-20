@@ -1,0 +1,3 @@
+{"id": "er-depuis", "output": {"units": [{"canonical": "depuis + présent", "confidence": 0.75, "example": "", "kind": "grammar", "statement": "« Depuis » with the present tense describes an action still going on.", "statement_zh": "中文说明"}]}}
+{"id": "er-conflict", "output": {"units": [{"canonical": "se rappeler quelque chose", "confidence": 0.75, "example": "", "kind": "grammar", "statement": "« Je me rappelle ce jour »: se rappeler is transitive.", "statement_zh": "中文说明"}, {"canonical": "se rappeler de quelque chose", "confidence": 0.75, "example": "", "kind": "usage", "statement": "« Je me rappelle de ce jour » is fine in careful French.", "statement_zh": "中文说明"}]}}
+{"id": "er-missing", "output": {"units": []}}

@@ -1,0 +1,18 @@
+Extraction 2.2 demo (synthetic y/en, savoir/connaître; à/en quoting public-domain Verne; PROTOTYPE)
+0 interactions  y-en-demo: 2.1 5 -> 2.2 5 commands to first unaided practice, approved without a look 1 -> 0; savoir-connaitre-demo: 2.1 5 -> 2.2 5 commands to first unaided practice, approved without a look 0 -> 0; a-en-lieux-demo: 2.1 4 -> 2.2 8 commands to first unaided practice, approved without a look 4 -> 0
+1 y/en r1       conflict k-232ca0f26098 vs k-5ca79503ae78 kept out of the batch until the learner rejected k-5ca79503ae78; batch b2-a948b31f0fb7 (6 items)
+2 y/en r2, r3   r2: needs_review 2 (left undecided); r3: restored ['en-de', 'y-vs-en'], changed ['en-vais', 'ex-marche'], spacing only ['y-a'], quotes moved 3, rejection of en-mouvement still from revision 1
+3 y/en r3       confirmed 2 restored and re-approved 2 changed items, one by one: {'pending': 0, 'approved': 6, 'corrected': 0, 'rejected': 1, 'needs_review': 0}
+4 à/en r1       conflict and cues decided one by one: rejected k-1ef55be82232, accepted k-32f4087a06b6, edited k-edad5a9a03c5, paraphrase k-53a8841fc7d3 approved with attestation (without: refused); batch b2-adcf5ee59182 (5); practice 5
+5 session 1     packet pk-0e06b9c6b9c4 (v3) -> Codex return (fixture): candidate 3; learner accepted e1 with an edited prompt as p-3e03bff58a01 (decision 1); the same again wrote nothing; a different decision on e1: refused
+6 à/en r2       k-886099054b26 changed (quote removed): exercise p-3e03bff58a01 rule_not_approved; Codex's return previewed again: e1 decided, e2 candidate, e3 withdrawn
+7 session 2     session 1's directory deleted; packet pk-baea88870f76 continues pk-0e06b9c6b9c4 (kept in the work directory): 7 knowledge IDs kept, dropped k-886099054b26; not offered p-3e03bff58a01; awaiting the learner e2
+8 Claude Code   return (fixture): q1 duplicate, q2 candidate, q4 invalid; q3 unknown_reference; warnings 1; learner rejected q2; q3's assertion cannot make k-886099054b26 supported: refused
+9 à/en r3       evidence back: k-886099054b26 needs_review (restored) until confirmed; feed 4 still withdraws (awaiting_confirmation); after the learner's confirmation feed 5 restores p-3e03bff58a01
+10 minimal      packet pk-d3e69e339ffd: 1573 characters of Markdown vs 7111 for the full packet; goal omitted by the learner
+11 failed import unsupported version refused; a return for another packet: warning, accept refused; recovery = the kept packet
+12 older packets v1 (HANDOFF-136) and v2 (2.1) previewed with their original returns, read as 2.1 read them
+13 adapters     one packet for codex, claude-code and any-agent: identical bytes True; prompts differ in 4 lines; privacy findings 0
+15 storage       as_proposed: refused 2, not representable 12, learner-visible differences 5; amended: refused 0, not representable 2, learner-visible differences 0; amended (no answer text): refused 0, not representable 2, learner-visible differences 0
+16 matrix       24 of 24 transitions as expected
+17 workbooks2   5 feeds; contract issues 0; refused by the increment-4 consumer: ['feed-y-en-demo-r2.json']

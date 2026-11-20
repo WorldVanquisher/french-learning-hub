@@ -23,6 +23,8 @@ extractor, its prompt, schema and routing are untouched.
 | Reviewer sample | `flh_extraction/review_sample.py` (`review-sample`, `review-agreement`, `export-check`), `review/review-sample-v1.*`, `REVIEW_SAMPLE_V1.md` | a frozen 35-item sample of the held-out references (documented selection rule); a rubric that asks about learning intent and wording separately, with positive and negative examples; disputed items stay unresolved until a person decides; a privacy check for reviewer exports. Offline only |
 | Review sheet and experimental report | `flh_extraction/review_sheet.py` (`review-sheet export/import`), `review/REVIEW_SHEET_V1.csv` + `.md`; `flh_extraction/experimental_report.py` (`experimental-report`) | a spreadsheet for the reviewer sample with intent, evidence and wording apart (open disputes labelled; a verdict with blank answers is refused); a DRAFT report beside `decision-report` that can never issue a production GO and needs explicit human false-claim, unsupported-unit and bilingual evidence (missing evidence is PENDING). Offline only |
 | Reviewer evidence and one-record fixture | `flh_extraction/reviewer_evidence.py` (`reviewer-queue`), `fixture_one_record.py` (`one-record-fixture`), `fixtures/one_record_v1/` (`fixture.json`, `expected.json`, `CONTRACT.md`) | per-unit reviewer evidence bound to each output by hash (source raised by this record, claim true, Chinese the same); the experimental report (v1) needs it for a preference: a missing review is PENDING, an explicit `no` excludes the system. A synthetic fixture around one learning record shows the outputs every automatic report accepts (false claim, Chinese drift) and how reviewer evidence rejects them. Offline only |
+| Evidence review | `flh_extraction/evidence_review.py` (`evidence-review`), `fixtures/evidence_review_v1/` | each predicted unit beside a bounded excerpt of its source (SHA-256, never the full text). Classes: malformed record, missing evidence, unsupported, evidence only in the explanation, anchored, conflicting evidence. Coverage per kind; a deterministic A-vs-B comparison of added, removed and reclassified units, where only new regressions count; the FLH-154 F1 expected failure is listed apart; paginated. HEURISTIC location: claim truth needs a human. Offline only |
+| Practice prototype (Extraction 2.0, PROTOTYPE) | `flh_extraction/practice.py`, `packet.py`, `practice_workflow.py` (`practice …`), `fixtures/practice_v1/`, `practice_prompts/`, `PRACTICE.md` | one French question and its evidence → a draft with exact-quote grounding beside each statement (supported / uncertain / unsupported / generated; the evidence-review heuristic shown beside it) → learner approve / reject / correct (append-only, carried across source revisions only while unchanged) → explain, choose and produce practice with hidden answers, accepted variants and self-check → study / tutor packets (Markdown + JSON from one source; rubrics only by explicit choice; privacy gate) → read-only preview of an agent's returned proposals. Extraction 2.1 (`practice_flow.py`): a review that batches supported items and new practice examples (unsupported, uncertain and revised items stay one by one), 9 → 3 steps to the first practice; a second contrast (savoir / connaître); packet v2 with the last confusion, the next exercise and what changed since the previous agent session; `accept` for one agent correction; a sealed synthetic Workbooks bundle (`fixtures/practice_v1/workbooks/`, `verify.py`). Extraction 2.2 (`practice2 …`; `review2.py`, `practice22.py`, `exercises.py`, `portable.py`, `recall.py`, `feed2.py`, `feed_compat.py`, `storage_rt.py`, `storage_check.py`, `practice_flow22.py`): quote vs paraphrase, word cues and conflicts kept out of batches, material changes and no silent reactivation across revisions, resumable batches; agent exercise proposals approved or rejected by the learner; packet v3 for any agent (minimal variant, omissions); a delayed recall probe; feed additions and a storage round trip for Workbooks (`fixtures/practice_v1/workbooks2/`). Offline, synthetic data, no migration |
 | Comparison pipeline | `scripts/comparison_pipeline.sh`, `COMPARISON_RUNBOOK.md` | regenerates every comparison artifact offline and deterministically; owner steps, what is measured and what is pending |
 | Profile verification | `scripts/verify_profile.py`, `configs/qwen3.5-4b-851bf6e8.sha256` | the profile against the checkpoint's own small files: template, text-level masking, LoRA targets on real weight names; token-level with a tokenizer |
 | Model profiles | `flh_extraction/models.py` | the only model-specific wiring: base model, pinned revision, loader, chat-template options, LoRA targets. Default candidate `Qwen/Qwen3.5-4B` (Qwen3-1.7B superseded, never run) |
@@ -36,8 +38,23 @@ Every generated record is `origin: synthetic`, `review_status: unreviewed`,
 reviewer accepts it (`authoring/build_review_queue.py`). Confidence values
 follow an authoring convention and are not calibrated.
 
+Evidence review on the synthetic fixture (A accepted, B rejected; conflicting
+evidence and a unit without locatable evidence included):
+
 ```sh
-python3 -B -m unittest discover -s tests -t tests     # 98 tests; 7 need TINY_SFT and torch (backend, SageMaker-layout dry run);
+python3 -B -m flh_extraction evidence-review --refs fixtures/evidence_review_v1/refs.jsonl \
+    --a fixtures/evidence_review_v1/result-a.jsonl --b fixtures/evidence_review_v1/result-b.jsonl [--limit 50 --page 1] [--json OUT --md OUT]
+```
+
+The report names its inputs by SHA-256. For this fixture they are:
+- `refs.jsonl` `49933ba3…25ad4da`;
+- `result-a.jsonl` `aefb1253…04ef78b`;
+- `result-b.jsonl` `22a9a4d2…9f89ad7`.
+
+The same files give the same report; `tests/test_evidence_review.py` pins its counts.
+
+```sh
+python3 -B -m unittest discover -s tests -t tests     # 185 tests; 7 need TINY_SFT and torch (backend, SageMaker-layout dry run);
                                                       # 1 expected failure records a known evaluate/quality discrepancy
 ```
 

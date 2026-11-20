@@ -1,0 +1,119 @@
+{
+ "basis": "commands the learner runs from capture to the first practice, executed here, not timed use; the same intent in both flows (approve every supported item and new practice example, leave the rest)",
+ "rows": [
+  {
+   "after": {
+    "batch_ids": [
+     "b-d877ea1aeb14"
+    ],
+    "commands": [
+     "practice init --source S --work W   (draft beside its evidence, then the review)",
+     "practice decide --work W --approve-batch b-d877ea1aeb14",
+     "practice build --work W"
+    ],
+    "decision_records": 6,
+    "steps": 3
+   },
+   "approved_items": 6,
+   "before": {
+    "commands": [
+     "practice init --source S --work W",
+     "practice preview --work W",
+     "practice decide --work W --item k-6c4760ebee9d --approve",
+     "practice decide --work W --item k-40cbe73ae3f5 --approve",
+     "practice decide --work W --item k-0d3281b28da6 --approve",
+     "practice decide --work W --item k-232ca0f26098 --approve",
+     "practice decide --work W --item k-d1c9732336a2 --approve",
+     "practice decide --work W --item k-cb9627cc7213 --approve",
+     "practice build --work W"
+    ],
+    "decision_records": 6,
+    "steps": 9
+   },
+   "exercises_tied_to_evidence": 5,
+   "left_for_learner": [
+    "k-5ca79503ae78"
+   ],
+   "left_named_in_review": true,
+   "left_still_pending": true,
+   "one_learner_decision_per_approved_item": true,
+   "practice_items": 5,
+   "revision": 1,
+   "same_approved_items": true,
+   "same_evidence_links": true,
+   "same_practice_ids": true,
+   "source_id": "y-en-demo"
+  },
+  {
+   "after": {
+    "batch_ids": [
+     "b-594da3e53bc7"
+    ],
+    "commands": [
+     "practice init --source S --work W   (draft beside its evidence, then the review)",
+     "practice decide --work W --approve-batch b-594da3e53bc7",
+     "practice build --work W"
+    ],
+    "decision_records": 6,
+    "steps": 3
+   },
+   "approved_items": 6,
+   "before": {
+    "commands": [
+     "practice init --source S --work W",
+     "practice preview --work W",
+     "practice decide --work W --item k-bc6e7c48470c --approve",
+     "practice decide --work W --item k-885ce829bc4b --approve",
+     "practice decide --work W --item k-3846e52023ef --approve",
+     "practice decide --work W --item k-715446feb4fd --approve",
+     "practice decide --work W --item k-e38255f7d2c0 --approve",
+     "practice decide --work W --item k-156a01f08b5a --approve",
+     "practice build --work W"
+    ],
+    "decision_records": 6,
+    "steps": 9
+   },
+   "exercises_tied_to_evidence": 5,
+   "left_for_learner": [
+    "k-64cf5599890f"
+   ],
+   "left_named_in_review": true,
+   "left_still_pending": true,
+   "one_learner_decision_per_approved_item": true,
+   "practice_items": 5,
+   "revision": 1,
+   "same_approved_items": true,
+   "same_evidence_links": true,
+   "same_practice_ids": true,
+   "source_id": "savoir-connaitre-demo"
+  },
+  {
+   "after": {
+    "commands": [
+     "practice revise --source S2 --work W   (draft beside its evidence, then the review)",
+     "practice decide --work W --item k-40cbe73ae3f5 --approve",
+     "practice decide --work W --item k-0d3281b28da6 --approve",
+     "practice build --work W"
+    ],
+    "steps": 4
+   },
+   "before": {
+    "commands": [
+     "practice revise --source S2 --work W",
+     "practice preview --work W",
+     "practice decide --work W --item k-40cbe73ae3f5 --approve",
+     "practice decide --work W --item k-0d3281b28da6 --approve",
+     "practice build --work W"
+    ],
+    "steps": 5
+   },
+   "changed_items_decided_one_by_one": 2,
+   "note": "changed items are never batched: each needs the learner's own decision, so only the preview step is saved",
+   "revision": 2,
+   "same_practice_ids_as_revision_1": true,
+   "source_id": "y-en-demo",
+   "still_needing_review_after": []
+  }
+ ],
+ "schema": "flh_practice_steps_v1"
+}

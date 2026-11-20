@@ -1,0 +1,28 @@
+{
+ "audio": {
+  "bytes": 19244,
+  "description": "generated 0.6 s 220 Hz tone, 16 kHz mono PCM16; a placeholder identity, not speech",
+  "fixture": "synthetic_tone_v1",
+  "sha256": "2484029a001a2d5cdf173eb93b0f05d7782ef5291275348b454b492364a3a0ed"
+ },
+ "id": "synthetic-fr-001",
+ "note": "Synthetic, hand-written French case for the Speaking Lab demo. No learner data; the two results were written by hand to show an accent change (A) and an omitted word (B); no model produced them.",
+ "reference": "L'élève a lu le texte à voix haute, puis il s'est assis.",
+ "results": [
+  {
+   "config_id": "synthetic-config-1",
+   "label": "A",
+   "model_id": "synthetic-transcript-a",
+   "provenance": "hand-written synthetic transcript: one changed accent",
+   "text": "L'eleve a lu le texte à voix haute, puis il s'est assis."
+  },
+  {
+   "config_id": "synthetic-config-1",
+   "label": "B",
+   "model_id": "synthetic-transcript-b",
+   "provenance": "hand-written synthetic transcript: one omitted word",
+   "text": "L'élève a lu le texte à haute, puis il s'est assis."
+  }
+ ],
+ "schema": "flh_speaking_lab_case_v1"
+}

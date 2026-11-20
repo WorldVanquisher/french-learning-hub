@@ -1,0 +1,49 @@
+{
+ "agent": "codex",
+ "fixture_note": "hand-written fixture standing in for a Codex session on session-1 packet pk-e2920fe276cb; no agent was run",
+ "packet_id": "pk-e2920fe276cb",
+ "proposals": [
+  {
+   "evidence_ids": [
+    "ev-fd704f2740",
+    "ev-17c9dfcc08"
+   ],
+   "proposal_id": "c1",
+   "rationale": "Your evidence shows « à la boulangerie » (ev-fd704f2740) and « de la boulangerie » (ev-17c9dfcc08). Not in the packet: « chez », « dans » and « sur » come from general grammar, so the rule covers more places.",
+   "target_id": "k-0d3281b28da6",
+   "text": "Ask which preposition introduces the place: « à », « chez », « dans » or « sur » give « y » (where you go or where you are); « de », « du », « de la » or « des » give « en » (where you come from).",
+   "type": "correction"
+  },
+  {
+   "evidence_ids": [
+    "ev-fd704f2740",
+    "ev-17c9dfcc08"
+   ],
+   "proposal_id": "c2",
+   "rationale": "Repeated when the learner wrote done.",
+   "target_id": "k-0d3281b28da6",
+   "text": "Ask which preposition introduces the place: « à », « chez », « dans » or « sur » give « y » (where you go or where you are); « de », « du », « de la » or « des » give « en » (where you come from).",
+   "type": "correction"
+  },
+  {
+   "accepted": [
+    "Oui, j'y vais ce soir.",
+    "Oui, j'y vais.",
+    "Non, je n'y vais pas."
+   ],
+   "evidence_ids": [
+    "ev-fd704f2740"
+   ],
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-0d3281b28da6",
+    "k-6c4760ebee9d"
+   ],
+   "prompt": "Tu vas chez Paul ce soir ? Answer with « y » or « en ».",
+   "proposal_id": "c3",
+   "rationale": "Not in the packet: « chez Paul » is a new place that takes « y » like « à la boulangerie » (ev-fd704f2740).",
+   "type": "exercise"
+  }
+ ],
+ "schema": "flh_agent_proposals_v1"
+}

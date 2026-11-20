@@ -1,0 +1,389 @@
+{
+ "amendment": [
+  [
+   "CHECK (subject_kind IN ('extraction_item', 'notebook_draft'))",
+   "CHECK (subject_kind IN ('extraction_item', 'notebook_draft', 'agent_exercise'))"
+  ],
+  [
+   "    reason                  TEXT,\n    created_at",
+   "    reason                  TEXT,\n    provenance_json         TEXT,\n    created_at"
+  ]
+ ],
+ "expect": {
+  "amended": {
+   "refused": 0
+  },
+  "as_proposed": {
+   "refused": 2
+  }
+ },
+ "from": "the à/en work directory of this demo (decisions, exercise decisions, attempts with the answer text stored)",
+ "rows": {
+  "amended": {
+   "practice_attempts": [
+    {
+     "action": "attempt",
+     "answer_text": "à",
+     "created_at": "2026-11-19T00:33:21Z",
+     "local_day": "2026-11-19",
+     "operation_key": "10748069-59b1-5485-847a-07d8d5cd664c",
+     "outcome": "correct",
+     "practice_id": "p-3e03bff58a01",
+     "self_check": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "zone": "UTC"
+    },
+    {
+     "action": "attempt",
+     "answer_text": "Je vais à Espagne.",
+     "created_at": "2026-11-19T00:33:22Z",
+     "local_day": "2026-11-19",
+     "operation_key": "2ec8c541-78cf-5b75-883d-f0277f44d1f5",
+     "outcome": "incorrect",
+     "practice_id": "p-04705161a655",
+     "self_check": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "zone": "UTC"
+    }
+   ],
+   "practice_decisions": [
+    {
+     "action": "reject",
+     "created_at": "2026-11-19T00:00:01Z",
+     "edited_text": null,
+     "item_hash": "3753d2c89a1a7b85856292a5f1440a4c274be4f9abe47e2d72e168a88f5e5a0e",
+     "operation_key": "3d954b62-56a9-5b4b-8d99-23f746358fc2",
+     "provenance_json": "{\"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"b6028e68a2eaef43e64ed5d087b905dfb232aa9e4e498bd57e6b5c9318f14f21\"}",
+     "reason": "« au Japon »: Japon is masculine",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-1ef55be82232",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:02Z",
+     "edited_text": null,
+     "item_hash": "ae4821eb4e7ce7b5c111f61fada16d41e32f291ac1abcae92e7fb76638a6441c",
+     "operation_key": "b8c99a39-0d63-513e-8935-ab5999a3aa5f",
+     "provenance_json": "{\"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"3947177027363ff5976a9fa160be03d672512ccd5cd93e718fa6db9fb3861e76\"}",
+     "reason": "matches what I learnt",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-32f4087a06b6",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "edit",
+     "created_at": "2026-11-19T00:00:03Z",
+     "edited_text": "In « en débarquant en Égypte », the first « en » makes a gerund (« en » + -ant: while landing); only « en Égypte » is the place preposition.",
+     "item_hash": "16d736d6572b0e8f1e6a483f1b3df80d8ae3baccf98c2446b59629c064161adc",
+     "operation_key": "2f9aa2df-a307-5b29-8089-5204a9e4abbd",
+     "provenance_json": "{\"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"2b6fce25129f49bb072beb8b62d232d0c4fdb1b6697a1c53993135af64d23a0a\"}",
+     "reason": "the first « en » is a gerund",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-edad5a9a03c5",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:04Z",
+     "edited_text": null,
+     "item_hash": "f9340d787783926589a519572c61b6bea7eb6e14309aadbb0c18ece9ad6e6be0",
+     "operation_key": "8c4adea1-dd22-52ac-8ef4-02b6b4e12f8a",
+     "provenance_json": "{\"attest\": {\"by\": \"learner\", \"paraphrases\": [\"Fix plans to follow the man he thinks is a thief as far as India; « les Indes » is plural, so « à » + « les » becomes « aux ».\"], \"what\": \"the paraphrase restates ev-7962c7e3a2\"}, \"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"47c545c21bc415f7e14e63a929cea4e404cbabc69a1daf52d9a0ed1a4846f6f3\"}",
+     "reason": "checked against the quote",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-53a8841fc7d3",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:05Z",
+     "edited_text": null,
+     "item_hash": "a69a43b699320b91f9eb509bc6ebfaab3ab98b6e2f907e529d6615198f3d0446",
+     "operation_key": "d5e214d4-d85a-5d34-8c70-457c4dbafc7b",
+     "provenance_json": "{\"batch\": {\"batch_id\": \"b2-adcf5ee59182\", \"excepted\": [], \"members\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"selected\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"size\": 5}, \"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"5f407a2f55480211357a2bb86069fdb4ae645642bc0e751eeb9da1c0c44d5c2f\"}",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-886099054b26",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:06Z",
+     "edited_text": null,
+     "item_hash": "390a1fe13f9f003a0c6d846710842c2e59ad626ff42f562d19848a79d96f7f01",
+     "operation_key": "b50ed2bb-6d09-598d-81e0-464e9b0f543e",
+     "provenance_json": "{\"batch\": {\"batch_id\": \"b2-adcf5ee59182\", \"excepted\": [], \"members\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"selected\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"size\": 5}, \"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"f46956938a2e6a56147f809379dc4ac20c916acf241cc47f7912c62464255156\"}",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-fb79321ec520",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:07Z",
+     "edited_text": null,
+     "item_hash": "48ed13a9f943c83d66b2ed2e62530ebb089fbf1b7dbc3327ccdf92086fe0a17f",
+     "operation_key": "9012a727-6590-5ca0-8ba1-d907d11665ff",
+     "provenance_json": "{\"batch\": {\"batch_id\": \"b2-adcf5ee59182\", \"excepted\": [], \"members\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"selected\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"size\": 5}, \"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"36e5e6ff68ff0c77d577fdff7bd50d9ce4e88788e51a05cf2ae49fbb904547c4\"}",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-d0424fb40a11",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:08Z",
+     "edited_text": null,
+     "item_hash": "d6a2bff7270c111563ad32a3dd3646c6f6430ead10957a022a9a02c731cab84d",
+     "operation_key": "656b3f98-114f-5d71-8cd5-b7d1cc2c4006",
+     "provenance_json": "{\"batch\": {\"batch_id\": \"b2-adcf5ee59182\", \"excepted\": [], \"members\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"selected\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"size\": 5}, \"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"c99647b14cd9db31b1625fe81267382868a443ac01c6dc79d51120b7ecc42133\"}",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-82761c80f843",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:09Z",
+     "edited_text": null,
+     "item_hash": "0027c3549fa2e7236b0ec7d0cde73f7c9451fa8605f5ff20295fd64db70420a2",
+     "operation_key": "1f456c03-70f8-590c-8733-dc6d5c13245a",
+     "provenance_json": "{\"batch\": {\"batch_id\": \"b2-adcf5ee59182\", \"excepted\": [], \"members\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"selected\": [\"k-886099054b26\", \"k-fb79321ec520\", \"k-d0424fb40a11\", \"k-82761c80f843\", \"k-edadc7ded432\"], \"size\": 5}, \"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"79fefff5474adcb807ae2b8a94f173290502f079e10d0a104b7132c3d8d04c87\"}",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-edadc7ded432",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:10Z",
+     "edited_text": null,
+     "item_hash": "a69a43b699320b91f9eb509bc6ebfaab3ab98b6e2f907e529d6615198f3d0446",
+     "operation_key": "6f0c3ed2-4c07-5681-8cea-e87dace2623d",
+     "provenance_json": "{\"draft_id\": \"d-637499c7bd1d\", \"material_hash\": \"5f407a2f55480211357a2bb86069fdb4ae645642bc0e751eeb9da1c0c44d5c2f\"}",
+     "reason": "the excerpt is back in my notes; checked",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-886099054b26",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:16:41Z",
+     "edited_text": null,
+     "item_hash": "a1b1afe9a71a9d63c77d1aca34d40a44ca996727dbc597b7ec1985ed43a5c538",
+     "operation_key": "56bac44b-d59d-52bf-873b-b89877488066",
+     "provenance_json": "{\"edited\": [\"prompt\"], \"evidence_ids\": [\"ev-75a4d1fa87\"], \"final\": {\"answer\": \"à\", \"options\": [\"à\", \"en\"], \"prompt\": \"Mon oncle travaille __ Marseille depuis deux ans.\"}, \"kind\": \"choose\", \"knowledge_ids\": [\"k-886099054b26\"], \"practice_id\": \"p-3e03bff58a01\", \"proposal\": {\"agent\": \"codex\", \"class_at_decision\": \"candidate\", \"content_sha256\": \"a1b1afe9a71a9d63c77d1aca34d40a44ca996727dbc597b7ec1985ed43a5c538\", \"packet_id\": \"pk-0e06b9c6b9c4\", \"prompt\": \"Mon oncle travaille __ Marseille.\", \"proposal_id\": \"e1\", \"rationale\": \"A new city in the frame of « à Paris »: the learner chooses the preposition.\"}, \"rule_id\": \"k-886099054b26\", \"source\": {\"revision\": 1, \"revision_sha256\": \"324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5\", \"source_id\": \"a-en-lieux-demo\"}}",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "p-3e03bff58a01",
+     "subject_kind": "agent_exercise"
+    },
+    {
+     "action": "reject",
+     "created_at": "2026-11-19T00:16:42Z",
+     "edited_text": null,
+     "item_hash": "3fbf8f59bcb4b7d6e1f7486d9ddd6e9e266cb38081ae74126bbcffb185fd414e",
+     "operation_key": "abde1fb2-3c2e-564e-87e4-394821861e7a",
+     "provenance_json": "{\"edited\": [], \"evidence_ids\": [\"ev-2cd24b70b3\"], \"final\": {\"accepted\": [\"Elle vit en Suisse.\", \"Ma cousine vit en Suisse.\", \"En Suisse.\"], \"answer\": \"Elle vit en Suisse.\", \"prompt\": \"Où vit ta cousine ? (la Suisse)\", \"rubric\": \"« la Suisse » is a feminine country: « en Suisse ».\"}, \"kind\": \"produce\", \"knowledge_ids\": [\"k-fb79321ec520\"], \"practice_id\": \"p-6a86c6109164\", \"proposal\": {\"agent\": \"claude-code\", \"class_at_decision\": \"candidate\", \"content_sha256\": \"3fbf8f59bcb4b7d6e1f7486d9ddd6e9e266cb38081ae74126bbcffb185fd414e\", \"packet_id\": \"pk-baea88870f76\", \"prompt\": \"Où vit ta cousine ? (la Suisse)\", \"proposal_id\": \"q2\", \"rationale\": \"Another feminine country for « en ».\"}, \"rule_id\": \"k-fb79321ec520\", \"source\": {\"revision\": 2, \"revision_sha256\": \"0386e3424e34e531c2369dc63f674b539477c4e179e2c0e6113d825be73ecea6\", \"source_id\": \"a-en-lieux-demo\"}}",
+     "reason": "too close to Codex's e2, which I want to try first",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "0386e3424e34e531c2369dc63f674b539477c4e179e2c0e6113d825be73ecea6",
+     "subject_id": "p-6a86c6109164",
+     "subject_kind": "agent_exercise"
+    }
+   ]
+  },
+  "as_proposed": {
+   "practice_attempts": [
+    {
+     "action": "attempt",
+     "answer_text": "à",
+     "created_at": "2026-11-19T00:33:21Z",
+     "local_day": "2026-11-19",
+     "operation_key": "10748069-59b1-5485-847a-07d8d5cd664c",
+     "outcome": "correct",
+     "practice_id": "p-3e03bff58a01",
+     "self_check": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "zone": "UTC"
+    },
+    {
+     "action": "attempt",
+     "answer_text": "Je vais à Espagne.",
+     "created_at": "2026-11-19T00:33:22Z",
+     "local_day": "2026-11-19",
+     "operation_key": "2ec8c541-78cf-5b75-883d-f0277f44d1f5",
+     "outcome": "incorrect",
+     "practice_id": "p-04705161a655",
+     "self_check": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "zone": "UTC"
+    }
+   ],
+   "practice_decisions": [
+    {
+     "action": "reject",
+     "created_at": "2026-11-19T00:00:01Z",
+     "edited_text": null,
+     "item_hash": "3753d2c89a1a7b85856292a5f1440a4c274be4f9abe47e2d72e168a88f5e5a0e",
+     "operation_key": "3d954b62-56a9-5b4b-8d99-23f746358fc2",
+     "reason": "« au Japon »: Japon is masculine",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-1ef55be82232",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:02Z",
+     "edited_text": null,
+     "item_hash": "ae4821eb4e7ce7b5c111f61fada16d41e32f291ac1abcae92e7fb76638a6441c",
+     "operation_key": "b8c99a39-0d63-513e-8935-ab5999a3aa5f",
+     "reason": "matches what I learnt",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-32f4087a06b6",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "edit",
+     "created_at": "2026-11-19T00:00:03Z",
+     "edited_text": "In « en débarquant en Égypte », the first « en » makes a gerund (« en » + -ant: while landing); only « en Égypte » is the place preposition.",
+     "item_hash": "16d736d6572b0e8f1e6a483f1b3df80d8ae3baccf98c2446b59629c064161adc",
+     "operation_key": "2f9aa2df-a307-5b29-8089-5204a9e4abbd",
+     "reason": "the first « en » is a gerund",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-edad5a9a03c5",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:04Z",
+     "edited_text": null,
+     "item_hash": "f9340d787783926589a519572c61b6bea7eb6e14309aadbb0c18ece9ad6e6be0",
+     "operation_key": "8c4adea1-dd22-52ac-8ef4-02b6b4e12f8a",
+     "reason": "checked against the quote",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-53a8841fc7d3",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:05Z",
+     "edited_text": null,
+     "item_hash": "a69a43b699320b91f9eb509bc6ebfaab3ab98b6e2f907e529d6615198f3d0446",
+     "operation_key": "d5e214d4-d85a-5d34-8c70-457c4dbafc7b",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-886099054b26",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:06Z",
+     "edited_text": null,
+     "item_hash": "390a1fe13f9f003a0c6d846710842c2e59ad626ff42f562d19848a79d96f7f01",
+     "operation_key": "b50ed2bb-6d09-598d-81e0-464e9b0f543e",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-fb79321ec520",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:07Z",
+     "edited_text": null,
+     "item_hash": "48ed13a9f943c83d66b2ed2e62530ebb089fbf1b7dbc3327ccdf92086fe0a17f",
+     "operation_key": "9012a727-6590-5ca0-8ba1-d907d11665ff",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-d0424fb40a11",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:08Z",
+     "edited_text": null,
+     "item_hash": "d6a2bff7270c111563ad32a3dd3646c6f6430ead10957a022a9a02c731cab84d",
+     "operation_key": "656b3f98-114f-5d71-8cd5-b7d1cc2c4006",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-82761c80f843",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:09Z",
+     "edited_text": null,
+     "item_hash": "0027c3549fa2e7236b0ec7d0cde73f7c9451fa8605f5ff20295fd64db70420a2",
+     "operation_key": "1f456c03-70f8-590c-8733-dc6d5c13245a",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-edadc7ded432",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:00:10Z",
+     "edited_text": null,
+     "item_hash": "a69a43b699320b91f9eb509bc6ebfaab3ab98b6e2f907e529d6615198f3d0446",
+     "operation_key": "6f0c3ed2-4c07-5681-8cea-e87dace2623d",
+     "reason": "the excerpt is back in my notes; checked",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "k-886099054b26",
+     "subject_kind": "extraction_item"
+    },
+    {
+     "action": "approve",
+     "created_at": "2026-11-19T00:16:41Z",
+     "edited_text": null,
+     "item_hash": "a1b1afe9a71a9d63c77d1aca34d40a44ca996727dbc597b7ec1985ed43a5c538",
+     "operation_key": "56bac44b-d59d-52bf-873b-b89877488066",
+     "reason": null,
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5",
+     "subject_id": "p-3e03bff58a01",
+     "subject_kind": "agent_exercise"
+    },
+    {
+     "action": "reject",
+     "created_at": "2026-11-19T00:16:42Z",
+     "edited_text": null,
+     "item_hash": "3fbf8f59bcb4b7d6e1f7486d9ddd6e9e266cb38081ae74126bbcffb185fd414e",
+     "operation_key": "abde1fb2-3c2e-564e-87e4-394821861e7a",
+     "reason": "too close to Codex's e2, which I want to try first",
+     "source_id": "a-en-lieux-demo",
+     "source_revision_sha256": "0386e3424e34e531c2369dc63f674b539477c4e179e2c0e6113d825be73ecea6",
+     "subject_id": "p-6a86c6109164",
+     "subject_kind": "agent_exercise"
+    }
+   ]
+  }
+ },
+ "schema": "flh_practice_storage_rows_v1",
+ "synthetic": true
+}

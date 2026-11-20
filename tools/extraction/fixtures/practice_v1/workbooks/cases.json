@@ -1,0 +1,85 @@
+{
+ "cases": {
+  "changed-source": {
+   "case": "changed_source",
+   "expect": {
+    "r2_items": 0,
+    "r2_withdrawn": [
+     "p-0e74504cf958",
+     "p-22a947cd7f5c",
+     "p-2ea892e5eaa0",
+     "p-664f7533a19d",
+     "p-8d5cabf2ab59"
+    ],
+    "reapproved_practice_ids_equal_r1": true,
+    "revision_sha256_changes_between": [
+     "feed-y-en-demo-r1.json",
+     "feed-y-en-demo-r2.json"
+    ],
+    "revisions": [
+     1,
+     2,
+     2
+    ],
+    "source_id": "y-en-demo",
+    "workbooks_should": [
+     "stop offering a withdrawn practice_id; keep its history",
+     "offer it again when a later feed lists the same practice_id",
+     "never infer a schedule from the feed"
+    ]
+   },
+   "feeds": [
+    "feed-y-en-demo-r1.json",
+    "feed-y-en-demo-r2.json",
+    "feed-y-en-demo-r2-reapproved.json"
+   ]
+  },
+  "duplicate-correction": {
+   "case": "duplicate_correction",
+   "expect": {
+    "classes": {
+     "c1": "accepted_candidate",
+     "c2": "duplicate",
+     "c3": "accepted_candidate"
+    },
+    "feed_sha256_after_accept": "477653e617480b9baddc0a993f3da844feb73b33e695cc801d4cefbe5418e649",
+    "feed_sha256_before_accept": "477653e617480b9baddc0a993f3da844feb73b33e695cc801d4cefbe5418e649",
+    "feed_unchanged_by_the_correction": true,
+    "learner_accepts": "c1",
+    "refused": [
+     "c2: refused (proposal c2 is duplicate: same wording as c1)",
+     "c1: refused (duplicate: k-0d3281b28da6 already says this)"
+    ],
+    "workbooks_should": [
+     "see no new or changed practice_id because of a correction: practice IDs hash the knowledge ID and the kind"
+    ]
+   },
+   "packet": "duplicate-correction-packet.json",
+   "preview": "duplicate-correction-preview.json",
+   "proposals": "duplicate-correction-proposals.json"
+  },
+  "study-packet-without-answers": {
+   "case": "study_packet_without_answers",
+   "expect": {
+    "allowed_overlaps": [],
+    "forbidden_found": [],
+    "forbidden_strings": [
+     "Non, je n'en reviens pas.",
+     "Non, nous n'y allons pas.",
+     "Non, on n'y va pas.",
+     "Oui, j'en reviens à l'instant.",
+     "Oui, j'en reviens.",
+     "Oui, nous y allons.",
+     "Oui, on y va.",
+     "« aller à la piscine »: the place takes « à », so « y ».",
+     "« revenir du marché » (de + le): the place takes « de », so « en »."
+    ],
+    "mode": "study",
+    "rubrics_included": false
+   },
+   "markdown": "study-packet.md",
+   "packet": "study-packet.json"
+  }
+ },
+ "schema": "flh_practice_workbooks_bundle_v1/cases"
+}

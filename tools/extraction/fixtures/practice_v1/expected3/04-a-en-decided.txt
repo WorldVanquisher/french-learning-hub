@@ -1,0 +1,68 @@
+Draft d-637499c7bd1d  source a-en-lieux-demo revision 1 (324b8a2a1b9d)
+lines: QUOTE = your exact words, located in your text (evidence); PARAPHRASE = a restatement (never evidence); CUE = a word check that the quote may not support the claim (not a proof)
+
+[k-886099054b26] claim  support supported  state approved
+  says        « à » goes before a city name: « à Paris », « à Londres ».
+  QUOTE       ev-75a4d1fa87 located   « sergent de pompiers, à Paris »
+              …Verne. Chapitre 1 : « j'étais [sergent de pompiers, à Paris] » ; « je suis valet de chambr…
+  QUOTE       ev-371c2bef92 located   « Lancer une dépêche à Londres »
+              …t en Europe ». Chapitre 8 : « [Lancer une dépêche à Londres] » ; « filer mon voleur jusqu'…
+
+[k-fb79321ec520] claim  support supported  state approved
+  says        « en » goes before a feminine country or a continent, and before a country name that begins with a vowel: « en Angleterre », « en Égypte »,…
+  QUOTE       ev-2cd24b70b3 located   « valet de chambre en Angleterre »
+              …mpiers, à Paris » ; « je suis [valet de chambre en Angleterre] ». Chapitre 3 : « ont été env…
+  QUOTE       ev-906a1a54d7 located   « débarquant en Égypte »
+              …ux Indes ». Chapitre 9 : « en [débarquant en Égypte] ».
+  QUOTE       ev-7c2a34f83e located   « en Amérique et en Europe »
+              …hapitre 3 : « ont été envoyés [en Amérique et en Europe] ». Chapitre 8 : « Lancer une …
+
+[k-53a8841fc7d3] claim  support supported  state approved
+  says        « aux » (« à » + « les ») goes before a plural place name: « jusqu’aux Indes ».
+  QUOTE       ev-7962c7e3a2 located   « filer mon voleur jusqu'aux Indes »
+              …r une dépêche à Londres » ; « [filer mon voleur jusqu'aux Indes] ». Chapitre 9 : « en débarqua…
+  PARAPHRASE  restates ev-7962c7e3a2: Fix plans to follow the man he thinks is a thief as far as India; « les Indes » is plural, so « à » + « les » becomes « aux ».
+  attested    the paraphrase restates ev-7962c7e3a2 (by the learner, decision 4)
+
+[k-1ef55be82232] claim  support supported  state rejected
+  says        « en » goes before every country name, so you also say « en Japon ».
+  QUOTE       ev-2cd24b70b3 located   « valet de chambre en Angleterre »
+              …mpiers, à Paris » ; « je suis [valet de chambre en Angleterre] ». Chapitre 3 : « ont été env…
+  CUE         generalises: the claim says « every »; its 1 located quote shows one example, not a rule for every case
+  CONFLICT    k-1ef55be82232 presents « en Japon » as correct; k-32f4087a06b6 lists it as an error
+  rejected    on revision 1: « au Japon »: Japon is masculine
+
+[k-edad5a9a03c5] claim  support supported  state corrected
+  says        In « en débarquant en Égypte », the first « en » makes a gerund (« en » + -ant: while landing); only « en Égypte » is the place preposition.
+  proposed    In « en débarquant en Égypte », both « en » are the place preposition.  (your correction replaces it; kept)
+  QUOTE       ev-60c96b27d6 located   « en débarquant en Égypte »
+              …u'aux Indes ». Chapitre 9 : « [en débarquant en Égypte] ».
+  CUE         en_plus_ant: in « en débarquant en Égypte », « en débarquant » is « en » + a word in -ant: it may be a gerund, not the place preposition
+
+[k-d0424fb40a11] contrast  support supported  state approved
+  says        « à » + a city: à Paris, à Londres / « en » + a feminine country or a continent: en Angleterre, en Europe
+  distinction Ask what the place is: a city takes « à »; a feminine country or a continent takes « en ».
+  QUOTE       ev-75a4d1fa87 located   « sergent de pompiers, à Paris »
+              …Verne. Chapitre 1 : « j'étais [sergent de pompiers, à Paris] » ; « je suis valet de chambr…
+  QUOTE       ev-2cd24b70b3 located   « valet de chambre en Angleterre »
+              …mpiers, à Paris » ; « je suis [valet de chambre en Angleterre] ». Chapitre 3 : « ont été env…
+
+[k-32f4087a06b6] common_error  support generated  state approved
+  says        not « en Japon » but « au Japon »
+  why         « Japon » is masculine and begins with a consonant, so « à » + « le » gives « au ».
+  QUOTE       none (a new practice example: the source never said it)
+  CONFLICT    k-1ef55be82232 presents « en Japon » as correct; k-32f4087a06b6 lists it as an error
+
+[k-82761c80f843] worked_example  support generated  state approved
+  says        Où habite ta sœur ? (Lyon) — Elle habite à Lyon.  (a sentence not in your source)
+  explanation Lyon is a city: « à ».
+  QUOTE       none (a new practice example: the source never said it)
+
+[k-edadc7ded432] worked_example  support generated  state approved
+  says        Où vas-tu cet été ? (l’Espagne) — Je vais en Espagne.  (a sentence not in your source)
+  explanation « l’Espagne » is a feminine country: « en ».
+  QUOTE       none (a new practice example: the source never said it)
+
+states: pending 0, approved 7, corrected 1, rejected 1, needs_review 0
+
+approving k-53a8841fc7d3 without attestation: refused: k-53a8841fc7d3 carries a paraphrase: approve it with --attest-paraphrase once you have checked that it says what the quoted words say (the attestation is recorded as yours)

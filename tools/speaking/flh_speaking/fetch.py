@@ -71,8 +71,9 @@ def fetch_one(dest: str, source: dict, path: str, dataset: bool, log=print) -> s
     return target
 
 
-def fetch(dest: str, what: list[str], log=print) -> dict:
-    """what: model names (whisper-tiny, ...), 'mls', 'fleurs', 'slr57' and/or 'fleurs-fr-train'. Returns {key: local dir}."""
+def fetch(dest: str, what: list[str], log=print, weights: bool = True) -> dict:
+    """what: model names (whisper-tiny, ...), 'mls', 'fleurs', 'slr57' and/or 'fleurs-fr-train'. Returns {key: local dir}.
+    weights=False skips model weights (*.safetensors): the config and tokenizer files are the test fixture."""
     out = {}
     for w in what:
         if w in pins.MODELS:
@@ -88,7 +89,8 @@ def fetch(dest: str, what: list[str], log=print) -> dict:
         else:
             raise ValueError(f"unknown source {w!r}")
         for path in sorted(src["files"]):
-            fetch_one(dest, src, path, dataset, log)
+            if weights or not path.endswith(".safetensors"):
+                fetch_one(dest, src, path, dataset, log)
         out[w] = os.path.join(dest, src["repo"], src["revision"])
     return out
 

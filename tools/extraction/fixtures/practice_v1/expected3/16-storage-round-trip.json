@@ -1,0 +1,219 @@
+{
+ "events": [
+  [
+   "learner decision (approve / reject / edit)",
+   "decisions.jsonl",
+   "must survive",
+   "no: a later decision on the same item is a new event",
+   "the learner's authority; the latest decision wins and the earlier ones are history"
+  ],
+  [
+   "batch approval",
+   "decisions.jsonl (one record per member, batch meta)",
+   "must survive",
+   "yes: the same batch ID writes only missing members",
+   "a retry after an interruption must not double-approve"
+  ],
+  [
+   "accepted agent correction",
+   "decisions.jsonl (edit with via)",
+   "must survive",
+   "yes: a second accept is refused as a duplicate",
+   "provenance of the wording the learner adopted"
+  ],
+  [
+   "exercise decision on an agent proposal",
+   "exercise-decisions.jsonl",
+   "must survive",
+   "yes: keyed by (agent, packet, proposal)",
+   "an accepted exercise is practice; a rejection must not be asked again"
+  ],
+  [
+   "attempt",
+   "attempts.jsonl",
+   "must survive",
+   "no: each attempt is intentionally a new event",
+   "outcomes are the history Workbooks schedules from"
+  ],
+  [
+   "reveal",
+   "attempts.jsonl",
+   "must survive",
+   "no: each reveal is intentionally a new event",
+   "a reveal is not an attempt and is never correct"
+  ],
+  [
+   "exported packet",
+   "packets/pk-….json + index",
+   "should survive",
+   "yes: the packet ID hashes its content",
+   "the next session continues from it without the earlier conversation"
+  ],
+  [
+   "draft of each revision",
+   "drafts/rN.json, sources/rN.json",
+   "rebuildable from the sources",
+   "yes",
+   "needed to say what changed and to refuse silent reactivation"
+  ],
+  [
+   "practice build",
+   "practice.json",
+   "rebuildable",
+   "yes",
+   "derived from decisions and drafts"
+  ],
+  [
+   "feed",
+   "written on request",
+   "rebuildable",
+   "yes: the feed ID hashes its content",
+   "Workbooks applies it; a replay changes nothing"
+  ]
+ ],
+ "export_attempts_default": [
+  {
+   "action": "attempt",
+   "outcome": "correct",
+   "practice_id": "p-3e03bff58a01",
+   "schema": "flh_practice_attempt_v1",
+   "seq": 1,
+   "source_revision": {
+    "revision": 1,
+    "revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5"
+   },
+   "text_omitted": true
+  },
+  {
+   "action": "attempt",
+   "outcome": "incorrect",
+   "practice_id": "p-04705161a655",
+   "schema": "flh_practice_attempt_v1",
+   "seq": 2,
+   "source_revision": {
+    "revision": 1,
+    "revision_sha256": "324b8a2a1b9dc8681ae961ff53f880e31c70fba60c4ae5ba5e0cf27a4019b9e5"
+   },
+   "text_omitted": true
+  }
+ ],
+ "id_map": [
+  [
+   "k-… item_id",
+   "a knowledge item: hashes source, type and content key, never the revision",
+   "practice_decisions.subject_id (subject_kind extraction_item)"
+  ],
+  [
+   "item_hash",
+   "the item's content and grounding when decided",
+   "practice_decisions.item_hash"
+  ],
+  [
+   "material_hash, draft_id, batch, via, attest",
+   "2.2 decision context",
+   "none as proposed; provenance_json in the amendment"
+  ],
+  [
+   "revision_sha256",
+   "the source revision",
+   "practice_decisions / practice_attempts.source_revision_sha256 (the revision number is derived from the drafts)"
+  ],
+  [
+   "p-… practice_id",
+   "an exercise: hashes the knowledge ID and kind (source) or rule, kind and prompt (agent)",
+   "practice_attempts.practice_id; practice_decisions.subject_id for an agent exercise (amendment)"
+  ],
+  [
+   "ev-… evidence_id",
+   "a quote at one position in one revision",
+   "not stored: rebuilt from the source; a moved quote gets a new ID"
+  ],
+  [
+   "pk-… packet_id",
+   "an exported packet",
+   "not stored by Workbooks; kept in the extraction work directory"
+  ],
+  [
+   "b2-… batch_id",
+   "a batch shown to the learner",
+   "provenance_json (amendment); operation_key = hash(source, decision seq)"
+  ],
+  [
+   "proposal (agent, packet_id, proposal_id)",
+   "an agent proposal",
+   "provenance_json (amendment)"
+  ]
+ ],
+ "runs": [
+  {
+   "answer_text_stored": true,
+   "answer_texts_stored": 2,
+   "exercise_decisions_stored": 0,
+   "learner_visible_differences": [
+    "k-fb79321ec520: original ('approved', None, False, 'b2-adcf5ee59182') -> from the tables ('approved', None, False, None)",
+    "k-53a8841fc7d3: original ('approved', None, True, None) -> from the tables ('approved', None, False, None)",
+    "k-d0424fb40a11: original ('approved', None, False, 'b2-adcf5ee59182') -> from the tables ('approved', None, False, None)",
+    "k-82761c80f843: original ('approved', None, False, 'b2-adcf5ee59182') -> from the tables ('approved', None, False, None)",
+    "k-edadc7ded432: original ('approved', None, False, 'b2-adcf5ee59182') -> from the tables ('approved', None, False, None)"
+   ],
+   "not_representable": [
+    "decision 1: draft_id, material_hash has no column",
+    "decision 2: draft_id, material_hash has no column",
+    "decision 3: draft_id, material_hash has no column",
+    "decision 4: attest, draft_id, material_hash has no column",
+    "decision 5: batch, draft_id, material_hash has no column",
+    "decision 6: batch, draft_id, material_hash has no column",
+    "decision 7: batch, draft_id, material_hash has no column",
+    "decision 8: batch, draft_id, material_hash has no column",
+    "decision 9: batch, draft_id, material_hash has no column",
+    "decision 10: draft_id, material_hash has no column",
+    "attempt 1: chosen has no column; it can be recomputed from the stored answer text",
+    "attempt 2: known_error has no column; it can be recomputed from the stored answer text"
+   ],
+   "refused_by_constraints": [
+    "practice_decisions agent_exercise p-3e03bff58a01: CHECK constraint failed: subject_kind IN ('extraction_item', 'notebook_draft')",
+    "practice_decisions agent_exercise p-6a86c6109164: CHECK constraint failed: subject_kind IN ('extraction_item', 'notebook_draft')"
+   ],
+   "resend_refused_by_operation_key": true,
+   "rows": {
+    "practice_attempts": 2,
+    "practice_decisions": 10
+   },
+   "variant": "as_proposed"
+  },
+  {
+   "answer_text_stored": true,
+   "answer_texts_stored": 2,
+   "exercise_decisions_stored": 2,
+   "learner_visible_differences": [],
+   "not_representable": [
+    "attempt 1: chosen has no column; it can be recomputed from the stored answer text",
+    "attempt 2: known_error has no column; it can be recomputed from the stored answer text"
+   ],
+   "refused_by_constraints": [],
+   "resend_refused_by_operation_key": true,
+   "rows": {
+    "practice_attempts": 2,
+    "practice_decisions": 12
+   },
+   "variant": "amended"
+  },
+  {
+   "answer_text_stored": false,
+   "answer_texts_stored": 0,
+   "exercise_decisions_stored": 2,
+   "learner_visible_differences": [],
+   "not_representable": [
+    "attempt 1: chosen has no column; without the answer text it is gone",
+    "attempt 2: known_error has no column; without the answer text it is gone"
+   ],
+   "refused_by_constraints": [],
+   "resend_refused_by_operation_key": true,
+   "rows": {
+    "practice_attempts": 2,
+    "practice_decisions": 12
+   },
+   "variant": "amended"
+  }
+ ]
+}

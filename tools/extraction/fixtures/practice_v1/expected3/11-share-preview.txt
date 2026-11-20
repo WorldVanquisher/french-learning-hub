@@ -1,0 +1,18 @@
+Share preview (flh_practice_packet_v3, full, study mode) pk-1e8af84fed90: nothing has been written yet.
+  knowledge          8: k-886099054b26 (source), k-fb79321ec520 (source), k-53a8841fc7d3 (source), k-edad5a9a03c5 (learner), k-d0424fb40a11 (source), k-32f4087a06b6 (generated), k-82761c80f843 (generated), k-edadc7ded432 (generated)
+  evidence           7 IDs only (text omitted by you)
+  exercises          6: p-04705161a655 produce (source), p-cf2ec01246c8 explain (source), p-10a28f330355 choose (source), p-3e03bff58a01 choose (agent_proposal), p-f9efb7256976 choose (source), p-919b6c108284 produce (source)
+  awaiting learner   0 (proposed, not accepted; never knowledge)
+  answer keys        not included
+  goal               omitted by you
+  last confusion     shared (forms and exercise only)
+  you may omit       --omit last_confusion, --omit practice_history
+  privacy check      0 findings (a finding would have refused the export)
+Share preview (flh_practice_packet_v3, minimal, study mode) pk-d3e69e339ffd: nothing has been written yet.
+  rules              3: k-d0424fb40a11, k-886099054b26, k-fb79321ec520
+  next exercise      p-919b6c108284 produce (no answer)
+  not in minimal     evidence excerpts (IDs only); worked examples and known confusions; other exercises; continuity details
+  goal               omitted by you
+  last confusion     shared (forms and exercise only)
+  you may omit       --omit evidence_text, --omit last_confusion, --omit practice_history
+  privacy check      0 findings (a finding would have refused the export)

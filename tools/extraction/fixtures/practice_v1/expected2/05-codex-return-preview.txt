@@ -1,0 +1,6 @@
+Agent return preview (read-only) for packet pk-e2920fe276cb from codex
+counts: accepted_candidate 2, duplicate 1, conflict 0, unknown_reference 0, invalid 0
+  accepted_candidate c1     correction Ask which preposition introduces the place: « à », « chez », « dans » or « sur » give « y » (where you go or where you are); « de », « du », « de la » or « des » give « en » (where you come from).
+  duplicate          c2     correction same wording as c1
+  accepted_candidate c3     exercise   Tu vas chez Paul ce soir ? Answer with « y » or « en ».
+nothing was applied: an accepted candidate still needs the learner's explicit approval

@@ -1,0 +1,17 @@
+Practice for y-en-demo revision 1: choose 2, explain 1, produce 2
+(answers stay hidden until you answer or reveal)
+[p-2ea892e5eaa0] explain (unaided recall of the rule; grading self_check)
+  From memory, without looking: when do you use « y » and when « en »? Give one example of each.
+  evidence ev-17c9dfcc08, ev-6659b658b9, ev-fd704f2740
+[p-0e74504cf958] choose (recognition between confusable forms; grading exact)  new sentence
+  Tu reviens du marché ? — Oui, j'__ reviens.   options: y / en
+  evidence ev-17c9dfcc08, ev-fd704f2740
+[p-22a947cd7f5c] choose (recognition between confusable forms; grading exact)  new sentence
+  Vous allez à la piscine ce soir ? — Oui, nous __ allons.   options: y / en
+  evidence ev-17c9dfcc08, ev-fd704f2740
+[p-664f7533a19d] produce (production in a new sentence; grading accepted_variants_else_self_check)  new sentence
+  Tu reviens du marché ? Answer with « y » or « en ».
+  evidence ev-17c9dfcc08, ev-fd704f2740
+[p-8d5cabf2ab59] produce (production in a new sentence; grading accepted_variants_else_self_check)  new sentence
+  Vous allez à la piscine ce soir ? Answer with « y » or « en ».
+  evidence ev-17c9dfcc08, ev-fd704f2740

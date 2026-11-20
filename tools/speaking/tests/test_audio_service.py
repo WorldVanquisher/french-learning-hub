@@ -100,7 +100,7 @@ def win(text="Bonjour à tous.", nsp=0.01, lp=-0.3, pfr=0.95, top="fr", ptop=0.9
             "p_top_language": ptop, "compression_ratio": cr, "hit_token_limit": limit}
 
 
-@unittest.skipUnless(HAVE, "needs numpy")
+@unittest.skipUnless(HAVE, "needs numpy and av")
 class Rules(unittest.TestCase):
     Q = {"sound_seconds": 2.0, "seconds": 2.0}
 

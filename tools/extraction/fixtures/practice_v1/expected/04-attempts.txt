@@ -1,0 +1,36 @@
+[p-2ea892e5eaa0] explain: check it yourself  (your answer: y for à + a place, en for de + a place)
+  free recall is never graded automatically: compare with the reference and decide
+  reference Ask which preposition the place takes: « à » gives « y », « de » gives « en ».
+  reference « y » replaces where you go or where you are (à la boulangerie, chez Paul, dans le parc): « Oui, j'y vais. »
+  reference « en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »
+  why       Ask which preposition the place takes: « à » gives « y », « de » gives « en ».
+  source    ev-17c9dfcc08: …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+  source    ev-6659b658b9: …vais. » Elle m'a corrigée : « [On dit : oui, j'y vais.] » Plus tard, elle a dit : « J…
+  source    ev-fd704f2740: Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+
+[p-22a947cd7f5c] choose: correct  (your answer: y)
+  answer    y
+  why       « aller à la piscine »: the place takes « à », so « y ».
+  source    ev-17c9dfcc08: …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+  source    ev-fd704f2740: Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+
+[p-8d5cabf2ab59] produce: correct  (your answer: Oui, on y va !)
+  answer    Oui, nous y allons.
+  accepted  Oui, nous y allons. | Oui, on y va. | Non, nous n'y allons pas. | Non, on n'y va pas.
+  why       « aller à la piscine »: the place takes « à », so « y ».
+  source    ev-17c9dfcc08: …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+  source    ev-fd704f2740: Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+
+[p-664f7533a19d] produce: not this time  (your answer: Oui, j'y reviens.)
+  « Oui, j'y reviens. » is a known confusion for this item
+  answer    Oui, j'en reviens.
+  accepted  Oui, j'en reviens. | Oui, j'en reviens à l'instant. | Non, je n'en reviens pas.
+  why       « revenir du marché » (de + le): the place takes « de », so « en ».
+  source    ev-17c9dfcc08: …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+  source    ev-fd704f2740: Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+
+[p-0e74504cf958] choose: revealed without an attempt
+  answer    en
+  why       « revenir du marché » (de + le): the place takes « de », so « en ».
+  source    ev-17c9dfcc08: …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+  source    ev-fd704f2740: Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …

@@ -14,6 +14,12 @@
   quality   --refs R --results V [--outputs O] [--judgments J] --title T --out PREFIX
             (structure, unit counts, split/merge, abstention, grounding, bilingual; exact vs heuristic vs human)
   quality-compare --a A.json --b B.json --out PREFIX   (headline deltas, e.g. frozen eval vs probe)
+  evidence-review --refs R --a A [--b B] [--limit N --page P] [--json OUT] [--md OUT]
+  practice  init|revise|preview|review|decide|build|answer|export|import-preview|accept|feed|demo|compare
+            measure|workbooks-bundle|demo2   (PROTOTYPE; PRACTICE.md)
+  practice2 init|revise|review|decide|repair|build|answer|export|import-preview|accept|exercise|feed|storage|matrix|measure|trial|demo3
+            (Extraction 2.2: reliable approval, exercise proposals, packet v3, feed additions; PRACTICE.md §9-§14)
+            (each unit beside its source evidence; malformed / missing evidence / unsupported / conflicting; A vs B; HEURISTIC)
   probe     --eval E --analyses A --variant rb|swap --out P.jsonl   (production-input probe; eval only)
   control-matrix --refs R --render BIN --out DIR [--probe P.jsonl]  (controlled failures vs metrics)
   review-packet --base T --increment I --probe P --out PREFIX   (25 prioritized items; verdicts left empty)
@@ -52,6 +58,212 @@ from pathlib import Path
 from . import (audit, categories, challenge, comparison, controls, decision, evaluate, increment, manifest, matrix, paired, probe,
                experimental_report, fixture_one_record, promotion, quality, records, review_packet, review_sample, review_sheet,
                reviewer_evidence, sft, splits)
+
+
+def practice_cli(a) -> int:
+    from . import packet as pk
+    from . import practice as pr
+    from . import practice_flow as pf
+    from . import practice_workflow as pw
+    try:
+        if a.pcmd == "demo":
+            rc, text = pw.demo(a.out, check=a.check)
+            sys.stdout.write(text)
+            return rc
+        if a.pcmd == "demo2":
+            rc, text = pf.demo2(a.out, check=a.check)
+            sys.stdout.write(text)
+            return rc
+        if a.pcmd == "workbooks-bundle":
+            rc, text = pf.workbooks_bundle(a.out, check=a.check)
+            sys.stdout.write(text)
+            return rc
+        if a.pcmd == "measure":
+            rep, _ = pf.measure(a.out)
+            if a.json:
+                dump(a.json, rep)
+            sys.stdout.write(pf.render_measure(rep))
+            return 0
+        if a.pcmd == "compare":
+            rep = pw.compare()
+            if a.json:
+                dump(a.json, rep)
+            sys.stdout.write(pw.render_compare(rep))
+            return 0
+        if a.pcmd == "import-preview":
+            rep = pk.import_preview(json.loads(Path(a.packet).read_text(encoding="utf-8")), json.loads(Path(a.proposals).read_text(encoding="utf-8")))
+            if a.json:
+                dump(a.json, rep)
+            sys.stdout.write(pk.render_import(rep))
+            return 0
+        w = pw.Work(a.work)
+        if a.pcmd == "init":
+            sys.stdout.write(w.init(a.source, with_review=True))
+        elif a.pcmd == "revise":
+            sys.stdout.write(w.revise(a.source, with_review=True))
+        elif a.pcmd == "preview":
+            sys.stdout.write(pr.render_preview(w.resolved()))
+        elif a.pcmd == "review":
+            rv = w.review()
+            if a.json:
+                dump(a.json, rv)
+            sys.stdout.write(pr.render_preview(w.resolved()) + w.review_text())
+        elif a.pcmd == "decide":
+            if a.approve_batch:
+                if a.item:
+                    raise ValueError("--approve-batch approves the batch shown by review; it takes no --item")
+                ds = w.approve_batch(a.approve_batch, a.except_ids or (), a.reason)
+                print(f"recorded decisions {ds[0]['seq']}-{ds[-1]['seq']}: approve {len(ds)} items of batch {a.approve_batch}"
+                      + (f" (left out: {', '.join(ds[0]['batch']['excepted'])})" if ds[0]["batch"]["excepted"] else ""))
+                left = w.review()["left_for_you"]
+                if left:
+                    print(f"still yours to decide one by one: {', '.join(r['item_id'] + ' (' + r['why'].split(':')[0] + ')' for r in left)}")
+            else:
+                if not a.item or not (a.approve or a.reject or a.edit):
+                    raise ValueError("decide needs --item with --approve, --reject or --edit TEXT, or --approve-batch B")
+                if a.except_ids:
+                    raise ValueError("--except only applies to --approve-batch")
+                d = w.decide(a.item, "approve" if a.approve else "reject" if a.reject else "edit", a.edit, a.reason)
+                print(f"recorded decision {d['seq']}: {d['action']} {d['item_id']} (on revision {d['based_on']['source_revision']})")
+        elif a.pcmd == "accept":
+            d = w.accept(json.loads(Path(a.packet).read_text(encoding="utf-8")), json.loads(Path(a.proposals).read_text(encoding="utf-8")),
+                         a.proposal, a.reason)
+            print(f"recorded decision {d['seq']}: edit {d['item_id']} from {d['via']['agent']} proposal {d['via']['proposal_id']} "
+                  f"(packet {d['via']['packet_id']}); rebuild practice with: practice build --work W")
+        elif a.pcmd == "build":
+            sys.stdout.write(pr.render_practice(w.practice(rebuild=True)))
+        elif a.pcmd == "answer":
+            sys.stdout.write(w.answer(a.item, a.text, reveal=a.reveal))
+        elif a.pcmd == "export":
+            prev = json.loads(Path(a.previous).read_text(encoding="utf-8")) if a.previous else None
+            packet = w.export(a.mode, a.include_rubrics, version=a.packet_version, previous=prev)
+            sys.stdout.write(pk.preview(packet))
+            if a.out:
+                print("wrote " + ", ".join(pw.write_packet(packet, a.out)))
+        elif a.pcmd == "feed":
+            prev = json.loads(Path(a.previous).read_text(encoding="utf-8")) if a.previous else None
+            dump(a.out, pk.workbooks_feed(w.practice(), w.attempts(), previous=prev))
+            print(f"wrote {a.out}")
+    except PermissionError as e:
+        print(f"refused: {e}", file=sys.stderr)
+        return 3
+    except (OSError, ValueError, KeyError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    return 0
+
+
+def practice2_cli(a) -> int:
+    from . import exercises as ex
+    from . import feed2
+    from . import portable as pt
+    from . import practice as pr
+    from . import practice22 as p22
+    from . import practice_flow22 as f22
+    from . import review2 as rv
+    from . import storage_rt as st
+
+    def load(p):
+        return json.loads(Path(p).read_text(encoding="utf-8"))
+    try:
+        if a.pcmd == "demo3":
+            rc, text = f22.demo3(a.out, check=a.check)
+            sys.stdout.write(text)
+            return rc
+        if a.pcmd == "trial":
+            from . import recall
+            rc, text = recall.trial(a.out, check=a.check)
+            sys.stdout.write(text)
+            return rc
+        if a.pcmd == "measure":
+            rep = f22.measure2(a.out)
+            if a.json:
+                dump(a.json, rep)
+            sys.stdout.write(f22.render_measure2(rep))
+            return 0
+        if a.pcmd == "matrix":
+            m = p22.acceptance_matrix(a.out)
+            sys.stdout.write(p22.render_matrix(m))
+            return 0 if m["all_ok"] else 1
+        if a.pcmd == "import-preview":
+            w = p22.Work2(a.work) if a.work else None
+            rep = pt.import_any(load(a.packet), load(a.proposals), w.resolved() if w else None, w.exercise_decisions() if w else None)
+            if a.json:
+                dump(a.json, rep)
+            sys.stdout.write(pt.render_import_any(rep))
+            return 0
+        w = p22.Work2(a.work)
+        if a.pcmd == "init":
+            sys.stdout.write(w.init(a.source))
+        elif a.pcmd == "revise":
+            sys.stdout.write(w.revise(a.source))
+        elif a.pcmd == "review":
+            pl = w.plan(a.select.split(",") if a.select else None, a.except_ids or ())
+            if a.json:
+                dump(a.json, pl)
+            sys.stdout.write(w.show(with_review=False) + "\n" + rv.render_plan(pl))
+        elif a.pcmd == "decide":
+            if a.approve_batch:
+                if a.item or a.attest_paraphrase:
+                    raise ValueError("--approve-batch takes no --item or --attest-paraphrase")
+                ds = w.approve_batch(a.approve_batch, a.select.split(",") if a.select else None, a.except_ids or (), a.reason)
+                print(f"recorded {len(ds)} decisions for batch {a.approve_batch}" + (f" ({ds[0]['seq']}-{ds[-1]['seq']})" if ds else
+                                                                                    ": nothing new (the batch was already applied)"))
+                left = w.plan()["left_for_you"]
+                if left:
+                    print("still yours to decide one by one: " + ", ".join(r["item_id"] for r in left))
+            else:
+                if not a.item or not (a.approve or a.reject or a.edit):
+                    raise ValueError("decide needs --item with --approve, --reject or --edit TEXT, or --approve-batch B")
+                if a.select or a.except_ids:
+                    raise ValueError("--select and --except only apply to --approve-batch")
+                d = w.decide(a.item, "approve" if a.approve else "reject" if a.reject else "edit", a.edit, a.reason, attest=a.attest_paraphrase)
+                print(f"recorded decision {d['seq']}: {d['action']} {d['item_id']} (revision {d['based_on']['source_revision']}"
+                      + (", paraphrase attested by you" if d.get("attest") else "") + ")")
+        elif a.pcmd == "repair":
+            print(w.repair())
+        elif a.pcmd == "build":
+            sys.stdout.write(pr.render_practice(w.practice(rebuild=True)))
+        elif a.pcmd == "answer":
+            sys.stdout.write(w.answer(a.item, a.text, reveal=a.reveal))
+        elif a.pcmd == "accept":
+            d = w.accept(load(a.packet), load(a.proposals), a.proposal, a.reason)
+            print(f"recorded decision {d['seq']}: edit {d['item_id']} from {d['via']['agent']} proposal {d['via']['proposal_id']}")
+        elif a.pcmd == "exercise":
+            edits = {"prompt": a.prompt, "answer": a.answer, "accepted": a.accepted or None, "options": a.options.split("|") if a.options else None}
+            rec, new = w.exercise(load(a.packet), load(a.proposals), a.proposal, "approve" if a.approve else "reject", edits, a.reason)
+            print((f"recorded exercise decision {rec['seq']}: {rec['action']} {rec['proposal']['agent']} {rec['proposal']['proposal_id']}"
+                   + (f" -> {rec['practice_id']}" if rec["action"] == "approve" else "") + (f" (edited: {', '.join(rec['edited'])})" if rec["edited"] else ""))
+                  if new else f"nothing written: the same decision is already recorded (decision {rec['seq']})")
+        elif a.pcmd == "export":
+            prev = "latest" if a.previous == "latest" else load(a.previous) if a.previous else None
+            awaiting = None
+            if a.awaiting:
+                packet, ret = load(a.awaiting[0]), load(a.awaiting[1])
+                rep = pt.import_any(packet, ret, w.resolved(), w.exercise_decisions())
+                awaiting = pt.awaiting_from(rep["corrections"], rep["exercises"])
+            p = w.export3(a.mode, a.include_rubrics, prev, a.variant, tuple(a.omit or ()), awaiting, keep=bool(a.out))
+            sys.stdout.write(pt.preview3(p))
+            if a.out:
+                print("wrote " + ", ".join(pt.write_packet3(p, a.out, a.agent)) + f"; kept as packets/{p['packet_id']}.json in the work directory")
+        elif a.pcmd == "feed":
+            prev = load(a.previous) if a.previous else None
+            dump(a.out, feed2.feed(w.resolved(), w.practice(rebuild=True), w.attempts(), a.seq, prev))
+            print(f"wrote {a.out}")
+        elif a.pcmd == "storage":
+            rep = [st.round_trip(w, amended=x) for x in (False, True)]
+            if a.json:
+                dump(a.json, rep)
+            for r in rep:
+                print(f"{r['variant']}: rows {r['rows']}; refused {len(r['refused_by_constraints'])}; not representable {len(r['not_representable'])}; "
+                      f"learner-visible differences {len(r['learner_visible_differences'])}")
+    except PermissionError as e:
+        print(f"refused: {e}", file=sys.stderr)
+        return 3
+    except (OSError, ValueError, KeyError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    return 0
 
 
 def dump(path, obj):
@@ -164,7 +376,111 @@ def main(argv):
     dr = sub.add_parser("decision-report"); dr.add_argument("--comparison", required=True); dr.add_argument("--human")
     dr.add_argument("--review", nargs="*", default=[]); dr.add_argument("--losses"); dr.add_argument("--run-manifest")
     dr.add_argument("--input-manifest"); dr.add_argument("--out", required=True)
+    evr = sub.add_parser("evidence-review", help="units beside their source evidence; A vs B regressions (HEURISTIC evidence location)")
+    evr.add_argument("--refs", required=True); evr.add_argument("--a", required=True); evr.add_argument("--b")
+    evr.add_argument("--limit", type=int, default=50); evr.add_argument("--page", type=int, default=1)
+    evr.add_argument("--json"); evr.add_argument("--md")
+    pra = sub.add_parser("practice", help="PROTOTYPE: question + evidence -> approved knowledge -> practice -> portable packet (offline)")
+    psub = pra.add_subparsers(dest="pcmd", required=True)
+    q = psub.add_parser("init"); q.add_argument("--source", required=True); q.add_argument("--work", required=True)
+    q = psub.add_parser("revise"); q.add_argument("--source", required=True); q.add_argument("--work", required=True)
+    q = psub.add_parser("preview"); q.add_argument("--work", required=True)
+    q = psub.add_parser("review", help="the draft beside its evidence, the batch you may approve together, and what stays yours")
+    q.add_argument("--work", required=True); q.add_argument("--json")
+    q = psub.add_parser("decide"); q.add_argument("--work", required=True); q.add_argument("--item")
+    g = q.add_mutually_exclusive_group(required=True)
+    g.add_argument("--approve", action="store_true"); g.add_argument("--reject", action="store_true"); g.add_argument("--edit", metavar="TEXT")
+    g.add_argument("--approve-batch", metavar="BATCH_ID", help="approve the batch shown by init / review (supported items and new practice examples)")
+    q.add_argument("--except", dest="except_ids", action="append", metavar="ITEM_ID", help="with --approve-batch: leave this item out (repeatable)")
+    q.add_argument("--reason", default="")
+    q = psub.add_parser("accept", help="accept one agent correction that import-preview classed accepted_candidate (your decision)")
+    q.add_argument("--work", required=True); q.add_argument("--packet", required=True); q.add_argument("--proposals", required=True)
+    q.add_argument("--proposal", required=True); q.add_argument("--reason", default="")
+    q = psub.add_parser("build"); q.add_argument("--work", required=True)
+    q = psub.add_parser("answer"); q.add_argument("--work", required=True); q.add_argument("--item", required=True)
+    g = q.add_mutually_exclusive_group(required=True); g.add_argument("--text"); g.add_argument("--reveal", action="store_true")
+    q = psub.add_parser("export"); q.add_argument("--work", required=True); q.add_argument("--mode", choices=("study", "tutor"), default="study")
+    q.add_argument("--include-rubrics", action="store_true", help="tutor only: share answer keys and rubrics (an explicit choice)")
+    q.add_argument("--packet-version", type=int, choices=(1, 2), default=2)
+    q.add_argument("--previous", help="the packet a previous agent session used: adds what changed since (version 2)")
+    g = q.add_mutually_exclusive_group(required=True); g.add_argument("--preview", action="store_true"); g.add_argument("--out")
+    q = psub.add_parser("import-preview"); q.add_argument("--packet", required=True); q.add_argument("--proposals", required=True)
+    q.add_argument("--json")
+    q = psub.add_parser("feed"); q.add_argument("--work", required=True); q.add_argument("--out", required=True)
+    q.add_argument("--previous", help="an earlier feed of the same source: lists practice IDs no longer offered as withdrawn")
+    q = psub.add_parser("demo"); q.add_argument("--out", required=True); q.add_argument("--check", action="store_true")
+    q = psub.add_parser("demo2", help="Extraction 2.1: shorter path, second contrast, agent switching, Workbooks bundle")
+    q.add_argument("--out", required=True); q.add_argument("--check", action="store_true")
+    q = psub.add_parser("measure", help="steps from capture to first practice, HANDOFF-136 flow vs 2.1 flow, executed")
+    q.add_argument("--out", required=True, help="a new or empty scratch directory for the work directories"); q.add_argument("--json")
+    q = psub.add_parser("workbooks-bundle", help="regenerate the sealed synthetic Workbooks bundle")
+    q.add_argument("--out", required=True); q.add_argument("--check", action="store_true")
+    q = psub.add_parser("compare"); q.add_argument("--json")
+    p2 = sub.add_parser("practice2", help="PROTOTYPE (Extraction 2.2): reliable approval, agent exercises, packet v3, feed additions (offline)")
+    s2 = p2.add_subparsers(dest="pcmd", required=True)
+    q = s2.add_parser("init"); q.add_argument("--source", required=True); q.add_argument("--work", required=True)
+    q = s2.add_parser("revise"); q.add_argument("--source", required=True); q.add_argument("--work", required=True)
+    q = s2.add_parser("review", help="the draft beside its evidence (QUOTE / PARAPHRASE / CUE lines) and the batch plan with its effects")
+    q.add_argument("--work", required=True); q.add_argument("--json"); q.add_argument("--select", help="k-…,k-…: preview a smaller selection")
+    q.add_argument("--except", dest="except_ids", action="append", metavar="ITEM_ID")
+    q = s2.add_parser("decide"); q.add_argument("--work", required=True); q.add_argument("--item")
+    g = q.add_mutually_exclusive_group(required=True)
+    g.add_argument("--approve", action="store_true"); g.add_argument("--reject", action="store_true"); g.add_argument("--edit", metavar="TEXT")
+    g.add_argument("--approve-batch", metavar="BATCH_ID")
+    q.add_argument("--select", help="with --approve-batch: approve only these members (k-…,k-…)")
+    q.add_argument("--except", dest="except_ids", action="append", metavar="ITEM_ID")
+    q.add_argument("--attest-paraphrase", action="store_true", help="with --approve: you checked that the paraphrase says what the quote says")
+    q.add_argument("--reason", default="")
+    q = s2.add_parser("repair", help="set aside an incomplete last decision line after an interrupted write"); q.add_argument("--work", required=True)
+    q = s2.add_parser("build"); q.add_argument("--work", required=True)
+    q = s2.add_parser("answer"); q.add_argument("--work", required=True); q.add_argument("--item", required=True)
+    g = q.add_mutually_exclusive_group(required=True); g.add_argument("--text"); g.add_argument("--reveal", action="store_true")
+    q = s2.add_parser("export", help="packet v3: full or minimal, with optional omissions; kept in the work directory when written")
+    q.add_argument("--work", required=True); q.add_argument("--mode", choices=("study", "tutor"), default="study")
+    q.add_argument("--include-rubrics", action="store_true"); q.add_argument("--variant", choices=("full", "minimal"), default="full")
+    q.add_argument("--omit", action="append", choices=sorted(("learner_goal", "evidence_text", "practice_history", "last_confusion")))
+    q.add_argument("--previous", help="a packet file, or 'latest' for the last full packet kept in the work directory")
+    q.add_argument("--awaiting", nargs=2, metavar=("PACKET", "RETURN"), help="list this return's unaccepted proposals as 'awaiting the learner'")
+    q.add_argument("--agent", choices=("codex", "claude-code", "any-agent"), help="with --out: copy only this agent's prompt")
+    g = q.add_mutually_exclusive_group(required=True); g.add_argument("--preview", action="store_true"); g.add_argument("--out")
+    q = s2.add_parser("import-preview", help="read-only preview of any return (v1 or v2) against any packet (v1, v2, v3)")
+    q.add_argument("--packet", required=True); q.add_argument("--proposals", required=True); q.add_argument("--work"); q.add_argument("--json")
+    q = s2.add_parser("accept", help="accept one agent correction (as practice accept)")
+    q.add_argument("--work", required=True); q.add_argument("--packet", required=True); q.add_argument("--proposals", required=True)
+    q.add_argument("--proposal", required=True); q.add_argument("--reason", default="")
+    q = s2.add_parser("exercise", help="your decision on one agent exercise proposal (approve, optionally edited, or reject)")
+    q.add_argument("--work", required=True); q.add_argument("--packet", required=True); q.add_argument("--proposals", required=True)
+    q.add_argument("--proposal", required=True)
+    g = q.add_mutually_exclusive_group(required=True); g.add_argument("--approve", action="store_true"); g.add_argument("--reject", action="store_true")
+    q.add_argument("--prompt"); q.add_argument("--answer"); q.add_argument("--accepted", action="append", help="repeatable: replaces the accepted variants")
+    q.add_argument("--options", help="a|b: replaces the options"); q.add_argument("--reason", default="")
+    q = s2.add_parser("feed", help="the v1 feed with the 2.2 additions"); q.add_argument("--work", required=True); q.add_argument("--out", required=True)
+    q.add_argument("--seq", type=int, required=True); q.add_argument("--previous")
+    q = s2.add_parser("storage", help="fixture-only round trip through the Workbooks storage proposal (in memory)")
+    q.add_argument("--work", required=True); q.add_argument("--json")
+    q = s2.add_parser("matrix", help="the acceptance matrix, executed"); q.add_argument("--out", required=True)
+    q = s2.add_parser("measure", help="interactions to first practice and first unaided practice, 2.1 vs 2.2, executed")
+    q.add_argument("--out", required=True); q.add_argument("--json")
+    q = s2.add_parser("trial", help="render the delayed-probe materials and the dry-run summary")
+    q.add_argument("--out", required=True); q.add_argument("--check", action="store_true")
+    q = s2.add_parser("demo3", help="Extraction 2.2 demo with fixed expected outputs and the sealed workbooks2 bundle")
+    q.add_argument("--out", required=True); q.add_argument("--check", action="store_true")
     a = ap.parse_args(argv)
+    if a.cmd == "practice":
+        return practice_cli(a)
+    if a.cmd == "practice2":
+        return practice2_cli(a)
+    if a.cmd == "evidence-review":
+        from . import evidence_review
+        rep = evidence_review.build(a.refs, a.a, a.b, a.limit, a.page)
+        if a.json:
+            dump(a.json, rep)
+        md = evidence_review.markdown(rep)
+        if a.md:
+            Path(a.md).write_text(md, encoding="utf-8")
+        else:
+            sys.stdout.write(md)
+        return 0
     if a.cmd == "review-sample":
         rows = review_sample.packet(review_sample.select(records.load_jsonl(a.slice), records.load_jsonl(a.challenge)))
         sel = review_sample.selection_doc(rows, comparison.sha256_file(a.slice), comparison.sha256_file(a.challenge))

@@ -1,0 +1,13 @@
+Speaking Lab flh_speaking_lab_batch_v1  (flh_fr_asr_norm_v1)
+Note: Word agreement between each transcript and the reference, after flh_fr_asr_norm_v1. Not a pronunciation, fluency or accent grade: a difference can come from the speaker, the recording or the model, and this comparison cannot tell which.
+samples: in_references 3, in_A 3, in_B 3, matched 3, compared 2, groups 2, empty_reference 0, speakers no speaker metadata, reviewed_out 1
+standing: OBSERVATION ONLY: 2 groups, fewer than 30; this comparison ranks nothing and supports no promotion
+reviewed out: s2-retry: retry (music covers the end of the answer; reviewer-1)
+accepted: s1-pass (listened: both drafts match the take; reviewer-1)
+[A] model synthetic-review-a  config synthetic-config-1  samples 2  WER 0.0  (0 sub, 0 del, 0 ins / 13 words)  CER 0.0  cased+punct 0.0  uncased+punct 0.0  empty predictions 0
+[B] model synthetic-review-b  config synthetic-config-1  samples 2  WER 0.3846  (0 sub, 5 del, 0 ins / 13 words)  CER 0.5  cased+punct 0.4706  uncased+punct 0.4706  empty predictions 1
+abstentions: 1 sample(s) ['s3-abstention']; WER including / excluding: A 0.0 (2) / 0.0 (1); B 0.3846 (2) / 0.0 (1)
+retry suggestion: s3-abstention [B] Record again closer to the microphone, in a quieter place: almost no speech was heard. (cause no_speech, supplied)
+paired over 2 samples: B fewer errors on 0, more on 1, same on 1; B - A = +5
+ranking: ranked: fewer errors A (observation only: fewer than 30 groups)
+uncertainty: B - A = +0.3846 WER, 95% group-bootstrap interval [+0.0000, +1.0000] over 2 groups (few groups (< 30): the interval is unstable)

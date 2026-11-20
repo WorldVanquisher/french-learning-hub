@@ -1,0 +1,674 @@
+{
+ "basis": [
+  "every count is an executed command or a written record, not timed use",
+  "intents: leave_flagged approves only what the review batches and leaves the rest pending (the 2.1 measure's intent); decide_flagged also decides every flagged item one by one",
+  "first unaided practice = the first answer to the explain item (no options, no source sentence)",
+  "items_shown_for_reading = items the review lists for the learner to read before the first decision"
+ ],
+ "rows": [
+  {
+   "contrasts": 1,
+   "flagged_in_2_2": [
+    "k-232ca0f26098",
+    "k-5ca79503ae78"
+   ],
+   "knowledge_items": 7,
+   "missing_evidence": {
+    "no_evidence": 0,
+    "uncertain": 0,
+    "unsupported": 1
+   },
+   "runs": [
+    {
+     "approved": [
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-40cbe73ae3f5",
+      "k-6c4760ebee9d",
+      "k-cb9627cc7213",
+      "k-d1c9732336a2"
+     ],
+     "approved_count": 6,
+     "approved_without_individual_look": [
+      "k-232ca0f26098"
+     ],
+     "commands_to_first_practice": 3,
+     "commands_to_first_unaided_practice": 4,
+     "decision_commands": 1,
+     "decision_records": 6,
+     "exercises_with_evidence": 5,
+     "flow": "2.1",
+     "intent": "leave_flagged",
+     "items_shown_for_reading": 7,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-0e74504cf958",
+      "p-22a947cd7f5c",
+      "p-2ea892e5eaa0",
+      "p-664f7533a19d",
+      "p-8d5cabf2ab59"
+     ],
+     "steps": [
+      {
+       "items_shown": 7,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b-d877ea1aeb14"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-2ea892e5eaa0 (unaided recall)"
+      }
+     ]
+    },
+    {
+     "approved": [
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-40cbe73ae3f5",
+      "k-6c4760ebee9d",
+      "k-cb9627cc7213",
+      "k-d1c9732336a2"
+     ],
+     "approved_count": 6,
+     "approved_without_individual_look": [
+      "k-232ca0f26098"
+     ],
+     "commands_to_first_practice": 4,
+     "commands_to_first_unaided_practice": 5,
+     "decision_commands": 2,
+     "decision_records": 7,
+     "exercises_with_evidence": 5,
+     "flow": "2.1",
+     "intent": "decide_flagged",
+     "items_shown_for_reading": 7,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-0e74504cf958",
+      "p-22a947cd7f5c",
+      "p-2ea892e5eaa0",
+      "p-664f7533a19d",
+      "p-8d5cabf2ab59"
+     ],
+     "steps": [
+      {
+       "items_shown": 7,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b-d877ea1aeb14"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --item en-mouvement --reject"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-2ea892e5eaa0 (unaided recall)"
+      }
+     ]
+    },
+    {
+     "approved": [
+      "k-0d3281b28da6",
+      "k-40cbe73ae3f5",
+      "k-6c4760ebee9d",
+      "k-cb9627cc7213",
+      "k-d1c9732336a2"
+     ],
+     "approved_count": 5,
+     "approved_without_individual_look": [],
+     "commands_to_first_practice": 3,
+     "commands_to_first_unaided_practice": 4,
+     "decision_commands": 1,
+     "decision_records": 5,
+     "exercises_with_evidence": 5,
+     "flow": "2.2",
+     "intent": "leave_flagged",
+     "items_shown_for_reading": 7,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-0e74504cf958",
+      "p-22a947cd7f5c",
+      "p-2ea892e5eaa0",
+      "p-664f7533a19d",
+      "p-8d5cabf2ab59"
+     ],
+     "steps": [
+      {
+       "items_shown": 7,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b2-d389db7d1b4c"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-2ea892e5eaa0 (unaided recall)"
+      }
+     ]
+    },
+    {
+     "approved": [
+      "k-0d3281b28da6",
+      "k-232ca0f26098",
+      "k-40cbe73ae3f5",
+      "k-6c4760ebee9d",
+      "k-cb9627cc7213",
+      "k-d1c9732336a2"
+     ],
+     "approved_count": 6,
+     "approved_without_individual_look": [],
+     "commands_to_first_practice": 4,
+     "commands_to_first_unaided_practice": 5,
+     "decision_commands": 2,
+     "decision_records": 7,
+     "exercises_with_evidence": 5,
+     "flow": "2.2",
+     "intent": "decide_flagged",
+     "items_shown_for_reading": 7,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-0e74504cf958",
+      "p-22a947cd7f5c",
+      "p-2ea892e5eaa0",
+      "p-664f7533a19d",
+      "p-8d5cabf2ab59"
+     ],
+     "steps": [
+      {
+       "items_shown": 7,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --item en-mouvement --reject"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b2-a948b31f0fb7"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-2ea892e5eaa0 (unaided recall)"
+      }
+     ]
+    }
+   ],
+   "source_id": "y-en-demo"
+  },
+  {
+   "contrasts": 1,
+   "flagged_in_2_2": [],
+   "knowledge_items": 7,
+   "missing_evidence": {
+    "no_evidence": 0,
+    "uncertain": 0,
+    "unsupported": 1
+   },
+   "runs": [
+    {
+     "approved": [
+      "k-156a01f08b5a",
+      "k-3846e52023ef",
+      "k-715446feb4fd",
+      "k-885ce829bc4b",
+      "k-bc6e7c48470c",
+      "k-e38255f7d2c0"
+     ],
+     "approved_count": 6,
+     "approved_without_individual_look": [],
+     "commands_to_first_practice": 3,
+     "commands_to_first_unaided_practice": 4,
+     "decision_commands": 1,
+     "decision_records": 6,
+     "exercises_with_evidence": 5,
+     "flow": "2.1",
+     "intent": "leave_flagged",
+     "items_shown_for_reading": 7,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-3ac3b47e483a",
+      "p-3ca128617083",
+      "p-8d55e5e7255d",
+      "p-baa71166205b",
+      "p-e61b319d2129"
+     ],
+     "steps": [
+      {
+       "items_shown": 7,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b-594da3e53bc7"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-8d55e5e7255d (unaided recall)"
+      }
+     ]
+    },
+    {
+     "approved": [
+      "k-156a01f08b5a",
+      "k-3846e52023ef",
+      "k-715446feb4fd",
+      "k-885ce829bc4b",
+      "k-bc6e7c48470c",
+      "k-e38255f7d2c0"
+     ],
+     "approved_count": 6,
+     "approved_without_individual_look": [],
+     "commands_to_first_practice": 4,
+     "commands_to_first_unaided_practice": 5,
+     "decision_commands": 2,
+     "decision_records": 7,
+     "exercises_with_evidence": 5,
+     "flow": "2.1",
+     "intent": "decide_flagged",
+     "items_shown_for_reading": 7,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-3ac3b47e483a",
+      "p-3ca128617083",
+      "p-8d55e5e7255d",
+      "p-baa71166205b",
+      "p-e61b319d2129"
+     ],
+     "steps": [
+      {
+       "items_shown": 7,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b-594da3e53bc7"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --item savoir-personnes --reject"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-8d55e5e7255d (unaided recall)"
+      }
+     ]
+    },
+    {
+     "approved": [
+      "k-156a01f08b5a",
+      "k-3846e52023ef",
+      "k-715446feb4fd",
+      "k-885ce829bc4b",
+      "k-bc6e7c48470c",
+      "k-e38255f7d2c0"
+     ],
+     "approved_count": 6,
+     "approved_without_individual_look": [],
+     "commands_to_first_practice": 3,
+     "commands_to_first_unaided_practice": 4,
+     "decision_commands": 1,
+     "decision_records": 6,
+     "exercises_with_evidence": 5,
+     "flow": "2.2",
+     "intent": "leave_flagged",
+     "items_shown_for_reading": 7,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-3ac3b47e483a",
+      "p-3ca128617083",
+      "p-8d55e5e7255d",
+      "p-baa71166205b",
+      "p-e61b319d2129"
+     ],
+     "steps": [
+      {
+       "items_shown": 7,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b2-11d306bad04b"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-8d55e5e7255d (unaided recall)"
+      }
+     ]
+    },
+    {
+     "approved": [
+      "k-156a01f08b5a",
+      "k-3846e52023ef",
+      "k-715446feb4fd",
+      "k-885ce829bc4b",
+      "k-bc6e7c48470c",
+      "k-e38255f7d2c0"
+     ],
+     "approved_count": 6,
+     "approved_without_individual_look": [],
+     "commands_to_first_practice": 4,
+     "commands_to_first_unaided_practice": 5,
+     "decision_commands": 2,
+     "decision_records": 7,
+     "exercises_with_evidence": 5,
+     "flow": "2.2",
+     "intent": "decide_flagged",
+     "items_shown_for_reading": 7,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-3ac3b47e483a",
+      "p-3ca128617083",
+      "p-8d55e5e7255d",
+      "p-baa71166205b",
+      "p-e61b319d2129"
+     ],
+     "steps": [
+      {
+       "items_shown": 7,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --item savoir-personnes --reject"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b2-11d306bad04b"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-8d55e5e7255d (unaided recall)"
+      }
+     ]
+    }
+   ],
+   "source_id": "savoir-connaitre-demo"
+  },
+  {
+   "contrasts": 1,
+   "flagged_in_2_2": [
+    "k-1ef55be82232",
+    "k-32f4087a06b6",
+    "k-53a8841fc7d3",
+    "k-edad5a9a03c5"
+   ],
+   "knowledge_items": 9,
+   "missing_evidence": {
+    "no_evidence": 0,
+    "uncertain": 0,
+    "unsupported": 0
+   },
+   "runs": [
+    {
+     "approved": [
+      "k-1ef55be82232",
+      "k-32f4087a06b6",
+      "k-53a8841fc7d3",
+      "k-82761c80f843",
+      "k-886099054b26",
+      "k-d0424fb40a11",
+      "k-edad5a9a03c5",
+      "k-edadc7ded432",
+      "k-fb79321ec520"
+     ],
+     "approved_count": 9,
+     "approved_without_individual_look": [
+      "k-1ef55be82232",
+      "k-32f4087a06b6",
+      "k-53a8841fc7d3",
+      "k-edad5a9a03c5"
+     ],
+     "commands_to_first_practice": 3,
+     "commands_to_first_unaided_practice": 4,
+     "decision_commands": 1,
+     "decision_records": 9,
+     "exercises_with_evidence": 5,
+     "flow": "2.1",
+     "intent": "leave_flagged",
+     "items_shown_for_reading": 9,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-04705161a655",
+      "p-10a28f330355",
+      "p-919b6c108284",
+      "p-cf2ec01246c8",
+      "p-f9efb7256976"
+     ],
+     "steps": [
+      {
+       "items_shown": 9,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b-c09d29e36e04"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-cf2ec01246c8 (unaided recall)"
+      }
+     ]
+    },
+    {
+     "approved": [
+      "k-1ef55be82232",
+      "k-32f4087a06b6",
+      "k-53a8841fc7d3",
+      "k-82761c80f843",
+      "k-886099054b26",
+      "k-d0424fb40a11",
+      "k-edad5a9a03c5",
+      "k-edadc7ded432",
+      "k-fb79321ec520"
+     ],
+     "approved_count": 9,
+     "approved_without_individual_look": [
+      "k-1ef55be82232",
+      "k-32f4087a06b6",
+      "k-53a8841fc7d3",
+      "k-edad5a9a03c5"
+     ],
+     "commands_to_first_practice": 3,
+     "commands_to_first_unaided_practice": 4,
+     "decision_commands": 1,
+     "decision_records": 9,
+     "exercises_with_evidence": 5,
+     "flow": "2.1",
+     "intent": "decide_flagged",
+     "items_shown_for_reading": 9,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-04705161a655",
+      "p-10a28f330355",
+      "p-919b6c108284",
+      "p-cf2ec01246c8",
+      "p-f9efb7256976"
+     ],
+     "steps": [
+      {
+       "items_shown": 9,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b-c09d29e36e04"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-cf2ec01246c8 (unaided recall)"
+      }
+     ]
+    },
+    {
+     "approved": [
+      "k-82761c80f843",
+      "k-886099054b26",
+      "k-d0424fb40a11",
+      "k-edadc7ded432",
+      "k-fb79321ec520"
+     ],
+     "approved_count": 5,
+     "approved_without_individual_look": [],
+     "commands_to_first_practice": 3,
+     "commands_to_first_unaided_practice": 4,
+     "decision_commands": 1,
+     "decision_records": 5,
+     "exercises_with_evidence": 5,
+     "flow": "2.2",
+     "intent": "leave_flagged",
+     "items_shown_for_reading": 9,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-04705161a655",
+      "p-10a28f330355",
+      "p-919b6c108284",
+      "p-cf2ec01246c8",
+      "p-f9efb7256976"
+     ],
+     "steps": [
+      {
+       "items_shown": 9,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b2-adcf5ee59182"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-cf2ec01246c8 (unaided recall)"
+      }
+     ]
+    },
+    {
+     "approved": [
+      "k-32f4087a06b6",
+      "k-53a8841fc7d3",
+      "k-82761c80f843",
+      "k-886099054b26",
+      "k-d0424fb40a11",
+      "k-edad5a9a03c5",
+      "k-edadc7ded432",
+      "k-fb79321ec520"
+     ],
+     "approved_count": 8,
+     "approved_without_individual_look": [],
+     "commands_to_first_practice": 7,
+     "commands_to_first_unaided_practice": 8,
+     "decision_commands": 5,
+     "decision_records": 9,
+     "exercises_with_evidence": 5,
+     "flow": "2.2",
+     "intent": "decide_flagged",
+     "items_shown_for_reading": 9,
+     "practice_count": 5,
+     "practice_ids": [
+      "p-04705161a655",
+      "p-10a28f330355",
+      "p-919b6c108284",
+      "p-cf2ec01246c8",
+      "p-f9efb7256976"
+     ],
+     "steps": [
+      {
+       "items_shown": 9,
+       "kind": "command",
+       "text": "init (shows the draft beside its evidence and the review)"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --item en-tous-pays --reject"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --item en-japon --approve"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --item en-gerondif --edit"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --item aux-pluriel --approve --attest-paraphrase"
+      },
+      {
+       "kind": "decision",
+       "text": "decide --approve-batch b2-adcf5ee59182"
+      },
+      {
+       "kind": "command",
+       "text": "build"
+      },
+      {
+       "kind": "command",
+       "text": "answer --item p-cf2ec01246c8 (unaided recall)"
+      }
+     ]
+    }
+   ],
+   "source_id": "a-en-lieux-demo"
+  }
+ ],
+ "schema": "flh_practice_interactions_v1"
+}

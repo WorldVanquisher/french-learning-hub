@@ -1,0 +1,336 @@
+{
+ "agent_rules": [
+  "Cite the evidence ID (ev-…) or knowledge ID (k-…) for every claim you make about the learner's material.",
+  "Ask one question at a time and wait for the answer.",
+  "Say clearly when something is NOT supported by the packet's evidence; never present it as the learner's material."
+ ],
+ "concept": "y vs en",
+ "continuity": {
+  "changed": [
+   {
+    "id": "k-0d3281b28da6",
+    "what": "corrected by the learner, who accepted proposal c1 from codex (packet pk-e2920fe276cb)"
+   }
+  ],
+  "knowledge_ids_added": [],
+  "knowledge_ids_dropped": [],
+  "knowledge_ids_kept": 6,
+  "new_misses": [
+   {
+    "missed_since": 1,
+    "practice_id": "p-664f7533a19d"
+   }
+  ],
+  "previous_packet_id": "pk-e2920fe276cb",
+  "same_source_revision": true
+ },
+ "evidence": [
+  {
+   "evidence_id": "ev-053a01e463",
+   "excerpt": "…langerie ? » J'ai répondu : « [Oui, j'en vais.] » Elle m'a corrigée : « On di…",
+   "field": "original_context",
+   "quote": "Oui, j'en vais.",
+   "source_revision": 1,
+   "status": "located"
+  },
+  {
+   "evidence_id": "ev-17c9dfcc08",
+   "excerpt": "…. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »",
+   "field": "original_context",
+   "quote": "Je viens de la boulangerie, j'en viens.",
+   "source_revision": 1,
+   "status": "located"
+  },
+  {
+   "evidence_id": "ev-6659b658b9",
+   "excerpt": "…vais. » Elle m'a corrigée : « [On dit : oui, j'y vais.] » Plus tard, elle a dit : « J…",
+   "field": "original_context",
+   "quote": "On dit : oui, j'y vais.",
+   "source_revision": 1,
+   "status": "located"
+  },
+  {
+   "evidence_id": "ev-fd704f2740",
+   "excerpt": "Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …",
+   "field": "original_context",
+   "quote": "Tu vas à la boulangerie ?",
+   "source_revision": 1,
+   "status": "located"
+  }
+ ],
+ "excluded_by_default": [
+  "rejected, pending and needs-review drafts",
+  "the texts of your attempts (only counts of missed items)",
+  "the full question, its context and any chat (only the cited excerpts)",
+  "other sources and unrelated history",
+  "credentials, machine-local paths, session links and e-mail addresses (checked)"
+ ],
+ "knowledge": [
+  {
+   "evidence_ids": [
+    "ev-fd704f2740",
+    "ev-6659b658b9"
+   ],
+   "id": "k-6c4760ebee9d",
+   "origin": "source",
+   "support": "supported",
+   "text": "« y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »",
+   "type": "claim"
+  },
+  {
+   "evidence_ids": [
+    "ev-17c9dfcc08"
+   ],
+   "id": "k-40cbe73ae3f5",
+   "origin": "source",
+   "support": "supported",
+   "text": "« en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »",
+   "type": "claim"
+  },
+  {
+   "accepted_from": {
+    "agent": "codex",
+    "packet_id": "pk-e2920fe276cb",
+    "proposal_id": "c1"
+   },
+   "evidence_ids": [
+    "ev-fd704f2740",
+    "ev-17c9dfcc08"
+   ],
+   "forms": [
+    {
+     "form": "y",
+     "use": "à + a place: where you go or where you are"
+    },
+    {
+     "form": "en",
+     "use": "de + a place: where you come from"
+    }
+   ],
+   "id": "k-0d3281b28da6",
+   "learner_corrected": true,
+   "origin": "learner",
+   "support": "supported",
+   "text": "Ask which preposition introduces the place: « à », « chez », « dans » or « sur » give « y » (where you go or where you are); « de », « du », « de la » or « des » give « en » (where you come from).",
+   "type": "contrast"
+  },
+  {
+   "evidence_ids": [
+    "ev-053a01e463"
+   ],
+   "id": "k-232ca0f26098",
+   "origin": "source",
+   "support": "supported",
+   "text": "« aller à » takes « y »; « en » would mean « from there ».",
+   "type": "common_error"
+  },
+  {
+   "evidence_ids": [],
+   "example": "Vous allez à la piscine ce soir ? — …",
+   "id": "k-d1c9732336a2",
+   "new_sentence": true,
+   "origin": "generated",
+   "support": "generated",
+   "text": "(answer and explanation withheld: they are the key to p-22a947cd7f5c, p-8d5cabf2ab59)",
+   "type": "worked_example"
+  },
+  {
+   "evidence_ids": [],
+   "example": "Tu reviens du marché ? — …",
+   "id": "k-cb9627cc7213",
+   "new_sentence": true,
+   "origin": "generated",
+   "support": "generated",
+   "text": "(answer and explanation withheld: they are the key to p-0e74504cf958, p-664f7533a19d)",
+   "type": "worked_example"
+  }
+ ],
+ "known_confusions": [
+  {
+   "evidence_ids": [
+    "ev-053a01e463"
+   ],
+   "id": "k-232ca0f26098",
+   "missed_in_practice": 1,
+   "right": "j'y vais",
+   "why": "« aller à » takes « y »; « en » would mean « from there ».",
+   "wrong": "j'en vais"
+  }
+ ],
+ "language_level": "A1/A2 (learner-stated target)",
+ "last_confusion": {
+  "attempt_seq": 2,
+  "contrast_id": "k-0d3281b28da6",
+  "forms": [
+   "y",
+   "en"
+  ],
+  "kind": "produce",
+  "knowledge_ids": [
+   "k-cb9627cc7213",
+   "k-0d3281b28da6"
+  ],
+  "known_confusion_id": null,
+  "practice_id": "p-664f7533a19d",
+  "prompt": "Tu reviens du marché ? Answer with « y » or « en ».",
+  "resolved_later": false,
+  "shared": "which forms were confused, on which exercise; not the attempt text and not the expected answer"
+ },
+ "learner_goal": "Choose between « y » and « en » when I answer a question about a place (A1/A2).",
+ "mode": "study",
+ "next_exercise": {
+  "evidence_ids": [
+   "ev-17c9dfcc08",
+   "ev-fd704f2740"
+  ],
+  "id": "p-8d5cabf2ab59",
+  "kind": "produce",
+  "knowledge_ids": [
+   "k-d1c9732336a2",
+   "k-0d3281b28da6"
+  ],
+  "measures": "production in a new sentence",
+  "new_sentence": true,
+  "prompt": "Vous allez à la piscine ce soir ? Answer with « y » or « en ».",
+  "rule": "flh_next_exercise_rule_v1",
+  "why": "after the miss on p-664f7533a19d: the same contrast in a different sentence, production first"
+ },
+ "next_exercises": [
+  {
+   "evidence_ids": [
+    "ev-17c9dfcc08",
+    "ev-fd704f2740"
+   ],
+   "id": "p-664f7533a19d",
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-cb9627cc7213",
+    "k-0d3281b28da6"
+   ],
+   "measures": "production in a new sentence",
+   "missed_in_practice": 1,
+   "new_sentence": true,
+   "prompt": "Tu reviens du marché ? Answer with « y » or « en »."
+  },
+  {
+   "evidence_ids": [
+    "ev-17c9dfcc08",
+    "ev-6659b658b9",
+    "ev-fd704f2740"
+   ],
+   "id": "p-2ea892e5eaa0",
+   "kind": "explain",
+   "knowledge_ids": [
+    "k-0d3281b28da6",
+    "k-6c4760ebee9d",
+    "k-40cbe73ae3f5"
+   ],
+   "measures": "unaided recall of the rule",
+   "missed_in_practice": 0,
+   "new_sentence": null,
+   "prompt": "From memory, without looking: when do you use « y » and when « en »? Give one example of each."
+  },
+  {
+   "evidence_ids": [
+    "ev-17c9dfcc08",
+    "ev-fd704f2740"
+   ],
+   "id": "p-0e74504cf958",
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-cb9627cc7213",
+    "k-0d3281b28da6"
+   ],
+   "measures": "recognition between confusable forms",
+   "missed_in_practice": 0,
+   "new_sentence": true,
+   "options": [
+    "y",
+    "en"
+   ],
+   "prompt": "Tu reviens du marché ? — Oui, j'__ reviens."
+  },
+  {
+   "evidence_ids": [
+    "ev-17c9dfcc08",
+    "ev-fd704f2740"
+   ],
+   "id": "p-22a947cd7f5c",
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-d1c9732336a2",
+    "k-0d3281b28da6"
+   ],
+   "measures": "recognition between confusable forms",
+   "missed_in_practice": 0,
+   "new_sentence": true,
+   "options": [
+    "y",
+    "en"
+   ],
+   "prompt": "Vous allez à la piscine ce soir ? — Oui, nous __ allons."
+  },
+  {
+   "evidence_ids": [
+    "ev-17c9dfcc08",
+    "ev-fd704f2740"
+   ],
+   "id": "p-8d5cabf2ab59",
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-d1c9732336a2",
+    "k-0d3281b28da6"
+   ],
+   "measures": "production in a new sentence",
+   "missed_in_practice": 0,
+   "new_sentence": true,
+   "prompt": "Vous allez à la piscine ce soir ? Answer with « y » or « en »."
+  }
+ ],
+ "observed_in_practice": [
+  {
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-cb9627cc7213",
+    "k-0d3281b28da6"
+   ],
+   "missed": 1,
+   "practice_id": "p-664f7533a19d",
+   "prompt": "Tu reviens du marché ? Answer with « y » or « en »."
+  }
+ ],
+ "packet_id": "pk-afdb387f3af6",
+ "return_format": {
+  "correction": {
+   "target_id": "a k-… id from this packet",
+   "text": "the corrected wording"
+  },
+  "each_needs": [
+   "proposal_id",
+   "type",
+   "rationale",
+   "evidence_ids"
+  ],
+  "exercise": {
+   "accepted": "produce only: valid variants",
+   "answer": "choose only",
+   "kind": "explain | choose | produce",
+   "knowledge_ids": "k-… ids",
+   "options": "choose only",
+   "prompt": "…"
+  },
+  "proposal_types": [
+   "correction",
+   "exercise"
+  ],
+  "schema": "flh_agent_proposals_v1"
+ },
+ "rubrics_included": false,
+ "rubrics_note": null,
+ "schema": "flh_practice_packet_v2",
+ "source": {
+  "revision": 1,
+  "revision_sha256": "fd55a3600f1c2dd1ab69503dcba4c5cfb20562d845ece7f3f76e9fc0ba6eb0a5",
+  "source_id": "y-en-demo"
+ }
+}

@@ -1,0 +1,9 @@
+Packet preview (tutor mode) pk-e6edb4e2ae2c: nothing has been written yet.
+  goal               Choose between « y » and « en » when I answer a question about a place (A1/A2).
+  knowledge          6: k-6c4760ebee9d (learner), k-40cbe73ae3f5 (source), k-0d3281b28da6 (source), k-232ca0f26098 (source), k-d1c9732336a2 (generated), k-cb9627cc7213 (generated)
+  evidence excerpts  4: ev-053a01e463, ev-17c9dfcc08, ev-6659b658b9, ev-fd704f2740
+  known confusions   1
+  next exercises     5: p-664f7533a19d produce, p-2ea892e5eaa0 explain, p-0e74504cf958 choose, p-22a947cd7f5c choose, p-8d5cabf2ab59 produce
+  answer keys        included (your explicit choice)
+  not included       rejected, pending and needs-review drafts; the texts of your attempts (only counts of missed items); the full question, its context and any chat (only the cited excerpts); other sources and unrelated history; credentials, machine-local paths, session links and e-mail addresses (checked)
+  privacy check      0 findings (a finding would have refused the export)

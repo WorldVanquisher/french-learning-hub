@@ -1,0 +1,1015 @@
+{
+ "checks": [
+  {
+   "comparison": ">=",
+   "id": "support.min_paired_samples",
+   "limit": 30,
+   "meaning": "samples compared in pairs (same id, same reference, both results present)",
+   "reason": "32 >= 30",
+   "status": "pass",
+   "value": 32
+  },
+  {
+   "comparison": ">=",
+   "id": "support.min_groups",
+   "limit": 30,
+   "meaning": "independent groups (speakers) among the compared samples",
+   "reason": "32 >= 30",
+   "status": "pass",
+   "value": 32
+  },
+  {
+   "comparison": "<=",
+   "id": "quality.max_wer_difference",
+   "limit": -0.02,
+   "meaning": "candidate WER minus baseline WER (negative: fewer word errors)",
+   "reason": "-0.1714 <= -0.0200",
+   "status": "pass",
+   "value": -0.1714
+  },
+  {
+   "comparison": "<=",
+   "id": "quality.max_interval_upper",
+   "limit": 0.0,
+   "meaning": "upper end of the 95% speaker-bootstrap interval of that difference",
+   "reason": "-0.1379 <= +0.0000",
+   "status": "pass",
+   "value": -0.1379
+  },
+  {
+   "comparison": "<=",
+   "id": "quality.max_cer_difference",
+   "limit": 0.0,
+   "meaning": "candidate CER minus baseline CER",
+   "reason": "-0.1606 <= +0.0000",
+   "status": "pass",
+   "value": -0.1606
+  },
+  {
+   "comparison": "<=",
+   "group": "s05",
+   "id": "quality.max_group_wer_increase",
+   "limit": 0.05,
+   "meaning": "largest WER rise for any one speaker, candidate minus baseline",
+   "reason": "+0.0000 <= +0.0500",
+   "status": "pass",
+   "value": 0.0
+  },
+  {
+   "comparison": "<=",
+   "id": "resources.max_real_time_factor",
+   "limit": 0.5,
+   "meaning": "candidate compute seconds per audio second, as recorded by evaluate",
+   "reason": "0.2800 <= 0.5000",
+   "status": "pass",
+   "value": 0.28
+  },
+  {
+   "comparison": "<=",
+   "id": "resources.max_peak_rss_mb",
+   "limit": 2048.0,
+   "meaning": "candidate peak resident memory of the evaluate process (MB), as recorded",
+   "reason": "1500.0 <= 2048.0",
+   "status": "pass",
+   "value": 1500.0
+  }
+ ],
+ "comparison": {
+  "abstentions": {
+   "excluding": {
+    "baseline": {
+     "errors": 44,
+     "ref_words": 210,
+     "samples": 32,
+     "wer": 0.2095
+    },
+    "candidate": {
+     "errors": 8,
+     "ref_words": 210,
+     "samples": 32,
+     "wer": 0.0381
+    }
+   },
+   "ids": [],
+   "including": {
+    "baseline": {
+     "errors": 44,
+     "ref_words": 210,
+     "samples": 32,
+     "wer": 0.2095
+    },
+    "candidate": {
+     "errors": 8,
+     "ref_words": 210,
+     "samples": 32,
+     "wer": 0.0381
+    }
+   },
+   "note": "excluding drops every sample where either result abstained, so both still see the same samples",
+   "samples": 0,
+   "suggestions": []
+  },
+  "disclaimer": "Word agreement between each transcript and the reference, after flh_fr_asr_norm_v1. Not a pronunciation, fluency or accent grade: a difference can come from the speaker, the recording or the model, and this comparison cannot tell which.",
+  "empty_reference_ids": [],
+  "missing": [],
+  "models": {
+   "baseline": {
+    "candidate_id": null,
+    "cer": 0.2145,
+    "char_errors": 219,
+    "config_id": "synthetic_rule_v1/flh_fr_asr_norm_v1",
+    "del": 33,
+    "empty_predictions": {
+     "counted_as": "deletions of every reference word",
+     "ids": [],
+     "samples": 0
+    },
+    "errors": 44,
+    "ins": 0,
+    "model_id": "synthetic-baseline-v1/synthetic_rule_v1",
+    "ref_chars": 1021,
+    "ref_words": 210,
+    "resources": {
+     "batch": 1,
+     "peak_rss_mb": 760.0,
+     "real_time_factor": 0.09,
+     "threads": 2
+    },
+    "runtime": {
+     "device": "cpu",
+     "dtype": "float32"
+    },
+    "samples": 32,
+    "seed": null,
+    "sub": 11,
+    "views": {
+     "cased_punct": {
+      "case_attributable_errors": 0,
+      "error_rate": 0.2103,
+      "errors": 45,
+      "ref_tokens": 214,
+      "samples": 32
+     },
+     "normalized": {
+      "error_rate": 0.2095,
+      "errors": 44,
+      "ref_tokens": 210,
+      "samples": 32
+     },
+     "uncased_punct": {
+      "error_rate": 0.2103,
+      "errors": 45,
+      "punctuation_edits": 1,
+      "ref_tokens": 214,
+      "samples": 32
+     }
+    },
+    "wer": 0.2095
+   },
+   "candidate": {
+    "candidate_id": null,
+    "cer": 0.0539,
+    "char_errors": 55,
+    "config_id": "synthetic_rule_v1/flh_fr_asr_norm_v1",
+    "del": 8,
+    "empty_predictions": {
+     "counted_as": "deletions of every reference word",
+     "ids": [],
+     "samples": 0
+    },
+    "errors": 8,
+    "ins": 0,
+    "model_id": "synthetic-candidate-v1/synthetic_rule_v1",
+    "ref_chars": 1021,
+    "ref_words": 210,
+    "resources": {
+     "batch": 1,
+     "peak_rss_mb": 1500.0,
+     "real_time_factor": 0.28,
+     "threads": 2
+    },
+    "runtime": {
+     "device": "cpu",
+     "dtype": "float32"
+    },
+    "samples": 32,
+    "seed": null,
+    "sub": 0,
+    "views": {
+     "cased_punct": {
+      "case_attributable_errors": 0,
+      "error_rate": 0.0374,
+      "errors": 8,
+      "ref_tokens": 214,
+      "samples": 32
+     },
+     "normalized": {
+      "error_rate": 0.0381,
+      "errors": 8,
+      "ref_tokens": 210,
+      "samples": 32
+     },
+     "uncased_punct": {
+      "error_rate": 0.0374,
+      "errors": 8,
+      "punctuation_edits": 0,
+      "ref_tokens": 214,
+      "samples": 32
+     }
+    },
+    "wer": 0.0381
+   }
+  },
+  "normalization": "flh_fr_asr_norm_v1",
+  "normalization_fingerprint": "6912bff3a71ec46e62c831a9ee1340b3521941cfdc0cd8107683843b941bba77",
+  "paired": {
+   "candidate_fewer_errors": 27,
+   "candidate_fewer_errors_groups": 27,
+   "candidate_more_errors": 0,
+   "candidate_more_errors_groups": 0,
+   "difference_b_minus_a": -36,
+   "groups": 32,
+   "labels": [
+    "baseline",
+    "candidate"
+   ],
+   "per_sample": [
+    {
+     "errors": [
+      2,
+      1
+     ],
+     "group_id": "s01",
+     "id": "syn-s01-u1",
+     "ref_words": 7,
+     "speaker": "s01",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s02",
+     "id": "syn-s02-u1",
+     "ref_words": 6,
+     "speaker": "s02",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s03",
+     "id": "syn-s03-u1",
+     "ref_words": 6,
+     "speaker": "s03",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      2,
+      0
+     ],
+     "group_id": "s04",
+     "id": "syn-s04-u1",
+     "ref_words": 6,
+     "speaker": "s04",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      1
+     ],
+     "group_id": "s05",
+     "id": "syn-s05-u1",
+     "ref_words": 7,
+     "speaker": "s05",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s06",
+     "id": "syn-s06-u1",
+     "ref_words": 9,
+     "speaker": "s06",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      2,
+      0
+     ],
+     "group_id": "s07",
+     "id": "syn-s07-u1",
+     "ref_words": 7,
+     "speaker": "s07",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s08",
+     "id": "syn-s08-u1",
+     "ref_words": 8,
+     "speaker": "s08",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      1
+     ],
+     "group_id": "s09",
+     "id": "syn-s09-u1",
+     "ref_words": 7,
+     "speaker": "s09",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      2,
+      0
+     ],
+     "group_id": "s10",
+     "id": "syn-s10-u1",
+     "ref_words": 6,
+     "speaker": "s10",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s11",
+     "id": "syn-s11-u1",
+     "ref_words": 6,
+     "speaker": "s11",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s12",
+     "id": "syn-s12-u1",
+     "ref_words": 5,
+     "speaker": "s12",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      2,
+      1
+     ],
+     "group_id": "s13",
+     "id": "syn-s13-u1",
+     "ref_words": 10,
+     "speaker": "s13",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s14",
+     "id": "syn-s14-u1",
+     "ref_words": 6,
+     "speaker": "s14",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s15",
+     "id": "syn-s15-u1",
+     "ref_words": 6,
+     "speaker": "s15",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      2,
+      0
+     ],
+     "group_id": "s16",
+     "id": "syn-s16-u1",
+     "ref_words": 6,
+     "speaker": "s16",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      1
+     ],
+     "group_id": "s17",
+     "id": "syn-s17-u1",
+     "ref_words": 6,
+     "speaker": "s17",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s18",
+     "id": "syn-s18-u1",
+     "ref_words": 6,
+     "speaker": "s18",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      2,
+      0
+     ],
+     "group_id": "s19",
+     "id": "syn-s19-u1",
+     "ref_words": 7,
+     "speaker": "s19",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s20",
+     "id": "syn-s20-u1",
+     "ref_words": 6,
+     "speaker": "s20",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      1
+     ],
+     "group_id": "s21",
+     "id": "syn-s21-u1",
+     "ref_words": 5,
+     "speaker": "s21",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      2,
+      0
+     ],
+     "group_id": "s22",
+     "id": "syn-s22-u1",
+     "ref_words": 6,
+     "speaker": "s22",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s23",
+     "id": "syn-s23-u1",
+     "ref_words": 7,
+     "speaker": "s23",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s24",
+     "id": "syn-s24-u1",
+     "ref_words": 5,
+     "speaker": "s24",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      2,
+      1
+     ],
+     "group_id": "s25",
+     "id": "syn-s25-u1",
+     "ref_words": 8,
+     "speaker": "s25",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      2,
+      0
+     ],
+     "group_id": "s26",
+     "id": "syn-s26-u1",
+     "ref_words": 8,
+     "speaker": "s26",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s27",
+     "id": "syn-s27-u1",
+     "ref_words": 6,
+     "speaker": "s27",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      2,
+      0
+     ],
+     "group_id": "s28",
+     "id": "syn-s28-u1",
+     "ref_words": 8,
+     "speaker": "s28",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      1,
+      1
+     ],
+     "group_id": "s29",
+     "id": "syn-s29-u1",
+     "ref_words": 5,
+     "speaker": "s29",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s30",
+     "id": "syn-s30-u1",
+     "ref_words": 6,
+     "speaker": "s30",
+     "tags": {
+      "gender": "M"
+     }
+    },
+    {
+     "errors": [
+      2,
+      0
+     ],
+     "group_id": "s31",
+     "id": "syn-s31-u1",
+     "ref_words": 6,
+     "speaker": "s31",
+     "tags": {
+      "gender": "F"
+     }
+    },
+    {
+     "errors": [
+      1,
+      0
+     ],
+     "group_id": "s32",
+     "id": "syn-s32-u1",
+     "ref_words": 7,
+     "speaker": "s32",
+     "tags": {
+      "gender": "M"
+     }
+    }
+   ],
+   "same": 5,
+   "samples": 32
+  },
+  "ranking": {
+   "fewer_errors": "candidate",
+   "groups": 32,
+   "min_groups": 30,
+   "note": "on 32 groups; promotion still needs the acceptance rule (accept)",
+   "samples": 32,
+   "standing": "ranked",
+   "status": "ranked"
+  },
+  "review": null,
+  "sample_order_sha256": "90581c0aefe04b6650a7fe5813b808beb53be4a463b3e1f8e3e76af0cfdffece",
+  "samples": {
+   "compared": 32,
+   "empty_reference": 0,
+   "groups": 32,
+   "in_baseline": 32,
+   "in_candidate": 32,
+   "in_references": 32,
+   "matched": 32,
+   "speakers": 32
+  },
+  "schema": "flh_speaking_lab_batch_v1",
+  "slices": {
+   "improvements": [
+    {
+     "difference_b_minus_a": -0.2115,
+     "groups": 16,
+     "ref_words": 104,
+     "samples": 16,
+     "slice": "gender=M",
+     "support": "ranked",
+     "wer_baseline": 0.2115,
+     "wer_candidate": 0.0
+    },
+    {
+     "difference_b_minus_a": -0.1321,
+     "groups": 16,
+     "ref_words": 106,
+     "samples": 16,
+     "slice": "gender=F",
+     "support": "ranked",
+     "wer_baseline": 0.2075,
+     "wer_candidate": 0.0755
+    }
+   ],
+   "keys": {
+    "gender": {
+     "F": {
+      "difference_b_minus_a": -0.1321,
+      "groups": 16,
+      "ref_words": 106,
+      "samples": 16,
+      "support": "ranked",
+      "wer_baseline": 0.2075,
+      "wer_candidate": 0.0755
+     },
+     "M": {
+      "difference_b_minus_a": -0.2115,
+      "groups": 16,
+      "ref_words": 104,
+      "samples": 16,
+      "support": "ranked",
+      "wer_baseline": 0.2115,
+      "wer_candidate": 0.0
+     }
+    }
+   },
+   "min_groups": 5,
+   "observations": [],
+   "regressions": []
+  },
+  "uncertainty": {
+   "excludes_zero": true,
+   "groups": 32,
+   "interval_95": [
+    -0.2077,
+    -0.1379
+   ],
+   "kind": "measured under resampling",
+   "level": 0.95,
+   "method": "percentile bootstrap over groups",
+   "reliability": "enough groups for a rough interval",
+   "resamples": 2000,
+   "seed": 20261119,
+   "wer_difference_b_minus_a": -0.1714
+  },
+  "validity": {
+   "checked": [],
+   "invalidated": []
+  }
+ },
+ "disclaimer": "Word agreement between each transcript and the reference, after flh_fr_asr_norm_v1. Not a pronunciation, fluency or accent grade: a difference can come from the speaker, the recording or the model, and this comparison cannot tell which.",
+ "exit_code": 0,
+ "input_checks": [
+  {
+   "code": "same_split",
+   "detail": "both evaluated on split synthetic",
+   "status": "ok"
+  },
+  {
+   "code": "same_normalization",
+   "detail": "both scored under flh_fr_asr_norm_v1",
+   "status": "ok"
+  },
+  {
+   "code": "same_ids",
+   "detail": "every id is in both evaluations",
+   "status": "ok"
+  },
+  {
+   "code": "same_references",
+   "detail": "every shared id has the same reference",
+   "status": "ok"
+  },
+  {
+   "code": "baseline_stored_summary",
+   "detail": "stored totals (44 errors / 210 words) equal the recomputation",
+   "status": "ok"
+  },
+  {
+   "code": "candidate_stored_summary",
+   "detail": "stored totals (8 errors / 210 words) equal the recomputation",
+   "status": "ok"
+  },
+  {
+   "code": "distinct_models",
+   "detail": "baseline and candidate are different models",
+   "status": "ok"
+  },
+  {
+   "code": "experiment",
+   "detail": "no experiment result given: image, limits and run identity are not reported",
+   "status": "not_supplied"
+  },
+  {
+   "code": "data_manifest",
+   "detail": "no data manifest given: the audio behind the texts is identified by the split name only",
+   "status": "not_supplied"
+  }
+ ],
+ "inputs": {
+  "baseline": {
+   "bytes": 7974,
+   "file": "baseline.json",
+   "sha256": "ea80f8a47ac5a9dbb835709ed32863b05279164b0c610caf1d4fb6ee9156049b"
+  },
+  "candidate": {
+   "bytes": 8126,
+   "file": "candidate.json",
+   "sha256": "e1a79bc2cb711455cf245ffde9adc9220b405f2a50bb0ce89442c7c0f05d17fe"
+  },
+  "experiment_id": null,
+  "experiment_image_id": null,
+  "experiment_limits": null,
+  "references_sha256": "cb7a3962b85f0bba098bae942f0aee517377d47d3dead77a2abca8ab60ef3cac",
+  "sample_order_sha256": "90581c0aefe04b6650a7fe5813b808beb53be4a463b3e1f8e3e76af0cfdffece"
+ },
+ "measures": {
+  "baseline": {
+   "audio_s": {
+    "basis": "audio seconds transcribed, recorded by evaluate",
+    "status": "measured",
+    "value": 320.0
+   },
+   "cer": {
+    "basis": "character errors / reference characters, recomputed from the stored served texts",
+    "status": "measured",
+    "value": 0.2145
+   },
+   "compute_s": {
+    "basis": "transcription seconds, recorded by evaluate",
+    "status": "measured",
+    "value": 28.8
+   },
+   "conditions": {
+    "batch": 1,
+    "machine": "synthetic",
+    "python": "none",
+    "threads": 2
+   },
+   "model_load_s": {
+    "basis": "model load seconds, recorded by evaluate",
+    "status": "measured",
+    "value": 3.4
+   },
+   "peak_rss_mb": {
+    "basis": "peak resident memory of the evaluate process in MB, recorded by evaluate",
+    "status": "measured",
+    "value": 760.0
+   },
+   "real_time_factor": {
+    "basis": "compute seconds per audio second, recorded by evaluate",
+    "status": "measured",
+    "value": 0.09
+   },
+   "wer": {
+    "basis": "word errors / reference words, recomputed from the stored served texts (flh_fr_asr_norm_v1)",
+    "status": "measured",
+    "value": 0.2095
+   }
+  },
+  "candidate": {
+   "audio_s": {
+    "basis": "audio seconds transcribed, recorded by evaluate",
+    "status": "measured",
+    "value": 320.0
+   },
+   "cer": {
+    "basis": "character errors / reference characters, recomputed from the stored served texts",
+    "status": "measured",
+    "value": 0.0539
+   },
+   "compute_s": {
+    "basis": "transcription seconds, recorded by evaluate",
+    "status": "measured",
+    "value": 89.6
+   },
+   "conditions": {
+    "batch": 1,
+    "machine": "synthetic",
+    "python": "none",
+    "threads": 2
+   },
+   "model_load_s": {
+    "basis": "model load seconds, recorded by evaluate",
+    "status": "measured",
+    "value": 9.1
+   },
+   "peak_rss_mb": {
+    "basis": "peak resident memory of the evaluate process in MB, recorded by evaluate",
+    "status": "measured",
+    "value": 1500.0
+   },
+   "real_time_factor": {
+    "basis": "compute seconds per audio second, recorded by evaluate",
+    "status": "measured",
+    "value": 0.28
+   },
+   "wer": {
+    "basis": "word errors / reference words, recomputed from the stored served texts (flh_fr_asr_norm_v1)",
+    "status": "measured",
+    "value": 0.0381
+   }
+  },
+  "difference": {
+   "cer": -0.1606,
+   "wer": -0.1714
+  }
+ },
+ "models": {
+  "baseline": {
+   "candidate_id": null,
+   "candidate_id_basis": "not pinned: the model directory name matches no revision in pins.py, so no candidate ID exists",
+   "decoding": "synthetic_rule_v1",
+   "model_dir_name": "synthetic-baseline-v1",
+   "normalization": "flh_fr_asr_norm_v1",
+   "pinned_name": null,
+   "role": "baseline",
+   "runtime": {
+    "machine": "synthetic",
+    "python": "none"
+   },
+   "samples": 32,
+   "speakers": 32,
+   "split": "synthetic",
+   "stored_label": "synthetic baseline: invented texts and timing, no model ran"
+  },
+  "candidate": {
+   "candidate_id": null,
+   "candidate_id_basis": "not pinned: the model directory name matches no revision in pins.py, so no candidate ID exists",
+   "decoding": "synthetic_rule_v1",
+   "model_dir_name": "synthetic-candidate-v1",
+   "normalization": "flh_fr_asr_norm_v1",
+   "pinned_name": null,
+   "role": "candidate",
+   "runtime": {
+    "machine": "synthetic",
+    "python": "none"
+   },
+   "samples": 32,
+   "speakers": 32,
+   "split": "synthetic",
+   "stored_label": "synthetic candidate: invented texts and timing, no model ran"
+  }
+ },
+ "outcome": "ready_for_owner_review",
+ "promotion": {
+  "decided_by": "owner",
+  "note": "No outcome promotes a model or changes a serving setting; ready_for_owner_review means only that this evidence is complete under these limits.",
+  "owner_steps": [
+   "check the candidate's files: lab candidate check --name NAME --model-dir DIR",
+   "run the acceptance rule flh_speaking_acceptance_v1 (accept) on the frozen holdout, ood and probes",
+   "decide, then change RUNBOOK.md or SPEAKING_TRANSCRIPTION_* yourself"
+  ],
+  "performed": false
+ },
+ "reasons": [
+  {
+   "code": "all_checks_pass",
+   "detail": "32 paired samples over 32 groups; every support, quality and resource check passes: the evidence is ready for the owner to decide"
+  }
+ ],
+ "samples": {
+  "baseline": 32,
+  "candidate": 32,
+  "empty_reference": [],
+  "group_unit": "speaker",
+  "groups": 32,
+  "matched": 32,
+  "missing": [],
+  "paired": 32,
+  "speakers": {
+   "baseline": 32,
+   "candidate": 32,
+   "paired": 32
+  }
+ },
+ "schema": "flh_speaking_candidate_review_v1",
+ "sensitivity": {
+  "groups": 32,
+  "max": -0.1667,
+  "method": "leave one group out",
+  "min": -0.1773,
+  "most_influential_group": "s09"
+ },
+ "serving_default": "unchanged (RUNBOOK.md decides what is served)",
+ "standing": "ranked",
+ "thresholds": {
+  "quality": {
+   "max_cer_difference": 0.0,
+   "max_group_wer_increase": 0.05,
+   "max_interval_upper": 0.0,
+   "max_wer_difference": -0.02
+  },
+  "resources": {
+   "max_peak_rss_mb": 2048.0,
+   "max_real_time_factor": 0.5
+  },
+  "support": {
+   "min_groups": 30,
+   "min_paired_samples": 30
+  }
+ },
+ "uncertainty": {
+  "excludes_zero": true,
+  "groups": 32,
+  "interval_95": [
+   -0.2077,
+   -0.1379
+  ],
+  "kind": "measured under resampling",
+  "level": 0.95,
+  "method": "percentile bootstrap over groups",
+  "reliability": "enough groups for a rough interval",
+  "resamples": 2000,
+  "seed": 20261119,
+  "wer_difference_b_minus_a": -0.1714
+ }
+}

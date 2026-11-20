@@ -65,6 +65,20 @@ func TestLocalTranscriberRefusesAnAnswerFromAnotherDeployment(t *testing.T) {
 	}
 }
 
+// An older or smaller service may omit every optional field (status,
+// warnings, language, timing): only text and flh.deployment_id are read.
+func TestLocalTranscriberAcceptsAMinimalAnswerFromAnOlderService(t *testing.T) {
+	minimal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		_, _ = io.WriteString(w, `{"text":"Bonjour à tous.","flh":{"deployment_id":"`+deployment+`"}}`)
+	}))
+	t.Cleanup(minimal.Close)
+	text, err := transcribeWAV(t, speaking.NewLocalTranscriber(deployment, minimal.URL, time.Second))
+	if err != nil || text != "Bonjour à tous." {
+		t.Fatalf("minimal answer: %q %v", text, err)
+	}
+}
+
 // Each service answer maps to one stored failure code (provider_timeout,
 // provider_unavailable, invalid_output) and one outcome: definite, or unknown when the
 // audio was sent and no answer came back.

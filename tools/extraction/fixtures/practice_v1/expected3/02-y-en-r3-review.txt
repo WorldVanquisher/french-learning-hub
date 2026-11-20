@@ -1,0 +1,76 @@
+Draft d-dcb8af8e1211  source y-en-demo revision 3 (11d0085da5b2)
+lines: QUOTE = your exact words, located in your text (evidence); PARAPHRASE = a restatement (never evidence); CUE = a word check that the quote may not support the claim (not a proof)
+
+[k-6c4760ebee9d] claim  support supported  state approved (carried from revision 1)
+  says        « y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »
+  QUOTE       ev-fd87af4f62 located   « Tu vas à la boulangerie ? »
+              …ain. Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+              MOVED since revision 2: original_context@25 -> original_context@63 (still located once; ev-fd704f2740 is now ev-fd87af4f62; a move does not change your decision)
+  QUOTE       ev-f0b5fdc631 located   « On dit : oui, j'y vais. »
+              …vais. » Elle m'a corrigée : « [On dit : oui, j'y vais.] » Plus tard, elle a dit : « J…
+              MOVED since revision 2: original_context@110 -> original_context@148 (still located once; ev-6659b658b9 is now ev-f0b5fdc631; a move does not change your decision)
+  note        the wording differs only in spacing, apostrophes or Unicode form; your decision is kept
+
+[k-40cbe73ae3f5] claim  support supported  state needs_review (restored)
+  says        « en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »
+  QUOTE       ev-a2f6d92552 located   « Je viens de la boulangerie, j'en viens. »
+              …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+  review      you decided 'approve' on revision 1; it changed in revision 2 and is now back to what you decided. A decision is not reused across a change: confirm it again
+
+[k-5ca79503ae78] claim  support unsupported  state rejected (carried from revision 1)
+  says        « en » goes with every verb of movement, so « j'en vais » is also correct.
+  QUOTE       -             not_found « en goes with every verb of movement »
+  CONFLICT    k-5ca79503ae78 presents « j'en vais » as correct; k-232ca0f26098 lists it as an error
+  rejected    on revision 1: my friend corrected exactly this: « j'en vais » is wrong
+
+[k-0d3281b28da6] contrast  support supported  state needs_review (restored)
+  says        « y » à + a place: where you go or where you are / « en » de + a place: where you come from
+  distinction Ask which preposition the place takes: « à » gives « y », « de » gives « en ».
+  QUOTE       ev-fd87af4f62 located   « Tu vas à la boulangerie ? »
+              …ain. Mon amie m'a demandé : « [Tu vas à la boulangerie ?] » J'ai répondu : « Oui, j'en …
+              MOVED since revision 2: original_context@25 -> original_context@63 (still located once; ev-fd704f2740 is now ev-fd87af4f62; a move does not change your decision)
+  QUOTE       ev-a2f6d92552 located   « Je viens de la boulangerie, j'en viens. »
+              …. » Plus tard, elle a dit : « [Je viens de la boulangerie, j'en viens.] »
+  review      you decided 'approve' on revision 1; it changed in revision 2 and is now back to what you decided. A decision is not reused across a change: confirm it again
+
+[k-232ca0f26098] common_error  support supported  state needs_review (changed)
+  says        not « j'en vais » but « j'y vais »
+  why         « aller à » takes « y »; « en » would mean « from there ». (« Je m'en vais » is correct: that is « s'en aller », to leave.)
+  QUOTE       ev-11216baa6d located   « Oui, j'en vais. »
+              …langerie ? » J'ai répondu : « [Oui, j'en vais.] » Elle m'a corrigée : « On di…
+              MOVED since revision 2: original_context@70 -> original_context@108 (still located once; ev-053a01e463 is now ev-11216baa6d; a move does not change your decision)
+  CONFLICT    k-5ca79503ae78 presents « j'en vais » as correct; k-232ca0f26098 lists it as an error
+  review      you decided 'approve' on revision 1; it changed materially since, so that decision is not reused
+              what changed: why: « « aller à » takes « y »; « en » would mean « from there ». » -> « « aller à » takes « y »; « en » would mean « from there ». (« Je m'en… »
+
+[k-d1c9732336a2] worked_example  support generated  state approved (carried from revision 1)
+  says        Vous allez à la piscine ce soir ? — Oui, nous y allons.  (a sentence not in your source)
+  explanation « aller à la piscine »: the place takes « à », so « y ».
+  QUOTE       none (a new practice example: the source never said it)
+
+[k-cb9627cc7213] worked_example  support generated  state needs_review (changed)
+  says        Tu reviens du marché ? — Oui, j'en reviens.  (a sentence not in your source)
+  explanation « revenir du marché » (de + le): the place takes « de », so « en ».
+  QUOTE       none (a new practice example: the source never said it)
+  review      you decided 'approve' on revision 1; it changed materially since, so that decision is not reused
+              what changed: accepted: removed « Non, je n'en reviens pas. »
+
+states: pending 0, approved 2, corrected 0, rejected 1, needs_review 4
+
+Review v2 of draft d-dcb8af8e1211 (source y-en-demo revision 3)
+
+Batch: none (no pending item can be approved together with others)
+
+Decide yourself, one by one (4):
+  [k-40cbe73ae3f5] claim          RESTORED: back to what you decided earlier after a change; confirm it
+      « en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »
+  [k-0d3281b28da6] contrast       RESTORED: back to what you decided earlier after a change; confirm it
+      Ask which preposition the place takes: « à » gives « y », « de » gives « en ».
+  [k-232ca0f26098] common_error   CHANGED: decided on an earlier revision; it changed materially
+      « aller à » takes « y »; « en » would mean « from there ». (« Je m'en vais » is correct: that i…
+      what changed: why: « « aller à » takes « y »; « en » would mean « from there ». » -> « « aller à » takes « y »; « en » would mean « from there ». (« Je m'en… »
+  [k-cb9627cc7213] worked_example CHANGED: decided on an earlier revision; it changed materially
+      « revenir du marché » (de + le): the place takes « de », so « en ».
+      what changed: accepted: removed « Non, je n'en reviens pas. »
+
+Already decided: approved 2, rejected 1

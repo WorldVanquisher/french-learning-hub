@@ -1,0 +1,8 @@
+Extraction 2.0 practice demo (synthetic y/en source; PROTOTYPE)
+1 capture      synthetic-y-en-001 (manual): Pourquoi on dit « j'y vais » mais « j'en viens » ? Je confonds toujours « y » et « en ».
+2 inspect      draft d-22ff0c49f9d7: generated 2, supported 4, unsupported 1
+3 decide       rejected k-5ca79503ae78 (support unsupported); corrected k-6c4760ebee9d; approved 5, corrected 1, rejected 1
+4 practice     choose 2, explain 1, produce 2; new-sentence items 4
+5 answer       p-2ea892e5eaa0 self_check, p-22a947cd7f5c correct, p-8d5cabf2ab59 correct, p-664f7533a19d incorrect, p-0e74504cf958 revealed
+6 export       study pk-3cc014313f28 (5 exercises, no answer keys); tutor pk-e6edb4e2ae2c (rubrics by explicit choice)
+7 agent return accepted_candidate 3, duplicate 1, conflict 2, unknown_reference 1, invalid 1 (read-only)

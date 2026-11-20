@@ -1,0 +1,374 @@
+{
+ "audio": {
+  "bytes": 19244,
+  "description": "generated 0.6 s 220 Hz tone, 16 kHz mono PCM16; a placeholder identity, not speech",
+  "fixture": "synthetic_tone_v1",
+  "sha256": "2484029a001a2d5cdf173eb93b0f05d7782ef5291275348b454b492364a3a0ed"
+ },
+ "case_id": "synthetic-fr-001",
+ "disclaimer": "Word agreement between each transcript and the reference, after flh_fr_asr_norm_v1. Not a pronunciation, fluency or accent grade: a difference can come from the speaker, the recording or the model, and this comparison cannot tell which.",
+ "normalization": "flh_fr_asr_norm_v1",
+ "normalization_fingerprint": "6912bff3a71ec46e62c831a9ee1340b3521941cfdc0cd8107683843b941bba77",
+ "paired": {
+  "difference_b_minus_a": 0,
+  "errors": [
+   1,
+   1
+  ],
+  "evidence": "single_case",
+  "labels": [
+   "A",
+   "B"
+  ],
+  "note": "One case is one observation: use the paired evaluation (compare/accept) for a model decision.",
+  "reference_positions_with_an_edit": [
+   1,
+   7
+  ]
+ },
+ "reasons": {},
+ "reference": {
+  "normalized": "l' élève a lu le texte à voix haute puis il s' est assis",
+  "raw": "L'élève a lu le texte à voix haute, puis il s'est assis.",
+  "words": 14
+ },
+ "results": [
+  {
+   "accent_only_substitutions": 1,
+   "cer": 0.0357,
+   "char_errors": 2,
+   "config_id": "synthetic-config-1",
+   "counts": {
+    "del": 0,
+    "equal": 13,
+    "ins": 0,
+    "sub": 1
+   },
+   "diagnostics": [
+    {
+     "basis": "token alignment after flh_fr_asr_norm_v1",
+     "kind": "measured",
+     "name": "wer",
+     "value": 0.0714
+    },
+    {
+     "basis": "substitutions whose tokens are equal once diacritics are removed",
+     "kind": "rule",
+     "name": "accent_only_substitutions",
+     "value": 1
+    },
+    {
+     "basis": "fewer than 3 reference words",
+     "kind": "heuristic",
+     "name": "low_evidence",
+     "value": false
+    },
+    {
+     "basis": "the runtime supplied no comparable confidence; none is computed here",
+     "kind": "not_supplied",
+     "name": "confidence",
+     "value": null
+    }
+   ],
+   "edits": [
+    {
+     "hyp": "l'",
+     "hyp_index": 0,
+     "op": "equal",
+     "ref": "l'",
+     "ref_index": 0
+    },
+    {
+     "accent_only": true,
+     "hyp": "eleve",
+     "hyp_index": 1,
+     "op": "sub",
+     "ref": "élève",
+     "ref_index": 1
+    },
+    {
+     "hyp": "a",
+     "hyp_index": 2,
+     "op": "equal",
+     "ref": "a",
+     "ref_index": 2
+    },
+    {
+     "hyp": "lu",
+     "hyp_index": 3,
+     "op": "equal",
+     "ref": "lu",
+     "ref_index": 3
+    },
+    {
+     "hyp": "le",
+     "hyp_index": 4,
+     "op": "equal",
+     "ref": "le",
+     "ref_index": 4
+    },
+    {
+     "hyp": "texte",
+     "hyp_index": 5,
+     "op": "equal",
+     "ref": "texte",
+     "ref_index": 5
+    },
+    {
+     "hyp": "à",
+     "hyp_index": 6,
+     "op": "equal",
+     "ref": "à",
+     "ref_index": 6
+    },
+    {
+     "hyp": "voix",
+     "hyp_index": 7,
+     "op": "equal",
+     "ref": "voix",
+     "ref_index": 7
+    },
+    {
+     "hyp": "haute",
+     "hyp_index": 8,
+     "op": "equal",
+     "ref": "haute",
+     "ref_index": 8
+    },
+    {
+     "hyp": "puis",
+     "hyp_index": 9,
+     "op": "equal",
+     "ref": "puis",
+     "ref_index": 9
+    },
+    {
+     "hyp": "il",
+     "hyp_index": 10,
+     "op": "equal",
+     "ref": "il",
+     "ref_index": 10
+    },
+    {
+     "hyp": "s'",
+     "hyp_index": 11,
+     "op": "equal",
+     "ref": "s'",
+     "ref_index": 11
+    },
+    {
+     "hyp": "est",
+     "hyp_index": 12,
+     "op": "equal",
+     "ref": "est",
+     "ref_index": 12
+    },
+    {
+     "hyp": "assis",
+     "hyp_index": 13,
+     "op": "equal",
+     "ref": "assis",
+     "ref_index": 13
+    }
+   ],
+   "label": "A",
+   "model_id": "synthetic-transcript-a",
+   "normalized": "l' eleve a lu le texte à voix haute puis il s' est assis",
+   "notes": [],
+   "provenance": "hand-written synthetic transcript: one changed accent",
+   "raw": "L'eleve a lu le texte à voix haute, puis il s'est assis.",
+   "ref_chars": 56,
+   "ref_words": 14,
+   "runtime_status": null,
+   "views": {
+    "cased_punct": {
+     "case_attributable_errors": 0,
+     "error_rate": 0.0556,
+     "errors": 1,
+     "ref_tokens": 18
+    },
+    "normalized": {
+     "error_rate": 0.0714,
+     "errors": 1,
+     "ref_tokens": 14
+    },
+    "uncased_punct": {
+     "error_rate": 0.0556,
+     "errors": 1,
+     "punctuation_edits": 0,
+     "ref_tokens": 18
+    }
+   },
+   "wer": 0.0714
+  },
+  {
+   "accent_only_substitutions": 0,
+   "cer": 0.0893,
+   "char_errors": 5,
+   "config_id": "synthetic-config-1",
+   "counts": {
+    "del": 1,
+    "equal": 13,
+    "ins": 0,
+    "sub": 0
+   },
+   "diagnostics": [
+    {
+     "basis": "token alignment after flh_fr_asr_norm_v1",
+     "kind": "measured",
+     "name": "wer",
+     "value": 0.0714
+    },
+    {
+     "basis": "substitutions whose tokens are equal once diacritics are removed",
+     "kind": "rule",
+     "name": "accent_only_substitutions",
+     "value": 0
+    },
+    {
+     "basis": "fewer than 3 reference words",
+     "kind": "heuristic",
+     "name": "low_evidence",
+     "value": false
+    },
+    {
+     "basis": "the runtime supplied no comparable confidence; none is computed here",
+     "kind": "not_supplied",
+     "name": "confidence",
+     "value": null
+    }
+   ],
+   "edits": [
+    {
+     "hyp": "l'",
+     "hyp_index": 0,
+     "op": "equal",
+     "ref": "l'",
+     "ref_index": 0
+    },
+    {
+     "hyp": "élève",
+     "hyp_index": 1,
+     "op": "equal",
+     "ref": "élève",
+     "ref_index": 1
+    },
+    {
+     "hyp": "a",
+     "hyp_index": 2,
+     "op": "equal",
+     "ref": "a",
+     "ref_index": 2
+    },
+    {
+     "hyp": "lu",
+     "hyp_index": 3,
+     "op": "equal",
+     "ref": "lu",
+     "ref_index": 3
+    },
+    {
+     "hyp": "le",
+     "hyp_index": 4,
+     "op": "equal",
+     "ref": "le",
+     "ref_index": 4
+    },
+    {
+     "hyp": "texte",
+     "hyp_index": 5,
+     "op": "equal",
+     "ref": "texte",
+     "ref_index": 5
+    },
+    {
+     "hyp": "à",
+     "hyp_index": 6,
+     "op": "equal",
+     "ref": "à",
+     "ref_index": 6
+    },
+    {
+     "hyp": null,
+     "hyp_index": null,
+     "op": "del",
+     "ref": "voix",
+     "ref_index": 7
+    },
+    {
+     "hyp": "haute",
+     "hyp_index": 7,
+     "op": "equal",
+     "ref": "haute",
+     "ref_index": 8
+    },
+    {
+     "hyp": "puis",
+     "hyp_index": 8,
+     "op": "equal",
+     "ref": "puis",
+     "ref_index": 9
+    },
+    {
+     "hyp": "il",
+     "hyp_index": 9,
+     "op": "equal",
+     "ref": "il",
+     "ref_index": 10
+    },
+    {
+     "hyp": "s'",
+     "hyp_index": 10,
+     "op": "equal",
+     "ref": "s'",
+     "ref_index": 11
+    },
+    {
+     "hyp": "est",
+     "hyp_index": 11,
+     "op": "equal",
+     "ref": "est",
+     "ref_index": 12
+    },
+    {
+     "hyp": "assis",
+     "hyp_index": 12,
+     "op": "equal",
+     "ref": "assis",
+     "ref_index": 13
+    }
+   ],
+   "label": "B",
+   "model_id": "synthetic-transcript-b",
+   "normalized": "l' élève a lu le texte à haute puis il s' est assis",
+   "notes": [],
+   "provenance": "hand-written synthetic transcript: one omitted word",
+   "raw": "L'élève a lu le texte à haute, puis il s'est assis.",
+   "ref_chars": 56,
+   "ref_words": 14,
+   "runtime_status": null,
+   "views": {
+    "cased_punct": {
+     "case_attributable_errors": 0,
+     "error_rate": 0.0556,
+     "errors": 1,
+     "ref_tokens": 18
+    },
+    "normalized": {
+     "error_rate": 0.0714,
+     "errors": 1,
+     "ref_tokens": 14
+    },
+    "uncased_punct": {
+     "error_rate": 0.0556,
+     "errors": 1,
+     "punctuation_edits": 0,
+     "ref_tokens": 18
+    }
+   },
+   "wer": 0.0714
+  }
+ ],
+ "schema": "flh_speaking_lab_result_v1",
+ "status": "compared"
+}

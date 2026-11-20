@@ -1,0 +1,111 @@
+{
+ "agent": "fixture (hand-written; no agent was run)",
+ "packet_id": "pk-3cc014313f28",
+ "proposals": [
+  {
+   "evidence_ids": [
+    "ev-17c9dfcc08"
+   ],
+   "proposal_id": "p1",
+   "rationale": "« de » contracts to « du » or « des » before a noun; the rule is the same.",
+   "target_id": "k-40cbe73ae3f5",
+   "text": "« en » replaces a place introduced by « de » (also « du », « des »): « Je viens de la boulangerie, j'en viens. »",
+   "type": "correction"
+  },
+  {
+   "evidence_ids": [
+    "ev-fd704f2740"
+   ],
+   "proposal_id": "p2",
+   "rationale": "Keep the rule narrow for A1.",
+   "target_id": "k-6c4760ebee9d",
+   "text": "« y » replaces a place introduced by « à » only.",
+   "type": "correction"
+  },
+  {
+   "accepted": [
+    "Oui, j'y vais demain.",
+    "Oui, j'y vais."
+   ],
+   "evidence_ids": [
+    "ev-6659b658b9"
+   ],
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-0d3281b28da6",
+    "k-6c4760ebee9d"
+   ],
+   "prompt": "Tu vas chez le médecin demain ? Answer with « y » or « en ».",
+   "proposal_id": "p3",
+   "rationale": "A new place with « chez », which the learner's corrected rule covers.",
+   "type": "exercise"
+  },
+  {
+   "accepted": [
+    "Oui, nous y allons."
+   ],
+   "evidence_ids": [],
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-d1c9732336a2"
+   ],
+   "prompt": "Vous allez à la piscine ce soir ? Answer with « y » or « en ».",
+   "proposal_id": "p4",
+   "rationale": "More practice with « aller à ».",
+   "type": "exercise"
+  },
+  {
+   "answer": "en",
+   "evidence_ids": [
+    "ev-0000000000"
+   ],
+   "kind": "choose",
+   "knowledge_ids": [
+    "k-000000000000"
+   ],
+   "options": [
+    "y",
+    "en"
+   ],
+   "prompt": "Tu viens de Lyon ? — Oui, j'__ viens.",
+   "proposal_id": "p5",
+   "rationale": "A city introduced by « de ».",
+   "type": "exercise"
+  },
+  {
+   "accepted": [
+    "Oui, j'en vais."
+   ],
+   "evidence_ids": [
+    "ev-053a01e463"
+   ],
+   "kind": "produce",
+   "knowledge_ids": [
+    "k-0d3281b28da6"
+   ],
+   "prompt": "Tu vas au cinéma ce soir ? Answer with a pronoun.",
+   "proposal_id": "p6",
+   "rationale": "Practise the movement verb from the source.",
+   "type": "exercise"
+  },
+  {
+   "evidence_ids": [],
+   "proposal_id": "p7",
+   "rationale": "Not in the packet: a common learner question; « s'en aller » is a separate verb.",
+   "target_id": "k-232ca0f26098",
+   "text": "« aller à » takes « y »; « j'en vais » is wrong, but « je m'en vais » (I am leaving) is correct French with « s'en aller ».",
+   "type": "correction"
+  },
+  {
+   "evidence_ids": [],
+   "kind": "explain",
+   "knowledge_ids": [
+    "k-40cbe73ae3f5"
+   ],
+   "prompt": "Explain « en » again.",
+   "proposal_id": "p8",
+   "type": "exercise"
+  }
+ ],
+ "schema": "flh_agent_proposals_v1"
+}

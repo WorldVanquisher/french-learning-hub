@@ -1,0 +1,11 @@
+{
+ "analysis": {
+  "category": "grammar",
+  "explanation": "« y » replaces a place introduced by « à »; « en » replaces a place introduced by « de »."
+ },
+ "capture_id": "synthetic-y-en-001",
+ "original_context": "Mon amie m'a demandé : « Tu vas à la boulangerie ? » J'ai répondu : « Oui, j'en vais. » Elle m'a corrigée : « On dit : oui, j'y vais. » Plus tard, elle a dit : « Je viens de la boulangerie, j'en viens. »",
+ "original_input": "Pourquoi on dit « j'y vais » mais « j'en viens » ? Je confonds toujours « y » et « en ».",
+ "schema_version": "learning_capture_v1",
+ "source": "manual"
+}

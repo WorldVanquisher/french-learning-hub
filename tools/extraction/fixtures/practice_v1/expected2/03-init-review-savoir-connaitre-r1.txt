@@ -1,0 +1,71 @@
+Draft d-679b7325d019  source savoir-connaitre-demo revision 1 (be532c74de71)
+proposer: synthetic: hand-written fixture for the Extraction 2.1 prototype (no provider call); French needs a native-speaker check before learner use
+goal: Choose between « savoir » and « connaître » when I say that I know something (A1/A2).
+support: supported = every quote is in your own words exactly once; uncertain = repeated or only in the machine explanation; unsupported = a quote is not in your text; generated = a new practice example (the source never said it)
+
+[k-bc6e7c48470c] claim  support supported  state pending
+  statement « connaître » is followed by a noun: a person, a place or a thing you are familiar with: « Tu connais ce restaurant ? »
+  evidence  ev-4f60430c36 located          « Tu connais ce restaurant ? »
+            …travail, Marc m'a demandé : « [Tu connais ce restaurant ?] » J'ai répondu : « Oui, je sa…
+  evidence  ev-d48a6a9c12 located          « On dit : je connais ce restaurant. »
+            … restaurant. » Il a souri : « [On dit : je connais ce restaurant.] » Ensuite il a demandé : « Tu…
+  existing evidence-review heuristic: anchored
+
+[k-885ce829bc4b] claim  support supported  state pending
+  statement « savoir » is followed by a verb or a clause (où, que, si, comment): « Tu sais où il est ? »
+  evidence  ev-8d365c7a93 located          « Tu sais où il est ? »
+            …t. » Ensuite il a demandé : « [Tu sais où il est ?] » J'ai dit : « Non, je ne sai…
+  existing evidence-review heuristic: anchored
+
+[k-64cf5599890f] claim  support unsupported  state pending  <-- UNSUPPORTED: still a draft, decide explicitly
+  statement « savoir » is for people you know well and « connaître » for people you have just met.
+  evidence  -             not_found        « savoir is for people you know well »  these words are not in the learner's question or context
+  existing evidence-review heuristic: anchored
+
+[k-3846e52023ef] contrast  support supported  state pending
+  says      « connaître »: + a noun: a person, a place, a thing / « savoir »: + a verb or a clause (où, que, si, comment)
+  distinction Look at what follows the verb: a noun gives « connaître »; a verb or a clause gives « savoir ».
+  evidence  ev-4f60430c36 located          « Tu connais ce restaurant ? »
+            …travail, Marc m'a demandé : « [Tu connais ce restaurant ?] » J'ai répondu : « Oui, je sa…
+  evidence  ev-8d365c7a93 located          « Tu sais où il est ? »
+            …t. » Ensuite il a demandé : « [Tu sais où il est ?] » J'ai dit : « Non, je ne sai…
+
+[k-715446feb4fd] common_error  support supported  state pending
+  says      not « je sais ce restaurant » but « je connais ce restaurant »
+  why       « ce restaurant » is a noun, so « connaître ».
+  evidence  ev-f8e6708f8a located          « Oui, je sais ce restaurant. »
+            …staurant ? » J'ai répondu : « [Oui, je sais ce restaurant.] » Il a souri : « On dit : je …
+
+[k-e38255f7d2c0] worked_example  support generated  state pending
+  says      Tu connais mon frère ? — Oui, je connais ton frère.  (sentence not in your source)
+  explanation « ton frère » is a person (a noun), so « connaître ».
+
+[k-156a01f08b5a] worked_example  support generated  state pending
+  says      Tu sais nager ? — Oui, je sais nager.  (sentence not in your source)
+  explanation « nager » is a verb: knowing how to do something is « savoir ».
+
+states: pending 7, approved 0, corrected 0, rejected 0, needs_review 0
+counts: generated 2, no_evidence 0, supported 4, uncertain 0, unsupported 1
+
+Review of draft d-679b7325d019 (source savoir-connaitre-demo revision 1)
+
+Approve together: batch b-594da3e53bc7, 6 items, each shown above beside its evidence
+  [k-bc6e7c48470c] claim          supported evidence ev-4f60430c36, ev-d48a6a9c12
+      « connaître » is followed by a noun: a person, a place or a thing you are familiar with: …
+  [k-885ce829bc4b] claim          supported evidence ev-8d365c7a93
+      « savoir » is followed by a verb or a clause (où, que, si, comment): « Tu sais où il est …
+  [k-3846e52023ef] contrast       supported evidence ev-4f60430c36, ev-8d365c7a93
+      Look at what follows the verb: a noun gives « connaître »; a verb or a clause gives « sav…
+  [k-715446feb4fd] common_error   supported evidence ev-f8e6708f8a
+      « ce restaurant » is a noun, so « connaître ».
+  [k-e38255f7d2c0] worked_example generated new practice example; applies to k-3846e52023ef, k-bc6e7c48470c; sentence not in your source
+      « ton frère » is a person (a noun), so « connaître ».
+  [k-156a01f08b5a] worked_example generated new practice example; applies to k-3846e52023ef, k-885ce829bc4b; sentence not in your source
+      « nager » is a verb: knowing how to do something is « savoir ».
+  -> practice decide --work W --approve-batch b-594da3e53bc7   (add --except k-… to leave one out)
+
+Decide yourself, one by one (1): never part of a batch
+  [k-64cf5599890f] claim          UNSUPPORTED: « savoir is for people you know well » is not in your question or context
+      « savoir » is for people you know well and « connaître » for people you have just met.
+
+Already decided: none

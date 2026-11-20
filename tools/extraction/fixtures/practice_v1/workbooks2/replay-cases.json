@@ -1,0 +1,235 @@
+{
+ "cases": {
+  "in-order": {
+   "deliver": [
+    "feed-1-r1.json",
+    "feed-2-r1-newly-approved.json",
+    "feed-3-r2-withdrawn.json",
+    "feed-4-r3-awaiting-confirmation.json",
+    "feed-5-r3-restored.json"
+   ],
+   "expect": {
+    "actions": [
+     "applied",
+     "applied",
+     "applied",
+     "applied",
+     "applied"
+    ],
+    "items": {
+     "p-04705161a655": {
+      "history": 1,
+      "offered": true
+     },
+     "p-10a28f330355": {
+      "history": 0,
+      "offered": true
+     },
+     "p-3e03bff58a01": {
+      "history": 1,
+      "offered": true
+     },
+     "p-919b6c108284": {
+      "history": 0,
+      "offered": true
+     },
+     "p-cf2ec01246c8": {
+      "history": 0,
+      "offered": true
+     },
+     "p-f9efb7256976": {
+      "history": 0,
+      "offered": true
+     }
+    }
+   }
+  },
+  "late-old-feed": {
+   "deliver": [
+    "feed-1-r1.json",
+    "feed-2-r1-newly-approved.json",
+    "feed-5-r3-restored.json",
+    "feed-3-r2-withdrawn.json"
+   ],
+   "expect": {
+    "actions": [
+     "applied",
+     "applied",
+     "applied",
+     "stale"
+    ],
+    "items": {
+     "p-04705161a655": {
+      "history": 1,
+      "offered": true
+     },
+     "p-10a28f330355": {
+      "history": 0,
+      "offered": true
+     },
+     "p-3e03bff58a01": {
+      "history": 1,
+      "offered": true
+     },
+     "p-919b6c108284": {
+      "history": 0,
+      "offered": true
+     },
+     "p-cf2ec01246c8": {
+      "history": 0,
+      "offered": true
+     },
+     "p-f9efb7256976": {
+      "history": 0,
+      "offered": true
+     }
+    }
+   }
+  },
+  "missed-awaiting-feed": {
+   "deliver": [
+    "feed-1-r1.json",
+    "feed-2-r1-newly-approved.json",
+    "feed-3-r2-withdrawn.json",
+    "feed-5-r3-restored.json"
+   ],
+   "expect": {
+    "actions": [
+     "applied",
+     "applied",
+     "applied",
+     "applied"
+    ],
+    "items": {
+     "p-04705161a655": {
+      "history": 1,
+      "offered": true
+     },
+     "p-10a28f330355": {
+      "history": 0,
+      "offered": true
+     },
+     "p-3e03bff58a01": {
+      "history": 1,
+      "offered": true
+     },
+     "p-919b6c108284": {
+      "history": 0,
+      "offered": true
+     },
+     "p-cf2ec01246c8": {
+      "history": 0,
+      "offered": true
+     },
+     "p-f9efb7256976": {
+      "history": 0,
+      "offered": true
+     }
+    }
+   }
+  },
+  "repeat-restore": {
+   "deliver": [
+    "feed-1-r1.json",
+    "feed-2-r1-newly-approved.json",
+    "feed-3-r2-withdrawn.json",
+    "feed-4-r3-awaiting-confirmation.json",
+    "feed-5-r3-restored.json",
+    "feed-5-r3-restored.json",
+    "feed-5-r3-restored.json"
+   ],
+   "expect": {
+    "actions": [
+     "applied",
+     "applied",
+     "applied",
+     "applied",
+     "applied",
+     "replay",
+     "replay"
+    ],
+    "items": {
+     "p-04705161a655": {
+      "history": 1,
+      "offered": true
+     },
+     "p-10a28f330355": {
+      "history": 0,
+      "offered": true
+     },
+     "p-3e03bff58a01": {
+      "history": 1,
+      "offered": true
+     },
+     "p-919b6c108284": {
+      "history": 0,
+      "offered": true
+     },
+     "p-cf2ec01246c8": {
+      "history": 0,
+      "offered": true
+     },
+     "p-f9efb7256976": {
+      "history": 0,
+      "offered": true
+     }
+    }
+   }
+  },
+  "replay-every-feed": {
+   "deliver": [
+    "feed-1-r1.json",
+    "feed-1-r1.json",
+    "feed-2-r1-newly-approved.json",
+    "feed-2-r1-newly-approved.json",
+    "feed-3-r2-withdrawn.json",
+    "feed-3-r2-withdrawn.json",
+    "feed-4-r3-awaiting-confirmation.json",
+    "feed-4-r3-awaiting-confirmation.json",
+    "feed-5-r3-restored.json",
+    "feed-5-r3-restored.json"
+   ],
+   "expect": {
+    "actions": [
+     "applied",
+     "replay",
+     "applied",
+     "replay",
+     "applied",
+     "replay",
+     "applied",
+     "replay",
+     "applied",
+     "replay"
+    ],
+    "items": {
+     "p-04705161a655": {
+      "history": 1,
+      "offered": true
+     },
+     "p-10a28f330355": {
+      "history": 0,
+      "offered": true
+     },
+     "p-3e03bff58a01": {
+      "history": 1,
+      "offered": true
+     },
+     "p-919b6c108284": {
+      "history": 0,
+      "offered": true
+     },
+     "p-cf2ec01246c8": {
+      "history": 0,
+      "offered": true
+     },
+     "p-f9efb7256976": {
+      "history": 0,
+      "offered": true
+     }
+    }
+   }
+  }
+ },
+ "schema": "flh_practice_feed_replay_cases_v1"
+}

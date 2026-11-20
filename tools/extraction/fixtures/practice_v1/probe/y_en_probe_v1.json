@@ -1,0 +1,302 @@
+{
+ "delay": "at least one day after the last practice; the learner or the owner sets the day, nothing here schedules it",
+ "difficulty_levels": {
+  "L1": "the verbs of the source (aller, venir), a new place and subject, present, affirmative or negative",
+  "L2": "another verb with the same preposition (habiter à, sortir de, descendre de)",
+  "L3": "passé composé (the pronoun before the auxiliary), or a rule with a known exception"
+ },
+ "items": [
+  {
+   "controls": {
+    "cue": "none"
+   },
+   "difficulty": "L1",
+   "example_key": "rule",
+   "id": "u1",
+   "prompt": "Sans regarder tes notes : quand utilises-tu « y » pour un lieu, et quand « en » ? Donne une phrase nouvelle pour chacun.",
+   "rule": "« y » replaces a place introduced by « à » (where you go or are); « en » replaces a place introduced by « de » (where you come from).",
+   "type": "unassisted_recall"
+  },
+  {
+   "answer": "en",
+   "controls": {
+    "cue": "options"
+   },
+   "difficulty": "L1",
+   "example_key": "venir-cinema",
+   "id": "a1",
+   "options": [
+    "y",
+    "en"
+   ],
+   "prompt": "Tu viens du cinéma ? — Oui, j'__ viens.",
+   "rule": "venir de + lieu: « en »",
+   "type": "assisted_recall"
+  },
+  {
+   "answer": "y",
+   "controls": {
+    "cue": "options"
+   },
+   "difficulty": "L1",
+   "example_key": "diner-restaurant",
+   "id": "a2",
+   "options": [
+    "y",
+    "en"
+   ],
+   "prompt": "Vous dînez au restaurant ce soir ? — Oui, nous __ dînons.",
+   "rule": "dîner à (au) + lieu: « y »",
+   "type": "assisted_recall"
+  },
+  {
+   "accepted": [
+    "Oui, il y va.",
+    "Non, il n'y va pas."
+   ],
+   "answer": "Oui, il y va.",
+   "controls": {
+    "preposition": "à",
+    "subject": "il",
+    "tense": "présent",
+    "verb_in_source": true
+   },
+   "difficulty": "L1",
+   "example_key": "aller-gare",
+   "forms": [
+    "y",
+    "en"
+   ],
+   "id": "t1",
+   "known_errors": [
+    "il en va"
+   ],
+   "prompt": "Ton frère va à la gare ? Réponds avec « y » ou « en ».",
+   "rule": "« y » for « à » + place, « en » for « de » + place; the pronoun goes before the conjugated verb (before the auxiliary in the passé composé)",
+   "type": "transfer"
+  },
+  {
+   "accepted": [
+    "Oui, elle en vient.",
+    "Non, elle n'en vient pas."
+   ],
+   "answer": "Oui, elle en vient.",
+   "controls": {
+    "preposition": "de",
+    "subject": "elle",
+    "tense": "présent",
+    "verb_in_source": true
+   },
+   "difficulty": "L1",
+   "example_key": "venir-gare",
+   "forms": [
+    "y",
+    "en"
+   ],
+   "id": "t2",
+   "known_errors": [
+    "elle y vient"
+   ],
+   "prompt": "Ta sœur vient de la gare ? Réponds avec « y » ou « en ».",
+   "rule": "« y » for « à » + place, « en » for « de » + place; the pronoun goes before the conjugated verb (before the auxiliary in the passé composé)",
+   "type": "transfer"
+  },
+  {
+   "accepted": [
+    "Oui, ils y vont.",
+    "Non, ils n'y vont pas."
+   ],
+   "answer": "Oui, ils y vont.",
+   "controls": {
+    "preposition": "au (à + le)",
+    "subject": "ils",
+    "tense": "présent",
+    "verb_in_source": true
+   },
+   "difficulty": "L1",
+   "example_key": "aller-parc",
+   "forms": [
+    "y",
+    "en"
+   ],
+   "id": "t3",
+   "known_errors": [
+    "ils en vont"
+   ],
+   "prompt": "Tes parents vont au parc ? Réponds avec « y » ou « en ».",
+   "rule": "« y » for « à » + place, « en » for « de » + place; the pronoun goes before the conjugated verb (before the auxiliary in the passé composé)",
+   "type": "transfer"
+  },
+  {
+   "accepted": [
+    "Oui, j'y habite.",
+    "Non, je n'y habite pas."
+   ],
+   "answer": "Oui, j'y habite.",
+   "controls": {
+    "preposition": "à",
+    "subject": "je",
+    "tense": "présent",
+    "verb_in_source": false
+   },
+   "difficulty": "L2",
+   "example_key": "habiter-lyon",
+   "forms": [
+    "y",
+    "en"
+   ],
+   "id": "t4",
+   "known_errors": [
+    "j'en habite"
+   ],
+   "prompt": "Tu habites à Lyon ? Réponds avec « y » ou « en ».",
+   "rule": "« y » for « à » + place, « en » for « de » + place; the pronoun goes before the conjugated verb (before the auxiliary in the passé composé)",
+   "type": "transfer"
+  },
+  {
+   "accepted": [
+    "Oui, elle en sort.",
+    "Non, elle n'en sort pas."
+   ],
+   "answer": "Oui, elle en sort.",
+   "controls": {
+    "preposition": "de",
+    "subject": "elle",
+    "tense": "présent",
+    "verb_in_source": false
+   },
+   "difficulty": "L2",
+   "example_key": "sortir-bibliotheque",
+   "forms": [
+    "y",
+    "en"
+   ],
+   "id": "t5",
+   "known_errors": [
+    "elle y sort"
+   ],
+   "prompt": "Elle sort de la bibliothèque ? Réponds avec « y » ou « en ».",
+   "rule": "« y » for « à » + place, « en » for « de » + place; the pronoun goes before the conjugated verb (before the auxiliary in the passé composé)",
+   "type": "transfer"
+  },
+  {
+   "accepted": [
+    "Oui, j'en descends.",
+    "Non, je n'en descends pas."
+   ],
+   "answer": "Oui, j'en descends.",
+   "controls": {
+    "preposition": "du (de + le)",
+    "subject": "je",
+    "tense": "présent",
+    "verb_in_source": false
+   },
+   "difficulty": "L2",
+   "example_key": "descendre-train",
+   "forms": [
+    "y",
+    "en"
+   ],
+   "id": "t6",
+   "known_errors": [
+    "j'y descends"
+   ],
+   "prompt": "Tu descends du train ? Réponds avec « y » ou « en ».",
+   "rule": "« y » for « à » + place, « en » for « de » + place; the pronoun goes before the conjugated verb (before the auxiliary in the passé composé)",
+   "type": "transfer"
+  },
+  {
+   "accepted": [
+    "Oui, j'y suis allé.",
+    "Oui, j'y suis allée.",
+    "Non, je n'y suis pas allé.",
+    "Non, je n'y suis pas allée."
+   ],
+   "answer": "Oui, j'y suis allé.",
+   "controls": {
+    "preposition": "à",
+    "subject": "je",
+    "tense": "passé composé",
+    "verb_in_source": true
+   },
+   "difficulty": "L3",
+   "example_key": "aller-poste",
+   "forms": [
+    "y",
+    "en"
+   ],
+   "id": "t7",
+   "known_errors": [
+    "j'en suis allé",
+    "j'en suis allée"
+   ],
+   "prompt": "Tu es allé à la poste ? Réponds avec « y » ou « en ».",
+   "rule": "« y » for « à » + place, « en » for « de » + place; the pronoun goes before the conjugated verb (before the auxiliary in the passé composé)",
+   "type": "transfer"
+  },
+  {
+   "accepted": [
+    "Oui, j'en suis revenu.",
+    "Oui, j'en suis revenue.",
+    "Non, je n'en suis pas revenu.",
+    "Non, je n'en suis pas revenue."
+   ],
+   "ambiguous": "« je n'en suis pas revenu » is also the past of the idiom « ne pas en revenir » (to be astonished; Académie, revenir II.A.3). After this question the place reading is the expected one; the grader accepts it, the key says so.",
+   "answer": "Oui, j'en suis revenu.",
+   "controls": {
+    "preposition": "de",
+    "subject": "je",
+    "tense": "passé composé",
+    "verb_in_source": false
+   },
+   "difficulty": "L3",
+   "example_key": "revenir-plage",
+   "forms": [
+    "y",
+    "en"
+   ],
+   "id": "t8",
+   "known_errors": [
+    "j'y suis revenu",
+    "j'y suis revenue"
+   ],
+   "prompt": "Tu es revenu de la plage ? Réponds avec « y » ou « en ».",
+   "rule": "« y » for « à » + place, « en » for « de » + place; the pronoun goes before the conjugated verb (before the auxiliary in the passé composé)",
+   "type": "transfer"
+  },
+  {
+   "accepted": [
+    "Oui, j'irai.",
+    "Non, je n'irai pas."
+   ],
+   "ambiguous": "The Académie notes that « y » is usually left out before the future and conditional of « aller » (« j'irai demain »; Y II.1). « Oui, j'y irai. » is common in speech: it is graded 'check it yourself', not wrong.",
+   "answer": "Oui, j'irai.",
+   "controls": {
+    "exception": "y is usually dropped before the future of aller",
+    "preposition": "à",
+    "subject": "je",
+    "tense": "futur",
+    "verb_in_source": true
+   },
+   "difficulty": "L3",
+   "example_key": "aller-futur-piscine",
+   "forms": [
+    "y",
+    "en"
+   ],
+   "id": "t9",
+   "known_errors": [
+    "j'en irai"
+   ],
+   "prompt": "Tu iras à la piscine demain ? Réponds avec « y » ou « en ».",
+   "rule": "« y » for « à » + place, « en » for « de » + place; the pronoun goes before the conjugated verb (before the auxiliary in the passé composé)",
+   "type": "transfer"
+  }
+ ],
+ "note": "synthetic A1/A2 French written for the prototype; needs a native-speaker check before learner use (assumption A4)",
+ "probe_id": "probe-y-en-v1",
+ "schema": "flh_recall_probe_v1",
+ "seed": "flh-probe-y-en-v1",
+ "source_id": "y-en-demo",
+ "synthetic": true
+}

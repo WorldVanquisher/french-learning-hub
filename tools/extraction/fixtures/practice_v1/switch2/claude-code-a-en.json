@@ -1,0 +1,85 @@
+{
+ "agent": "claude-code",
+ "fixture_note": "hand-written fixture standing in for a Claude Code return (no agent was run); French needs a native-speaker check",
+ "packet_id": "pk-baea88870f76",
+ "proposals": [
+  {
+   "answer": "à",
+   "evidence_ids": [
+    "ev-75a4d1fa87"
+   ],
+   "exercise_schema": "flh_exercise_proposal_v1",
+   "kind": "discrimination",
+   "options": [
+    "à",
+    "en"
+   ],
+   "prompt": "Mon oncle travaille __ Marseille.",
+   "proposal_id": "q1",
+   "rationale": "A city after « travailler »: choose the preposition.",
+   "rule_id": "k-d0424fb40a11",
+   "source": {
+    "revision": 2,
+    "revision_sha256": "0386e3424e34e531c2369dc63f674b539477c4e179e2c0e6113d825be73ecea6",
+    "source_id": "a-en-lieux-demo"
+   },
+   "type": "exercise"
+  },
+  {
+   "accepted": [
+    "Elle vit en Suisse.",
+    "Ma cousine vit en Suisse.",
+    "En Suisse."
+   ],
+   "answer": "Elle vit en Suisse.",
+   "evidence_ids": [
+    "ev-2cd24b70b3"
+   ],
+   "exercise_schema": "flh_exercise_proposal_v1",
+   "kind": "production",
+   "prompt": "Où vit ta cousine ? (la Suisse)",
+   "proposal_id": "q2",
+   "rationale": "Another feminine country for « en ».",
+   "rubric": "« la Suisse » is a feminine country: « en Suisse ».",
+   "rule_id": "k-fb79321ec520",
+   "source": {
+    "revision": 2,
+    "revision_sha256": "0386e3424e34e531c2369dc63f674b539477c4e179e2c0e6113d825be73ecea6",
+    "source_id": "a-en-lieux-demo"
+   },
+   "type": "exercise"
+  },
+  {
+   "evidence_ids": [
+    "ev-371c2bef92"
+   ],
+   "proposal_id": "q3",
+   "rationale": "ev-371c2bef92 shows « à Londres », so this claim is supported and can be approved again.",
+   "target_id": "k-886099054b26",
+   "text": "« à » goes before any city name: « à Paris », « à Londres ».",
+   "type": "correction"
+  },
+  {
+   "answer": "au",
+   "evidence_ids": [],
+   "exercise_schema": "flh_exercise_proposal_v1",
+   "kind": "discrimination",
+   "options": [
+    "au",
+    "en"
+   ],
+   "prompt": "Il habite __ Canada.",
+   "proposal_id": "q4",
+   "rationale": "Masculine country.",
+   "rule_id": "k-XYZ",
+   "source": {
+    "revision": 2,
+    "revision_sha256": "0386e3424e34e531c2369dc63f674b539477c4e179e2c0e6113d825be73ecea6",
+    "source_id": "a-en-lieux-demo"
+   },
+   "type": "exercise"
+  }
+ ],
+ "schema": "flh_agent_proposals_v2",
+ "session_summary": "We practised à and en with cities and countries."
+}

@@ -1,0 +1,10 @@
+{"speaker": "s1", "clip": "c1", "condition": "clean"}
+{"speaker": "s1", "clip": "c1", "condition": "noise_snr10"}
+{"speaker": "s1", "clip": "c2", "condition": "clean"}
+{"speaker": "s1", "clip": "c2", "condition": "noise_snr10"}
+{"speaker": "s2", "clip": "c1", "condition": "clean"}
+{"speaker": "s2", "clip": "c1", "condition": "noise_snr10"}
+{"speaker": "s2", "clip": "c2", "condition": "clean"}
+{"speaker": "s3", "clip": "c1", "condition": "noise_snr10"}
+{"speaker": "s3", "clip": "c2", "condition": "clean"}
+{"speaker": "s3", "clip": "c2", "condition": "noise_snr10"}

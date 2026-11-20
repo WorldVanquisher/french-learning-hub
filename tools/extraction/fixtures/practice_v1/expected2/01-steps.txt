@@ -1,0 +1,49 @@
+Steps from capture to first practice: before (HANDOFF-136) vs after (Extraction 2.1)
+
+y-en-demo revision 1: before 9 steps, after 3 steps
+  before 1. practice init --source S --work W
+  before 2. practice preview --work W
+  before 3. practice decide --work W --item k-6c4760ebee9d --approve
+  before 4. practice decide --work W --item k-40cbe73ae3f5 --approve
+  before 5. practice decide --work W --item k-0d3281b28da6 --approve
+  before 6. practice decide --work W --item k-232ca0f26098 --approve
+  before 7. practice decide --work W --item k-d1c9732336a2 --approve
+  before 8. practice decide --work W --item k-cb9627cc7213 --approve
+  before 9. practice build --work W
+  after  1. practice init --source S --work W   (draft beside its evidence, then the review)
+  after  2. practice decide --work W --approve-batch b-d877ea1aeb14
+  after  3. practice build --work W
+  same approved items True (6); same practice IDs True (5); same evidence links True; exercises tied to evidence 5
+  one learner decision per approved item True; batch b-d877ea1aeb14
+  left for the learner k-5ca79503ae78: named in the review True, still pending True
+
+savoir-connaitre-demo revision 1: before 9 steps, after 3 steps
+  before 1. practice init --source S --work W
+  before 2. practice preview --work W
+  before 3. practice decide --work W --item k-bc6e7c48470c --approve
+  before 4. practice decide --work W --item k-885ce829bc4b --approve
+  before 5. practice decide --work W --item k-3846e52023ef --approve
+  before 6. practice decide --work W --item k-715446feb4fd --approve
+  before 7. practice decide --work W --item k-e38255f7d2c0 --approve
+  before 8. practice decide --work W --item k-156a01f08b5a --approve
+  before 9. practice build --work W
+  after  1. practice init --source S --work W   (draft beside its evidence, then the review)
+  after  2. practice decide --work W --approve-batch b-594da3e53bc7
+  after  3. practice build --work W
+  same approved items True (6); same practice IDs True (5); same evidence links True; exercises tied to evidence 5
+  one learner decision per approved item True; batch b-594da3e53bc7
+  left for the learner k-64cf5599890f: named in the review True, still pending True
+
+y-en-demo revision 2: before 5 steps, after 4 steps
+  before 1. practice revise --source S2 --work W
+  before 2. practice preview --work W
+  before 3. practice decide --work W --item k-40cbe73ae3f5 --approve
+  before 4. practice decide --work W --item k-0d3281b28da6 --approve
+  before 5. practice build --work W
+  after  1. practice revise --source S2 --work W   (draft beside its evidence, then the review)
+  after  2. practice decide --work W --item k-40cbe73ae3f5 --approve
+  after  3. practice decide --work W --item k-0d3281b28da6 --approve
+  after  4. practice build --work W
+  changed items decided one by one 2; same practice IDs as revision 1 True; changed items are never batched: each needs the learner's own decision, so only the preview step is saved
+
+basis: commands the learner runs from capture to the first practice, executed here, not timed use; the same intent in both flows (approve every supported item and new practice example, leave the rest)

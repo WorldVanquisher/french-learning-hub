@@ -1,0 +1,144 @@
+{
+ "capture": {
+  "analysis": {
+   "category": "vocabulary",
+   "explanation": "« connaître » is followed by a noun (a person, a place, a thing); « savoir » is followed by a verb or a clause."
+  },
+  "capture_id": "synthetic-savoir-connaitre-001",
+  "original_context": "Au travail, Marc m'a demandé : « Tu connais ce restaurant ? » J'ai répondu : « Oui, je sais ce restaurant. » Il a souri : « On dit : je connais ce restaurant. » Ensuite il a demandé : « Tu sais où il est ? » J'ai dit : « Non, je ne sais pas. »",
+  "original_input": "Quand est-ce qu'on dit « je sais » et quand « je connais » ? Je mélange toujours les deux.",
+  "schema_version": "learning_capture_v1",
+  "source": "manual"
+ },
+ "learner_goal": "Choose between « savoir » and « connaître » when I say that I know something (A1/A2).",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "connaître + nom",
+    "confidence": 0.8,
+    "kind": "vocabulary",
+    "quotes": [
+     "Tu connais ce restaurant ?",
+     "On dit : je connais ce restaurant."
+    ],
+    "ref": "connaitre-nom",
+    "statement": "« connaître » is followed by a noun: a person, a place or a thing you are familiar with: « Tu connais ce restaurant ? »",
+    "type": "claim"
+   },
+   {
+    "canonical": "savoir + verbe ou proposition",
+    "confidence": 0.8,
+    "kind": "vocabulary",
+    "quotes": [
+     "Tu sais où il est ?"
+    ],
+    "ref": "savoir-proposition",
+    "statement": "« savoir » is followed by a verb or a clause (où, que, si, comment): « Tu sais où il est ? »",
+    "type": "claim"
+   },
+   {
+    "canonical": "savoir + personne",
+    "confidence": 0.3,
+    "kind": "vocabulary",
+    "quotes": [
+     "savoir is for people you know well"
+    ],
+    "ref": "savoir-personnes",
+    "statement": "« savoir » is for people you know well and « connaître » for people you have just met.",
+    "type": "claim"
+   },
+   {
+    "a": {
+     "form": "connaître",
+     "use": "+ a noun: a person, a place, a thing"
+    },
+    "applies": [
+     "connaitre-nom",
+     "savoir-proposition"
+    ],
+    "b": {
+     "form": "savoir",
+     "use": "+ a verb or a clause (où, que, si, comment)"
+    },
+    "distinction": "Look at what follows the verb: a noun gives « connaître »; a verb or a clause gives « savoir ».",
+    "quotes": [
+     "Tu connais ce restaurant ?",
+     "Tu sais où il est ?"
+    ],
+    "ref": "savoir-vs-connaitre",
+    "type": "contrast"
+   },
+   {
+    "applies": [
+     "savoir-vs-connaitre"
+    ],
+    "quotes": [
+     "Oui, je sais ce restaurant."
+    ],
+    "ref": "je-sais-restaurant",
+    "right": "je connais ce restaurant",
+    "type": "common_error",
+    "why": "« ce restaurant » is a noun, so « connaître ».",
+    "wrong": "je sais ce restaurant"
+   },
+   {
+    "accepted": [
+     "Oui, je connais ton frère.",
+     "Oui, je le connais.",
+     "Non, je ne connais pas ton frère.",
+     "Non, je ne le connais pas."
+    ],
+    "answer": "Oui, je connais ton frère.",
+    "applies": [
+     "savoir-vs-connaitre",
+     "connaitre-nom"
+    ],
+    "choices": [
+     "connais",
+     "sais"
+    ],
+    "cloze": "Oui, je __ ton frère.",
+    "explanation": "« ton frère » is a person (a noun), so « connaître ».",
+    "generated": true,
+    "instruction": "Answer with « savoir » or « connaître ».",
+    "question": "Tu connais mon frère ?",
+    "ref": "ex-frere",
+    "target": "connais",
+    "type": "worked_example",
+    "wrong": [
+     "Oui, je sais ton frère."
+    ]
+   },
+   {
+    "accepted": [
+     "Oui, je sais nager.",
+     "Non, je ne sais pas nager."
+    ],
+    "answer": "Oui, je sais nager.",
+    "applies": [
+     "savoir-vs-connaitre",
+     "savoir-proposition"
+    ],
+    "choices": [
+     "connais",
+     "sais"
+    ],
+    "cloze": "Oui, je __ nager.",
+    "explanation": "« nager » is a verb: knowing how to do something is « savoir ».",
+    "generated": true,
+    "instruction": "Answer with « savoir » or « connaître ».",
+    "question": "Tu sais nager ?",
+    "ref": "ex-nager",
+    "target": "sais",
+    "type": "worked_example",
+    "wrong": [
+     "Oui, je connais nager."
+    ]
+   }
+  ],
+  "proposer": "synthetic: hand-written fixture for the Extraction 2.1 prototype (no provider call); French needs a native-speaker check before learner use"
+ },
+ "revision": 1,
+ "schema": "flh_practice_source_v1",
+ "source_id": "savoir-connaitre-demo"
+}

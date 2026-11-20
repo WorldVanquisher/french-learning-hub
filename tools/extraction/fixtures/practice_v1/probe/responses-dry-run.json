@@ -1,0 +1,83 @@
+{
+ "note": "synthetic responses for the dry run: they check the summary's arithmetic, not a learner; t4 is correct French that avoids both forms, so the probe cannot score it for this contrast (unsupported, not wrong)",
+ "probe_id": "probe-y-en-v1",
+ "responses": [
+  {
+   "item": "u1",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "completed",
+   "text": "y pour à + un lieu, en pour de + un lieu"
+  },
+  {
+   "item": "a1",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "completed",
+   "text": "en"
+  },
+  {
+   "item": "a2",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "unsupported",
+   "text": "à"
+  },
+  {
+   "item": "t1",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "completed",
+   "text": "Oui, il y va."
+  },
+  {
+   "item": "t2",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "completed",
+   "text": "Oui, elle y vient."
+  },
+  {
+   "item": "t3",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "revealed"
+  },
+  {
+   "item": "t4",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "unsupported",
+   "text": "Oui, j'habite là-bas."
+  },
+  {
+   "item": "t5",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "skipped"
+  },
+  {
+   "item": "t6",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "completed",
+   "text": "Oui, j'en descends."
+  },
+  {
+   "item": "t7",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "completed",
+   "text": "Oui, j'y suis allée."
+  },
+  {
+   "item": "t9",
+   "probe_id": "probe-y-en-v1",
+   "schema": "flh_probe_response_v1",
+   "status": "completed",
+   "text": "Oui, j'y irai."
+  }
+ ],
+ "schema": "flh_probe_responses_v1",
+ "synthetic": true
+}

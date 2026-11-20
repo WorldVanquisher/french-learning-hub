@@ -1,0 +1,27 @@
+Interactions from capture to first practice and to first unaided practice (executed; 2.1 vs 2.2)
+
+y-en-demo: 7 knowledge items (1 contrast); missing evidence: unsupported 1, no evidence 0, uncertain 0; flagged by 2.2: 2
+  flow intent           to first practice  to first unaided  decision cmds  records  items shown  approved  practice  approved without an individual look
+  2.1  leave_flagged                     3                 4              1        6            7         6         5 k-232ca0f26098
+  2.1  decide_flagged                    4                 5              2        7            7         6         5 k-232ca0f26098
+  2.2  leave_flagged                     3                 4              1        5            7         5         5 -
+  2.2  decide_flagged                    4                 5              2        7            7         6         5 -
+
+savoir-connaitre-demo: 7 knowledge items (1 contrast); missing evidence: unsupported 1, no evidence 0, uncertain 0; flagged by 2.2: 0
+  flow intent           to first practice  to first unaided  decision cmds  records  items shown  approved  practice  approved without an individual look
+  2.1  leave_flagged                     3                 4              1        6            7         6         5 -
+  2.1  decide_flagged                    4                 5              2        7            7         6         5 -
+  2.2  leave_flagged                     3                 4              1        6            7         6         5 -
+  2.2  decide_flagged                    4                 5              2        7            7         6         5 -
+
+a-en-lieux-demo: 9 knowledge items (1 contrast); missing evidence: unsupported 0, no evidence 0, uncertain 0; flagged by 2.2: 4
+  flow intent           to first practice  to first unaided  decision cmds  records  items shown  approved  practice  approved without an individual look
+  2.1  leave_flagged                     3                 4              1        9            9         9         5 k-1ef55be82232, k-32f4087a06b6, k-53a8841fc7d3, k-edad5a9a03c5
+  2.1  decide_flagged                    3                 4              1        9            9         9         5 k-1ef55be82232, k-32f4087a06b6, k-53a8841fc7d3, k-edad5a9a03c5
+  2.2  leave_flagged                     3                 4              1        5            9         5         5 -
+  2.2  decide_flagged                    7                 8              5        9            9         8         5 -
+
+basis: every count is an executed command or a written record, not timed use
+basis: intents: leave_flagged approves only what the review batches and leaves the rest pending (the 2.1 measure's intent); decide_flagged also decides every flagged item one by one
+basis: first unaided practice = the first answer to the explain item (no options, no source sentence)
+basis: items_shown_for_reading = items the review lists for the learner to read before the first decision

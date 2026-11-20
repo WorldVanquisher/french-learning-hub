@@ -1,0 +1,387 @@
+{
+ "decoding": "synthetic_rule_v1",
+ "items": [
+  {
+   "cluster": "s01",
+   "gender": "F",
+   "id": "syn-s01-u1",
+   "ref": "Le matin je bois un café chaud",
+   "served": {
+    "status": "transcribed",
+    "text": "Le matin je bois un café",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s02",
+   "gender": "M",
+   "id": "syn-s02-u1",
+   "ref": "Nous allons au marché le samedi",
+   "served": {
+    "status": "transcribed",
+    "text": "Nous allons au marché le samedi",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s03",
+   "gender": "F",
+   "id": "syn-s03-u1",
+   "ref": "Elle habite près de la gare",
+   "served": {
+    "status": "transcribed",
+    "text": "Elle habite près de la gare",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s04",
+   "gender": "M",
+   "id": "syn-s04-u1",
+   "ref": "Il fait froid en hiver ici",
+   "served": {
+    "status": "transcribed",
+    "text": "Il fait froid en hiver ici",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s05",
+   "gender": "F",
+   "id": "syn-s05-u1",
+   "ref": "Mon frère joue au football le dimanche",
+   "served": {
+    "status": "transcribed",
+    "text": "Mon frère joue au football le",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s06",
+   "gender": "M",
+   "id": "syn-s06-u1",
+   "ref": "Tu peux fermer la fenêtre s'il te plaît",
+   "served": {
+    "status": "transcribed",
+    "text": "Tu peux fermer la fenêtre s'il te plaît",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s07",
+   "gender": "F",
+   "id": "syn-s07-u1",
+   "ref": "Les enfants mangent une pomme à midi",
+   "served": {
+    "status": "transcribed",
+    "text": "Les enfants mangent une pomme à midi",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s08",
+   "gender": "M",
+   "id": "syn-s08-u1",
+   "ref": "Je prends le bus pour aller au travail",
+   "served": {
+    "status": "transcribed",
+    "text": "Je prends le bus pour aller au travail",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s09",
+   "gender": "F",
+   "id": "syn-s09-u1",
+   "ref": "Ma sœur aime lire des romans policiers",
+   "served": {
+    "status": "transcribed",
+    "text": "Ma sœur aime lire des romans",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s10",
+   "gender": "M",
+   "id": "syn-s10-u1",
+   "ref": "Nous avons visité un musée hier",
+   "served": {
+    "status": "transcribed",
+    "text": "Nous avons visité un musée hier",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s11",
+   "gender": "F",
+   "id": "syn-s11-u1",
+   "ref": "Le train part dans dix minutes",
+   "served": {
+    "status": "transcribed",
+    "text": "Le train part dans dix minutes",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s12",
+   "gender": "M",
+   "id": "syn-s12-u1",
+   "ref": "Vous parlez très bien français",
+   "served": {
+    "status": "transcribed",
+    "text": "Vous parlez très bien français",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s13",
+   "gender": "F",
+   "id": "syn-s13-u1",
+   "ref": "Il y a une boulangerie au coin de la rue",
+   "served": {
+    "status": "transcribed",
+    "text": "Il y a une boulangerie au coin de la",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s14",
+   "gender": "M",
+   "id": "syn-s14-u1",
+   "ref": "Je voudrais un billet pour Lyon",
+   "served": {
+    "status": "transcribed",
+    "text": "Je voudrais un billet pour Lyon",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s15",
+   "gender": "F",
+   "id": "syn-s15-u1",
+   "ref": "Elle a acheté une robe bleue",
+   "served": {
+    "status": "transcribed",
+    "text": "Elle a acheté une robe bleue",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s16",
+   "gender": "M",
+   "id": "syn-s16-u1",
+   "ref": "On se retrouve devant le cinéma",
+   "served": {
+    "status": "transcribed",
+    "text": "On se retrouve devant le cinéma",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s17",
+   "gender": "F",
+   "id": "syn-s17-u1",
+   "ref": "Le chat dort sur le canapé",
+   "served": {
+    "status": "transcribed",
+    "text": "Le chat dort sur le",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s18",
+   "gender": "M",
+   "id": "syn-s18-u1",
+   "ref": "Ils regardent un film ce soir",
+   "served": {
+    "status": "transcribed",
+    "text": "Ils regardent un film ce soir",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s19",
+   "gender": "F",
+   "id": "syn-s19-u1",
+   "ref": "Je n'aime pas beaucoup la pluie",
+   "served": {
+    "status": "transcribed",
+    "text": "Je n'aime pas beaucoup la pluie",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s20",
+   "gender": "M",
+   "id": "syn-s20-u1",
+   "ref": "La bibliothèque ferme à six heures",
+   "served": {
+    "status": "transcribed",
+    "text": "La bibliothèque ferme à six heures",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s21",
+   "gender": "F",
+   "id": "syn-s21-u1",
+   "ref": "Mon père prépare le dîner",
+   "served": {
+    "status": "transcribed",
+    "text": "Mon père prépare le",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s22",
+   "gender": "M",
+   "id": "syn-s22-u1",
+   "ref": "Nous cherchons un appartement en ville",
+   "served": {
+    "status": "transcribed",
+    "text": "Nous cherchons un appartement en ville",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s23",
+   "gender": "F",
+   "id": "syn-s23-u1",
+   "ref": "Tu as faim ou tu as soif",
+   "served": {
+    "status": "transcribed",
+    "text": "Tu as faim ou tu as soif",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s24",
+   "gender": "M",
+   "id": "syn-s24-u1",
+   "ref": "Le professeur explique la leçon",
+   "served": {
+    "status": "transcribed",
+    "text": "Le professeur explique la leçon",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s25",
+   "gender": "F",
+   "id": "syn-s25-u1",
+   "ref": "J'ai oublié mes clés à la maison",
+   "served": {
+    "status": "transcribed",
+    "text": "J'ai oublié mes clés à la",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s26",
+   "gender": "M",
+   "id": "syn-s26-u1",
+   "ref": "Elle écrit une lettre à sa grand-mère",
+   "served": {
+    "status": "transcribed",
+    "text": "Elle écrit une lettre à sa grand-mère",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s27",
+   "gender": "F",
+   "id": "syn-s27-u1",
+   "ref": "Le magasin est fermé le lundi",
+   "served": {
+    "status": "transcribed",
+    "text": "Le magasin est fermé le lundi",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s28",
+   "gender": "M",
+   "id": "syn-s28-u1",
+   "ref": "Je vais à la piscine avec mes amis",
+   "served": {
+    "status": "transcribed",
+    "text": "Je vais à la piscine avec mes amis",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s29",
+   "gender": "F",
+   "id": "syn-s29-u1",
+   "ref": "Il pleut depuis ce matin",
+   "served": {
+    "status": "transcribed",
+    "text": "Il pleut depuis ce",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s30",
+   "gender": "M",
+   "id": "syn-s30-u1",
+   "ref": "Nous partons en vacances en juillet",
+   "served": {
+    "status": "transcribed",
+    "text": "Nous partons en vacances en juillet",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s31",
+   "gender": "F",
+   "id": "syn-s31-u1",
+   "ref": "Le restaurant est plein ce soir",
+   "served": {
+    "status": "transcribed",
+    "text": "Le restaurant est plein ce soir",
+    "warnings": []
+   }
+  },
+  {
+   "cluster": "s32",
+   "gender": "M",
+   "id": "syn-s32-u1",
+   "ref": "Je me lève tôt pendant la semaine",
+   "served": {
+    "status": "transcribed",
+    "text": "Je me lève tôt pendant la semaine",
+    "warnings": []
+   }
+  }
+ ],
+ "model_dir_name": "synthetic-candidate-v1",
+ "normalization": "flh_fr_asr_norm_v1",
+ "runtime": {
+  "machine": "synthetic",
+  "python": "none"
+ },
+ "schema": "flh_speaking_eval_v1",
+ "summary": {
+  "label": "synthetic candidate: invented texts and timing, no model ran",
+  "served": {
+   "cer": 0.05387,
+   "del": 8,
+   "ins": 0,
+   "ref_words": 210,
+   "sub": 0,
+   "utterances": 32,
+   "wer": 0.0381
+  },
+  "split": "synthetic",
+  "timing": {
+   "audio_s": 320.0,
+   "batch": 1,
+   "compute_s": 89.6,
+   "model_load_s": 9.1,
+   "peak_rss_mb": 1500.0,
+   "real_time_factor": 0.28,
+   "threads": 2
+  },
+  "utterances": 32
+ }
+}

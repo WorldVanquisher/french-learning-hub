@@ -1,0 +1,41 @@
+{
+ "agent": "codex",
+ "counts": {
+  "accepted_candidate": 2,
+  "conflict": 0,
+  "duplicate": 1,
+  "invalid": 0,
+  "unknown_reference": 0
+ },
+ "note": "nothing was applied: an accepted candidate still needs the learner's explicit approval",
+ "packet_id": "pk-e2920fe276cb",
+ "packet_matches": true,
+ "read_only": true,
+ "rows": [
+  {
+   "class": "accepted_candidate",
+   "flags": [],
+   "proposal_id": "c1",
+   "rationale": "Your evidence shows « à la boulangerie » (ev-fd704f2740) and « de la boulangerie » (ev-17c9dfcc08). Not in the packet: « chez », « dans » and « sur » come from general grammar, so the rule covers more places.",
+   "target_id": "k-0d3281b28da6",
+   "text": "Ask which preposition introduces the place: « à », « chez », « dans » or « sur » give « y » (where you go or where you are); « de », « du », « de la » or « des » give « en » (where you come from).",
+   "type": "correction"
+  },
+  {
+   "class": "duplicate",
+   "proposal_id": "c2",
+   "type": "correction",
+   "why": "same wording as c1"
+  },
+  {
+   "class": "accepted_candidate",
+   "flags": [],
+   "kind": "produce",
+   "prompt": "Tu vas chez Paul ce soir ? Answer with « y » or « en ».",
+   "proposal_id": "c3",
+   "rationale": "Not in the packet: « chez Paul » is a new place that takes « y » like « à la boulangerie » (ev-fd704f2740).",
+   "type": "exercise"
+  }
+ ],
+ "schema": "flh_agent_import_preview_v1"
+}

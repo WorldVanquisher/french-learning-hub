@@ -1,0 +1,198 @@
+{
+ "all_ok": true,
+ "rows": [
+  {
+   "event": "approve",
+   "expected": "approved",
+   "from": "pending",
+   "observed": "approved",
+   "ok": true,
+   "rule": "a learner decision"
+  },
+  {
+   "event": "reject",
+   "expected": "rejected",
+   "from": "pending",
+   "observed": "rejected",
+   "ok": true,
+   "rule": "a learner decision"
+  },
+  {
+   "event": "edit",
+   "expected": "corrected",
+   "from": "pending",
+   "observed": "corrected",
+   "ok": true,
+   "rule": "the learner's wording replaces the proposal; the proposal is kept"
+  },
+  {
+   "event": "batch approve",
+   "expected": "approved",
+   "from": "pending (supported)",
+   "observed": "approved",
+   "ok": true,
+   "rule": "only supported items without cue, conflict or paraphrase"
+  },
+  {
+   "event": "batch approve",
+   "expected": "pending",
+   "from": "pending (unsupported)",
+   "observed": "pending",
+   "ok": true,
+   "rule": "never batched"
+  },
+  {
+   "event": "the same batch command again",
+   "expected": "nothing written",
+   "from": "batch applied",
+   "observed": "nothing written",
+   "ok": true,
+   "rule": "a repeated batch is a no-op"
+  },
+  {
+   "event": "batch approve with the shown ID",
+   "expected": "accepted",
+   "from": "batch shown, then a decision on a non-member",
+   "observed": "accepted",
+   "ok": true,
+   "rule": "the members and their hashes are unchanged"
+  },
+  {
+   "event": "batch approve with the shown ID",
+   "expected": "refused",
+   "from": "batch shown, then a decision on a member",
+   "observed": "refused",
+   "ok": true,
+   "rule": "a batch ID binds exactly the members shown"
+  },
+  {
+   "event": "approve without attestation",
+   "expected": "refused",
+   "from": "pending (paraphrase)",
+   "observed": "refused",
+   "ok": true,
+   "rule": "a paraphrase is never evidence"
+  },
+  {
+   "event": "approve with --attest-paraphrase",
+   "expected": "approved",
+   "from": "pending (paraphrase)",
+   "observed": "approved",
+   "ok": true,
+   "rule": "the attestation is recorded as the learner's"
+  },
+  {
+   "event": "revision, item unchanged",
+   "expected": "approved",
+   "from": "approved",
+   "observed": "approved",
+   "ok": true,
+   "rule": "carried while unchanged"
+  },
+  {
+   "event": "revision, item unchanged",
+   "expected": "rejected",
+   "from": "rejected",
+   "observed": "rejected",
+   "ok": true,
+   "rule": "the reason stays with revision 1"
+  },
+  {
+   "event": "revision, spacing only",
+   "expected": "approved",
+   "from": "approved",
+   "observed": "approved",
+   "ok": true,
+   "rule": "not material: Unicode spaces, apostrophes, NFC"
+  },
+  {
+   "event": "revision, material change (same item ID)",
+   "expected": "needs_review (changed)",
+   "from": "approved",
+   "observed": "needs_review (changed)",
+   "ok": true,
+   "rule": "a material change is never covered by the old approval"
+  },
+  {
+   "event": "revision rewrites the claim statement",
+   "expected": "pending (new item ID)",
+   "from": "approved",
+   "observed": "pending (new item ID)",
+   "ok": true,
+   "rule": "a claim's ID hashes its statement: a rewritten claim is a new item, and no approval transfers to it"
+  },
+  {
+   "event": "revision removes the quote",
+   "expected": "needs_review (changed)",
+   "from": "approved",
+   "observed": "needs_review (changed)",
+   "ok": true,
+   "rule": "practice is withdrawn"
+  },
+  {
+   "event": "revision restores the quote",
+   "expected": "needs_review (restored)",
+   "from": "needs_review (quote removed)",
+   "observed": "needs_review (restored)",
+   "ok": true,
+   "rule": "no silent reactivation"
+  },
+  {
+   "event": "approve",
+   "expected": "approved",
+   "from": "needs_review (restored)",
+   "observed": "approved",
+   "ok": true,
+   "rule": "a new learner decision"
+  },
+  {
+   "event": "absent from one revision, back unchanged",
+   "expected": "approved",
+   "from": "approved",
+   "observed": "approved",
+   "ok": true,
+   "rule": "a decision on an unchanged item is kept"
+  },
+  {
+   "event": "revision moves the quote",
+   "expected": "approved (moved shown)",
+   "from": "approved",
+   "observed": "approved (moved shown)",
+   "ok": true,
+   "rule": "a moved quote is still located"
+  },
+  {
+   "event": "batch",
+   "expected": "both left to the learner",
+   "from": "pending conflict pair",
+   "observed": "both left to the learner",
+   "ok": true,
+   "rule": "a conflict is decided one by one"
+  },
+  {
+   "event": "batch",
+   "expected": "other side batchable",
+   "from": "conflict, one side rejected",
+   "observed": "other side batchable",
+   "ok": true,
+   "rule": "a resolved conflict blocks nothing"
+  },
+  {
+   "event": "retry without repair",
+   "expected": "refused",
+   "from": "batch interrupted",
+   "observed": "refused",
+   "ok": true,
+   "rule": "a torn write is never read as data"
+  },
+  {
+   "event": "retry the same batch",
+   "expected": "each member approved once",
+   "from": "batch interrupted, repaired",
+   "observed": "each member approved once",
+   "ok": true,
+   "rule": "the retry writes only what is missing"
+  }
+ ],
+ "schema": "flh_practice_acceptance_matrix_v1"
+}
