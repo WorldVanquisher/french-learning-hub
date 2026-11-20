@@ -8,8 +8,9 @@
 crash.log
 crash.*.log
 # Local variables: the filled-in copy holds the AMI, expiry and run choices.
-# The reviewed template terraform.tfvars.example stays tracked.
+# The reviewed template terraform.tfvars.example stays tracked; production.tfvars (R3) is local too.
 terraform.tfvars
+*.tfvars
 *.auto.tfvars
 *.auto.tfvars.json
 override.tf

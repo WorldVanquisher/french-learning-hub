@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Offline check of an owner-supplied staging Terraform plan (JSON). Never runs Terraform.
 
-  plan_check.py --mode create|update|destroy PLAN.json [--allow-replace ADDRESS ...]
-                [--expected staging/expected_resources.json]
+  plan_check.py --mode create|update|destroy [--env staging|production] PLAN.json
+                [--allow-replace ADDRESS ...] [--expected staging/expected_resources.json]
+
+--env (default staging) selects the environment's settings in expected_resources.json:
+its Component tag, Environment tag, flh-stg-/flh-prd- name prefix, shutdown behaviour,
+termination protection, bucket force_destroy and expiry. Production is never checked
+for a destroy: its data volume and bucket hold the learner's data (owner decision).
 
 PLAN.json is what the owner produces with
   terraform plan -out stg.tfplan && terraform show -json stg.tfplan > stg.plan.json
@@ -21,9 +26,14 @@ STOP (exit 1) when any of these holds; otherwise SAFE (exit 0):
     with --allow-replace (only aws_instance.host and aws_volume_attachment.data
     may ever be allowed: the data volume and the bucket are never replaced);
   - destroy mode: anything but delete, or a resource missing from the destroy;
+    any destroy with --env production;
   - weakened settings: IMDSv1, an unencrypted root or data volume, a shutdown
-    behaviour other than terminate, an egress rule other than TCP 443, missing
-    Project/Component/ExpiresAt/Run/ManagedBy tags, another provider.
+    behaviour other than the environment's (staging terminate, production stop),
+    termination protection or bucket force_destroy other than the environment's,
+    an egress rule other than TCP 443, missing Project/Component/Environment/
+    ExpiresAt/Run/ManagedBy tags (production: ExpiresAt never), another provider;
+  - another environment's resources: a flh-* name, name prefix or Name tag that
+    does not start with this environment's prefix (staging flh-stg-, production flh-prd-).
 Exit 2: the file is not a Terraform plan JSON or the arguments are wrong.
 """
 import argparse
@@ -62,7 +72,7 @@ def action_kind(actions):
     return "+".join(a)
 
 
-def check(plan, expected, mode, allow_replace):
+def check(plan, expected, mode, allow_replace, env="staging"):
     findings = []  # (severity, address, message)
     stop = lambda addr, msg: findings.append(("STOP", addr, msg))
     info = lambda addr, msg: findings.append(("INFO", addr, msg))
@@ -70,6 +80,18 @@ def check(plan, expected, mode, allow_replace):
         print("plan_check: not a `terraform show -json` plan (no format_version/resource_changes)", file=sys.stderr)
         sys.exit(2)
     managed = expected["managed"]
+    envs = expected.get("environments") or {}
+    if env not in envs:
+        print(f"plan_check: environment {env!r} is not in {sorted(envs)}", file=sys.stderr)
+        sys.exit(2)
+    ecfg = envs[env]
+    required_tags = dict(expected["required_tags"], Component=ecfg["Component"], Environment=env)
+    recorded = ((plan.get("variables") or {}).get("environment") or {}).get("value")
+    if recorded is not None and recorded != env:
+        stop("-", f"the plan was made with environment={recorded!r} but is checked as --env {env}")
+    if mode == "destroy" and not ecfg.get("destroy_allowed"):
+        stop("-", f"{env} is never destroyed through this check: its data volume and bucket hold the learner's data "
+                  "(teardown is a separate owner decision)")
     data_ok = set(expected["data"])
     public_types = set(expected["public_path_types"])
     counts = {"create": 0, "update": 0, "delete": 0, "replace": 0, "no-op": 0, "read": 0}
@@ -125,6 +147,16 @@ def check(plan, expected, mode, allow_replace):
             for k in ("block_public_acls", "block_public_policy", "ignore_public_acls", "restrict_public_buckets"):
                 if after.get(k) is not True:
                     stop(addr, f"public access block {k} is not true")
+        for key in ("name", "name_prefix", "bucket", "bucket_prefix"):
+            v = after.get(key)
+            if isinstance(v, str) and v.startswith("flh-") and not v.startswith(ecfg["name_prefix"]):
+                stop(addr, f"{key} {v!r} belongs to another environment (expected the prefix {ecfg['name_prefix']!r})")
+        name_tag = ((after.get("tags_all") or after.get("tags") or {}) or {}).get("Name")
+        if isinstance(name_tag, str) and name_tag.startswith("flh-") and not name_tag.startswith(ecfg["name_prefix"]):
+            stop(addr, f"Name tag {name_tag!r} belongs to another environment (expected the prefix {ecfg['name_prefix']!r})")
+        if rtype == "aws_s3_bucket" and bool(after.get("force_destroy")) != ecfg["bucket_force_destroy"]:
+            stop(addr, f"bucket force_destroy is {bool(after.get('force_destroy'))}, {env} requires "
+                       f"{ecfg['bucket_force_destroy']} (production must keep its backups on destroy)")
         if rtype == "aws_instance":
             md = (after.get("metadata_options") or [{}])[0]
             if md.get("http_tokens") != "required":
@@ -132,8 +164,12 @@ def check(plan, expected, mode, allow_replace):
             root = (after.get("root_block_device") or [{}])[0]
             if root.get("encrypted") is not True:
                 stop(addr, "root volume not encrypted")
-            if after.get("instance_initiated_shutdown_behavior") != "terminate":
-                stop(addr, "shutdown behaviour is not terminate (the bounded runtime relies on it)")
+            if after.get("instance_initiated_shutdown_behavior") != ecfg["shutdown_behavior"]:
+                stop(addr, f"shutdown behaviour is not {ecfg['shutdown_behavior']} ({env}: "
+                           + ("the bounded runtime relies on it)" if env == "staging" else "a power-off must never terminate the host)"))
+            if bool(after.get("disable_api_termination")) != ecfg["termination_protection"]:
+                stop(addr, f"termination protection is {bool(after.get('disable_api_termination'))}, {env} requires "
+                           f"{ecfg['termination_protection']}")
             if after.get("associate_public_ip_address"):
                 info(addr, "public IPv4 for outbound HTTPS only (no inbound rule); the workbench is reached by SSM")
         if rtype == "aws_ebs_volume" and after.get("encrypted") is not True:
@@ -145,12 +181,16 @@ def check(plan, expected, mode, allow_replace):
                 if unknown:
                     continue
                 tags = after.get("tags") or {}
-            for k, v in expected["required_tags"].items():
+            for k, v in required_tags.items():
                 if (tags or {}).get(k) != v:
                     stop(addr, f"tag {k} is {(tags or {}).get(k)!r}, expected {v!r}")
             for k in expected["required_tag_keys"]:
                 if not (tags or {}).get(k):
                     stop(addr, f"tag {k} missing")
+            exp = (tags or {}).get("ExpiresAt")
+            if exp and (exp == "never") != ecfg["expires_at_never"]:
+                stop(addr, f"tag ExpiresAt is {exp!r}: " + ("production uses never" if ecfg["expires_at_never"]
+                                                             else "staging needs an expiry time"))
     if mode == "create":
         prior = (((plan.get("prior_state") or {}).get("values") or {}).get("root_module") or {}).get("resources") or []
         if any(r.get("mode") == "managed" for r in prior):
@@ -169,6 +209,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("plan")
     ap.add_argument("--mode", required=True, choices=["create", "update", "destroy"])
+    ap.add_argument("--env", default="staging", choices=["staging", "production"])
     ap.add_argument("--allow-replace", action="append", default=[])
     ap.add_argument("--expected", default=DEFAULT_EXPECTED)
     a = ap.parse_args()
@@ -178,8 +219,8 @@ def main():
             print(f"plan_check: --allow-replace {r} is never permitted", file=sys.stderr)
             return 2
     plan = load(a.plan)
-    findings, counts = check(plan, expected, a.mode, set(a.allow_replace))
-    print(f"plan ({a.mode}): {counts.get('create', 0)} to add, {counts.get('update', 0)} to change, "
+    findings, counts = check(plan, expected, a.mode, set(a.allow_replace), a.env)
+    print(f"plan ({a.env}, {a.mode}): {counts.get('create', 0)} to add, {counts.get('update', 0)} to change, "
           f"{counts.get('delete', 0)} to destroy, {counts.get('replace', 0)} to replace, "
           f"{counts.get('no-op', 0)} unchanged; terraform {plan.get('terraform_version', '?')}")
     for sev, addr, msg in findings:

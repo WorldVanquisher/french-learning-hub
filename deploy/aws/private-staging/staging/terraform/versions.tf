@@ -16,11 +16,12 @@ provider "aws" {
   region = var.aws_region
   default_tags {
     tags = {
-      Project   = "flh"
-      Component = "workbench-staging"
-      Run       = var.run_id
-      ExpiresAt = var.expires_at
-      ManagedBy = "terraform"
+      Project     = "flh"
+      Component   = local.env.component
+      Environment = var.environment
+      Run         = var.run_id
+      ExpiresAt   = var.expires_at
+      ManagedBy   = "terraform"
     }
   }
 }

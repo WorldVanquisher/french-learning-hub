@@ -8,3 +8,4 @@ deploy: names flh-demo-* -> flh-stg-* (role, profile, bucket prefix, guarded pol
 host-boundary: added ReadWriteStagingBackups, ReadStagingParameters, DecryptOnlyThroughSsm
 operate: S3UploadReleases -> S3UploadReleasesAndBackups (final NAS backup upload)
 operate: added S3ReadBackups, ManageStagingParameters
+verify-readonly (R3): describe/list/get only; no parameter value, no backup object, no write; Cost Explorer left out (billed per request)

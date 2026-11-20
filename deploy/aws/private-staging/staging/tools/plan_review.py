@@ -513,6 +513,31 @@ CHECKLIST = [
     ("aws_s3_bucket.staging", "bucket_prefix", "bucket name prefix", "flh-stg-"),
 ]
 
+# R3: the environment recorded in the plan (var.environment; staging when absent) changes these rows.
+ENV_ROWS = {
+    "staging": {"power-off at expiry terminates": "terminate", "bucket name prefix": "flh-stg-"},
+    "production": {"power-off at expiry terminates": "stop", "bucket name prefix": "flh-prd-"},
+}
+ENV_EXTRA = {
+    "staging": [("aws_s3_bucket.staging", "force_destroy", "bucket emptied on destroy (synthetic data only)", True)],
+    "production": [("aws_instance.host", "disable_api_termination", "termination protection on", True),
+                   ("aws_s3_bucket.staging", "force_destroy", "bucket kept on destroy (backups survive)", False)],
+}
+ENV_LABELS = {"power-off at expiry terminates": {"production": "shutdown stops the host (never terminates)"}}
+
+
+def plan_environment(plan):
+    v = ((plan.get("variables") or {}).get("environment") or {}).get("value")
+    return v if v in ENV_ROWS else "staging"
+
+
+def checklist_for(env):
+    rows = []
+    for addr, path, label, want in CHECKLIST:
+        want = ENV_ROWS[env].get(label, want)
+        rows.append((addr, path, ENV_LABELS.get(label, {}).get(env, label), want))
+    return rows + ENV_EXTRA[env]
+
 
 def dig(obj, path):
     """(found, value) for a dotted path through dicts and lists; found is False when a step is missing."""
@@ -530,7 +555,7 @@ def dig(obj, path):
 def checklist(plan):
     by = {rc["address"]: rc for rc in plan.get("resource_changes", [])}
     rows = []
-    for addr, path, label, want in CHECKLIST:
+    for addr, path, label, want in checklist_for(plan_environment(plan)):
         rc = by.get(addr)
         if rc is None:
             rows.append({"item": label, "address": addr, "attribute": path, "state": "ABSENT", "ok": False, "value": None})

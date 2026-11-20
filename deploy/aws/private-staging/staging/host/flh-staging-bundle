@@ -768,13 +768,33 @@ def cmd_install(a):
         fh.close()
 
 
+def rollback_target(cur, prev, to):
+    """The explicit rollback target (R3): --to names an installed bundle, else ROOT/previous."""
+    if to is None:
+        if not prev:
+            raise Refused("no previous bundle recorded (ROOT/previous); nothing to roll back to "
+                          "(name an installed bundle with --to flh-staging-<tree12>)")
+        return prev, "ROOT/previous"
+    if not NAME_RE.match(to):
+        raise Refused(f"--to must name a bundle as flh-staging-<tree12>, not {to!r}")
+    d = os.path.join(BUNDLES, to)
+    if not os.path.isdir(d):
+        raise Refused(f"{to} is not installed under {BUNDLES}; install it first (it is verified on install)")
+    if cur and os.path.realpath(d) == os.path.realpath(cur):
+        raise Refused(f"{to} is the current bundle; there is nothing to roll back")
+    return d, "--to"
+
+
 def cmd_rollback(a):
     detach_from_terminal_hangup()
     fh = lock()
     try:
         cur, prev = link_target(CURRENT), link_target(PREVIOUS)
-        if not prev:
-            raise Refused("no previous bundle recorded (ROOT/previous); nothing to roll back to")
+        prev, chosen_by = rollback_target(cur, prev, getattr(a, "to", None))
+        facts = bundle_facts(prev)
+        out(f"rollback target ({chosen_by}): {facts['bundle']} commit {facts['commit']} tree {facts['tree'][:12]} "
+            f"image {facts['image'][:19]} migrations {facts['migrations']}; current: "
+            f"{os.path.basename(cur) if cur else '-'}")
         t0 = time.time()
         manifest, build = verify_dir(prev)
         out(f"previous bundle {os.path.basename(prev)} verified again from its files")
@@ -863,7 +883,8 @@ def main():
     cl = sub.add_parser("cleanup")
     cl.add_argument("--yes", action="store_true")
     cl.add_argument("--keep-transfers", type=int, default=2)
-    sub.add_parser("rollback")
+    rb = sub.add_parser("rollback")
+    rb.add_argument("--to", help="an installed bundle (flh-staging-<tree12>); default: ROOT/previous")
     st = sub.add_parser("status")
     st.add_argument("--redact", action="store_true")
     sub.add_parser("identity")

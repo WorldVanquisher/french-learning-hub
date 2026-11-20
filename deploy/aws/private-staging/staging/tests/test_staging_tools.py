@@ -83,6 +83,22 @@ class PlanCheck(unittest.TestCase):
         ("plan-unsafe-weakened-settings.json", "create", [], 1, "IMDSv2"),
         ("plan-unsafe-create-over-state.json", "create", [], 1, "not a first apply"),
         ("plan-create-safe.json", "destroy", [], 1, "create in a destroy plan"),
+        # R3: production settings, and each environment's plan checked as the other
+        ("plan-production-create-safe.json", "create", ["--env", "production"], 0, "SAFE"),
+        ("plan-production-update-replace-instance.json", "update", ["--env", "production"], 1, "without --allow-replace"),
+        ("plan-production-update-replace-instance.json", "update",
+         ["--env", "production", "--allow-replace", "aws_instance.host", "--allow-replace", "aws_volume_attachment.data"], 0, "SAFE"),
+        ("plan-production-destroy.json", "destroy", ["--env", "production"], 1, "never destroyed through this check"),
+        ("plan-production-unsafe-staging-settings.json", "create", ["--env", "production"], 1, "shutdown behaviour is not stop"),
+        ("plan-production-unsafe-staging-settings.json", "create", ["--env", "production"], 1, "termination protection is False"),
+        ("plan-production-unsafe-staging-settings.json", "create", ["--env", "production"], 1, "force_destroy is True"),
+        ("plan-production-unsafe-staging-settings.json", "create", ["--env", "production"], 1, "production uses never"),
+        ("plan-production-unsafe-staging-settings.json", "create", ["--env", "production"], 1, "belongs to another environment"),
+        ("plan-create-safe.json", "create", ["--env", "production"], 1, "tag Component is 'workbench-staging'"),
+        ("plan-create-safe.json", "create", ["--env", "production"], 1, "belongs to another environment"),
+        ("plan-production-create-safe.json", "create", [], 1, "tag Environment is 'production'"),
+        ("plan-production-create-safe.json", "create", [], 1, "made with environment='production' but is checked as --env staging"),
+        ("plan-production-create-safe.json", "create", ["--env", "staging"], 1, "shutdown behaviour is not terminate"),
     ]
 
     def test_fixtures(self):
@@ -177,6 +193,94 @@ class IamReview(unittest.TestCase):
                        if f.endswith(".json"))
         for a in ("AllocateAddress", "AssociateAddress", "AuthorizeSecurityGroupIngress", "elastic-ip"):
             self.assertNotIn(a, text)
+
+
+class IamEnvironments(unittest.TestCase):
+    """R3: the committed staging and production outputs are what the generator writes; production
+    withholds every delete of data or settings; both verify-readonly policies stay read-only."""
+    GEN = os.path.join(STAGING, "iam", "make_policies.py")
+    SRC = os.path.join(REPO, "deploy", "aws", "iam")
+
+    def test_outputs_are_what_the_generator_writes(self):
+        for env, committed in (("staging", "out"), ("production", "out-production")):
+            with self.subTest(env=env), tempfile.TemporaryDirectory() as td:
+                r = run(self.GEN, self.SRC, td, "--env", env)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                want = os.path.join(STAGING, "iam", committed)
+                self.assertEqual(sorted(os.listdir(td)), sorted(os.listdir(want)))
+                for f in os.listdir(td):
+                    self.assertEqual(rd(os.path.join(td, f)), rd(os.path.join(want, f)), f)
+
+    def test_production_withholds_deletes_and_keeps_its_names(self):
+        d = os.path.join(STAGING, "iam", "out-production")
+        text = "".join(rd(os.path.join(d, f)) for f in os.listdir(d) if f.endswith(".json"))
+        allowed = set()
+        for f in os.listdir(d):
+            if f.endswith(".json"):
+                for st in json.loads(rd(os.path.join(d, f)))["Statement"]:
+                    if st["Effect"] == "Allow":
+                        allowed |= set(st["Action"] if isinstance(st["Action"], list) else [st["Action"]])
+        for a in ("ec2:DeleteVolume", "s3:DeleteBucket", "s3:DeleteObject", "s3:DeleteObjectVersion", "ssm:DeleteParameters"):
+            self.assertNotIn(a, allowed)
+        for leftover in ("flh-stg", "workbench-staging", "/flh/staging", "__STAGING_AMI_ID__"):
+            self.assertNotIn(leftover, text)
+        self.assertIn('"workbench-production"', text)
+        r = run(os.path.join(STAGING, "iam", "review_permissions.py"), "--env", "production")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("ADMIN-ONLY deploy | aws_ebs_volume | ec2:DeleteVolume", r.stdout)
+        self.assertNotIn("MISSING", r.stdout)
+
+    def test_verify_policies_are_read_only(self):
+        rv = load_module("review_permissions", os.path.join(STAGING, "iam", "review_permissions.py"))
+        for committed, prefix in (("out", "flh-stg"), ("out-production", "flh-prd")):
+            with self.subTest(policy=prefix):
+                doc = json.loads(rd(os.path.join(STAGING, "iam", committed, f"{prefix}-verify-readonly-policy.json")))
+                allows = [a for st in doc["Statement"] if st["Effect"] == "Allow"
+                          for a in (st["Action"] if isinstance(st["Action"], list) else [st["Action"]])]
+                self.assertTrue(allows and all(rv.READ_ONLY.match(a) for a in allows), allows)
+                denies = {a for st in doc["Statement"] if st["Effect"] == "Deny" for a in st["Action"]}
+                self.assertTrue(rv.NEVER_IN_VERIFY <= denies)
+
+    def test_render_fills_production(self):
+        with tempfile.TemporaryDirectory() as td:
+            out = os.path.join(td, "filled")
+            r = run(os.path.join(STAGING, "iam", "render_policies.py"), "--account", "111122223333", "--ami",
+                    "ami-0123456789abcdef0", "--out", out, "--templates", os.path.join(STAGING, "iam", "out-production"))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertEqual(len(os.listdir(out)), 5)
+            self.assertIn("image/ami-0123456789abcdef0", rd(os.path.join(out, "flh-prd-deploy-ec2-policy.json")))
+
+
+class RollbackTarget(unittest.TestCase):
+    """R3-036: the rollback target is explicit: ROOT/previous by default, or --to an installed bundle."""
+
+    def setUp(self):
+        self.td = tempfile.mkdtemp()
+        self.mod = load_module("flh_staging_bundle_rb", os.path.join(STAGING, "host", "flh-staging-bundle"))
+        self.mod.BUNDLES = os.path.join(self.td, "bundles")
+        for n in ("flh-staging-aaaaaaaaaaaa", "flh-staging-bbbbbbbbbbbb", "flh-staging-cccccccccccc"):
+            os.makedirs(os.path.join(self.mod.BUNDLES, n))
+        self.cur = os.path.join(self.mod.BUNDLES, "flh-staging-cccccccccccc")
+        self.prev = os.path.join(self.mod.BUNDLES, "flh-staging-bbbbbbbbbbbb")
+
+    def tearDown(self):
+        shutil.rmtree(self.td)
+
+    def test_default_is_previous_and_named(self):
+        self.assertEqual(self.mod.rollback_target(self.cur, self.prev, None), (self.prev, "ROOT/previous"))
+
+    def test_to_names_an_installed_bundle(self):
+        d, why = self.mod.rollback_target(self.cur, self.prev, "flh-staging-aaaaaaaaaaaa")
+        self.assertEqual((os.path.basename(d), why), ("flh-staging-aaaaaaaaaaaa", "--to"))
+
+    def test_refusals(self):
+        for cur, prev, to, needle in ((self.cur, None, None, "no previous bundle"),
+                                      (self.cur, self.prev, "flh-staging-dddddddddddd", "is not installed"),
+                                      (self.cur, self.prev, "flh-staging-cccccccccccc", "is the current bundle"),
+                                      (self.cur, self.prev, "../etc", "--to must name a bundle")):
+            with self.subTest(to=to), self.assertRaises(self.mod.Refused) as cm:
+                self.mod.rollback_target(cur, prev, to)
+            self.assertIn(needle, str(cm.exception))
 
 
 class TreeId(unittest.TestCase):
@@ -652,6 +756,31 @@ class PreflightInputs(unittest.TestCase):
     def states(self):
         return {n: s for s, n, _ in self.pf.results if n.startswith("input var.")}
 
+    def test_production_tfvars_never_expire_and_use_production_policies(self):
+        # R3: production tfvars need expires_at never and are checked against out-production's IAM shape
+        tv = filled_tfvars(os.path.join(self.td, "prd.tfvars"), environment='"production"', expires_at='"never"')
+        quiet(self.pf.check_tfvars, tv)
+        fails = [r for r in self.pf.results if r[0] == "FAIL"]
+        self.assertEqual(fails, [])
+        self.assertTrue(any(r[0] == "WARN" and r[1] == "environment production" for r in self.pf.results))
+        self.pf.results.clear()
+        tv = filled_tfvars(os.path.join(self.td, "stg.tfvars"), expires_at='"never"')
+        quiet(self.pf.check_tfvars, tv)
+        self.assertTrue(any(r[0] == "FAIL" and r[1] == "tfvars expires_at is RFC 3339 UTC" for r in self.pf.results))
+        self.pf.results.clear()
+        tv = filled_tfvars(os.path.join(self.td, "prd2.tfvars"), environment='"production"')
+        quiet(self.pf.check_tfvars, tv)
+        self.assertTrue(any(r[0] == "FAIL" and r[1] == "tfvars expires_at is never (production)" for r in self.pf.results))
+        # a staging terraform.tfvars left in the root would be auto-loaded into the production run
+        self.pf.results.clear()
+        root = os.path.join(self.td, "root")
+        os.makedirs(root)
+        wr(os.path.join(root, "terraform.tfvars"), 'data_volume_size_gib = 8\n')
+        self.pf.TF = root
+        tv = filled_tfvars(os.path.join(self.td, "prd3.tfvars"), environment='"production"', expires_at='"never"')
+        quiet(self.pf.check_tfvars, tv)
+        self.assertTrue(any(r[0] == "FAIL" and r[1].startswith("no auto-loaded tfvars in the root") for r in self.pf.results))
+
     def test_example_shows_defaults_and_placeholders(self):
         quiet(self.pf.check_inputs, os.path.join(STAGING, "terraform", "terraform.tfvars.example"), None, set())
         st = {n.split()[1]: n.split()[2] for n in self.states()}
@@ -659,7 +788,7 @@ class PreflightInputs(unittest.TestCase):
         self.assertEqual(st["var.compose_plugin_sha256"], "PLACEHOLDER")
         self.assertEqual(st["var.app_port"], "DEFAULT")
         self.assertEqual(st["var.aws_region"], "SET")
-        self.assertEqual(len(st), 12)            # every variable in variables.tf is listed
+        self.assertEqual(len(st), 14)            # every variable in variables.tf is listed (R3: + environment, backup_retention_days)
 
     def test_missing_and_invalid_values(self):
         tv = filled_tfvars(os.path.join(self.td, "t.tfvars"), run_id=None, max_runtime_hours="13", vpc_cidr='"x"', typo_var='"1"')
@@ -1036,6 +1165,18 @@ class PlanChecklist(unittest.TestCase):
         key = next(x for x in out["rows"] if x["attribute"] == "key_name")
         self.assertEqual((key["state"], key["ok"]), ("OMITTED", True))      # left out on purpose: no SSH key
 
+    def test_production_rows_follow_the_recorded_environment(self):
+        # R3: a production plan is reviewed against production's settings, a weakened one is not
+        safe = json.loads(self.run_it(json.loads(rd(os.path.join(FIX, "plan-production-create-safe.json")))).stdout)
+        self.assertEqual(safe["wrong"], 0)
+        rows = {x["item"]: x for x in safe["rows"]}
+        self.assertEqual(rows["shutdown stops the host (never terminates)"]["value"], "stop")
+        self.assertIs(rows["termination protection on"]["ok"], True)
+        weak = json.loads(self.run_it(json.loads(rd(os.path.join(FIX, "plan-production-unsafe-staging-settings.json")))).stdout)
+        bad = sorted(x["item"] for x in weak["rows"] if x["ok"] is False)
+        self.assertEqual(bad, ["bucket kept on destroy (backups survive)", "shutdown stops the host (never terminates)",
+                               "termination protection on"])
+
     def test_unknown_is_not_omitted_and_not_wrong(self):
         ch = self.host()
         ch["after"].pop("ami")
@@ -1151,7 +1292,8 @@ class PlanReview(unittest.TestCase):
         self.assertIn("STALE var.ami_id: set now but not recorded in the plan", r.stdout)
         vals.update({k: v.strip('"') for k, v in (l.split(" = ") for l in rd(tv).splitlines())})
         vals.update({"vpc_cidr": "10.85.0.0/24", "app_port": 8080, "max_runtime_hours": 4, "data_volume_size_gib": 8,
-                     "host_role_permissions_boundary_name": "flh-stg-host-boundary", "compose_plugin_version": "v2.29.7"})
+                     "host_role_permissions_boundary_name": "flh-stg-host-boundary", "compose_plugin_version": "v2.29.7",
+                     "environment": "staging", "backup_retention_days": 35})
         plan = self.variant("stg.plan.json", edit)
         run(self.TOOL, "stamp", plan, "--tfvars", tv)
         r = run(self.TOOL, "freshness", plan, "--tfvars", tv)

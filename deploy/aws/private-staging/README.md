@@ -18,8 +18,8 @@ no AWS or Terraform command (AGENTS.md).
 | `staging/host/flh-staging-bundle` | host tool: verify, install, rollback, status, identity |
 | `staging/host/flh-staging-env` | renders the settings file from SSM parameters (values never printed) |
 | `staging/host/flh-staging-expire.service` | bounded runtime (power-off → terminate) |
-| `staging/terraform/` | the staging root (21 resources; separate state) |
-| `staging/iam/` | `make_policies.py` (derives the templates from `deploy/aws/iam`), `out/` (templates + `CHANGES.txt`), `render_policies.py` (fills account and AMI outside the repository), `review_permissions.py` (offline: every action the Terraform, the runbook and the host need is allowed; broad and unused grants) |
+| `staging/terraform/` | the staging root (21 resources; separate state). R3: the same root also renders **production** with `environment = "production"` in the workspace `production` (INVENTORY.md §5); `tests/*.tftest.hcl` check both with a mocked provider |
+| `staging/iam/` | `make_policies.py` (derives the templates from `deploy/aws/iam`; `--env production` writes `out-production/`), `out/` (templates + `CHANGES.txt`, plus the read-only `flh-stg-verify-readonly`), `render_policies.py` (fills account and AMI outside the repository), `review_permissions.py` (offline: every action the Terraform, the runbook and the host need is allowed; broad and unused grants) |
 | `staging/expected_resources.json`, `staging/tools/plan_check.py` | offline plan check (stop rule) |
 | `staging/tools/preflight.py` | offline preflight: Terraform files, user data size, tfvars, filled policies, bundle, tools |
 | `staging/rehearsal/` | local stand-in rehearsals (Docker on loopback; never the daily instance): `make_fixture_backup.py` (synthetic NAS-shaped backup), `bundle_rehearsal.py` (verify, install, rollback, failed installs), `standin_rehearsal.py` (restore, health, persistence, second target, failures), `cutover_dry_run.py` (endpoint checks, cutover, rollback); shared helpers in `standin_lib.py` |
@@ -28,5 +28,8 @@ no AWS or Terraform command (AGENTS.md).
 Local checks (no AWS, no Terraform, no Docker):
 `python3 -I -B deploy/aws/private-staging/staging/tests/test_staging_tools.py`
 and `python3 -I deploy/aws/private-staging/staging/tools/preflight.py`.
-`.gitignore` here keeps Terraform state, `terraform.tfvars`, plans and plan
+Terraform without AWS (a mocked provider; R3): in `staging/terraform`, `terraform
+init -backend=false`, then `terraform test -filter=tests/staging.tftest.hcl`, and in a
+workspace named `production`, `terraform test -filter=tests/production.tftest.hcl`.
+`.gitignore` here keeps Terraform state, every local `*.tfvars`, plans and plan
 JSON, filled IAM policies and bundle files out of Git.

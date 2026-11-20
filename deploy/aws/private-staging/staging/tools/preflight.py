@@ -119,7 +119,7 @@ def check_repo():
        f"{len(used)} variables", f"template uses {sorted(used - set(keys))} not passed; passed {sorted(set(keys) - used)} unused")
     sample = {"root": "/srv/flh-staging", "region": "us-east-1", "bucket": "flh-stg-20261118000000000000000000",
               "param_dir": "/flh/staging", "port": "8080", "max_runtime_hours": "4", "compose_version": "v2.29.7",
-              "compose_sha256": "0" * 64}
+              "compose_sha256": "0" * 64, "expire_timer_verb": "enable"}
     for k, expr in keys.items():
         fm = re.match(r'file\("\$\{path\.module\}/([^"]+)"\)', expr)
         if fm:
@@ -171,8 +171,9 @@ def parse_tfvars(path):
     return vals
 
 
-def iam_constraints():
-    ec2 = json.loads(rd(os.path.join(STAGING, "iam", "out", "flh-stg-deploy-ec2-policy.json")))
+def iam_constraints(env="staging"):
+    out, prefix = ("out", "flh-stg") if env == "staging" else ("out-production", "flh-prd")
+    ec2 = json.loads(rd(os.path.join(STAGING, "iam", out, f"{prefix}-deploy-ec2-policy.json")))
     text = json.dumps(ec2)
     types = set(re.findall(r'"ec2:InstanceType":\s*"([^"]+)"', text))
     regions = set(re.findall(r"arn:aws:ec2:([a-z0-9-]+):", text))
@@ -192,20 +193,34 @@ def check_tfvars(path):
     ok(re.fullmatch(r"[0-9a-f]{64}", v.get("compose_plugin_sha256", "")) is not None,
        "tfvars compose_plugin_sha256 is 64 hex")
     ok(re.fullmatch(r"[0-9]{8}T[0-9]{6}Z", v.get("run_id", "")) is not None, "tfvars run_id format")
-    try:
-        exp = datetime.datetime.strptime(v.get("expires_at", ""), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
-        now = datetime.datetime.now(datetime.timezone.utc)
-        ok(now < exp <= now + datetime.timedelta(hours=24), "tfvars expires_at in the next 24 h",
-           v["expires_at"], f"{v['expires_at']} is in the past or more than 24 h ahead")
-        hours = float(v.get("max_runtime_hours", "4"))
-        left = (exp - now).total_seconds() / 3600
-        ok(hours <= left, "the host powers off before expires_at (max_runtime_hours from now)",
-           f"{hours:g} h <= {left:.1f} h left",
-           f"max_runtime_hours {hours:g} would keep the host (and its billing) running {hours - left:.1f} h past "
-           f"expires_at {v['expires_at']}: lower max_runtime_hours or move expires_at")
-    except ValueError:
-        rec("FAIL", "tfvars expires_at is RFC 3339 UTC", v.get("expires_at", ""))
-    types, regions = iam_constraints()
+    env = v.get("environment", "staging")
+    ok(env in ("staging", "production"), "tfvars environment is staging or production", env)
+    if env == "production":
+        # R3: production never expires and never powers itself off (owner decisions A7/A8)
+        ok(v.get("expires_at") == "never", "tfvars expires_at is never (production)", v.get("expires_at", ""),
+           f"{v.get('expires_at')}: production uses never")
+        rec("WARN", "environment production", "apply only after the owner's A7/A8 approval, in the workspace named "
+            "production (docs/plans/FLH-R3-aws-migration.md)")
+        auto = sorted(f for f in (os.listdir(TF) if os.path.isdir(TF) else [])
+                      if f == "terraform.tfvars" or f.endswith((".auto.tfvars", ".auto.tfvars.json")))
+        ok(not auto, "no auto-loaded tfvars in the root (Terraform would merge them into a production run)",
+           f"production uses -var-file={os.path.basename(path)}",
+           f"move {auto} aside: a staging value (e.g. data_volume_size_gib = 8) would silently apply to production")
+    else:
+        try:
+            exp = datetime.datetime.strptime(v.get("expires_at", ""), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            ok(now < exp <= now + datetime.timedelta(hours=24), "tfvars expires_at in the next 24 h",
+               v["expires_at"], f"{v['expires_at']} is in the past or more than 24 h ahead")
+            hours = float(v.get("max_runtime_hours", "4"))
+            left = (exp - now).total_seconds() / 3600
+            ok(hours <= left, "the host powers off before expires_at (max_runtime_hours from now)",
+               f"{hours:g} h <= {left:.1f} h left",
+               f"max_runtime_hours {hours:g} would keep the host (and its billing) running {hours - left:.1f} h past "
+               f"expires_at {v['expires_at']}: lower max_runtime_hours or move expires_at")
+        except ValueError:
+            rec("FAIL", "tfvars expires_at is RFC 3339 UTC", v.get("expires_at", ""))
+    types, regions = iam_constraints(env if env in ("staging", "production") else "staging")
     itype = v.get("instance_type", "t3.small")
     ok(itype in types, "instance_type allowed by the IAM template", itype, f"{itype} not in {sorted(types)}")
     ok(v.get("aws_region") in regions, "aws_region named by the IAM templates", v.get("aws_region", ""),
@@ -215,7 +230,11 @@ def check_tfvars(path):
 
 def check_policies(d, tfvars):
     files = sorted(f for f in os.listdir(d) if f.endswith(".json")) if os.path.isdir(d) else []
-    ok(len(files) == 4, "four filled policies present", ", ".join(files), f"found {files}")
+    prefix = "flh-prd" if tfvars.get("environment") == "production" else "flh-stg"
+    need = {f"{prefix}-{n}-policy.json" for n in ("deploy-ec2", "deploy", "host-boundary", "operate")}
+    ok(need <= set(files), "the four filled run policies present", ", ".join(sorted(need)), f"found {files}")
+    extra = set(files) - need - {f"{prefix}-verify-readonly-policy.json"}
+    ok(not extra, "no other environment's or unknown policy in the directory", "", f"unexpected {sorted(extra)}")
     accounts, amis = set(), set()
     for f in files:
         text = rd(os.path.join(d, f))
@@ -345,11 +364,11 @@ def tf_variables():
     """variables.tf: description, default and the offline-checkable part of each validation."""
     out = {}
     for (name,), body in hcl_blocks(rd(os.path.join(TF, "variables.tf")), r'variable\s+"([^"]+)"'):
-        d = re.search(r'^\s*default\s*=\s*("(?:[^"\\]|\\.)*"|[0-9.]+|true|false)\s*$', body, re.M)
+        d = re.search(r'^\s*default\s*=\s*("(?:[^"\\]|\\.)*"|[0-9.]+|true|false|null)\s*$', body, re.M)
         rx = re.search(r'can\(regex\("((?:[^"\\]|\\.)*)",\s*var\.%s\)\)' % name, body)
         lo = re.search(r"var\.%s\s*>=\s*([0-9.]+)" % name, body)
         hi = re.search(r"var\.%s\s*<=\s*([0-9.]+)" % name, body)
-        default = d.group(1) if d else None
+        default = d.group(1) if d else None   # "null": the environment's default (main.tf locals)
         if default is not None and default.startswith('"'):
             default = default[1:-1]
         out[name] = {"default": default, "regex": rx.group(1).replace("\\\\", "\\") if rx else None,
@@ -538,7 +557,7 @@ def check_binding(app_port, params, rendered_compose=False):
        "egress is TCP 443 only", "", "an egress rule other than 443")
     sample = {"root": "/srv/flh-staging", "region": "us-east-1", "bucket": "flh-stg-x", "param_dir": "/flh/staging",
               "port": str(app_port), "max_runtime_hours": "4", "compose_version": "v2.29.7", "compose_sha256": "0" * 64,
-              "render_env": "", "bundle_tool": "", "expire_unit": ""}
+              "render_env": "", "bundle_tool": "", "expire_unit": "", "expire_timer_verb": "enable"}
     rendered = render_template(rd(os.path.join(TF, "cloud-config.yaml.tftpl")), sample)
     conf = re.search(r"^\s*PORT=(\S+)\s*$", rendered, re.M)
     ok(conf and conf.group(1) == str(app_port), "rendered /etc/flh/staging.conf PORT == app_port", str(app_port),
@@ -640,8 +659,8 @@ def check_publication():
        "the image build context (.dockerignore allowlist) excludes deploy/", f"{len(allowed)} allowed paths",
        "the allowlist does not start with * or allows deploy/")
     ok({"**/.env", "**/*.db"} <= set(di), ".dockerignore refuses .env and databases under allowed paths")
-    m = re.search(r"^for f in (.*?); do$", rd(os.path.join(STAGING, "build_bundle.sh")), re.S | re.M)
-    files = m.group(1).replace("\\\n", " ").split() if m else []
+    m = re.search(r"^BUNDLE_FILES=\((.*?)\)$", rd(os.path.join(STAGING, "build_bundle.sh")), re.S | re.M)
+    files = m.group(1).split() if m else []
     bad = [f for f in files if f.startswith("deploy/") or any(fnmatch.fnmatchcase(os.path.basename(f), g) for g in LOCAL_GLOBS)]
     ok(files and not bad, "the bundle's copied repository files hold no local state", f"{len(files)} files", f"{bad}")
 

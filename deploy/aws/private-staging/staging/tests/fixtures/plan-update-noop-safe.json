@@ -251,6 +251,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-vpc",
@@ -267,6 +268,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-vpc",
@@ -292,6 +294,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-igw",
@@ -306,6 +309,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-igw",
@@ -333,6 +337,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-public",
@@ -349,6 +354,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-public",
@@ -379,6 +385,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-public",
@@ -398,6 +405,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-public",
@@ -439,6 +447,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-s3",
@@ -455,6 +464,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-s3",
@@ -484,6 +494,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-host",
@@ -501,6 +512,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-host",
@@ -527,6 +539,7 @@
      "tags": {},
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Project": "flh",
@@ -542,6 +555,7 @@
      "tags": {},
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Project": "flh",
@@ -567,6 +581,7 @@
      "tags": {},
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Project": "flh",
@@ -580,6 +595,7 @@
      "tags": {},
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Project": "flh",
@@ -760,6 +776,7 @@
      "tags": {},
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Project": "flh",
@@ -773,6 +790,7 @@
      "tags": {},
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Project": "flh",
@@ -815,6 +833,7 @@
      "tags": {},
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Project": "flh",
@@ -827,6 +846,7 @@
      "tags": {},
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Project": "flh",
@@ -848,6 +868,7 @@
     "after": {
      "ami": "ami-0123456789abcdef0",
      "associate_public_ip_address": true,
+     "disable_api_termination": false,
      "instance_initiated_shutdown_behavior": "terminate",
      "instance_type": "t3.small",
      "metadata_options": [
@@ -869,6 +890,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-host",
@@ -880,6 +902,7 @@
     "before": {
      "ami": "ami-0123456789abcdef0",
      "associate_public_ip_address": true,
+     "disable_api_termination": false,
      "instance_initiated_shutdown_behavior": "terminate",
      "instance_type": "t3.small",
      "metadata_options": [
@@ -901,6 +924,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-host",
@@ -928,6 +952,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-data",
@@ -945,6 +970,7 @@
      },
      "tags_all": {
       "Component": "workbench-staging",
+      "Environment": "staging",
       "ExpiresAt": "2026-11-18T18:00:00Z",
       "ManagedBy": "terraform",
       "Name": "flh-stg-data",

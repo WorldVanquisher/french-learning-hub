@@ -84,6 +84,10 @@ if [ "$MODE" = --git ]; then
   echo "exported $REV = commit $COMMIT (tree $EXPECT_TREE)"
 fi
 TREE=$(realpath "$TREE")
+# The files every bundle carries besides the image (one list: the check below and the copy).
+BUNDLE_FILES=(compose.yaml scripts/daily/flh-daily.sh scripts/daily/daily.env.example scripts/release/restore_write_check.py
+              scripts/release/backup_tool.py scripts/release/cutover_check.py scripts/release/diagnose.py
+              scripts/release/bundle_cleanup.py scripts/validation/v1_rehearsal/snapshot.py docs/RELEASE.md docs/DAILY_USE.md)
 python3 -I "$HERE/bundle_identity.py" tree-id "$TREE" > "$WORK/identity.json"
 TID=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["tree_id"])' "$WORK/identity.json")
 if [ -n "$EXPECT_TREE" ] && [ "$TID" != "$EXPECT_TREE" ]; then
@@ -127,6 +131,9 @@ if [ -n "$CACHE" ]; then
   fi
 fi
 LABEL_REV=$([ "$COMMIT" = - ] && echo "" || echo "$COMMIT")
+missing=()
+for f in "${BUNDLE_FILES[@]}"; do [ -f "$TREE/$f" ] || missing+=("$f"); done
+[ ${#missing[@]} -eq 0 ] || die "the tree lacks ${missing[*]}: this builder packages releases that ship them; build an older release with that release's own deploy/aws/private-staging/staging/build_bundle.sh (nothing was built)"
 echo "tree $TID -> image $TAG (commit ${LABEL_REV:-none: tree-only rehearsal})"
 
 build() { # build TAG [extra docker build args]
@@ -152,9 +159,7 @@ mark digest-server-web
 mkdir -p "$OUT/repo"
 docker save "$TAG" -o "$OUT/image.tar"
 mark docker-save
-for f in compose.yaml scripts/daily/flh-daily.sh scripts/daily/daily.env.example scripts/release/restore_write_check.py \
-         scripts/release/backup_tool.py scripts/release/cutover_check.py scripts/release/diagnose.py scripts/release/bundle_cleanup.py \
-         scripts/validation/v1_rehearsal/snapshot.py docs/RELEASE.md docs/DAILY_USE.md; do
+for f in "${BUNDLE_FILES[@]}"; do
   install -D -m "$(stat -c %a "$TREE/$f")" "$TREE/$f" "$OUT/repo/$f"
 done
 cat > "$OUT/staging.override.yaml" <<YAML

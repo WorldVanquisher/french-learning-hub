@@ -1,3 +1,13 @@
+variable "environment" {
+  description = "staging (the default: bounded runtime, synthetic data, torn down after each pass) or production (the learner's data; owner decisions A7/A8 in docs/plans/FLH-R3-aws-migration.md). Production is planned only in the Terraform workspace named production, staging never there, so one environment's variables cannot be applied to the other's state."
+  type        = string
+  default     = "staging"
+  validation {
+    condition     = contains(["staging", "production"], var.environment)
+    error_message = "environment must be staging or production."
+  }
+}
+
 variable "aws_region" {
   description = "Region. The demo runs in us-east-1 (FLH-087); staging uses the same unless the owner decides otherwise."
   type        = string
@@ -17,11 +27,11 @@ variable "run_id" {
 }
 
 variable "expires_at" {
-  description = "UTC time after which the stack must be destroyed (ExpiresAt tag, e.g. 2026-11-18T12:00:00Z). The host also powers itself off after max_runtime_hours."
+  description = "Staging: UTC time after which the stack must be destroyed (ExpiresAt tag, e.g. 2026-11-18T12:00:00Z); the host also powers itself off after max_runtime_hours. Production: never."
   type        = string
   validation {
-    condition     = can(regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$", var.expires_at))
-    error_message = "expires_at must be an RFC 3339 UTC time."
+    condition     = var.expires_at == "never" || can(regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$", var.expires_at))
+    error_message = "expires_at must be an RFC 3339 UTC time (staging) or never (production)."
   }
 }
 
@@ -41,7 +51,7 @@ variable "instance_type" {
 }
 
 variable "max_runtime_hours" {
-  description = "The host powers off (and, with shutdown behaviour terminate, is terminated) this many hours after boot."
+  description = "Staging only: the host powers off (and, with shutdown behaviour terminate, is terminated) this many hours after boot. Production installs the timer disabled."
   type        = number
   default     = 4
   validation {
@@ -51,15 +61,15 @@ variable "max_runtime_hours" {
 }
 
 variable "data_volume_size_gib" {
-  description = "Durable data volume for FLH_DATA_DIR and backups (staging: synthetic data only)."
+  description = "Durable data volume for FLH_DATA_DIR and backups. null: 8 GiB for staging (synthetic data only), 20 GiB for production (grow-only)."
   type        = number
-  default     = 8
+  default     = null
 }
 
 variable "vpc_cidr" {
-  description = "Dedicated staging VPC; must not overlap the demo VPC (10.84.0.0/24 by default). One public subnet uses the whole range."
+  description = "Dedicated VPC; must not overlap the demo VPC (10.84.0.0/24 by default). null: 10.85.0.0/24 for staging, 10.86.0.0/24 for production. One public subnet uses the whole range."
   type        = string
-  default     = "10.85.0.0/24"
+  default     = null
 }
 
 variable "app_port" {
@@ -69,9 +79,19 @@ variable "app_port" {
 }
 
 variable "host_role_permissions_boundary_name" {
-  description = "Administrator-created boundary (iam/flh-stg-host-boundary-policy.json)."
+  description = "Administrator-created boundary. null: flh-stg-host-boundary (iam/out) for staging, flh-prd-host-boundary (iam/out-production) for production."
   type        = string
-  default     = "flh-stg-host-boundary"
+  default     = null
+}
+
+variable "backup_retention_days" {
+  description = "Production only: days a backups/ object stays current in S3 (35 daily copies by default; old versions are kept 7 more days). Staging keeps every object 14 days."
+  type        = number
+  default     = 35
+  validation {
+    condition     = var.backup_retention_days >= 7 && var.backup_retention_days <= 400
+    error_message = "backup_retention_days must be between 7 and 400."
+  }
 }
 
 variable "compose_plugin_version" {

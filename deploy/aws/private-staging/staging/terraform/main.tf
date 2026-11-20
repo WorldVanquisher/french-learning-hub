@@ -12,11 +12,49 @@
 #     instance is then terminated (instance_initiated_shutdown_behavior).
 # No Elastic IP, no inbound rule, no DNS record: the workbench has no
 # authentication and is reached only through an SSM port forward.
+#
+# One root, two environments (R3, docs/plans/FLH-R3-aws-migration.md): var.environment
+# selects the settings below. Staging (the default) renders exactly as before.
+# Production keeps the same shape, names everything flh-prd-*, tags it
+# Component=workbench-production, never powers itself off or terminates on
+# shutdown, protects the instance from API termination, keeps its bucket on
+# destroy, and keeps backups for backup_retention_days. Its state lives in the
+# workspace named production (precondition on aws_vpc.stg).
 
 locals {
-  name      = "flh-stg"
-  root_dir  = "/srv/flh-staging"
-  param_dir = "/flh/staging"
+  environments = {
+    staging = {
+      name                   = "flh-stg"
+      component              = "workbench-staging"
+      param_dir              = "/flh/staging"
+      vpc_cidr               = "10.85.0.0/24"
+      data_volume_size_gib   = 8
+      boundary               = "flh-stg-host-boundary"
+      shutdown_behavior      = "terminate"
+      termination_protection = false
+      bucket_force_destroy   = true
+      expire_timer_verb      = "enable"
+    }
+    production = {
+      name                   = "flh-prd"
+      component              = "workbench-production"
+      param_dir              = "/flh/production"
+      vpc_cidr               = "10.86.0.0/24"
+      data_volume_size_gib   = 20
+      boundary               = "flh-prd-host-boundary"
+      shutdown_behavior      = "stop"
+      termination_protection = true
+      bucket_force_destroy   = false
+      expire_timer_verb      = "disable"
+    }
+  }
+  env                  = local.environments[var.environment]
+  name                 = local.env.name
+  root_dir             = "/srv/flh-staging" # the host layout of flh-staging-bundle and RUNBOOK.md, in both environments
+  param_dir            = local.env.param_dir
+  vpc_cidr             = coalesce(var.vpc_cidr, local.env.vpc_cidr)
+  data_volume_size_gib = coalesce(var.data_volume_size_gib, local.env.data_volume_size_gib)
+  boundary_name        = coalesce(var.host_role_permissions_boundary_name, local.env.boundary)
   user_data = templatefile("${path.module}/cloud-config.yaml.tftpl", {
     root              = local.root_dir
     region            = var.aws_region
@@ -24,6 +62,7 @@ locals {
     param_dir         = local.param_dir
     port              = var.app_port
     max_runtime_hours = var.max_runtime_hours
+    expire_timer_verb = local.env.expire_timer_verb
     compose_version   = var.compose_plugin_version
     compose_sha256    = var.compose_plugin_sha256
     render_env        = file("${path.module}/../host/flh-staging-env")
@@ -38,10 +77,21 @@ data "aws_ec2_instance_type" "selected" {
 
 # --- Network ---------------------------------------------------------------------
 resource "aws_vpc" "stg" {
-  cidr_block           = var.vpc_cidr
+  cidr_block           = local.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags                 = { Name = "${local.name}-vpc" }
+
+  lifecycle {
+    precondition {
+      condition     = (var.environment == "production") == (terraform.workspace == "production")
+      error_message = "Workspace and environment disagree: production is planned only in the workspace named production, and staging never there (terraform workspace show)."
+    }
+    precondition {
+      condition     = var.environment == "production" ? var.expires_at == "never" : var.expires_at != "never"
+      error_message = "expires_at: staging needs an RFC 3339 expiry time; production uses never."
+    }
+  }
 }
 
 resource "aws_internet_gateway" "stg" {
@@ -51,7 +101,7 @@ resource "aws_internet_gateway" "stg" {
 
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.stg.id
-  cidr_block              = var.vpc_cidr
+  cidr_block              = local.vpc_cidr
   map_public_ip_on_launch = false
   tags                    = { Name = "${local.name}-public" }
 }
@@ -80,7 +130,7 @@ resource "aws_vpc_endpoint" "s3" {
 
 resource "aws_security_group" "host" {
   name        = "${local.name}-host"
-  description = "FLH staging host: no inbound; outbound HTTPS only"
+  description = "FLH ${var.environment} host: no inbound; outbound HTTPS only"
   vpc_id      = aws_vpc.stg.id
   tags        = { Name = "${local.name}-host" }
 }
@@ -97,7 +147,7 @@ resource "aws_vpc_security_group_egress_rule" "https" {
 # --- Storage: one private bucket for releases/ and backups/ ---------------------
 resource "aws_s3_bucket" "staging" {
   bucket_prefix = "${local.name}-"
-  force_destroy = true # staging holds synthetic data only; destroy must leave nothing billable
+  force_destroy = local.env.bucket_force_destroy # staging: synthetic data only, destroy leaves nothing billable; production: destroy fails while objects remain
 }
 
 resource "aws_s3_bucket_public_access_block" "staging" {
@@ -133,18 +183,59 @@ resource "aws_s3_bucket_versioning" "staging" {
 
 resource "aws_s3_bucket_lifecycle_configuration" "staging" {
   bucket = aws_s3_bucket.staging.id
-  rule {
-    id     = "expire-staging-objects"
-    status = "Enabled"
-    filter {}
-    expiration {
-      days = 14
+  dynamic "rule" {
+    for_each = var.environment == "staging" ? [1] : []
+    content {
+      id     = "expire-staging-objects"
+      status = "Enabled"
+      filter {}
+      expiration {
+        days = 14
+      }
+      noncurrent_version_expiration {
+        noncurrent_days = 1
+      }
+      abort_incomplete_multipart_upload {
+        days_after_initiation = 1
+      }
     }
-    noncurrent_version_expiration {
-      noncurrent_days = 1
+  }
+  # Production: backups/ objects stay current backup_retention_days, then 7 more
+  # days as old versions; releases/ objects never expire (rollback targets), old
+  # versions after 30 days.
+  dynamic "rule" {
+    for_each = var.environment == "production" ? [1] : []
+    content {
+      id     = "expire-old-backups"
+      status = "Enabled"
+      filter {
+        prefix = "backups/"
+      }
+      expiration {
+        days = var.backup_retention_days
+      }
+      noncurrent_version_expiration {
+        noncurrent_days = 7
+      }
+      abort_incomplete_multipart_upload {
+        days_after_initiation = 1
+      }
     }
-    abort_incomplete_multipart_upload {
-      days_after_initiation = 1
+  }
+  dynamic "rule" {
+    for_each = var.environment == "production" ? [1] : []
+    content {
+      id     = "keep-releases"
+      status = "Enabled"
+      filter {
+        prefix = "releases/"
+      }
+      noncurrent_version_expiration {
+        noncurrent_days = 30
+      }
+      abort_incomplete_multipart_upload {
+        days_after_initiation = 1
+      }
     }
   }
 }
@@ -184,7 +275,7 @@ data "aws_iam_policy_document" "ec2_assume" {
 }
 
 data "aws_iam_policy" "host_boundary" {
-  name = var.host_role_permissions_boundary_name
+  name = local.boundary_name
 }
 
 data "aws_caller_identity" "current" {}
@@ -235,7 +326,7 @@ data "aws_iam_policy_document" "host" {
 }
 
 resource "aws_iam_role_policy" "host" {
-  name   = "flh-stg-host"
+  name   = "${local.name}-host"
   role   = aws_iam_role.host.id
   policy = data.aws_iam_policy_document.host.json
 }
@@ -254,7 +345,8 @@ resource "aws_instance" "host" {
   iam_instance_profile                 = aws_iam_instance_profile.host.name
   associate_public_ip_address          = true
   monitoring                           = false
-  instance_initiated_shutdown_behavior = "terminate"
+  instance_initiated_shutdown_behavior = local.env.shutdown_behavior
+  disable_api_termination              = local.env.termination_protection
   user_data_base64                     = base64gzip(local.user_data)
   user_data_replace_on_change          = true
 
@@ -289,7 +381,7 @@ resource "aws_instance" "host" {
 
 resource "aws_ebs_volume" "data" {
   availability_zone = aws_instance.host.availability_zone
-  size              = var.data_volume_size_gib
+  size              = local.data_volume_size_gib
   type              = "gp3"
   encrypted         = true
   tags              = { Name = "${local.name}-data" }
