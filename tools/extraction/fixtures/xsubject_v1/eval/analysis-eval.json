@@ -1,0 +1,1134 @@
+{
+ "documents": [
+  "history-messages",
+  "hw-basics",
+  "music-practice-diary"
+ ],
+ "gold_sha256": "86aba12ee1c63b99b64153752dc32b5b923f78979686462be890181427dbc2d7",
+ "schema": "flh_units_eval_v1.analysis",
+ "split": "eval",
+ "systems": {
+  "authored": {
+   "accepted_span_accuracy_per_topic": {
+    "diary": {
+     "correct_units": 0,
+     "exact_spans": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "mean_gold_coverage": null,
+     "mean_precision": null
+    },
+    "hardware": {
+     "correct_units": 4,
+     "exact_spans": {
+      "count": 4,
+      "of": 4,
+      "rate": 1.0
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 1.0
+    },
+    "history": {
+     "correct_units": 5,
+     "exact_spans": {
+      "count": 3,
+      "of": 5,
+      "rate": 0.6
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 0.8
+    }
+   },
+   "ambiguity_tagged_gold": {
+    "bible": "matched",
+    "press": "matched",
+    "ssd": "matched"
+   },
+   "candidate_coverage_per_document": {
+    "history-messages": {
+     "count": 5,
+     "of": 5,
+     "rate": 1.0
+    },
+    "hw-basics": {
+     "count": 4,
+     "of": 4,
+     "rate": 1.0
+    },
+    "music-practice-diary": {
+     "count": 0,
+     "of": 0,
+     "rate": null
+    }
+   },
+   "documents": [
+    {
+     "accepted": 0,
+     "candidate_coverage": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "candidates": 0,
+     "false_rejects": [],
+     "gold": 0,
+     "per_gold": [],
+     "source_id": "music-practice-diary",
+     "topic_area": "diary",
+     "units": []
+    },
+    {
+     "accepted": 4,
+     "candidate_coverage": {
+      "count": 4,
+      "of": 4,
+      "rate": 1.0
+     },
+     "candidates": 4,
+     "false_rejects": [],
+     "gold": 4,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "byte",
+       "require": "any",
+       "status": "matched",
+       "topic": "byte",
+       "units": [
+        "k-cc5632639383"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "ram",
+       "require": "any",
+       "status": "matched",
+       "topic": "RAM",
+       "units": [
+        "k-b8cd20fc2be2"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "ssd",
+       "require": "any",
+       "status": "matched",
+       "topic": "SSD",
+       "units": [
+        "k-9b86abce75fd"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "clock",
+       "require": "any",
+       "status": "matched",
+       "topic": "3 GHz clock",
+       "units": [
+        "k-728d54bc0141"
+       ]
+      }
+     ],
+     "source_id": "hw-basics",
+     "topic_area": "hardware",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "clock"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "clock",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A 3 GHz clock ticks three billion times per second.",
+       "type": "claim",
+       "unit_id": "k-728d54bc0141"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "ssd"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "ssd",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "An SSD keeps its data without power.",
+       "type": "claim",
+       "unit_id": "k-9b86abce75fd"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "ram"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "ram",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "RAM is volatile: it loses its contents when the power is turned off.",
+       "type": "claim",
+       "unit_id": "k-b8cd20fc2be2"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "byte"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "byte",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A byte is eight bits.",
+       "type": "claim",
+       "unit_id": "k-cc5632639383"
+      }
+     ]
+    },
+    {
+     "accepted": 3,
+     "candidate_coverage": {
+      "count": 5,
+      "of": 5,
+      "rate": 1.0
+     },
+     "candidates": 3,
+     "false_rejects": [],
+     "gold": 5,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "press",
+       "require": "any",
+       "status": "matched",
+       "topic": "printing press",
+       "units": [
+        "k-d505afbf7185"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "bible",
+       "require": "any",
+       "status": "matched",
+       "topic": "Gutenberg Bible",
+       "units": [
+        "k-4ed6fc8504de"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "telegraph",
+       "require": "any",
+       "status": "matched",
+       "topic": "telegraph message",
+       "units": [
+        "k-278c51cecadb"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "telephone",
+       "require": "any",
+       "status": "matched",
+       "topic": "telephone patent",
+       "units": [
+        "k-278c51cecadb"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "order",
+       "require": "all",
+       "status": "matched",
+       "topic": "telephone relative to telegraph",
+       "units": [
+        "k-278c51cecadb"
+       ]
+      }
+     ],
+     "source_id": "history-messages",
+     "topic_area": "history",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "telegraph",
+        "telephone",
+        "order"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "telegraph",
+         "precision": 0.5588
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "telephone",
+         "precision": 0.4412
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "order",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "telephone",
+         "kind": "boundary",
+         "precision": 0.4412
+        }
+       ],
+       "text": "The telephone patent (1876) came after the first telegraph message on the Washington to Baltimore line (1844).",
+       "type": "claim",
+       "unit_id": "k-278c51cecadb"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "bible"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "bible",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "Gutenberg's workshop printed the Gutenberg Bible around 1455.",
+       "type": "claim",
+       "unit_id": "k-4ed6fc8504de"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "press"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "press",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "Around 1440, Gutenberg built a printing press with movable type in Mainz.",
+       "type": "claim",
+       "unit_id": "k-d505afbf7185"
+      }
+     ]
+    }
+   ],
+   "false_accepts": [],
+   "false_rejects": [],
+   "missed_vs_unsupported": {
+    "missed_gold": 0,
+    "unsupported_accepted": 0
+   },
+   "span_errors": {
+    "boundary": 1,
+    "cases": [
+     {
+      "gold_coverage": 1.0,
+      "gold_id": "telephone",
+      "kind": "boundary",
+      "precision": 0.4412
+     }
+    ],
+    "evidence_selection": 0
+   },
+   "totals": {
+    "accepted_units": 7,
+    "bad_span_claims": {
+     "count": 0,
+     "of": 9,
+     "rate": 0.0
+    },
+    "classes": {
+     "bad_span": 0,
+     "correct": 7,
+     "extra": 0,
+     "wrong_claim": 0
+    },
+    "coverage": {
+     "count": 9,
+     "of": 9,
+     "rate": 1.0
+    },
+    "duplicate_rate": {
+     "count": 0,
+     "of": 7,
+     "rate": 0.0
+    },
+    "evidence_supported": {
+     "count": 7,
+     "of": 7,
+     "rate": 1.0
+    },
+    "gold_claims": 9,
+    "missing_claims": {
+     "count": 0,
+     "of": 9,
+     "rate": 0.0
+    }
+   }
+  },
+  "model": {
+   "reason": "the pinned Qwen3.5-4B files are absent (EXT-074) and no model output exists for these sources; the comparison is not imitated with a stand-in",
+   "status": "unavailable"
+  },
+  "sentence_baseline": {
+   "accepted_span_accuracy_per_topic": {
+    "diary": {
+     "correct_units": 0,
+     "exact_spans": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "mean_gold_coverage": null,
+     "mean_precision": null
+    },
+    "hardware": {
+     "correct_units": 2,
+     "exact_spans": {
+      "count": 2,
+      "of": 2,
+      "rate": 1.0
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 1.0
+    },
+    "history": {
+     "correct_units": 4,
+     "exact_spans": {
+      "count": 2,
+      "of": 4,
+      "rate": 0.5
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 0.8826
+    }
+   },
+   "ambiguity_tagged_gold": {
+    "bible": "matched",
+    "press": "matched",
+    "ssd": "missing"
+   },
+   "candidate_coverage_per_document": {
+    "history-messages": {
+     "count": 4,
+     "of": 5,
+     "rate": 0.8
+    },
+    "hw-basics": {
+     "count": 2,
+     "of": 4,
+     "rate": 0.5
+    },
+    "music-practice-diary": {
+     "count": 0,
+     "of": 0,
+     "rate": null
+    }
+   },
+   "documents": [
+    {
+     "accepted": 1,
+     "candidate_coverage": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "candidates": 1,
+     "false_rejects": [],
+     "gold": 0,
+     "per_gold": [],
+     "source_id": "music-practice-diary",
+     "topic_area": "diary",
+     "units": [
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Practised for twenty minutes today.",
+       "type": "claim",
+       "unit_id": "k-d1e55ad47cec"
+      }
+     ]
+    },
+    {
+     "accepted": 3,
+     "candidate_coverage": {
+      "count": 2,
+      "of": 4,
+      "rate": 0.5
+     },
+     "candidates": 3,
+     "false_rejects": [],
+     "gold": 4,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "byte",
+       "require": "any",
+       "status": "matched",
+       "topic": "byte",
+       "units": [
+        "k-cc5632639383"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "ram",
+       "require": "any",
+       "status": "missing",
+       "topic": "RAM",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "ssd",
+       "require": "any",
+       "status": "missing",
+       "topic": "SSD",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "clock",
+       "require": "any",
+       "status": "matched",
+       "topic": "3 GHz clock",
+       "units": [
+        "k-728d54bc0141"
+       ]
+      }
+     ],
+     "source_id": "hw-basics",
+     "topic_area": "hardware",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "clock"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "clock",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A 3 GHz clock ticks three billion times per second.",
+       "type": "claim",
+       "unit_id": "k-728d54bc0141"
+      },
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Hardware notes, chapter one.",
+       "type": "claim",
+       "unit_id": "k-766bcc9cdc25"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "byte"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "byte",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A byte is eight bits.",
+       "type": "claim",
+       "unit_id": "k-cc5632639383"
+      }
+     ]
+    },
+    {
+     "accepted": 4,
+     "candidate_coverage": {
+      "count": 4,
+      "of": 5,
+      "rate": 0.8
+     },
+     "candidates": 4,
+     "false_rejects": [],
+     "gold": 5,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "press",
+       "require": "any",
+       "status": "matched",
+       "topic": "printing press",
+       "units": [
+        "k-d53464fdf922"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "bible",
+       "require": "any",
+       "status": "matched",
+       "topic": "Gutenberg Bible",
+       "units": [
+        "k-363a78d76ae1"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "telegraph",
+       "require": "any",
+       "status": "matched",
+       "topic": "telegraph message",
+       "units": [
+        "k-7627ba365880"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "telephone",
+       "require": "any",
+       "status": "matched",
+       "topic": "telephone patent",
+       "units": [
+        "k-e59520bd93b3"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "order",
+       "require": "all",
+       "status": "missing",
+       "topic": "telephone relative to telegraph",
+       "units": []
+      }
+     ],
+     "source_id": "history-messages",
+     "topic_area": "history",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "bible"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "bible",
+         "precision": 0.6667
+        }
+       ],
+       "span_errors": [],
+       "text": "About fifteen years later, around 1455, his workshop printed the Gutenberg Bible.",
+       "type": "claim",
+       "unit_id": "k-363a78d76ae1"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "telegraph"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "telegraph",
+         "precision": 0.8636
+        }
+       ],
+       "span_errors": [],
+       "text": "Much later, in 1844, Samuel Morse sent a telegraph message from Washington to Baltimore.",
+       "type": "claim",
+       "unit_id": "k-7627ba365880"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "press"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "press",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "Around 1440, Johannes Gutenberg built a printing press with movable type in Mainz.",
+       "type": "claim",
+       "unit_id": "k-d53464fdf922"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "telephone"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "telephone",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "Alexander Graham Bell received his telephone patent in 1876.",
+       "type": "claim",
+       "unit_id": "k-e59520bd93b3"
+      }
+     ]
+    }
+   ],
+   "false_accepts": [
+    {
+     "count": 1,
+     "examples": [
+      "Hardware notes, chapter one."
+     ],
+     "pattern": "a heading or section label with a number"
+    },
+    {
+     "count": 1,
+     "examples": [
+      "Practised for twenty minutes today."
+     ],
+     "pattern": "a narrative sentence (diary, schedule), not a rule"
+    }
+   ],
+   "false_rejects": [],
+   "missed_vs_unsupported": {
+    "missed_gold": 3,
+    "unsupported_accepted": 2
+   },
+   "span_errors": {
+    "boundary": 0,
+    "cases": [],
+    "evidence_selection": 0
+   },
+   "totals": {
+    "accepted_units": 8,
+    "bad_span_claims": {
+     "count": 0,
+     "of": 9,
+     "rate": 0.0
+    },
+    "classes": {
+     "bad_span": 0,
+     "correct": 6,
+     "extra": 2,
+     "wrong_claim": 0
+    },
+    "coverage": {
+     "count": 6,
+     "of": 9,
+     "rate": 0.6667
+    },
+    "duplicate_rate": {
+     "count": 0,
+     "of": 8,
+     "rate": 0.0
+    },
+    "evidence_supported": {
+     "count": 6,
+     "of": 8,
+     "rate": 0.75
+    },
+    "gold_claims": 9,
+    "missing_claims": {
+     "count": 3,
+     "of": 9,
+     "rate": 0.3333
+    }
+   }
+  },
+  "sentence_baseline_v2": {
+   "accepted_span_accuracy_per_topic": {
+    "diary": {
+     "correct_units": 0,
+     "exact_spans": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "mean_gold_coverage": null,
+     "mean_precision": null
+    },
+    "hardware": {
+     "correct_units": 2,
+     "exact_spans": {
+      "count": 2,
+      "of": 2,
+      "rate": 1.0
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 1.0
+    },
+    "history": {
+     "correct_units": 4,
+     "exact_spans": {
+      "count": 2,
+      "of": 4,
+      "rate": 0.5
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 0.8826
+    }
+   },
+   "ambiguity_tagged_gold": {
+    "bible": "matched",
+    "press": "matched",
+    "ssd": "missing"
+   },
+   "candidate_coverage_per_document": {
+    "history-messages": {
+     "count": 4,
+     "of": 5,
+     "rate": 0.8
+    },
+    "hw-basics": {
+     "count": 2,
+     "of": 4,
+     "rate": 0.5
+    },
+    "music-practice-diary": {
+     "count": 0,
+     "of": 0,
+     "rate": null
+    }
+   },
+   "documents": [
+    {
+     "accepted": 1,
+     "candidate_coverage": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "candidates": 1,
+     "false_rejects": [],
+     "gold": 0,
+     "per_gold": [],
+     "source_id": "music-practice-diary",
+     "topic_area": "diary",
+     "units": [
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Practised for twenty minutes today.",
+       "type": "claim",
+       "unit_id": "k-d1e55ad47cec"
+      }
+     ]
+    },
+    {
+     "accepted": 2,
+     "candidate_coverage": {
+      "count": 2,
+      "of": 4,
+      "rate": 0.5
+     },
+     "candidates": 2,
+     "false_rejects": [],
+     "gold": 4,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "byte",
+       "require": "any",
+       "status": "matched",
+       "topic": "byte",
+       "units": [
+        "k-cc5632639383"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "ram",
+       "require": "any",
+       "status": "missing",
+       "topic": "RAM",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "ssd",
+       "require": "any",
+       "status": "missing",
+       "topic": "SSD",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "clock",
+       "require": "any",
+       "status": "matched",
+       "topic": "3 GHz clock",
+       "units": [
+        "k-728d54bc0141"
+       ]
+      }
+     ],
+     "source_id": "hw-basics",
+     "topic_area": "hardware",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "clock"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "clock",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A 3 GHz clock ticks three billion times per second.",
+       "type": "claim",
+       "unit_id": "k-728d54bc0141"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "byte"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "byte",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A byte is eight bits.",
+       "type": "claim",
+       "unit_id": "k-cc5632639383"
+      }
+     ]
+    },
+    {
+     "accepted": 4,
+     "candidate_coverage": {
+      "count": 4,
+      "of": 5,
+      "rate": 0.8
+     },
+     "candidates": 4,
+     "false_rejects": [],
+     "gold": 5,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "press",
+       "require": "any",
+       "status": "matched",
+       "topic": "printing press",
+       "units": [
+        "k-d53464fdf922"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "bible",
+       "require": "any",
+       "status": "matched",
+       "topic": "Gutenberg Bible",
+       "units": [
+        "k-363a78d76ae1"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "telegraph",
+       "require": "any",
+       "status": "matched",
+       "topic": "telegraph message",
+       "units": [
+        "k-7627ba365880"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "telephone",
+       "require": "any",
+       "status": "matched",
+       "topic": "telephone patent",
+       "units": [
+        "k-e59520bd93b3"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "order",
+       "require": "all",
+       "status": "missing",
+       "topic": "telephone relative to telegraph",
+       "units": []
+      }
+     ],
+     "source_id": "history-messages",
+     "topic_area": "history",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "bible"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "bible",
+         "precision": 0.6667
+        }
+       ],
+       "span_errors": [],
+       "text": "About fifteen years later, around 1455, his workshop printed the Gutenberg Bible.",
+       "type": "claim",
+       "unit_id": "k-363a78d76ae1"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "telegraph"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "telegraph",
+         "precision": 0.8636
+        }
+       ],
+       "span_errors": [],
+       "text": "Much later, in 1844, Samuel Morse sent a telegraph message from Washington to Baltimore.",
+       "type": "claim",
+       "unit_id": "k-7627ba365880"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "press"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "press",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "Around 1440, Johannes Gutenberg built a printing press with movable type in Mainz.",
+       "type": "claim",
+       "unit_id": "k-d53464fdf922"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "telephone"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "telephone",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "Alexander Graham Bell received his telephone patent in 1876.",
+       "type": "claim",
+       "unit_id": "k-e59520bd93b3"
+      }
+     ]
+    }
+   ],
+   "false_accepts": [
+    {
+     "count": 1,
+     "examples": [
+      "Practised for twenty minutes today."
+     ],
+     "pattern": "a narrative sentence (diary, schedule), not a rule"
+    }
+   ],
+   "false_rejects": [],
+   "missed_vs_unsupported": {
+    "missed_gold": 3,
+    "unsupported_accepted": 1
+   },
+   "span_errors": {
+    "boundary": 0,
+    "cases": [],
+    "evidence_selection": 0
+   },
+   "totals": {
+    "accepted_units": 7,
+    "bad_span_claims": {
+     "count": 0,
+     "of": 9,
+     "rate": 0.0
+    },
+    "classes": {
+     "bad_span": 0,
+     "correct": 6,
+     "extra": 1,
+     "wrong_claim": 0
+    },
+    "coverage": {
+     "count": 6,
+     "of": 9,
+     "rate": 0.6667
+    },
+    "duplicate_rate": {
+     "count": 0,
+     "of": 7,
+     "rate": 0.0
+    },
+    "evidence_supported": {
+     "count": 6,
+     "of": 7,
+     "rate": 0.8571
+    },
+    "gold_claims": 9,
+    "missing_claims": {
+     "count": 3,
+     "of": 9,
+     "rate": 0.3333
+    }
+   }
+  }
+ }
+}

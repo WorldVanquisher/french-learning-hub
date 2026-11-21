@@ -1,0 +1,61 @@
+{
+ "extractor_failed_empty": {
+  "detail": "the extraction produced no units for unchanged text",
+  "kept_export": {
+   "fingerprint": "sf-980f8166f9659c5c",
+   "revision": 3,
+   "run_key": "rk-10d52e391ad5051d"
+  },
+  "old_units_kept": 7,
+  "recovery": "nothing about the source changed: keep the last good units and rerun the extraction; never replace them with an empty result",
+  "schema": "flh_rerun_status_v1",
+  "status": "extractor_failed"
+ },
+ "extractor_failed_error": {
+  "detail": "provider timeout",
+  "kept_export": {
+   "fingerprint": "sf-980f8166f9659c5c",
+   "revision": 3,
+   "run_key": "rk-10d52e391ad5051d"
+  },
+  "old_units_kept": 7,
+  "recovery": "nothing about the source changed: keep the last good units and rerun the extraction; never replace them with an empty result",
+  "schema": "flh_rerun_status_v1",
+  "status": "extractor_failed"
+ },
+ "identical_rerun": {
+  "kept_export": {
+   "fingerprint": "sf-980f8166f9659c5c",
+   "revision": 3,
+   "run_key": "rk-10d52e391ad5051d"
+  },
+  "old_units_kept": 7,
+  "passages_still_present": "6/6",
+  "schema": "flh_rerun_status_v1",
+  "status": "identical_rerun"
+ },
+ "source_missing": {
+  "detail": "the source is missing or unreadable",
+  "kept_export": {
+   "fingerprint": "sf-980f8166f9659c5c",
+   "revision": 3,
+   "run_key": "rk-10d52e391ad5051d"
+  },
+  "old_units_kept": 7,
+  "recovery": "keep the last good units (marked stale); ask the learner to restore the text or retire the source",
+  "schema": "flh_rerun_status_v1",
+  "status": "source_disappeared"
+ },
+ "source_text_replaced": {
+  "detail": "none of the 6 cited passages is in the new text",
+  "kept_export": {
+   "fingerprint": "sf-980f8166f9659c5c",
+   "revision": 3,
+   "run_key": "rk-10d52e391ad5051d"
+  },
+  "old_units_kept": 7,
+  "recovery": "the units stay with their old revision; review each one against the new text, or restore the passage",
+  "schema": "flh_rerun_status_v1",
+  "status": "source_disappeared"
+ }
+}

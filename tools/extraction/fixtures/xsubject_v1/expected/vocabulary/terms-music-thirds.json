@@ -1,0 +1,69 @@
+{
+ "entries": [
+  {
+   "definition": "A major third spans four semitones, for example C to E.",
+   "evidence": [
+    {
+     "end": 169,
+     "evidence_id": "ev-820a211723",
+     "evidence_key": "ek-2084226fb827",
+     "field": "original_context",
+     "quote": "A major third spans four semitones, for example C to E.",
+     "start": 114
+    }
+   ],
+   "recall": [
+    {
+     "kind": "free_recall",
+     "prompt": "A major third spans ___ semitones, for example C to E.",
+     "recall_id": "rc-8c235ab4e42a"
+    },
+    {
+     "kind": "recognition",
+     "prompt": "A major third spans ___ semitones, for example C to E.",
+     "recall_id": "rr-8c235ab4e42a"
+    }
+   ],
+   "term": "major third",
+   "unit_id": "k-bbab1ad4b069",
+   "value": "4 semitones"
+  },
+  {
+   "definition": "A minor third spans three semitones, for example C to E-flat.",
+   "evidence": [
+    {
+     "end": 231,
+     "evidence_id": "ev-44c315b58e",
+     "evidence_key": "ek-c0f9497deb4a",
+     "field": "original_context",
+     "quote": "A minor third spans three semitones, for example C to E-flat.",
+     "start": 170
+    }
+   ],
+   "recall": [
+    {
+     "kind": "free_recall",
+     "prompt": "A minor third spans ___ semitones, for example C to E-flat.",
+     "recall_id": "rc-924c641d94de"
+    },
+    {
+     "kind": "recognition",
+     "prompt": "A minor third spans ___ semitones, for example C to E-flat.",
+     "recall_id": "rr-924c641d94de"
+    }
+   ],
+   "term": "minor third",
+   "unit_id": "k-133ac4bd8df4",
+   "value": "3 semitones"
+  }
+ ],
+ "note": "reviewed claims only; every definition cites the learner's own words",
+ "schema": "flh_vocabulary_reference_v1",
+ "source": {
+  "fingerprint": "sf-87d52c502f0bf2d1",
+  "language": "en",
+  "revision": 1,
+  "source_id": "music-thirds",
+  "subject": "music_theory"
+ }
+}

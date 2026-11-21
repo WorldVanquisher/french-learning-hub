@@ -1,0 +1,56 @@
+{
+ "contradictions": [
+  {
+   "rule": "both evidence trails are shown; the system does not pick a side",
+   "sides": [
+    {
+     "claim": "A minor third spans three semitones, for example C to E-flat.",
+     "evidence": [
+      {
+       "end": 231,
+       "evidence_id": "ev-44c315b58e",
+       "evidence_key": "ek-c0f9497deb4a",
+       "field": "original_context",
+       "quote": "A minor third spans three semitones, for example C to E-flat.",
+       "start": 170,
+       "verified": true
+      }
+     ],
+     "fingerprint": "sf-87d52c502f0bf2d1",
+     "revision": 1,
+     "source_id": "music-thirds",
+     "state": "approved",
+     "unit_id": "k-133ac4bd8df4",
+     "value": "3 semitones"
+    },
+    {
+     "claim": "A minor third spans four semitones, like C to E.",
+     "evidence": [
+      {
+       "end": 74,
+       "evidence_id": "ev-f28d47978e",
+       "evidence_key": "ek-1a7635e0f3c4",
+       "field": "original_context",
+       "quote": "A minor third spans four semitones, like C to E.",
+       "start": 26,
+       "verified": true
+      }
+     ],
+     "fingerprint": "sf-c2691de920378c49",
+     "revision": 1,
+     "source_id": "music-thirds-forum",
+     "state": "approved",
+     "unit_id": "k-ffaacb0f55d1",
+     "value": "4 semitones"
+    }
+   ],
+   "status": "needs_review",
+   "topic": "minor third",
+   "values": [
+    "3 semitones",
+    "4 semitones"
+   ]
+  }
+ ],
+ "schema": "flh_unit_contradictions_v1"
+}

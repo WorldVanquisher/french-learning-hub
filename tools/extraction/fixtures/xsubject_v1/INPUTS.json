@@ -1,0 +1,32 @@
+{
+ "configuration": {
+  "baseline_number_words": "\\d|\\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|hundred|thousand)\\b",
+  "baseline_v2_label_rule": "^\\s*(#|.*\\b(part|chapter|week|lesson|section)\\s+(\\d+|one|two|three|four|five|six|seven|eight|nine|ten)\\b)",
+  "batch_rule": "approve exactly the review's proposed batch",
+  "coverage_threshold": 0.5,
+  "drafter": "flh_practice_drafter_v1",
+  "service_deployment_id": "flh-extraction-rules@e978b6c2bdb6/flh_extraction_service_v1/flh_practice_drafter_v1",
+  "units_schema": "flh_learning_units_v1"
+ },
+ "inputs_sha256": {
+  "../practice_v1/y_en.r1.json (French control)": "f6f59d0a71f526554fb518e1bc7d7256bbc3a8f1144fda4553cfeafbc976915c",
+  "gold/gold_v1.json": "5f6bb0efc4c914e80a013cfe0659f9a004243fa741c2ffd29f10ac932d7f337e",
+  "gold/gold_v2.json": "099cc62fdfb01f74cf9551f4e3090c7ecadb62a5f128a868594ddd9c4e9a8b0f",
+  "practice/music_thirds.sheet.json": "343ddd3c8779aa9e21932f90d7b934380632cc46b6c8a67bd49c39fc887e9d8d",
+  "regression/section-label-false-accept.json": "e34959857e46d6534468a1194a7777f43a0e3ce1eed5174e4e5ea2a6dd199938",
+  "sources/chem_water_states.v2.json": "93dfe7ae904b13c13ef22f40369eaa8b4fea67f0e6ccbcbb4c0c5c5ab753698f",
+  "sources/history_messages.v2.json": "99cc6d2bc84391f5ca7959cdaee71f68e4cd3ed732568ba1b433d3db07196a0a",
+  "sources/hw_basics.v2.json": "cad98563e03d15d72bd1c017465688f4e7c266589211996d08d646a5817d3550",
+  "sources/music_intervals_inbox.r1.json": "408f798e526e849483defb04c4d7731324c529715a7a5c5a8f65e262ee01cc4a",
+  "sources/music_intervals_inbox.r2.json": "7cdabfb5c5cefdbeed8613c9b6eb17cc07404f23bfcfba24f4ca961d0c7c1d59",
+  "sources/music_practice_diary.r1.json": "91d13b777b70f9c428c655878a2b5f298a9ee2b0b0910fc3ba303a91a4192588",
+  "sources/music_quoted_instructions.r1.json": "ec827735500e69673ec988e9eaf6500021ae06ceea4b2e339e13367dd4b01dbc",
+  "sources/music_relative_keys.r1.json": "de52cd1f5abd302d08b4fe17836483ef7f7f086be0a66d4d7e9330fe96b5d361",
+  "sources/music_thirds.r1.json": "508b5e30be0c40db6100e1cf27ce05cbaf57786868c477173acb483b702d0ec0",
+  "sources/music_thirds.r2.json": "14e0e9d0582074cfe34fa5221742a48e627cd49c220b2f4aa8e50c57493dbfbe",
+  "sources/music_thirds.r3.json": "c21e67d2b104d8bc43fb0e9b93530b0d01655409253512f78e8f695b3d96034b",
+  "sources/music_thirds_forum.r1.json": "42f916f66e2f7f16de5a96d5df3911a6f10b2fde3ffee495b33e33b4fa6c11d4"
+ },
+ "not_recorded_here": "interpreter version, CPU and timings (host-specific; see the run evidence)",
+ "schema": "flh_xsubject_inputs_v1"
+}

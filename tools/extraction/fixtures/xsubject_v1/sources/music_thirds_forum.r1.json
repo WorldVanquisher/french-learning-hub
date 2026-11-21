@@ -1,0 +1,46 @@
+{
+ "capture": {
+  "capture_id": "synthetic-music-forum-001",
+  "original_context": "Copied from a forum post: A minor third spans four semitones, like C to E. A major third spans four semitones too, it just sounds brighter.",
+  "original_input": "A forum post disagrees with my notes about minor thirds. Who is right?",
+  "schema_version": "learning_capture_v1",
+  "source": "manual"
+ },
+ "data_scope": "synthetic",
+ "language": "en",
+ "learner_goal": "Check what I read online against my lesson notes.",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "minor third = 4 semitones",
+    "confidence": 0.4,
+    "kind": "concept",
+    "quotes": [
+     "A minor third spans four semitones, like C to E."
+    ],
+    "recall": {
+     "answer": "four"
+    },
+    "ref": "forum-minor-third",
+    "statement": "A minor third spans four semitones, like C to E.",
+    "type": "claim"
+   },
+   {
+    "canonical": "major third = 4 semitones",
+    "confidence": 0.6,
+    "kind": "concept",
+    "quotes": [
+     "A major third spans four semitones too"
+    ],
+    "ref": "forum-major-third",
+    "statement": "A major third spans four semitones.",
+    "type": "claim"
+   }
+  ],
+  "proposer": "synthetic: hand-written contradiction fixture (music theory, English; no provider call)"
+ },
+ "revision": 1,
+ "schema": "flh_practice_source_v1",
+ "source_id": "music-thirds-forum",
+ "subject": "music_theory"
+}

@@ -1,0 +1,105 @@
+{
+ "files": [
+  {
+   "path": "expected/music/units.json",
+   "schema": "flh_learning_units_v1",
+   "sha256": "cdcd9344013a581d1d42046af9bb02d1a913e8a41b60629423ce03aee0723cc3",
+   "stability": "experimental",
+   "what": "units with spans, review reasons and recall"
+  },
+  {
+   "path": "expected/inbox/inbox-r2.json",
+   "schema": "flh_review_inbox_v1",
+   "sha256": "a23c7691a02737cb94e983e34452187d80e05bd4de2bf9aba519a6d9ba3a8f70",
+   "stability": "experimental",
+   "what": "review inbox for a UI"
+  },
+  {
+   "path": "expected/revisions/compare-r2-to-r3.json",
+   "schema": "flh_learning_units_compare_v1",
+   "sha256": "8df6b8fff3a6fbf575347821c6070904494c5e0b6a9317698b4021ab10fb436c",
+   "stability": "experimental",
+   "what": "revision comparison"
+  },
+  {
+   "path": "expected/revisions/rerun-statuses.json",
+   "schema": "flh_rerun_status_v1",
+   "sha256": "b5ea231c461e4cf9ccbe3f3194140f82d011518a308fd410363f1b91dbfa2ef8",
+   "stability": "experimental",
+   "what": "rerun outcomes"
+  },
+  {
+   "path": "expected/recall/contradictions.json",
+   "schema": "flh_unit_contradictions_v1",
+   "sha256": "1e5f20f6d9bfcd843ab79b9de7f22941d05328d3cc0fd6b09fcfd2d81087829c",
+   "stability": "experimental",
+   "what": "two-source contradiction"
+  },
+  {
+   "path": "expected/recall/feed.json",
+   "schema": "flh_practice_review_feed_v1 + flh_practice_feed_additions_v1",
+   "sha256": "a1feea933d4a01de89280765e13eb39129f3f012e60d36822944c008746e5c97",
+   "stability": "stable",
+   "what": "practice feed"
+  },
+  {
+   "path": "expected/music/loop.json",
+   "schema": "flh_learning_loop_v1",
+   "sha256": "1a18ca47fb84ae6326b8e0b71a431b7df8c3f415853f4ac716b25edd6aa046c4",
+   "stability": "experimental",
+   "what": "learning loop"
+  },
+  {
+   "path": "expected/vocabulary/terms-music-thirds.json",
+   "schema": "flh_vocabulary_reference_v1",
+   "sha256": "b283149cb38222bd47ef34036c355fb23a7e669161b272b2c6a7bb36a19de7c8",
+   "stability": "experimental",
+   "what": "vocabulary reference"
+  },
+  {
+   "path": "expected/handoff/handoff.json",
+   "schema": "flh_unit_handoff_v1",
+   "sha256": "ae8d09da0aedf5a7cbd2828c19aa84c965e8b9f5e0594a3ee8e65ba12ddf64b8",
+   "stability": "experimental",
+   "what": "agent handoff companion"
+  },
+  {
+   "path": "expected/handoff/followup-codex.json",
+   "schema": "flh_unit_followup_v1",
+   "sha256": "594b8bded0796a9bdfc82ad1a7f50f6247bd44383ec7f6b678c35ade382a63c4",
+   "stability": "experimental",
+   "what": "agent follow-up"
+  },
+  {
+   "path": "sources/chem_water_states.v2.json",
+   "schema": "flh_practice_source_v2",
+   "sha256": "93dfe7ae904b13c13ef22f40369eaa8b4fea67f0e6ccbcbb4c0c5c5ab753698f",
+   "stability": "experimental",
+   "what": "source contract v2"
+  },
+  {
+   "path": "eval/scorecard.json",
+   "schema": "flh_units_eval_v1.scorecard",
+   "sha256": "ddea81d0dc8817971f18ac3cc827480f11ef69d5b5b37538e1a53df67734466d",
+   "stability": "experimental",
+   "what": "trend scorecard"
+  },
+  {
+   "path": "expected/practice/music-practice.json",
+   "schema": "flh_unit_practice_v1",
+   "sha256": "2b2f34210504230fdf907b4ad403ddfcf85f5765b5de6c3a7a1e17689e428876",
+   "stability": "experimental",
+   "what": "practice prompts of four recall types"
+  },
+  {
+   "path": "expected/practice/graded-examples.json",
+   "schema": "flh_unit_practice_graded_examples_v1",
+   "sha256": "5f0249fc1a0dc34a2467d4fb0c3b66ddf72c29c99d5d7bdbd6b8b089322eb8ed",
+   "stability": "experimental",
+   "what": "expected outcomes for sample answers"
+  }
+ ],
+ "rule": "experimental schemas may change without a version bump; a changed file gets a new manifest version",
+ "schema": "flh_xsubject_consumer_fixtures_v1",
+ "version": "2026-11-21.2"
+}

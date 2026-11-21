@@ -1,0 +1,36 @@
+{
+ "capture": {
+  "capture_id": "synthetic-music-keys-001",
+  "original_context": "Key signatures, part one.\n\nC major has no sharps or flats in its key signature.\n\nPart two, a week later.\n\nA minor uses exactly the same notes as C major, so A minor is called the relative minor of C major.",
+  "original_input": "Why do C major and A minor look the same on the staff?",
+  "schema_version": "learning_capture_v1",
+  "source": "manual"
+ },
+ "data_scope": "synthetic",
+ "language": "en",
+ "learner_goal": "Find the relative minor of a major key.",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "relative minor of C major = A minor",
+    "confidence": 0.8,
+    "kind": "concept",
+    "quotes": [
+     "C major has no sharps or flats in its key signature.",
+     "A minor uses exactly the same notes as C major"
+    ],
+    "recall": {
+     "answer": "A minor"
+    },
+    "ref": "relative-minor",
+    "statement": "A minor is the relative minor of C major: both have no sharps or flats.",
+    "type": "claim"
+   }
+  ],
+  "proposer": "synthetic: hand-written evaluation fixture (music theory, English; no provider call)"
+ },
+ "revision": 1,
+ "schema": "flh_practice_source_v1",
+ "source_id": "music-relative-keys",
+ "subject": "music_theory"
+}

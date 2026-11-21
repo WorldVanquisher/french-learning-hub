@@ -1,0 +1,10 @@
+{
+ "handoff_with_text": "refused: the handoff would carry private data",
+ "handoff_without_text": "exported",
+ "model_failure": {
+  "exit": 2,
+  "local_units_unchanged": true,
+  "message": "refused"
+ },
+ "private_scope": "refused"
+}

@@ -1,0 +1,27 @@
+{
+ "agent": "codex",
+ "answers": [
+  {
+   "question_id": "q-97d8cd192a",
+   "rationale": "stand-in: a span that does not hold",
+   "span": {
+    "end": 15,
+    "field": "original_context",
+    "quote": "A major sixth s",
+    "start": 0
+   }
+  },
+  {
+   "question_id": "q-67d7d16012",
+   "rationale": "the first sentence about stability, in your interval notes",
+   "span": {
+    "end": 271,
+    "field": "original_context",
+    "quote": "A perfect fifth is stable.",
+    "start": 245
+   }
+  }
+ ],
+ "handoff_id": "hu-f82b244fdca2",
+ "schema": "flh_unit_followup_v1"
+}

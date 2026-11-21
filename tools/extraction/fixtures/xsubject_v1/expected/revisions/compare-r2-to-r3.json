@@ -1,0 +1,173 @@
+{
+ "ambiguous_duplicates": [
+  [
+   "k-2a346a0d0486",
+   "k-f945aa9b5a70"
+  ]
+ ],
+ "claims": [
+  {
+   "change": "unchanged",
+   "claim_key": "ck-31d08ea86837",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "approved",
+   "state_before": "approved",
+   "unit_after": "k-31d08ea86837",
+   "unit_before": "k-31d08ea86837"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-40bac97f4bae",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "approved",
+   "state_before": "approved",
+   "unit_after": "k-40bac97f4bae",
+   "unit_before": "k-40bac97f4bae"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-7f73793d24cd",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "approved",
+   "state_before": "approved",
+   "unit_after": "k-f945aa9b5a70",
+   "unit_before": "k-f945aa9b5a70"
+  },
+  {
+   "change": "added",
+   "claim_key": "ck-7f73793d24cd",
+   "state_after": "pending",
+   "text_after": "From C to E is a major third, which is four semitones.",
+   "unit_after": "k-2a346a0d0486"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-8f371578a3e5",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "approved",
+   "state_before": "approved",
+   "unit_after": "k-8f371578a3e5",
+   "unit_before": "k-8f371578a3e5"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-b7c80c698277",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "rejected",
+   "state_before": "rejected",
+   "unit_after": "k-2cb43473c35c",
+   "unit_before": "k-2cb43473c35c"
+  },
+  {
+   "change": "added",
+   "claim_key": "ck-f0b4dd9883a3",
+   "state_after": "pending",
+   "text_after": "A perfect fifth spans seven semitones, for example C to G.",
+   "unit_after": "k-1dcf92e330be"
+  }
+ ],
+ "counts": {
+  "added": 2,
+  "evidence_changed": 0,
+  "prose_edit": 0,
+  "removed": 0,
+  "state_changed": 0,
+  "unchanged": 5
+ },
+ "evidence": {
+  "added": [
+   "ek-22594d1c0df9"
+  ],
+  "kept": [
+   "ek-2084226fb827",
+   "ek-4ce27e8cfe76",
+   "ek-c0f9497deb4a",
+   "ek-f2fa4c7dfe09"
+  ],
+  "moved": [
+   {
+    "evidence_id_after": "ev-763dcf2f6b",
+    "evidence_id_before": "ev-820a211723",
+    "evidence_key": "ek-2084226fb827",
+    "from": [
+     "original_context",
+     114,
+     169
+    ],
+    "to": [
+     "original_context",
+     144,
+     199
+    ]
+   },
+   {
+    "evidence_id_after": "ev-8bb44a9871",
+    "evidence_id_before": "ev-88b18111db",
+    "evidence_key": "ek-4ce27e8cfe76",
+    "from": [
+     "original_context",
+     232,
+     299
+    ],
+    "to": [
+     "original_context",
+     262,
+     329
+    ]
+   },
+   {
+    "evidence_id_after": "ev-ca631bc2b5",
+    "evidence_id_before": "ev-44c315b58e",
+    "evidence_key": "ek-c0f9497deb4a",
+    "from": [
+     "original_context",
+     170,
+     231
+    ],
+    "to": [
+     "original_context",
+     200,
+     261
+    ]
+   },
+   {
+    "evidence_id_after": "ev-a4bb8fc68b",
+    "evidence_id_before": "ev-03b23c1995",
+    "evidence_key": "ek-f2fa4c7dfe09",
+    "from": [
+     "original_context",
+     300,
+     372
+    ],
+    "to": [
+     "original_context",
+     330,
+     402
+    ]
+   }
+  ],
+  "removed": []
+ },
+ "from": {
+  "fingerprint": "sf-87d52c502f0bf2d1",
+  "revision": 2,
+  "run_key": "rk-7b7b7225707529d7"
+ },
+ "identical_rerun": false,
+ "rejected_kept": [
+  "k-2cb43473c35c"
+ ],
+ "same_text": false,
+ "schema": "flh_learning_units_compare_v1",
+ "source_id": "music-thirds",
+ "to": {
+  "fingerprint": "sf-980f8166f9659c5c",
+  "revision": 3,
+  "run_key": "rk-10d52e391ad5051d"
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "claim": "A major third spans four semitones, for example C to E.",
+ "evidence": [
+  {
+   "end": 169,
+   "evidence_id": "ev-820a211723",
+   "evidence_key": "ek-2084226fb827",
+   "field": "original_context",
+   "quote": "A major third spans four semitones, for example C to E.",
+   "start": 114
+  }
+ ],
+ "fingerprint": "sf-87d52c502f0bf2d1",
+ "if_the_claim_is_wrong": "python3 -B -m flh_extraction practice2 decide --work WORK --item k-bbab1ad4b069 --edit \"CORRECTED TEXT\" --reason \"…\"",
+ "if_the_source_is_wrong": "edit the source text, raise its revision, then: python3 -B -m flh_extraction practice2 revise --source NEW.json --work WORK",
+ "recall_id": "rc-8c235ab4e42a",
+ "revision": 1,
+ "rule": "a correction is the learner's: it never invents a source claim and never changes the source by itself",
+ "source": "music-thirds",
+ "unit_id": "k-bbab1ad4b069"
+}

@@ -1,0 +1,1080 @@
+{
+ "gold_sha256": "b23348e0574b2c9b8f95db7590ee73da751c29c9eab778264188449abc189446",
+ "inputs": {
+  "chem_water_states.v2.json": "sf-76163c3286071fa7",
+  "music_practice_diary.r1.json": "sf-63dc974822917cd5",
+  "music_relative_keys.r1.json": "sf-2522b4bfecb2d1f1",
+  "music_thirds.r1.json": "sf-87d52c502f0bf2d1"
+ },
+ "known_biases": [
+  "the same author wrote the sources, the gold claims and the authored proposals: authored scores are an upper bound, not an estimate",
+  "4 short synthetic English documents (2 subjects); no learner data; the French control is not in the gold set",
+  "the sentence baseline favours numeric facts by design; descriptive claims are its blind spot",
+  "matching is lexical (span overlap >= 50% and the gold value as words): a correct paraphrase of the value counts as wrong_claim"
+ ],
+ "sample": {
+  "documents": 4,
+  "gold_claims": 13,
+  "languages": [
+   "en"
+  ],
+  "subjects": [
+   "diary",
+   "intervals",
+   "keys",
+   "states of water"
+  ]
+ },
+ "schema": "flh_units_eval_v1",
+ "systems": {
+  "authored": {
+   "by_topic_area": {
+    "diary": {
+     "accepted_units": 0,
+     "bad_span_claims": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "classes": {
+      "bad_span": 0,
+      "correct": 0,
+      "extra": 0,
+      "wrong_claim": 0
+     },
+     "coverage": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "duplicate_rate": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "evidence_supported": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "gold_claims": 0,
+     "missing_claims": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     }
+    },
+    "intervals": {
+     "accepted_units": 3,
+     "bad_span_claims": {
+      "count": 0,
+      "of": 6,
+      "rate": 0.0
+     },
+     "classes": {
+      "bad_span": 0,
+      "correct": 3,
+      "extra": 0,
+      "wrong_claim": 0
+     },
+     "coverage": {
+      "count": 4,
+      "of": 6,
+      "rate": 0.6667
+     },
+     "duplicate_rate": {
+      "count": 0,
+      "of": 3,
+      "rate": 0.0
+     },
+     "evidence_supported": {
+      "count": 3,
+      "of": 3,
+      "rate": 1.0
+     },
+     "gold_claims": 6,
+     "missing_claims": {
+      "count": 2,
+      "of": 6,
+      "rate": 0.3333
+     }
+    },
+    "keys": {
+     "accepted_units": 1,
+     "bad_span_claims": {
+      "count": 1,
+      "of": 2,
+      "rate": 0.5
+     },
+     "classes": {
+      "bad_span": 0,
+      "correct": 1,
+      "extra": 0,
+      "wrong_claim": 0
+     },
+     "coverage": {
+      "count": 1,
+      "of": 2,
+      "rate": 0.5
+     },
+     "duplicate_rate": {
+      "count": 0,
+      "of": 1,
+      "rate": 0.0
+     },
+     "evidence_supported": {
+      "count": 1,
+      "of": 1,
+      "rate": 1.0
+     },
+     "gold_claims": 2,
+     "missing_claims": {
+      "count": 0,
+      "of": 2,
+      "rate": 0.0
+     }
+    },
+    "states of water": {
+     "accepted_units": 4,
+     "bad_span_claims": {
+      "count": 0,
+      "of": 5,
+      "rate": 0.0
+     },
+     "classes": {
+      "bad_span": 0,
+      "correct": 3,
+      "extra": 0,
+      "wrong_claim": 1
+     },
+     "coverage": {
+      "count": 3,
+      "of": 5,
+      "rate": 0.6
+     },
+     "duplicate_rate": {
+      "count": 0,
+      "of": 4,
+      "rate": 0.0
+     },
+     "evidence_supported": {
+      "count": 3,
+      "of": 4,
+      "rate": 0.75
+     },
+     "gold_claims": 5,
+     "missing_claims": {
+      "count": 2,
+      "of": 5,
+      "rate": 0.4
+     }
+    }
+   },
+   "documents": [
+    {
+     "accepted": 3,
+     "candidate_coverage": {
+      "count": 4,
+      "of": 6,
+      "rate": 0.6667
+     },
+     "candidates": 3,
+     "false_rejects": [],
+     "gold": 6,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "semitone",
+       "require": "any",
+       "status": "missing",
+       "topic": "semitone",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "major third",
+       "units": [
+        "k-bbab1ad4b069"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "minor third",
+       "units": [
+        "k-133ac4bd8df4"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-triad",
+       "require": "any",
+       "status": "matched",
+       "topic": "major triad",
+       "units": [
+        "k-40bac97f4bae"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-triad",
+       "require": "any",
+       "status": "matched",
+       "topic": "minor triad",
+       "units": [
+        "k-40bac97f4bae"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "octave",
+       "require": "any",
+       "status": "missing",
+       "topic": "octave",
+       "units": []
+      }
+     ],
+     "source_id": "music-thirds",
+     "topic_area": "intervals",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "minor-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "minor-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A minor third spans three semitones, for example C to E-flat.",
+       "type": "claim",
+       "unit_id": "k-133ac4bd8df4"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "major-triad",
+        "minor-triad"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "major-triad",
+         "precision": 0.482
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "minor-triad",
+         "precision": 0.518
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "major-triad",
+         "kind": "boundary",
+         "precision": 0.482
+        }
+       ],
+       "text": "Count the semitones from the root to the middle note: four makes a major triad, three makes a minor triad.",
+       "type": "contrast",
+       "unit_id": "k-40bac97f4bae"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "major-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "major-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A major third spans four semitones, for example C to E.",
+       "type": "claim",
+       "unit_id": "k-bbab1ad4b069"
+      }
+     ]
+    },
+    {
+     "accepted": 4,
+     "candidate_coverage": {
+      "count": 3,
+      "of": 5,
+      "rate": 0.6
+     },
+     "candidates": 4,
+     "false_rejects": [],
+     "gold": 5,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "freeze-0",
+       "require": "any",
+       "status": "matched",
+       "topic": "freezing point",
+       "units": [
+        "k-a82ecca1cf3b"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "boil-100",
+       "require": "any",
+       "status": "matched",
+       "topic": "boiling point",
+       "units": [
+        "k-842265730ecc"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "altitude",
+       "require": "any",
+       "status": "missing",
+       "topic": "boiling point at altitude",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "plateau",
+       "require": "any",
+       "status": "matched",
+       "topic": "temperature while boiling",
+       "units": [
+        "k-64d215130051"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "vapour",
+       "require": "any",
+       "status": "missing",
+       "topic": "boiling",
+       "units": []
+      }
+     ],
+     "source_id": "chem-water-states",
+     "topic_area": "states of water",
+     "units": [
+      {
+       "class": "wrong_claim",
+       "gold": [
+        "altitude"
+       ],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Lower air pressure at high altitude lowers the boiling point of water.",
+       "type": "claim",
+       "unit_id": "k-5ff605c697c8"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "plateau"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "plateau",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "While water boils, its temperature stays at the boiling point until the liquid is gone.",
+       "type": "claim",
+       "unit_id": "k-64d215130051"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "boil-100"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "precision": 0.3218
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "kind": "boundary",
+         "precision": 0.3218
+        }
+       ],
+       "text": "At sea level, pure water boils at 100 degrees Celsius.",
+       "type": "claim",
+       "unit_id": "k-842265730ecc"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "freeze-0"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "precision": 0.4483
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "kind": "boundary",
+         "precision": 0.4483
+        }
+       ],
+       "text": "At sea level, pure water freezes at 0 degrees Celsius.",
+       "type": "claim",
+       "unit_id": "k-a82ecca1cf3b"
+      }
+     ]
+    },
+    {
+     "accepted": 1,
+     "candidate_coverage": {
+      "count": 2,
+      "of": 2,
+      "rate": 1.0
+     },
+     "candidates": 1,
+     "false_rejects": [],
+     "gold": 2,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "c-major-signature",
+       "require": "any",
+       "status": "matched",
+       "topic": "C major key signature",
+       "units": [
+        "k-ed301ae649c0"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "relative-minor",
+       "require": "all",
+       "status": "bad_span_only",
+       "topic": "relative minor of C major",
+       "units": [
+        "k-ed301ae649c0"
+       ]
+      }
+     ],
+     "source_id": "music-relative-keys",
+     "topic_area": "keys",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "c-major-signature"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "c-major-signature",
+         "precision": 0.5306
+        }
+       ],
+       "span_errors": [],
+       "text": "A minor is the relative minor of C major: both have no sharps or flats.",
+       "type": "claim",
+       "unit_id": "k-ed301ae649c0"
+      }
+     ]
+    },
+    {
+     "accepted": 0,
+     "candidate_coverage": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "candidates": 0,
+     "false_rejects": [],
+     "gold": 0,
+     "per_gold": [],
+     "source_id": "music-practice-diary",
+     "topic_area": "diary",
+     "units": []
+    }
+   ],
+   "totals": {
+    "accepted_units": 8,
+    "bad_span_claims": {
+     "count": 1,
+     "of": 13,
+     "rate": 0.0769
+    },
+    "classes": {
+     "bad_span": 0,
+     "correct": 7,
+     "extra": 0,
+     "wrong_claim": 1
+    },
+    "coverage": {
+     "count": 8,
+     "of": 13,
+     "rate": 0.6154
+    },
+    "duplicate_rate": {
+     "count": 0,
+     "of": 8,
+     "rate": 0.0
+    },
+    "evidence_supported": {
+     "count": 7,
+     "of": 8,
+     "rate": 0.875
+    },
+    "gold_claims": 13,
+    "missing_claims": {
+     "count": 4,
+     "of": 13,
+     "rate": 0.3077
+    }
+   }
+  },
+  "sentence_baseline": {
+   "by_topic_area": {
+    "diary": {
+     "accepted_units": 1,
+     "bad_span_claims": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "classes": {
+      "bad_span": 0,
+      "correct": 0,
+      "extra": 1,
+      "wrong_claim": 0
+     },
+     "coverage": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "duplicate_rate": {
+      "count": 0,
+      "of": 1,
+      "rate": 0.0
+     },
+     "evidence_supported": {
+      "count": 0,
+      "of": 1,
+      "rate": 0.0
+     },
+     "gold_claims": 0,
+     "missing_claims": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     }
+    },
+    "intervals": {
+     "accepted_units": 4,
+     "bad_span_claims": {
+      "count": 0,
+      "of": 6,
+      "rate": 0.0
+     },
+     "classes": {
+      "bad_span": 0,
+      "correct": 4,
+      "extra": 0,
+      "wrong_claim": 0
+     },
+     "coverage": {
+      "count": 4,
+      "of": 6,
+      "rate": 0.6667
+     },
+     "duplicate_rate": {
+      "count": 0,
+      "of": 4,
+      "rate": 0.0
+     },
+     "evidence_supported": {
+      "count": 4,
+      "of": 4,
+      "rate": 1.0
+     },
+     "gold_claims": 6,
+     "missing_claims": {
+      "count": 2,
+      "of": 6,
+      "rate": 0.3333
+     }
+    },
+    "keys": {
+     "accepted_units": 2,
+     "bad_span_claims": {
+      "count": 0,
+      "of": 2,
+      "rate": 0.0
+     },
+     "classes": {
+      "bad_span": 0,
+      "correct": 0,
+      "extra": 2,
+      "wrong_claim": 0
+     },
+     "coverage": {
+      "count": 0,
+      "of": 2,
+      "rate": 0.0
+     },
+     "duplicate_rate": {
+      "count": 0,
+      "of": 2,
+      "rate": 0.0
+     },
+     "evidence_supported": {
+      "count": 0,
+      "of": 2,
+      "rate": 0.0
+     },
+     "gold_claims": 2,
+     "missing_claims": {
+      "count": 2,
+      "of": 2,
+      "rate": 1.0
+     }
+    },
+    "states of water": {
+     "accepted_units": 3,
+     "bad_span_claims": {
+      "count": 0,
+      "of": 5,
+      "rate": 0.0
+     },
+     "classes": {
+      "bad_span": 0,
+      "correct": 2,
+      "extra": 1,
+      "wrong_claim": 0
+     },
+     "coverage": {
+      "count": 3,
+      "of": 5,
+      "rate": 0.6
+     },
+     "duplicate_rate": {
+      "count": 0,
+      "of": 3,
+      "rate": 0.0
+     },
+     "evidence_supported": {
+      "count": 2,
+      "of": 3,
+      "rate": 0.6667
+     },
+     "gold_claims": 5,
+     "missing_claims": {
+      "count": 2,
+      "of": 5,
+      "rate": 0.4
+     }
+    }
+   },
+   "documents": [
+    {
+     "accepted": 4,
+     "candidate_coverage": {
+      "count": 4,
+      "of": 6,
+      "rate": 0.6667
+     },
+     "candidates": 4,
+     "false_rejects": [],
+     "gold": 6,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "semitone",
+       "require": "any",
+       "status": "matched",
+       "topic": "semitone",
+       "units": [
+        "k-0d242714ccb4"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "major third",
+       "units": [
+        "k-bbab1ad4b069"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "minor third",
+       "units": [
+        "k-133ac4bd8df4"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-triad",
+       "require": "any",
+       "status": "missing",
+       "topic": "major triad",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-triad",
+       "require": "any",
+       "status": "missing",
+       "topic": "minor triad",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "octave",
+       "require": "any",
+       "status": "matched",
+       "topic": "octave",
+       "units": [
+        "k-971ff8d449b8"
+       ]
+      }
+     ],
+     "source_id": "music-thirds",
+     "topic_area": "intervals",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "semitone"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "semitone",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A semitone is the smallest step on the piano, from one key to the very next key.",
+       "type": "claim",
+       "unit_id": "k-0d242714ccb4"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "minor-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "minor-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A minor third spans three semitones, for example C to E-flat.",
+       "type": "claim",
+       "unit_id": "k-133ac4bd8df4"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "octave"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "octave",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "An octave doubles the frequency: A4 is 440 Hz and A5 is 880 Hz.",
+       "type": "claim",
+       "unit_id": "k-971ff8d449b8"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "major-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "major-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A major third spans four semitones, for example C to E.",
+       "type": "claim",
+       "unit_id": "k-bbab1ad4b069"
+      }
+     ]
+    },
+    {
+     "accepted": 3,
+     "candidate_coverage": {
+      "count": 3,
+      "of": 5,
+      "rate": 0.6
+     },
+     "candidates": 3,
+     "false_rejects": [],
+     "gold": 5,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "freeze-0",
+       "require": "any",
+       "status": "matched",
+       "topic": "freezing point",
+       "units": [
+        "k-c655dabe9c3e"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "boil-100",
+       "require": "any",
+       "status": "matched",
+       "topic": "boiling point",
+       "units": [
+        "k-c655dabe9c3e"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "altitude",
+       "require": "any",
+       "status": "matched",
+       "topic": "boiling point at altitude",
+       "units": [
+        "k-165283339022"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "plateau",
+       "require": "any",
+       "status": "missing",
+       "topic": "temperature while boiling",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "vapour",
+       "require": "any",
+       "status": "missing",
+       "topic": "boiling",
+       "units": []
+      }
+     ],
+     "source_id": "chem-water-states",
+     "topic_area": "states of water",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "altitude"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "altitude",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "Air pressure is lower at high altitude, so water boils below 100 degrees Celsius there.",
+       "type": "claim",
+       "unit_id": "k-165283339022"
+      },
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Lab notebook, week 3.",
+       "type": "claim",
+       "unit_id": "k-69bd4db1243c"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "freeze-0",
+        "boil-100"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "precision": 0.4483
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "precision": 0.3218
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "kind": "boundary",
+         "precision": 0.4483
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "kind": "boundary",
+         "precision": 0.3218
+        }
+       ],
+       "text": "At sea level, pure water freezes at 0 degrees Celsius and boils at 100 degrees Celsius.",
+       "type": "claim",
+       "unit_id": "k-c655dabe9c3e"
+      }
+     ]
+    },
+    {
+     "accepted": 2,
+     "candidate_coverage": {
+      "count": 0,
+      "of": 2,
+      "rate": 0.0
+     },
+     "candidates": 2,
+     "false_rejects": [],
+     "gold": 2,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "c-major-signature",
+       "require": "any",
+       "status": "missing",
+       "topic": "C major key signature",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "relative-minor",
+       "require": "all",
+       "status": "missing",
+       "topic": "relative minor of C major",
+       "units": []
+      }
+     ],
+     "source_id": "music-relative-keys",
+     "topic_area": "keys",
+     "units": [
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Key signatures, part one.",
+       "type": "claim",
+       "unit_id": "k-4ebe05051635"
+      },
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Part two, a week later.",
+       "type": "claim",
+       "unit_id": "k-b46ea5813a90"
+      }
+     ]
+    },
+    {
+     "accepted": 1,
+     "candidate_coverage": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "candidates": 1,
+     "false_rejects": [],
+     "gold": 0,
+     "per_gold": [],
+     "source_id": "music-practice-diary",
+     "topic_area": "diary",
+     "units": [
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Practised for twenty minutes today.",
+       "type": "claim",
+       "unit_id": "k-d1e55ad47cec"
+      }
+     ]
+    }
+   ],
+   "totals": {
+    "accepted_units": 10,
+    "bad_span_claims": {
+     "count": 0,
+     "of": 13,
+     "rate": 0.0
+    },
+    "classes": {
+     "bad_span": 0,
+     "correct": 6,
+     "extra": 4,
+     "wrong_claim": 0
+    },
+    "coverage": {
+     "count": 7,
+     "of": 13,
+     "rate": 0.5385
+    },
+    "duplicate_rate": {
+     "count": 0,
+     "of": 10,
+     "rate": 0.0
+    },
+    "evidence_supported": {
+     "count": 6,
+     "of": 10,
+     "rate": 0.6
+    },
+    "gold_claims": 13,
+    "missing_claims": {
+     "count": 6,
+     "of": 13,
+     "rate": 0.4615
+    }
+   }
+  }
+ }
+}

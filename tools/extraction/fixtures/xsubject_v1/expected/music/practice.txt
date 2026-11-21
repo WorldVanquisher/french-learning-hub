@@ -1,0 +1,17 @@
+Practice for music-thirds revision 1: choose 2, explain 1, produce 2
+(answers stay hidden until you answer or reveal)
+[p-25cfdd612add] explain (unaided recall of the rule; grading self_check)
+  From memory, without looking: when do you use « major triad » and when « minor triad »? Give one example of each.
+  evidence ev-03b23c1995, ev-44c315b58e, ev-820a211723, ev-88b18111db
+[p-46601f0b6c76] choose (recognition between confusable forms; grading exact)  new sentence
+  A, C-sharp, E: which triad is it? — It is a __.   options: major triad / minor triad
+  evidence ev-03b23c1995, ev-88b18111db
+[p-f4b2c90df5f0] choose (recognition between confusable forms; grading exact)  new sentence
+  D, F, A: which triad is it? — It is a __.   options: major triad / minor triad
+  evidence ev-03b23c1995, ev-88b18111db
+[p-99adbca773c6] produce (production in a new sentence; grading accepted_variants_else_self_check)  new sentence
+  A, C-sharp, E: which triad is it? Answer with major triad or minor triad.
+  evidence ev-03b23c1995, ev-88b18111db
+[p-c6682fa36cca] produce (production in a new sentence; grading accepted_variants_else_self_check)  new sentence
+  D, F, A: which triad is it? Answer with major triad or minor triad.
+  evidence ev-03b23c1995, ev-88b18111db

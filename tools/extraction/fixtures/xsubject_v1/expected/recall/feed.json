@@ -1,0 +1,149 @@
+{
+  "consumer": "workbooks lane: Review Today and scheduling",
+  "contract_additions": "flh_practice_feed_additions_v1",
+  "feed_id": "f-e75c4a3ecdcb",
+  "feed_seq": 1,
+  "items": [
+    {
+      "evidence_ids": [
+        "ev-03b23c1995",
+        "ev-44c315b58e",
+        "ev-820a211723",
+        "ev-88b18111db"
+      ],
+      "grading": "self_check",
+      "kind": "explain",
+      "knowledge_ids": [
+        "k-40bac97f4bae",
+        "k-bbab1ad4b069",
+        "k-133ac4bd8df4"
+      ],
+      "measures": "unaided recall of the rule",
+      "new_sentence": null,
+      "origin": "source",
+      "outcomes": [],
+      "practice_id": "p-25cfdd612add",
+      "prompt": "From memory, without looking: when do you use « major triad » and when « minor triad »? Give one example of each.",
+      "recall_type": "unassisted_recall",
+      "source_revision": {
+        "revision": 1,
+        "revision_sha256": "786d7b460b519a87c651cafc45e61ce11678d45509269890cb7a0574b31ac9ac"
+      }
+    },
+    {
+      "evidence_ids": [
+        "ev-03b23c1995",
+        "ev-88b18111db"
+      ],
+      "grading": "exact",
+      "kind": "choose",
+      "knowledge_ids": [
+        "k-8f371578a3e5",
+        "k-40bac97f4bae"
+      ],
+      "measures": "recognition between confusable forms",
+      "new_sentence": true,
+      "options": [
+        "major triad",
+        "minor triad"
+      ],
+      "origin": "source",
+      "outcomes": [],
+      "practice_id": "p-46601f0b6c76",
+      "prompt": "A, C-sharp, E: which triad is it? — It is a __.",
+      "recall_type": "assisted_recall",
+      "source_revision": {
+        "revision": 1,
+        "revision_sha256": "786d7b460b519a87c651cafc45e61ce11678d45509269890cb7a0574b31ac9ac"
+      }
+    },
+    {
+      "evidence_ids": [
+        "ev-03b23c1995",
+        "ev-88b18111db"
+      ],
+      "grading": "exact",
+      "kind": "choose",
+      "knowledge_ids": [
+        "k-31d08ea86837",
+        "k-40bac97f4bae"
+      ],
+      "measures": "recognition between confusable forms",
+      "new_sentence": true,
+      "options": [
+        "major triad",
+        "minor triad"
+      ],
+      "origin": "source",
+      "outcomes": [],
+      "practice_id": "p-f4b2c90df5f0",
+      "prompt": "D, F, A: which triad is it? — It is a __.",
+      "recall_type": "assisted_recall",
+      "source_revision": {
+        "revision": 1,
+        "revision_sha256": "786d7b460b519a87c651cafc45e61ce11678d45509269890cb7a0574b31ac9ac"
+      }
+    },
+    {
+      "evidence_ids": [
+        "ev-03b23c1995",
+        "ev-88b18111db"
+      ],
+      "grading": "accepted_variants_else_self_check",
+      "kind": "produce",
+      "knowledge_ids": [
+        "k-8f371578a3e5",
+        "k-40bac97f4bae"
+      ],
+      "measures": "production in a new sentence",
+      "new_sentence": true,
+      "origin": "source",
+      "outcomes": [],
+      "practice_id": "p-99adbca773c6",
+      "prompt": "A, C-sharp, E: which triad is it? Answer with major triad or minor triad.",
+      "recall_type": "transfer",
+      "source_revision": {
+        "revision": 1,
+        "revision_sha256": "786d7b460b519a87c651cafc45e61ce11678d45509269890cb7a0574b31ac9ac"
+      }
+    },
+    {
+      "evidence_ids": [
+        "ev-03b23c1995",
+        "ev-88b18111db"
+      ],
+      "grading": "accepted_variants_else_self_check",
+      "kind": "produce",
+      "knowledge_ids": [
+        "k-31d08ea86837",
+        "k-40bac97f4bae"
+      ],
+      "measures": "production in a new sentence",
+      "new_sentence": true,
+      "origin": "source",
+      "outcomes": [],
+      "practice_id": "p-c6682fa36cca",
+      "prompt": "D, F, A: which triad is it? Answer with major triad or minor triad.",
+      "recall_type": "transfer",
+      "source_revision": {
+        "revision": 1,
+        "revision_sha256": "786d7b460b519a87c651cafc45e61ce11678d45509269890cb7a0574b31ac9ac"
+      }
+    }
+  ],
+  "not_included": [
+    "due dates, intervals or any schedule (Workbooks owns them)",
+    "answer keys (read them from the practice file when revealing)",
+    "attempt texts",
+    "skipped items and missing observations (a feed records attempts and reveals only)"
+  ],
+  "producer": "extraction lane prototype (owner of the practice-content contract)",
+  "schema": "flh_practice_review_feed_v1",
+  "source": {
+    "capture_id": "synthetic-music-thirds-001",
+    "proposer": "synthetic: hand-written cross-subject fixture (music theory, English; no provider call)",
+    "revision": 1,
+    "revision_sha256": "786d7b460b519a87c651cafc45e61ce11678d45509269890cb7a0574b31ac9ac",
+    "source_id": "music-thirds"
+  }
+}

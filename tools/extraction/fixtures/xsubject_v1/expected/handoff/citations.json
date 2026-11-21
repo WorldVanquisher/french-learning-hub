@@ -1,0 +1,35 @@
+{
+ "citations": [
+  {
+   "citation": "music-intervals-inbox r2 original_context[75:112] « A perfect fourth spans five semitones »",
+   "end": 112,
+   "field": "original_context",
+   "fingerprint": "sf-e6dfbbf6a2312340",
+   "id": "ev-bc6bb144ae",
+   "quote": "A perfect fourth spans five semitones",
+   "revision": 2,
+   "source_id": "music-intervals-inbox",
+   "start": 75,
+   "verified": true
+  },
+  {
+   "citation": "music-intervals-inbox r2 original_context[75:112] « A perfect fourth spans five semitones »",
+   "end": 112,
+   "field": "original_context",
+   "fingerprint": "sf-e6dfbbf6a2312340",
+   "id": "ek-5f1231c77c7f",
+   "quote": "A perfect fourth spans five semitones",
+   "revision": 2,
+   "source_id": "music-intervals-inbox",
+   "start": 75,
+   "verified": true
+  }
+ ],
+ "refused_followup_answers": [
+  {
+   "code": "invalid_span",
+   "detail": "span [0, 15) of original_context reads « Interval notes. », not the quote « A major sixth s »",
+   "question_id": "q-97d8cd192a"
+  }
+ ]
+}

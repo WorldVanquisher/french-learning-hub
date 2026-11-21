@@ -1,0 +1,32 @@
+{
+ "batch_id": "b2-d389db7d1b4c",
+ "left_for_you": [
+  {
+   "changes": [],
+   "earlier_decision": null,
+   "item_id": "k-5ca79503ae78",
+   "state": "pending",
+   "support": "unsupported",
+   "text": "« en » goes with every verb of movement, so « j'en vais » is also correct.",
+   "type": "claim",
+   "why": "UNSUPPORTED: « en goes with every verb of movement » is not in your question or context"
+  },
+  {
+   "changes": [],
+   "earlier_decision": null,
+   "item_id": "k-232ca0f26098",
+   "state": "pending",
+   "support": "supported",
+   "text": "« aller à » takes « y »; « en » would mean « from there ».",
+   "type": "common_error",
+   "why": "CONFLICTS WITH k-5ca79503ae78: k-5ca79503ae78 presents « j'en vais » as correct; k-232ca0f26098 lists it as an error"
+  }
+ ],
+ "selected": [
+  "k-6c4760ebee9d",
+  "k-40cbe73ae3f5",
+  "k-0d3281b28da6",
+  "k-d1c9732336a2",
+  "k-cb9627cc7213"
+ ]
+}

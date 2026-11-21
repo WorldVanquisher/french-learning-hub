@@ -1,0 +1,148 @@
+{
+ "note": "quotes are the learner's own cited words; the full text is never in an inbox",
+ "priority_order": [
+  "conflict",
+  "ambiguous_duplicate",
+  "unsupported_claim",
+  "changed_since_decision",
+  "restored_awaiting_confirmation",
+  "uncertain_evidence",
+  "word_cue",
+  "paraphrase",
+  "no_evidence",
+  "undecided"
+ ],
+ "privacy_findings": 0,
+ "reason_counts": {
+  "conflict": 1,
+  "uncertain_evidence": 1,
+  "unsupported_claim": 1,
+  "word_cue": 1
+ },
+ "rejected": [
+  {
+   "claim_key": "ck-14447b695bf0",
+   "evidence": [
+    {
+     "end": 244,
+     "evidence_id": "ev-15bb3a2805",
+     "field": "original_context",
+     "quote": "A tritone spans six semitones.",
+     "start": 214,
+     "status": "located"
+    }
+   ],
+   "reasons": [
+    {
+     "code": "rejected_by_learner",
+     "detail": "you rejected it; it stays in the history"
+    }
+   ],
+   "state": "rejected",
+   "support": "supported",
+   "text": "A tritone spans seven semitones.",
+   "type": "claim",
+   "unit_id": "k-c8f3eff46ff5"
+  }
+ ],
+ "schema": "flh_review_inbox_v1",
+ "source": {
+  "data_scope": "synthetic",
+  "fingerprint": "sf-64c16bacedd69cbf",
+  "language": "en",
+  "revision": 1,
+  "run_key": "rk-dc547d901026ea58",
+  "source_id": "music-intervals-inbox",
+  "subject": "music_theory"
+ },
+ "to_review": [
+  {
+   "claim_key": "ck-37e5d45d4829",
+   "evidence": [
+    {
+     "end": 244,
+     "evidence_id": "ev-15bb3a2805",
+     "field": "original_context",
+     "quote": "A tritone spans six semitones.",
+     "start": 214,
+     "status": "located"
+    }
+   ],
+   "priority": 0,
+   "reasons": [
+    {
+     "code": "conflict",
+     "detail": "another item presents as correct what this one lists as wrong (or the reverse)"
+    }
+   ],
+   "state": "pending",
+   "support": "supported",
+   "text": "seven semitones is a perfect fifth; a tritone is six",
+   "type": "common_error",
+   "unit_id": "k-37e5d45d4829"
+  },
+  {
+   "claim_key": "ck-78633b9f709c",
+   "evidence": [],
+   "priority": 2,
+   "reasons": [
+    {
+     "code": "unsupported_claim",
+     "detail": "these words are not in your text: « A major sixth spans nine semitones »"
+    }
+   ],
+   "state": "pending",
+   "support": "unsupported",
+   "text": "A major sixth spans nine semitones.",
+   "type": "claim",
+   "unit_id": "k-baac4a16427a"
+  },
+  {
+   "claim_key": "ck-987568d424ed",
+   "evidence": [
+    {
+     "evidence_id": "ev-6c3d7f22b9",
+     "quote": "perfect fifth is stable.",
+     "status": "ambiguous"
+    }
+   ],
+   "priority": 5,
+   "reasons": [
+    {
+     "code": "uncertain_evidence",
+     "detail": "a quote occurs more than once or only in the machine explanation"
+    }
+   ],
+   "state": "pending",
+   "support": "uncertain",
+   "text": "A perfect fifth sounds stable.",
+   "type": "claim",
+   "unit_id": "k-417165ee040e"
+  },
+  {
+   "claim_key": "ck-a74566101de8",
+   "evidence": [
+    {
+     "end": 303,
+     "evidence_id": "ev-556f39a2b9",
+     "field": "original_context",
+     "quote": "Every interval can be inverted.",
+     "start": 272,
+     "status": "located"
+    }
+   ],
+   "priority": 6,
+   "reasons": [
+    {
+     "code": "word_cue:generalises",
+     "detail": "the claim says « Every »; its 1 located quote shows one example, not a rule for every case"
+    }
+   ],
+   "state": "pending",
+   "support": "supported",
+   "text": "Every interval can be inverted.",
+   "type": "claim",
+   "unit_id": "k-af6ac6c0efd9"
+  }
+ ]
+}

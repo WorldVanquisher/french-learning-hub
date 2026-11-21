@@ -1,0 +1,163 @@
+{
+ "ambiguous_duplicates": [],
+ "counts": {
+  "needs_review": 2,
+  "recall": 0,
+  "units": 5,
+  "usable": 3
+ },
+ "drafter": "flh_practice_drafter_v1",
+ "recall": [],
+ "recall_refused": [],
+ "schema": "flh_learning_units_v1",
+ "source": {
+  "data_scope": "synthetic",
+  "draft_id": "d-66cd6ef73675",
+  "extensions": {},
+  "fingerprint": "sf-87d52c502f0bf2d1",
+  "language": "en",
+  "revision": 2,
+  "revision_sha256": "8f9c2052096bd32ccca7b15d33aac831d7a147b01cf268e01493ae2e3a32063e",
+  "run_key": "rk-7b7b7225707529d7",
+  "source_id": "music-thirds",
+  "subject": "music_theory"
+ },
+ "source_text_included": false,
+ "span_overlaps": [],
+ "units": [
+  {
+   "canonical": "minor third = 2 semitones",
+   "claim_key": "ck-b7c80c698277",
+   "evidence": [
+    {
+     "end": 231,
+     "evidence_id": "ev-44c315b58e",
+     "evidence_key": "ek-c0f9497deb4a",
+     "field": "original_context",
+     "quote": "A minor third spans three semitones, for example C to E-flat.",
+     "source_revision": 2,
+     "start": 170,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "499acd463994d36fd650e54e4d667c0c5afbf329de34d5c11702831a67abec28",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "minor-third",
+   "proposed_text": "A minor third spans two semitones, for example C to E-flat.",
+   "review_reasons": [
+    {
+     "code": "undecided",
+     "detail": "supported and waiting for your decision (it can join the batch)"
+    }
+   ],
+   "state": "pending",
+   "support": "supported",
+   "text": "A minor third spans two semitones, for example C to E-flat.",
+   "type": "claim",
+   "unit_id": "k-2cb43473c35c"
+  },
+  {
+   "claim_key": "ck-31d08ea86837",
+   "evidence": [],
+   "item_hash": "61f235e107af4acf80efc47103f2bffdeaf40a76e29a29139165daad84754c24",
+   "needs_review": false,
+   "origin": "generated",
+   "proposal_ref": "ex-d-minor",
+   "proposed_text": "D to F is three semitones (a minor third), then F to A is four (a major third).",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "generated",
+   "text": "D to F is three semitones (a minor third), then F to A is four (a major third).",
+   "type": "worked_example",
+   "unit_id": "k-31d08ea86837"
+  },
+  {
+   "claim_key": "ck-40bac97f4bae",
+   "evidence": [
+    {
+     "end": 299,
+     "evidence_id": "ev-88b18111db",
+     "evidence_key": "ek-4ce27e8cfe76",
+     "field": "original_context",
+     "quote": "A major triad stacks a major third and then a minor third: C, E, G.",
+     "source_revision": 2,
+     "start": 232,
+     "status": "located",
+     "verified": true
+    },
+    {
+     "end": 372,
+     "evidence_id": "ev-03b23c1995",
+     "evidence_key": "ek-f2fa4c7dfe09",
+     "field": "original_context",
+     "quote": "A minor triad stacks a minor third and then a major third: C, E-flat, G.",
+     "source_revision": 2,
+     "start": 300,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "1acd140c2e86fd271d8ee2fb9787ebd4f4f32eb5f4946689f790002d18d16e21",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "major-vs-minor-triad",
+   "proposed_text": "Count the semitones from the root to the middle note: four makes a major triad, three makes a minor triad.",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "Count the semitones from the root to the middle note: four makes a major triad, three makes a minor triad.",
+   "type": "contrast",
+   "unit_id": "k-40bac97f4bae"
+  },
+  {
+   "claim_key": "ck-8f371578a3e5",
+   "evidence": [],
+   "item_hash": "b4fa1d2d13c7281a4d19c076ee8dc321c52634a3b992da78e8a71ef84c1f8d18",
+   "needs_review": false,
+   "origin": "generated",
+   "proposal_ref": "ex-a-major",
+   "proposed_text": "A to C-sharp is four semitones (a major third), then C-sharp to E is three (a minor third).",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "generated",
+   "text": "A to C-sharp is four semitones (a major third), then C-sharp to E is three (a minor third).",
+   "type": "worked_example",
+   "unit_id": "k-8f371578a3e5"
+  },
+  {
+   "canonical": "major third = 4 semitones",
+   "claim_key": "ck-7f73793d24cd",
+   "evidence": [
+    {
+     "end": 169,
+     "evidence_id": "ev-820a211723",
+     "evidence_key": "ek-2084226fb827",
+     "field": "original_context",
+     "quote": "A major third spans four semitones, for example C to E.",
+     "source_revision": 2,
+     "start": 114,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "9de8229a8ac008058a169744b7d4384f0d3780a588950afed92f0ab06b38a830",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "major-third",
+   "proposed_text": "A major third covers four semitones, as from C up to E.",
+   "review_reasons": [
+    {
+     "code": "undecided",
+     "detail": "supported and waiting for your decision (it can join the batch)"
+    }
+   ],
+   "state": "pending",
+   "support": "supported",
+   "text": "A major third covers four semitones, as from C up to E.",
+   "type": "claim",
+   "unit_id": "k-f945aa9b5a70"
+  }
+ ]
+}

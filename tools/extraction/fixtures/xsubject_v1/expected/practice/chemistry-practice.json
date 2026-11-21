@@ -1,0 +1,219 @@
+{
+ "counts": {
+  "application": 0,
+  "explanation": 0,
+  "free_recall": 2,
+  "recognition": 2
+ },
+ "drops": [
+  {
+   "text": "Lower air pressure at high altitude lowers the boiling point of water.",
+   "type": "claim",
+   "unit_id": "k-5ff605c697c8",
+   "why": "recall refused: answer_not_in_evidence, prompt_reveals_answer"
+  },
+  {
+   "text": "While water boils, its temperature stays at the boiling point until the liquid is gone.",
+   "type": "claim",
+   "unit_id": "k-64d215130051",
+   "why": "no recall answer and no TOPIC = VALUE canonical: nothing to ask without inventing"
+  }
+ ],
+ "multi_answer_spans": [
+  {
+   "answers": [
+    "0",
+    "100"
+   ],
+   "evidence_key": "ek-c31b88c3b8f3",
+   "note": "this span supports several answers; each free-recall prompt pins its own; recognition options from this span alone are ambiguous",
+   "recall_ids": [
+    "rc-22bebeab9a82",
+    "rc-ddda83ae8692"
+   ]
+  }
+ ],
+ "prompts": [
+  {
+   "accepted": [
+    {
+     "answer": "100",
+     "basis": "verbatim",
+     "evidence_id": "ev-21d7e1072c"
+    },
+    {
+     "answer": "100 °C",
+     "basis": "equivalent wording",
+     "evidence_id": "ev-21d7e1072c",
+     "note": "a rewording of an answer that is in the span; graded as correct"
+    },
+    {
+     "answer": "100 degrees",
+     "basis": "verbatim",
+     "evidence_id": "ev-21d7e1072c"
+    },
+    {
+     "answer": "one hundred",
+     "basis": "equivalent wording",
+     "evidence_id": "ev-21d7e1072c",
+     "note": "a rewording of an answer that is in the span; graded as correct"
+    }
+   ],
+   "answer": "100",
+   "claim_key": "ck-a488df02d9f5",
+   "intended_recall": "cued recall",
+   "kind": "free_recall",
+   "prompt": "At sea level, pure water boils at ___ degrees Celsius.",
+   "prompt_id": "rc-22bebeab9a82",
+   "source_link": {
+    "end": 109,
+    "evidence_id": "ev-21d7e1072c",
+    "evidence_key": "ek-c31b88c3b8f3",
+    "field": "original_context",
+    "fingerprint": "sf-76163c3286071fa7",
+    "source_id": "chem-water-states",
+    "source_revision": 1,
+    "start": 22
+   },
+   "unit_id": "k-842265730ecc"
+  },
+  {
+   "accepted": [
+    {
+     "answer": "100",
+     "basis": "verbatim",
+     "evidence_id": "ev-21d7e1072c"
+    },
+    {
+     "answer": "100 °C",
+     "basis": "equivalent wording",
+     "evidence_id": "ev-21d7e1072c",
+     "note": "a rewording of an answer that is in the span; graded as correct"
+    },
+    {
+     "answer": "100 degrees",
+     "basis": "verbatim",
+     "evidence_id": "ev-21d7e1072c"
+    },
+    {
+     "answer": "one hundred",
+     "basis": "equivalent wording",
+     "evidence_id": "ev-21d7e1072c",
+     "note": "a rewording of an answer that is in the span; graded as correct"
+    }
+   ],
+   "answer": "100",
+   "claim_key": "ck-a488df02d9f5",
+   "intended_recall": "recognition",
+   "kind": "recognition",
+   "options": [
+    "0",
+    "100",
+    "lowers"
+   ],
+   "prompt": "At sea level, pure water boils at ___ degrees Celsius.",
+   "prompt_id": "rr-22bebeab9a82",
+   "source_link": {
+    "end": 109,
+    "evidence_id": "ev-21d7e1072c",
+    "evidence_key": "ek-c31b88c3b8f3",
+    "field": "original_context",
+    "fingerprint": "sf-76163c3286071fa7",
+    "source_id": "chem-water-states",
+    "source_revision": 1,
+    "start": 22
+   },
+   "unit_id": "k-842265730ecc",
+   "warning": "the options all come from one span that supports several answers"
+  },
+  {
+   "accepted": [
+    {
+     "answer": "0",
+     "basis": "verbatim",
+     "evidence_id": "ev-21d7e1072c"
+    },
+    {
+     "answer": "zero",
+     "basis": "equivalent wording",
+     "evidence_id": "ev-21d7e1072c",
+     "note": "a rewording of an answer that is in the span; graded as correct"
+    },
+    {
+     "answer": "0 degrees",
+     "basis": "verbatim",
+     "evidence_id": "ev-21d7e1072c"
+    }
+   ],
+   "answer": "0",
+   "claim_key": "ck-12c552bf1711",
+   "intended_recall": "cued recall",
+   "kind": "free_recall",
+   "prompt": "At sea level, pure water freezes at ___ degrees Celsius.",
+   "prompt_id": "rc-ddda83ae8692",
+   "source_link": {
+    "end": 109,
+    "evidence_id": "ev-21d7e1072c",
+    "evidence_key": "ek-c31b88c3b8f3",
+    "field": "original_context",
+    "fingerprint": "sf-76163c3286071fa7",
+    "source_id": "chem-water-states",
+    "source_revision": 1,
+    "start": 22
+   },
+   "unit_id": "k-a82ecca1cf3b"
+  },
+  {
+   "accepted": [
+    {
+     "answer": "0",
+     "basis": "verbatim",
+     "evidence_id": "ev-21d7e1072c"
+    },
+    {
+     "answer": "zero",
+     "basis": "equivalent wording",
+     "evidence_id": "ev-21d7e1072c",
+     "note": "a rewording of an answer that is in the span; graded as correct"
+    },
+    {
+     "answer": "0 degrees",
+     "basis": "verbatim",
+     "evidence_id": "ev-21d7e1072c"
+    }
+   ],
+   "answer": "0",
+   "claim_key": "ck-12c552bf1711",
+   "intended_recall": "recognition",
+   "kind": "recognition",
+   "options": [
+    "0",
+    "100",
+    "lowers"
+   ],
+   "prompt": "At sea level, pure water freezes at ___ degrees Celsius.",
+   "prompt_id": "rr-ddda83ae8692",
+   "source_link": {
+    "end": 109,
+    "evidence_id": "ev-21d7e1072c",
+    "evidence_key": "ek-c31b88c3b8f3",
+    "field": "original_context",
+    "fingerprint": "sf-76163c3286071fa7",
+    "source_id": "chem-water-states",
+    "source_revision": 1,
+    "start": 22
+   },
+   "unit_id": "k-a82ecca1cf3b",
+   "warning": "the options all come from one span that supports several answers"
+  }
+ ],
+ "refused": [],
+ "schema": "flh_unit_practice_v1",
+ "source": {
+  "fingerprint": "sf-76163c3286071fa7",
+  "language": "en",
+  "revision": 1,
+  "source_id": "chem-water-states",
+  "subject": "chemistry"
+ }
+}

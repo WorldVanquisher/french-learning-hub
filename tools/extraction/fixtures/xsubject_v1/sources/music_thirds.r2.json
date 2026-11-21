@@ -1,0 +1,125 @@
+{
+ "capture": {
+  "capture_id": "synthetic-music-thirds-001",
+  "original_context": "My notes from the theory lesson. A semitone is the smallest step on the piano, from one key to the very next key. A major third spans four semitones, for example C to E. A minor third spans three semitones, for example C to E-flat. A major triad stacks a major third and then a minor third: C, E, G. A minor triad stacks a minor third and then a major third: C, E-flat, G. An octave doubles the frequency: A4 is 440 Hz and A5 is 880 Hz.",
+  "original_input": "Why is C to E a major third but C to E-flat a minor third? I keep mixing up thirds and triads.",
+  "schema_version": "learning_capture_v1",
+  "source": "manual"
+ },
+ "data_scope": "synthetic",
+ "language": "en",
+ "learner_goal": "Tell major and minor triads apart by counting semitones.",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "major third = 4 semitones",
+    "confidence": 0.9,
+    "kind": "concept",
+    "quotes": [
+     "A major third spans four semitones, for example C to E."
+    ],
+    "recall": {
+     "accepted": [
+      "4",
+      "four semitones"
+     ],
+     "answer": "four"
+    },
+    "ref": "major-third",
+    "statement": "A major third covers four semitones, as from C up to E.",
+    "type": "claim"
+   },
+   {
+    "canonical": "minor third = 2 semitones",
+    "confidence": 0.9,
+    "kind": "concept",
+    "quotes": [
+     "A minor third spans three semitones, for example C to E-flat."
+    ],
+    "recall": {
+     "accepted": [
+      "2"
+     ],
+     "answer": "two"
+    },
+    "ref": "minor-third",
+    "statement": "A minor third spans two semitones, for example C to E-flat.",
+    "type": "claim"
+   },
+   {
+    "a": {
+     "form": "major triad",
+     "use": "a major third, then a minor third (C, E, G)"
+    },
+    "applies": [
+     "major-third",
+     "minor-third"
+    ],
+    "b": {
+     "form": "minor triad",
+     "use": "a minor third, then a major third (C, E-flat, G)"
+    },
+    "distinction": "Count the semitones from the root to the middle note: four makes a major triad, three makes a minor triad.",
+    "quotes": [
+     "A major triad stacks a major third and then a minor third: C, E, G.",
+     "A minor triad stacks a minor third and then a major third: C, E-flat, G."
+    ],
+    "ref": "major-vs-minor-triad",
+    "type": "contrast"
+   },
+   {
+    "accepted": [
+     "It is a major triad.",
+     "A major triad.",
+     "major triad"
+    ],
+    "answer": "It is a major triad.",
+    "applies": [
+     "major-vs-minor-triad",
+     "major-third"
+    ],
+    "choices": [
+     "major triad",
+     "minor triad"
+    ],
+    "cloze": "It is a __.",
+    "explanation": "A to C-sharp is four semitones (a major third), then C-sharp to E is three (a minor third).",
+    "generated": true,
+    "instruction": "Answer with major triad or minor triad.",
+    "question": "A, C-sharp, E: which triad is it?",
+    "ref": "ex-a-major",
+    "target": "major triad",
+    "type": "worked_example"
+   },
+   {
+    "accepted": [
+     "It is a minor triad.",
+     "A minor triad.",
+     "minor triad"
+    ],
+    "answer": "It is a minor triad.",
+    "applies": [
+     "major-vs-minor-triad",
+     "minor-third"
+    ],
+    "choices": [
+     "major triad",
+     "minor triad"
+    ],
+    "cloze": "It is a __.",
+    "explanation": "D to F is three semitones (a minor third), then F to A is four (a major third).",
+    "generated": true,
+    "instruction": "Answer with major triad or minor triad.",
+    "question": "D, F, A: which triad is it?",
+    "ref": "ex-d-minor",
+    "target": "minor triad",
+    "type": "worked_example"
+   }
+  ],
+  "proposer": "synthetic: hand-written cross-subject fixture (music theory, English; no provider call)"
+ },
+ "revision": 2,
+ "schema": "flh_practice_source_v1",
+ "source_id": "music-thirds",
+ "subject": "music_theory"
+}

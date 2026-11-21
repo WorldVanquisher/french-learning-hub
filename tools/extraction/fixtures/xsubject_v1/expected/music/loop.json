@@ -1,0 +1,131 @@
+{
+ "events": [
+  {
+   "answer": "minor triad",
+   "event": "recall",
+   "outcome": "incorrect",
+   "retrieval": "unaided",
+   "seq": 1
+  },
+  {
+   "after_recall": true,
+   "event": "reveal",
+   "evidence": [
+    {
+     "end": 372,
+     "evidence_id": "ev-03b23c1995",
+     "excerpt": " then a minor third: C, E, G. [A minor triad stacks a minor third and then a major third: C, E-flat, G.] An octave doubles the frequen",
+     "field": "original_context",
+     "quote": "A minor triad stacks a minor third and then a major third: C, E-flat, G.",
+     "source_id": "music-thirds",
+     "source_revision": 1,
+     "start": 300,
+     "verified": true
+    },
+    {
+     "end": 299,
+     "evidence_id": "ev-88b18111db",
+     "excerpt": "nes, for example C to E-flat. [A major triad stacks a major third and then a minor third: C, E, G.] A minor triad stacks a minor ",
+     "field": "original_context",
+     "quote": "A major triad stacks a major third and then a minor third: C, E, G.",
+     "source_id": "music-thirds",
+     "source_revision": 1,
+     "start": 232,
+     "verified": true
+    }
+   ],
+   "note": "the reference is what you approved; the evidence is your own text",
+   "reference": {
+    "answer": "major triad",
+    "explanation": "A to C-sharp is four semitones (a major third), then C-sharp to E is three (a minor third)."
+   },
+   "seq": 2
+  },
+  {
+   "event": "read",
+   "evidence": [
+    {
+     "end": 372,
+     "evidence_id": "ev-03b23c1995",
+     "excerpt": " then a minor third: C, E, G. [A minor triad stacks a minor third and then a major third: C, E-flat, G.] An octave doubles the frequen",
+     "field": "original_context",
+     "quote": "A minor triad stacks a minor third and then a major third: C, E-flat, G.",
+     "source_id": "music-thirds",
+     "source_revision": 1,
+     "start": 300,
+     "verified": true
+    },
+    {
+     "end": 299,
+     "evidence_id": "ev-88b18111db",
+     "excerpt": "nes, for example C to E-flat. [A major triad stacks a major third and then a minor third: C, E, G.] A minor triad stacks a minor ",
+     "field": "original_context",
+     "quote": "A major triad stacks a major third and then a minor third: C, E, G.",
+     "source_id": "music-thirds",
+     "source_revision": 1,
+     "start": 232,
+     "verified": true
+    }
+   ],
+   "seq": 3,
+   "units": [
+    {
+     "state": "approved",
+     "text": "A to C-sharp is four semitones (a major third), then C-sharp to E is three (a minor third).",
+     "type": "worked_example",
+     "unit_id": "k-8f371578a3e5"
+    },
+    {
+     "state": "approved",
+     "text": "Count the semitones from the root to the middle note: four makes a major triad, three makes a minor triad.",
+     "type": "contrast",
+     "unit_id": "k-40bac97f4bae"
+    }
+   ]
+  },
+  {
+   "answer": "major triad",
+   "event": "retry",
+   "outcome": "correct",
+   "retrieval": "after_reveal",
+   "seq": 4
+  }
+ ],
+ "loop_id": "lp-a1e8adc5278b",
+ "pointer": {
+  "evidence": [
+   {
+    "end": 372,
+    "evidence_id": "ev-03b23c1995",
+    "field": "original_context",
+    "quote": "A minor triad stacks a minor third and then a major third: C, E-flat, G.",
+    "source_id": "music-thirds",
+    "source_revision": 1,
+    "start": 300
+   },
+   {
+    "end": 299,
+    "evidence_id": "ev-88b18111db",
+    "field": "original_context",
+    "quote": "A major triad stacks a major third and then a minor third: C, E, G.",
+    "source_id": "music-thirds",
+    "source_revision": 1,
+    "start": 232
+   }
+  ],
+  "kind": "choose",
+  "practice_id": "p-46601f0b6c76",
+  "source": {
+   "revision": 1,
+   "revision_sha256": "786d7b460b519a87c651cafc45e61ce11678d45509269890cb7a0574b31ac9ac",
+   "source_id": "music-thirds"
+  },
+  "unit_ids": [
+   "k-8f371578a3e5",
+   "k-40bac97f4bae"
+  ]
+ },
+ "retention": "keep",
+ "schema": "flh_learning_loop_v1",
+ "session": "xsubject-music"
+}

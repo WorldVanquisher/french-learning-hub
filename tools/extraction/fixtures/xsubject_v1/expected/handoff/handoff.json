@@ -1,0 +1,198 @@
+{
+ "handoff_id": "hu-f82b244fdca2",
+ "return": {
+  "file": "followup.json",
+  "rules": [
+   "answer a question_id with a proposed span {field, start, end, quote} of the source and, if needed, new wording",
+   "cite only words of the source; nothing is applied until the learner revises the source"
+  ],
+  "schema": "flh_unit_followup_v1"
+ },
+ "reviewed_claims": [
+  {
+   "claim_key": "ck-af4203017d56",
+   "evidence": [
+    {
+     "end": 112,
+     "evidence_id": "ev-bc6bb144ae",
+     "evidence_key": "ek-5f1231c77c7f",
+     "field": "original_context",
+     "quote": "A perfect fourth spans five semitones",
+     "start": 75
+    }
+   ],
+   "state": "approved",
+   "text": "A perfect fourth spans five semitones.",
+   "type": "claim",
+   "unit_id": "k-66026825bc65"
+  },
+  {
+   "claim_key": "ck-b39aade616b5",
+   "evidence": [
+    {
+     "end": 133,
+     "evidence_id": "ev-e141acc136",
+     "evidence_key": "ek-d17811c430ae",
+     "field": "original_context",
+     "quote": "A perfect fourth spans five semitones, for example C to F.",
+     "start": 75
+    },
+    {
+     "end": 179,
+     "evidence_id": "ev-53eda24c30",
+     "evidence_key": "ek-3f0e68381920",
+     "field": "original_context",
+     "quote": "The fifth and the fourth add up to an octave.",
+     "start": 134
+    },
+    {
+     "end": 213,
+     "evidence_id": "ev-bc4d1c9cd7",
+     "evidence_key": "ek-543bbf1f93df",
+     "field": "original_context",
+     "quote": "An octave spans twelve semitones.",
+     "start": 180
+    }
+   ],
+   "state": "approved",
+   "text": "A perfect fourth and a perfect fifth together make an octave of twelve semitones.",
+   "type": "claim",
+   "unit_id": "k-ae55c2b5be7a"
+  }
+ ],
+ "runtime": {
+  "agent_session": "the user's own Claude Code or Codex session; which model answers is outside this file",
+  "assumptions": [
+   "the agent can read Markdown and write one JSON file",
+   "offsets are character offsets into NFC text"
+  ],
+  "export": "deterministic, standard library, no model, no network",
+  "return": "validated against the source before anything is written; agent text is data, never executed"
+ },
+ "schema": "flh_unit_handoff_v1",
+ "source": {
+  "data_scope": "synthetic",
+  "fingerprint": "sf-e6dfbbf6a2312340",
+  "language": "en",
+  "revision": 2,
+  "run_key": "rk-5da8167fd43278e7",
+  "source_id": "music-intervals-inbox",
+  "subject": "music_theory"
+ },
+ "source_text_included": false,
+ "unresolved": [
+  {
+   "about": "seven semitones is a perfect fifth; a tritone is six",
+   "detail": "another item presents as correct what this one lists as wrong (or the reverse)",
+   "evidence": [
+    {
+     "end": 244,
+     "evidence_id": "ev-15bb3a2805",
+     "evidence_key": "ek-ae82408cac20",
+     "field": "original_context",
+     "quote": "A tritone spans six semitones.",
+     "start": 214
+    }
+   ],
+   "next_action": {
+    "command": "practice2 decide --work WORK --item k-37e5d45d4829 --approve|--reject",
+    "who": "the learner decides; the agent may point at evidence"
+   },
+   "question": "Which of the two conflicting items is right?",
+   "question_id": "q-b743892b58",
+   "reason": "conflict",
+   "unit_ids": [
+    "k-37e5d45d4829"
+   ],
+   "unlocated_quotes": []
+  },
+  {
+   "about": "A major sixth spans nine semitones.",
+   "detail": "these words are not in your text: « A major sixth spans nine semitones »",
+   "evidence": [],
+   "next_action": {
+    "command": "practice2 decide --work WORK --item k-baac4a16427a --reject   (if nothing supports it)",
+    "who": "agent proposes a span; the learner decides"
+   },
+   "question": "Which words of the text support this claim, if any?",
+   "question_id": "q-97d8cd192a",
+   "reason": "unsupported_claim",
+   "unit_ids": [
+    "k-baac4a16427a"
+   ],
+   "unlocated_quotes": []
+  },
+  {
+   "about": "A perfect fifth spans seven semitones.",
+   "detail": "it changed materially since you decided it",
+   "evidence": [
+    {
+     "end": 74,
+     "evidence_id": "ev-ec5985d272",
+     "evidence_key": "ek-5c794dea87f5",
+     "field": "original_context",
+     "quote": "A perfect fifth spans seven semitones, for example D to A.",
+     "start": 16
+    }
+   ],
+   "next_action": {
+    "command": "practice2 decide --work WORK --item k-cbb2a68e35b0 --approve",
+    "who": "the learner confirms"
+   },
+   "question": "The claim changed since you approved it: does the new wording still hold?",
+   "question_id": "q-cae1078139",
+   "reason": "changed_since_decision",
+   "unit_ids": [
+    "k-cbb2a68e35b0"
+   ],
+   "unlocated_quotes": []
+  },
+  {
+   "about": "A perfect fifth sounds stable.",
+   "detail": "a quote occurs more than once or only in the machine explanation",
+   "evidence": [],
+   "next_action": {
+    "command": "unit_handoff followup … then practice2 revise --source NEW.json --work WORK",
+    "who": "agent proposes one exact span; the learner decides"
+   },
+   "question": "Which occurrence of the quoted words supports this claim?",
+   "question_id": "q-67d7d16012",
+   "reason": "uncertain_evidence",
+   "unit_ids": [
+    "k-417165ee040e"
+   ],
+   "unlocated_quotes": [
+    {
+     "evidence_id": "ev-6c3d7f22b9",
+     "quote": "perfect fifth is stable.",
+     "status": "ambiguous"
+    }
+   ]
+  },
+  {
+   "about": "Every interval can be inverted.",
+   "detail": "the claim says « Every »; its 1 located quote shows one example, not a rule for every case",
+   "evidence": [
+    {
+     "end": 303,
+     "evidence_id": "ev-556f39a2b9",
+     "evidence_key": "ek-5aa9365cc9e5",
+     "field": "original_context",
+     "quote": "Every interval can be inverted.",
+     "start": 272
+    }
+   ],
+   "next_action": {
+    "command": "practice2 decide --work WORK --item k-af6ac6c0efd9 --edit \"NARROWER TEXT\"",
+    "who": "the learner decides; the agent may narrow the wording"
+   },
+   "question": "Does the claim hold for every case it generalises to?",
+   "question_id": "q-a4c46399c6",
+   "reason": "word_cue:generalises",
+   "unit_ids": [
+    "k-af6ac6c0efd9"
+   ],
+   "unlocated_quotes": []
+  }
+ ]
+}
