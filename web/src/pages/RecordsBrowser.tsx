@@ -103,6 +103,8 @@ export function RecordsBrowser({
   // generation identifies the current filter/reload. A "load older" response that
   // was requested under an earlier generation must not be appended.
   const generation = useRef(0);
+  // The filter controls, to focus the first one after "Show all records".
+  const filtersRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const current = ++generation.current;
@@ -292,7 +294,7 @@ export function RecordsBrowser({
           <QuestionIntake onSaved={() => setReloadCount((n) => n + 1)} onOpenRecord={openRecord} />
         </div>
 
-        <div className="inspector-filters" aria-label={t("records.filters")}>
+        <div className="inspector-filters" aria-label={t("records.filters")} ref={filtersRef}>
           <label>
             {t("records.state")}
             <select value={filter} onChange={(event) => setFilter(event.target.value as StateFilter)}>
@@ -383,7 +385,7 @@ export function RecordsBrowser({
         ) : null}
 
         {list.status === "loading" ? (
-          <div className="empty">{t("records.loading")}</div>
+          <div className="empty" role="status">{t("records.loading")}</div>
         ) : list.status === "error" ? (
           <div className="banner error" role="alert">
             {t("records.loadFailed", { message: list.message })}{" "}
@@ -402,6 +404,29 @@ export function RecordsBrowser({
                 : filter === "all"
                   ? t("records.empty")
                   : t("records.emptyFiltered", { state: status(filter) })}
+            {/* A way back from an empty result: clear every filter, the search and the
+                jump, then focus the first filter. */}
+            {anchor !== null || search !== "" || category !== "all" || filter !== "all" ? (
+              <div className="actions">
+                <button
+                  type="button"
+                  className="ghost"
+                  id="records-reset-filters"
+                  onClick={() => {
+                    setFilter("all");
+                    setCategory("all");
+                    setSearch("");
+                    setSearchDraft("");
+                    setAnchor(null);
+                    setJumpDraft("");
+                    setJumpInvalid(false);
+                    filtersRef.current?.querySelector("select")?.focus();
+                  }}
+                >
+                  {t("records.resetFilters")}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : (
           <>

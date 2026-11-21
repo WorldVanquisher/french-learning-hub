@@ -6,6 +6,9 @@ interface ImportMetaEnv {
   readonly VITE_FLH_API_BASE?: string;
   // Candidate identity written into index.html (validated in vite.config.ts).
   readonly VITE_FLH_BUILD_ID?: string;
+  // The public demo's https address, linked from the private entry preview
+  // (portal.tsx validates it; unset or invalid means no link).
+  readonly VITE_FLH_PUBLIC_DEMO_URL?: string;
 }
 
 interface ImportMeta {

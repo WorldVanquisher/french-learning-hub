@@ -126,7 +126,7 @@ export function UnitInspection({
       </section>
 
       {load.status === "loading" ? (
-        <div className="empty">{t("inspection.loading")}</div>
+        <div className="empty" role="status">{t("inspection.loading")}</div>
       ) : load.status === "error" ? (
         <div className="banner error" role="alert">
           {load.notFound

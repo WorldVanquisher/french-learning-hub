@@ -1,0 +1,575 @@
+/* The private workspace (workspace.tsx). Original FLH styling; the layout,
+   type scale and density take their cue from a dense documentation playground:
+   a quiet dark ground, a left rail of grouped sections, small uppercase section
+   kickers, hairline borders and one subdued accent.
+
+   Every selector starts with :root[data-shell="workspace"], which only the
+   private workbench sets, so nothing here reaches the public demo.
+   - Layout and type: :root[data-shell="workspace"] (every theme).
+   - Colours: :root[data-shell="workspace"]:not([data-theme]), the standard
+     theme only, so the opt-in Endfield preview keeps its own colours.
+   The colours follow the system's light or dark preference. Contrast (WCAG):
+   text >= 4.5:1 and control borders >= 3:1 in both (tools/contrast.py in the
+   lane handoff). */
+
+/* ---------- colour tokens: dark, and the light preference ---------- */
+
+:root[data-shell="workspace"]:not([data-theme]) {
+  color-scheme: dark;
+  --bg: #0c1017;
+  --panel: #131923;
+  --panel-2: #1a2230;
+  --border: #2a3445;
+  --border-strong: #627089;
+  --text: #e7ebf2;
+  --muted: #a3adbd;
+  --accent: #6cc0b3;
+  --link: #6cc0b3;
+  --same: #5fd09a;
+  --invalid: #ff8f85;
+  --history: #b9a0f5;
+  --caution: #e8a65a;
+  --warn-bg: #2b2414;
+  --warn-border: #a58232;
+  --warn-text: #f1c879;
+  --error-bg: #2d1718;
+  --success-bg: #11281d;
+  --info-bg: #14233a;
+  --code-bg: #1a2230;
+  --mark-bg: #5c4a12;
+  --control-bg: #19202c;
+  --control-hover: #222b3a;
+  --control-disabled: #161c26;
+  /* Fills: white text >= 4.5:1 and the fill >= 3:1 against every dark surface. */
+  --fill-accent: #277d72;
+  --fill-accent-hover: #2a8276;
+  --fill-same: #1e8152;
+  --fill-same-hover: #208556;
+  --fill-invalid: #c03d32;
+  --fill-invalid-hover: #c8443a;
+  --on-fill: #ffffff;
+  --nav-active-bg: rgba(108, 192, 179, 0.14);
+  --quote-bg: #10161f;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-shell="workspace"]:not([data-theme]) {
+    color-scheme: light;
+    --bg: #f3f4f6;
+    --panel: #ffffff;
+    --panel-2: #f7f8fa;
+    --border: #d6dbe3;
+    --border-strong: #737d8f;
+    --text: #121821;
+    --muted: #586274;
+    --accent: #0f6b61;
+    --link: #0f6b61;
+    --same: #067647;
+    --invalid: #b42318;
+    --history: #6941c6;
+    --caution: #b54708;
+    --warn-bg: #fff6e5;
+    --warn-border: #e0a339;
+    --warn-text: #8a3a0c;
+    --error-bg: #fef3f2;
+    --success-bg: #ecfdf3;
+    --info-bg: #eef6f5;
+    --code-bg: #f2f4f7;
+    --mark-bg: #fde68a;
+    --control-bg: #ffffff;
+    --control-hover: #eef1f4;
+    --control-disabled: #f2f4f7;
+    --fill-accent: #0f6b61;
+    --fill-accent-hover: #0c5951;
+    --fill-same: #067647;
+    --fill-same-hover: #05603a;
+    --fill-invalid: #b42318;
+    --fill-invalid-hover: #912018;
+    --on-fill: #ffffff;
+    --nav-active-bg: #e3f1ef;
+    --quote-bg: #f7f8fa;
+  }
+}
+
+/* ---------- type ---------- */
+
+:root[data-shell="workspace"] {
+  /* Type tokens for section pages (e.g. Workbooks' Vocabulary): a headword and
+     a source sentence. Pages use them with a fallback. */
+  --headword-size: 19px;
+  --headword-weight: 650;
+  --source-size: 16.5px;
+  --source-line: 1.6;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+:root[data-shell="workspace"] body {
+  font-size: 15px;
+  line-height: 1.55;
+}
+:root[data-shell="workspace"] .app-header h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.01em; margin: 2px 0 4px; }
+:root[data-shell="workspace"] .app-header .subtitle { font-size: 13.5px; max-width: 68ch; margin: 0; }
+:root[data-shell="workspace"] .ws-kicker {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+:root[data-shell="workspace"] .panel h2 { font-size: 12px; letter-spacing: 0.1em; font-weight: 650; }
+:root[data-shell="workspace"] .hint { font-size: 12.5px; line-height: 1.5; }
+:root[data-shell="workspace"] .french { font-size: var(--source-size); line-height: var(--source-line); }
+/* Learner text and passages: a readable measure; long words and URLs wrap. */
+:root[data-shell="workspace"] .unit-evidence dd,
+:root[data-shell="workspace"] .french,
+:root[data-shell="workspace"] .field-row .value {
+  overflow-wrap: anywhere;
+}
+:root[data-shell="workspace"] .unit-evidence dd.french,
+:root[data-shell="workspace"] p.french,
+:root[data-shell="workspace"] blockquote.french {
+  max-width: 70ch;
+}
+
+/* ---------- the shell ---------- */
+
+/* The skip control: off-screen until it has keyboard focus. */
+:root[data-shell="workspace"] .ws-skip {
+  position: absolute;
+  left: 8px;
+  top: -60px;
+  z-index: 10;
+}
+:root[data-shell="workspace"] .ws-skip:focus { top: 8px; }
+/* Titles break into balanced lines (no lone last word or character). */
+:root[data-shell="workspace"] h1,
+:root[data-shell="workspace"] h2 { text-wrap: balance; }
+
+:root[data-shell="workspace"] .app.ws-app {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+:root[data-shell="workspace"] .ws-main {
+  min-width: 0;
+  max-width: 1180px;
+  padding: 16px 16px 64px;
+}
+:root[data-shell="workspace"] .ws-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+:root[data-shell="workspace"] .ws-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+:root[data-shell="workspace"] .ws-top .language-select { font-size: 12.5px; }
+:root[data-shell="workspace"] .ws-top select { min-height: 32px; }
+:root[data-shell="workspace"] .ws-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+:root[data-shell="workspace"] .ws-brand-mark {
+  flex: none;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 4px 7px;
+  border-radius: 7px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+:root[data-shell="workspace"] .ws-brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+:root[data-shell="workspace"] .ws-brand-text strong { font-size: 14px; }
+:root[data-shell="workspace"] .ws-brand-text small {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Sections: one row that scrolls sideways (narrow); grouped rail (wide). */
+:root[data-shell="workspace"] nav.ws-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin: 0 -16px;
+  padding: 2px 16px 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  /* styles.css stacks .view-tabs in a column on phones; this row scrolls instead. */
+  flex-direction: row;
+  align-items: center;
+}
+:root[data-shell="workspace"] .ws-nav-group { display: contents; }
+:root[data-shell="workspace"] .ws-nav-group-label {
+  display: none;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+:root[data-shell="workspace"] nav.ws-nav button {
+  flex: none;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+:root[data-shell="workspace"] nav.ws-nav button[aria-pressed="true"] { font-weight: 650; }
+
+:root[data-shell="workspace"] .ws-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+:root[data-shell="workspace"] .ws-settings .language-select { font-size: 12.5px; }
+:root[data-shell="workspace"] .ws-settings select { max-width: 100%; min-height: 32px; }
+
+:root[data-shell="workspace"] .app-header {
+  display: block;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+/* Labels and identifiers (provenance such as openai:<model>:knowledge_extraction_v2,
+   signatures, IDs) wrap at any point rather than push the page sideways. The
+   text itself is unchanged, so selecting and copying it gives the whole value. */
+:root[data-shell="workspace"] dt,
+:root[data-shell="workspace"] .label,
+:root[data-shell="workspace"] code,
+:root[data-shell="workspace"] .mono {
+  overflow-wrap: anywhere;
+}
+
+/* Grid columns never grow past the screen for a long word or a wide control. */
+:root[data-shell="workspace"] .grid > * { min-width: 0; }
+:root[data-shell="workspace"] select,
+:root[data-shell="workspace"] input,
+:root[data-shell="workspace"] textarea { max-width: 100%; }
+@media (max-width: 820px) {
+  :root[data-shell="workspace"] .grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Phones: a field's label above its value, so a long value gets the full width. */
+@media (max-width: 620px) {
+  :root[data-shell="workspace"] .field-row,
+  :root[data-shell="workspace"] .unit-evidence div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  :root[data-shell="workspace"] .ws-main { padding: 14px 12px 56px; }
+  :root[data-shell="workspace"] .panel { padding: 12px; }
+  :root[data-shell="workspace"] li.extracted-unit { padding: 8px 10px 10px; }
+  /* A section's own mode tabs (Concept Review, Mistake Notebook, …): a wrapping
+     row of compact tabs instead of a full-width column. */
+  :root[data-shell="workspace"] .view-tabs:not(.ws-nav) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 6px;
+  }
+  :root[data-shell="workspace"] .view-tabs:not(.ws-nav) button { flex: 1 1 auto; min-height: 40px; }
+}
+
+/* Wide screens: the rail on the left, sticky, scrolling on its own. */
+@media (min-width: 1024px) {
+  :root[data-shell="workspace"] .app.ws-app {
+    display: grid;
+    grid-template-columns: 236px minmax(0, 1fr);
+  }
+  :root[data-shell="workspace"] .ws-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    padding: 18px 14px 14px;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+    gap: 18px;
+  }
+  :root[data-shell="workspace"] nav.ws-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+  :root[data-shell="workspace"] .ws-nav-group { display: flex; flex-direction: column; gap: 2px; }
+  :root[data-shell="workspace"] .ws-nav-group-label { display: block; padding: 0 10px 4px; }
+  :root[data-shell="workspace"] nav.ws-nav button {
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border-color: transparent;
+    text-align: left;
+    white-space: normal;
+    font-size: 14px;
+  }
+  :root[data-shell="workspace"] .ws-top { flex-direction: column; align-items: stretch; }
+  :root[data-shell="workspace"] .ws-top label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  :root[data-shell="workspace"] .ws-top select { margin-left: 0; flex: 1; min-width: 0; }
+  :root[data-shell="workspace"] .ws-settings {
+    margin-top: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  :root[data-shell="workspace"] .ws-settings label { display: flex; flex-direction: column; gap: 2px; }
+  :root[data-shell="workspace"] .ws-settings select { margin-left: 0; width: 100%; }
+  :root[data-shell="workspace"] .ws-main { padding: 22px 32px 72px; }
+  /* The rail already shows the section's group beside it. */
+  :root[data-shell="workspace"] .ws-main .ws-kicker { display: none; }
+}
+
+/* ---------- a record: its source evidence beside the work ---------- */
+
+:root[data-shell="workspace"] .record-evidence .panel { margin-bottom: 12px; }
+:root[data-shell="workspace"] .record-evidence .unit-evidence dd.french {
+  background: var(--quote-bg);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 6px 6px 0;
+  padding: 6px 10px;
+}
+@media (min-width: 1180px) {
+  :root[data-shell="workspace"] .record-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+    grid-template-areas: "work evidence";
+    gap: 20px;
+    align-items: start;
+  }
+  :root[data-shell="workspace"] .record-work { grid-area: work; min-width: 0; }
+  :root[data-shell="workspace"] .record-evidence {
+    grid-area: evidence;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  :root[data-shell="workspace"] .record-evidence .unit-evidence div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* ---------- evidence and candidates ---------- */
+
+/* The learner's own words (a quote) look different from generated candidate
+   text: a quote has a left rule on a quiet ground; a candidate is a card with a
+   title and its state. */
+:root[data-shell="workspace"] .record-evidence .unit-evidence dd.french,
+:root[data-shell="workspace"] .source-view p.french,
+:root[data-shell="workspace"] [aria-labelledby="src-entry"] .unit-evidence .french {
+  display: block;
+  background: var(--quote-bg);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 6px 6px 0;
+  padding: 6px 10px;
+  white-space: pre-wrap;
+}
+:root[data-shell="workspace"] .evidence-meta { margin: -4px 0 8px; }
+/* "No context recorded": an honest empty state, not a blank. */
+:root[data-shell="workspace"] .record-evidence dd.french em,
+:root[data-shell="workspace"] .source-view p.french em {
+  font-size: 13px;
+  font-style: normal;
+  color: var(--muted);
+}
+:root[data-shell="workspace"] .annotation-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 12px; }
+:root[data-shell="workspace"] li.extracted-unit {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px 12px;
+  background: var(--panel-2);
+}
+:root[data-shell="workspace"] li.extracted-unit .unit-evidence { margin: 6px 0; }
+:root[data-shell="workspace"] .unit-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+:root[data-shell="workspace"] .unit-title .tag,
+:root[data-shell="workspace"] .extraction-basis { font-size: 12px; font-weight: 600; white-space: normal; text-transform: none; letter-spacing: 0; }
+
+/* Passages, transcripts and drafts: a readable measure; long words wrap. */
+:root[data-shell="workspace"] .reading-paragraph,
+:root[data-shell="workspace"] .listening-segment,
+:root[data-shell="workspace"] .writing-draft {
+  max-width: 72ch;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- the entry preview (portal.tsx, /?portal) ---------- */
+
+:root[data-shell="workspace"] .portal { max-width: 1040px; margin: 0 auto; padding: 16px 16px 56px; }
+:root[data-shell="workspace"] .portal-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+:root[data-shell="workspace"] .portal-top .language-select { font-size: 12.5px; }
+:root[data-shell="workspace"] .portal-hero { padding: 28px 0 8px; }
+:root[data-shell="workspace"] .portal-hero h1 { font-size: clamp(24px, 5vw, 34px); line-height: 1.2; letter-spacing: -0.015em; margin: 6px 0 10px; max-width: 24ch; }
+:root[data-shell="workspace"] .portal-lead { font-size: 16px; max-width: 64ch; color: var(--muted); margin: 0 0 14px; }
+:root[data-shell="workspace"] .portal-steps { margin: 0 0 20px; padding-left: 22px; display: grid; gap: 4px; max-width: 64ch; }
+:root[data-shell="workspace"] .portal-cards { display: grid; gap: 16px; }
+:root[data-shell="workspace"] .portal-cards > * { min-width: 0; margin: 0; }
+:root[data-shell="workspace"] .portal-state { margin: 0 0 10px; }
+:root[data-shell="workspace"] .portal-pending {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  color: var(--text);
+}
+:root[data-shell="workspace"] .portal-error { margin: 10px 0 0; }
+:root[data-shell="workspace"] .portal-note { margin-top: 18px; }
+:root[data-shell="workspace"] .portal a { overflow-wrap: anywhere; }
+@media (min-width: 760px) {
+  :root[data-shell="workspace"] .portal { padding: 22px 32px 64px; }
+  :root[data-shell="workspace"] .portal-cards { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+}
+
+/* ---------- colours of shared components (standard theme only) ---------- */
+
+:root[data-shell="workspace"]:not([data-theme]) body { background: var(--bg); color: var(--text); }
+:root[data-shell="workspace"]:not([data-theme]) .ws-sidebar { background: var(--panel); }
+:root[data-shell="workspace"]:not([data-theme]) a { color: var(--link); }
+:root[data-shell="workspace"]:not([data-theme]) .panel { background: var(--panel); border-color: var(--border); border-radius: 10px; }
+
+:root[data-shell="workspace"]:not([data-theme]) button { background: var(--control-bg); color: var(--text); border-color: var(--border-strong); }
+:root[data-shell="workspace"]:not([data-theme]) button:hover:not(:disabled) { background: var(--control-hover); }
+:root[data-shell="workspace"]:not([data-theme]) button.ghost { background: var(--control-bg); }
+:root[data-shell="workspace"]:not([data-theme]) button.primary,
+:root[data-shell="workspace"]:not([data-theme]) .view-tabs button[aria-pressed="true"] { background: var(--fill-accent); border-color: var(--fill-accent); color: var(--on-fill); }
+:root[data-shell="workspace"]:not([data-theme]) button.primary:hover:not(:disabled),
+:root[data-shell="workspace"]:not([data-theme]) .view-tabs button[aria-pressed="true"]:hover:not(:disabled) { background: var(--fill-accent-hover); border-color: var(--fill-accent-hover); }
+:root[data-shell="workspace"]:not([data-theme]) button.same { background: var(--fill-same); border-color: var(--fill-same); color: var(--on-fill); }
+:root[data-shell="workspace"]:not([data-theme]) button.same:hover:not(:disabled) { background: var(--fill-same-hover); border-color: var(--fill-same-hover); }
+:root[data-shell="workspace"]:not([data-theme]) button.invalid { background: var(--fill-invalid); border-color: var(--fill-invalid); color: var(--on-fill); }
+:root[data-shell="workspace"]:not([data-theme]) button.invalid:hover:not(:disabled) { background: var(--fill-invalid-hover); border-color: var(--fill-invalid-hover); }
+:root[data-shell="workspace"]:not([data-theme]) button:disabled,
+:root[data-shell="workspace"]:not([data-theme]) button.primary:disabled,
+:root[data-shell="workspace"]:not([data-theme]) button.same:disabled,
+:root[data-shell="workspace"]:not([data-theme]) button.invalid:disabled {
+  background: var(--control-disabled);
+  border: 1px dashed var(--border-strong);
+  color: var(--muted);
+}
+:root[data-shell="workspace"]:not([data-theme]) button.link-button,
+:root[data-shell="workspace"]:not([data-theme]) button.link-button:hover:not(:disabled) { background: none; color: var(--link); }
+
+/* The workspace navigation: a quiet current section (tinted, with a bar),
+   not a filled block. */
+:root[data-shell="workspace"]:not([data-theme]) nav.ws-nav button { background: transparent; color: var(--muted); border-color: var(--border); }
+:root[data-shell="workspace"]:not([data-theme]) nav.ws-nav button:hover:not(:disabled) { background: var(--control-hover); color: var(--text); }
+:root[data-shell="workspace"]:not([data-theme]) nav.ws-nav button[aria-pressed="true"],
+:root[data-shell="workspace"]:not([data-theme]) nav.ws-nav button[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--nav-active-bg);
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+@media (min-width: 1024px) {
+  :root[data-shell="workspace"]:not([data-theme]) nav.ws-nav button { border-color: transparent; }
+  :root[data-shell="workspace"]:not([data-theme]) nav.ws-nav button[aria-pressed="true"],
+  :root[data-shell="workspace"]:not([data-theme]) nav.ws-nav button[aria-pressed="true"]:hover:not(:disabled) {
+    border-color: transparent;
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+}
+
+:root[data-shell="workspace"]:not([data-theme]) input,
+:root[data-shell="workspace"]:not([data-theme]) textarea,
+:root[data-shell="workspace"]:not([data-theme]) select {
+  background: var(--control-bg);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+}
+:root[data-shell="workspace"]:not([data-theme]) input[type="checkbox"],
+:root[data-shell="workspace"]:not([data-theme]) input[type="radio"] { accent-color: var(--fill-accent); }
+
+:root[data-shell="workspace"]:not([data-theme]) .mono { background: var(--code-bg); }
+:root[data-shell="workspace"]:not([data-theme]) mark,
+:root[data-shell="workspace"]:not([data-theme]) .exam-passage mark,
+:root[data-shell="workspace"]:not([data-theme]) .library-result mark { background: var(--mark-bg); color: var(--text); }
+
+:root[data-shell="workspace"]:not([data-theme]) .banner.error { background: var(--error-bg); border-color: var(--invalid); color: var(--invalid); }
+:root[data-shell="workspace"]:not([data-theme]) .banner.success { background: var(--success-bg); border-color: var(--same); color: var(--same); }
+:root[data-shell="workspace"]:not([data-theme]) .banner.info,
+:root[data-shell="workspace"]:not([data-theme]) .banner.warning { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+:root[data-shell="workspace"]:not([data-theme]) .quality-state.valid { background: var(--success-bg); }
+:root[data-shell="workspace"]:not([data-theme]) .quality-state.invalid { background: var(--error-bg); }
+:root[data-shell="workspace"]:not([data-theme]) .notebook-origin { background: var(--info-bg); }
+
+:root[data-shell="workspace"]:not([data-theme]) .tag.orphaned,
+:root[data-shell="workspace"]:not([data-theme]) .tag.listening-different,
+:root[data-shell="workspace"]:not([data-theme]) .tag.stage-tag-blocked,
+:root[data-shell="workspace"]:not([data-theme]) .basis-tag.outdated,
+:root[data-shell="workspace"]:not([data-theme]) .basis-tag.not_reviewed { color: var(--caution); border-color: var(--caution); }
+:root[data-shell="workspace"]:not([data-theme]) .tag.stage-tag-pending { color: var(--link); border-color: var(--link); }
+:root[data-shell="workspace"]:not([data-theme]) .record-stage .stage-step.stage-pending { border-left-color: var(--link); }
+:root[data-shell="workspace"]:not([data-theme]) .record-stage .stage-step.stage-blocked { border-left-color: var(--caution); }
+:root[data-shell="workspace"]:not([data-theme]) .tag.demo-label.warn { color: var(--warn-text); }
+
+:root[data-shell="workspace"]:not([data-theme]) li.extracted-unit { background: var(--panel-2); border-color: var(--border); }
+:root[data-shell="workspace"]:not([data-theme]) .tag.unit-state-awaiting { color: var(--link); border-color: var(--link); }
+:root[data-shell="workspace"]:not([data-theme]) .tag.unit-state-filed { color: var(--same); border-color: var(--same); }
+:root[data-shell="workspace"]:not([data-theme]) .tag.unit-state-invalid { color: var(--invalid); border-color: var(--invalid); }
+:root[data-shell="workspace"]:not([data-theme]) .tag.unit-state-historical { color: var(--history); border-color: var(--history); }
+:root[data-shell="workspace"]:not([data-theme]) .tag.extraction-basis.reviewed { color: var(--same); border-color: var(--same); }
+:root[data-shell="workspace"]:not([data-theme]) .tag.extraction-basis.unreviewed { color: var(--caution); border-color: var(--caution); }
+
+/* An input the page marks invalid: the error colour on its border, and a
+   second line so the state never rests on colour alone in a thin border. */
+:root[data-shell="workspace"]:not([data-theme]) [aria-invalid="true"] {
+  border-color: var(--invalid);
+  box-shadow: inset 0 -2px 0 var(--invalid);
+}
+
+/* Keyboard focus: a clear ring in the text colour, with a gap. */
+:root[data-shell="workspace"] a:focus-visible,
+:root[data-shell="workspace"] summary:focus-visible,
+:root[data-shell="workspace"] input:focus-visible,
+:root[data-shell="workspace"] select:focus-visible,
+:root[data-shell="workspace"] textarea:focus-visible,
+:root[data-shell="workspace"] [tabindex="-1"]:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-shell="workspace"] *,
+  :root[data-shell="workspace"] *::before,
+  :root[data-shell="workspace"] *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

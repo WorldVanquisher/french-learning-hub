@@ -1,4 +1,4 @@
-import { lazy, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { KnowledgeLibrary } from "./pages/KnowledgeLibrary";
 import { Listening } from "./pages/Listening";
 import { Reading } from "./pages/Reading";
@@ -18,7 +18,9 @@ import { recordHeadingId, unitFocusId, type UnitTarget } from "./navigation";
 import { LanguageSelect, LocaleProvider, useI18n } from "./i18n";
 import { ExplanationLanguageProvider, ExplanationLanguageSelect } from "./explanationLanguage";
 import { ThemeSelect } from "./theme";
-import { isKeptView, ORIGIN_TRAIL, trailVars, VIEW_COPY, VIEWS, type KeptView, type Origin, type View } from "./workbenchViews";
+import { groupOf, isKeptView, ORIGIN_TRAIL, trailVars, VIEW_COPY, type KeptView, type Origin, type View } from "./workbenchViews";
+import { useFocusRescue, useWorkspaceShell, WorkspaceBrand, WorkspaceNav, WorkspaceSettings } from "./workspace";
+import { isPortalPreview, PortalPreview } from "./portal";
 import { addressFor, DEFAULT_VIEW, NO_LIBRARY_SEARCH, parseAddress, sameLibrarySearch, sectionHash, type Address, type LibraryAddress } from "./sectionAddress";
 import { useNewerVersion, VersionNotice } from "./freshness";
 import { ContinueLearning, type ContinueItem } from "./pages/ContinueLearning";
@@ -58,6 +60,15 @@ const HOME_WITH_EXAM: { target: HomeTarget | "exam"; title: HomeSection["title"]
 // filed under. Every such link only opens a read view. The view that was left
 // stays mounted, and a "Back to …" banner returns to it.
 export default function App() {
+  // The local entry preview (`/?portal`, portal.tsx) replaces the workbench on
+  // that address only; opening the workspace from it loads `/#/home`.
+  if (isPortalPreview()) {
+    return (
+      <LocaleProvider>
+        <PortalPreview />
+      </LocaleProvider>
+    );
+  }
   // The provider sits above every view, so switching the language re-renders text in
   // place and never remounts a view or discards its state.
   return (
@@ -71,6 +82,8 @@ export default function App() {
 
 function Workbench() {
   const { t } = useI18n();
+  useWorkspaceShell();
+  useFocusRescue();
   const newer = useNewerVersion();
   // The section comes from the address (sectionAddress.ts), so a reload
   // reopens it; an empty or unknown fragment opens the default section.
@@ -158,7 +171,17 @@ function Workbench() {
   }, [suggestionsVisible, suggestionsMounted]);
 
   // openConcept shows one Concept in the Knowledge Library.
+  // The control a cross-view link was followed from (it has an id), so a return
+  // by the "Back to …" banner or the browser's Back gives it focus again. A
+  // record's unit has its own return focus (returnFocus).
+  const leftFrom = useRef<{ view: View; id: string } | null>(null);
+  const [returnedTo, setReturnedTo] = useState(0);
+  const rememberLeaving = (from: Origin) => {
+    const el = document.activeElement;
+    leftFrom.current = from.kind !== "record" && el instanceof HTMLElement && el.id ? { view: ORIGIN_TRAIL[from.kind].view, id: el.id } : null;
+  };
   const openConcept = (conceptId: number, from: Origin) => {
+    rememberLeaving(from);
     setFocus(null);
     keep("library");
     setLibraryOpen({ conceptId, nonce: ++nonce.current });
@@ -170,6 +193,7 @@ function Workbench() {
     setFocus(null);
     keep("records");
     setRecordOpen({ entryId, nonce: ++nonce.current });
+    rememberLeaving(from);
     setOrigin({ from, on: "records" });
     setView("records");
     setReturnEpoch((n) => n + 1);
@@ -188,6 +212,7 @@ function Workbench() {
       setSpeakingOpen({ exerciseId: open.exerciseId, takeId: open.takeId, transcriptVersion: open.transcriptVersion, nonce: n });
     }
     keep(open.skill);
+    rememberLeaving(from);
     setOrigin({ from, on: open.skill });
     setView(open.skill);
   };
@@ -220,6 +245,7 @@ function Workbench() {
     }
     if (from.kind === "suggestions") setReviewMode("suggestions");
     setView(ORIGIN_TRAIL[from.kind].view);
+    setReturnedTo((n) => n + 1);
   };
   const openUnit = (target: UnitTarget) => {
     setFocus(target);
@@ -279,6 +305,74 @@ function Workbench() {
     if (titleFocus > 0) titleRef.current?.focus();
   }, [titleFocus]);
 
+  // Each kept section keeps its own scroll position: leaving one and coming back
+  // shows the same rows (the window scroll is shared by every section). A section
+  // that is not kept re-reads its state and starts at the top. Restored before any
+  // view moves focus, so a focused control still scrolls itself into view.
+  const scrollByView = useRef<Partial<Record<View, number>>>({});
+  const scrolledView = useRef<View>(view);
+  useEffect(() => {
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        scrollByView.current[scrolledView.current] = window.scrollY;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (scrolledView.current === view) return;
+    scrolledView.current = view;
+    (document.scrollingElement ?? document.documentElement).scrollTop = isKeptView(view) ? (scrollByView.current[view] ?? 0) : 0;
+  }, [view]);
+
+  // Escape closes the innermost open disclosure around keyboard focus (an
+  // expanded toggle such as "Show the original question", or an open <details>)
+  // and leaves focus on its toggle. Text fields keep Escape for themselves.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const active = document.activeElement;
+      if (!(active instanceof HTMLElement) || active.closest("input, textarea, select, [contenteditable]")) return;
+      const toggle = active.matches('[aria-expanded="true"]')
+        ? active
+        : active.closest(".source-disclosure")?.querySelector<HTMLElement>('[aria-expanded="true"]');
+      if (toggle) {
+        e.preventDefault();
+        toggle.click();
+        toggle.focus();
+        return;
+      }
+      const details = active.closest("details[open]");
+      if (details instanceof HTMLDetailsElement) {
+        e.preventDefault();
+        details.open = false;
+        details.querySelector("summary")?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // After a return to the view a cross-view link was followed from: focus goes
+  // back to that control when it is still shown, otherwise to the section title.
+  useEffect(() => {
+    const left = leftFrom.current;
+    if (returnedTo === 0 || !left || left.view !== view) return;
+    leftFrom.current = null;
+    const frame = requestAnimationFrame(() => {
+      const el = document.getElementById(left.id);
+      if (el && el.checkVisibility?.() !== false && !el.closest("[hidden]")) el.focus();
+      else titleRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [returnedTo, view]);
+
   // Put keyboard focus back on the unit the reader left from, or the record.
   useEffect(() => {
     if (view !== "records" || !returnFocus) return;
@@ -290,133 +384,144 @@ function Workbench() {
   }, [view, returnFocus]);
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div>
-          <h1 ref={titleRef} tabIndex={-1}>
-            {copy.title}
-          </h1>
-          <p className="subtitle">{copy.subtitle}</p>
+    <div className="app ws-app">
+      {/* First stop for the keyboard: past the sections and settings to the section's
+          title. A button, not a #link: the address fragment names the section. */}
+      <button type="button" className="ws-skip" onClick={() => titleRef.current?.focus()}>
+        {t("ws.skip")}
+      </button>
+      <div className="ws-sidebar">
+        {/* The interface language stays in view at the top; the other display
+            settings follow the sections. */}
+        <div className="ws-top">
+          <WorkspaceBrand />
+          <LanguageSelect />
         </div>
-        <LanguageSelect />
-        <ExplanationLanguageSelect />
-        <ThemeSelect />
-      </header>
-      <VersionNotice newer={newer} keepsDrafts />
-      <nav className="view-tabs" aria-label={t("nav.label")}>
-        {VIEWS.map((v) => (
-          <button key={v} type="button" aria-pressed={view === v} onClick={() => show(v)}>
-            {t(VIEW_COPY[v].tab)}
-          </button>
-        ))}
-      </nav>
-      {origin && origin.on === view && !focus ? <BackBanner origin={origin.from} onBack={() => goBack(origin.from)} /> : null}
-      <Kept view="records" shown={view} mounted={mounted}>
-        <RecordsBrowser
-          returnEpoch={returnEpoch}
-          onNavigateToUnit={openUnit}
-          onOpenConcept={(conceptId, from) => openConcept(conceptId, { kind: "record", target: from })}
-          onOpenSource={(open) => openSource(open, { kind: "records" })}
-          openRequest={recordOpen}
-        />
-      </Kept>
-      <Kept view="library" shown={view} mounted={mounted}>
-        <KnowledgeLibrary
-          openRequest={libraryOpen}
-          onOpenRecord={(entryId) => openRecord(entryId, { kind: "library" })}
-          searchRequest={librarySearchRequest}
-          onSearchChange={keepLibrarySearch}
-        />
-      </Kept>
-      <Kept view="listening" shown={view} mounted={mounted}>
-        <Listening onOpenRecord={(entryId) => openRecord(entryId, { kind: "listening" })} openRequest={listeningOpen} />
-      </Kept>
-      <Kept view="reading" shown={view} mounted={mounted}>
-        <Reading onOpenRecord={(entryId) => openRecord(entryId, { kind: "reading" })} openRequest={readingOpen} />
-      </Kept>
-      <Kept view="writing" shown={view} mounted={mounted}>
-        <Writing onOpenRecord={(entryId) => openRecord(entryId, { kind: "writing" })} openRequest={writingOpen} />
-      </Kept>
-      <Kept view="speaking" shown={view} mounted={mounted}>
-        <Speaking onOpenRecord={(entryId) => openRecord(entryId, { kind: "speaking" })} openRequest={speakingOpen} />
-      </Kept>
-      {view === "today" ? (
-        <ReviewToday
-          onOpenSpeaking={(exerciseId, takeId) => {
-            setFocus(null);
-            setSpeakingOpen({ exerciseId, takeId, nonce: ++nonce.current });
-            keep("speaking");
-            setOrigin({ from: { kind: "today" }, on: "speaking" });
-            setView("speaking");
-          }}
-          onOpenSource={(open) => openSource(open, { kind: "today" })}
-          onShow={show}
-        />
-      ) : null}
-      {view === "home" ? <LearningHome<HomeTarget | "exam"> sections={HOME_WITH_EXAM} onOpen={openHome} lead={<ContinueLearning onContinue={continueWith} />} /> : null}
-      <Kept view="exam" shown={view} mounted={mounted}>
-        <LazySection>
-          <MockExam onOpenRecord={(entryId) => openRecord(entryId, { kind: "exam" })} />
-        </LazySection>
-      </Kept>
-      <Kept view="notebook" shown={view} mounted={mounted}>
-        <MistakeNotebook
-          onOpenSource={(open) => openSource(open, { kind: "notebook" })}
-          onOpenRecord={(entryId) => openRecord(entryId, { kind: "notebook" })}
-          onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "notebook" })}
-          onOpenToday={() => show("today")}
-          modeRequest={notebookMode}
-        />
-      </Kept>
-      {view === "review" ? (
-        focus ? (
-          <ReviewQueue
-            key={`review-${focus.entryId}-${focus.unitId}`}
-            focus={focus}
-            onBack={backToRecord}
-            onInspect={(unitId) => openUnit({ ...focus, kind: "inspect", unitId })}
+        <WorkspaceNav view={view} onShow={show} />
+        <WorkspaceSettings>
+          <ExplanationLanguageSelect />
+          <ThemeSelect />
+        </WorkspaceSettings>
+      </div>
+      <div className="ws-main">
+        <header className="app-header">
+          <div>
+            <p className="ws-kicker">{t(groupOf(view).label)}</p>
+            <h1 ref={titleRef} tabIndex={-1}>
+              {copy.title}
+            </h1>
+            <p className="subtitle">{copy.subtitle}</p>
+          </div>
+        </header>
+        <VersionNotice newer={newer} keepsDrafts />
+        {origin && origin.on === view && !focus ? <BackBanner origin={origin.from} onBack={() => goBack(origin.from)} /> : null}
+        <Kept view="records" shown={view} mounted={mounted}>
+          <RecordsBrowser
+            returnEpoch={returnEpoch}
+            onNavigateToUnit={openUnit}
+            onOpenConcept={(conceptId, from) => openConcept(conceptId, { kind: "record", target: from })}
+            onOpenSource={(open) => openSource(open, { kind: "records" })}
+            openRequest={recordOpen}
           />
-        ) : (
-          <>
-            <div className="view-tabs review-modes" role="group" aria-label={t("review.mode.label")}>
-              <button type="button" aria-pressed={reviewMode === "queue"} onClick={() => setReviewMode("queue")}>
-                {t("review.mode.queue")}
-              </button>
-              <button type="button" aria-pressed={reviewMode === "suggestions"} onClick={() => setReviewMode("suggestions")}>
-                {t("review.mode.suggestions")}
-              </button>
-            </div>
-            {reviewMode === "queue" ? <ReviewQueue resume={reviewResume} onResumeChange={keepReviewResume} /> : null}
-          </>
-        )
-      ) : null}
-      {/* After the review-mode tabs; kept mounted once opened (see suggestionsMounted). */}
-      {suggestionsMounted ? (
-        <div hidden={!suggestionsVisible}>
-          <ConceptSuggestions
-            refreshEpoch={suggestionsEpoch}
-            onOpenRecord={(entryId) => openRecord(entryId, { kind: "suggestions" })}
-            onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "suggestions" })}
+        </Kept>
+        <Kept view="library" shown={view} mounted={mounted}>
+          <KnowledgeLibrary
+            openRequest={libraryOpen}
+            onOpenRecord={(entryId) => openRecord(entryId, { kind: "library" })}
+            searchRequest={librarySearchRequest}
+            onSearchChange={keepLibrarySearch}
           />
-        </div>
-      ) : null}
-      {view === "inspector" ? (
-        focus ? (
-          <UnitInspection
-            key={`inspect-${focus.entryId}-${focus.unitId}`}
-            focus={focus}
-            onBack={backToRecord}
-            onReview={() => openUnit({ ...focus, kind: "review" })}
-            onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "record", target: focus })}
+        </Kept>
+        <Kept view="listening" shown={view} mounted={mounted}>
+          <Listening onOpenRecord={(entryId) => openRecord(entryId, { kind: "listening" })} openRequest={listeningOpen} />
+        </Kept>
+        <Kept view="reading" shown={view} mounted={mounted}>
+          <Reading onOpenRecord={(entryId) => openRecord(entryId, { kind: "reading" })} openRequest={readingOpen} />
+        </Kept>
+        <Kept view="writing" shown={view} mounted={mounted}>
+          <Writing onOpenRecord={(entryId) => openRecord(entryId, { kind: "writing" })} openRequest={writingOpen} />
+        </Kept>
+        <Kept view="speaking" shown={view} mounted={mounted}>
+          <Speaking onOpenRecord={(entryId) => openRecord(entryId, { kind: "speaking" })} openRequest={speakingOpen} />
+        </Kept>
+        {view === "today" ? (
+          <ReviewToday
+            onOpenSpeaking={(exerciseId, takeId) => {
+              setFocus(null);
+              setSpeakingOpen({ exerciseId, takeId, nonce: ++nonce.current });
+              keep("speaking");
+              setOrigin({ from: { kind: "today" }, on: "speaking" });
+              setView("speaking");
+            }}
+            onOpenSource={(open) => openSource(open, { kind: "today" })}
+            onShow={show}
           />
-        ) : (
-          <AnnotationInspector />
-        )
-      ) : view === "experiments" ? (
-        <LazySection>
-          <ExperimentDashboard />
-        </LazySection>
-      ) : null}
+        ) : null}
+        {view === "home" ? <LearningHome<HomeTarget | "exam"> sections={HOME_WITH_EXAM} onOpen={openHome} lead={<ContinueLearning onContinue={continueWith} />} /> : null}
+        <Kept view="exam" shown={view} mounted={mounted}>
+          <LazySection>
+            <MockExam onOpenRecord={(entryId) => openRecord(entryId, { kind: "exam" })} />
+          </LazySection>
+        </Kept>
+        <Kept view="notebook" shown={view} mounted={mounted}>
+          <MistakeNotebook
+            onOpenSource={(open) => openSource(open, { kind: "notebook" })}
+            onOpenRecord={(entryId) => openRecord(entryId, { kind: "notebook" })}
+            onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "notebook" })}
+            onOpenToday={() => show("today")}
+            modeRequest={notebookMode}
+          />
+        </Kept>
+        {view === "review" ? (
+          focus ? (
+            <ReviewQueue
+              key={`review-${focus.entryId}-${focus.unitId}`}
+              focus={focus}
+              onBack={backToRecord}
+              onInspect={(unitId) => openUnit({ ...focus, kind: "inspect", unitId })}
+            />
+          ) : (
+            <>
+              <div className="view-tabs review-modes" role="group" aria-label={t("review.mode.label")}>
+                <button type="button" aria-pressed={reviewMode === "queue"} onClick={() => setReviewMode("queue")}>
+                  {t("review.mode.queue")}
+                </button>
+                <button type="button" aria-pressed={reviewMode === "suggestions"} onClick={() => setReviewMode("suggestions")}>
+                  {t("review.mode.suggestions")}
+                </button>
+              </div>
+              {reviewMode === "queue" ? <ReviewQueue resume={reviewResume} onResumeChange={keepReviewResume} /> : null}
+            </>
+          )
+        ) : null}
+        {/* After the review-mode tabs; kept mounted once opened (see suggestionsMounted). */}
+        {suggestionsMounted ? (
+          <div hidden={!suggestionsVisible}>
+            <ConceptSuggestions
+              refreshEpoch={suggestionsEpoch}
+              onOpenRecord={(entryId) => openRecord(entryId, { kind: "suggestions" })}
+              onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "suggestions" })}
+            />
+          </div>
+        ) : null}
+        {view === "inspector" ? (
+          focus ? (
+            <UnitInspection
+              key={`inspect-${focus.entryId}-${focus.unitId}`}
+              focus={focus}
+              onBack={backToRecord}
+              onReview={() => openUnit({ ...focus, kind: "review" })}
+              onOpenConcept={(conceptId) => openConcept(conceptId, { kind: "record", target: focus })}
+            />
+          ) : (
+            <AnnotationInspector />
+          )
+        ) : view === "experiments" ? (
+          <LazySection>
+            <ExperimentDashboard />
+          </LazySection>
+        ) : null}
+      </div>
     </div>
   );
 }

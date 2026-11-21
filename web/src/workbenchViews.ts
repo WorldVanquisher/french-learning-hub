@@ -28,6 +28,17 @@ export const VIEW_COPY: Record<View, { title: MessageKey; subtitle: MessageKey; 
   experiments: { title: "app.experiments.title", subtitle: "app.experiments.subtitle", tab: "nav.experiments" },
 };
 
+// The private workspace's navigation groups (workspace.tsx), in tab order:
+// every view in exactly one group, and the groups read in VIEWS order, so the
+// grouping never reorders the sections or their keyboard order.
+export const VIEW_GROUPS: readonly { key: string; label: MessageKey; views: readonly View[] }[] = [
+  { key: "start", label: "ws.group.start", views: ["home", "today"] },
+  { key: "knowledge", label: "ws.group.knowledge", views: ["records", "library"] },
+  { key: "practice", label: "ws.group.practice", views: ["listening", "reading", "writing", "speaking", "notebook", "exam"] },
+  { key: "curation", label: "ws.group.curation", views: ["review", "inspector", "experiments"] },
+];
+export const groupOf = (v: View) => VIEW_GROUPS.find((g) => g.views.includes(v)) ?? VIEW_GROUPS[0];
+
 // Views kept mounted (hidden) once opened, so their filters, drafts, typed
 // answers and open items survive a visit to another view. The others mount
 // only while shown and re-read their state.

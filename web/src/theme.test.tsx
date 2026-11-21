@@ -48,7 +48,8 @@ describe("Endfield preview theme", () => {
     });
     fireEvent.change(screen.getByRole("combobox", { name: "Theme" }), { target: { value: "endfield" } });
     expect(document.documentElement.dataset.theme).toBe("endfield");
-    expect(screen.getByRole("status").textContent).toContain("could not be saved on this device");
+    // Its own status line (the section's loading line is another status).
+    expect(screen.getByText(/could not be saved on this device/)).toHaveAttribute("role", "status");
   });
 
   it("is offered in Simplified Chinese", () => {

@@ -262,7 +262,7 @@ export function UnitCorrections({
 
           <h3>{t("correction.reassign.title")}</h3>
           {catalog.status === "loading" ? (
-            <p className="value">{t("correction.catalogLoading")}</p>
+            <p className="hint" role="status">{t("correction.catalogLoading")}</p>
           ) : catalog.status === "error" ? (
             <div className="banner error" role="alert">
               {t("correction.catalogFailed", { message: catalog.message })}{" "}

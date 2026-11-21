@@ -228,7 +228,7 @@ export function AnnotationInspector() {
   );
 
   if (loadingItems) {
-    return <div className="empty">{t("inspector.loading")}</div>;
+    return <div className="empty" role="status">{t("inspector.loading")}</div>;
   }
 
   if (itemsError) {
