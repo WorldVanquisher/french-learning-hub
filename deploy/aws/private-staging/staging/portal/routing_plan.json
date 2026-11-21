@@ -1,0 +1,51 @@
+{
+  "format": "flh-portal-routing-plan/v1",
+  "comment": "PROPOSAL for owner review (REL-041..050). Nothing here is applied: DNS (Namecheap), certificates and the demo host change only in the owner's daytime slot. Simulated by tools/portal_check.py.",
+  "state": "pre-launch",
+  "zone": "vanquisher.world",
+  "hosts": {
+    "flh.vanquisher.world": {
+      "role": "portal",
+      "purpose": "the public front door: a static page that names FLH and links to the public demo; no application, no form, no sign-in, no invitation",
+      "target": "static hosting chosen by the owner (proposal: GitHub Pages, like the apex); never a proxy to an FLH server",
+      "dns": {"type": "CNAME", "value": "<owner's Pages host, e.g. <user>.github.io>", "ttl": 300},
+      "tls": "issued by the static host for the custom domain",
+      "rules": [{"methods": ["GET", "HEAD"], "paths": ["/", "/assets/*"], "outcome": 200}],
+      "otherwise": 404
+    },
+    "demo.flh.vanquisher.world": {
+      "role": "public-demo",
+      "purpose": "the existing read-only public demo (Demo lane), moved off the portal name",
+      "target": "the demo instance's Elastic IP: nginx (flh-public-https) in front of the loopback demo server",
+      "dns": {"type": "A", "value": "<demo Elastic IP>", "ttl": 300},
+      "tls": "Let's Encrypt via certbot webroot on the demo host (flh-public-https --host demo.flh.vanquisher.world)",
+      "boundary": "public-demo",
+      "otherwise": 404
+    },
+    "app.flh.vanquisher.world": {
+      "role": "private-pilot",
+      "purpose": "the invite-only pilot, ONLY after authentication and per-account isolation exist and pass §11",
+      "target": "none while pre-launch: no DNS record exists, so no request can reach a private route",
+      "dns": null,
+      "prelaunch_outcome": "no-record",
+      "open_requires": ["authentication implemented and REL-055..057 isolation cases PASS", "owner approval for invitations",
+                        "anonymous requests to every private route answer 401", "HTTPS with HSTS on the pilot host"]
+    }
+  },
+  "unknown_host": {"outcome": "refused", "how": "nginx default server closes the connection; the app's HTTP_ALLOWED_HOSTS refuses any other Host"},
+  "staging": "no host name at all: SSM port forward to 127.0.0.1 only (plan_check STOPs on ingress, EIP, LB and DNS)",
+  "changes": [
+    {"id": "C1", "what": "create CNAME flh.vanquisher.world -> static host, publish the pre-launch page",
+     "owner": "domain owner (Namecheap) + static host", "verify": "V-portal",
+     "rollback": "delete the CNAME (TTL 300: wait 5 min) and unpublish the page"},
+    {"id": "C2", "what": "create A demo.flh.vanquisher.world -> demo Elastic IP",
+     "owner": "domain owner (Namecheap)", "verify": "V-dns",
+     "rollback": "delete the A record; the demo keeps serving on its previous name until C3"},
+    {"id": "C3", "what": "run flh-public-https on the demo host for demo.flh.vanquisher.world (certificate + HTTP_ALLOWED_HOSTS drop-in)",
+     "owner": "operator over SSM (Demo lane's tool)", "verify": "V-tls",
+     "rollback": "re-run flh-public-https with the previous host name; the previous certificate stays in /etc/letsencrypt until it expires"},
+    {"id": "C4", "what": "point flh.vanquisher.world away from the demo (if it was ever the demo's name)",
+     "owner": "domain owner", "verify": "V-portal",
+     "rollback": "restore the previous record value recorded before C4 (write it down first)"}
+  ]
+}

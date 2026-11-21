@@ -1,0 +1,28 @@
+{
+  "format": "flh-pilot-isolation-case/v1",
+  "comment": "Acceptance case for an invite-only pilot (REL-055..057, REL-131, REL-133). Synthetic accounts and content only. It cannot run today: the server has no accounts, sessions or invitations. pilot_check.py validates it and probes a LOCAL server for anonymous access.",
+  "accounts": {"A": {"label": "synthetic learner A", "invite": "<invite token A, issued by the owner>"},
+               "B": {"label": "synthetic learner B", "invite": "<invite token B, issued by the owner>"}},
+  "steps": [
+    {"id": "E1", "kind": "enroll", "actor": "A", "request": "redeem invite A", "expect": "session for A; invite A marked used"},
+    {"id": "E2", "kind": "enroll", "actor": "B", "request": "redeem invite B", "expect": "session for B"},
+    {"id": "E3", "kind": "invite-reuse", "actor": "anonymous", "request": "redeem invite A again", "expect": "refused (409 or 410); no session; no account change"},
+    {"id": "E4", "kind": "invite-expiry", "actor": "anonymous", "request": "redeem an invite past its expiry", "expect": "refused (410); nothing created"},
+    {"id": "W1", "kind": "write", "actor": "A", "request": "POST /captures (capture_id synthetic-a-1)", "expect": "201; entry owned by A"},
+    {"id": "W2", "kind": "write", "actor": "B", "request": "POST /captures (capture_id synthetic-a-1, same id, different content)", "expect": "201 for B: capture ids are per account, never a cross-account 409 that reveals A's id"},
+    {"id": "R1", "kind": "read", "actor": "A", "request": "GET /entries", "expect": "only A's entries"},
+    {"id": "R2", "kind": "cross-read", "actor": "B", "request": "GET /entries/{A's entry id}", "expect": "404, identical to a missing id (no existence leak)"},
+    {"id": "R3", "kind": "cross-write", "actor": "B", "request": "POST /entries/{A's entry id}/extractions", "expect": "404; nothing written"},
+    {"id": "R4", "kind": "read", "actor": "B", "request": "GET /knowledge-library/concepts?q=…", "expect": "only concepts from B's data"},
+    {"id": "X1", "kind": "export", "actor": "A", "request": "GET /learning-history/export", "expect": "only A's records"},
+    {"id": "X2", "kind": "export", "actor": "B", "request": "GET /learning-records/export", "expect": "only B's records"},
+    {"id": "X3", "kind": "export", "actor": "B", "request": "GET /speaking/export", "expect": "only B's records"},
+    {"id": "X4", "kind": "export", "actor": "A", "request": "GET /annotation-dataset/v1/export", "expect": "only A's annotation data"},
+    {"id": "N1", "kind": "anonymous", "actor": "anonymous", "request": "every private GET route", "expect": "401; never a 2xx"},
+    {"id": "V1", "kind": "revoke", "actor": "owner", "request": "revoke B", "expect": "B's next request is 401; B's data kept for the retention decision"},
+    {"id": "V2", "kind": "read", "actor": "A", "request": "GET /entries after B is revoked", "expect": "A unaffected"},
+    {"id": "B1", "kind": "backup", "actor": "owner", "request": "flh-daily.sh backup, then restore into a fresh data directory", "expect": "inventory READY; every account row and ownership column restored"},
+    {"id": "B2", "kind": "restore-isolation", "actor": "A,B", "request": "repeat R1, R2, X1, X2 after the restore", "expect": "the same results as before the backup"},
+    {"id": "B3", "kind": "restore-revocation", "actor": "B", "request": "use B's old session after the restore", "expect": "401: a restore never revives a revoked account or session"}
+  ]
+}

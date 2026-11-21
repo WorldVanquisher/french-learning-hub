@@ -28,6 +28,11 @@ no AWS or Terraform command (AGENTS.md).
 | `staging/rehearsal/r4_release_rehearsal.py`, `r4_cutover_edges.py` (R4) | candidate bootstrap, failed boot, restart, served-page identity, writability, restore + Workbooks inventory, binary and database rollback, ledger refusal, teardown; stale snapshot / DIVERGED / ROLLBACK-A verdicts |
 | `staging/tools/preflight.py` | offline preflight: Terraform files, user data size, tfvars, filled policies, bundle, tools |
 | `staging/rehearsal/` | local stand-in rehearsals (Docker on loopback; never the daily instance): `make_fixture_backup.py` (synthetic NAS-shaped backup), `bundle_rehearsal.py` (verify, install, rollback, failed installs), `standin_rehearsal.py` (restore, health, persistence, second target, failures), `cutover_dry_run.py` (endpoint checks, cutover, rollback); shared helpers in `standin_lib.py` |
+| `staging/tools/daytime.py` (aws-prep) | owner daytime slot, offline: `template`/`check`/`page` (go or hold), `checklist`, `roles`, `limits` (enforced vs alert-only), `cost` (dated rates, demo apart), `residual`, `bill-template`/`bill`, `quotas`, `model-record` (render vs readiness) |
+| `staging/tools/portal_check.py` + `staging/portal/routing_plan.json` (aws-prep) | proposed portal / demo / pilot host routing; `validate` and a 22-request synthetic `simulate` mirroring the Go demo allowlist |
+| `staging/tools/pilot_check.py` + `staging/pilot/isolation_case_v1.json` (aws-prep) | two-account invite-only pilot acceptance case; `probe` sends GET only to a loopback server and is READY only if every private route answers 401 |
+| `staging/tools/state_guard.py` (aws-prep) | refuses Terraform state, plans, filled-in tfvars, databases, keys and env files (`scan`, `--stdin`, `ignore-check`) |
+| `staging/rehearsal/mock_model_smoke.py` + `staging/runtime/model-runtime.example.json` (aws-prep) | local mock model runtime: boot vs ready, known-good / unknown-model requests, limits, identity logs without input text, app+model rollback, cleanup |
 | `staging/tests/` | offline tests and the fixed plan fixtures |
 
 Local checks (no AWS, no Terraform, no Docker):
