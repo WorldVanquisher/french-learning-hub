@@ -1672,6 +1672,41 @@ Details: `docs/plans/R4-WORKBOOKS-DAILY-PRACTICE.md`.
   Storing an edited prompt needs a table the owner has not allocated: the proposal and its forward
   and rollback effects are in `docs/validation/NOTEBOOK-PRACTICE.md`.
 
+### 4.8.2 Saved vocabulary (private workbench, migration 022)
+
+The Mistake Notebook's **Vocabulary** mode (`web/src/pages/Vocabulary.tsx`) lets the learner save an
+approved vocabulary term, find it again, review it and remove it.
+
+- **A saved term is a Knowledge Concept, never text.** Two Concepts with the same spelling stay two
+  terms, and a repeat save is the same term.
+- **What can be saved:** a Concept that `concept_kind_view_v1` classifies as vocabulary, not retired.
+  Its example must be one of its CURRENT supporting units (current extraction, admission `active`,
+  CURRENT SAME). Anything else is `409` with a code: `not_vocabulary`, `unit_not_supporting` or
+  `concept_retired`.
+- **Storage:** append-only `vocabulary_marks` (saved or removed, one row per change of state) and
+  `vocabulary_examples` (one row per Concept and unit). Each example records its record and its
+  extraction id and version. Nothing learner-facing is copied: the list reads the Concept and each
+  example's source again on every read.
+- **On the page:**
+  - each example's wording exactly as extracted;
+  - its meaning in English and Chinese (generated, with the extractor named; null means not
+    recorded);
+  - the learner's own question and context, exactly;
+  - its revision and current state.
+  A change of source never hides a term: a newer extraction, a suppressed or reassigned unit, an
+  orphaned or retired Concept, or an unreadable part is labelled where it occurs.
+- **Search:** each token must prefix a token of the term, under `concept_lexical_normalization_v1`
+  (accent- and case-blind, as the Knowledge Library). It covers the identity, the wording, the
+  meanings, the sentence and the learner's words. Order: target accent-blind, then exact text, then
+  Concept ID.
+- **Review** is the existing Recall Practice of the Concept, hosted in the page. Nothing is stored,
+  and a term without a current supporting unit offers no review and says why.
+- **Removal** records a decision. Every example, the Concept, its units and any history stay, and
+  saving again restores the term with its examples. Removing twice is safe.
+- **Never in the public demo:** the routes are not on its allowlist, and the tables are empty in
+  demo artifacts.
+- Design, decisions and the persistence gate: `docs/plans/VOC-VOCABULARY.md`.
+
 ### 4.9 Mock Exam v1
 
 A private, timed reading-comprehension exam built only from authored material
@@ -4417,6 +4452,9 @@ A request has `id`, `operation_id`, `take_id` (transcription) or
 | `GET /mistake-notebook/items` | Optional `skill` (`listening`, `reading`, `writing`, `speaking`) and `marked=true`. `items` (newest first: `entry_id`, `capture_id`, `saved_at`, `skill`, `source` {`type`, `record_id`, `item`, `attempt`}, `title`, `prompt`, `category`, `quote`, `reference`, `explanation_en`/`_zh`, `hint_en`/`_zh`, `link`, `record` {`original_input`, `original_context`}, `retry` {`marked`, `since`}, `source_status` (`resolved`, `missing`, `unusable`; only `resolved` items carry resolved fields), `reference_origin` (`authored` or `generated`), `generator`, `latest_version` (a newer reading passage or listening transcript version, else null)) and `unlinked_notice`. Read-only |
 | `PUT /mistake-notebook/items/{entry_id}/retry` | Body `{"marked": true\|false}`. `200` `{item, changed}` (a row is appended only on a change); `404` not a notebook record; `422` missing `marked` |
 | `GET /mistake-notebook/concepts` | `kind` = `grammar`, `vocabulary` or `unclassified`, optional `q` (library search syntax). `rule` (`concept_kind_view_v1`), `classified`, `truncated`, `concepts` (`concept_id`, `target`, `pedagogical_intent`, `scope`, `state`, `class`, `reason`, `kinds`, `supporting_unit_count`, `match_tier`). `400` for an unknown kind or an unsearchable query. Read-only |
+| `GET /vocabulary` | Optional `q`. `vocabulary_v1`: `rule`, `query`, `tokens`, `saved` (every saved term), `items` (`concept_id`, `saved`, `saved_at`, `first_saved_at`, `concept` [identity and `state`, or null], `review_units`, `examples` [`unit_id`, `entry_id`, `extraction_id`, `extraction_version`, `saved_at`, `status` `current`/`not_current`/`missing`, `newer_extraction`, `term`, `kind`, `meaning`, `meanings` {`en`, `zh`}, `sentence`, `extractor`, `source` {`entry_id`, `original_input`, `original_context`, `created_at`}]). `400` for an unsearchable query. Read-only (§4.8.2) |
+| `PUT /vocabulary/{concept_id}` | Body `{"unit_id": N}`. `200` `{item, changed, saved_now, example_added}`; a repeat changes nothing. `404` unknown Concept or unit; `409` `{error, code}` with `not_vocabulary`, `unit_not_supporting` or `concept_retired`; `400` bad body |
+| `DELETE /vocabulary/{concept_id}` | `200` `{concept_id, saved: false, changed}`; a repeat is `changed: false`; `404` when the Concept was never saved. Examples and history are kept |
 | `GET /entries/{id}/source` | `{entry_id, linked: true, item}` or `{entry_id, linked: false, notice}`; `404` unknown record. Read-only |
 
 The public demo boundary does not expose these routes.

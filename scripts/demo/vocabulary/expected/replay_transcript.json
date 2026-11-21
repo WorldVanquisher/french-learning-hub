@@ -1,0 +1,1978 @@
+{
+ "fixture": "scripts/demo/vocabulary (synthetic)",
+ "steps": [
+  {
+   "step": "empty book",
+   "status": 200,
+   "saved": 0,
+   "rows": []
+  },
+  {
+   "step": "save concept_apporter",
+   "status": 200,
+   "saved": 1,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "save concept_grasse",
+   "status": 200,
+   "saved": 2,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "save concept_chat_fr",
+   "status": 200,
+   "saved": 3,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "save concept_chat_en",
+   "status": 200,
+   "saved": 4,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "save concept_auj_typo",
+   "status": 200,
+   "saved": 5,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "save concept_auj_straight",
+   "status": 200,
+   "saved": 6,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "save concept_cafe_nfc",
+   "status": 200,
+   "saved": 7,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "save concept_cafe_nfd",
+   "status": 200,
+   "saved": 8,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "save concept_long",
+   "status": 200,
+   "saved": 9,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_long",
+     "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_long",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "save concept_revanche",
+   "status": 200,
+   "saved": 10,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_revanche",
+     "target": "en revanche",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_revanche",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_long",
+     "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_long",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": true
+   }
+  },
+  {
+   "step": "repeat save of apporter (idempotent)",
+   "status": 200,
+   "saved": 10,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_revanche",
+     "target": "en revanche",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_revanche",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_long",
+     "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_long",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": false,
+    "saved_now": false,
+    "example_added": false
+   }
+  },
+  {
+   "step": "second example for apporter (another record)",
+   "status": 200,
+   "saved": 10,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      },
+      {
+       "unit": "unit_apporter2",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_revanche",
+     "target": "en revanche",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_revanche",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_long",
+     "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_long",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": false,
+    "example_added": true
+   }
+  },
+  {
+   "step": "search matinee (accent-blind)",
+   "status": 200,
+   "found": [
+    "concept_grasse"
+   ]
+  },
+  {
+   "step": "save a grammar Concept (refused)",
+   "status": 409,
+   "saved": 10,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      },
+      {
+       "unit": "unit_apporter2",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_revanche",
+     "target": "en revanche",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_revanche",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_long",
+     "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_long",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "code": "not_vocabulary"
+   }
+  },
+  {
+   "step": "remove chat (loanword)",
+   "status": 200,
+   "saved": 9,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      },
+      {
+       "unit": "unit_apporter2",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_revanche",
+     "target": "en revanche",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_revanche",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_long",
+     "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_long",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved": false
+   }
+  },
+  {
+   "step": "remove it again (no change)",
+   "status": 200,
+   "saved": 9,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      },
+      {
+       "unit": "unit_apporter2",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_revanche",
+     "target": "en revanche",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_revanche",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_long",
+     "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_long",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": false,
+    "saved": false
+   }
+  },
+  {
+   "step": "save it again (examples kept)",
+   "status": 200,
+   "saved": 10,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 2,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      },
+      {
+       "unit": "unit_apporter2",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_revanche",
+     "target": "en revanche",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_revanche",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_long",
+     "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_long",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ],
+   "response": {
+    "changed": true,
+    "saved_now": true,
+    "example_added": false
+   }
+  },
+  {
+   "step": "re-extract the first apporter record (superseded example)",
+   "status": 201,
+   "saved": 10,
+   "rows": [
+    {
+     "concept": "concept_apporter",
+     "target": "apporter",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_apporter",
+       "status": "not_current",
+       "newer": true,
+       "version": 1
+      },
+      {
+       "unit": "unit_apporter2",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_straight",
+     "target": "aujourd'hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_straight",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_auj_typo",
+     "target": "aujourd’hui",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_auj_typo",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfd",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfd",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_cafe_nfc",
+     "target": "café",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_cafe_nfc",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_fr",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_fr",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_chat_en",
+     "target": "chat",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_chat_en",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_revanche",
+     "target": "en revanche",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_revanche",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_grasse",
+     "target": "faire la grasse matinée",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_grasse",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    },
+    {
+     "concept": "concept_long",
+     "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+     "state": "active",
+     "review_units": 1,
+     "examples": [
+      {
+       "unit": "unit_long",
+       "status": "current",
+       "newer": false,
+       "version": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "step": "search a Chinese meaning",
+   "status": 200,
+   "found": [
+    "concept_revanche"
+   ]
+  }
+ ]
+}

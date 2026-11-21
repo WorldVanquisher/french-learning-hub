@@ -119,7 +119,10 @@ The full explanation is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   version or transcript version it came from. You can filter by skill, mark
   items for retry and practise them in a Recall-style session (nothing is
   scored). Grammar and Vocabulary views list Concepts by the kinds of their
-  supporting units. A **Home** tab names the seven learning sections and opens
+  supporting units. In Vocabulary you can save an approved term with its
+  examples, search your saved terms (accents optional), open each example's
+  source and review a term with Recall Practice. Removing a term from your
+  list keeps its examples and history. A **Home** tab names the seven learning sections and opens
   each one.
 - See what to act on in **Review Today**: Speaking steps and the workbook
   mistakes marked for retry, each with its reason and the record it is based

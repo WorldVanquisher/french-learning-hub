@@ -13,6 +13,7 @@ import { LocaleProvider } from "../i18n";
 import { sourceOpen, type KindConcept, type NotebookItem } from "../types/notebook";
 import type { SpeakingExerciseView } from "../types/speaking";
 import type { WritingTaskView } from "../types/writing";
+import { MistakeNotebook } from "./MistakeNotebook";
 
 afterEach(() => {
   cleanup();
@@ -298,7 +299,10 @@ describe("Mistake Notebook (private workbench)", () => {
     const u = await screen.findByRole("region", { name: "Unclassified Concepts" });
     expect(await within(u).findByText("mixed kinds")).toBeInTheDocument();
     expect(u).toHaveTextContent("Nothing is guessed.");
-    fireEvent.click(screen.getByRole("button", { name: "Vocabulary" }));
+    // Vocabulary through the learning home: the same regions whether the notebook or the
+    // shell's own #/vocabulary section hosts it (this branch alone, or the combined tree).
+    fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    fireEvent.click(within(await screen.findByRole("region", { name: "What would you like to practise?" })).getByRole("button", { name: "Open Vocabulary" }));
     const v = await screen.findByRole("region", { name: "Vocabulary Concepts" });
     fireEvent.change(within(v).getByRole("searchbox", { name: "Search these Concepts" }), { target: { value: "apport" } });
     fireEvent.click(within(v).getByRole("button", { name: "Search" }));
@@ -307,6 +311,44 @@ describe("Mistake Notebook (private workbench)", () => {
     // Opening a Concept goes to the Knowledge Library by its ID.
     fireEvent.click(within(v).getByRole("button", { name: "apporter" }));
     await waitFor(() => expect(calls.some((c) => c.path === "/api/knowledge-library/concepts/12")).toBe(true));
+  });
+
+  it("has its own Vocabulary mode when the shell has no Vocabulary section (notebook behaviour, rendered directly)", async () => {
+    serve(ITEMS);
+    const onOpenConcept = vi.fn();
+    render(
+      <LocaleProvider>
+        <MistakeNotebook onOpenConcept={onOpenConcept} />
+      </LocaleProvider>,
+    );
+    const tab = within(screen.getByRole("group", { name: "Mistake Notebook views" })).getByRole("button", { name: "Vocabulary" });
+    fireEvent.click(tab);
+    expect(tab.getAttribute("aria-pressed")).toBe("true");
+    const v = await screen.findByRole("region", { name: "Vocabulary Concepts" });
+    fireEvent.click(await within(v).findByRole("button", { name: "apporter" }));
+    expect(onOpenConcept).toHaveBeenCalledWith(12);
+    expect(screen.getAllByRole("region", { name: "My vocabulary", hidden: true })).toHaveLength(1);
+  });
+
+  it("leaves Vocabulary to the shell's own section when it is given one: no tab, the request forwarded, one mount (VOC integration)", async () => {
+    serve(ITEMS);
+    const onOpenVocabulary = vi.fn();
+    const { rerender } = render(
+      <LocaleProvider>
+        <MistakeNotebook onOpenVocabulary={onOpenVocabulary} />
+      </LocaleProvider>,
+    );
+    const group = screen.getByRole("group", { name: "Mistake Notebook views" });
+    expect(within(group).queryByRole("button", { name: "Vocabulary" })).toBeNull();
+    expect(within(group).getByRole("button", { name: "Grammar" })).toBeInTheDocument();
+    rerender(
+      <LocaleProvider>
+        <MistakeNotebook onOpenVocabulary={onOpenVocabulary} modeRequest={{ mode: "vocabulary", nonce: 1 }} />
+      </LocaleProvider>,
+    );
+    await waitFor(() => expect(onOpenVocabulary).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("region", { name: "My vocabulary" })).toBeNull();
+    expect(document.querySelectorAll('[id^="vocabulary-word-"], [id^="vocabulary-approved-"]')).toHaveLength(0);
   });
 
   it("shows a record's source, or says honestly that it has none", async () => {
@@ -407,7 +449,10 @@ describe("Mistake Notebook: the seven sections (FLH sections v1)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Home" }));
     fireEvent.click(within(await screen.findByRole("region", { name: "What would you like to practise?" })).getByRole("button", { name: "Open Vocabulary" }));
     expect(await screen.findByText("apporter")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Vocabulary" }).getAttribute("aria-pressed")).toBe("true");
+    // Who hosts Vocabulary (the notebook's mode here, the shell's #/vocabulary section in the
+    // combined tree) is the shell's test; both trees show it exactly once.
+    expect(screen.getByRole("region", { name: "My vocabulary" })).toBeInTheDocument();
+    expect(screen.getAllByRole("region", { name: "My vocabulary", hidden: true })).toHaveLength(1);
     expect(s.calls.filter((c) => c.method !== "GET")).toEqual([]);
   });
 

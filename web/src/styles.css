@@ -1236,3 +1236,15 @@ button.link-button:hover:not(:disabled) { background: none; color: #1849a9; }
 .today-schedule summary { cursor: pointer; }
 .today-schedule p { margin: 4px 0 0; }
 @media (max-width: 640px) { .today-schedule summary { min-height: 44px; display: flex; align-items: center; } }
+/* VOC: saved vocabulary (Workbooks). Long French terms and phrases wrap; nothing scrolls sideways. */
+.vocabulary-term { overflow-wrap: anywhere; margin: 0.2em 0; min-width: 0; font-size: var(--headword-size, 1.15em); font-weight: var(--headword-weight, 650); }
+.vocabulary-wording { white-space: pre-wrap; overflow-wrap: anywhere; }
+.vocabulary-examples { margin: 0.4em 0; padding-left: 1.2em; }
+.vocabulary-example q, .vocabulary-facts dd { overflow-wrap: anywhere; min-width: 0; line-height: var(--source-line, 1.6); }
+/* The learner's own words: the shell's quote treatment (token with a fallback, a left rule). */
+.vocabulary-facts dd.vocabulary-own-words { background: var(--quote-bg, var(--code-bg)); border-left: 3px solid var(--border-strong, var(--border)); border-radius: 0 6px 6px 0; padding: 4px 8px; }
+.vocabulary-book { display: contents; }
+.vocabulary-facts { margin: 0.3em 0; }
+/* A label can hold a long unbroken provenance ("openai:<model>:…"): let it wrap (320 px). */
+.vocabulary-facts dt { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+.vocabulary-facts dd { margin: 0 0 0.3em 0; }

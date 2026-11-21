@@ -1,0 +1,75 @@
+{
+ "schema": "flh_wb_vocabulary_review_fixture_v0",
+ "items": [
+  {
+   "concept": "concept_apporter",
+   "target": "apporter",
+   "review_units": 2,
+   "question": "Comment dit-on « bring » quand on va dîner chez des amis ? (apporter le dessert)",
+   "answer": "to bring (a thing)"
+  },
+  {
+   "concept": "concept_grasse",
+   "target": "faire la grasse matinée",
+   "review_units": 1,
+   "question": "Que veut dire « faire la grasse matinée » ?",
+   "answer": "to sleep in"
+  },
+  {
+   "concept": "concept_chat_fr",
+   "target": "chat",
+   "review_units": 1,
+   "question": "« le chat dort » : chat veut dire quoi ?",
+   "answer": "cat (French word)"
+  },
+  {
+   "concept": "concept_chat_en",
+   "target": "chat",
+   "review_units": 1,
+   "question": "« on a fait un chat en ligne » : c'est de l'anglais ?",
+   "answer": "online chat (English loanword)"
+  },
+  {
+   "concept": "concept_auj_typo",
+   "target": "aujourd’hui",
+   "review_units": 1,
+   "question": "Comment écrire aujourd’hui ?",
+   "answer": "today (typographic apostrophe)"
+  },
+  {
+   "concept": "concept_auj_straight",
+   "target": "aujourd'hui",
+   "review_units": 1,
+   "question": "Et aujourd'hui avec une apostrophe droite ?",
+   "answer": "today (straight apostrophe)"
+  },
+  {
+   "concept": "concept_cafe_nfc",
+   "target": "café",
+   "review_units": 1,
+   "question": "Commander un café crème",
+   "answer": "coffee (é as one character)"
+  },
+  {
+   "concept": "concept_cafe_nfd",
+   "target": "café",
+   "review_units": 1,
+   "question": "Commander un café noir",
+   "answer": "coffee (e + combining accent)"
+  },
+  {
+   "concept": "concept_long",
+   "target": "il pleut des cordes, n'est-ce pas ? — « oui » (vraiment) !",
+   "review_units": 1,
+   "question": "« il pleut des cordes » : une expression ?",
+   "answer": "it is raining cats and dogs, isn't it? — \"yes\" (really)!"
+  },
+  {
+   "concept": "concept_revanche",
+   "target": "en revanche",
+   "review_units": 1,
+   "question": "« en revanche » : ça veut dire quoi ?",
+   "answer": "on the other hand"
+  }
+ ]
+}
