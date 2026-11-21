@@ -175,6 +175,15 @@ def cmd_residual(a):
     except (OSError, ValueError) as ex:
         print(f"lifecycle: incomplete evidence in {a.dir}: {type(ex).__name__}: {ex}", file=sys.stderr)
         return 2
+    # A listing without its top-level key (an error envelope, a refused call, the wrong command) proves nothing:
+    # reading it as "zero resources" would pass a teardown that was never checked.
+    shape = {"ec2-instances.json": "Reservations", "ec2-volumes.json": "Volumes", "ec2-snapshots.json": "Snapshots",
+             "ec2-addresses.json": "Addresses", "s3-buckets.json": "Buckets", "tagged-resources.json": "ResourceTagMappingList"}
+    wrong = [f for f, key in shape.items() if not isinstance(docs.get(f), dict) or not isinstance(docs[f].get(key), list)]
+    if wrong:
+        print(f"lifecycle: incomplete evidence in {a.dir}: {', '.join(wrong)} lack(s) the listing's top-level key; "
+              "re-run the printed command (verify-commands) into a NEW directory", file=sys.stderr)
+        return 2
     insts = [i for r in docs["ec2-instances.json"].get("Reservations", []) for i in r.get("Instances", [])
              if i.get("State", {}).get("Name") != "terminated"]
     checks = [

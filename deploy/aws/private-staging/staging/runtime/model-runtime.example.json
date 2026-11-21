@@ -1,0 +1,11 @@
+{
+  "format": "flh-model-runtime-example/v1",
+  "comment": "PROPOSAL (REL-125), offline example. No model runs in the staging pass: a t3.small has 2 GiB, and the measured Whisper base RSS is 0.6-1.2 GB. These limits are for a later, larger host and are enforced by rehearsal/mock_model_smoke.py. Values in <> are filled from the owner-approved package.",
+  "model": {"name": "<pinned model name>", "revision": "<40-hex revision>", "manifest_sha256": "<64-hex manifest digest>"},
+  "limits": {"memory_mib": 2048, "memory_swap_mib": 2048, "cpus": 2, "pids": 128, "disk_gib": 4,
+             "max_request_bytes": 65536, "request_timeout_s": 30, "max_in_flight": 2, "startup_deadline_s": 120},
+  "probes": {"healthz": "process up only", "readyz": "200 only after every file matches the manifest, the model is loaded and one warm-up request succeeded; otherwise 503 with state starting/loading/failed"},
+  "fallback": "report unavailable once; no retry; no other model; the app keeps working without it",
+  "cleanup": ["stop the runtime", "remove the unpacked model cache", "keep the pinned package only while a next step is scheduled", "record the deployment identity pair before and after"],
+  "mock": {"load_seconds": 0.3, "request_timeout_s": 0.5}
+}
