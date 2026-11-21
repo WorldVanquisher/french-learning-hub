@@ -88,6 +88,7 @@ type Handler struct {
 	writing             WritingService
 	speaking            SpeakingService
 	notebook            MistakeNotebookService
+	vocabulary          VocabularyService
 	week                LearningWeekService
 	history             HistoryExportService
 	exam                ExamService
@@ -222,6 +223,7 @@ func (h *Handler) Routes() http.Handler {
 	h.registerWritingRoutes(mux)
 	h.registerSpeakingRoutes(mux)
 	h.registerNotebookRoutes(mux)
+	h.registerVocabularyRoutes(mux)
 	h.registerReviewTodayRoutes(mux)
 	h.registerRevisionStudioRoutes(mux)
 	h.registerLearningWeekRoutes(mux)

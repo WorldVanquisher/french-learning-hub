@@ -106,6 +106,7 @@ export function RecallPractice({
   visible,
   onExit,
   onOpenSource,
+  exitLabel,
 }: {
   conceptId: number;
   // False while the learner looks at a source opened from practice; the session
@@ -113,6 +114,9 @@ export function RecallPractice({
   visible: boolean;
   onExit: () => void;
   onOpenSource: (unitId: number) => void;
+  // Where the exit leads when practice is hosted elsewhere (Vocabulary); the
+  // Knowledge Library keeps its default "return to concept #id".
+  exitLabel?: string;
 }) {
   const { t, tp } = useI18n();
   const [conceptRetry, setConceptRetry] = useState(0);
@@ -181,7 +185,7 @@ export function RecallPractice({
 
   const exit = (
     <button type="button" className="ghost" onClick={onExit}>
-      {t("practice.exit", { id: conceptId })}
+      {exitLabel ?? t("practice.exit", { id: conceptId })}
     </button>
   );
   const shell = (heading: string, body: ReactNode) => (

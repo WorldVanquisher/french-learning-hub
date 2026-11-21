@@ -3,6 +3,7 @@
 // in one file. All calls go through the "/api" prefix, which Vite proxies to the Go
 // backend in development (see vite.config.ts).
 
+import type { VocabularyList, VocabularyRemoveResult, VocabularySaveResult } from "../types/vocabulary";
 import type { LearningWeek, ReviewToday } from "../types/reviewToday";
 import type { HistoryExportOptions, HistoryExportPreview, HistoryImportPreview } from "../types/history";
 import type { ExamForms, ExamSessionRow, ExamView } from "../types/exam";
@@ -1092,6 +1093,24 @@ export function getKindConcepts(kind: KindView, query = "", fetchImpl: typeof fe
   const q = new URLSearchParams({ kind });
   if (query.trim()) q.set("q", query.trim());
   return request<KindConcepts>("GET", `/mistake-notebook/concepts?${q.toString()}`, undefined, fetchImpl);
+}
+
+// ---- Vocabulary (Workbooks; private, never on the public demo) ----
+
+// getVocabulary reads the saved terms, optionally searched (q).
+export function getVocabulary(query = "", fetchImpl: typeof fetch = fetch): Promise<VocabularyList> {
+  const q = query.trim() ? `?${new URLSearchParams({ q: query.trim() }).toString()}` : "";
+  return request<VocabularyList>("GET", `/vocabulary${q}`, undefined, fetchImpl);
+}
+
+// saveVocabulary saves a Concept with one approved example unit; a repeat changes nothing.
+export function saveVocabulary(conceptId: number, unitId: number, fetchImpl: typeof fetch = fetch): Promise<VocabularySaveResult> {
+  return request<VocabularySaveResult>("PUT", `/vocabulary/${conceptId}`, { unit_id: unitId }, fetchImpl);
+}
+
+// removeVocabulary removes a saved Concept from the list (history kept); a repeat is safe.
+export function removeVocabulary(conceptId: number, fetchImpl: typeof fetch = fetch): Promise<VocabularyRemoveResult> {
+  return request<VocabularyRemoveResult>("DELETE", `/vocabulary/${conceptId}`, undefined, fetchImpl);
 }
 
 // getEntrySource reads a record's structured source, or linked:false.

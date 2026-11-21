@@ -22,6 +22,8 @@ TABLES = {
     "learning_captures": dict(role="learner", daily=True, private=["discussion_summary"], when=["created_at"], export="record"),
     "learning_capture_sources": dict(role="learner", daily=True, private=[], when=["created_at"], export="record"),
     "mistake_retry_marks": dict(role="learner-derived", daily=True, private=[], when=["created_at"], export="record"),
+    "vocabulary_marks": dict(role="learner", daily=True, private=[], when=["created_at"], export=None),
+    "vocabulary_examples": dict(role="learner", daily=True, private=[], when=["created_at"], export=None),
     "entry_analyses": dict(role="generated", daily=False, private=[], when=["created_at"], export="record"),
     "analysis_feedback": dict(role="learner", daily=False, private=["user_note", "corrected_explanation", "corrected_explanation_en", "corrected_explanation_zh"], when=["created_at"], export="record"),
     # knowledge (extraction, concepts, annotation)
@@ -95,6 +97,7 @@ SOURCE_REFS = {
 CRITICAL = {
     "learning records": ["learning_entries", "learning_captures", "entry_analyses", "analysis_feedback"],
     "mistake notebook": ["learning_capture_sources", "mistake_retry_marks"],
+    "vocabulary": ["vocabulary_marks", "vocabulary_examples"],
     "listening lessons": ["listening_materials", "listening_transcripts", "listening_exercises"],
     "reading lessons": ["reading_lessons", "reading_passages", "reading_exercises"],
     "writing": ["writing_tasks", "writing_drafts", "writing_feedback"],
