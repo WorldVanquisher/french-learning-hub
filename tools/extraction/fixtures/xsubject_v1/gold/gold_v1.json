@@ -1,0 +1,221 @@
+{
+ "documents": [
+  {
+   "claims": [
+    {
+     "gold_id": "semitone",
+     "require": "any",
+     "spans": [
+      {
+       "end": 113,
+       "field": "original_context",
+       "quote": "A semitone is the smallest step on the piano, from one key to the very next key.",
+       "start": 33
+      }
+     ],
+     "topic": "semitone",
+     "value": "smallest step"
+    },
+    {
+     "gold_id": "major-third",
+     "require": "any",
+     "spans": [
+      {
+       "end": 169,
+       "field": "original_context",
+       "quote": "A major third spans four semitones, for example C to E.",
+       "start": 114
+      }
+     ],
+     "topic": "major third",
+     "value": "four"
+    },
+    {
+     "gold_id": "minor-third",
+     "require": "any",
+     "spans": [
+      {
+       "end": 231,
+       "field": "original_context",
+       "quote": "A minor third spans three semitones, for example C to E-flat.",
+       "start": 170
+      }
+     ],
+     "topic": "minor third",
+     "value": "three"
+    },
+    {
+     "gold_id": "major-triad",
+     "require": "any",
+     "spans": [
+      {
+       "end": 299,
+       "field": "original_context",
+       "quote": "A major triad stacks a major third and then a minor third: C, E, G.",
+       "start": 232
+      }
+     ],
+     "topic": "major triad",
+     "value": "major third and then a minor third"
+    },
+    {
+     "gold_id": "minor-triad",
+     "require": "any",
+     "spans": [
+      {
+       "end": 372,
+       "field": "original_context",
+       "quote": "A minor triad stacks a minor third and then a major third: C, E-flat, G.",
+       "start": 300
+      }
+     ],
+     "topic": "minor triad",
+     "value": "minor third and then a major third"
+    },
+    {
+     "gold_id": "octave",
+     "require": "any",
+     "spans": [
+      {
+       "end": 436,
+       "field": "original_context",
+       "quote": "An octave doubles the frequency: A4 is 440 Hz and A5 is 880 Hz.",
+       "start": 373
+      }
+     ],
+     "topic": "octave",
+     "value": "doubles"
+    }
+   ],
+   "source_file": "music_thirds.r1.json",
+   "source_id": "music-thirds",
+   "topic_area": "intervals"
+  },
+  {
+   "claims": [
+    {
+     "gold_id": "freeze-0",
+     "require": "any",
+     "spans": [
+      {
+       "end": 75,
+       "field": "original_context",
+       "quote": "pure water freezes at 0 degrees Celsius",
+       "start": 36
+      }
+     ],
+     "topic": "freezing point",
+     "value": "0"
+    },
+    {
+     "gold_id": "boil-100",
+     "require": "any",
+     "spans": [
+      {
+       "end": 108,
+       "field": "original_context",
+       "quote": "boils at 100 degrees Celsius",
+       "start": 80
+      }
+     ],
+     "topic": "boiling point",
+     "value": "100"
+    },
+    {
+     "gold_id": "altitude",
+     "require": "any",
+     "spans": [
+      {
+       "end": 197,
+       "field": "original_context",
+       "quote": "Air pressure is lower at high altitude, so water boils below 100 degrees Celsius there.",
+       "start": 110
+      }
+     ],
+     "topic": "boiling point at altitude",
+     "value": "below"
+    },
+    {
+     "gold_id": "plateau",
+     "require": "any",
+     "spans": [
+      {
+       "end": 312,
+       "field": "original_context",
+       "quote": "the temperature stays at the boiling point until the liquid is gone.",
+       "start": 244
+      }
+     ],
+     "topic": "temperature while boiling",
+     "value": "stays"
+    },
+    {
+     "gold_id": "vapour",
+     "require": "any",
+     "spans": [
+      {
+       "end": 242,
+       "field": "original_context",
+       "quote": "Boiling turns liquid water into water vapour",
+       "start": 198
+      }
+     ],
+     "topic": "boiling",
+     "value": "water vapour"
+    }
+   ],
+   "source_file": "chem_water_states.v2.json",
+   "source_id": "chem-water-states",
+   "topic_area": "states of water"
+  },
+  {
+   "claims": [
+    {
+     "gold_id": "c-major-signature",
+     "require": "any",
+     "spans": [
+      {
+       "end": 79,
+       "field": "original_context",
+       "quote": "C major has no sharps or flats in its key signature.",
+       "start": 27
+      }
+     ],
+     "topic": "C major key signature",
+     "value": "no sharps or flats"
+    },
+    {
+     "gold_id": "relative-minor",
+     "require": "all",
+     "spans": [
+      {
+       "end": 79,
+       "field": "original_context",
+       "quote": "C major has no sharps or flats in its key signature.",
+       "start": 27
+      },
+      {
+       "end": 205,
+       "field": "original_context",
+       "quote": "A minor uses exactly the same notes as C major, so A minor is called the relative minor of C major.",
+       "start": 106
+      }
+     ],
+     "topic": "relative minor of C major",
+     "value": "A minor"
+    }
+   ],
+   "source_file": "music_relative_keys.r1.json",
+   "source_id": "music-relative-keys",
+   "topic_area": "keys"
+  },
+  {
+   "claims": [],
+   "source_file": "music_practice_diary.r1.json",
+   "source_id": "music-practice-diary",
+   "topic_area": "diary"
+  }
+ ],
+ "note": "written by the same author as the sources and the authored proposals; synthetic; English",
+ "schema": "flh_units_gold_v1"
+}

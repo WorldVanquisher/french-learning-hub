@@ -1,0 +1,290 @@
+{
+ "counts": {
+  "application": 2,
+  "explanation": 2,
+  "free_recall": 2,
+  "recognition": 2
+ },
+ "drops": [
+  {
+   "text": "D to F is three semitones (a minor third), then F to A is four (a major third).",
+   "type": "worked_example",
+   "unit_id": "k-31d08ea86837",
+   "why": "a worked_example: practised through the practice builder (explain, choose, produce), not as a recall prompt"
+  },
+  {
+   "text": "Count the semitones from the root to the middle note: four makes a major triad, three makes a minor triad.",
+   "type": "contrast",
+   "unit_id": "k-40bac97f4bae",
+   "why": "a contrast: practised through the practice builder (explain, choose, produce), not as a recall prompt"
+  },
+  {
+   "text": "A to C-sharp is four semitones (a major third), then C-sharp to E is three (a minor third).",
+   "type": "worked_example",
+   "unit_id": "k-8f371578a3e5",
+   "why": "a worked_example: practised through the practice builder (explain, choose, produce), not as a recall prompt"
+  }
+ ],
+ "multi_answer_spans": [],
+ "prompts": [
+  {
+   "accepted": [
+    {
+     "answer": "3",
+     "basis": "numeral",
+     "evidence_id": "ev-44c315b58e"
+    },
+    {
+     "answer": "three",
+     "basis": "verbatim",
+     "evidence_id": "ev-44c315b58e"
+    },
+    {
+     "answer": "three semitones",
+     "basis": "verbatim",
+     "evidence_id": "ev-44c315b58e"
+    }
+   ],
+   "answer": "three",
+   "claim_key": "ck-1c2e09af3bf4",
+   "intended_recall": "cued recall",
+   "kind": "free_recall",
+   "prompt": "A minor third spans ___ semitones, for example C to E-flat.",
+   "prompt_id": "rc-924c641d94de",
+   "source_link": {
+    "end": 231,
+    "evidence_id": "ev-44c315b58e",
+    "evidence_key": "ek-c0f9497deb4a",
+    "field": "original_context",
+    "fingerprint": "sf-87d52c502f0bf2d1",
+    "source_id": "music-thirds",
+    "source_revision": 1,
+    "start": 170
+   },
+   "unit_id": "k-133ac4bd8df4"
+  },
+  {
+   "accepted": [
+    {
+     "answer": "3",
+     "basis": "numeral",
+     "evidence_id": "ev-44c315b58e"
+    },
+    {
+     "answer": "three",
+     "basis": "verbatim",
+     "evidence_id": "ev-44c315b58e"
+    },
+    {
+     "answer": "three semitones",
+     "basis": "verbatim",
+     "evidence_id": "ev-44c315b58e"
+    }
+   ],
+   "answer": "three",
+   "claim_key": "ck-1c2e09af3bf4",
+   "intended_recall": "recognition",
+   "kind": "recognition",
+   "options": [
+    "four",
+    "three"
+   ],
+   "prompt": "A minor third spans ___ semitones, for example C to E-flat.",
+   "prompt_id": "rr-924c641d94de",
+   "source_link": {
+    "end": 231,
+    "evidence_id": "ev-44c315b58e",
+    "evidence_key": "ek-c0f9497deb4a",
+    "field": "original_context",
+    "fingerprint": "sf-87d52c502f0bf2d1",
+    "source_id": "music-thirds",
+    "source_revision": 1,
+    "start": 170
+   },
+   "unit_id": "k-133ac4bd8df4"
+  },
+  {
+   "accepted": [
+    {
+     "answer": "a minor third",
+     "basis": "verbatim",
+     "evidence_id": "ev-44c315b58e"
+    },
+    {
+     "answer": "minor third",
+     "basis": "verbatim",
+     "evidence_id": "ev-44c315b58e"
+    }
+   ],
+   "answer": "a minor third",
+   "claim_key": "ck-1c2e09af3bf4",
+   "instance": "new: not in the source, written in the exercise sheet",
+   "intended_recall": "transfer (apply the rule to a new case)",
+   "kind": "application",
+   "options": [
+    "a major third",
+    "a minor third"
+   ],
+   "prompt": "From D up to F is three semitones. What interval is that?",
+   "prompt_id": "ap-96f9150d5a58",
+   "rule_evidence": "ev-44c315b58e",
+   "unit_id": "k-133ac4bd8df4"
+  },
+  {
+   "claim_key": "ck-1c2e09af3bf4",
+   "evidence": [
+    {
+     "end": 231,
+     "evidence_id": "ev-44c315b58e",
+     "field": "original_context",
+     "quote": "A minor third spans three semitones, for example C to E-flat.",
+     "start": 170
+    }
+   ],
+   "grading": "self_check",
+   "intended_recall": "elaboration (free recall in your own words)",
+   "kind": "explanation",
+   "prompt": "In your own words, explain what a minor third is, and give one example that is not in your notes.",
+   "prompt_id": "ex-c9352b33ff0e",
+   "reference": "A minor third spans three semitones, for example C to E-flat.",
+   "unit_id": "k-133ac4bd8df4"
+  },
+  {
+   "accepted": [
+    {
+     "answer": "4",
+     "basis": "numeral",
+     "evidence_id": "ev-820a211723"
+    },
+    {
+     "answer": "four",
+     "basis": "verbatim",
+     "evidence_id": "ev-820a211723"
+    },
+    {
+     "answer": "four semitones",
+     "basis": "verbatim",
+     "evidence_id": "ev-820a211723"
+    }
+   ],
+   "answer": "four",
+   "claim_key": "ck-7f73793d24cd",
+   "intended_recall": "cued recall",
+   "kind": "free_recall",
+   "prompt": "A major third spans ___ semitones, for example C to E.",
+   "prompt_id": "rc-8c235ab4e42a",
+   "source_link": {
+    "end": 169,
+    "evidence_id": "ev-820a211723",
+    "evidence_key": "ek-2084226fb827",
+    "field": "original_context",
+    "fingerprint": "sf-87d52c502f0bf2d1",
+    "source_id": "music-thirds",
+    "source_revision": 1,
+    "start": 114
+   },
+   "unit_id": "k-bbab1ad4b069"
+  },
+  {
+   "accepted": [
+    {
+     "answer": "4",
+     "basis": "numeral",
+     "evidence_id": "ev-820a211723"
+    },
+    {
+     "answer": "four",
+     "basis": "verbatim",
+     "evidence_id": "ev-820a211723"
+    },
+    {
+     "answer": "four semitones",
+     "basis": "verbatim",
+     "evidence_id": "ev-820a211723"
+    }
+   ],
+   "answer": "four",
+   "claim_key": "ck-7f73793d24cd",
+   "intended_recall": "recognition",
+   "kind": "recognition",
+   "options": [
+    "four",
+    "three"
+   ],
+   "prompt": "A major third spans ___ semitones, for example C to E.",
+   "prompt_id": "rr-8c235ab4e42a",
+   "source_link": {
+    "end": 169,
+    "evidence_id": "ev-820a211723",
+    "evidence_key": "ek-2084226fb827",
+    "field": "original_context",
+    "fingerprint": "sf-87d52c502f0bf2d1",
+    "source_id": "music-thirds",
+    "source_revision": 1,
+    "start": 114
+   },
+   "unit_id": "k-bbab1ad4b069"
+  },
+  {
+   "accepted": [
+    {
+     "answer": "a major third",
+     "basis": "verbatim",
+     "evidence_id": "ev-820a211723"
+    },
+    {
+     "answer": "major third",
+     "basis": "verbatim",
+     "evidence_id": "ev-820a211723"
+    }
+   ],
+   "answer": "a major third",
+   "claim_key": "ck-7f73793d24cd",
+   "instance": "new: not in the source, written in the exercise sheet",
+   "intended_recall": "transfer (apply the rule to a new case)",
+   "kind": "application",
+   "options": [
+    "a major third",
+    "a minor third"
+   ],
+   "prompt": "From F up to A is four semitones. What interval is that?",
+   "prompt_id": "ap-797af766abf2",
+   "rule_evidence": "ev-820a211723",
+   "unit_id": "k-bbab1ad4b069"
+  },
+  {
+   "claim_key": "ck-7f73793d24cd",
+   "evidence": [
+    {
+     "end": 169,
+     "evidence_id": "ev-820a211723",
+     "field": "original_context",
+     "quote": "A major third spans four semitones, for example C to E.",
+     "start": 114
+    }
+   ],
+   "grading": "self_check",
+   "intended_recall": "elaboration (free recall in your own words)",
+   "kind": "explanation",
+   "prompt": "In your own words, explain what a major third is, and give one example that is not in your notes.",
+   "prompt_id": "ex-43c01a57d53a",
+   "reference": "A major third spans four semitones, for example C to E.",
+   "unit_id": "k-bbab1ad4b069"
+  }
+ ],
+ "refused": [
+  {
+   "code": "no_basis_or_leak",
+   "detail": "the answer has no basis in the unit, or the prompt shows it",
+   "exercise_id": "leaky"
+  }
+ ],
+ "schema": "flh_unit_practice_v1",
+ "source": {
+  "fingerprint": "sf-87d52c502f0bf2d1",
+  "language": "en",
+  "revision": 1,
+  "source_id": "music-thirds",
+  "subject": "music_theory"
+ }
+}

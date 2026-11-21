@@ -1,0 +1,221 @@
+{
+ "ambiguous_duplicates": [],
+ "counts": {
+  "needs_review": 2,
+  "recall": 0,
+  "units": 7,
+  "usable": 5
+ },
+ "drafter": "flh_practice_drafter_v1",
+ "recall": [],
+ "recall_refused": [],
+ "schema": "flh_learning_units_v1",
+ "source": {
+  "data_scope": "synthetic",
+  "draft_id": "d-22ff0c49f9d7",
+  "extensions": {},
+  "fingerprint": "sf-066999b2b6ecdd99",
+  "language": "fr",
+  "revision": 1,
+  "revision_sha256": "fd55a3600f1c2dd1ab69503dcba4c5cfb20562d845ece7f3f76e9fc0ba6eb0a5",
+  "run_key": "rk-5c656d7a248d5789",
+  "source_id": "y-en-demo",
+  "subject": "french"
+ },
+ "source_text_included": false,
+ "span_overlaps": [],
+ "units": [
+  {
+   "claim_key": "ck-0d3281b28da6",
+   "evidence": [
+    {
+     "end": 50,
+     "evidence_id": "ev-fd704f2740",
+     "evidence_key": "ek-1c3e48c79546",
+     "field": "original_context",
+     "quote": "Tu vas à la boulangerie ?",
+     "source_revision": 1,
+     "start": 25,
+     "status": "located",
+     "verified": true
+    },
+    {
+     "end": 201,
+     "evidence_id": "ev-17c9dfcc08",
+     "evidence_key": "ek-2c7fad172c8e",
+     "field": "original_context",
+     "quote": "Je viens de la boulangerie, j'en viens.",
+     "source_revision": 1,
+     "start": 162,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "c5c85275add7b2040fbab74ab898e2f02d97f8acd32af961c3eff6e0a84a4ab3",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "y-vs-en",
+   "proposed_text": "Ask which preposition the place takes: « à » gives « y », « de » gives « en ».",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "Ask which preposition the place takes: « à » gives « y », « de » gives « en ».",
+   "type": "contrast",
+   "unit_id": "k-0d3281b28da6"
+  },
+  {
+   "claim_key": "ck-232ca0f26098",
+   "evidence": [
+    {
+     "end": 85,
+     "evidence_id": "ev-053a01e463",
+     "evidence_key": "ek-f2e2075fd031",
+     "field": "original_context",
+     "quote": "Oui, j'en vais.",
+     "source_revision": 1,
+     "start": 70,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "d86fd4b9a3f843da50ceeb888e05d6f1a6eb68021b0a000b87e8625e9e492ce2",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "en-vais",
+   "proposed_text": "« aller à » takes « y »; « en » would mean « from there ».",
+   "review_reasons": [
+    {
+     "code": "conflict",
+     "detail": "another item presents as correct what this one lists as wrong (or the reverse)"
+    }
+   ],
+   "state": "pending",
+   "support": "supported",
+   "text": "« aller à » takes « y »; « en » would mean « from there ».",
+   "type": "common_error",
+   "unit_id": "k-232ca0f26098"
+  },
+  {
+   "canonical": "en (de + lieu)",
+   "claim_key": "ck-3f09f5e3ae2a",
+   "evidence": [
+    {
+     "end": 201,
+     "evidence_id": "ev-17c9dfcc08",
+     "evidence_key": "ek-2c7fad172c8e",
+     "field": "original_context",
+     "quote": "Je viens de la boulangerie, j'en viens.",
+     "source_revision": 1,
+     "start": 162,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "b13ebe90188d1591fcd2f19f407f93ecdbd914d5350a0962453f02c379006b76",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "en-de",
+   "proposed_text": "« en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "« en » replaces a place introduced by « de »: « Je viens de la boulangerie, j'en viens. »",
+   "type": "claim",
+   "unit_id": "k-40cbe73ae3f5"
+  },
+  {
+   "canonical": "en + verbe de mouvement",
+   "claim_key": "ck-129a0cfd69b0",
+   "evidence": [],
+   "item_hash": "757e1bfda44f2598820983b64c02e76e4376eb00f04a77b209c55855594cf14e",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "en-mouvement",
+   "proposed_text": "« en » goes with every verb of movement, so « j'en vais » is also correct.",
+   "review_reasons": [
+    {
+     "code": "unsupported_claim",
+     "detail": "these words are not in your text: « en goes with every verb of movement »"
+    },
+    {
+     "code": "conflict",
+     "detail": "another item presents as correct what this one lists as wrong (or the reverse)"
+    }
+   ],
+   "state": "pending",
+   "support": "unsupported",
+   "text": "« en » goes with every verb of movement, so « j'en vais » is also correct.",
+   "type": "claim",
+   "unit_id": "k-5ca79503ae78"
+  },
+  {
+   "canonical": "y (à + lieu)",
+   "claim_key": "ck-20e98793563e",
+   "evidence": [
+    {
+     "end": 50,
+     "evidence_id": "ev-fd704f2740",
+     "evidence_key": "ek-1c3e48c79546",
+     "field": "original_context",
+     "quote": "Tu vas à la boulangerie ?",
+     "source_revision": 1,
+     "start": 25,
+     "status": "located",
+     "verified": true
+    },
+    {
+     "end": 133,
+     "evidence_id": "ev-6659b658b9",
+     "evidence_key": "ek-8d8024f46c88",
+     "field": "original_context",
+     "quote": "On dit : oui, j'y vais.",
+     "source_revision": 1,
+     "start": 110,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "5d7b7f1fe92e2f83cddd2869e383d26c6f71c2e76da89d51e6126bebdf6e46fe",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "y-a",
+   "proposed_text": "« y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "« y » replaces a place introduced by « à »: « Tu vas à la boulangerie ? — Oui, j'y vais. »",
+   "type": "claim",
+   "unit_id": "k-6c4760ebee9d"
+  },
+  {
+   "claim_key": "ck-cb9627cc7213",
+   "evidence": [],
+   "item_hash": "dc3a624e79bda0a1e61bb6692aba504d3ef55c4ff8946fda5104c28dcad532d3",
+   "needs_review": false,
+   "origin": "generated",
+   "proposal_ref": "ex-marche",
+   "proposed_text": "« revenir du marché » (de + le): the place takes « de », so « en ».",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "generated",
+   "text": "« revenir du marché » (de + le): the place takes « de », so « en ».",
+   "type": "worked_example",
+   "unit_id": "k-cb9627cc7213"
+  },
+  {
+   "claim_key": "ck-d1c9732336a2",
+   "evidence": [],
+   "item_hash": "22df1dec718285e517fae20bb91156ee2a9cbb638187aee8add034f9e92960df",
+   "needs_review": false,
+   "origin": "generated",
+   "proposal_ref": "ex-piscine",
+   "proposed_text": "« aller à la piscine »: the place takes « à », so « y ».",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "generated",
+   "text": "« aller à la piscine »: the place takes « à », so « y ».",
+   "type": "worked_example",
+   "unit_id": "k-d1c9732336a2"
+  }
+ ]
+}

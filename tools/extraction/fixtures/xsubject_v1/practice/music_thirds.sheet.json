@@ -1,0 +1,39 @@
+{
+ "exercises": [
+  {
+   "accepted": [
+    "major third"
+   ],
+   "answer": "a major third",
+   "claim_key": "ck-7f73793d24cd",
+   "exercise_id": "apply-f-a",
+   "options": [
+    "a major third",
+    "a minor third"
+   ],
+   "prompt": "From F up to A is four semitones. What interval is that?"
+  },
+  {
+   "accepted": [
+    "minor third"
+   ],
+   "answer": "a minor third",
+   "claim_key": "ck-1c2e09af3bf4",
+   "exercise_id": "apply-d-f",
+   "options": [
+    "a major third",
+    "a minor third"
+   ],
+   "prompt": "From D up to F is three semitones. What interval is that?"
+  },
+  {
+   "answer": "major third",
+   "claim_key": "ck-7f73793d24cd",
+   "exercise_id": "leaky",
+   "prompt": "A major third: how many semitones from F to A?"
+  }
+ ],
+ "note": "authored application exercises (synthetic); the instance is new, the rule is the unit's",
+ "schema": "flh_unit_exercise_sheet_v1",
+ "source_id": "music-thirds"
+}

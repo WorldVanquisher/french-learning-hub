@@ -1,0 +1,130 @@
+{
+ "ambiguous_duplicates": [],
+ "claims": [
+  {
+   "change": "unchanged",
+   "claim_key": "ck-14447b695bf0",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "pending",
+   "state_before": "pending",
+   "unit_after": "k-c8f3eff46ff5",
+   "unit_before": "k-c8f3eff46ff5"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-2b428885cd58",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "needs_review",
+   "state_before": "needs_review",
+   "unit_after": "k-cbb2a68e35b0",
+   "unit_before": "k-cbb2a68e35b0"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-37e5d45d4829",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "pending",
+   "state_before": "pending",
+   "unit_after": "k-37e5d45d4829",
+   "unit_before": "k-37e5d45d4829"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-78633b9f709c",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "pending",
+   "state_before": "pending",
+   "unit_after": "k-baac4a16427a",
+   "unit_before": "k-baac4a16427a"
+  },
+  {
+   "change": "evidence_changed",
+   "claim_key": "ck-987568d424ed",
+   "evidence_added": [
+    "ek-1ca7abee240a"
+   ],
+   "evidence_removed": [
+    "ev-6c3d7f22b9"
+   ],
+   "state_after": "pending",
+   "state_before": "pending",
+   "unit_after": "k-417165ee040e",
+   "unit_before": "k-417165ee040e"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-a74566101de8",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "pending",
+   "state_before": "pending",
+   "unit_after": "k-af6ac6c0efd9",
+   "unit_before": "k-af6ac6c0efd9"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-af4203017d56",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "approved",
+   "state_before": "approved",
+   "unit_after": "k-66026825bc65",
+   "unit_before": "k-66026825bc65"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-b39aade616b5",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "approved",
+   "state_before": "approved",
+   "unit_after": "k-ae55c2b5be7a",
+   "unit_before": "k-ae55c2b5be7a"
+  }
+ ],
+ "counts": {
+  "added": 0,
+  "evidence_changed": 1,
+  "prose_edit": 0,
+  "removed": 0,
+  "state_changed": 0,
+  "unchanged": 7
+ },
+ "evidence": {
+  "added": [
+   "ek-1ca7abee240a"
+  ],
+  "kept": [
+   "ek-3f0e68381920",
+   "ek-543bbf1f93df",
+   "ek-5aa9365cc9e5",
+   "ek-5c794dea87f5",
+   "ek-5f1231c77c7f",
+   "ek-ae82408cac20",
+   "ek-d17811c430ae"
+  ],
+  "moved": [],
+  "removed": [
+   "ev-6c3d7f22b9"
+  ]
+ },
+ "from": {
+  "fingerprint": "sf-e6dfbbf6a2312340",
+  "revision": 2,
+  "run_key": "rk-5da8167fd43278e7"
+ },
+ "identical_rerun": false,
+ "rejected_kept": [],
+ "same_text": true,
+ "schema": "flh_learning_units_compare_v1",
+ "source_id": "music-intervals-inbox",
+ "to": {
+  "fingerprint": "sf-e6dfbbf6a2312340",
+  "revision": 3,
+  "run_key": "rk-15ee74e7766b1741"
+ }
+}

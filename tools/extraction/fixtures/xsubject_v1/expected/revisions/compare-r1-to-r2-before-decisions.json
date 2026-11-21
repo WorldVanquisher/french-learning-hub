@@ -1,0 +1,95 @@
+{
+ "ambiguous_duplicates": [],
+ "claims": [
+  {
+   "change": "removed",
+   "claim_key": "ck-1c2e09af3bf4",
+   "state_before": "approved",
+   "text_before": "A minor third spans three semitones, for example C to E-flat.",
+   "unit_before": "k-133ac4bd8df4"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-31d08ea86837",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "approved",
+   "state_before": "approved",
+   "unit_after": "k-31d08ea86837",
+   "unit_before": "k-31d08ea86837"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-40bac97f4bae",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "approved",
+   "state_before": "approved",
+   "unit_after": "k-40bac97f4bae",
+   "unit_before": "k-40bac97f4bae"
+  },
+  {
+   "change": "prose_edit",
+   "claim_key": "ck-7f73793d24cd",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "pending",
+   "state_before": "approved",
+   "text_after": "A major third covers four semitones, as from C up to E.",
+   "text_before": "A major third spans four semitones, for example C to E.",
+   "unit_after": "k-f945aa9b5a70",
+   "unit_before": "k-bbab1ad4b069"
+  },
+  {
+   "change": "unchanged",
+   "claim_key": "ck-8f371578a3e5",
+   "evidence_added": [],
+   "evidence_removed": [],
+   "state_after": "approved",
+   "state_before": "approved",
+   "unit_after": "k-8f371578a3e5",
+   "unit_before": "k-8f371578a3e5"
+  },
+  {
+   "change": "added",
+   "claim_key": "ck-b7c80c698277",
+   "state_after": "pending",
+   "text_after": "A minor third spans two semitones, for example C to E-flat.",
+   "unit_after": "k-2cb43473c35c"
+  }
+ ],
+ "counts": {
+  "added": 1,
+  "evidence_changed": 0,
+  "prose_edit": 1,
+  "removed": 1,
+  "state_changed": 0,
+  "unchanged": 3
+ },
+ "evidence": {
+  "added": [],
+  "kept": [
+   "ek-2084226fb827",
+   "ek-4ce27e8cfe76",
+   "ek-c0f9497deb4a",
+   "ek-f2fa4c7dfe09"
+  ],
+  "moved": [],
+  "removed": []
+ },
+ "from": {
+  "fingerprint": "sf-87d52c502f0bf2d1",
+  "revision": 1,
+  "run_key": "rk-8db6b6cef2c0eb4c"
+ },
+ "identical_rerun": false,
+ "rejected_kept": [],
+ "same_text": true,
+ "schema": "flh_learning_units_compare_v1",
+ "source_id": "music-thirds",
+ "to": {
+  "fingerprint": "sf-87d52c502f0bf2d1",
+  "revision": 2,
+  "run_key": "rk-7b7b7225707529d7"
+ }
+}

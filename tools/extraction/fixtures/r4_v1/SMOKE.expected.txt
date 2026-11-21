@@ -6,7 +6,7 @@ PASS  loop                       equal to a fresh run
 PASS  exchange                   equal to a fresh run
 PASS  service examples           equal to a fresh run
 PASS  grounding quality          exact_v1 11/18, candidate 15/18
-PASS  feed interop               24 samples, merged mirror refuses 0
+PASS  feed interop               25 samples, merged mirror refuses 0
 PASS  leakage experiment         M1 0.0, M2 0.2, branch_A
 PASS  speaking intake ok         eligible for owner approval
 PASS  speaking intake refused    refused: 13 issue(s) to fix

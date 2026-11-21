@@ -1,0 +1,95 @@
+{
+ "capture": {
+  "capture_id": "synthetic-history-messages-001",
+  "source": "manual"
+ },
+ "data_scope": "synthetic",
+ "extensions": {
+  "x-flh-fixture": {
+   "license": "synthetic text written for this repository; the facts are public knowledge"
+  }
+ },
+ "language": "en",
+ "learner_goal": "Put the inventions in order.",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "printing press = around 1440",
+    "confidence": 0.8,
+    "evidence": [
+     {
+      "end": 117,
+      "field": "original_context",
+      "quote": "Around 1440, Johannes Gutenberg built a printing press with movable type in Mainz.",
+      "start": 35
+     }
+    ],
+    "kind": "concept",
+    "recall": {
+     "accepted": [],
+     "answer": "1440"
+    },
+    "ref": "press",
+    "statement": "Around 1440, Gutenberg built a printing press with movable type in Mainz.",
+    "type": "claim"
+   },
+   {
+    "canonical": "Gutenberg Bible = around 1455",
+    "confidence": 0.8,
+    "evidence": [
+     {
+      "end": 199,
+      "field": "original_context",
+      "quote": "around 1455, his workshop printed the Gutenberg Bible.",
+      "start": 145
+     }
+    ],
+    "kind": "concept",
+    "recall": {
+     "accepted": [],
+     "answer": "1455"
+    },
+    "ref": "bible",
+    "statement": "Gutenberg's workshop printed the Gutenberg Bible around 1455.",
+    "type": "claim"
+   },
+   {
+    "canonical": "telephone relative to telegraph = after",
+    "confidence": 0.8,
+    "evidence": [
+     {
+      "end": 288,
+      "field": "original_context",
+      "quote": "in 1844, Samuel Morse sent a telegraph message from Washington to Baltimore.",
+      "start": 212
+     },
+     {
+      "end": 349,
+      "field": "original_context",
+      "quote": "Alexander Graham Bell received his telephone patent in 1876.",
+      "start": 289
+     }
+    ],
+    "kind": "concept",
+    "recall": {
+     "accepted": [
+      "later"
+     ],
+     "answer": "after"
+    },
+    "ref": "order",
+    "statement": "The telephone patent (1876) came after the first telegraph message on the Washington to Baltimore line (1844).",
+    "type": "claim"
+   }
+  ],
+  "proposer": "synthetic: hand-written generalization fixture (English; no provider call)"
+ },
+ "revision": 1,
+ "schema": "flh_practice_source_v2",
+ "source_id": "history-messages",
+ "subject": "history",
+ "text": {
+  "original_context": "Printing and messages, a timeline. Around 1440, Johannes Gutenberg built a printing press with movable type in Mainz. About fifteen years later, around 1455, his workshop printed the Gutenberg Bible. Much later, in 1844, Samuel Morse sent a telegraph message from Washington to Baltimore. Alexander Graham Bell received his telephone patent in 1876.",
+  "original_input": "Which came first, the telegraph or the telephone, and when did printing with movable type start?"
+ }
+}

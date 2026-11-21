@@ -1,0 +1,345 @@
+{
+ "control": {
+  "file": "../practice_v1/y_en.r1.json",
+  "role": "French compatibility control (existing fixture)"
+ },
+ "coverage": {
+  "by_phenomenon": {
+   "chronology": [
+    "history-messages"
+   ],
+   "contact_placeholder": [
+    "music-quoted-instructions"
+   ],
+   "contradiction": [
+    "music-thirds-forum"
+   ],
+   "cross_paragraph": [
+    "music-relative-keys"
+   ],
+   "explicit_spans_v2": [
+    "chem-water-states",
+    "history-messages",
+    "hw-basics"
+   ],
+   "instruction_like_text": [
+    "hw-basics",
+    "music-quoted-instructions"
+   ],
+   "multi_span": [
+    "chem-water-states",
+    "history-messages",
+    "music-intervals-inbox",
+    "music-relative-keys",
+    "music-thirds"
+   ],
+   "no_supported_claim": [
+    "music-practice-diary"
+   ],
+   "revisions": [
+    "music-intervals-inbox",
+    "music-thirds"
+   ]
+  },
+  "by_topic": {
+   "(no gold: music_theory)": {
+    "gold_claims": 0,
+    "multi": 0,
+    "single": 0,
+    "sources": 3
+   },
+   "diary": {
+    "gold_claims": 0,
+    "multi": 0,
+    "single": 0,
+    "sources": 1
+   },
+   "hardware": {
+    "gold_claims": 4,
+    "multi": 0,
+    "single": 4,
+    "sources": 1
+   },
+   "history": {
+    "gold_claims": 5,
+    "multi": 1,
+    "single": 4,
+    "sources": 1
+   },
+   "intervals": {
+    "gold_claims": 6,
+    "multi": 0,
+    "single": 6,
+    "sources": 1
+   },
+   "keys": {
+    "gold_claims": 2,
+    "multi": 1,
+    "single": 1,
+    "sources": 1
+   },
+   "states of water": {
+    "gold_claims": 5,
+    "multi": 0,
+    "single": 5,
+    "sources": 1
+   }
+  },
+  "gaps": [
+   "no language other than English and the French control",
+   "no non-Latin script",
+   "no table, list or formula layout",
+   "no document longer than about 600 characters",
+   "no real learner text (by design)",
+   "one author for sources, gold and proposals"
+  ]
+ },
+ "files_listed": 12,
+ "files_on_disk": 12,
+ "languages": [
+  "en",
+  "fr"
+ ],
+ "schema": "flh_xsubject_catalog_v1",
+ "sources": [
+  {
+   "data_scope": "synthetic",
+   "files": [
+    "chem_water_states.v2.json"
+   ],
+   "gold_claims": 5,
+   "gold_shapes": {
+    "multi": 0,
+    "single": 5
+   },
+   "language": "en",
+   "licence": "MIT (the repository's licence); synthetic text written for this repository; facts are general knowledge",
+   "phenomena": [
+    "explicit_spans_v2",
+    "multi_span"
+   ],
+   "proposal_items": 4,
+   "revisions": [
+    1
+   ],
+   "schema_version": 2,
+   "source_id": "chem-water-states",
+   "split": "dev",
+   "subject": "chemistry",
+   "topic_area": "states of water"
+  },
+  {
+   "data_scope": "synthetic",
+   "files": [
+    "history_messages.v2.json"
+   ],
+   "gold_claims": 5,
+   "gold_shapes": {
+    "multi": 1,
+    "single": 4
+   },
+   "language": "en",
+   "licence": "MIT (the repository's licence); synthetic text written for this repository; facts are general knowledge",
+   "phenomena": [
+    "chronology",
+    "explicit_spans_v2",
+    "multi_span"
+   ],
+   "proposal_items": 3,
+   "revisions": [
+    1
+   ],
+   "schema_version": 2,
+   "source_id": "history-messages",
+   "split": "eval",
+   "subject": "history",
+   "topic_area": "history"
+  },
+  {
+   "data_scope": "synthetic",
+   "files": [
+    "hw_basics.v2.json"
+   ],
+   "gold_claims": 4,
+   "gold_shapes": {
+    "multi": 0,
+    "single": 4
+   },
+   "language": "en",
+   "licence": "MIT (the repository's licence); synthetic text written for this repository; facts are general knowledge",
+   "phenomena": [
+    "explicit_spans_v2",
+    "instruction_like_text"
+   ],
+   "proposal_items": 4,
+   "revisions": [
+    1
+   ],
+   "schema_version": 2,
+   "source_id": "hw-basics",
+   "split": "eval",
+   "subject": "computer_hardware",
+   "topic_area": "hardware"
+  },
+  {
+   "data_scope": "synthetic",
+   "files": [
+    "music_intervals_inbox.r1.json",
+    "music_intervals_inbox.r2.json"
+   ],
+   "gold_claims": 0,
+   "gold_shapes": {
+    "multi": 0,
+    "single": 0
+   },
+   "language": "en",
+   "licence": "MIT (the repository's licence); synthetic text written for this repository; facts are general knowledge",
+   "phenomena": [
+    "multi_span",
+    "revisions"
+   ],
+   "proposal_items": 8,
+   "revisions": [
+    1,
+    2
+   ],
+   "schema_version": 1,
+   "source_id": "music-intervals-inbox",
+   "split": "not in gold",
+   "subject": "music_theory",
+   "topic_area": null
+  },
+  {
+   "data_scope": "synthetic",
+   "files": [
+    "music_practice_diary.r1.json"
+   ],
+   "gold_claims": 0,
+   "gold_shapes": {
+    "multi": 0,
+    "single": 0
+   },
+   "language": "en",
+   "licence": "MIT (the repository's licence); synthetic text written for this repository; facts are general knowledge",
+   "phenomena": [
+    "no_supported_claim"
+   ],
+   "proposal_items": 0,
+   "revisions": [
+    1
+   ],
+   "schema_version": 1,
+   "source_id": "music-practice-diary",
+   "split": "eval",
+   "subject": "music_theory",
+   "topic_area": "diary"
+  },
+  {
+   "data_scope": "synthetic",
+   "files": [
+    "music_quoted_instructions.r1.json"
+   ],
+   "gold_claims": 0,
+   "gold_shapes": {
+    "multi": 0,
+    "single": 0
+   },
+   "language": "en",
+   "licence": "MIT (the repository's licence); synthetic text written for this repository; facts are general knowledge",
+   "phenomena": [
+    "contact_placeholder",
+    "instruction_like_text"
+   ],
+   "proposal_items": 2,
+   "revisions": [
+    1
+   ],
+   "schema_version": 1,
+   "source_id": "music-quoted-instructions",
+   "split": "not in gold",
+   "subject": "music_theory",
+   "topic_area": null
+  },
+  {
+   "data_scope": "synthetic",
+   "files": [
+    "music_relative_keys.r1.json"
+   ],
+   "gold_claims": 2,
+   "gold_shapes": {
+    "multi": 1,
+    "single": 1
+   },
+   "language": "en",
+   "licence": "MIT (the repository's licence); synthetic text written for this repository; facts are general knowledge",
+   "phenomena": [
+    "cross_paragraph",
+    "multi_span"
+   ],
+   "proposal_items": 1,
+   "revisions": [
+    1
+   ],
+   "schema_version": 1,
+   "source_id": "music-relative-keys",
+   "split": "dev",
+   "subject": "music_theory",
+   "topic_area": "keys"
+  },
+  {
+   "data_scope": "synthetic",
+   "files": [
+    "music_thirds.r1.json",
+    "music_thirds.r2.json",
+    "music_thirds.r3.json"
+   ],
+   "gold_claims": 6,
+   "gold_shapes": {
+    "multi": 0,
+    "single": 6
+   },
+   "language": "en",
+   "licence": "MIT (the repository's licence); synthetic text written for this repository; facts are general knowledge",
+   "phenomena": [
+    "multi_span",
+    "revisions"
+   ],
+   "proposal_items": 5,
+   "revisions": [
+    1,
+    2,
+    3
+   ],
+   "schema_version": 1,
+   "source_id": "music-thirds",
+   "split": "dev",
+   "subject": "music_theory",
+   "topic_area": "intervals"
+  },
+  {
+   "data_scope": "synthetic",
+   "files": [
+    "music_thirds_forum.r1.json"
+   ],
+   "gold_claims": 0,
+   "gold_shapes": {
+    "multi": 0,
+    "single": 0
+   },
+   "language": "en",
+   "licence": "MIT (the repository's licence); synthetic text written for this repository; facts are general knowledge",
+   "phenomena": [
+    "contradiction"
+   ],
+   "proposal_items": 2,
+   "revisions": [
+    1
+   ],
+   "schema_version": 1,
+   "source_id": "music-thirds-forum",
+   "split": "not in gold",
+   "subject": "music_theory",
+   "topic_area": null
+  }
+ ]
+}

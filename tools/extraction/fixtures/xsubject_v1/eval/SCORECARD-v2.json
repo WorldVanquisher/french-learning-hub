@@ -1,0 +1,390 @@
+{
+ "gold_sha256": "86aba12ee1c63b99b64153752dc32b5b923f78979686462be890181427dbc2d7",
+ "schema": "flh_units_eval_v1.scorecard_v2",
+ "splits": {
+  "dev": {
+   "documents": [
+    "chem-water-states",
+    "music-relative-keys",
+    "music-thirds"
+   ],
+   "systems": {
+    "authored": {
+     "bad_span_claims": [
+      1,
+      13
+     ],
+     "classes": {
+      "bad_span": 0,
+      "correct": 7,
+      "extra": 0,
+      "wrong_claim": 1
+     },
+     "coverage": [
+      8,
+      13
+     ],
+     "duplicate_rate": [
+      0,
+      8
+     ],
+     "evidence_supported": [
+      7,
+      8
+     ],
+     "failed_cases": [
+      {
+       "class": "wrong_claim",
+       "document": "chem-water-states",
+       "text": "Lower air pressure at high altitude lowers the boiling point of water.",
+       "unit": "k-5ff605c697c8"
+      },
+      {
+       "class": "missing",
+       "document": "music-thirds",
+       "gold": "semitone"
+      },
+      {
+       "class": "missing",
+       "document": "music-thirds",
+       "gold": "octave"
+      },
+      {
+       "class": "missing",
+       "document": "chem-water-states",
+       "gold": "altitude"
+      },
+      {
+       "class": "missing",
+       "document": "chem-water-states",
+       "gold": "vapour"
+      },
+      {
+       "class": "bad_span_only",
+       "document": "music-relative-keys",
+       "gold": "relative-minor"
+      }
+     ],
+     "missing_claims": [
+      4,
+      13
+     ],
+     "span_errors": {
+      "boundary": 3,
+      "evidence_selection": 0
+     }
+    },
+    "model": {
+     "status": "unavailable"
+    },
+    "sentence_baseline": {
+     "bad_span_claims": [
+      0,
+      13
+     ],
+     "classes": {
+      "bad_span": 0,
+      "correct": 6,
+      "extra": 3,
+      "wrong_claim": 0
+     },
+     "coverage": [
+      7,
+      13
+     ],
+     "duplicate_rate": [
+      0,
+      9
+     ],
+     "evidence_supported": [
+      6,
+      9
+     ],
+     "failed_cases": [
+      {
+       "class": "extra",
+       "document": "chem-water-states",
+       "text": "Lab notebook, week 3.",
+       "unit": "k-69bd4db1243c"
+      },
+      {
+       "class": "extra",
+       "document": "music-relative-keys",
+       "text": "Key signatures, part one.",
+       "unit": "k-4ebe05051635"
+      },
+      {
+       "class": "extra",
+       "document": "music-relative-keys",
+       "text": "Part two, a week later.",
+       "unit": "k-b46ea5813a90"
+      },
+      {
+       "class": "missing",
+       "document": "music-thirds",
+       "gold": "major-triad"
+      },
+      {
+       "class": "missing",
+       "document": "music-thirds",
+       "gold": "minor-triad"
+      },
+      {
+       "class": "missing",
+       "document": "chem-water-states",
+       "gold": "plateau"
+      },
+      {
+       "class": "missing",
+       "document": "chem-water-states",
+       "gold": "vapour"
+      },
+      {
+       "class": "missing",
+       "document": "music-relative-keys",
+       "gold": "c-major-signature"
+      },
+      {
+       "class": "missing",
+       "document": "music-relative-keys",
+       "gold": "relative-minor"
+      }
+     ],
+     "missing_claims": [
+      6,
+      13
+     ],
+     "span_errors": {
+      "boundary": 2,
+      "evidence_selection": 0
+     }
+    },
+    "sentence_baseline_v2": {
+     "bad_span_claims": [
+      0,
+      13
+     ],
+     "classes": {
+      "bad_span": 0,
+      "correct": 6,
+      "extra": 0,
+      "wrong_claim": 0
+     },
+     "coverage": [
+      7,
+      13
+     ],
+     "duplicate_rate": [
+      0,
+      6
+     ],
+     "evidence_supported": [
+      6,
+      6
+     ],
+     "failed_cases": [
+      {
+       "class": "missing",
+       "document": "music-thirds",
+       "gold": "major-triad"
+      },
+      {
+       "class": "missing",
+       "document": "music-thirds",
+       "gold": "minor-triad"
+      },
+      {
+       "class": "missing",
+       "document": "chem-water-states",
+       "gold": "plateau"
+      },
+      {
+       "class": "missing",
+       "document": "chem-water-states",
+       "gold": "vapour"
+      },
+      {
+       "class": "missing",
+       "document": "music-relative-keys",
+       "gold": "c-major-signature"
+      },
+      {
+       "class": "missing",
+       "document": "music-relative-keys",
+       "gold": "relative-minor"
+      }
+     ],
+     "missing_claims": [
+      6,
+      13
+     ],
+     "span_errors": {
+      "boundary": 2,
+      "evidence_selection": 0
+     }
+    }
+   }
+  },
+  "eval": {
+   "documents": [
+    "history-messages",
+    "hw-basics",
+    "music-practice-diary"
+   ],
+   "systems": {
+    "authored": {
+     "bad_span_claims": [
+      0,
+      9
+     ],
+     "classes": {
+      "bad_span": 0,
+      "correct": 7,
+      "extra": 0,
+      "wrong_claim": 0
+     },
+     "coverage": [
+      9,
+      9
+     ],
+     "duplicate_rate": [
+      0,
+      7
+     ],
+     "evidence_supported": [
+      7,
+      7
+     ],
+     "failed_cases": [],
+     "missing_claims": [
+      0,
+      9
+     ],
+     "span_errors": {
+      "boundary": 1,
+      "evidence_selection": 0
+     }
+    },
+    "model": {
+     "status": "unavailable"
+    },
+    "sentence_baseline": {
+     "bad_span_claims": [
+      0,
+      9
+     ],
+     "classes": {
+      "bad_span": 0,
+      "correct": 6,
+      "extra": 2,
+      "wrong_claim": 0
+     },
+     "coverage": [
+      6,
+      9
+     ],
+     "duplicate_rate": [
+      0,
+      8
+     ],
+     "evidence_supported": [
+      6,
+      8
+     ],
+     "failed_cases": [
+      {
+       "class": "extra",
+       "document": "music-practice-diary",
+       "text": "Practised for twenty minutes today.",
+       "unit": "k-d1e55ad47cec"
+      },
+      {
+       "class": "extra",
+       "document": "hw-basics",
+       "text": "Hardware notes, chapter one.",
+       "unit": "k-766bcc9cdc25"
+      },
+      {
+       "class": "missing",
+       "document": "hw-basics",
+       "gold": "ram"
+      },
+      {
+       "class": "missing",
+       "document": "hw-basics",
+       "gold": "ssd"
+      },
+      {
+       "class": "missing",
+       "document": "history-messages",
+       "gold": "order"
+      }
+     ],
+     "missing_claims": [
+      3,
+      9
+     ],
+     "span_errors": {
+      "boundary": 0,
+      "evidence_selection": 0
+     }
+    },
+    "sentence_baseline_v2": {
+     "bad_span_claims": [
+      0,
+      9
+     ],
+     "classes": {
+      "bad_span": 0,
+      "correct": 6,
+      "extra": 1,
+      "wrong_claim": 0
+     },
+     "coverage": [
+      6,
+      9
+     ],
+     "duplicate_rate": [
+      0,
+      7
+     ],
+     "evidence_supported": [
+      6,
+      7
+     ],
+     "failed_cases": [
+      {
+       "class": "extra",
+       "document": "music-practice-diary",
+       "text": "Practised for twenty minutes today.",
+       "unit": "k-d1e55ad47cec"
+      },
+      {
+       "class": "missing",
+       "document": "hw-basics",
+       "gold": "ram"
+      },
+      {
+       "class": "missing",
+       "document": "hw-basics",
+       "gold": "ssd"
+      },
+      {
+       "class": "missing",
+       "document": "history-messages",
+       "gold": "order"
+      }
+     ],
+     "missing_claims": [
+      3,
+      9
+     ],
+     "span_errors": {
+      "boundary": 0,
+      "evidence_selection": 0
+     }
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,23 @@
+{
+ "agent_context_v1": "cx-fa91a9d4d6c6",
+ "evidence_in_context": {
+  "k-40bac97f4bae": [
+   "ev-03b23c1995",
+   "ev-88b18111db"
+  ],
+  "k-8f371578a3e5": []
+ },
+ "evidence_in_handoff": {
+  "k-40bac97f4bae": [
+   "ev-03b23c1995",
+   "ev-88b18111db"
+  ],
+  "k-8f371578a3e5": []
+ },
+ "same_evidence": true,
+ "unit_handoff_v1": "hu-b402520dff99",
+ "unit_ids": [
+  "k-40bac97f4bae",
+  "k-8f371578a3e5"
+ ]
+}

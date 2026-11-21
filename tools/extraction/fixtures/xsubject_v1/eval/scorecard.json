@@ -1,0 +1,63 @@
+{
+ "gold_sha256": "b23348e0574b2c9b8f95db7590ee73da751c29c9eab778264188449abc189446",
+ "inputs_sha256": "209b982fe04475e6",
+ "schema": "flh_units_eval_v1.scorecard",
+ "systems": {
+  "authored": {
+   "bad_span_claims": [
+    1,
+    13
+   ],
+   "classes": {
+    "bad_span": 0,
+    "correct": 7,
+    "extra": 0,
+    "wrong_claim": 1
+   },
+   "coverage": [
+    8,
+    13
+   ],
+   "duplicate_rate": [
+    0,
+    8
+   ],
+   "evidence_supported": [
+    7,
+    8
+   ],
+   "missing_claims": [
+    4,
+    13
+   ]
+  },
+  "sentence_baseline": {
+   "bad_span_claims": [
+    0,
+    13
+   ],
+   "classes": {
+    "bad_span": 0,
+    "correct": 6,
+    "extra": 4,
+    "wrong_claim": 0
+   },
+   "coverage": [
+    7,
+    13
+   ],
+   "duplicate_rate": [
+    0,
+    10
+   ],
+   "evidence_supported": [
+    6,
+    10
+   ],
+   "missing_claims": [
+    6,
+    13
+   ]
+  }
+ }
+}

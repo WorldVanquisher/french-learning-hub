@@ -1,0 +1,80 @@
+{
+ "examples": [
+  {
+   "answer": "4",
+   "kind": "free_recall",
+   "outcome": "correct",
+   "prompt_id": "rc-8c235ab4e42a"
+  },
+  {
+   "answer": "Four.",
+   "kind": "free_recall",
+   "outcome": "correct",
+   "prompt_id": "rc-8c235ab4e42a"
+  },
+  {
+   "answer": "four semitones",
+   "kind": "free_recall",
+   "outcome": "correct",
+   "prompt_id": "rc-8c235ab4e42a"
+  },
+  {
+   "answer": "4 semitones",
+   "kind": "free_recall",
+   "outcome": "correct",
+   "prompt_id": "rc-8c235ab4e42a"
+  },
+  {
+   "answer": "five",
+   "kind": "free_recall",
+   "outcome": "self_check",
+   "prompt_id": "rc-8c235ab4e42a"
+  },
+  {
+   "answer": "C to E",
+   "kind": "free_recall",
+   "outcome": "self_check",
+   "prompt_id": "rc-8c235ab4e42a"
+  },
+  {
+   "answer": "four",
+   "kind": "recognition",
+   "outcome": "correct",
+   "prompt_id": "rr-8c235ab4e42a"
+  },
+  {
+   "answer": "three",
+   "chosen": "three",
+   "kind": "recognition",
+   "outcome": "incorrect",
+   "prompt_id": "rr-8c235ab4e42a"
+  },
+  {
+   "answer": "major third",
+   "kind": "application",
+   "outcome": "correct",
+   "prompt_id": "ap-797af766abf2"
+  },
+  {
+   "answer": "A major third.",
+   "kind": "application",
+   "outcome": "correct",
+   "prompt_id": "ap-797af766abf2"
+  },
+  {
+   "answer": "a minor third",
+   "chosen": "a minor third",
+   "kind": "application",
+   "outcome": "incorrect",
+   "prompt_id": "ap-797af766abf2"
+  },
+  {
+   "answer": "Four semitones up from the root, like C to E or G to B.",
+   "kind": "explanation",
+   "outcome": "self_check",
+   "prompt_id": "ex-43c01a57d53a"
+  }
+ ],
+ "practice": "music-practice.json",
+ "schema": "flh_unit_practice_graded_examples_v1"
+}

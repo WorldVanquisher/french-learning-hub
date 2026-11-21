@@ -1,0 +1,125 @@
+{
+ "capture": {
+  "capture_id": "synthetic-music-inbox-001",
+  "original_context": "Interval notes. A perfect fifth spans seven semitones, for example D to A. A perfect fourth spans five semitones, for example C to F. The fifth and the fourth add up to an octave. An octave spans twelve semitones. A tritone spans six semitones. A perfect fifth is stable. Every interval can be inverted. In a choir, a perfect fifth is stable.",
+  "original_input": "How many semitones are in a fourth, a fifth and a tritone?",
+  "schema_version": "learning_capture_v1",
+  "source": "manual"
+ },
+ "data_scope": "synthetic",
+ "language": "en",
+ "learner_goal": "Count the semitones of the common intervals.",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "perfect fifth = 7 semitones",
+    "confidence": 0.8,
+    "kind": "concept",
+    "quotes": [
+     "A perfect fifth spans seven semitones, for example D to A."
+    ],
+    "recall": {
+     "answer": "seven"
+    },
+    "ref": "perfect-fifth",
+    "statement": "A perfect fifth spans seven semitones.",
+    "type": "claim"
+   },
+   {
+    "canonical": "fourth + fifth = octave",
+    "confidence": 0.8,
+    "kind": "concept",
+    "quotes": [
+     "A perfect fourth spans five semitones, for example C to F.",
+     "The fifth and the fourth add up to an octave.",
+     "An octave spans twelve semitones."
+    ],
+    "recall": {
+     "answer": "twelve"
+    },
+    "ref": "fourth-plus-fifth",
+    "statement": "A perfect fourth and a perfect fifth together make an octave of twelve semitones.",
+    "type": "claim"
+   },
+   {
+    "canonical": "perfect fourth = 5 semitones",
+    "confidence": 0.8,
+    "kind": "concept",
+    "quotes": [
+     "A perfect fourth spans five semitones"
+    ],
+    "recall": {
+     "answer": "five"
+    },
+    "ref": "perfect-fourth",
+    "statement": "A perfect fourth spans five semitones.",
+    "type": "claim"
+   },
+   {
+    "canonical": "major sixth = 9 semitones",
+    "confidence": 0.8,
+    "kind": "concept",
+    "quotes": [
+     "A major sixth spans nine semitones"
+    ],
+    "recall": {
+     "answer": "nine"
+    },
+    "ref": "major-sixth",
+    "statement": "A major sixth spans nine semitones.",
+    "type": "claim"
+   },
+   {
+    "canonical": "perfect fifth is stable",
+    "confidence": 0.8,
+    "kind": "concept",
+    "quotes": [
+     "perfect fifth is stable."
+    ],
+    "ref": "fifth-stable",
+    "statement": "A perfect fifth sounds stable.",
+    "type": "claim"
+   },
+   {
+    "canonical": "intervals invert",
+    "confidence": 0.8,
+    "kind": "concept",
+    "quotes": [
+     "Every interval can be inverted."
+    ],
+    "ref": "inversion",
+    "statement": "Every interval can be inverted.",
+    "type": "claim"
+   },
+   {
+    "canonical": "tritone = 7 semitones",
+    "confidence": 0.8,
+    "kind": "concept",
+    "quotes": [
+     "A tritone spans six semitones."
+    ],
+    "recall": {
+     "answer": "seven"
+    },
+    "ref": "tritone-wrong",
+    "statement": "A tritone spans seven semitones.",
+    "type": "claim"
+   },
+   {
+    "quotes": [
+     "A tritone spans six semitones."
+    ],
+    "ref": "tritone-error",
+    "right": "A tritone spans six semitones",
+    "type": "common_error",
+    "why": "seven semitones is a perfect fifth; a tritone is six",
+    "wrong": "A tritone spans seven semitones"
+   }
+  ],
+  "proposer": "synthetic: hand-written inbox fixture (music theory, English; no provider call)"
+ },
+ "revision": 2,
+ "schema": "flh_practice_source_v1",
+ "source_id": "music-intervals-inbox",
+ "subject": "music_theory"
+}

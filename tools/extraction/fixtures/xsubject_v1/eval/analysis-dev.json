@@ -1,0 +1,1327 @@
+{
+ "documents": [
+  "chem-water-states",
+  "music-relative-keys",
+  "music-thirds"
+ ],
+ "gold_sha256": "86aba12ee1c63b99b64153752dc32b5b923f78979686462be890181427dbc2d7",
+ "schema": "flh_units_eval_v1.analysis",
+ "split": "dev",
+ "systems": {
+  "authored": {
+   "accepted_span_accuracy_per_topic": {
+    "intervals": {
+     "correct_units": 4,
+     "exact_spans": {
+      "count": 2,
+      "of": 4,
+      "rate": 0.5
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 0.75
+    },
+    "keys": {
+     "correct_units": 1,
+     "exact_spans": {
+      "count": 0,
+      "of": 1,
+      "rate": 0.0
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 0.5306
+    },
+    "states of water": {
+     "correct_units": 3,
+     "exact_spans": {
+      "count": 1,
+      "of": 3,
+      "rate": 0.3333
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 0.59
+    }
+   },
+   "ambiguity_tagged_gold": {
+    "altitude": "missing",
+    "octave": "missing",
+    "relative-minor": "bad_span_only"
+   },
+   "candidate_coverage_per_document": {
+    "chem-water-states": {
+     "count": 3,
+     "of": 5,
+     "rate": 0.6
+    },
+    "music-relative-keys": {
+     "count": 2,
+     "of": 2,
+     "rate": 1.0
+    },
+    "music-thirds": {
+     "count": 4,
+     "of": 6,
+     "rate": 0.6667
+    }
+   },
+   "documents": [
+    {
+     "accepted": 3,
+     "candidate_coverage": {
+      "count": 4,
+      "of": 6,
+      "rate": 0.6667
+     },
+     "candidates": 3,
+     "false_rejects": [],
+     "gold": 6,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "semitone",
+       "require": "any",
+       "status": "missing",
+       "topic": "semitone",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "major third",
+       "units": [
+        "k-bbab1ad4b069"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "minor third",
+       "units": [
+        "k-133ac4bd8df4"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-triad",
+       "require": "any",
+       "status": "matched",
+       "topic": "major triad",
+       "units": [
+        "k-40bac97f4bae"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-triad",
+       "require": "any",
+       "status": "matched",
+       "topic": "minor triad",
+       "units": [
+        "k-40bac97f4bae"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "octave",
+       "require": "any",
+       "status": "missing",
+       "topic": "octave",
+       "units": []
+      }
+     ],
+     "source_id": "music-thirds",
+     "topic_area": "intervals",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "minor-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "minor-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A minor third spans three semitones, for example C to E-flat.",
+       "type": "claim",
+       "unit_id": "k-133ac4bd8df4"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "major-triad",
+        "minor-triad"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "major-triad",
+         "precision": 0.482
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "minor-triad",
+         "precision": 0.518
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "major-triad",
+         "kind": "boundary",
+         "precision": 0.482
+        }
+       ],
+       "text": "Count the semitones from the root to the middle note: four makes a major triad, three makes a minor triad.",
+       "type": "contrast",
+       "unit_id": "k-40bac97f4bae"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "major-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "major-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A major third spans four semitones, for example C to E.",
+       "type": "claim",
+       "unit_id": "k-bbab1ad4b069"
+      }
+     ]
+    },
+    {
+     "accepted": 4,
+     "candidate_coverage": {
+      "count": 3,
+      "of": 5,
+      "rate": 0.6
+     },
+     "candidates": 4,
+     "false_rejects": [],
+     "gold": 5,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "freeze-0",
+       "require": "any",
+       "status": "matched",
+       "topic": "freezing point",
+       "units": [
+        "k-a82ecca1cf3b"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "boil-100",
+       "require": "any",
+       "status": "matched",
+       "topic": "boiling point",
+       "units": [
+        "k-842265730ecc"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "altitude",
+       "require": "any",
+       "status": "missing",
+       "topic": "boiling point at altitude",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "plateau",
+       "require": "any",
+       "status": "matched",
+       "topic": "temperature while boiling",
+       "units": [
+        "k-64d215130051"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "vapour",
+       "require": "any",
+       "status": "missing",
+       "topic": "boiling",
+       "units": []
+      }
+     ],
+     "source_id": "chem-water-states",
+     "topic_area": "states of water",
+     "units": [
+      {
+       "class": "wrong_claim",
+       "gold": [
+        "altitude"
+       ],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Lower air pressure at high altitude lowers the boiling point of water.",
+       "type": "claim",
+       "unit_id": "k-5ff605c697c8"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "plateau"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "plateau",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "While water boils, its temperature stays at the boiling point until the liquid is gone.",
+       "type": "claim",
+       "unit_id": "k-64d215130051"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "boil-100"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "precision": 0.3218
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "kind": "boundary",
+         "precision": 0.3218
+        }
+       ],
+       "text": "At sea level, pure water boils at 100 degrees Celsius.",
+       "type": "claim",
+       "unit_id": "k-842265730ecc"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "freeze-0"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "precision": 0.4483
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "kind": "boundary",
+         "precision": 0.4483
+        }
+       ],
+       "text": "At sea level, pure water freezes at 0 degrees Celsius.",
+       "type": "claim",
+       "unit_id": "k-a82ecca1cf3b"
+      }
+     ]
+    },
+    {
+     "accepted": 1,
+     "candidate_coverage": {
+      "count": 2,
+      "of": 2,
+      "rate": 1.0
+     },
+     "candidates": 1,
+     "false_rejects": [],
+     "gold": 2,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "c-major-signature",
+       "require": "any",
+       "status": "matched",
+       "topic": "C major key signature",
+       "units": [
+        "k-ed301ae649c0"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "relative-minor",
+       "require": "all",
+       "status": "bad_span_only",
+       "topic": "relative minor of C major",
+       "units": [
+        "k-ed301ae649c0"
+       ]
+      }
+     ],
+     "source_id": "music-relative-keys",
+     "topic_area": "keys",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "c-major-signature"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "c-major-signature",
+         "precision": 0.5306
+        }
+       ],
+       "span_errors": [],
+       "text": "A minor is the relative minor of C major: both have no sharps or flats.",
+       "type": "claim",
+       "unit_id": "k-ed301ae649c0"
+      }
+     ]
+    }
+   ],
+   "false_accepts": [
+    {
+     "count": 1,
+     "examples": [
+      "Lower air pressure at high altitude lowers the boiling point of water."
+     ],
+     "pattern": "a value the cited words do not state"
+    }
+   ],
+   "false_rejects": [],
+   "missed_vs_unsupported": {
+    "missed_gold": 4,
+    "unsupported_accepted": 1
+   },
+   "span_errors": {
+    "boundary": 3,
+    "cases": [
+     {
+      "gold_coverage": 1.0,
+      "gold_id": "major-triad",
+      "kind": "boundary",
+      "precision": 0.482
+     },
+     {
+      "gold_coverage": 1.0,
+      "gold_id": "boil-100",
+      "kind": "boundary",
+      "precision": 0.3218
+     },
+     {
+      "gold_coverage": 1.0,
+      "gold_id": "freeze-0",
+      "kind": "boundary",
+      "precision": 0.4483
+     }
+    ],
+    "evidence_selection": 0
+   },
+   "totals": {
+    "accepted_units": 8,
+    "bad_span_claims": {
+     "count": 1,
+     "of": 13,
+     "rate": 0.0769
+    },
+    "classes": {
+     "bad_span": 0,
+     "correct": 7,
+     "extra": 0,
+     "wrong_claim": 1
+    },
+    "coverage": {
+     "count": 8,
+     "of": 13,
+     "rate": 0.6154
+    },
+    "duplicate_rate": {
+     "count": 0,
+     "of": 8,
+     "rate": 0.0
+    },
+    "evidence_supported": {
+     "count": 7,
+     "of": 8,
+     "rate": 0.875
+    },
+    "gold_claims": 13,
+    "missing_claims": {
+     "count": 4,
+     "of": 13,
+     "rate": 0.3077
+    }
+   }
+  },
+  "model": {
+   "reason": "the pinned Qwen3.5-4B files are absent (EXT-074) and no model output exists for these sources; the comparison is not imitated with a stand-in",
+   "status": "unavailable"
+  },
+  "sentence_baseline": {
+   "accepted_span_accuracy_per_topic": {
+    "intervals": {
+     "correct_units": 4,
+     "exact_spans": {
+      "count": 4,
+      "of": 4,
+      "rate": 1.0
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 1.0
+    },
+    "keys": {
+     "correct_units": 0,
+     "exact_spans": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "mean_gold_coverage": null,
+     "mean_precision": null
+    },
+    "states of water": {
+     "correct_units": 3,
+     "exact_spans": {
+      "count": 1,
+      "of": 3,
+      "rate": 0.3333
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 0.59
+    }
+   },
+   "ambiguity_tagged_gold": {
+    "altitude": "matched",
+    "octave": "matched",
+    "relative-minor": "missing"
+   },
+   "candidate_coverage_per_document": {
+    "chem-water-states": {
+     "count": 3,
+     "of": 5,
+     "rate": 0.6
+    },
+    "music-relative-keys": {
+     "count": 0,
+     "of": 2,
+     "rate": 0.0
+    },
+    "music-thirds": {
+     "count": 4,
+     "of": 6,
+     "rate": 0.6667
+    }
+   },
+   "documents": [
+    {
+     "accepted": 4,
+     "candidate_coverage": {
+      "count": 4,
+      "of": 6,
+      "rate": 0.6667
+     },
+     "candidates": 4,
+     "false_rejects": [],
+     "gold": 6,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "semitone",
+       "require": "any",
+       "status": "matched",
+       "topic": "semitone",
+       "units": [
+        "k-0d242714ccb4"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "major third",
+       "units": [
+        "k-bbab1ad4b069"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "minor third",
+       "units": [
+        "k-133ac4bd8df4"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-triad",
+       "require": "any",
+       "status": "missing",
+       "topic": "major triad",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-triad",
+       "require": "any",
+       "status": "missing",
+       "topic": "minor triad",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "octave",
+       "require": "any",
+       "status": "matched",
+       "topic": "octave",
+       "units": [
+        "k-971ff8d449b8"
+       ]
+      }
+     ],
+     "source_id": "music-thirds",
+     "topic_area": "intervals",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "semitone"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "semitone",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A semitone is the smallest step on the piano, from one key to the very next key.",
+       "type": "claim",
+       "unit_id": "k-0d242714ccb4"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "minor-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "minor-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A minor third spans three semitones, for example C to E-flat.",
+       "type": "claim",
+       "unit_id": "k-133ac4bd8df4"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "octave"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "octave",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "An octave doubles the frequency: A4 is 440 Hz and A5 is 880 Hz.",
+       "type": "claim",
+       "unit_id": "k-971ff8d449b8"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "major-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "major-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A major third spans four semitones, for example C to E.",
+       "type": "claim",
+       "unit_id": "k-bbab1ad4b069"
+      }
+     ]
+    },
+    {
+     "accepted": 3,
+     "candidate_coverage": {
+      "count": 3,
+      "of": 5,
+      "rate": 0.6
+     },
+     "candidates": 3,
+     "false_rejects": [],
+     "gold": 5,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "freeze-0",
+       "require": "any",
+       "status": "matched",
+       "topic": "freezing point",
+       "units": [
+        "k-c655dabe9c3e"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "boil-100",
+       "require": "any",
+       "status": "matched",
+       "topic": "boiling point",
+       "units": [
+        "k-c655dabe9c3e"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "altitude",
+       "require": "any",
+       "status": "matched",
+       "topic": "boiling point at altitude",
+       "units": [
+        "k-165283339022"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "plateau",
+       "require": "any",
+       "status": "missing",
+       "topic": "temperature while boiling",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "vapour",
+       "require": "any",
+       "status": "missing",
+       "topic": "boiling",
+       "units": []
+      }
+     ],
+     "source_id": "chem-water-states",
+     "topic_area": "states of water",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "altitude"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "altitude",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "Air pressure is lower at high altitude, so water boils below 100 degrees Celsius there.",
+       "type": "claim",
+       "unit_id": "k-165283339022"
+      },
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Lab notebook, week 3.",
+       "type": "claim",
+       "unit_id": "k-69bd4db1243c"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "freeze-0",
+        "boil-100"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "precision": 0.4483
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "precision": 0.3218
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "kind": "boundary",
+         "precision": 0.4483
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "kind": "boundary",
+         "precision": 0.3218
+        }
+       ],
+       "text": "At sea level, pure water freezes at 0 degrees Celsius and boils at 100 degrees Celsius.",
+       "type": "claim",
+       "unit_id": "k-c655dabe9c3e"
+      }
+     ]
+    },
+    {
+     "accepted": 2,
+     "candidate_coverage": {
+      "count": 0,
+      "of": 2,
+      "rate": 0.0
+     },
+     "candidates": 2,
+     "false_rejects": [],
+     "gold": 2,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "c-major-signature",
+       "require": "any",
+       "status": "missing",
+       "topic": "C major key signature",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "relative-minor",
+       "require": "all",
+       "status": "missing",
+       "topic": "relative minor of C major",
+       "units": []
+      }
+     ],
+     "source_id": "music-relative-keys",
+     "topic_area": "keys",
+     "units": [
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Key signatures, part one.",
+       "type": "claim",
+       "unit_id": "k-4ebe05051635"
+      },
+      {
+       "class": "extra",
+       "gold": [],
+       "span_accuracy": [],
+       "span_errors": [],
+       "text": "Part two, a week later.",
+       "type": "claim",
+       "unit_id": "k-b46ea5813a90"
+      }
+     ]
+    }
+   ],
+   "false_accepts": [
+    {
+     "count": 3,
+     "examples": [
+      "Lab notebook, week 3.",
+      "Key signatures, part one.",
+      "Part two, a week later."
+     ],
+     "pattern": "a heading or section label with a number"
+    }
+   ],
+   "false_rejects": [],
+   "missed_vs_unsupported": {
+    "missed_gold": 6,
+    "unsupported_accepted": 3
+   },
+   "span_errors": {
+    "boundary": 2,
+    "cases": [
+     {
+      "gold_coverage": 1.0,
+      "gold_id": "freeze-0",
+      "kind": "boundary",
+      "precision": 0.4483
+     },
+     {
+      "gold_coverage": 1.0,
+      "gold_id": "boil-100",
+      "kind": "boundary",
+      "precision": 0.3218
+     }
+    ],
+    "evidence_selection": 0
+   },
+   "totals": {
+    "accepted_units": 9,
+    "bad_span_claims": {
+     "count": 0,
+     "of": 13,
+     "rate": 0.0
+    },
+    "classes": {
+     "bad_span": 0,
+     "correct": 6,
+     "extra": 3,
+     "wrong_claim": 0
+    },
+    "coverage": {
+     "count": 7,
+     "of": 13,
+     "rate": 0.5385
+    },
+    "duplicate_rate": {
+     "count": 0,
+     "of": 9,
+     "rate": 0.0
+    },
+    "evidence_supported": {
+     "count": 6,
+     "of": 9,
+     "rate": 0.6667
+    },
+    "gold_claims": 13,
+    "missing_claims": {
+     "count": 6,
+     "of": 13,
+     "rate": 0.4615
+    }
+   }
+  },
+  "sentence_baseline_v2": {
+   "accepted_span_accuracy_per_topic": {
+    "intervals": {
+     "correct_units": 4,
+     "exact_spans": {
+      "count": 4,
+      "of": 4,
+      "rate": 1.0
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 1.0
+    },
+    "keys": {
+     "correct_units": 0,
+     "exact_spans": {
+      "count": 0,
+      "of": 0,
+      "rate": null
+     },
+     "mean_gold_coverage": null,
+     "mean_precision": null
+    },
+    "states of water": {
+     "correct_units": 3,
+     "exact_spans": {
+      "count": 1,
+      "of": 3,
+      "rate": 0.3333
+     },
+     "mean_gold_coverage": 1.0,
+     "mean_precision": 0.59
+    }
+   },
+   "ambiguity_tagged_gold": {
+    "altitude": "matched",
+    "octave": "matched",
+    "relative-minor": "missing"
+   },
+   "candidate_coverage_per_document": {
+    "chem-water-states": {
+     "count": 3,
+     "of": 5,
+     "rate": 0.6
+    },
+    "music-relative-keys": {
+     "count": 0,
+     "of": 2,
+     "rate": 0.0
+    },
+    "music-thirds": {
+     "count": 4,
+     "of": 6,
+     "rate": 0.6667
+    }
+   },
+   "documents": [
+    {
+     "accepted": 4,
+     "candidate_coverage": {
+      "count": 4,
+      "of": 6,
+      "rate": 0.6667
+     },
+     "candidates": 4,
+     "false_rejects": [],
+     "gold": 6,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "semitone",
+       "require": "any",
+       "status": "matched",
+       "topic": "semitone",
+       "units": [
+        "k-0d242714ccb4"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "major third",
+       "units": [
+        "k-bbab1ad4b069"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-third",
+       "require": "any",
+       "status": "matched",
+       "topic": "minor third",
+       "units": [
+        "k-133ac4bd8df4"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "major-triad",
+       "require": "any",
+       "status": "missing",
+       "topic": "major triad",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "minor-triad",
+       "require": "any",
+       "status": "missing",
+       "topic": "minor triad",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "octave",
+       "require": "any",
+       "status": "matched",
+       "topic": "octave",
+       "units": [
+        "k-971ff8d449b8"
+       ]
+      }
+     ],
+     "source_id": "music-thirds",
+     "topic_area": "intervals",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "semitone"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "semitone",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A semitone is the smallest step on the piano, from one key to the very next key.",
+       "type": "claim",
+       "unit_id": "k-0d242714ccb4"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "minor-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "minor-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A minor third spans three semitones, for example C to E-flat.",
+       "type": "claim",
+       "unit_id": "k-133ac4bd8df4"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "octave"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "octave",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "An octave doubles the frequency: A4 is 440 Hz and A5 is 880 Hz.",
+       "type": "claim",
+       "unit_id": "k-971ff8d449b8"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "major-third"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "major-third",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "A major third spans four semitones, for example C to E.",
+       "type": "claim",
+       "unit_id": "k-bbab1ad4b069"
+      }
+     ]
+    },
+    {
+     "accepted": 2,
+     "candidate_coverage": {
+      "count": 3,
+      "of": 5,
+      "rate": 0.6
+     },
+     "candidates": 2,
+     "false_rejects": [],
+     "gold": 5,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "freeze-0",
+       "require": "any",
+       "status": "matched",
+       "topic": "freezing point",
+       "units": [
+        "k-c655dabe9c3e"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "boil-100",
+       "require": "any",
+       "status": "matched",
+       "topic": "boiling point",
+       "units": [
+        "k-c655dabe9c3e"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "altitude",
+       "require": "any",
+       "status": "matched",
+       "topic": "boiling point at altitude",
+       "units": [
+        "k-165283339022"
+       ]
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "plateau",
+       "require": "any",
+       "status": "missing",
+       "topic": "temperature while boiling",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "vapour",
+       "require": "any",
+       "status": "missing",
+       "topic": "boiling",
+       "units": []
+      }
+     ],
+     "source_id": "chem-water-states",
+     "topic_area": "states of water",
+     "units": [
+      {
+       "class": "correct",
+       "gold": [
+        "altitude"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "altitude",
+         "precision": 1.0
+        }
+       ],
+       "span_errors": [],
+       "text": "Air pressure is lower at high altitude, so water boils below 100 degrees Celsius there.",
+       "type": "claim",
+       "unit_id": "k-165283339022"
+      },
+      {
+       "class": "correct",
+       "gold": [
+        "freeze-0",
+        "boil-100"
+       ],
+       "span_accuracy": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "precision": 0.4483
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "precision": 0.3218
+        }
+       ],
+       "span_errors": [
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "freeze-0",
+         "kind": "boundary",
+         "precision": 0.4483
+        },
+        {
+         "gold_coverage": 1.0,
+         "gold_id": "boil-100",
+         "kind": "boundary",
+         "precision": 0.3218
+        }
+       ],
+       "text": "At sea level, pure water freezes at 0 degrees Celsius and boils at 100 degrees Celsius.",
+       "type": "claim",
+       "unit_id": "k-c655dabe9c3e"
+      }
+     ]
+    },
+    {
+     "accepted": 0,
+     "candidate_coverage": {
+      "count": 0,
+      "of": 2,
+      "rate": 0.0
+     },
+     "candidates": 0,
+     "false_rejects": [],
+     "gold": 2,
+     "per_gold": [
+      {
+       "duplicates": 0,
+       "gold_id": "c-major-signature",
+       "require": "any",
+       "status": "missing",
+       "topic": "C major key signature",
+       "units": []
+      },
+      {
+       "duplicates": 0,
+       "gold_id": "relative-minor",
+       "require": "all",
+       "status": "missing",
+       "topic": "relative minor of C major",
+       "units": []
+      }
+     ],
+     "source_id": "music-relative-keys",
+     "topic_area": "keys",
+     "units": []
+    }
+   ],
+   "false_accepts": [],
+   "false_rejects": [],
+   "missed_vs_unsupported": {
+    "missed_gold": 6,
+    "unsupported_accepted": 0
+   },
+   "span_errors": {
+    "boundary": 2,
+    "cases": [
+     {
+      "gold_coverage": 1.0,
+      "gold_id": "freeze-0",
+      "kind": "boundary",
+      "precision": 0.4483
+     },
+     {
+      "gold_coverage": 1.0,
+      "gold_id": "boil-100",
+      "kind": "boundary",
+      "precision": 0.3218
+     }
+    ],
+    "evidence_selection": 0
+   },
+   "totals": {
+    "accepted_units": 6,
+    "bad_span_claims": {
+     "count": 0,
+     "of": 13,
+     "rate": 0.0
+    },
+    "classes": {
+     "bad_span": 0,
+     "correct": 6,
+     "extra": 0,
+     "wrong_claim": 0
+    },
+    "coverage": {
+     "count": 7,
+     "of": 13,
+     "rate": 0.5385
+    },
+    "duplicate_rate": {
+     "count": 0,
+     "of": 6,
+     "rate": 0.0
+    },
+    "evidence_supported": {
+     "count": 6,
+     "of": 6,
+     "rate": 1.0
+    },
+    "gold_claims": 13,
+    "missing_claims": {
+     "count": 6,
+     "of": 13,
+     "rate": 0.4615
+    }
+   }
+  }
+ }
+}

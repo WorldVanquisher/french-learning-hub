@@ -1,0 +1,376 @@
+{
+ "checks": {
+  "both_loops_valid_attempt_first": true,
+  "both_spans_verified": true,
+  "contact_details_stay_local": true,
+  "contradiction_both_trails": true,
+  "correction_keeps_evidence": true,
+  "decision_kept_on_identical_rerun": true,
+  "exports_have_stable_ids": true,
+  "followup_adds_a_revision": true,
+  "french_draft_unchanged": true,
+  "french_recall_optional": true,
+  "grading_tolerant_not_lenient": true,
+  "handoff_portable": true,
+  "inbox_reasons_distinct": true,
+  "inbox_sanitized": true,
+  "model_failure_keeps_local_output": true,
+  "multi_answer_span_flagged": true,
+  "music_recall_supported": true,
+  "original_text_spans_exact": true,
+  "practice_four_kinds": true,
+  "private_scope_stays_local": true,
+  "quoted_instructions_inert": true,
+  "rerun_statuses_distinct": true,
+  "review_after_revision": true,
+  "revisions_classified": true,
+  "same_unit_contract": true,
+  "same_unit_contract_v2": true,
+  "source_links_carried": true,
+  "two_agent_formats_same_evidence": true,
+  "units_equal_authored_text": true,
+  "v2_extensions_kept": true,
+  "v2_source_through_normal_loop": true
+ },
+ "handoff": {
+  "citations_verified": true,
+  "followup": {
+   "answers": 2,
+   "fifth_stable_after": "supported",
+   "refused": [
+    "invalid_span"
+   ],
+   "revision": 3
+  },
+  "handoff_id": "hu-f82b244fdca2",
+  "markdown_bodies_identical": true,
+  "private_text_refused": true,
+  "questions": 5,
+  "questions_have_next_action": true,
+  "reviewed_claims": 2,
+  "source_text_by_default": false,
+  "synthetic_with_text_opt_in": true
+ },
+ "inbox": {
+  "changed_after_revision": [
+   "perfect-fifth"
+  ],
+  "identical_rerun": true,
+  "inbox_privacy_findings": 0,
+  "multi_span_units": [
+   "fourth-plus-fifth"
+  ],
+  "overlaps": [
+   "contains"
+  ],
+  "reason_codes_r1": [
+   "conflict",
+   "uncertain_evidence",
+   "unsupported_claim",
+   "word_cue"
+  ],
+  "reason_codes_r2": [
+   "changed_since_decision",
+   "conflict",
+   "uncertain_evidence",
+   "unsupported_claim",
+   "word_cue"
+  ],
+  "rejected_listed_apart": true,
+  "rerun_states_equal": true,
+  "rerun_unit_ids_equal": true
+ },
+ "ok": true,
+ "practice": {
+  "answer_bases": [
+   "numeral",
+   "verbatim"
+  ],
+  "chem_drops": [
+   "recall refused",
+   "no recall answer and no TOPIC = VALUE canonical"
+  ],
+  "chem_multi_answer_spans": 1,
+  "counts": {
+   "application": 2,
+   "explanation": 2,
+   "free_recall": 2,
+   "recognition": 2
+  },
+  "other_option_incorrect": true,
+  "refused_exercises": [
+   "leaky"
+  ],
+  "short_answers_correct": true,
+  "two_formats_same_evidence": true,
+  "unknown_is_self_check": true
+ },
+ "privacy": {
+  "handoff_with_text": "refused: the handoff would carry private data",
+  "handoff_without_text": "exported",
+  "injected_claim_needs_review": true,
+  "injected_reasons": [
+   "word_cue:generalises"
+  ],
+  "instruction_text_only_inside_quotes": true,
+  "markdown_says_quotes_are_data": true,
+  "model_failure": {
+   "exit": 2,
+   "local_units_unchanged": true,
+   "message": "refused"
+  },
+  "private_scope": "refused",
+  "recall_still_works": [
+   "A whole tone spans ___ semitones, for example C to D."
+  ]
+ },
+ "recall_review": {
+  "contradictions": [
+   {
+    "sources": [
+     "music-thirds",
+     "music-thirds-forum"
+    ],
+    "topic": "minor third",
+    "values": [
+     "3 semitones",
+     "4 semitones"
+    ]
+   }
+  ],
+  "correction": {
+   "evidence_unchanged": true,
+   "recall_prompt_after": "A major third spans ___ semitones (two whole tones), for example C to E.",
+   "state": "corrected"
+  },
+  "feed_items": 5,
+  "feed_links_resolve": true,
+  "recall_links": true,
+  "revisit_r3": {
+   "can_practise": true,
+   "evidence": [
+    "moved",
+    "moved"
+   ],
+   "units": [
+    "current",
+    "current"
+   ]
+  }
+ },
+ "revisions": {
+  "ambiguous_duplicates_r3": 1,
+  "changed_claim_same_source": true,
+  "diff_deterministic": true,
+  "moved_keep_keys": true,
+  "prose_edit_keeps_claim_key": true,
+  "r1_r2_changes": {
+   "added": 1,
+   "evidence_changed": 0,
+   "prose_edit": 1,
+   "removed": 1,
+   "state_changed": 0,
+   "unchanged": 3
+  },
+  "r1_r2_same_text": true,
+  "r2_r3_evidence": {
+   "added": 1,
+   "kept": 4,
+   "moved": 4,
+   "removed": 0
+  },
+  "rejected_kept_in_r3": true,
+  "rerun_statuses": {
+   "extractor_failed_empty": "extractor_failed",
+   "extractor_failed_error": "extractor_failed",
+   "identical_rerun": "identical_rerun",
+   "source_missing": "source_disappeared",
+   "source_text_replaced": "source_disappeared"
+  }
+ },
+ "runs": {
+  "chemistry": {
+   "declared_spans_kept": true,
+   "doc_keys": [
+    "ambiguous_duplicates",
+    "counts",
+    "drafter",
+    "recall",
+    "recall_refused",
+    "schema",
+    "source",
+    "source_text_included",
+    "span_overlaps",
+    "units"
+   ],
+   "draft_id": "d-b1453ff2fe6c",
+   "extensions_kept": true,
+   "fingerprint": "sf-76163c3286071fa7",
+   "language": "en",
+   "loop_order": [
+    "none: no contrast, so no practice item"
+   ],
+   "loop_retrieval": [],
+   "loop_valid": null,
+   "name": "chemistry",
+   "needs_review": 0,
+   "original_text_spans_exact": true,
+   "practice": {
+    "choose": 0,
+    "explain": 0,
+    "produce": 0
+   },
+   "recall": 4,
+   "recall_refused": 2,
+   "run_key": "rk-10dbb020f52cbfa9",
+   "spans_verified": true,
+   "subject": "chemistry",
+   "unit_keys": [
+    "claim_key",
+    "evidence",
+    "item_hash",
+    "needs_review",
+    "origin",
+    "proposal_ref",
+    "proposed_text",
+    "review_reasons",
+    "state",
+    "support",
+    "text",
+    "type",
+    "unit_id"
+   ],
+   "units": 4,
+   "units_equal_authored_text": true,
+   "usable": 4,
+   "validate": []
+  },
+  "french": {
+   "declared_spans_kept": null,
+   "doc_keys": [
+    "ambiguous_duplicates",
+    "counts",
+    "drafter",
+    "recall",
+    "recall_refused",
+    "schema",
+    "source",
+    "source_text_included",
+    "span_overlaps",
+    "units"
+   ],
+   "draft_id": "d-22ff0c49f9d7",
+   "extensions_kept": true,
+   "fingerprint": "sf-066999b2b6ecdd99",
+   "language": "fr",
+   "loop_order": [
+    "recall",
+    "recall",
+    "reveal",
+    "read",
+    "retry"
+   ],
+   "loop_retrieval": [
+    "unaided",
+    "after_reveal"
+   ],
+   "loop_valid": true,
+   "name": "french",
+   "needs_review": 2,
+   "original_text_spans_exact": true,
+   "practice": {
+    "choose": 2,
+    "explain": 1,
+    "produce": 2
+   },
+   "recall": 0,
+   "recall_refused": 0,
+   "run_key": "rk-5c656d7a248d5789",
+   "spans_verified": true,
+   "subject": "french",
+   "unit_keys": [
+    "claim_key",
+    "evidence",
+    "item_hash",
+    "needs_review",
+    "origin",
+    "proposal_ref",
+    "proposed_text",
+    "review_reasons",
+    "state",
+    "support",
+    "text",
+    "type",
+    "unit_id"
+   ],
+   "units": 7,
+   "units_equal_authored_text": true,
+   "usable": 5,
+   "validate": []
+  },
+  "music": {
+   "declared_spans_kept": null,
+   "doc_keys": [
+    "ambiguous_duplicates",
+    "counts",
+    "drafter",
+    "recall",
+    "recall_refused",
+    "schema",
+    "source",
+    "source_text_included",
+    "span_overlaps",
+    "units"
+   ],
+   "draft_id": "d-a2e35923430a",
+   "extensions_kept": true,
+   "fingerprint": "sf-87d52c502f0bf2d1",
+   "language": "en",
+   "loop_order": [
+    "recall",
+    "recall",
+    "reveal",
+    "read",
+    "retry"
+   ],
+   "loop_retrieval": [
+    "unaided",
+    "after_reveal"
+   ],
+   "loop_valid": true,
+   "name": "music",
+   "needs_review": 0,
+   "original_text_spans_exact": true,
+   "practice": {
+    "choose": 2,
+    "explain": 1,
+    "produce": 2
+   },
+   "recall": 4,
+   "recall_refused": 0,
+   "run_key": "rk-8db6b6cef2c0eb4c",
+   "spans_verified": true,
+   "subject": "music_theory",
+   "unit_keys": [
+    "claim_key",
+    "evidence",
+    "item_hash",
+    "needs_review",
+    "origin",
+    "proposal_ref",
+    "proposed_text",
+    "review_reasons",
+    "state",
+    "support",
+    "text",
+    "type",
+    "unit_id"
+   ],
+   "units": 5,
+   "units_equal_authored_text": true,
+   "usable": 5,
+   "validate": []
+  }
+ },
+ "schema": "flh_xsubject_parity_v1"
+}

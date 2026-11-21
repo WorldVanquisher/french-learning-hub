@@ -1,0 +1,35 @@
+{
+ "case_id": "sentence-baseline-section-label",
+ "expect": {
+  "sentence_baseline": {
+   "claims": [
+    "Hardware notes, chapter one.",
+    "A byte is eight bits."
+   ]
+  },
+  "sentence_baseline_v2": {
+   "claims": [
+    "A byte is eight bits."
+   ]
+  }
+ },
+ "found_in": "fixtures/xsubject_v1/eval/analysis-dev.json (dev split: 'Key signatures, part one.' and 'Lab notebook, week 3.' accepted as claims)",
+ "redaction": "reduced to the two sentences that show the error; synthetic text; no other content kept",
+ "schema": "flh_units_regression_case_v1",
+ "source": {
+  "data_scope": "synthetic",
+  "language": "en",
+  "proposal": {
+   "items": [],
+   "proposer": "synthetic: regression case"
+  },
+  "revision": 1,
+  "schema": "flh_practice_source_v2",
+  "source_id": "regression-section-label",
+  "subject": "computer_hardware",
+  "text": {
+   "original_context": "Hardware notes, chapter one.\n\nA byte is eight bits.",
+   "original_input": "How big is a byte?"
+  }
+ }
+}

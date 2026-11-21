@@ -1,0 +1,459 @@
+{
+ "documents": [
+  {
+   "claims": [
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "semitone",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 113,
+       "field": "original_context",
+       "quote": "A semitone is the smallest step on the piano, from one key to the very next key.",
+       "start": 33
+      }
+     ],
+     "topic": "semitone",
+     "value": "smallest step"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "major-third",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 169,
+       "field": "original_context",
+       "quote": "A major third spans four semitones, for example C to E.",
+       "start": 114
+      }
+     ],
+     "topic": "major third",
+     "value": "four"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "minor-third",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 231,
+       "field": "original_context",
+       "quote": "A minor third spans three semitones, for example C to E-flat.",
+       "start": 170
+      }
+     ],
+     "topic": "minor third",
+     "value": "three"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "major-triad",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 299,
+       "field": "original_context",
+       "quote": "A major triad stacks a major third and then a minor third: C, E, G.",
+       "start": 232
+      }
+     ],
+     "topic": "major triad",
+     "value": "major third and then a minor third"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "minor-triad",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 372,
+       "field": "original_context",
+       "quote": "A minor triad stacks a minor third and then a major third: C, E-flat, G.",
+       "start": 300
+      }
+     ],
+     "topic": "minor triad",
+     "value": "minor third and then a major third"
+    },
+    {
+     "ambiguity": [
+      "value_phrasing: 'doubles the frequency' can be said as 'twice the frequency'"
+     ],
+     "chronology": false,
+     "gold_id": "octave",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 436,
+       "field": "original_context",
+       "quote": "An octave doubles the frequency: A4 is 440 Hz and A5 is 880 Hz.",
+       "start": 373
+      }
+     ],
+     "topic": "octave",
+     "value": "doubles"
+    }
+   ],
+   "source_file": "music_thirds.r1.json",
+   "source_id": "music-thirds",
+   "topic_area": "intervals"
+  },
+  {
+   "claims": [
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "freeze-0",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 75,
+       "field": "original_context",
+       "quote": "pure water freezes at 0 degrees Celsius",
+       "start": 36
+      }
+     ],
+     "topic": "freezing point",
+     "value": "0"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "boil-100",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 108,
+       "field": "original_context",
+       "quote": "boils at 100 degrees Celsius",
+       "start": 80
+      }
+     ],
+     "topic": "boiling point",
+     "value": "100"
+    },
+    {
+     "ambiguity": [
+      "value_phrasing: 'below 100' or 'lower boiling point' state the same fact"
+     ],
+     "chronology": false,
+     "gold_id": "altitude",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 197,
+       "field": "original_context",
+       "quote": "Air pressure is lower at high altitude, so water boils below 100 degrees Celsius there.",
+       "start": 110
+      }
+     ],
+     "topic": "boiling point at altitude",
+     "value": "below"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "plateau",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 312,
+       "field": "original_context",
+       "quote": "the temperature stays at the boiling point until the liquid is gone.",
+       "start": 244
+      }
+     ],
+     "topic": "temperature while boiling",
+     "value": "stays"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "vapour",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 242,
+       "field": "original_context",
+       "quote": "Boiling turns liquid water into water vapour",
+       "start": 198
+      }
+     ],
+     "topic": "boiling",
+     "value": "water vapour"
+    }
+   ],
+   "source_file": "chem_water_states.v2.json",
+   "source_id": "chem-water-states",
+   "topic_area": "states of water"
+  },
+  {
+   "claims": [
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "c-major-signature",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 79,
+       "field": "original_context",
+       "quote": "C major has no sharps or flats in its key signature.",
+       "start": 27
+      }
+     ],
+     "topic": "C major key signature",
+     "value": "no sharps or flats"
+    },
+    {
+     "ambiguity": [
+      "two_sentences: the second paragraph states it; the first gives the shared key signature"
+     ],
+     "chronology": false,
+     "gold_id": "relative-minor",
+     "require": "all",
+     "shape": "multi",
+     "spans": [
+      {
+       "end": 79,
+       "field": "original_context",
+       "quote": "C major has no sharps or flats in its key signature.",
+       "start": 27
+      },
+      {
+       "end": 205,
+       "field": "original_context",
+       "quote": "A minor uses exactly the same notes as C major, so A minor is called the relative minor of C major.",
+       "start": 106
+      }
+     ],
+     "topic": "relative minor of C major",
+     "value": "A minor"
+    }
+   ],
+   "source_file": "music_relative_keys.r1.json",
+   "source_id": "music-relative-keys",
+   "topic_area": "keys"
+  },
+  {
+   "claims": [],
+   "source_file": "music_practice_diary.r1.json",
+   "source_id": "music-practice-diary",
+   "topic_area": "diary"
+  },
+  {
+   "claims": [
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "byte",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 93,
+       "field": "original_context",
+       "quote": "A byte is eight bits.",
+       "start": 72
+      }
+     ],
+     "topic": "byte",
+     "value": "eight"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "ram",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 162,
+       "field": "original_context",
+       "quote": "RAM is volatile: it loses its contents when the power is turned off.",
+       "start": 94
+      }
+     ],
+     "topic": "RAM",
+     "value": "volatile"
+    },
+    {
+     "ambiguity": [
+      "value_phrasing: 'non-volatile' says the same"
+     ],
+     "chronology": false,
+     "gold_id": "ssd",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 199,
+       "field": "original_context",
+       "quote": "An SSD keeps its data without power.",
+       "start": 163
+      }
+     ],
+     "topic": "SSD",
+     "value": "without power"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "clock",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 251,
+       "field": "original_context",
+       "quote": "A 3 GHz clock ticks three billion times per second.",
+       "start": 200
+      }
+     ],
+     "topic": "3 GHz clock",
+     "value": "three billion"
+    }
+   ],
+   "source_file": "hw_basics.v2.json",
+   "source_id": "hw-basics",
+   "topic_area": "hardware"
+  },
+  {
+   "claims": [
+    {
+     "ambiguity": [
+      "approximate_date: 'around 1440' is the source's own hedge"
+     ],
+     "chronology": false,
+     "gold_id": "press",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 117,
+       "field": "original_context",
+       "quote": "Around 1440, Johannes Gutenberg built a printing press with movable type in Mainz.",
+       "start": 35
+      }
+     ],
+     "topic": "printing press",
+     "value": "1440"
+    },
+    {
+     "ambiguity": [
+      "approximate_date"
+     ],
+     "chronology": false,
+     "gold_id": "bible",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 199,
+       "field": "original_context",
+       "quote": "around 1455, his workshop printed the Gutenberg Bible.",
+       "start": 145
+      }
+     ],
+     "topic": "Gutenberg Bible",
+     "value": "1455"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "telegraph",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 288,
+       "field": "original_context",
+       "quote": "in 1844, Samuel Morse sent a telegraph message from Washington to Baltimore.",
+       "start": 212
+      }
+     ],
+     "topic": "telegraph message",
+     "value": "1844"
+    },
+    {
+     "ambiguity": [],
+     "chronology": false,
+     "gold_id": "telephone",
+     "require": "any",
+     "shape": "single",
+     "spans": [
+      {
+       "end": 349,
+       "field": "original_context",
+       "quote": "Alexander Graham Bell received his telephone patent in 1876.",
+       "start": 289
+      }
+     ],
+     "topic": "telephone patent",
+     "value": "1876"
+    },
+    {
+     "ambiguity": [],
+     "chronology": true,
+     "gold_id": "order",
+     "require": "all",
+     "shape": "multi",
+     "spans": [
+      {
+       "end": 288,
+       "field": "original_context",
+       "quote": "in 1844, Samuel Morse sent a telegraph message from Washington to Baltimore.",
+       "start": 212
+      },
+      {
+       "end": 349,
+       "field": "original_context",
+       "quote": "Alexander Graham Bell received his telephone patent in 1876.",
+       "start": 289
+      }
+     ],
+     "topic": "telephone relative to telegraph",
+     "value": "after"
+    }
+   ],
+   "source_file": "history_messages.v2.json",
+   "source_id": "history-messages",
+   "topic_area": "history"
+  }
+ ],
+ "frozen": "2026-11-21, before any change tuned on it",
+ "note": "same author as the sources and the authored proposals; synthetic; English. Labels (shape, chronology, ambiguity) are written from the gold spans and texts, independently of any system output. Ambiguity tags explain a hard case; they never relax the expected result.",
+ "schema": "flh_units_gold_v2",
+ "split": {
+  "dev": [
+   "music-thirds",
+   "chem-water-states",
+   "music-relative-keys"
+  ],
+  "eval": [
+   "hw-basics",
+   "history-messages",
+   "music-practice-diary"
+  ]
+ },
+ "split_rule": "tune only on dev; report eval before and after any change; never move a document between splits after freezing"
+}

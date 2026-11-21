@@ -1,0 +1,20 @@
+{
+ "capture": {
+  "capture_id": "synthetic-music-diary-001",
+  "original_context": "Practised for twenty minutes today. My fingers hurt after the scales. Tomorrow I will try again with a slower tempo.",
+  "original_input": "Is there anything to learn from today's diary?",
+  "schema_version": "learning_capture_v1",
+  "source": "manual"
+ },
+ "data_scope": "synthetic",
+ "language": "en",
+ "learner_goal": "",
+ "proposal": {
+  "items": [],
+  "proposer": "synthetic: hand-written evaluation fixture (music theory, English; no provider call)"
+ },
+ "revision": 1,
+ "schema": "flh_practice_source_v1",
+ "source_id": "music-practice-diary",
+ "subject": "music_theory"
+}

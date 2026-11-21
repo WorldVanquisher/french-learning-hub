@@ -1,0 +1,125 @@
+{
+ "capture": {
+  "capture_id": "synthetic-chem-water-001",
+  "source": "manual"
+ },
+ "data_scope": "synthetic",
+ "extensions": {
+  "x-flh-course": {
+   "name": "science basics",
+   "unit": 3
+  },
+  "x-other-tool": {
+   "reviewed_by": "nobody yet",
+   "score": null
+  }
+ },
+ "language": "en",
+ "learner_goal": "Know the freezing and boiling points of water and what pressure changes.",
+ "proposal": {
+  "items": [
+   {
+    "canonical": "water boils at 100 C at sea level",
+    "confidence": 0.9,
+    "evidence": [
+     {
+      "end": 109,
+      "field": "original_context",
+      "quote": "At sea level, pure water freezes at 0 degrees Celsius and boils at 100 degrees Celsius.",
+      "start": 22
+     }
+    ],
+    "kind": "concept",
+    "recall": {
+     "accepted": [
+      "100 degrees",
+      "100 °C",
+      "one hundred"
+     ],
+     "answer": "100"
+    },
+    "ref": "boil-100",
+    "statement": "At sea level, pure water boils at 100 degrees Celsius.",
+    "type": "claim"
+   },
+   {
+    "canonical": "water freezes at 0 C at sea level",
+    "confidence": 0.9,
+    "evidence": [
+     {
+      "end": 109,
+      "field": "original_context",
+      "quote": "At sea level, pure water freezes at 0 degrees Celsius and boils at 100 degrees Celsius.",
+      "start": 22
+     }
+    ],
+    "kind": "concept",
+    "recall": {
+     "accepted": [
+      "0 degrees",
+      "zero"
+     ],
+     "answer": "0"
+    },
+    "ref": "freeze-0",
+    "statement": "At sea level, pure water freezes at 0 degrees Celsius.",
+    "type": "claim"
+   },
+   {
+    "canonical": "lower pressure lowers the boiling point",
+    "confidence": 0.8,
+    "evidence": [
+     {
+      "end": 197,
+      "field": "original_context",
+      "quote": "Air pressure is lower at high altitude, so water boils below 100 degrees Celsius there.",
+      "start": 110
+     },
+     {
+      "end": 92,
+      "field": "original_input",
+      "quote": "why do people say it boils sooner in the mountains?",
+      "start": 41
+     }
+    ],
+    "kind": "concept",
+    "recall": {
+     "accepted": [
+      "lower",
+      "it lowers it",
+      "reduces"
+     ],
+     "answer": "lowers"
+    },
+    "ref": "altitude",
+    "statement": "Lower air pressure at high altitude lowers the boiling point of water.",
+    "type": "claim"
+   },
+   {
+    "canonical": "temperature plateaus while boiling",
+    "confidence": 0.7,
+    "evidence": [
+     {
+      "end": 312,
+      "field": "original_context",
+      "quote": "the temperature stays at the boiling point until the liquid is gone.",
+      "start": 244
+     }
+    ],
+    "kind": "concept",
+    "ref": "plateau",
+    "statement": "While water boils, its temperature stays at the boiling point until the liquid is gone.",
+    "type": "claim"
+   }
+  ],
+  "proposer": "synthetic: hand-written v2 example (chemistry, English; no provider call)"
+ },
+ "revision": 1,
+ "schema": "flh_practice_source_v2",
+ "source_id": "chem-water-states",
+ "subject": "chemistry",
+ "text": {
+  "original_context": "Lab notebook, week 3. At sea level, pure water freezes at 0 degrees Celsius and boils at 100 degrees Celsius. Air pressure is lower at high altitude, so water boils below 100 degrees Celsius there. Boiling turns liquid water into water vapour; the temperature stays at the boiling point until the liquid is gone.",
+  "original_input": "At what temperature does water boil, and why do people say it boils sooner in the mountains?"
+ }
+}

@@ -1,0 +1,297 @@
+{
+ "ambiguous_duplicates": [],
+ "counts": {
+  "needs_review": 0,
+  "recall": 4,
+  "units": 4,
+  "usable": 4
+ },
+ "drafter": "flh_practice_drafter_v1",
+ "recall": [
+  {
+   "accepted": [
+    "100",
+    "100 °C",
+    "100 degrees",
+    "one hundred"
+   ],
+   "answer": "100",
+   "claim_key": "ck-a488df02d9f5",
+   "evidence_ids": [
+    "ev-21d7e1072c"
+   ],
+   "kind": "free_recall",
+   "measures": "recall without options",
+   "prompt": "At sea level, pure water boils at ___ degrees Celsius.",
+   "recall_id": "rc-22bebeab9a82",
+   "source_link": {
+    "end": 109,
+    "evidence_id": "ev-21d7e1072c",
+    "evidence_key": "ek-c31b88c3b8f3",
+    "field": "original_context",
+    "fingerprint": "sf-76163c3286071fa7",
+    "source_id": "chem-water-states",
+    "source_revision": 1,
+    "start": 22
+   },
+   "supported_by": "ev-21d7e1072c",
+   "unit_id": "k-842265730ecc"
+  },
+  {
+   "accepted": [
+    "100",
+    "100 °C",
+    "100 degrees",
+    "one hundred"
+   ],
+   "answer": "100",
+   "claim_key": "ck-a488df02d9f5",
+   "evidence_ids": [
+    "ev-21d7e1072c"
+   ],
+   "kind": "recognition",
+   "measures": "recognition among the source's answers",
+   "options": [
+    "0",
+    "100",
+    "lowers"
+   ],
+   "prompt": "At sea level, pure water boils at ___ degrees Celsius.",
+   "recall_id": "rr-22bebeab9a82",
+   "source_link": {
+    "end": 109,
+    "evidence_id": "ev-21d7e1072c",
+    "evidence_key": "ek-c31b88c3b8f3",
+    "field": "original_context",
+    "fingerprint": "sf-76163c3286071fa7",
+    "source_id": "chem-water-states",
+    "source_revision": 1,
+    "start": 22
+   },
+   "supported_by": "ev-21d7e1072c",
+   "unit_id": "k-842265730ecc"
+  },
+  {
+   "accepted": [
+    "0",
+    "zero",
+    "0 degrees"
+   ],
+   "answer": "0",
+   "claim_key": "ck-12c552bf1711",
+   "evidence_ids": [
+    "ev-21d7e1072c"
+   ],
+   "kind": "free_recall",
+   "measures": "recall without options",
+   "prompt": "At sea level, pure water freezes at ___ degrees Celsius.",
+   "recall_id": "rc-ddda83ae8692",
+   "source_link": {
+    "end": 109,
+    "evidence_id": "ev-21d7e1072c",
+    "evidence_key": "ek-c31b88c3b8f3",
+    "field": "original_context",
+    "fingerprint": "sf-76163c3286071fa7",
+    "source_id": "chem-water-states",
+    "source_revision": 1,
+    "start": 22
+   },
+   "supported_by": "ev-21d7e1072c",
+   "unit_id": "k-a82ecca1cf3b"
+  },
+  {
+   "accepted": [
+    "0",
+    "zero",
+    "0 degrees"
+   ],
+   "answer": "0",
+   "claim_key": "ck-12c552bf1711",
+   "evidence_ids": [
+    "ev-21d7e1072c"
+   ],
+   "kind": "recognition",
+   "measures": "recognition among the source's answers",
+   "options": [
+    "0",
+    "100",
+    "lowers"
+   ],
+   "prompt": "At sea level, pure water freezes at ___ degrees Celsius.",
+   "recall_id": "rr-ddda83ae8692",
+   "source_link": {
+    "end": 109,
+    "evidence_id": "ev-21d7e1072c",
+    "evidence_key": "ek-c31b88c3b8f3",
+    "field": "original_context",
+    "fingerprint": "sf-76163c3286071fa7",
+    "source_id": "chem-water-states",
+    "source_revision": 1,
+    "start": 22
+   },
+   "supported_by": "ev-21d7e1072c",
+   "unit_id": "k-a82ecca1cf3b"
+  }
+ ],
+ "recall_refused": [
+  {
+   "code": "answer_not_in_evidence",
+   "detail": "« lowers » occurs in none of the claim's own evidence spans",
+   "unit_id": "k-5ff605c697c8"
+  },
+  {
+   "code": "prompt_reveals_answer",
+   "detail": "the prompt still shows the answer (or an accepted variant)",
+   "unit_id": "k-5ff605c697c8"
+  }
+ ],
+ "schema": "flh_learning_units_v1",
+ "source": {
+  "data_scope": "synthetic",
+  "draft_id": "d-b1453ff2fe6c",
+  "extensions": {
+   "x-flh-course": {
+    "name": "science basics",
+    "unit": 3
+   },
+   "x-other-tool": {
+    "reviewed_by": "nobody yet",
+    "score": null
+   }
+  },
+  "fingerprint": "sf-76163c3286071fa7",
+  "language": "en",
+  "revision": 1,
+  "revision_sha256": "6824dc8fa505bd41b3bbd0487268b5a9eb70b90afcf13087b06e0e8a7c641b1f",
+  "run_key": "rk-10dbb020f52cbfa9",
+  "source_id": "chem-water-states",
+  "subject": "chemistry"
+ },
+ "source_text_included": false,
+ "span_overlaps": [],
+ "units": [
+  {
+   "canonical": "lower pressure lowers the boiling point",
+   "claim_key": "ck-5b7895ffb192",
+   "evidence": [
+    {
+     "end": 197,
+     "evidence_id": "ev-c6b0bf5ca6",
+     "evidence_key": "ek-d5d3996cd390",
+     "field": "original_context",
+     "quote": "Air pressure is lower at high altitude, so water boils below 100 degrees Celsius there.",
+     "source_revision": 1,
+     "start": 110,
+     "status": "located",
+     "verified": true
+    },
+    {
+     "end": 92,
+     "evidence_id": "ev-4546173cc2",
+     "evidence_key": "ek-d670210f6381",
+     "field": "original_input",
+     "quote": "why do people say it boils sooner in the mountains?",
+     "source_revision": 1,
+     "start": 41,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "221497bf47fa62a1e822c76ab5a5363a1107d5ab7599db4c9eb489882cb84b34",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "altitude",
+   "proposed_text": "Lower air pressure at high altitude lowers the boiling point of water.",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "Lower air pressure at high altitude lowers the boiling point of water.",
+   "type": "claim",
+   "unit_id": "k-5ff605c697c8"
+  },
+  {
+   "canonical": "temperature plateaus while boiling",
+   "claim_key": "ck-b66008c1e8a5",
+   "evidence": [
+    {
+     "end": 312,
+     "evidence_id": "ev-a0d835b880",
+     "evidence_key": "ek-b249a2f27d38",
+     "field": "original_context",
+     "quote": "the temperature stays at the boiling point until the liquid is gone.",
+     "source_revision": 1,
+     "start": 244,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "1d6e962f4e79e483272ccbadc6c5eac679e49554b7eb33721bb66aaeed7d2623",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "plateau",
+   "proposed_text": "While water boils, its temperature stays at the boiling point until the liquid is gone.",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "While water boils, its temperature stays at the boiling point until the liquid is gone.",
+   "type": "claim",
+   "unit_id": "k-64d215130051"
+  },
+  {
+   "canonical": "water boils at 100 C at sea level",
+   "claim_key": "ck-a488df02d9f5",
+   "evidence": [
+    {
+     "end": 109,
+     "evidence_id": "ev-21d7e1072c",
+     "evidence_key": "ek-c31b88c3b8f3",
+     "field": "original_context",
+     "quote": "At sea level, pure water freezes at 0 degrees Celsius and boils at 100 degrees Celsius.",
+     "source_revision": 1,
+     "start": 22,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "5143bfdd587d237c1e0e1feb9aef198b05cac0d8b2e8984eb99f7ef6c54066a6",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "boil-100",
+   "proposed_text": "At sea level, pure water boils at 100 degrees Celsius.",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "At sea level, pure water boils at 100 degrees Celsius.",
+   "type": "claim",
+   "unit_id": "k-842265730ecc"
+  },
+  {
+   "canonical": "water freezes at 0 C at sea level",
+   "claim_key": "ck-12c552bf1711",
+   "evidence": [
+    {
+     "end": 109,
+     "evidence_id": "ev-21d7e1072c",
+     "evidence_key": "ek-c31b88c3b8f3",
+     "field": "original_context",
+     "quote": "At sea level, pure water freezes at 0 degrees Celsius and boils at 100 degrees Celsius.",
+     "source_revision": 1,
+     "start": 22,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "12798d80533123e14b31d0021e29ef3336c95423d7a3f157be6f0d478516058c",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "freeze-0",
+   "proposed_text": "At sea level, pure water freezes at 0 degrees Celsius.",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "At sea level, pure water freezes at 0 degrees Celsius.",
+   "type": "claim",
+   "unit_id": "k-a82ecca1cf3b"
+  }
+ ]
+}

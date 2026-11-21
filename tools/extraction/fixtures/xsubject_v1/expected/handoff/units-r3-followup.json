@@ -1,0 +1,439 @@
+{
+ "ambiguous_duplicates": [],
+ "counts": {
+  "needs_review": 6,
+  "recall": 4,
+  "units": 8,
+  "usable": 2
+ },
+ "drafter": "flh_practice_drafter_v1",
+ "recall": [
+  {
+   "accepted": [
+    "five"
+   ],
+   "answer": "five",
+   "claim_key": "ck-af4203017d56",
+   "evidence_ids": [
+    "ev-bc6bb144ae"
+   ],
+   "kind": "free_recall",
+   "measures": "recall without options",
+   "prompt": "A perfect fourth spans ___ semitones.",
+   "recall_id": "rc-8eaf1b87bc1f",
+   "source_link": {
+    "end": 112,
+    "evidence_id": "ev-bc6bb144ae",
+    "evidence_key": "ek-5f1231c77c7f",
+    "field": "original_context",
+    "fingerprint": "sf-e6dfbbf6a2312340",
+    "source_id": "music-intervals-inbox",
+    "source_revision": 3,
+    "start": 75
+   },
+   "supported_by": "ev-bc6bb144ae",
+   "unit_id": "k-66026825bc65"
+  },
+  {
+   "accepted": [
+    "five"
+   ],
+   "answer": "five",
+   "claim_key": "ck-af4203017d56",
+   "evidence_ids": [
+    "ev-bc6bb144ae"
+   ],
+   "kind": "recognition",
+   "measures": "recognition among the source's answers",
+   "options": [
+    "five",
+    "nine",
+    "seven",
+    "twelve"
+   ],
+   "prompt": "A perfect fourth spans ___ semitones.",
+   "recall_id": "rr-8eaf1b87bc1f",
+   "source_link": {
+    "end": 112,
+    "evidence_id": "ev-bc6bb144ae",
+    "evidence_key": "ek-5f1231c77c7f",
+    "field": "original_context",
+    "fingerprint": "sf-e6dfbbf6a2312340",
+    "source_id": "music-intervals-inbox",
+    "source_revision": 3,
+    "start": 75
+   },
+   "supported_by": "ev-bc6bb144ae",
+   "unit_id": "k-66026825bc65"
+  },
+  {
+   "accepted": [
+    "twelve"
+   ],
+   "answer": "twelve",
+   "claim_key": "ck-b39aade616b5",
+   "evidence_ids": [
+    "ev-bc4d1c9cd7"
+   ],
+   "kind": "free_recall",
+   "measures": "recall without options",
+   "prompt": "A perfect fourth and a perfect fifth together make an octave of ___ semitones.",
+   "recall_id": "rc-3f44e71fe71d",
+   "source_link": {
+    "end": 213,
+    "evidence_id": "ev-bc4d1c9cd7",
+    "evidence_key": "ek-543bbf1f93df",
+    "field": "original_context",
+    "fingerprint": "sf-e6dfbbf6a2312340",
+    "source_id": "music-intervals-inbox",
+    "source_revision": 3,
+    "start": 180
+   },
+   "supported_by": "ev-bc4d1c9cd7",
+   "unit_id": "k-ae55c2b5be7a"
+  },
+  {
+   "accepted": [
+    "twelve"
+   ],
+   "answer": "twelve",
+   "claim_key": "ck-b39aade616b5",
+   "evidence_ids": [
+    "ev-bc4d1c9cd7"
+   ],
+   "kind": "recognition",
+   "measures": "recognition among the source's answers",
+   "options": [
+    "five",
+    "nine",
+    "seven",
+    "twelve"
+   ],
+   "prompt": "A perfect fourth and a perfect fifth together make an octave of ___ semitones.",
+   "recall_id": "rr-3f44e71fe71d",
+   "source_link": {
+    "end": 213,
+    "evidence_id": "ev-bc4d1c9cd7",
+    "evidence_key": "ek-543bbf1f93df",
+    "field": "original_context",
+    "fingerprint": "sf-e6dfbbf6a2312340",
+    "source_id": "music-intervals-inbox",
+    "source_revision": 3,
+    "start": 180
+   },
+   "supported_by": "ev-bc4d1c9cd7",
+   "unit_id": "k-ae55c2b5be7a"
+  }
+ ],
+ "recall_refused": [],
+ "schema": "flh_learning_units_v1",
+ "source": {
+  "data_scope": "synthetic",
+  "draft_id": "d-398a8ab14341",
+  "extensions": {
+   "x-flh-followup": {
+    "agent": "codex",
+    "answers": [
+     {
+      "agent": "codex",
+      "question_id": "q-67d7d16012",
+      "ref": "fifth-stable",
+      "span": {
+       "end": 271,
+       "field": "original_context",
+       "quote": "A perfect fifth is stable.",
+       "start": 245
+      }
+     }
+    ],
+    "handoff_id": "hu-f82b244fdca2"
+   }
+  },
+  "fingerprint": "sf-e6dfbbf6a2312340",
+  "language": "en",
+  "revision": 3,
+  "revision_sha256": "02c6b9ab50220cf5d71ebc3863cd3ed05b6ab2a6a5f208037cd17ee9961fb070",
+  "run_key": "rk-15ee74e7766b1741",
+  "source_id": "music-intervals-inbox",
+  "subject": "music_theory"
+ },
+ "source_text_included": false,
+ "span_overlaps": [
+  {
+   "a": "ev-bc6bb144ae",
+   "b": "ev-e141acc136",
+   "field": "original_context",
+   "outer": "ev-e141acc136",
+   "relation": "contains",
+   "shared": [
+    75,
+    112
+   ]
+  }
+ ],
+ "units": [
+  {
+   "claim_key": "ck-37e5d45d4829",
+   "evidence": [
+    {
+     "end": 244,
+     "evidence_id": "ev-15bb3a2805",
+     "evidence_key": "ek-ae82408cac20",
+     "field": "original_context",
+     "quote": "A tritone spans six semitones.",
+     "source_revision": 3,
+     "start": 214,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "6de540bd5c4f616f0ffc2bef95aa04fdac15b9ef504eab8a7f7ae07d11da16e4",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "tritone-error",
+   "proposed_text": "seven semitones is a perfect fifth; a tritone is six",
+   "review_reasons": [
+    {
+     "code": "conflict",
+     "detail": "another item presents as correct what this one lists as wrong (or the reverse)"
+    }
+   ],
+   "state": "pending",
+   "support": "supported",
+   "text": "seven semitones is a perfect fifth; a tritone is six",
+   "type": "common_error",
+   "unit_id": "k-37e5d45d4829"
+  },
+  {
+   "canonical": "perfect fifth is stable",
+   "claim_key": "ck-987568d424ed",
+   "evidence": [
+    {
+     "end": 271,
+     "evidence_id": "ev-0f7e928f8c",
+     "evidence_key": "ek-1ca7abee240a",
+     "field": "original_context",
+     "quote": "A perfect fifth is stable.",
+     "source_revision": 3,
+     "start": 245,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "a2bc7884108f37efec7dbf9d6affba0bc0083e249e1db50d0032c01e756ae37d",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "fifth-stable",
+   "proposed_text": "A perfect fifth sounds stable.",
+   "review_reasons": [
+    {
+     "code": "undecided",
+     "detail": "supported and waiting for your decision (it can join the batch)"
+    }
+   ],
+   "state": "pending",
+   "support": "supported",
+   "text": "A perfect fifth sounds stable.",
+   "type": "claim",
+   "unit_id": "k-417165ee040e"
+  },
+  {
+   "canonical": "perfect fourth = 5 semitones",
+   "claim_key": "ck-af4203017d56",
+   "evidence": [
+    {
+     "end": 112,
+     "evidence_id": "ev-bc6bb144ae",
+     "evidence_key": "ek-5f1231c77c7f",
+     "field": "original_context",
+     "quote": "A perfect fourth spans five semitones",
+     "source_revision": 3,
+     "start": 75,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "da85aa06628215d158e6c04d1bc2b478559ca7b203933a2bda1726e9b8fa175d",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "perfect-fourth",
+   "proposed_text": "A perfect fourth spans five semitones.",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "A perfect fourth spans five semitones.",
+   "type": "claim",
+   "unit_id": "k-66026825bc65"
+  },
+  {
+   "canonical": "fourth + fifth = octave",
+   "claim_key": "ck-b39aade616b5",
+   "evidence": [
+    {
+     "end": 133,
+     "evidence_id": "ev-e141acc136",
+     "evidence_key": "ek-d17811c430ae",
+     "field": "original_context",
+     "quote": "A perfect fourth spans five semitones, for example C to F.",
+     "source_revision": 3,
+     "start": 75,
+     "status": "located",
+     "verified": true
+    },
+    {
+     "end": 179,
+     "evidence_id": "ev-53eda24c30",
+     "evidence_key": "ek-3f0e68381920",
+     "field": "original_context",
+     "quote": "The fifth and the fourth add up to an octave.",
+     "source_revision": 3,
+     "start": 134,
+     "status": "located",
+     "verified": true
+    },
+    {
+     "end": 213,
+     "evidence_id": "ev-bc4d1c9cd7",
+     "evidence_key": "ek-543bbf1f93df",
+     "field": "original_context",
+     "quote": "An octave spans twelve semitones.",
+     "source_revision": 3,
+     "start": 180,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "f40a858b9973cfdfe34abe1621fa15e39fbc547ab1639e12d7bfdd45659197a1",
+   "needs_review": false,
+   "origin": "source",
+   "proposal_ref": "fourth-plus-fifth",
+   "proposed_text": "A perfect fourth and a perfect fifth together make an octave of twelve semitones.",
+   "review_reasons": [],
+   "state": "approved",
+   "support": "supported",
+   "text": "A perfect fourth and a perfect fifth together make an octave of twelve semitones.",
+   "type": "claim",
+   "unit_id": "k-ae55c2b5be7a"
+  },
+  {
+   "canonical": "intervals invert",
+   "claim_key": "ck-a74566101de8",
+   "evidence": [
+    {
+     "end": 303,
+     "evidence_id": "ev-556f39a2b9",
+     "evidence_key": "ek-5aa9365cc9e5",
+     "field": "original_context",
+     "quote": "Every interval can be inverted.",
+     "source_revision": 3,
+     "start": 272,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "f669c8bb1bd8d5ae6f679de5ade81b22e7eff45645568f2c7d01387c2aebc93b",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "inversion",
+   "proposed_text": "Every interval can be inverted.",
+   "review_reasons": [
+    {
+     "code": "word_cue:generalises",
+     "detail": "the claim says « Every »; its 1 located quote shows one example, not a rule for every case"
+    }
+   ],
+   "state": "pending",
+   "support": "supported",
+   "text": "Every interval can be inverted.",
+   "type": "claim",
+   "unit_id": "k-af6ac6c0efd9"
+  },
+  {
+   "canonical": "major sixth = 9 semitones",
+   "claim_key": "ck-78633b9f709c",
+   "evidence": [],
+   "item_hash": "75e933f164b89a4950ac67d5c20d0b57171f806dc314779197b2316d6945ab09",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "major-sixth",
+   "proposed_text": "A major sixth spans nine semitones.",
+   "review_reasons": [
+    {
+     "code": "unsupported_claim",
+     "detail": "these words are not in your text: « A major sixth spans nine semitones »"
+    }
+   ],
+   "state": "pending",
+   "support": "unsupported",
+   "text": "A major sixth spans nine semitones.",
+   "type": "claim",
+   "unit_id": "k-baac4a16427a"
+  },
+  {
+   "canonical": "tritone = 7 semitones",
+   "claim_key": "ck-14447b695bf0",
+   "evidence": [
+    {
+     "end": 244,
+     "evidence_id": "ev-15bb3a2805",
+     "evidence_key": "ek-ae82408cac20",
+     "field": "original_context",
+     "quote": "A tritone spans six semitones.",
+     "source_revision": 3,
+     "start": 214,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "9e490889fb4b5f78cfd463d3ddd75f98e2b624a7b46f3bd312e173615bc5bf4c",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "tritone-wrong",
+   "proposed_text": "A tritone spans seven semitones.",
+   "review_reasons": [
+    {
+     "code": "conflict",
+     "detail": "another item presents as correct what this one lists as wrong (or the reverse)"
+    }
+   ],
+   "state": "pending",
+   "support": "supported",
+   "text": "A tritone spans seven semitones.",
+   "type": "claim",
+   "unit_id": "k-c8f3eff46ff5"
+  },
+  {
+   "canonical": "perfect fifth = 7 semitones",
+   "claim_key": "ck-2b428885cd58",
+   "evidence": [
+    {
+     "end": 74,
+     "evidence_id": "ev-ec5985d272",
+     "evidence_key": "ek-5c794dea87f5",
+     "field": "original_context",
+     "quote": "A perfect fifth spans seven semitones, for example D to A.",
+     "source_revision": 3,
+     "start": 16,
+     "status": "located",
+     "verified": true
+    }
+   ],
+   "item_hash": "89d46f48d31e0e88e5f2ba07960e76830735252f95fb9e1222168ff06e07045a",
+   "needs_review": true,
+   "origin": "source",
+   "proposal_ref": "perfect-fifth",
+   "proposed_text": "A perfect fifth spans seven semitones.",
+   "review_reasons": [
+    {
+     "code": "changed_since_decision",
+     "detail": "it changed materially since you decided it"
+    }
+   ],
+   "state": "needs_review",
+   "support": "supported",
+   "text": "A perfect fifth spans seven semitones.",
+   "type": "claim",
+   "unit_id": "k-cbb2a68e35b0"
+  }
+ ]
+}
