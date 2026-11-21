@@ -377,7 +377,7 @@ function FeedbackHistory({
   onReload: () => void;
 }) {
   const { t, status } = useI18n();
-  if (load.status === "loading") return <p className="value">{t("feedback.historyLoading")}</p>;
+  if (load.status === "loading") return <p className="hint" role="status">{t("feedback.historyLoading")}</p>;
   if (load.status === "error") {
     return (
       <div className="banner error" role="alert">

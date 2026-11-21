@@ -729,7 +729,7 @@ export function ReviewQueue({
     return (
       <div>
         {context}
-        <p className="empty">{t("review.loading")}</p>
+        <p className="empty" role="status">{t("review.loading")}</p>
       </div>
     );
   }
@@ -868,7 +868,7 @@ export function ReviewQueue({
             <h2>{t("review.exact.title")}</h2>
             <p className="hint">{t("review.exact.hint")}</p>
             {!unitContextReady ? (
-              <p className="value">{t("review.exact.loading")}</p>
+              <p className="hint" role="status">{t("review.exact.loading")}</p>
             ) : candidates.length === 0 ? (
               <p className="value">
                 <em>{t("review.exact.none")}</em> {t("review.exact.none.detail")}
@@ -916,9 +916,9 @@ export function ReviewQueue({
               </button>
             </div>
             {catalogLoading ? (
-              <p className="value">{t("review.search.catalogLoading")}</p>
+              <p className="hint" role="status">{t("review.search.catalogLoading")}</p>
             ) : !unitContextReady ? (
-              <p className="value">{t("review.search.contextLoading")}</p>
+              <p className="hint" role="status">{t("review.search.contextLoading")}</p>
             ) : discoveryCandidates.length === 0 ? (
               <p className="value">
                 <em>{t("review.search.none")}</em>

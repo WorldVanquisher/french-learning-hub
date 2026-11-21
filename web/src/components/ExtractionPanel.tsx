@@ -435,7 +435,7 @@ function ExtractionBrowser({
 }) {
   const { t, tp } = useI18n();
   if (load.status === "loading") {
-    return <p className="value">{t("extraction.loading")}</p>;
+    return <p className="hint" role="status">{t("extraction.loading")}</p>;
   }
   if (load.status === "error") {
     return (
@@ -600,6 +600,13 @@ function ExtractionVersionView({
         {t("extraction.viewing", { version: extraction.version })}{" "}
         <span className="hint">
           {t(isCurrent ? (isLatest ? "extraction.viewTags.currentLatest" : "extraction.viewTags.current") : isLatest ? "extraction.viewTags.notCurrentLatest" : "extraction.viewTags.notCurrent")}
+        </span>{" "}
+        {/* What the extraction was made from: an analysis with no feedback yet, or one a
+            person had reviewed (accepted or corrected; a rejected one is not eligible). */}
+        <span className={`tag extraction-basis ${extraction.source_feedback_id === null ? "unreviewed" : "reviewed"}`}>
+          {extraction.source_feedback_id === null
+            ? t("extraction.basis.unreviewed")
+            : t("extraction.basis.reviewed", { id: extraction.source_feedback_id })}
         </span>
       </h3>
       <p className="hint">
@@ -633,9 +640,13 @@ function ExtractionVersionView({
         <ul className="annotation-list" aria-label={t("extraction.units")}>
           {extraction.units.map((unit) => (
             // Focus returns here when the reader comes back from another view.
-            <li key={unit.id} id={unitFocusId(unit.id)} tabIndex={-1}>
+            <li key={unit.id} id={unitFocusId(unit.id)} tabIndex={-1} className="extracted-unit">
+              <UnitTitle
+                unitId={unit.id}
+                kind={unit.kind}
+                state={unitReviewState(unit.id, isCurrent, status, isCurrent ? (decisions?.items[unit.id] ?? null) : null)}
+              />
               <dl className="unit-evidence">
-                <div><dt>{t("unit.unit")}</dt><dd>#{unit.id} · {unit.kind}</dd></div>
                 <div><dt>{t("unit.canonical")}</dt><dd className="french">{unit.canonical}</dd></div>
                 <div><dt>{t("unit.statement")}</dt><dd className="french"><StoredText primary={unit.statement} variants={unit.statements} kind="statement" /></dd></div>
                 {unit.example ? <div><dt>{t("unit.example")}</dt><dd className="french">{unit.example}</dd></div> : null}
@@ -671,6 +682,47 @@ function ExtractionVersionView({
         </ul>
       )}
     </div>
+  );
+}
+
+// Where one extracted unit stands, from the same reads UnitLinks uses: a
+// historical unit, a current one awaiting Concept Review, one filed under a
+// Concept (CURRENT SAME), one marked INVALID, or one no longer awaiting review
+// whose decision is not (yet) read. Display only: it decides nothing.
+type UnitState =
+  | { kind: "historical" | "checking" | "unknown" | "awaiting" | "invalid" | "decided" }
+  | { kind: "filed"; conceptId: number };
+
+export function unitReviewState(
+  unitId: number,
+  isCurrent: boolean,
+  status: Reviewability | null,
+  decision: Load<EffectiveAnnotationItem> | null,
+): UnitState {
+  if (!isCurrent) return { kind: "historical" };
+  if (!status || status.status === "loading") return { kind: "checking" };
+  if (status.status === "error") return { kind: "unknown" };
+  if (status.data.has(unitId)) return { kind: "awaiting" };
+  const same = decision?.status === "ready" ? decision.data.snapshot.current_same : null;
+  if (same) return { kind: "filed", conceptId: same.membership.concept_id };
+  if (decision?.status === "ready" && decision.data.snapshot.status === "invalid") return { kind: "invalid" };
+  return { kind: "decided" };
+}
+
+// UnitTitle names an extracted candidate and says where it stands.
+function UnitTitle({ unitId, kind, state }: { unitId: number; kind: string; state: UnitState }) {
+  const { t } = useI18n();
+  const label =
+    state.kind === "filed"
+      ? t("unit.state.filed", { id: state.conceptId })
+      : state.kind === "invalid"
+        ? "INVALID"
+        : t(`unit.state.${state.kind}`);
+  return (
+    <h4 className="unit-title">
+      <span className="unit-title-text">{t("unit.candidateTitle", { id: unitId, kind })}</span>{" "}
+      <span className={`tag unit-state unit-state-${state.kind}`}>{label}</span>
+    </h4>
   );
 }
 

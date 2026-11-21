@@ -242,119 +242,129 @@ export function RecordDetail({
         {t("record.heading", { id: entryId })}
       </h2>
 
-      <RecordStage entryId={entryId} stage={stage} onNavigateToUnit={onNavigateToUnit} />
+      {/* The record's own words (and where it was saved from) come first, then the
+          work on them. In the private workspace (workspace.css) the evidence column
+          stays beside the analysis and extraction on a wide screen. */}
+      <div className="record-layout">
+        <aside className="record-evidence" aria-label={t("record.evidence")}>
+          <section className="panel" aria-label={t("record.original")}>
+            <h2>{t("record.original")}</h2>
+            <p className="hint evidence-meta">{t("record.evidenceMeta", { id: entryId })}</p>
+            {entry.status === "loading" ? (
+              <p className="hint" role="status">{t("record.originalLoading")}</p>
+            ) : entry.status === "error" ? (
+              <div className="banner error" role="alert">
+                {t("record.originalFailed", { message: entry.message })}
+              </div>
+            ) : (
+              <dl className="unit-evidence">
+                <div><dt>{t("record.originalInput")}</dt><dd className="french">{entry.data.original_input}</dd></div>
+                <div>
+                  <dt>{t("record.originalContext")}</dt>
+                  <dd className="french">{entry.data.original_context || <em>{t("record.noContext")}</em>}</dd>
+                </div>
+                <div><dt>{t("record.created")}</dt><dd><time dateTime={entry.data.created_at}>{entry.data.created_at}</time></dd></div>
+              </dl>
+            )}
+          </section>
 
-      <section className="panel" aria-label={t("record.original")}>
-        <h2>{t("record.original")}</h2>
-        {entry.status === "loading" ? (
-          <p className="value">{t("record.originalLoading")}</p>
-        ) : entry.status === "error" ? (
-          <div className="banner error" role="alert">
-            {t("record.originalFailed", { message: entry.message })}
-          </div>
-        ) : (
-          <dl className="unit-evidence">
-            <div><dt>{t("record.originalInput")}</dt><dd className="french">{entry.data.original_input}</dd></div>
-            <div>
-              <dt>{t("record.originalContext")}</dt>
-              <dd className="french">{entry.data.original_context || <em>{t("record.noContext")}</em>}</dd>
-            </div>
-            <div><dt>{t("record.created")}</dt><dd><time dateTime={entry.data.created_at}>{entry.data.created_at}</time></dd></div>
-          </dl>
-        )}
-      </section>
+          {onOpenSource ? <RecordSource entryId={entryId} onOpenSource={onOpenSource} /> : null}
+        </aside>
 
-      {onOpenSource ? <RecordSource entryId={entryId} onOpenSource={onOpenSource} /> : null}
+        <div className="record-work">
+          <RecordStage entryId={entryId} stage={stage} onNavigateToUnit={onNavigateToUnit} />
 
-      <section className="panel" aria-label={t("record.analyses")}>
-        <h2>{t("record.analyses")}</h2>
-        <p className="hint">{t("record.analysesPurpose")}</p>
-        {analyses.status === "loading" ? (
-          <p className="value">{t("record.analysesLoading")}</p>
-        ) : analyses.status === "error" ? (
-          <div className="banner error" role="alert">
-            {t("record.analysesFailed", { message: analyses.message })}
-          </div>
-        ) : analysisList.length === 0 ? (
-          <p className="value">
-            <strong>{t("record.noAnalysis")}</strong> {t("record.noAnalysis.detail")}
-          </p>
-        ) : (
-          <>
-            <p className="hint">{t("record.analysesHint")}</p>
-            <div className="version-list">
-              {analysisList.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className={a.id === selectedAnalysisId ? "primary" : "ghost"}
-                  aria-pressed={a.id === selectedAnalysisId}
-                  onClick={() => setSelectedAnalysisId(a.id)}
-                >
-                  {a.id === latest?.id ? t("record.versionLatest", { version: a.version }) : t("record.version", { version: a.version })}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-        {/* Always mounted: the re-read it triggers must not discard its outcome. */}
-        {analysisAction}
-      </section>
+          <section className="panel" aria-label={t("record.analyses")}>
+            <h2>{t("record.analyses")}</h2>
+            <p className="hint">{t("record.analysesPurpose")}</p>
+            {analyses.status === "loading" ? (
+              <p className="hint" role="status">{t("record.analysesLoading")}</p>
+            ) : analyses.status === "error" ? (
+              <div className="banner error" role="alert">
+                {t("record.analysesFailed", { message: analyses.message })}
+              </div>
+            ) : analysisList.length === 0 ? (
+              <p className="value">
+                <strong>{t("record.noAnalysis")}</strong> {t("record.noAnalysis.detail")}
+              </p>
+            ) : (
+              <>
+                <p className="hint">{t("record.analysesHint")}</p>
+                <div className="version-list">
+                  {analysisList.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className={a.id === selectedAnalysisId ? "primary" : "ghost"}
+                      aria-pressed={a.id === selectedAnalysisId}
+                      onClick={() => setSelectedAnalysisId(a.id)}
+                    >
+                      {a.id === latest?.id ? t("record.versionLatest", { version: a.version }) : t("record.version", { version: a.version })}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            {/* Always mounted: the re-read it triggers must not discard its outcome. */}
+            {analysisAction}
+          </section>
 
-      {selected ? (
-        <section className="panel" aria-label={t("record.selectedAnalysis")}>
-          <h2>
-            {t("record.analysisHeading", { version: selected.version })}{" "}
-            <span className="hint">
-              {selected.id === latest?.id ? t("version.latestTag") : t("version.historicalTag", { latest: latest?.version ?? "?" })}
-            </span>
-          </h2>
-          <dl className="unit-evidence">
-            <div><dt>{t("record.explanation")}</dt><dd><StoredText primary={selected.explanation} variants={selected.explanations} kind="explanation" /></dd></div>
-            <div><dt>{t("record.analyzer")}</dt><dd className="mono">{selected.analyzer}</dd></div>
-            <div><dt>{t("record.confidence")}</dt><dd>{selected.confidence}</dd></div>
-            <div><dt>{t("record.uncertainty")}</dt><dd>{selected.uncertainty || <em>{t("record.noneStated")}</em>}</dd></div>
-            <div><dt>{t("record.created")}</dt><dd><time dateTime={selected.created_at}>{selected.created_at}</time></dd></div>
-          </dl>
-          <EffectiveInterpretation load={effective} />
-        </section>
-      ) : null}
+          {selected ? (
+            <section className="panel" aria-label={t("record.selectedAnalysis")}>
+              <h2>
+                {t("record.analysisHeading", { version: selected.version })}{" "}
+                <span className="hint">
+                  {selected.id === latest?.id ? t("version.latestTag") : t("version.historicalTag", { latest: latest?.version ?? "?" })}
+                </span>
+              </h2>
+              <dl className="unit-evidence">
+                <div><dt>{t("record.explanation")}</dt><dd><StoredText primary={selected.explanation} variants={selected.explanations} kind="explanation" /></dd></div>
+                <div><dt>{t("record.analyzer")}</dt><dd className="mono">{selected.analyzer}</dd></div>
+                <div><dt>{t("record.confidence")}</dt><dd>{selected.confidence}</dd></div>
+                <div><dt>{t("record.uncertainty")}</dt><dd>{selected.uncertainty || <em>{t("record.noneStated")}</em>}</dd></div>
+                <div><dt>{t("record.created")}</dt><dd><time dateTime={selected.created_at}>{selected.created_at}</time></dd></div>
+              </dl>
+              <EffectiveInterpretation load={effective} />
+            </section>
+          ) : null}
 
-      {/* Always mounted for this record so drafts survive its read refreshes. Sibling
-          keys must differ from ExtractionPanel's, or React mixes up the two panels. */}
-      <FeedbackPanel
-        key={`feedback-${entryId}`}
-        analysis={selected}
-        latest={latest}
-        effectiveFeedbackId={
-          effective.status === "ready" && effective.data.analysis_id === selected?.id ? effective.data.feedback_id : undefined
-        }
-        effectiveResolution={
-          effective.status === "ready" && effective.data.analysis_id === selected?.id ? effective.data.resolution : undefined
-        }
-        effectiveRefresh={
-          effectiveRefresh && effectiveRefresh.analysisId === selected?.id ? effectiveRefresh.state : { kind: "idle" }
-        }
-        onRecorded={(analysisId) => {
-          // Feedback can change this version's effective interpretation and, for
-          // the latest version, the record's inventory state.
-          onRecordChanged?.(entryId);
-          if (entryRef.current !== entryId) return;
-          setEffectiveRefresh({ analysisId, state: { kind: "refreshing" } });
-          if (selectedRef.current === analysisId) setEffectiveReloadCount((n) => n + 1);
-        }}
-      />
+          {/* Always mounted for this record so drafts survive its read refreshes. Sibling
+              keys must differ from ExtractionPanel's, or React mixes up the two panels. */}
+          <FeedbackPanel
+            key={`feedback-${entryId}`}
+            analysis={selected}
+            latest={latest}
+            effectiveFeedbackId={
+              effective.status === "ready" && effective.data.analysis_id === selected?.id ? effective.data.feedback_id : undefined
+            }
+            effectiveResolution={
+              effective.status === "ready" && effective.data.analysis_id === selected?.id ? effective.data.resolution : undefined
+            }
+            effectiveRefresh={
+              effectiveRefresh && effectiveRefresh.analysisId === selected?.id ? effectiveRefresh.state : { kind: "idle" }
+            }
+            onRecorded={(analysisId) => {
+              // Feedback can change this version's effective interpretation and, for
+              // the latest version, the record's inventory state.
+              onRecordChanged?.(entryId);
+              if (entryRef.current !== entryId) return;
+              setEffectiveRefresh({ analysisId, state: { kind: "refreshing" } });
+              if (selectedRef.current === analysisId) setEffectiveReloadCount((n) => n + 1);
+            }}
+          />
 
-      {/* Keyed by entry so a late response for another record never reaches it. */}
-      <ExtractionPanel
-        key={`extraction-${entryId}`}
-        entryId={entryId}
-        latestVersion={latest?.version ?? null}
-        returnEpoch={returnEpoch}
-        onNavigateToUnit={onNavigateToUnit}
-        onOpenConcept={onOpenConcept}
-        onFacts={keepExtractionFacts}
-      />
+          {/* Keyed by entry so a late response for another record never reaches it. */}
+          <ExtractionPanel
+            key={`extraction-${entryId}`}
+            entryId={entryId}
+            latestVersion={latest?.version ?? null}
+            returnEpoch={returnEpoch}
+            onNavigateToUnit={onNavigateToUnit}
+            onOpenConcept={onOpenConcept}
+            onFacts={keepExtractionFacts}
+          />
+        </div>
+      </div>
     </main>
   );
 }
@@ -365,7 +375,7 @@ export function RecordDetail({
 function EffectiveInterpretation({ load }: { load: Load<EffectiveAnalysis> }) {
   const { t, status } = useI18n();
   if (load.status === "loading") {
-    return <p className="value">{t("effective.loading")}</p>;
+    return <p className="hint" role="status">{t("effective.loading")}</p>;
   }
   if (load.status === "error") {
     return (

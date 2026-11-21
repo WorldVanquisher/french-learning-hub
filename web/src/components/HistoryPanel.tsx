@@ -31,7 +31,7 @@ export function HistoryPanel({
       <p className="hint">{title}</p>
       {open ? (
         loading ? (
-          <p className="value">{t("history.loading")}</p>
+          <p className="hint" role="status">{t("history.loading")}</p>
         ) : links.length === 0 ? (
           <p className="value">
             <em>{t("history.empty")}</em>

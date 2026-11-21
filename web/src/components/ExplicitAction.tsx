@@ -96,14 +96,25 @@ export function ExplicitAction({
   const [open, setOpen] = useState(false);
   const inFlight = useRef(false);
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const openRef = useRef<HTMLButtonElement>(null);
+  // After Cancel, or once a confirmed request has settled, keyboard focus goes back
+  // to the button that opened the step (it is disabled while the request runs).
+  const [refocus, setRefocus] = useState(false);
 
   useEffect(() => {
     if (open) confirmRef.current?.focus();
   }, [open]);
+  useEffect(() => {
+    if (!refocus || open || pending) return;
+    setRefocus(false);
+    const now = document.activeElement;
+    if (!now || now === document.body) openRef.current?.focus();
+  }, [refocus, open, pending]);
 
   async function confirm() {
     if (inFlight.current) return;
     inFlight.current = true;
+    setRefocus(true);
     setOpen(false);
     try {
       await onConfirm();
@@ -115,7 +126,7 @@ export function ExplicitAction({
   if (!open || disabledReason) {
     return (
       <>
-        <button type="button" className="ghost" disabled={pending || Boolean(disabledReason)} onClick={() => setOpen(true)}>
+        <button ref={openRef} type="button" className="ghost" disabled={pending || Boolean(disabledReason)} onClick={() => setOpen(true)}>
           {pending ? t("action.waiting", { label }) : t("action.open", { label })}
         </button>
         {disabledReason && !pending ? <p className="hint">{disabledReason}</p> : null}
@@ -124,13 +135,20 @@ export function ExplicitAction({
   }
 
   return (
-    <div className="explicit-action" role="group" aria-label={label}>
+    <div className="explicit-action" role="group" aria-label={label} data-focus-managed="">
       <div className="hint explicit-action-explanation">{explanation}</div>
       <div className="actions">
         <button ref={confirmRef} type="button" className="primary" disabled={pending} onClick={() => void confirm()}>
           {confirmLabel}
         </button>
-        <button type="button" className="ghost" onClick={() => setOpen(false)}>
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => {
+            setRefocus(true);
+            setOpen(false);
+          }}
+        >
           {t("common.cancel")}
         </button>
       </div>
